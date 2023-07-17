@@ -608,14 +608,14 @@ var PooledObjectClass:TpvPooledObjectClass;
 begin
  fMultipleReaderSingleWriterLock.AcquireRead;
  try
-  PooledObjectClass:=TpvPooledObjectClass(pointer(Instance.ClassType));
+  PooledObjectClass:=TpvPooledObjectClass(pointer(aInstance.ClassType));
   HashBucket:=HashPointer(PooledObjectClass) and PooledObjectClassMetaInfoHashMask;
   PooledObjectClassMetaInfoHashItem:=PooledObjectClassMetaInfoHashItems[HashBucket];
   while assigned(PooledObjectClassMetaInfoHashItem) and (PooledObjectClassMetaInfoHashItem^.PooledObjectClass<>PooledObjectClass) do begin
    PooledObjectClassMetaInfoHashItem:=PooledObjectClassMetaInfoHashItem^.HashItemNext;
   end;
   if assigned(PooledObjectClassMetaInfoHashItem) then begin
-   PooledObjectClassMetaInfoHashItem^.PooledObjectClassMetaInfo.Pool.FreeObject(Instance);
+   PooledObjectClassMetaInfoHashItem^.PooledObjectClassMetaInfo.Pool.FreeObject(aInstance);
   end;
  finally
   fMultipleReaderSingleWriterLock.ReleaseRead;
@@ -681,7 +681,7 @@ end;
 
 initialization
 {$ifdef UseHashMaps}
- FillChar(PooledObjectClassMetaInfoHashItems,SizeOf(TPPooledObjectClassMetaInfoHashItems),#0);
+ FillChar(PooledObjectClassMetaInfoHashItems,SizeOf(TPpvPooledObjectClassMetaInfoHashItems),#0);
 {$else}
 {$ifdef unix}
 {$ifdef darwin}

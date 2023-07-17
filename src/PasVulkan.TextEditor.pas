@@ -1227,8 +1227,9 @@ type TpvTextEditor=class
                            Number=8;
                            Symbol=9;
                            String_=10;
-                           Delimiter=11;
-                           Operator=12;
+                           MultiLineString=11;
+                           Delimiter=12;
+                           Operator=13;
                            Marked=TpvUInt32($40000000);
                            Highlight=TpvUInt32($80000000);
                            Mask=TpvUInt32($0fffffff);
@@ -1403,6 +1404,14 @@ type TpvTextEditor=class
               procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
+             public
+              property CaseInsensitive:boolean read fCaseInsensitive write fCaseInsensitive;
+              property KeywordBeginCodePointSet:TCodePointSet read fKeywordBeginCodePointSet write fKeywordBeginCodePointSet;
+              property KeywordPartCodePointSet:TCodePointSet read fKeywordPartCodePointSet write fKeywordPartCodePointSet;
+              property KeywordPartCodePointSetExcludingBeginCodePointSet:TCodePointSet read fKeywordPartCodePointSetExcludingBeginCodePointSet write fKeywordPartCodePointSetExcludingBeginCodePointSet;
+              property WhiteSpaceCodePointSet:TCodePointSet read fWhiteSpaceCodePointSet write fWhiteSpaceCodePointSet;
+              property NewLineCodePointSet:TCodePointSet read fNewLineCodePointSet write fNewLineCodePointSet;
+              property WhiteSpaceCodePointSetExcludingNewLineCodePointSet:TCodePointSet read fWhiteSpaceCodePointSetExcludingNewLineCodePointSet write fWhiteSpaceCodePointSetExcludingNewLineCodePointSet;
             end;
             TPascalSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected

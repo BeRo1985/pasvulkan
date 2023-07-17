@@ -43,8 +43,8 @@ type TScreenExampleCanvas=class(TpvApplicationScreen)
        fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
-       fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanRenderCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fTextureTreeLeafs:TpvVulkanTexture;
        fVulkanSpriteAtlas:TpvSpriteAtlas;
        fVulkanFontSpriteAtlas:TpvSpriteAtlas;
@@ -160,7 +160,7 @@ begin
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
  end;
@@ -169,7 +169,7 @@ begin
 
  fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
                                  pvApplication.VulkanPipelineCache,
-                                 MaxSwapChainImages);
+                                 MaxInFlightFrames);
 
  fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,true);
  fVulkanSpriteAtlas.UseConvexHullTrimming:=false;
@@ -361,7 +361,7 @@ begin
  FreeAndNil(fTextureTreeLeafs);
  FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
@@ -391,7 +391,7 @@ begin
 end;
 
 procedure TScreenExampleCanvas.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvInt32;
+var Index:TpvInt32;
 begin
  inherited AfterCreateSwapChain;
 
@@ -450,7 +450,7 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
  fVulkanCanvas.VulkanRenderPass:=fVulkanRenderPass;
- fVulkanCanvas.CountBuffers:=pvApplication.CountSwapChainImages;
+ fVulkanCanvas.CountBuffers:=pvApplication.CountInFlightFrames;
  if pvApplication.Width<pvApplication.Height then begin
   fVulkanCanvas.Width:=(720*pvApplication.Width) div pvApplication.Height;
   fVulkanCanvas.Height:=720;
@@ -463,9 +463,9 @@ begin
  fVulkanCanvas.Viewport.width:=pvApplication.Width;
  fVulkanCanvas.Viewport.height:=pvApplication.Height;
 
- for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
-  FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
-  fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+ for Index:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
+  FreeAndNil(fVulkanRenderCommandBuffers[Index]);
+  fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
  end;
 
  FreeAndNil(fShapeCircleInsideRoundedRectangle);
@@ -587,7 +587,7 @@ var Index,SubIndex:TpvInt32;
 begin
  inherited Update(aDeltaTime);
 
- fVulkanCanvas.Start(pvApplication.UpdateSwapChainImageIndex);
+ fVulkanCanvas.Start(pvApplication.UpdateInFlightFrameIndex);
 
  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
 
@@ -895,7 +895,7 @@ begin
 
   begin
 
-   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[aSwapChainImageIndex];
+   VulkanCommandBuffer:=fVulkanRenderCommandBuffers[pvApplication.DrawInFlightFrameIndex];
    VulkanSwapChain:=pvApplication.VulkanSwapChain;
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
@@ -905,7 +905,7 @@ begin
    fVulkanCanvas.ExecuteUpload(pvApplication.VulkanDevice.TransferQueue,
                                fVulkanTransferCommandBuffer,
                                fVulkanTransferCommandBufferFence,
-                               pvApplication.DrawSwapChainImageIndex);
+                               pvApplication.DrawInFlightFrameIndex);
 
    fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
                                      pvApplication.VulkanFrameBuffers[aSwapChainImageIndex],
@@ -916,7 +916,7 @@ begin
                                      VulkanSwapChain.Height);
 
    fVulkanCanvas.ExecuteDraw(VulkanCommandBuffer,
-                             pvApplication.DrawSwapChainImageIndex);
+                             pvApplication.DrawInFlightFrameIndex);
 
    fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
 
@@ -925,11 +925,11 @@ begin
    VulkanCommandBuffer.Execute(pvApplication.VulkanDevice.GraphicsQueue,
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                aWaitSemaphore,
-                               fVulkanRenderSemaphores[aSwapChainImageIndex],
+                               fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex],
                                aWaitFence,
                                false);
 
-   aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
+   aWaitSemaphore:=fVulkanRenderSemaphores[pvApplication.DrawInFlightFrameIndex];
 
   end;
  end;

@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2020, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2023, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -58,7 +58,6 @@ unit PasVulkan.Components.Renderer;
   {$ifend}
  {$endif}
 {$endif}
-{$m+}
 
 interface
 
@@ -68,36 +67,28 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type PpvComponentRenderer=^TpvComponentRenderer;
-     TpvComponentRenderer=record
+type TpvComponentRenderer=class(TpvComponent)
+      private
+       fTarget:TpvInt32;
       public
-       Dummy:TpvUInt32;
+       class function ClassPath:string; override;
+       class function ClassUUID:TpvUUID; override;
+      published
      end;
-
-const pvComponentRendererDefault:TpvComponentRenderer=
-       (
-        Dummy:0;
-       );
-
-var pvComponentRenderer:TpvEntityComponentSystem.TRegisteredComponentType=nil;
-
-    pvComponentRendererID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
-procedure Register;
+class function TpvComponentRenderer.ClassPath:string;
 begin
+ result:='Renderer';
+end;
 
- pvComponentRenderer:=TpvEntityComponentSystem.TRegisteredComponentType.Create('renderer',
-                                                                               'Renderer',
-                                                                               ['Base','Renderer'],
-                                                                               SizeOf(TpvComponentRenderer),
-                                                                               @pvComponentRendererDefault);
-
- pvComponentRendererID:=pvComponentRenderer.ID;
-
+class function TpvComponentRenderer.ClassUUID:TpvUUID;
+begin
+ result.UInt64s[0]:=TpvUInt64($7aab7c9457584824);
+ result.UInt64s[1]:=TpvUInt64($abe14af3b66ce47e);
 end;
 
 initialization
- Register;
 end.
+

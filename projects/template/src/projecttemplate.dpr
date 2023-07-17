@@ -32,6 +32,12 @@
   {$ifend}*)
 
 uses
+  {$if defined(fpc) and defined(PasVulkanUseSynFPCx64MM)}
+   SynFPCx64MM,
+  {$ifend}
+  {$if defined(fpc) and defined(PasVulkanUseCMEM)}
+   cmem,
+  {$ifend}
   {$if defined(fpc) and defined(Unix)}
    cthreads,
    BaseUnix,
@@ -46,7 +52,9 @@ uses
   Vulkan,
   PasVulkan.Types,
   PasVulkan.Android,
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   PasVulkan.SDL2,
+{$ifend}
   PasVulkan.Framework,
   PasVulkan.Application,  
   UnitApplication;
@@ -71,7 +79,7 @@ begin
 end;
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 {$if defined(fpc) and defined(android)}
 procedure SDL_main(argc:TpvInt32;arcv:pointer); cdecl;
 var s:string;
@@ -117,8 +125,8 @@ begin
 end;
 {$ifend}
 
-{$if defined(fpc) and defined(android)}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(fpc) and defined(android) and not defined(PasVulkanHeadless)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
         SDL_main name 'SDL_main';
@@ -143,6 +151,9 @@ const ATTACH_PARENT_PROCESS=DWORD(-1);
 {$ifend}
 
 {$if not (defined(fpc) and defined(android))}
+
+{$R *.res}
+
 begin
 {$if defined(Windows) and (defined(Debug) or not defined(Release))}
  // Workaround for a random-console-missing-issue with Delphi 10.2 Tokyo
@@ -150,7 +161,7 @@ begin
   AllocConsole;
  end;
 {$ifend}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDLMain;
 {$else}
  TApplication.Main;
@@ -161,7 +172,7 @@ begin
   readln;
  end;
 {$ifend}
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_Quit;
 {$ifend}
 {$if defined(fpc) and defined(Linux)}

@@ -36,6 +36,7 @@ unit PasVulkan.Audio.OGGVorbisTremor;
   {$ifend}
  {$endif}
 {$endif}
+{$rangechecks off}
 
 interface
 
@@ -2761,8 +2762,8 @@ type LOOKUP_T=longint;
 
 {$ifdef fpc}
  {$undef OldDelphi}
-     GDFWAudioOGGPtrUInt=PtrUInt;
-     GDFWAudioOGGPtrInt=PtrInt;
+     PasAudioOGGPtrUInt=PtrUInt;
+     PasAudioOGGPtrInt=PtrInt;
 {$else}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=15.0}
@@ -2771,8 +2772,8 @@ type LOOKUP_T=longint;
   {$ifend}
   {$if CompilerVersion>=23.0}
    {$undef OldDelphi}
-   GDFWAudioOGGPtrUInt=NativeUInt;
-   GDFWAudioOGGPtrInt=NativeInt;
+   PasAudioOGGPtrUInt=NativeUInt;
+   PasAudioOGGPtrInt=NativeInt;
   {$else}
    {$define OldDelphi}
   {$ifend}
@@ -2785,11 +2786,11 @@ type LOOKUP_T=longint;
      qword=int64;
 {$endif}
 {$ifdef cpu64}
-     GDFWAudioOGGPtrUInt=qword;
-     GDFWAudioOGGPtrInt=int64;
+     PasAudioOGGPtrUInt=qword;
+     PasAudioOGGPtrInt=int64;
 {$else}
-     GDFWAudioOGGPtrUInt=longword;
-     GDFWAudioOGGPtrInt=longint;
+     PasAudioOGGPtrUInt=longword;
+     PasAudioOGGPtrInt=longint;
 {$endif}
 {$endif}
 
@@ -3256,7 +3257,7 @@ type LOOKUP_T=longint;
 
      Pov_callbacks=^ov_callbacks;
      ov_callbacks=record
-      read_func:function(ptr:pointer;size,nmemb:GDFWAudioOGGPtrUInt;datasource:pointer):GDFWAudioOGGPtrUInt;
+      read_func:function(ptr:pointer;size,nmemb:PasAudioOGGPtrUInt;datasource:pointer):PasAudioOGGPtrUInt;
       seek_func:function(datasource:pointer;offset:int64;whence:longint):longint;
       close_func:function(datasource:pointer):longint;
       tell_func:function(datasource:pointer):longint;
@@ -3546,7 +3547,7 @@ asm
 {$if defined(Win32) or defined(Win64) or defined(Windows)}
  mov eax,ecx
 {$else}
- mov eax,esi
+ mov eax,edi
 {$ifend}
  xor ecx,ecx
  dec ecx
@@ -3868,7 +3869,7 @@ begin
  end;
 end;
 
-{procedure dumpit(filename:ansistring;var buffer;size:GDFWAudioOGGPtrInt);
+{procedure dumpit(filename:ansistring;var buffer;size:PasAudioOGGPtrInt);
 var f:file;
 begin
  assignfile(f,filename);
@@ -3877,7 +3878,7 @@ begin
  closefile(f);
 end;
 
-procedure appendit(filename:ansistring;var buffer;size:GDFWAudioOGGPtrInt);
+procedure appendit(filename:ansistring;var buffer;size:PasAudioOGGPtrInt);
 var f:file;
 begin
  if fileexists(filename) then begin
@@ -3892,19 +3893,19 @@ begin
  closefile(f);
 end;}
 
-function Allocate(Size:GDFWAudioOGGPtrInt):pointer;
+function Allocate(Size:PasAudioOGGPtrInt):pointer;
 begin
  GetMem(result,Size);
  FillChar(result^,Size,AnsiChar(#0));
 end;
 
-function Reallocate(Data:pointer;Size:GDFWAudioOGGPtrInt):pointer;
+function Reallocate(Data:pointer;Size:PasAudioOGGPtrInt):pointer;
 begin
  result:=Data;
  ReallocMem(result,Size);
 end;
 
-procedure Exchange(base:PAnsiChar;size,a,b:GDFWAudioOGGPtrUInt);
+procedure Exchange(base:PAnsiChar;size,a,b:PasAudioOGGPtrUInt);
 var x,y:PAnsiChar;
     z:AnsiChar;
 begin
@@ -3922,8 +3923,8 @@ end;
 
 type TQuickSortCompareFunction=function(const a,b:pointer):longint;
 
-procedure QuickSort(base:PAnsiChar;size:GDFWAudioOGGPtrUInt;l,r:GDFWAudioOGGPtrInt;CompareFunction:TQuickSortCompareFunction);
-var i,j,p,q,k:GDFWAudioOGGPtrInt;
+procedure QuickSort(base:PAnsiChar;size:PasAudioOGGPtrUInt;l,r:PasAudioOGGPtrInt;CompareFunction:TQuickSortCompareFunction);
+var i,j,p,q,k:PasAudioOGGPtrInt;
     v:PAnsiChar;
 begin
  if l<r then begin
@@ -3931,26 +3932,26 @@ begin
   j:=r;
   p:=l-1;
   q:=r;
-  v:=@base[GDFWAudioOGGPtrUInt(r)*size];
+  v:=@base[PasAudioOGGPtrUInt(r)*size];
   while true do begin
    repeat
     inc(i);
-   until (i=r) or (CompareFunction(@base[GDFWAudioOGGPtrUInt(i)*size],v)>=0);
+   until (i=r) or (CompareFunction(@base[PasAudioOGGPtrUInt(i)*size],v)>=0);
    repeat
     dec(j);
     if j=1 then begin
      break;
     end;
-   until CompareFunction(v,@base[GDFWAudioOGGPtrUInt(j)*size])>=0;
+   until CompareFunction(v,@base[PasAudioOGGPtrUInt(j)*size])>=0;
    if i>=j then begin
     break;
    end;
    Exchange(base,size,i,j);
-   if CompareFunction(@base[GDFWAudioOGGPtrUInt(i)*size],v)=0 then begin
+   if CompareFunction(@base[PasAudioOGGPtrUInt(i)*size],v)=0 then begin
     inc(p);
     Exchange(base,size,p,i);
    end;
-   if CompareFunction(v,@base[GDFWAudioOGGPtrUInt(j)*size])=0 then begin
+   if CompareFunction(v,@base[PasAudioOGGPtrUInt(j)*size])=0 then begin
     dec(q);
     Exchange(base,size,j,q);
    end;
@@ -3975,9 +3976,9 @@ begin
  end;
 end;
 
-procedure QSort(base:pointer;count,size:GDFWAudioOGGPtrUInt;CompareFunction:TQuickSortCompareFunction);
+procedure QSort(base:pointer;count,size:PasAudioOGGPtrUInt;CompareFunction:TQuickSortCompareFunction);
 begin
- if (count>1) and (count<((high(GDFWAudioOGGPtrUInt) shr 1)-1)) and (size<((high(GDFWAudioOGGPtrUInt) shr 1)-1)) then begin
+ if (count>1) and (count<((high(PasAudioOGGPtrUInt) shr 1)-1)) and (size<((high(PasAudioOGGPtrUInt) shr 1)-1)) then begin
   QuickSort(base,size,0,count-1,CompareFunction);
  end;
 end;
@@ -4187,7 +4188,7 @@ function oggpack_read(b:Poggpack_buffer;bits:longint):longint;
 {begin
  result:=oggpack_look(b,bits);
  oggpack_adv(b,bits);
-end;{}
+end;//}
 var m,ret:longword;
 begin
  m:=mask[bits];
@@ -4272,17 +4273,16 @@ begin
  end;
  b^.headbit:=bits and 7;
  result:=longint(longword(ret and m));
-//writeln('r ',result);
-end;{}
+end;//}
 
 function oggpack_bytes(b:Poggpack_buffer):longint;
 begin
- result:=(((b^.count+GDFWAudioOGGPtrInt(GDFWAudioOGGPtrUInt(b^.headptr)))-GDFWAudioOGGPtrInt(GDFWAudioOGGPtrUInt(b^.head^.buffer^.data)))-b^.head^.begin_)+((b^.headbit+7) div 8);
+ result:=(((b^.count+PasAudioOGGPtrInt(PasAudioOGGPtrUInt(b^.headptr)))-PasAudioOGGPtrInt(PasAudioOGGPtrUInt(b^.head^.buffer^.data)))-b^.head^.begin_)+((b^.headbit+7) div 8);
 end;
 
 function oggpack_bits(b:Poggpack_buffer):longint;
 begin
- result:=((((b^.count+GDFWAudioOGGPtrInt(GDFWAudioOGGPtrUInt(b^.headptr)))-GDFWAudioOGGPtrInt(GDFWAudioOGGPtrUInt(b^.head^.buffer^.data)))-b^.head^.begin_)*8)+b^.headbit;
+ result:=((((b^.count+PasAudioOGGPtrInt(PasAudioOGGPtrUInt(b^.headptr)))-PasAudioOGGPtrInt(PasAudioOGGPtrUInt(b^.head^.buffer^.data)))-b^.head^.begin_)*8)+b^.headbit;
 end;
 
 function _vorbis_window(type_,left:longint):pointer;
@@ -4376,7 +4376,7 @@ asm
 {$if defined(Win32) or defined(Win64) or defined(Windows)}
  mov eax,ecx
 {$else}
- mov eax,esi
+ mov eax,edi
 {$ifend}
  xor edx,edx
  lea ecx,[edx-1] // or: xor ecx,ecx; dec ecx
@@ -5652,7 +5652,7 @@ begin
  end;
  qsort(@sortpointer[0],n,sizeof(plongint),icomp);
  for i:=0 to n-1 do begin
-  look^.forward_index[i]:=(GDFWAudioOGGPtrUInt(sortpointer[i])-GDFWAudioOGGPtrUInt(pointer(@info^.postlist[0]))) div sizeof(longint);
+  look^.forward_index[i]:=(PasAudioOGGPtrUInt(sortpointer[i])-PasAudioOGGPtrUInt(pointer(@info^.postlist[0]))) div sizeof(longint);
  end;
  case info^.mult of
   1:begin
@@ -7719,7 +7719,7 @@ begin
   inc(plongint(T),step);
   dec(plongint(x1),8);
   dec(plongint(x2),8);
- until GDFWAudioOGGPtrUInt(T)>=GDFWAudioOGGPtrUInt(pointer(@sincos_lookup0[1024]));
+ until PasAudioOGGPtrUInt(T)>=PasAudioOGGPtrUInt(pointer(@sincos_lookup0[1024]));
  repeat
   r0:=x1^[6]-x2^[6];
   inc(x1^[6],x2^[6]);
@@ -7747,7 +7747,7 @@ begin
   dec(plongint(T),step);
   dec(plongint(x1),8);
   dec(plongint(x2),8);
- until GDFWAudioOGGPtrUInt(T)<=GDFWAudioOGGPtrUInt(pointer(@sincos_lookup0[0]));
+ until PasAudioOGGPtrUInt(T)<=PasAudioOGGPtrUInt(pointer(@sincos_lookup0[0]));
  repeat
   r0:=x2^[6]-x1^[6];
   inc(x1^[6],x2^[6]);
@@ -7775,7 +7775,7 @@ begin
   inc(plongint(T),step);
   dec(plongint(x1),8);
   dec(plongint(x2),8);
- until GDFWAudioOGGPtrUInt(T)>=GDFWAudioOGGPtrUInt(pointer(@sincos_lookup0[1024]));
+ until PasAudioOGGPtrUInt(T)>=PasAudioOGGPtrUInt(pointer(@sincos_lookup0[1024]));
  repeat
   r0:=x1^[6]-x2^[6];
   inc(x1^[6],x2^[6]);
@@ -7803,7 +7803,7 @@ begin
   dec(plongint(T),step);
   dec(plongint(x1),8);
   dec(plongint(x2),8);
- until GDFWAudioOGGPtrUInt(T)<=GDFWAudioOGGPtrUInt(pointer(@sincos_lookup0[0]));
+ until PasAudioOGGPtrUInt(T)<=PasAudioOGGPtrUInt(pointer(@sincos_lookup0[0]));
 end;
 
 procedure mdct_butterflies(x:PLongints;points,shift:longint);
@@ -7879,7 +7879,7 @@ begin
   w1^[0]:=r0-r2;
   w1^[1]:=r3-r1;
   inc(plongint(w0),4);
- until GDFWAudioOGGPtrUInt(T)>=GDFWAudioOGGPtrUInt(Ttop);
+ until PasAudioOGGPtrUInt(T)>=PasAudioOGGPtrUInt(Ttop);
  repeat
   r3:=bitrev12(bit);
   inc(bit);
@@ -7911,7 +7911,7 @@ begin
   w1^[0]:=r0-r2;
   w1^[1]:=r3-r1;
   inc(plongint(w0),4);
- until GDFWAudioOGGPtrUInt(w0)>=GDFWAudioOGGPtrUInt(w1);
+ until PasAudioOGGPtrUInt(w0)>=PasAudioOGGPtrUInt(w1);
 end;
 
 procedure mdct_backward(n:longint;in_,out_:PLongints);
@@ -7936,7 +7936,7 @@ begin
   XPROD31(iX^[0],iX^[2],T^[0],T^[1],@oX^[0],@oX^[1]);
   inc(plongint(T),step);
   dec(plongint(iX),8);
- until GDFWAudioOGGPtrUInt(iX)<GDFWAudioOGGPtrUInt(pointer(@in_^[n4]));
+ until PasAudioOGGPtrUInt(iX)<PasAudioOGGPtrUInt(pointer(@in_^[n4]));
  repeat
   dec(plongint(oX),4);
   XPROD31(iX^[4],iX^[6],T^[1],T^[0],@oX^[2],@oX^[3]);
@@ -7944,7 +7944,7 @@ begin
   XPROD31(iX^[0],iX^[2],T^[1],T^[0],@oX^[0],@oX^[1]);
   dec(plongint(T),step);
   dec(plongint(iX),8);
- until GDFWAudioOGGPtrUInt(iX)<GDFWAudioOGGPtrUInt(pointer(@in_^[0]));
+ until PasAudioOGGPtrUInt(iX)<PasAudioOGGPtrUInt(pointer(@in_^[0]));
  iX:=pointer(@in_^[n2-8]);
  oX:=pointer(@out_^[n2+n4]);
  T:=pointer(@sincos_lookup0[0]);
@@ -7955,7 +7955,7 @@ begin
   XNPROD31(iX^[2],iX^[0],T^[0],T^[1],@oX^[2],@oX^[3]);
   dec(plongint(iX),8);
   inc(plongint(oX),4);
- until GDFWAudioOGGPtrUInt(iX)<GDFWAudioOGGPtrUInt(pointer(@in_^[n4]));
+ until PasAudioOGGPtrUInt(iX)<PasAudioOGGPtrUInt(pointer(@in_^[n4]));
  repeat
   dec(plongint(T),step);
   XNPROD31(iX^[6],iX^[4],T^[1],T^[0],@oX^[0],@oX^[1]);
@@ -7963,7 +7963,7 @@ begin
   XNPROD31(iX^[2],iX^[0],T^[1],T^[0],@oX^[2],@oX^[3]);
   dec(plongint(iX),8);
   inc(plongint(oX),4);
- until GDFWAudioOGGPtrUInt(iX)<GDFWAudioOGGPtrUInt(pointer(@in_^[0]));
+ until PasAudioOGGPtrUInt(iX)<PasAudioOGGPtrUInt(pointer(@in_^[0]));
  mdct_butterflies(pointer(@out_^[n2]),n2,shift);
  mdct_bitreverse(out_,n,step,shift);
  step:=SARLongint(Step,2);
@@ -8010,7 +8010,7 @@ begin
 
     inc(plongint(oX2),4);
     inc(plongint(iX),8);
-   until GDFWAudioOGGPtrUInt(iX)>=GDFWAudioOGGPtrUInt(oX1);
+   until PasAudioOGGPtrUInt(iX)>=PasAudioOGGPtrUInt(oX1);
   end;
   1:begin
    T:=pointer(@sincos_lookup0[0]);
@@ -8064,7 +8064,7 @@ begin
 
     inc(plongint(oX2),4);
     inc(plongint(iX),8);
-   until GDFWAudioOGGPtrUInt(iX)>=GDFWAudioOGGPtrUInt(oX1);
+   until PasAudioOGGPtrUInt(iX)>=PasAudioOGGPtrUInt(oX1);
   end;
   else begin
    if step>=4 then begin
@@ -8084,7 +8084,7 @@ begin
     inc(plongint(T),step);
     inc(plongint(oX2),4);
     inc(plongint(iX),8);
-   until GDFWAudioOGGPtrUInt(iX)>=GDFWAudioOGGPtrUInt(oX1);
+   until PasAudioOGGPtrUInt(iX)>=PasAudioOGGPtrUInt(oX1);
   end;
  end;
  iX:=pointer(@out_^[n2+n4]);
@@ -8106,7 +8106,7 @@ begin
   oX1^[0]:=q0;
   oX2^[3]:=-q0;
   inc(plongint(oX2),4);
- until GDFWAudioOGGPtrUInt(oX2)>=GDFWAudioOGGPtrUInt(iX);
+ until PasAudioOGGPtrUInt(oX2)>=PasAudioOGGPtrUInt(iX);
  iX:=pointer(@out_^[n2+n4]);
  oX1:=pointer(@out_^[n2+n4]);
  oX2:=pointer(@out_^[n2]);
@@ -8117,7 +8117,7 @@ begin
   oX1^[2]:=iX^[1];
   oX1^[3]:=iX^[0];
   inc(plongint(iX),4);
- until GDFWAudioOGGPtrUInt(oX1)<=GDFWAudioOGGPtrUInt(oX2);
+ until PasAudioOGGPtrUInt(oX1)<=PasAudioOGGPtrUInt(oX2);
 end;
 
 procedure mdct_forward(n:longint;in_,out_:PLongints);
@@ -8706,7 +8706,7 @@ begin
   dest^.codelist:=Allocate(n*sizeof(longword));
 
   for i:=0 to n-1 do begin
-   position:=(GDFWAudioOGGPtrUInt(codep^[i])-GDFWAudioOGGPtrUInt(codes)) div sizeof(longword);
+   position:=(PasAudioOGGPtrUInt(codep^[i])-PasAudioOGGPtrUInt(codes)) div sizeof(longword);
    sortindex^[position]:=i;
   end;
 
@@ -9099,6 +9099,9 @@ var og:ogg_page;
     i,ret,allbos:longint;
     llret:int64;
 begin
+
+ ret:=0;
+
  FillChar(og,SizeOf(ogg_page),AnsiChar(#0));
  FillChar(op,SizeOf(ogg_packet),AnsiChar(#0));
  allbos:=0;
@@ -9702,7 +9705,7 @@ begin
  end;
 end;
 
-function fread(ptr:pointer;size,nmemb:GDFWAudioOGGPtrUInt;datasource:pointer):GDFWAudioOGGPtrUInt;
+function fread(ptr:pointer;size,nmemb:PasAudioOGGPtrUInt;datasource:pointer):PasAudioOGGPtrUInt;
 var res:integer;
 begin
  System.BlockRead(FILE(datasource^),ptr^,nmemb*size,res);

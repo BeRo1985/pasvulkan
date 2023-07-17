@@ -58,6 +58,7 @@ unit PasVulkan.Resources;
   {$ifend}
  {$endif}
 {$endif}
+{$scopedenums on}
 {$m+}
 
 {$if defined(cpu386) or defined(cpuamd64) or defined(cpux86_64) or defined(cpux64)}
@@ -75,8 +76,10 @@ uses {$ifdef Windows}
      Classes,
      PasMP,
      PasJSON,
+     PasVulkan.PooledObject,
      PasVulkan.Types,
      PasVulkan.Collections,
+     PasVulkan.IDManager,
      PasVulkan.HighResolutionTimer;
 
 type EpvResource=class(Exception);
@@ -91,17 +94,65 @@ type EpvResource=class(Exception);
 
      TpvResource=class;
 
+     TpvResourceHandle=TpvInt32;
+
      TpvResourceClass=class of TpvResource;
 
      TpvResourceClassType=class;
 
+     TpvResourceWaitForMode=
+      (
+       Auto,
+       Process,
+       JustWait
+      );
+
      IpvResource=interface(IpvReferenceCountedObject)['{AD2C0315-C8AF-4D79-876E-1FA42FB869F9}']
       function GetResource:TpvResource;
       function GetResourceClass:TpvResourceClass;
-      function WaitFor:boolean;
+      function WaitFor(const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto):boolean;
      end;
 
      TpvResourceOnFinish=procedure(const aResource:TpvResource;const aSuccess:boolean) of object;
+
+     TpvMetaResource=class;
+
+     TpvMetaResourceClass=class of TpvMetaResource;
+
+     TpvMetaResource=class(TpvPooledObject)
+      private
+      protected
+       fUUID:TpvUUID;
+       fResourceLock:TPasMPSlimReaderWriterLock;
+       fResource:TpvResource;
+       fFileName:TpvUTF8String;
+       fAssetName:TpvUTF8String;
+       fName:TpvUTF8String;
+       fTemporary:boolean;
+       constructor CreateTemporary; reintroduce; virtual;
+       procedure SetUUID(const pUUID:TpvUUID);
+       procedure SetFileName(const pFileName:TpvUTF8String);
+       procedure SetAssetName(const pAssetName:TpvUTF8String);
+       function GetResource:IpvResource; virtual;
+      public
+       constructor Create; reintroduce; virtual;
+       constructor CreateNew(const pFileName:TpvUTF8String); reintroduce; virtual;
+       destructor Destroy; override;
+       function HasResourceInstance:boolean; virtual;
+       procedure LoadFromStream(const pStream:TStream); virtual;
+       procedure LoadFromFile(const pFileName:TpvUTF8String); virtual;
+       function Clone(const pFileName:TpvUTF8String):TpvMetaResource; virtual;
+       procedure Rename(const pFileName:TpvUTF8String); virtual;
+       procedure Delete; virtual;
+       property UUID:TpvUUID read fUUID write SetUUID;
+       property Resource:IpvResource read GetResource;
+       property FileName:TpvUTF8String read fFileName write SetFileName;
+       property AssetName:TpvUTF8String read fAssetName write SetAssetName;
+       property Name:TpvUTF8String read fName write fName;
+       property Temporary:boolean read fTemporary write fTemporary;
+     end;
+
+     { TpvResource }
 
      TpvResource=class(TpvReferenceCountedObject,IpvResource)
       public
@@ -120,12 +171,14 @@ type EpvResource=class(Exception);
        fResourceManager:TpvResourceManager;
        fParent:TpvResource;
        fResourceClassType:TpvResourceClassType;
+       fHandle:TpvResourceHandle;
        fFileName:TpvUTF8String;
        fAsyncLoadState:TAsyncLoadState;
        fLoaded:boolean;
        fIsOnDelayedToFreeResourcesList:TPasMPBool32;
        fMemoryUsage:TpvUInt64;
        fMetaData:TPasJSONItem;
+       fMetaResource:TpvMetaResource;
        fInstanceInterface:IpvResource;
        fOnFinish:TpvResourceOnFinish;
        fReleaseFrameDelay:TPasMPInt32; // for resources with frame-wise in-flight data stuff
@@ -134,14 +187,16 @@ type EpvResource=class(Exception);
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _Release:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil); reintroduce; virtual;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); reintroduce; virtual;
        destructor Destroy; override;
-       procedure DeferredFree;
+       procedure PrepareDeferredFree; virtual;
+       procedure DeferredFree; virtual;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       class function GetMetaResourceClass:TpvMetaResourceClass; virtual;
        function GetResource:TpvResource;
        function GetResourceClass:TpvResourceClass;
-       function WaitFor:boolean;
+       function WaitFor(const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto):boolean;
        function CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function GetStreamFromFileName(const aFileName:TpvUTF8String):TStream; virtual;
        function LoadMetaData(const aStream:TStream):boolean; overload; virtual;
@@ -161,10 +216,12 @@ type EpvResource=class(Exception);
        property ResourceManager:TpvResourceManager read fResourceManager;
        property Parent:TpvResource read fParent;
        property ResourceClassType:TpvResourceClassType read fResourceClassType;
+       property Handle:TpvResourceHandle read fHandle;
        property FileName:TpvUTF8String read fFileName write SetFileName;
        property AsyncLoadState:TAsyncLoadState read fAsyncLoadState write fAsyncLoadState;
        property Loaded:boolean read fLoaded write fLoaded;
        property MetaData:TPasJSONItem read fMetaData write fMetaData;
+       property MetaResource:TpvMetaResource read fMetaResource write fMetaResource;
        property OnFinish:TpvResourceOnFinish read fOnFinish write fOnFinish;
        property ReleaseFrameDelay:TPasMPInt32 read fReleaseFrameDelay write fReleaseFrameDelay;
      end;
@@ -194,7 +251,7 @@ type EpvResource=class(Exception);
        fQueueItemResourceMap:TQueueItemResourceMap;
        function QueueResource(const aResource:TpvResource;const aParent:TpvResource):boolean;
        procedure FinalizeQueueItem(const aQueueItem:TQueueItem);
-       procedure WaitForResource(const aResource:TpvResource);
+       procedure WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto);
        function ProcessIteration(const aStartTime:TpvHighResolutionTime;const aTimeout:TpvInt64):boolean;
        function Process(const aTimeout:TpvInt64=5):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
@@ -233,6 +290,15 @@ type EpvResource=class(Exception);
        type TResourceClassTypeList=class(TpvObjectGenericList<TpvResourceClassType>);
             TResourceClassTypeMap=class(TpvHashMap<TpvResourceClass,TpvResourceClassType>);
             TResourceList=class(TpvObjectGenericList<TpvResource>);
+            TResourceHandleManager=class(TpvGenericIDManager<TpvResourceHandle>);
+            TResourceHandleMap=array of TpvResource;
+            TMetaResourceList=class(TpvObjectGenericList<TpvMetaResource>);
+            TMetaResourceUUIDMap=class(TpvHashMap<TpvUUID,TpvMetaResource>);
+            TMetaResourceFileNameMap=class(TpvStringHashMap<TpvMetaResource>);
+            TMetaResourceAssetNameMap=class(TpvStringHashMap<TpvMetaResource>);
+       function AllocateHandle(const aResource:TpvResource):TpvResourceHandle;
+       procedure FreeHandle(const aHandle:TpvResourceHandle);
+       function GetResourceByHandle(const aHandle:TpvResourceHandle):IpvResource;
       private
        fLock:TPasMPMultipleReaderSingleWriterLock;
        fLocked:TPasMPBool32;
@@ -240,14 +306,26 @@ type EpvResource=class(Exception);
        fResourceClassTypeList:TResourceClassTypeList;
        fResourceClassTypeListLock:TPasMPMultipleReaderSingleWriterLock;
        fResourceClassTypeMap:TResourceClassTypeMap;
+       fResourceHandleLock:TPasMPMultipleReaderSingleWriterLock;
+       fResourceHandleManager:TResourceHandleManager;
+       fResourceHandleMap:TResourceHandleMap;
+       fMetaResourceLock:TPasMPMultipleReaderSingleWriterLock;
+       fMetaResourceList:TMetaResourceList;
+       fMetaResourceUUIDMap:TMetaResourceUUIDMap;
+       fMetaResourceFileNameMap:TMetaResourceFileNameMap;
+       fMetaResourceAssetNameMap:TMetaResourceAssetNameMap;
        fDelayedToFreeResources:TResourceList;
        fBackgroundLoader:TpvResourceBackgroundLoader;
        fBaseDataPath:TpvUTF8String;
+       function GetMetaResourceByUUID(const pUUID:TpvUUID):TpvMetaResource;
+       function GetMetaResourceByFileName(const pFileName:TpvUTF8String):TpvMetaResource;
+       function GetMetaResourceByAssetName(const pAssetName:TpvUTF8String):TpvMetaResource;
       public
        constructor Create;
        destructor Destroy; override;
        procedure Shutdown;
        class function SanitizeFileName(aFileName:TpvUTF8String):TpvUTF8String; static;
+       procedure DestroyDelayedFreeingObjectsWithParent(const aObject:TObject);
        function GetResourceClassType(const aResourceClass:TpvResourceClass):TpvResourceClassType;
        function FindResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String):TpvResource;
        function LoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aLoadInBackground:boolean=false;const aParent:TpvResource=nil):TpvResource;
@@ -255,18 +333,211 @@ type EpvResource=class(Exception);
        function BackgroundLoadResource(const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String;const aOnFinish:TpvResourceOnFinish=nil;const aParent:TpvResource=nil):TpvResource;
        function FinishResources(const aTimeout:TpvInt64=5):boolean;
        function WaitForResources(const aTimeout:TpvInt64=-1):boolean;
+       function GetNewUUID:TpvUUID;
        property ResourceClassTypes[const aResourceClass:TpvResourceClass]:TpvResourceClassType read GetResourceClassType;
        property Resources[const aResourceClass:TpvResourceClass;const aFileName:TpvUTF8String]:TpvResource read FindResource;
+       property ResourceByHandle[const aHandle:TpvResourceHandle]:IpvResource read GetResourceByHandle; default;
        property BaseDataPath:TpvUTF8String read fBaseDataPath write fBaseDataPath;
+       property MetaResourceByUUID[const pUUID:TpvUUID]:TpvMetaResource read GetMetaResourceByUUID;
+       property MetaResourceByFileName[const pFileName:TpvUTF8String]:TpvMetaResource read GetMetaResourceByFileName;
+       property MetaResourceByAssetName[const pAssetName:TpvUTF8String]:TpvMetaResource read GetMetaResourceByAssetName;
      end;
+
+var AllowExternalResources:boolean=false;
 
 implementation
 
 uses PasVulkan.Application;
 
+{ TpvMetaResource }
+
+constructor TpvMetaResource.Create;
+begin
+
+ inherited Create;
+
+ fUUID:=TpvUUID.Null;
+
+ fResource:=nil;
+
+ fResourceLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fFileName:='';
+
+ fName:='';
+
+ fTemporary:=false;
+
+ pvApplication.ResourceManager.fMetaResourceLock.AcquireWrite;
+ try
+  pvApplication.ResourceManager.fMetaResourceList.Add(self);
+ finally
+  pvApplication.ResourceManager.fMetaResourceLock.ReleaseWrite;
+ end;
+
+end;
+
+constructor TpvMetaResource.CreateTemporary;
+begin
+ Create;
+ fTemporary:=true;
+ SetUUID(pvApplication.ResourceManager.GetNewUUID);
+end;
+
+constructor TpvMetaResource.CreateNew(const pFileName:TpvUTF8String);
+begin
+ Create;
+ SetUUID(pvApplication.ResourceManager.GetNewUUID);
+ SetFileName(pFileName);
+end;
+
+destructor TpvMetaResource.Destroy;
+begin
+
+ FreeAndNil(fResource);
+
+ pvApplication.ResourceManager.fMetaResourceLock.AcquireWrite;
+ try
+  if length(fFileName)>0 then begin
+   pvApplication.ResourceManager.fMetaResourceFileNameMap.Delete(LowerCase(fFileName));
+   fFileName:='';
+  end;
+  if length(fAssetName)>0 then begin
+   pvApplication.ResourceManager.fMetaResourceAssetNameMap.Delete(LowerCase(fAssetName));
+   fAssetName:='';
+  end;
+  if fUUID<>TpvUUID.Null then begin
+   pvApplication.ResourceManager.fMetaResourceUUIDMap.Delete(fUUID);
+   fUUID:=TpvUUID.Null;
+  end;
+  pvApplication.ResourceManager.fMetaResourceList.Remove(self);
+ finally
+  pvApplication.ResourceManager.fMetaResourceLock.ReleaseWrite;
+ end;
+
+ fResourceLock.Free;
+
+ inherited Destroy;
+end;
+
+procedure TpvMetaResource.SetUUID(const pUUID:TpvUUID);
+begin
+ if fUUID<>TpvUUID.Null then begin
+  pvApplication.ResourceManager.fMetaResourceLock.AcquireWrite;
+  try
+   if fUUID<>TpvUUID.Null then begin
+    pvApplication.ResourceManager.fMetaResourceUUIDMap.Delete(fUUID);
+   end;
+   if pUUID<>TpvUUID.Null then begin
+    fUUID:=pUUID;
+    pvApplication.ResourceManager.fMetaResourceUUIDMap.Add(pUUID,self);
+   end;
+  finally
+   pvApplication.ResourceManager.fMetaResourceLock.ReleaseWrite;
+  end;
+ end;
+end;
+
+procedure TpvMetaResource.SetFileName(const pFileName:TpvUTF8String);
+begin
+ if fFileName<>pFileName then begin
+  pvApplication.ResourceManager.fMetaResourceLock.AcquireWrite;
+  try
+   if length(fFileName)>0 then begin
+    pvApplication.ResourceManager.fMetaResourceFileNameMap.Delete(LowerCase(fFileName));
+   end;
+   if length(pFileName)>0 then begin
+    fFileName:=pFileName;
+    pvApplication.ResourceManager.fMetaResourceFileNameMap.Add(LowerCase(pFileName),self);
+   end;
+  finally
+   pvApplication.ResourceManager.fMetaResourceLock.ReleaseWrite;
+  end;
+ end;
+ if length(pFileName)>0 then begin
+  if copy(LowerCase(pFileName),1,length(pvApplication.Assets.BasePath))=LowerCase(pvApplication.Assets.BasePath) then begin
+   SetAssetName(StringReplace(copy(pFileName,length(pvApplication.Assets.BasePath)+1,(length(pFileName)-length(pvApplication.Assets.BasePath))+1),'\','/',[rfReplaceAll]));
+  end;
+ end;
+end;
+
+procedure TpvMetaResource.SetAssetName(const pAssetName:TpvUTF8String);
+begin
+ if fAssetName<>pAssetName then begin
+  pvApplication.ResourceManager.fMetaResourceLock.AcquireWrite;
+  try
+   if length(fAssetName)>0 then begin
+    pvApplication.ResourceManager.fMetaResourceAssetNameMap.Delete(LowerCase(fAssetName));
+   end;
+   if length(pAssetName)>0 then begin
+    fAssetName:=pAssetName;
+    pvApplication.ResourceManager.fMetaResourceAssetNameMap.Add(LowerCase(pAssetName),self);
+   end;
+  finally
+   pvApplication.ResourceManager.fMetaResourceLock.ReleaseWrite;
+  end;
+ end;
+end;
+
+function TpvMetaResource.GetResource:IpvResource;
+begin
+ fResourceLock.Acquire;
+ try
+  result:=fResource;
+ finally
+  fResourceLock.Release;
+ end;
+end;
+
+function TpvMetaResource.HasResourceInstance:boolean;
+begin
+ result:=assigned(fResource);
+end;
+
+procedure TpvMetaResource.LoadFromStream(const pStream:TStream);
+begin
+end;
+
+procedure TpvMetaResource.LoadFromFile(const pFileName:TpvUTF8String);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(pFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LoadFromStream(FileStream);
+  SetFileName(pFileName);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+function TpvMetaResource.Clone(const pFileName:TpvUTF8String):TpvMetaResource;
+var MetaResourceClass:TpvMetaResourceClass;
+begin
+ MetaResourceClass:=TpvMetaResourceClass(ClassType);
+ result:=MetaResourceClass.Create;
+ result.SetUUID(pvApplication.ResourceManager.GetNewUUID);
+ result.SetFileName(pFileName);
+end;
+
+procedure TpvMetaResource.Rename(const pFileName:TpvUTF8String);
+begin
+ if length(fFileName)>0 then begin
+  RenameFile(fFileName,pFileName);
+  SetFileName(pFileName);
+ end;
+end;
+
+procedure TpvMetaResource.Delete;
+begin
+ if length(fFileName)>0 then begin
+  DeleteFile(fFileName);
+ end;
+ Free;
+end;
+
 { TpvResource }
 
-constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil);
+constructor TpvResource.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 var OldReferenceCounter:TpvInt32;
 begin
  inherited Create;
@@ -274,6 +545,8 @@ begin
  fResourceManager:=aResourceManager;
 
  fParent:=aParent;
+
+ fHandle:=fResourceManager.AllocateHandle(self);
 
  fFileName:='';
 
@@ -290,6 +563,12 @@ begin
  fOnFinish:=nil;
 
  fReleaseFrameDelay:=0;
+
+ fMetaResource:=aMetaResource;
+ if not assigned(fMetaResource) then begin
+  fMetaResource:=GetMetaResourceClass.CreateTemporary;
+ end;
+ TPasMPInterlocked.Write(TObject(fMetaResource.fResource),TObject(self));
 
  OldReferenceCounter:=fReferenceCounter;
  try
@@ -351,9 +630,26 @@ begin
 
  FreeAndNil(fMetaData);
 
+ if assigned(fMetaResource) then begin
+  TPasMPInterlocked.Write(TObject(fMetaResource.fResource),nil);
+ end;
+
+ fResourceManager.FreeHandle(fHandle);
+
+ fHandle:=0;
+
+ if assigned(fMetaResource) and fMetaResource.fTemporary then begin
+  FreeAndNil(fMetaResource);
+ end;
+
  FillChar(fInstanceInterface,SizeOf(IpvResource),0);
 
  inherited Destroy;
+
+end;
+
+procedure TpvResource.PrepareDeferredFree;
+begin
 end;
 
 procedure TpvResource.DeferredFree;
@@ -364,9 +660,13 @@ begin
      fResourceManager.fActive and
      assigned(fResourceManager.fDelayedToFreeResources) and not fIsOnDelayedToFreeResourcesList then begin
    try
-    fResourceManager.fDelayedToFreeResources.Add(self);
+    PrepareDeferredFree;
    finally
-    fIsOnDelayedToFreeResourcesList:=true;
+    try
+     fResourceManager.fDelayedToFreeResources.Add(self);
+    finally
+     fIsOnDelayedToFreeResourcesList:=true;
+    end;
    end;
   end else begin
    Destroy;
@@ -386,7 +686,7 @@ begin
   try
    OldReferenceCounter:=fReferenceCounter;
    try
-    fReferenceCounter:=fReferenceCounter+2; // For to avoid false-positive frees in this situation
+    inc(fReferenceCounter,2); // For to avoid false-positive frees in this situation
     if assigned(fResourceClassType) and (length(fFileName)>0) then begin
      fResourceClassType.fResourceFileNameMap.Delete(TpvUTF8String(LowerCase(String(fFileName))));
     end;
@@ -415,6 +715,11 @@ begin
  inherited BeforeDestruction;
 end;
 
+class function TpvResource.GetMetaResourceClass:TpvMetaResourceClass;
+begin
+ result:=TpvMetaResource;
+end;
+
 function TpvResource._AddRef:TpvInt32;
 begin
  result:=inherited _AddRef;
@@ -425,10 +730,23 @@ begin
  if (fReleaseFrameDelay>0) and assigned(fResourceManager) and fResourceManager.fActive and assigned(fResourceManager.fDelayedToFreeResources) and not fIsOnDelayedToFreeResourcesList then begin
   result:=TPasMPInterlocked.Decrement(fReferenceCounter);
   if result=0 then begin
+   if assigned(fMetaResource) then begin
+    fMetaResource.fResourceLock.Acquire;
+   end;
    try
-    fResourceManager.fDelayedToFreeResources.Add(self);
+    try
+     PrepareDeferredFree;
+    finally
+     try
+      fResourceManager.fDelayedToFreeResources.Add(self);
+     finally
+      fIsOnDelayedToFreeResourcesList:=true;
+     end;
+    end;
    finally
-    fIsOnDelayedToFreeResourcesList:=true;
+    if assigned(fMetaResource) and assigned(fMetaResource.fResourceLock) then begin
+     fMetaResource.fResourceLock.Release;
+    end;
    end;
   end;
  end else begin
@@ -446,13 +764,13 @@ begin
  result:=TpvResourceClass(ClassType);
 end;
 
-function TpvResource.WaitFor:boolean;
+function TpvResource.WaitFor(const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto):boolean;
 begin
  result:=fLoaded;
  if (not result) and
     assigned(fResourceManager) and
     assigned(fResourceManager.fBackgroundLoader) then begin
-  fResourceManager.fBackgroundLoader.WaitForResource(self);
+  fResourceManager.fBackgroundLoader.WaitForResource(self,aWaitForMode);
   result:=fLoaded;
  end;
 end;
@@ -469,7 +787,11 @@ begin
  if pvApplication.Assets.ExistAsset(String(SanitizedFileName)) then begin
   result:=pvApplication.Assets.GetAssetStream(String(SanitizedFileName));
  end else begin
-  result:=nil;
+  if FileExists(String(SanitizedFileName)) then begin
+   result:=TFileStream.Create(String(SanitizedFileName),fmOpenRead);
+  end else begin
+   result:=nil;
+  end;
  end;
 end;
 
@@ -874,7 +1196,7 @@ begin
 
 end;
 
-procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource);
+procedure TpvResourceBackgroundLoader.WaitForResource(const aResource:TpvResource;const aWaitForMode:TpvResourceWaitForMode=TpvResourceWaitForMode.Auto);
 var QueueItem:TQueueItem;
 begin
 
@@ -896,14 +1218,30 @@ begin
     end;
    end;
 
-   fLock.Release;
-   try
-    FinalizeQueueItem(QueueItem);
-   finally
-    fLock.Acquire;
-   end;
+   if (aWaitForMode=TpvResourceWaitForMode.Process) or ((aWaitForMode=TpvResourceWaitForMode.Auto) and (GetCurrentThreadID=MainThreadID))  then begin
 
-   FreeAndNil(QueueItem);
+    fLock.Release;
+    try
+     FinalizeQueueItem(QueueItem);
+    finally
+     fLock.Acquire;
+    end;
+
+    FreeAndNil(QueueItem);
+
+   end else begin
+
+    fLock.Release;
+    try
+     while not (aResource.fAsyncLoadState in [TpvResource.TAsyncLoadState.Fail,
+                                              TpvResource.TAsyncLoadState.Done]) do begin
+      TPasMP.Yield;
+      Sleep(1);
+     end;
+    finally
+     fLock.Acquire;
+    end;
+   end;
 
   end;
 
@@ -952,7 +1290,7 @@ begin
   end;
 
   if (aTimeout>=0) and
-     (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime- aStartTime)>=aTimeout) then begin
+     (pvApplication.HighResolutionTimer.ToMilliseconds(pvApplication.HighResolutionTimer.GetTime-aStartTime)>=aTimeout) then begin
    result:=false;
    break;
   end;
@@ -1059,12 +1397,25 @@ begin
 
  fResourceClassTypeMap:=TResourceClassTypeMap.Create(nil);
 
+ fResourceHandleLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+
+ fResourceHandleManager:=TResourceHandleManager.Create;
+
+ fResourceHandleMap:=nil;
+
  if assigned(pvApplication) then begin
   fBaseDataPath:=TpvUTF8String(pvApplication.Assets.BasePath);
  end;
 
  fDelayedToFreeResources:=TResourceList.Create;
  fDelayedToFreeResources.OwnsObjects:=true;
+
+ fMetaResourceLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fMetaResourceList:=TMetaResourceList.Create;
+ fMetaResourceList.OwnsObjects:=false;
+ fMetaResourceUUIDMap:=TMetaResourceUUIDMap.Create(nil);
+ fMetaResourceFileNameMap:=TMetaResourceFileNameMap.Create(nil);
+ fMetaResourceAssetNameMap:=TMetaResourceAssetNameMap.Create(nil);
 
  fBackgroundLoader:=TpvResourceBackgroundLoader.Create(self);
 
@@ -1081,16 +1432,111 @@ begin
 
  FreeAndNil(fDelayedToFreeResources);
 
+ FreeAndNil(fResourceHandleManager);
+
+ fResourceHandleMap:=nil;
+
+ FreeAndNil(fResourceHandleLock);
+
  FreeAndNil(fResourceClassTypeList);
 
  FreeAndNil(fResourceClassTypeListLock);
 
  FreeAndNil(fResourceClassTypeMap);
 
+ while fMetaResourceList.Count>0 do begin
+  fMetaResourceList.Items[fMetaResourceList.Count-1].Free;
+ end;
+ FreeAndNil(fMetaResourceList);
+
+ FreeAndNil(fMetaResourceUUIDMap);
+
+ FreeAndNil(fMetaResourceFileNameMap);
+
+ FreeAndNil(fMetaResourceAssetNameMap);
+
+ FreeAndNil(fMetaResourceLock);
+
  FreeAndNil(fLock);
 
  inherited Destroy;
 
+end;
+
+function TpvResourceManager.GetMetaResourceByUUID(const pUUID:TpvUUID):TpvMetaResource;
+begin
+ fMetaResourceLock.AcquireRead;
+ try
+  result:=fMetaResourceUUIDMap.Values[pUUID];
+ finally
+  fMetaResourceLock.ReleaseRead;
+ end;
+end;
+
+function TpvResourceManager.GetMetaResourceByFileName(const pFileName:TpvUTF8String):TpvMetaResource;
+begin
+ fMetaResourceLock.AcquireRead;
+ try
+  result:=fMetaResourceFileNameMap.Values[LowerCase(pFileName)];
+ finally
+  fMetaResourceLock.ReleaseRead;
+ end;
+end;
+
+function TpvResourceManager.GetMetaResourceByAssetName(const pAssetName:TpvUTF8String):TpvMetaResource;
+begin
+ fMetaResourceLock.AcquireRead;
+ try
+  result:=fMetaResourceAssetNameMap.Values[LowerCase(pAssetName)];
+ finally
+  fMetaResourceLock.ReleaseRead;
+ end;
+end;
+
+function TpvResourceManager.AllocateHandle(const aResource:TpvResource):TpvResourceHandle;
+var OldCount:TpvInt32;
+begin
+ result:=fResourceHandleManager.AllocateID;
+ fResourceHandleLock.AcquireWrite;
+ try
+  OldCount:=length(fResourceHandleMap);
+  if OldCount<=result then begin
+   SetLength(fResourceHandleMap,(result+1)+((result+2) shr 1));
+   FillChar(fResourceHandleMap[OldCount],(length(fResourceHandleMap)-OldCount)*SizeOf(TpvResource),#0);
+  end;
+  fResourceHandleMap[result]:=aResource;
+ finally
+  fResourceHandleLock.ReleaseWrite;
+ end;
+end;
+
+procedure TpvResourceManager.FreeHandle(const aHandle:TpvResourceHandle);
+begin
+ fResourceHandleLock.AcquireWrite;
+ try
+  fResourceHandleMap[aHandle]:=nil;
+ finally
+  fResourceHandleLock.ReleaseWrite;
+ end;
+ fResourceHandleManager.FreeID(aHandle);
+end;
+
+function TpvResourceManager.GetResourceByHandle(const aHandle:TpvResourceHandle):IpvResource;
+begin
+ if aHandle>=0 then begin
+  fResourceHandleLock.AcquireRead;
+  try
+   if aHandle<length(fResourceHandleMap) then begin
+    result:=fResourceHandleMap[aHandle];
+   end else begin
+    result:=nil;
+   end;
+  finally
+   fResourceHandleLock.ReleaseRead;
+  end;
+ end else begin
+  result:=nil;
+ end;
 end;
 
 procedure TpvResourceManager.Shutdown;
@@ -1130,8 +1576,28 @@ end;
 
 class function TpvResourceManager.SanitizeFileName(aFileName:TpvUTF8String):TpvUTF8String;
 var Index,LastDirectoryNameBeginIndex,Len:TpvSizeInt;
+    Temporary:TpvUTF8String;
 begin
+
  result:=aFileName;
+
+ if AllowExternalResources then begin
+  if FileExists(result) then begin
+   result:=ExpandFileName(result);
+   exit;
+  end else begin
+   for Index:=1 to length(result) do begin
+    if result[Index] in ['\','/'] then begin
+     Temporary:=ExpandFileName(result);
+     if FileExists(Temporary) then begin
+      result:=Temporary;
+      exit;
+     end;
+    end;
+   end;
+  end;
+ end;
+
  Index:=1;
  LastDirectoryNameBeginIndex:=1;
  Len:=length(result);
@@ -1165,6 +1631,35 @@ begin
    else begin
     inc(Index);
    end;
+  end;
+ end;
+
+end;
+
+procedure TpvResourceManager.DestroyDelayedFreeingObjectsWithParent(const aObject:TObject);
+var Index:TpvSizeInt;
+    Resource,Current:TpvResource;
+    OK:boolean;
+begin
+ Index:=0;
+ while Index<fDelayedToFreeResources.Count do begin
+  OK:=false;
+  Resource:=fDelayedToFreeResources[Index];
+  Current:=Resource.fParent;
+  while assigned(Current) do begin
+   if Current=aObject then begin
+    OK:=true;
+    break;
+   end;
+   Current:=Current.fParent;
+  end;
+  if OK then begin
+   Resource:=fDelayedToFreeResources.Extract(Index);
+   if assigned(Resource) then begin
+    FreeAndNil(Resource);
+   end;
+  end else begin
+   inc(Index);
   end;
  end;
 end;
@@ -1234,7 +1729,7 @@ begin
    end else begin
     fLock.ReleaseRead;
     try
-     fBackgroundLoader.WaitForResource(Resource);
+     fBackgroundLoader.WaitForResource(Resource,TpvResourceWaitForMode.Auto);
     finally
      fLock.AcquireRead;
     end;
@@ -1244,7 +1739,7 @@ begin
    try
     fLocked:=true;
     try
-     Resource:=aResourceClass.Create(self);
+     Resource:=aResourceClass.Create(self,aParent);
      Resource.SetFileName(FileName);
      Resource.fOnFinish:=aOnFinish;
     finally
@@ -1299,6 +1794,13 @@ end;
 function TpvResourceManager.WaitForResources(const aTimeout:TpvInt64=-1):boolean;
 begin
  result:=fBackgroundLoader.WaitForResources(aTimeout);
+end;
+
+function TpvResourceManager.GetNewUUID:TpvUUID;
+begin
+ repeat
+  result:=TpvUUID.Create;
+ until not assigned(GetMetaResourceByUUID(result));
 end;
 
 initialization

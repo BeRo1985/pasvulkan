@@ -51,7 +51,9 @@
  ******************************************************************************)
 unit PasVulkan.FrameGraph;
 {$i PasVulkan.inc}
-{$ifndef fpc}
+{$ifdef fpc}
+ {$packset fixed}
+{$else}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=24.0}
    {$legacyifend on}
@@ -72,6 +74,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Utils,
+     PasVulkan.TimerQuery,
      PasVulkan.NVIDIA.AfterMath;
 
 // Inspired from:
@@ -104,6 +107,9 @@ type EpvFrameGraph=class(Exception);
 
      TpvFrameGraph=class
       public
+       const UsedAsImageDepthInputAttachmentFlag=1 shl 0;
+             UsedAsImageDepthInputNonAttachmentFlag=1 shl 1;
+             ForbiddenUsedImageDepthInputFlagCombination=UsedAsImageDepthInputAttachmentFlag or UsedAsImageDepthInputNonAttachmentFlag;
        type PpvVulkanSemaphore=^TpvVulkanSemaphore;
             TpvVulkanSemaphorePointers=TpvDynamicArray<PpvVulkanSemaphore>;
             TpvVkSemaphorePointers=TpvDynamicArray<PVkSemaphore>;
@@ -121,17 +127,18 @@ type EpvFrameGraph=class(Exception);
              (
               Default,
               SingleInstance,
-              InstancePerSwapChainImage
+              InstancePerInFlightFrame
              );
             TLoadOp=record
              public
-              type TKind=
+              type TLoadOpKind=
                     (
                      Load,
                      Clear,
                      DontCare
                     );
-              const Values:array[TKind] of TVkAttachmentLoadOp=
+                    TKind=TLoadOpKind;
+              const Values:array[TLoadOpKind] of TVkAttachmentLoadOp=
                      (
                       VK_ATTACHMENT_LOAD_OP_LOAD,
                       VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -147,11 +154,12 @@ type EpvFrameGraph=class(Exception);
             PLoadOp=^TLoadOp;
             TStoreOp=record
              public
-              type TKind=
+              type TStoreOpKind=
                     (
                      Store,
                      DontCare
                     );
+                   TKind=TStoreOpKind;
               const Values:array[TKind] of TVkAttachmentStoreOp=
                      (
                       VK_ATTACHMENT_STORE_OP_STORE,
@@ -179,12 +187,14 @@ type EpvFrameGraph=class(Exception);
             PImageType=^TImageType;
             TImageSize=packed record
              public
-              type TKind=
+              type TImageSizeKind=
                     (
                      Undefined,
                      Absolute,
                      SurfaceDependent
                     );
+                   PImageSizeKind=^TImageSizeKind;
+                   TKind=TImageSizeKind;
                    PKind=^TKind;
              public
               Kind:TKind;
@@ -225,21 +235,21 @@ type EpvFrameGraph=class(Exception);
                     private
                      fQueue:TQueue;
                      fPhysicalPasses:TPhysicalPasses;
-                     fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-                     fSignallingSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphores;
-                     fSignallingSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
+                     fCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
+                     fSignallingSemaphores:array[0..MaxInFlightFrames-1] of TVulkanSemaphores;
+                     fSignallingSemaphoreHandles:array[0..MaxInFlightFrames-1] of TVulkanSemaphoreHandles;
                      fWaitingSemaphores:TWaitingSemaphores;
                      fWaitingSemaphoreHandles:TVulkanSemaphoreHandles;
                      fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
-                     fSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
+                     fSubmitInfos:array[0..MaxInFlightFrames-1] of TVkSubmitInfo;
                      fSubmitInfoIndex:TpvSizeInt;
                     public
                      constructor Create(const aQueue:TQueue); reintroduce;
                      destructor Destroy; override;
-                     procedure Show;
-                     procedure Hide;
-                     procedure AfterCreateSwapChain;
-                     procedure BeforeDestroySwapChain;
+                     procedure AcquirePersistentResources;
+                     procedure ReleasePersistentResources;
+                     procedure AcquireVolatileResources;
+                     procedure ReleaseVolatileResources;
                    end;
                    TCommandBuffers=TpvObjectGenericList<TCommandBuffer>;
              private
@@ -255,10 +265,10 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
               destructor Destroy; override;
-              procedure Show;
-              procedure Hide;
-              procedure AfterCreateSwapChain;
-              procedure BeforeDestroySwapChain;
+              procedure AcquirePersistentResources;
+              procedure ReleasePersistentResources;
+              procedure AcquireVolatileResources;
+              procedure ReleaseVolatileResources;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property PhysicalQueue:TpvVulkanQueue read fPhysicalQueue;
@@ -300,16 +310,16 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
-              fPersientent:boolean;
+              fPersistent:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean); reintroduce; virtual;
+                                 const aPersistent:boolean); reintroduce; virtual;
               destructor Destroy; override;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
-              property Persientent:boolean read fPersientent write fPersientent;
+              property Persistent:boolean read fPersistent write fPersistent;
             end;
             TImageResourceType=class(TResourceType)
              private
@@ -322,10 +332,11 @@ type EpvFrameGraph=class(Exception);
               fComponents:TVkComponentMapping;
               fInitialLayout:TVkImageLayout;
               fFinalLayout:TVkImageLayout;
+              fAdditionalFormat:TVkFormat;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
+                                 const aPersistent:boolean;
                                  const aFormat:TVkFormat;
                                  const aSamples:TVkSampleCountFlagBits;
                                  const aImageType:TImageType;
@@ -334,10 +345,11 @@ type EpvFrameGraph=class(Exception);
                                  const aCountMipMapLevels:TVkUInt32;
                                  const aComponents:TVkComponentMapping;
                                  const aInitialLayout:TVkImageLayout;
-                                 const aFinalLayout:TVkImageLayout); reintroduce; overload;
+                                 const aFinalLayout:TVkImageLayout;
+                                 const aAdditionalFormat:TVkFormat); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
+                                 const aPersistent:boolean;
                                  const aFormat:TVkFormat;
                                  const aSamples:TVkSampleCountFlagBits;
                                  const aImageType:TImageType;
@@ -345,7 +357,8 @@ type EpvFrameGraph=class(Exception);
                                  const aImageUsage:TVkImageUsageFlags;
                                  const aCountMipMapLevels:TVkUInt32;
                                  const aInitialLayout:TVkImageLayout;
-                                 const aFinalLayout:TVkImageLayout); reintroduce; overload;
+                                 const aFinalLayout:TVkImageLayout;
+                                 const aAdditionalFormat:TVkFormat); reintroduce; overload;
               destructor Destroy; override;
              public
               property ImageType:TImageType read fImageType;
@@ -358,6 +371,7 @@ type EpvFrameGraph=class(Exception);
               property CountMipMapLevels:TVkUInt32 read fCountMipMapLevels;
               property InitialLayout:TVkImageLayout read fInitialLayout;
               property FinalLayout:TVkImageLayout read fFinalLayout;
+              property AdditionalFormat:TVkFormat read fAdditionalFormat;
             end;
             TBufferResourceType=class(TResourceType)
              private
@@ -366,22 +380,26 @@ type EpvFrameGraph=class(Exception);
               fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
               fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
               fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+              fMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
               fBufferFlags:TpvVulkanBufferFlags;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
+                                 const aPersistent:boolean;
                                  const aSize:TVkDeviceSize;
                                  const aUsage:TVkBufferUsageFlags;
                                  const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                  const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                  const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                 const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags=0;
                                  const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                                  const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
               destructor Destroy; override;
              published
@@ -403,7 +421,12 @@ type EpvFrameGraph=class(Exception);
             TResourceTypeList=TpvObjectGenericList<TResourceType>;
             TResourceTypeNameHashMap=TpvStringHashMap<TResourceType>;
             TResourceTransition=class;
-            TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
+            { TResourceTransitionList }
+            TResourceTransitionList=class(TpvObjectGenericList<TResourceTransition>)
+             public
+              function HasPhysicalPassesIntersectionWith(const aWith:TResourceTransitionList):boolean;
+              function MergeCompatibleWith(const aWith:TResourceTransitionList):boolean;
+            end;
             TResourcePhysicalData=class
              private
               fFrameGraph:TpvFrameGraph;
@@ -414,10 +437,10 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
-              procedure Show; virtual;
-              procedure Hide; virtual;
-              procedure AfterCreateSwapChain; virtual;
-              procedure BeforeDestroySwapChain; virtual;
+              procedure AcquirePersistentResources; virtual;
+              procedure ReleasePersistentResources; virtual;
+              procedure AcquireVolatileResources; virtual;
+              procedure ReleaseVolatileResources; virtual;
              published
               property ActiveResourceInstanceType:TResourceInstanceType read GetActiveResourceInstanceType;
             end;
@@ -427,6 +450,7 @@ type EpvFrameGraph=class(Exception);
               fImageUsageFlags:TVkImageUsageFlags;
               fRequestedFormat:TVkFormat;
               fFormat:TVkFormat;
+              fAdditionalFormat:TVkFormat;
               fExtent:TVkExtent3D;
               fCountMipMaps:TpvSizeInt;
               fCountArrayLayers:TpvSizeInt;
@@ -441,22 +465,27 @@ type EpvFrameGraph=class(Exception);
               fImageSubresourceRange:TVkImageSubresourceRange;
               fImageViewType:TVkImageViewType;
               fComponents:TVkComponentMapping;
-              fVulkanImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
-              fVulkanImageViews:array[0..MaxSwapChainImages-1] of TpvVulkanImageView;
-              fVulkanMemoryBlocks:array[0..MaxSwapChainImages-1] of TpvVulkanDeviceMemoryBlock;
+              fVulkanImages:array[0..MaxInFlightFrames-1] of TpvVulkanImage;
+              fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+              fVulkanAdditionalFormatImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+              fVulkanMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
+              fVulkanSurfaceImages:array of TpvVulkanImage;
+              fVulkanSurfaceImageViews:array of TpvVulkanImageView;
               function GetVulkanImage(const aIndex:TpvSizeInt):TpvVulkanImage; inline;
               function GetVulkanImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
+              function GetVulkanAdditionalFormatImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
               function GetVulkanMemoryBlock(const aIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock; inline;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
-              procedure Show; override;
-              procedure Hide; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
+              procedure AcquirePersistentResources; override;
+              procedure ReleasePersistentResources; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
              public
               property VulkanImages[const aIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
               property VulkanImageViews[const aIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
+              property VulkanAdditionalFormatImageViews[const aIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanAdditionalFormatImageView;
               property VulkanMemoryBlocks[const aIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
              published
             end;
@@ -467,19 +496,21 @@ type EpvFrameGraph=class(Exception);
               fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
               fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
               fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
               fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+              fMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
               fBufferFlags:TpvVulkanBufferFlags;
-              fVulkanBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+              fVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               function GetVulkanBuffer(const aIndex:TpvSizeInt):TpvVulkanBuffer; inline;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
-              procedure Show; override;
-              procedure Hide; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
+              procedure AcquirePersistentResources; override;
+              procedure ReleasePersistentResources; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
              public
               property VulkanBuffers[const aIndex:TpvSizeInt]:TpvVulkanBuffer read GetVulkanBuffer;
             end;
@@ -491,14 +522,19 @@ type EpvFrameGraph=class(Exception);
               fResources:TResourceList;
               fResourcePhysicalData:TResourcePhysicalData;
               fExternalData:TExternalData;
+              fUsedFlags:TpvUInt32;
               fTransient:boolean;
+              fMinimumPhysicalPassStepIndex:TpvSizeInt;
+              fMaximumPhysicalPassStepIndex:TpvSizeInt;
+              fLastTransition:TResourceTransition;
+              fLayout:TVkImageLayout;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
-              procedure Show; virtual;
-              procedure Hide; virtual;
-              procedure AfterCreateSwapChain; virtual;
-              procedure BeforeDestroySwapChain; virtual;
+              procedure AcquirePersistentResources; virtual;
+              procedure ReleasePersistentResources; virtual;
+              procedure AcquireVolatileResources; virtual;
+              procedure ReleaseVolatileResources; virtual;
             end;
             TResourceAliasGroupList=TpvObjectGenericList<TResourceAliasGroup>;
             TResource=class
@@ -515,10 +551,9 @@ type EpvFrameGraph=class(Exception);
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
               fResourceAliasGroup:TResourceAliasGroup;
-              fLastTransition:TResourceTransition;
-              fLayout:TVkImageLayout;
               fLayoutHistory:TLayoutHistory;
               fExternalData:TExternalData;
+              fUsedFlags:TpvUInt32;
               fTransient:boolean;
               fUsed:boolean;
              public
@@ -537,13 +572,14 @@ type EpvFrameGraph=class(Exception);
               property ResourceType:TResourceType read fResourceType;
               property ResourceAliasGroup:TResourceAliasGroup read fResourceAliasGroup;
               property ExternalData:TExternalData read fExternalData write fExternalData;
+              property UsedFlags:TpvUInt32 read fUsedFlags;
               property Transient:boolean read fTransient;
               property Used:boolean read fUsed;
             end;
             TPass=class;
             TResourceTransition=class
              public
-              type TKind=
+              type TResourceTransitionKind=
                     (
                      ImageInput,
                      ImageOutput,
@@ -553,18 +589,20 @@ type EpvFrameGraph=class(Exception);
                      BufferInput,
                      BufferOutput
                     );
-                    PKind=^TKind;
-                    TKinds=set of TKind;
-                    PKinds=^TKinds;
-                    TFlag=
+                   TKind=TResourceTransitionKind;
+                   PKind=^TKind;
+                   TKinds=set of TKind;
+                   PKinds=^TKinds;
+                   TResourceTransitionFlag=
                     (
                      Attachment,
                      PreviousFrameInput,
                      NextFrameOutput
                     );
-                    PFlag=^TFlag;
-                    TFlags=set of TFlag;
-                    PFlags=^TFlags;
+                   TFlag=TResourceTransitionFlag;
+                   PFlag=^TFlag;
+                   TFlags=set of TFlag;
+                   PFlags=^TFlags;
                 const AllImages=
                        [
                         TKind.ImageInput,
@@ -601,6 +639,10 @@ type EpvFrameGraph=class(Exception);
                       AllDepths=[
                        TKind.ImageDepthOutput,
                        TKind.ImageDepthInput
+                      ];
+                      AllBuffers=[
+                       TKind.BufferInput,
+                       TKind.BufferOutput
                       ];
              private
               fFrameGraph:TpvFrameGraph;
@@ -688,21 +730,21 @@ type EpvFrameGraph=class(Exception);
                      fMemoryBarrierDynamicArray:TVkMemoryBarrierDynamicArray;
                      fBufferMemoryBarrierDynamicArray:TVkBufferMemoryBarrierDynamicArray;
                      fImageMemoryBarrierDynamicArray:TVkImageMemoryBarrierDynamicArray;
-                     fWorkMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkMemoryBarrierDynamicArray;
-                     fWorkBufferMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkBufferMemoryBarrierDynamicArray;
-                     fWorkImageMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkImageMemoryBarrierDynamicArray;
+                     fWorkMemoryBarrierDynamicArray:array[0..MaxInFlightFrames-1] of TVkMemoryBarrierDynamicArray;
+                     fWorkBufferMemoryBarrierDynamicArray:array[0..MaxInFlightFrames-1] of TVkBufferMemoryBarrierDynamicArray;
+                     fWorkImageMemoryBarrierDynamicArray:array[0..MaxInFlightFrames-1] of TVkImageMemoryBarrierDynamicArray;
                      fFromPhysicalPasses:TPhysicalPasses;
-                     fWorkFromPhysicalPassesEventHandles:array[0..MaxSwapChainImages-1] of TVkEventDynamicArray;
+                     fWorkFromPhysicalPassesEventHandles:array[0..MaxInFlightFrames-1] of TVkEventDynamicArray;
                     public
                      constructor Create(const aFrameGraph:TpvFrameGraph;
                                         const aSrcStageMask:TVkPipelineStageFlags;
                                         const aDstStageMask:TVkPipelineStageFlags;
                                         const aDependencyFlags:TVkDependencyFlags);
                      destructor Destroy; override;
-                     procedure Show;
-                     procedure Hide;
-                     procedure AfterCreateSwapChain;
-                     procedure BeforeDestroySwapChain;
+                     procedure AcquirePersistentResources;
+                     procedure ReleasePersistentResources;
+                     procedure AcquireVolatileResources;
+                     procedure ReleaseVolatileResources;
                      procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
                     published
                      property SrcStageMask:TVkPipelineStageFlags read fSrcStageMask write fSrcStageMask;
@@ -732,20 +774,20 @@ type EpvFrameGraph=class(Exception);
               fEventPipelineBarrierGroups:TPipelineBarrierGroups;
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
-              fEvents:array[0..MaxSwapChainImages-1] of TpvVulkanEvent;
+              fEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
               fEventSrcStageMask:TVkPipelineStageFlags;
               fEventDstStageMask:TVkPipelineStageFlags;
-              fResetEvents:array[0..MaxSwapChainImages-1] of TResetEvents;
-              procedure ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex:TpvSizeInt);
-              procedure SetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex:TpvSizeInt);
+              fResetEvents:array[0..MaxInFlightFrames-1] of TResetEvents;
+              procedure ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+              procedure SetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
-              procedure Show; virtual;
-              procedure Hide; virtual;
-              procedure AfterCreateSwapChain; virtual;
-              procedure BeforeDestroySwapChain; virtual;
-              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
+              procedure AcquirePersistentResources; virtual;
+              procedure ReleasePersistentResources; virtual;
+              procedure AcquireVolatileResources; virtual;
+              procedure ReleaseVolatileResources; virtual;
+              procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); virtual;
             end;
             TPhysicalComputePass=class(TPhysicalPass)
@@ -754,11 +796,11 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aComputePass:TComputePass); reintroduce;
               destructor Destroy; override;
-              procedure Show; override;
-              procedure Hide; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
-              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+              procedure AcquirePersistentResources; override;
+              procedure ReleasePersistentResources; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
+              procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
             end;
             TPhysicalTransferPass=class(TPhysicalPass)
@@ -767,11 +809,11 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aTransferPass:TTransferPass); reintroduce;
               destructor Destroy; override;
-              procedure Show; override;
-              procedure Hide; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
-              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+              procedure AcquirePersistentResources; override;
+              procedure ReleasePersistentResources; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
+              procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
             end;
             TPhysicalCustomPass=class(TPhysicalPass)
@@ -780,18 +822,18 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aCustomPass:TCustomPass); reintroduce;
               destructor Destroy; override;
-              procedure Show; override;
-              procedure Hide; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
-              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+              procedure AcquirePersistentResources; override;
+              procedure ReleasePersistentResources; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
+              procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
             end;
             TPhysicalRenderPass=class(TPhysicalPass)
              public
               type TAttachment=record
                     Resource:TResource;
-                    Persientent:boolean;
+                    Persistent:boolean;
                     ImageType:TImageType;
                     Format:TVkFormat;
                     Samples:TVkSampleCountFlagBits;
@@ -840,10 +882,10 @@ type EpvFrameGraph=class(Exception);
                      constructor Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
                      destructor Destroy; override;
-                     procedure Show; virtual;
-                     procedure Hide; virtual;
-                     procedure AfterCreateSwapChain; virtual;
-                     procedure BeforeDestroySwapChain; virtual;
+                     procedure AcquirePersistentResources; virtual;
+                     procedure ReleasePersistentResources; virtual;
+                     procedure AcquireVolatileResources; virtual;
+                     procedure ReleaseVolatileResources; virtual;
                     published
                      property Index:TpvSizeInt read fIndex;
                      property MultiviewMask:TVkUInt32 read fMultiviewMask;
@@ -853,20 +895,22 @@ type EpvFrameGraph=class(Exception);
               fSubpassDependencies:TSubpassDependencies;
               fMultiview:boolean;
               fHasSurfaceSubpassDependencies:boolean;
+              fHasVulkanSurfaceFrameBuffers:boolean;
               fAttachments:TAttachments;
               fAttachmentReferences:TAttachmentReferences;
               fFinalLayouts:TResourcelLayoutHashMap;
               fVulkanRenderPass:TpvVulkanRenderPass;
-              fVulkanFrameBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanFrameBuffer;
+              fVulkanSurfaceFrameBuffers:array[0..MaxInFlightFrames-1] of array of TpvVulkanFrameBuffer;
+              fVulkanFrameBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanFrameBuffer;
               fSize:TImageSize;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
-              procedure Show; override;
-              procedure Hide; override;
-              procedure AfterCreateSwapChain; override;
-              procedure BeforeDestroySwapChain; override;
-              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
+              procedure AcquirePersistentResources; override;
+              procedure ReleasePersistentResources; override;
+              procedure AcquireVolatileResources; override;
+              procedure ReleaseVolatileResources; override;
+              procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer); override;
              public
               property Size:TImageSize read fSize write fSize;
@@ -885,6 +929,7 @@ type EpvFrameGraph=class(Exception);
               fDstStageMask:TVkPipelineStageFlags;
             end;
             TExplicitPassNameDependencyList=TpvObjectGenericList<TExplicitPassNameDependency>;
+            { TPass }
             TPass=class
              public
               type TFlag=
@@ -909,7 +954,7 @@ type EpvFrameGraph=class(Exception);
                      fResource:TResource;
                      fResourceType:TResourceType;
                      fResourcePhysicalData:TResourcePhysicalData;
-                     function AdjustSwapChainImageIndex(const aSwapChainImageIndex:TpvSizeInt):TpvSizeInt; inline;
+                     function AdjustInFlightFrameIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt; inline;
                     public
                      constructor Create(const aPass:TPass;
                                         const aResourceTransition:TResourceTransition); reintroduce; virtual;
@@ -924,18 +969,20 @@ type EpvFrameGraph=class(Exception);
                    TUsedResources=TpvObjectGenericList<TUsedResource>;
                    TUsedImageResource=class(TUsedResource)
                     private
-                     function GetVulkanImage(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImage;
-                     function GetVulkanImageView(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImageView;
-                     function GetVulkanMemoryBlock(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+                     function GetVulkanImage(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImage;
+                     function GetVulkanImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
+                     function GetVulkanAdditionalFormatImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
+                     function GetVulkanMemoryBlock(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
                      function GetWidth:TpvSizeInt;
                      function GetHeight:TpvSizeInt;
                      function GetDepth:TpvSizeInt;
                      function GetCountMipMapLevels:TpvSizeInt;
                      function GetCountArrayLayers:TpvSizeInt;
                     public
-                     property VulkanImages[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
-                     property VulkanImageViews[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
-                     property VulkanMemoryBlocks[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
+                     property VulkanImages[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
+                     property VulkanImageViews[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
+                     property VulkanAdditionalFormatImageViews[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanAdditionalFormatImageView;
+                     property VulkanMemoryBlocks[const aInFlightFrameIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
                      property Width:TpvSizeInt read GetWidth;
                      property Height:TpvSizeInt read GetHeight;
                      property Depth:TpvSizeInt read GetDepth;
@@ -948,6 +995,7 @@ type EpvFrameGraph=class(Exception);
                     public
                      property VulkanBuffers[const aSwapChainBufferIndex:TpvSizeInt]:TpvVulkanBuffer read GetVulkanBuffer;
                    end;
+                   TTimerQueryIndices=array[0..MaxInFlightFrames-1] of TpvSizeInt;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -964,6 +1012,7 @@ type EpvFrameGraph=class(Exception);
               fTag:TpvSizeInt;
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
+              fTimerQueryIndices:TTimerQueryIndices;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
               function GetSeparatePhysicalPass:boolean; inline;
               procedure SetSeparatePhysicalPass(const aSeparatePhysicalPass:boolean);
@@ -994,6 +1043,8 @@ type EpvFrameGraph=class(Exception);
                                          const aBufferSubresourceRange:TBufferSubresourceRange;
                                          const aResourceInstanceType:TResourceInstanceType;
                                          const aExternalBufferData:TExternalBufferData):TResourceTransition; overload;
+              procedure AddStartMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure AddEndMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -1064,12 +1115,14 @@ type EpvFrameGraph=class(Exception);
                                        const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.Default;
                                        const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource; overload;
              public
-              procedure Show; virtual;
-              procedure Hide; virtual;
-              procedure AfterCreateSwapChain; virtual;
-              procedure BeforeDestroySwapChain; virtual;
-              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); virtual;
+              procedure AcquirePersistentResources; virtual;
+              procedure ReleasePersistentResources; virtual;
+              procedure AcquireVolatileResources; virtual;
+              procedure ReleaseVolatileResources; virtual;
+              procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); virtual;
+             public
+              property TimerQueryIndices:TTimerQueryIndices read fTimerQueryIndices;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
@@ -1116,6 +1169,7 @@ type EpvFrameGraph=class(Exception);
               property VulkanRenderPass:TpvVulkanRenderPass read GetVulkanRenderPass;
               property VulkanRenderPassSubpassIndex:TpvSizeInt read GetVulkanRenderPassSubpassIndex;
             end;
+            TRenderPassClass=class of TRenderPass;
       private
        fVulkanDevice:TpvVulkanDevice;
        fMultiviewEnabled:boolean;
@@ -1124,8 +1178,9 @@ type EpvFrameGraph=class(Exception);
        fSurfaceHeight:TpvSizeInt;
        fSurfaceColorFormat:TVkFormat;
        fSurfaceDepthFormat:TVkFormat;
-       fSurfaceImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
-       fCountSwapChainImages:TpvSizeInt;
+       fSurfaceImages:array of TpvVulkanImage;
+       fCountInFlightFrames:TpvSizeInt;
+       fCountSurfaceImages:TpvSizeInt;
        fDefaultResourceInstanceType:TResourceInstanceType;
        fQueues:TQueues;
        fAllQueueCommandBuffers:TQueue.TCommandBuffers;
@@ -1151,32 +1206,37 @@ type EpvFrameGraph=class(Exception);
        fCanDoParallelProcessing:boolean;
        fDoWaitOnSemaphore:boolean;
        fDoSignalSemaphore:boolean;
+       fTryToMergeSubpasses:boolean;
        fPhysicalPasses:TPhysicalPasses;
        fRootPhysicalPass:TPhysicalPass;
-       fDrawToWaitOnSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphores;
-       fDrawToWaitOnSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
-       fDrawToSignalSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
-       fDrawToSignalSemaphoreDstStageMasks:array[0..MaxSwapChainImages-1] of TVkPipelineStageFlagsDynamicArray;
-       fDrawToWaitOnSemaphoreExternalHandles:array[0..MaxSwapChainImages-1] of TVkSemaphore;
+       fDrawToWaitOnSemaphores:array[0..MaxInFlightFrames-1] of TVulkanSemaphores;
+       fDrawToWaitOnSemaphoreHandles:array[0..MaxInFlightFrames-1] of TVulkanSemaphoreHandles;
+       fDrawToSignalSemaphoreHandles:array[0..MaxInFlightFrames-1] of TVulkanSemaphoreHandles;
+       fDrawToSignalSemaphoreDstStageMasks:array[0..MaxInFlightFrames-1] of TVkPipelineStageFlagsDynamicArray;
+       fDrawToWaitOnSemaphoreExternalHandles:array[0..MaxInFlightFrames-1] of TVkSemaphore;
        fDrawToWaitOnSemaphoreExternalDstStageMask:TVkPipelineStageFlags;
-       fDrawToSignalSemaphoreExternalHandles:array[0..MaxSwapChainImages-1] of TVkSemaphore;
-       fDrawToWaitSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
-       fDrawToSignalSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
+       fDrawToSignalSemaphoreExternalHandles:array[0..MaxInFlightFrames-1] of TVkSemaphore;
+       fDrawToWaitSubmitInfos:array[0..MaxInFlightFrames-1] of TVkSubmitInfo;
+       fDrawToSignalSubmitInfos:array[0..MaxInFlightFrames-1] of TVkSubmitInfo;
        fVulkanUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanUniversalQueueCommandBufferFence:TpvVulkanFence;
        fDrawSwapChainImageIndex:TpvSizeInt;
+       fDrawPreviousInFlightFrameIndex:TpvSizeInt;
+       fDrawInFlightFrameIndex:TpvSizeInt;
        fDrawFrameIndex:TpvSizeInt;
        fDrawWaitFence:TpvVulkanFence;
+       fTimerQueries:TpvTimerQueries;
+       fLastTimerQueryResults:TpvTimerQuery.TResults;
       public
-       constructor Create(const aVulkanDevice:TpvVulkanDevice);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames);
        destructor Destroy; override;
       public
-       function ConvertRelativeToAbsoluteSwapChainImageIndex(const aCurrentSwapChainImageIndex,aRelativeSwapChainImageIndex:TpvSizeInt):TpvSizeInt;
+       function ConvertRelativeToAbsoluteInFlightFrameIndex(const aCurrentInFlightFrameIndex,aRelativeInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
        procedure SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
                               const aSurfaceDepthFormat:TVkFormat);
        function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
        function AddImageResourceType(const aName:TpvRawByteString;
-                                     const aPersientent:boolean;
+                                     const aPersistent:boolean;
                                      const aFormat:TVkFormat;
                                      const aSamples:TVkSampleCountFlagBits;
                                      const aImageType:TImageType;
@@ -1185,9 +1245,10 @@ type EpvFrameGraph=class(Exception);
                                      const aCountMipMapLevels:TVkUInt32;
                                      const aComponents:TVkComponentMapping;
                                      const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType; overload;
+                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                     const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED):TResourceType; overload;
        function AddImageResourceType(const aName:TpvRawByteString;
-                                     const aPersientent:boolean;
+                                     const aPersistent:boolean;
                                      const aFormat:TVkFormat;
                                      const aSamples:TVkSampleCountFlagBits;
                                      const aImageType:TImageType;
@@ -1195,23 +1256,26 @@ type EpvFrameGraph=class(Exception);
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32;
                                      const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType; overload;
+                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                     const aAdditionalFormat:TVkFormat=VK_FORMAT_UNDEFINED):TResourceType; overload;
        function AddBufferResourceType(const aName:TpvRawByteString;
-                                      const aPersientent:boolean;
+                                      const aPersistent:boolean;
                                       const aSize:TVkDeviceSize;
                                       const aUsage:TVkBufferUsageFlags;
                                       const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                       const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                       const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                      const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags=0;
                                       const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                       const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                       const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                      const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                                       const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType; overload;
       public
-       procedure Show; virtual;
-       procedure Hide; virtual;
-       procedure AfterCreateSwapChain; virtual;
-       procedure BeforeDestroySwapChain; virtual;
+       procedure AcquirePersistentResources; virtual;
+       procedure ReleasePersistentResources; virtual;
+       procedure AcquireVolatileResources; virtual;
+       procedure ReleaseVolatileResources; virtual;
        procedure Setup; virtual;
        procedure Compile; virtual;
       private
@@ -1219,8 +1283,9 @@ type EpvFrameGraph=class(Exception);
        procedure ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
        procedure ExecuteQueueParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
-       procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
+       procedure Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
        procedure Draw(const aDrawSwapChainImageIndex:TpvSizeInt;
+                      const aDrawInFlightFrameIndex:TpvSizeInt;
                       const aDrawFrameIndex:TpvSizeInt;
                       const aToWaitOnSemaphore:TpvVulkanSemaphore=nil;
                       const aToSignalSemaphore:TpvVulkanSemaphore=nil;
@@ -1232,13 +1297,15 @@ type EpvFrameGraph=class(Exception);
        property CanDoParallelProcessing:boolean read fCanDoParallelProcessing write fCanDoParallelProcessing;
        property DoWaitOnSemaphore:boolean read fDoWaitOnSemaphore write fDoWaitOnSemaphore;
        property DoSignalSemaphore:boolean read fDoSignalSemaphore write fDoSignalSemaphore;
+       property TryToMergeSubpasses:boolean read fTryToMergeSubpasses write fTryToMergeSubpasses;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property SurfaceIsSwapchain:boolean read fSurfaceIsSwapchain write fSurfaceIsSwapchain;
        property SurfaceWidth:TpvSizeInt read fSurfaceWidth write fSurfaceWidth;
        property SurfaceHeight:TpvSizeInt read fSurfaceHeight write fSurfaceHeight;
        property SurfaceColorFormat:TVkFormat read fSurfaceColorFormat write fSurfaceColorFormat;
        property SurfaceDepthFormat:TVkFormat read fSurfaceDepthFormat write fSurfaceDepthFormat;
-       property CountSwapChainImages:TpvSizeInt read fCountSwapChainImages write fCountSwapChainImages;
+       property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
+       property CountSurfaceImages:TpvSizeInt read fCountSurfaceImages write fCountSurfaceImages;
        property DefaultResourceInstanceType:TResourceInstanceType read fDefaultResourceInstanceType write fDefaultResourceInstanceType;
        property Queues:TQueues read fQueues;
        property UniversalQueue:TQueue read fUniversalQueue;
@@ -1254,6 +1321,12 @@ type EpvFrameGraph=class(Exception);
        property PassByName:TPassNameHashMap read fPassNameHashMap;
        property RootPass:TPass read fRootPass write fRootPass;
        property RootPhysicalPass:TPhysicalPass read fRootPhysicalPass;
+       property DrawSwapChainImageIndex:TpvSizeInt read fDrawSwapChainImageIndex;
+       property DrawPreviousInFlightFrameIndex:TpvSizeInt read fDrawPreviousInFlightFrameIndex;
+       property DrawInFlightFrameIndex:TpvSizeInt read fDrawInFlightFrameIndex;
+       property DrawFrameIndex:TpvSizeInt read fDrawFrameIndex;
+       property TimerQueries:TpvTimerQueries read fTimerQueries;
+       property LastTimerQueryResults:TpvTimerQuery.TResults read fLastTimerQueryResults;
      end;
 
 implementation
@@ -1419,7 +1492,7 @@ end;
 { TpvFrameGraph.TQueue.TCommandBuffer }
 
 constructor TpvFrameGraph.TQueue.TCommandBuffer.Create(const aQueue:TQueue);
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Create;
 
@@ -1429,10 +1502,10 @@ begin
 
  fPhysicalPasses.OwnsObjects:=false;
 
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fCommandBuffers[SwapChainImageIndex]:=nil;
-  fSignallingSemaphores[SwapChainImageIndex].Initialize;
-  fSignallingSemaphoreHandles[SwapChainImageIndex].Initialize;
+ for InFlightFrameIndex:=0 to fQueue.fFrameGraph.fCountInFlightFrames-1 do begin
+  fCommandBuffers[InFlightFrameIndex]:=nil;
+  fSignallingSemaphores[InFlightFrameIndex].Initialize;
+  fSignallingSemaphoreHandles[InFlightFrameIndex].Initialize;
  end;
 
  fWaitingSemaphores.Initialize;
@@ -1444,7 +1517,7 @@ begin
 end;
 
 destructor TpvFrameGraph.TQueue.TCommandBuffer.Destroy;
-var SwapChainImageIndex,Index:TpvSizeInt;
+var InFlightFrameIndex,Index:TpvSizeInt;
 begin
 
  fWaitingSemaphores.Finalize;
@@ -1455,42 +1528,42 @@ begin
 
  FreeAndNil(fPhysicalPasses);
 
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  for Index:=0 to fSignallingSemaphores[SwapChainImageIndex].Count-1 do begin
-   FreeAndNil(fSignallingSemaphores[SwapChainImageIndex].Items[Index]);
+ for InFlightFrameIndex:=0 to fQueue.fFrameGraph.fCountInFlightFrames-1 do begin
+  for Index:=0 to fSignallingSemaphores[InFlightFrameIndex].Count-1 do begin
+   FreeAndNil(fSignallingSemaphores[InFlightFrameIndex].Items[Index]);
   end;
-  fSignallingSemaphores[SwapChainImageIndex].Finalize;
-  fSignallingSemaphoreHandles[SwapChainImageIndex].Finalize;
-  FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+  fSignallingSemaphores[InFlightFrameIndex].Finalize;
+  fSignallingSemaphoreHandles[InFlightFrameIndex].Finalize;
+  FreeAndNil(fCommandBuffers[InFlightFrameIndex]);
  end;
 
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TQueue.TCommandBuffer.Show;
+procedure TpvFrameGraph.TQueue.TCommandBuffer.AcquirePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TQueue.TCommandBuffer.Hide;
+procedure TpvFrameGraph.TQueue.TCommandBuffer.ReleasePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TQueue.TCommandBuffer.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TQueue.TCommandBuffer.AcquireVolatileResources;
+var InFlightFrameIndex:TpvSizeInt;
 begin
- for SwapChainImageIndex:=0 to fQueue.fFrameGraph.fCountSwapChainImages-1 do begin
-  fCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandBufferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fSignallingSemaphores[SwapChainImageIndex].Clear;
+ for InFlightFrameIndex:=0 to fQueue.fFrameGraph.fCountInFlightFrames-1 do begin
+  fCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandBufferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fSignallingSemaphores[InFlightFrameIndex].Clear;
  end;
 end;
 
-procedure TpvFrameGraph.TQueue.TCommandBuffer.BeforeDestroySwapChain;
-var SwapChainImageIndex,Index:TpvSizeInt;
+procedure TpvFrameGraph.TQueue.TCommandBuffer.ReleaseVolatileResources;
+var InFlightFrameIndex,Index:TpvSizeInt;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
-  for Index:=0 to fSignallingSemaphores[SwapChainImageIndex].Count-1 do begin
-   FreeAndNil(fSignallingSemaphores[SwapChainImageIndex].Items[Index]);
+ for InFlightFrameIndex:=0 to fQueue.fFrameGraph.fCountInFlightFrames-1 do begin
+  FreeAndNil(fCommandBuffers[InFlightFrameIndex]);
+  for Index:=0 to fSignallingSemaphores[InFlightFrameIndex].Count-1 do begin
+   FreeAndNil(fSignallingSemaphores[InFlightFrameIndex].Items[Index]);
   end;
  end;
 end;
@@ -1536,38 +1609,38 @@ begin
 
 end;
 
-procedure TpvFrameGraph.TQueue.Show;
+procedure TpvFrameGraph.TQueue.AcquirePersistentResources;
 var CommandBuffer:TCommandBuffer;
 begin
  for CommandBuffer in fCommandBuffers do begin
-  CommandBuffer.Show;
+  CommandBuffer.AcquirePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TQueue.Hide;
+procedure TpvFrameGraph.TQueue.ReleasePersistentResources;
 var CommandBuffer:TCommandBuffer;
 begin
  for CommandBuffer in fCommandBuffers do begin
-  CommandBuffer.Hide;
+  CommandBuffer.ReleasePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TQueue.AfterCreateSwapChain;
+procedure TpvFrameGraph.TQueue.AcquireVolatileResources;
 var CommandBuffer:TCommandBuffer;
 begin
  fCommandBufferCommandPool:=TpvVulkanCommandPool.Create(fFrameGraph.fVulkanDevice,
                                                         fPhysicalQueue.QueueFamilyIndex,
                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for CommandBuffer in fCommandBuffers do begin
-  CommandBuffer.AfterCreateSwapChain;
+  CommandBuffer.AcquireVolatileResources;
  end;
 end;
 
-procedure TpvFrameGraph.TQueue.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TQueue.ReleaseVolatileResources;
 var CommandBuffer:TCommandBuffer;
 begin
  for CommandBuffer in fCommandBuffers do begin
-  CommandBuffer.BeforeDestroySwapChain;
+  CommandBuffer.ReleaseVolatileResources;
  end;
  FreeAndNil(fCommandBufferCommandPool);
 end;
@@ -1622,7 +1695,7 @@ end;
 
 constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aName:TpvRawByteString;
-                                               const aPersientent:boolean);
+                                               const aPersistent:boolean);
 begin
  inherited Create;
  if length(trim(String(aName)))=0 then begin
@@ -1635,7 +1708,7 @@ begin
  fName:=aName;
  fFrameGraph.fResourceTypes.Add(self);
  fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
- fPersientent:=aPersientent;
+ fPersistent:=aPersistent;
 end;
 
 destructor TpvFrameGraph.TResourceType.Destroy;
@@ -1647,7 +1720,7 @@ end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                     const aName:TpvRawByteString;
-                                                    const aPersientent:boolean;
+                                                    const aPersistent:boolean;
                                                     const aFormat:TVkFormat;
                                                     const aSamples:TVkSampleCountFlagBits;
                                                     const aImageType:TImageType;
@@ -1656,11 +1729,12 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aCountMipMapLevels:TVkUInt32;
                                                     const aComponents:TVkComponentMapping;
                                                     const aInitialLayout:TVkImageLayout;
-                                                    const aFinalLayout:TVkImageLayout);
+                                                    const aFinalLayout:TVkImageLayout;
+                                                    const aAdditionalFormat:TVkFormat);
 begin
  Create(aFrameGraph,
         aName,
-        aPersientent);
+        aPersistent);
  fFormat:=aFormat;
  fSamples:=aSamples;
  fImageType:=aImageType;
@@ -1670,11 +1744,12 @@ begin
  fComponents:=aComponents;
  fInitialLayout:=aInitialLayout;
  fFinalLayout:=aFinalLayout;
+ fAdditionalFormat:=aAdditionalFormat;
 end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                     const aName:TpvRawByteString;
-                                                    const aPersientent:boolean;
+                                                    const aPersistent:boolean;
                                                     const aFormat:TVkFormat;
                                                     const aSamples:TVkSampleCountFlagBits;
                                                     const aImageType:TImageType;
@@ -1682,11 +1757,12 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageUsage:TVkImageUsageFlags;
                                                     const aCountMipMapLevels:TVkUInt32;
                                                     const aInitialLayout:TVkImageLayout;
-                                                    const aFinalLayout:TVkImageLayout);
+                                                    const aFinalLayout:TVkImageLayout;
+                                                    const aAdditionalFormat:TVkFormat);
 begin
  Create(aFrameGraph,
         aName,
-        aPersientent,
+        aPersistent,
         aFormat,
         aSamples,
         aImageType,
@@ -1698,7 +1774,8 @@ begin
                                    VK_COMPONENT_SWIZZLE_B,
                                    VK_COMPONENT_SWIZZLE_A),
         aInitialLayout,
-        aFinalLayout);
+        aFinalLayout,
+        aAdditionalFormat);
 end;
 
 
@@ -1711,26 +1788,30 @@ end;
 
 constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                      const aName:TpvRawByteString;
-                                                     const aPersientent:boolean;
+                                                     const aPersistent:boolean;
                                                      const aSize:TVkDeviceSize;
                                                      const aUsage:TVkBufferUsageFlags;
-                                                     const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                                                     const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-                                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
-                                                     const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
-                                                     const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
-                                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                                                     const aBufferFlags:TpvVulkanBufferFlags=[]);
+                                                     const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
+                                                     const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                                                     const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+                                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                                                     const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
+                                                     const aBufferFlags:TpvVulkanBufferFlags);
 begin
- inherited Create(aFrameGraph,aName,aPersientent);
+ inherited Create(aFrameGraph,aName,aPersistent);
  fSize:=aSize;
  fUsage:=fUsage;
  fMemoryRequiredPropertyFlags:=aMemoryRequiredPropertyFlags;
  fMemoryPreferredPropertyFlags:=aMemoryPreferredPropertyFlags;
- fMemoryAvoidPropertyFlags:=fMemoryAvoidPropertyFlags;
+ fMemoryAvoidPropertyFlags:=aMemoryAvoidPropertyFlags;
+ fMemoryPreferredNotPropertyFlags:=aMemoryPreferredNotPropertyFlags;
  fMemoryRequiredHeapFlags:=aMemoryRequiredHeapFlags;
  fMemoryPreferredHeapFlags:=aMemoryPreferredHeapFlags;
  fMemoryAvoidHeapFlags:=aMemoryAvoidHeapFlags;
+ fMemoryPreferredNotHeapFlags:=aMemoryPreferredNotHeapFlags;
  fBufferFlags:=aBufferFlags;
 end;
 
@@ -1762,19 +1843,19 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalData.Show;
+procedure TpvFrameGraph.TResourcePhysicalData.AcquirePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalData.Hide;
+procedure TpvFrameGraph.TResourcePhysicalData.ReleasePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalData.AfterCreateSwapChain;
+procedure TpvFrameGraph.TResourcePhysicalData.AcquireVolatileResources;
 begin
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalData.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TResourcePhysicalData.ReleaseVolatileResources;
 begin
 end;
 
@@ -1800,29 +1881,50 @@ begin
 end;
 
 destructor TpvFrameGraph.TResourcePhysicalImageData.Destroy;
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex,SwapChainImageIndex:TpvSizeInt;
 begin
  if assigned(fExternalData) or fIsSurface then begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
-   fVulkanImages[SwapChainImageIndex]:=nil;
-   fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+   if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+   end else begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+   end;
+   fVulkanImages[InFlightFrameIndex]:=nil;
+   fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
+  end;
+  if fIsSurface then begin
+   for SwapChainImageIndex:=0 to length(fVulkanSurfaceImages)-1 do begin
+    FreeAndNil(fVulkanSurfaceImageViews[SwapChainImageIndex]);
+    fVulkanSurfaceImages[SwapChainImageIndex]:=nil;
+   end;
   end;
  end else begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
    if (GetActiveResourceInstanceType=TResourceInstanceType.SingleInstance) and
-      (SwapChainImageIndex>0) then begin
-    fVulkanImages[SwapChainImageIndex]:=nil;
-    fVulkanImageViews[SwapChainImageIndex]:=nil;
-    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+      (InFlightFrameIndex>0) then begin
+    fVulkanImages[InFlightFrameIndex]:=nil;
+    fVulkanImageViews[InFlightFrameIndex]:=nil;
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    end else begin
-    FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
-    FreeAndNil(fVulkanImages[SwapChainImageIndex]);
-    fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[SwapChainImageIndex]);
-    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+    if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+    end else begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+    end;
+    FreeAndNil(fVulkanImages[InFlightFrameIndex]);
+    fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[InFlightFrameIndex]);
+    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    end;
   end;
  end;
+ fVulkanSurfaceImageViews:=nil;
+ fVulkanSurfaceImages:=nil;
  inherited Destroy;
 end;
 
@@ -1836,23 +1938,28 @@ begin
  result:=fVulkanImageViews[aIndex];
 end;
 
+function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanAdditionalFormatImageView(const aIndex:TpvSizeInt):TpvVulkanImageView;
+begin
+ result:=fVulkanAdditionalFormatImageViews[aIndex];
+end;
+
 function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanMemoryBlock(const aIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
 begin
  result:=fVulkanMemoryBlocks[aIndex];
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalImageData.Show;
+procedure TpvFrameGraph.TResourcePhysicalImageData.AcquirePersistentResources;
 begin
- inherited Show;
+ inherited AcquirePersistentResources;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalImageData.Hide;
+procedure TpvFrameGraph.TResourcePhysicalImageData.ReleasePersistentResources;
 begin
- inherited Hide;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalImageData.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TResourcePhysicalImageData.AcquireVolatileResources;
+var InFlightFrameIndex,SwapChainImageIndex:TpvSizeInt;
     ImageResourceType:TImageResourceType;
     MemoryRequirements:TVkMemoryRequirements;
     MemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
@@ -1862,7 +1969,7 @@ var SwapChainImageIndex:TpvSizeInt;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
 begin
 
- inherited AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
 
  Assert(fResourceType is TImageResourceType);
 
@@ -1900,46 +2007,54 @@ begin
    end;
   end;
 
-  for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
-   fVulkanImages[SwapChainImageIndex]:=TExternalImageData(fExternalData).fVulkanImages[SwapChainImageIndex mod TExternalImageData(fExternalData).fVulkanImages.Count];
-   fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
-   fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
-                                                                     fVulkanImages[SwapChainImageIndex],
-                                                                     fImageViewType,
-                                                                     fFormat,
-                                                                     fComponents.r,
-                                                                     fComponents.g,
-                                                                     fComponents.b,
-                                                                     fComponents.a,
-                                                                     fImageSubresourceRange.aspectMask,
-                                                                     0,
-                                                                     fCountMipMaps,
-                                                                     0,
-                                                                     fCountArrayLayers);
-
+  for InFlightFrameIndex:=0 to Min(Max(fFrameGraph.fCountInFlightFrames,1),MaxInFlightFrames)-1 do begin
+   fVulkanImages[InFlightFrameIndex]:=TExternalImageData(fExternalData).fVulkanImages[InFlightFrameIndex mod TExternalImageData(fExternalData).fVulkanImages.Count];
+   fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
+   fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                    fVulkanImages[InFlightFrameIndex],
+                                                                    fImageViewType,
+                                                                    fFormat,
+                                                                    fComponents.r,
+                                                                    fComponents.g,
+                                                                    fComponents.b,
+                                                                    fComponents.a,
+                                                                    fImageSubresourceRange.aspectMask,
+                                                                    0,
+                                                                    fCountMipMaps,
+                                                                    0,
+                                                                    fCountArrayLayers);
+   fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
   end;
 
  end else if fIsSurface then begin
 
   fFormat:=fFrameGraph.fSurfaceColorFormat;
 
-  for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
-   fVulkanImages[SwapChainImageIndex]:=fFrameGraph.fSurfaceImages[SwapChainImageIndex];
-   fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
-   fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
-                                                                     fVulkanImages[SwapChainImageIndex],
-                                                                     fImageViewType,
-                                                                     fFormat,
-                                                                     fComponents.r,
-                                                                     fComponents.g,
-                                                                     fComponents.b,
-                                                                     fComponents.a,
-                                                                     fImageSubresourceRange.aspectMask,
-                                                                     0,
-                                                                     fCountMipMaps,
-                                                                     0,
-                                                                     fCountArrayLayers);
+  SetLength(fVulkanSurfaceImageViews,Max(fFrameGraph.fCountSurfaceImages,1));
+  SetLength(fVulkanSurfaceImages,Max(fFrameGraph.fCountSurfaceImages,1));
 
+  for SwapChainImageIndex:=0 to Max(fFrameGraph.fCountSurfaceImages,1)-1 do begin
+   fVulkanSurfaceImages[SwapChainImageIndex]:=fFrameGraph.fSurfaceImages[SwapChainImageIndex];
+   fVulkanSurfaceImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                            fVulkanSurfaceImages[SwapChainImageIndex],
+                                                                            fImageViewType,
+                                                                            fFormat,
+                                                                            fComponents.r,
+                                                                            fComponents.g,
+                                                                            fComponents.b,
+                                                                            fComponents.a,
+                                                                            fImageSubresourceRange.aspectMask,
+                                                                            0,
+                                                                            fCountMipMaps,
+                                                                            0,
+                                                                            fCountArrayLayers);
+  end;
+
+  for InFlightFrameIndex:=0 to Min(Max(fFrameGraph.fCountInFlightFrames,1),MaxInFlightFrames)-1 do begin
+   fVulkanImages[InFlightFrameIndex]:=nil;
+   fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
+   fVulkanImageViews[InFlightFrameIndex]:=nil;
+   fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
   end;
 
  end else begin
@@ -1959,35 +2074,37 @@ begin
    end;
   end;
 
-  for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
+  for InFlightFrameIndex:=0 to Min(Max(fFrameGraph.fCountInFlightFrames,1),MaxInFlightFrames)-1 do begin
 
    if (GetActiveResourceInstanceType=TResourceInstanceType.SingleInstance) and
-      (SwapChainImageIndex>0) then begin
+      (InFlightFrameIndex>0) then begin
 
-    fVulkanImages[SwapChainImageIndex]:=fVulkanImages[0];
-    fVulkanImageViews[SwapChainImageIndex]:=fVulkanImageViews[0];
-    fVulkanMemoryBlocks[SwapChainImageIndex]:=fVulkanMemoryBlocks[0];
+    fVulkanImages[InFlightFrameIndex]:=fVulkanImages[0];
+    fVulkanImageViews[InFlightFrameIndex]:=fVulkanImageViews[0];
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[0];
+    fVulkanMemoryBlocks[InFlightFrameIndex]:=fVulkanMemoryBlocks[0];
 
    end else begin
 
-    fVulkanImages[SwapChainImageIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
-                                                              0,
-                                                              fImageType,
-                                                              fFormat,
-                                                              fExtent.width,
-                                                              fExtent.height,
-                                                              fExtent.depth,
-                                                              fCountMipMaps,
-                                                              fCountArrayLayers,
-                                                              fSamples,
-                                                              fTiling,
-                                                              fImageUsageFlags, // or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
-                                                              fSharingMode,
-                                                              fFrameGraph.fQueueFamilyIndices.Count,
-                                                              @fFrameGraph.fQueueFamilyIndices.Items[0],
-                                                              VK_IMAGE_LAYOUT_UNDEFINED);
+    fVulkanImages[InFlightFrameIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
+                                                             TVkImageCreateFlags(TpvInt32(IfThen((fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat),TpvInt32(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),TpvInt32(0)))),
+                                                             fImageType,
+                                                             fFormat,
+                                                             fExtent.width,
+                                                             fExtent.height,
+                                                             fExtent.depth,
+                                                             fCountMipMaps,
+                                                             fCountArrayLayers,
+                                                             fSamples,
+                                                             fTiling,
+                                                             fImageUsageFlags, // or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                                             fSharingMode,
+                                                             fFrameGraph.fQueueFamilyIndices.Count,
+                                                             @fFrameGraph.fQueueFamilyIndices.Items[0],
+                                                             VK_IMAGE_LAYOUT_UNDEFINED,
+                                                             fAdditionalFormat);
 
-    MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImages[SwapChainImageIndex].Handle,
+    MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImages[InFlightFrameIndex].Handle,
                                                                                            RequiresDedicatedAllocation,
                                                                                            PrefersDedicatedAllocation);
 
@@ -2003,35 +2120,37 @@ begin
      MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.ImageLinear;
     end;
 
-    MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    MemoryPreferredPropertyFlags:=0;//TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))<>0 then begin
      MemoryPreferredPropertyFlags:=MemoryPreferredPropertyFlags or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
     end;
 
-    fVulkanMemoryBlocks[SwapChainImageIndex]:=fFrameGraph.fVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
-                                                                                                          MemoryRequirements.size,
-                                                                                                          MemoryRequirements.alignment,
-                                                                                                          MemoryRequirements.memoryTypeBits,
-                                                                                                          0,
-                                                                                                          MemoryPreferredPropertyFlags,
-                                                                                                          0,
-                                                                                                          0,
-                                                                                                          0,
-                                                                                                          0,
-                                                                                                          MemoryAllocationType,
-                                                                                                          @fVulkanImages[SwapChainImageIndex].Handle);
-    if not assigned(fVulkanMemoryBlocks[SwapChainImageIndex]) then begin
+    fVulkanMemoryBlocks[InFlightFrameIndex]:=fFrameGraph.fVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+                                                                                                         MemoryRequirements.size,
+                                                                                                         MemoryRequirements.alignment,
+                                                                                                         MemoryRequirements.memoryTypeBits,
+                                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                         MemoryPreferredPropertyFlags,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         0,
+                                                                                                         MemoryAllocationType,
+                                                                                                         @fVulkanImages[InFlightFrameIndex].Handle);
+    if not assigned(fVulkanMemoryBlocks[InFlightFrameIndex]) then begin
      raise EpvVulkanMemoryAllocationException.Create('Memory for image resource couldn''t be allocated!');
     end;
 
-    VulkanCheckResult(fFrameGraph.fVulkanDevice.Commands.BindImageMemory(fVulkanImages[SwapChainImageIndex].Device.Handle,
-                                                                         fVulkanImages[SwapChainImageIndex].Handle,
-                                                                         fVulkanMemoryBlocks[SwapChainImageIndex].MemoryChunk.Handle,
-                                                                         fVulkanMemoryBlocks[SwapChainImageIndex].Offset));
+    VulkanCheckResult(fFrameGraph.fVulkanDevice.Commands.BindImageMemory(fVulkanImages[InFlightFrameIndex].Device.Handle,
+                                                                         fVulkanImages[InFlightFrameIndex].Handle,
+                                                                         fVulkanMemoryBlocks[InFlightFrameIndex].MemoryChunk.Handle,
+                                                                         fVulkanMemoryBlocks[InFlightFrameIndex].Offset));
 
-    fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
-                                                                      fVulkanImages[SwapChainImageIndex],
+    fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                      fVulkanImages[InFlightFrameIndex],
                                                                       fImageViewType,
                                                                       fFormat,
                                                                       fComponents.r,
@@ -2044,8 +2163,26 @@ begin
                                                                       0,
                                                                       fCountArrayLayers);
 
+    if (fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat) then begin
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                                      fVulkanImages[InFlightFrameIndex],
+                                                                                      fImageViewType,
+                                                                                      fAdditionalFormat,
+                                                                                      fComponents.r,
+                                                                                      fComponents.g,
+                                                                                      fComponents.b,
+                                                                                      fComponents.a,
+                                                                                      fImageSubresourceRange.aspectMask,
+                                                                                      0,
+                                                                                      fCountMipMaps,
+                                                                                      0,
+                                                                                      fCountArrayLayers);
+    end else begin
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
+    end;
+
     if fFirstInitialLayout=VK_IMAGE_LAYOUT_UNDEFINED then begin
-{    fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+{    fVulkanImages[InFlightFrameIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                   VK_IMAGE_LAYOUT_UNDEFINED,
                                                   VK_IMAGE_LAYOUT_GENERAL,
                                                   TVkAccessFlags(0),
@@ -2068,7 +2205,7 @@ begin
                                                   true);}
     end else begin
      if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
-      fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+      fVulkanImages[InFlightFrameIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                    VK_IMAGE_LAYOUT_UNDEFINED,
                                                    fFirstInitialLayout,
                                                    TVkAccessFlags(0),
@@ -2084,7 +2221,7 @@ begin
      end else begin
       case fFirstInitialLayout of
        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
-        fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+        fVulkanImages[InFlightFrameIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                      VK_IMAGE_LAYOUT_UNDEFINED,
                                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                      TVkAccessFlags(0),
@@ -2098,7 +2235,7 @@ begin
                                                      true);
        end;
        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
-        fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+        fVulkanImages[InFlightFrameIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                      VK_IMAGE_LAYOUT_UNDEFINED,
                                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                      TVkAccessFlags(0),
@@ -2127,58 +2264,79 @@ begin
 
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalImageData.BeforeDestroySwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TResourcePhysicalImageData.ReleaseVolatileResources;
+var InFlightFrameIndex,SwapChainImageIndex:TpvSizeInt;
 begin
  if assigned(fExternalData) or fIsSurface then begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
-   fVulkanImages[SwapChainImageIndex]:=nil;
-   fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+   if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+   end else begin
+    FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+   end;
+   fVulkanImages[InFlightFrameIndex]:=nil;
+   fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
+  end;
+  if fIsSurface then begin
+   for SwapChainImageIndex:=0 to length(fVulkanSurfaceImageViews)-1 do begin
+    FreeAndNil(fVulkanSurfaceImageViews[SwapChainImageIndex]);
+    fVulkanSurfaceImages[SwapChainImageIndex]:=nil;
+   end;
   end;
  end else begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
    if (GetActiveResourceInstanceType=TResourceInstanceType.SingleInstance) and
-      (SwapChainImageIndex>0) then begin
-    fVulkanImages[SwapChainImageIndex]:=nil;
-    fVulkanImageViews[SwapChainImageIndex]:=nil;
-    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+      (InFlightFrameIndex>0) then begin
+    fVulkanImages[InFlightFrameIndex]:=nil;
+    fVulkanImageViews[InFlightFrameIndex]:=nil;
+    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    end else begin
-    FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
-    FreeAndNil(fVulkanImages[SwapChainImageIndex]);
-    fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[SwapChainImageIndex]);
-    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+    if fVulkanImageViews[InFlightFrameIndex]<>fVulkanAdditionalFormatImageViews[InFlightFrameIndex] then begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     FreeAndNil(fVulkanAdditionalFormatImageViews[InFlightFrameIndex]);
+    end else begin
+     FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
+     fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=nil;
+    end;
+    FreeAndNil(fVulkanImages[InFlightFrameIndex]);
+    fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[InFlightFrameIndex]);
+    fVulkanMemoryBlocks[InFlightFrameIndex]:=nil;
    end;
   end;
  end;
- inherited BeforeDestroySwapChain;
+ fVulkanSurfaceImageViews:=nil;
+ fVulkanSurfaceImages:=nil;
+ inherited ReleaseVolatileResources;
 end;
 
 { TpvFrameGraph.TResourcePhysicalBufferData }
 
 constructor TpvFrameGraph.TResourcePhysicalBufferData.Create(const aFrameGraph:TpvFrameGraph);
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited Create(aFrameGraph);
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fVulkanBuffers[SwapChainImageIndex]:=nil;
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fVulkanBuffers[InFlightFrameIndex]:=nil;
  end;
 end;
 
 destructor TpvFrameGraph.TResourcePhysicalBufferData.Destroy;
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  if assigned(fExternalData) then begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanBuffers[SwapChainImageIndex]:=nil;
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+   fVulkanBuffers[InFlightFrameIndex]:=nil;
   end;
  end else begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
    if (GetActiveResourceInstanceType=TResourceInstanceType.SingleInstance) and
-      (SwapChainImageIndex>0) then begin
-    fVulkanBuffers[SwapChainImageIndex]:=nil;
+      (InFlightFrameIndex>0) then begin
+    fVulkanBuffers[InFlightFrameIndex]:=nil;
    end else begin
-    FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+    FreeAndNil(fVulkanBuffers[InFlightFrameIndex]);
    end;
   end;
  end;
@@ -2190,31 +2348,31 @@ begin
  result:=fVulkanBuffers[aIndex];
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalBufferData.Show;
+procedure TpvFrameGraph.TResourcePhysicalBufferData.AcquirePersistentResources;
 begin
- inherited Show;
+ inherited AcquirePersistentResources;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalBufferData.Hide;
+procedure TpvFrameGraph.TResourcePhysicalBufferData.ReleasePersistentResources;
 begin
- inherited Hide;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalBufferData.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TResourcePhysicalBufferData.AcquireVolatileResources;
+var InFlightFrameIndex:TpvSizeInt;
 begin
- inherited AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
  if assigned(fExternalData) then begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanBuffers[SwapChainImageIndex]:=TExternalBufferData(fExternalData).fVulkanBuffers[SwapChainImageIndex mod TExternalBufferData(fExternalData).fVulkanBuffers.Count];
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+   fVulkanBuffers[InFlightFrameIndex]:=TExternalBufferData(fExternalData).fVulkanBuffers[InFlightFrameIndex mod TExternalBufferData(fExternalData).fVulkanBuffers.Count];
   end;
  end else begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
    if (GetActiveResourceInstanceType=TResourceInstanceType.SingleInstance) and
-      (SwapChainImageIndex>0) then begin
-    fVulkanBuffers[SwapChainImageIndex]:=fVulkanBuffers[0];
+      (InFlightFrameIndex>0) then begin
+    fVulkanBuffers[InFlightFrameIndex]:=fVulkanBuffers[0];
    end else begin
-    fVulkanBuffers[SwapChainImageIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
+    fVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
                                                                 fSize,
                                                                 fUsage,
                                                                 VK_SHARING_MODE_EXCLUSIVE,
@@ -2222,33 +2380,35 @@ begin
                                                                 fMemoryRequiredPropertyFlags,
                                                                 fMemoryPreferredPropertyFlags,
                                                                 fMemoryAvoidPropertyFlags,
+                                                                fMemoryPreferredNotPropertyFlags,
                                                                 fMemoryRequiredHeapFlags,
                                                                 fMemoryPreferredHeapFlags,
                                                                 fMemoryAvoidHeapFlags,
+                                                                fMemoryPreferredNotHeapFlags,
                                                                 fBufferFlags);
    end;
   end;
  end;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalBufferData.BeforeDestroySwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TResourcePhysicalBufferData.ReleaseVolatileResources;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  if assigned(fExternalData) then begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanBuffers[SwapChainImageIndex]:=nil;
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+   fVulkanBuffers[InFlightFrameIndex]:=nil;
   end;
  end else begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
    if (GetActiveResourceInstanceType=TResourceInstanceType.SingleInstance) and
-      (SwapChainImageIndex>0) then begin
-    fVulkanBuffers[SwapChainImageIndex]:=nil;
+      (InFlightFrameIndex>0) then begin
+    fVulkanBuffers[InFlightFrameIndex]:=nil;
    end else begin
-    FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+    FreeAndNil(fVulkanBuffers[InFlightFrameIndex]);
    end;
   end;
  end;
- inherited BeforeDestroySwapChain;
+ inherited ReleaseVolatileResources;
 end;
 
 { TpvFrameGraph.TResourceAliasGroup }
@@ -2271,31 +2431,31 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TResourceAliasGroup.Show;
+procedure TpvFrameGraph.TResourceAliasGroup.AcquirePersistentResources;
 begin
  if assigned(fResourcePhysicalData) then begin
-  fResourcePhysicalData.Show;
+  fResourcePhysicalData.AcquirePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TResourceAliasGroup.Hide;
+procedure TpvFrameGraph.TResourceAliasGroup.ReleasePersistentResources;
 begin
  if assigned(fResourcePhysicalData) then begin
-  fResourcePhysicalData.Hide;
+  fResourcePhysicalData.ReleasePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TResourceAliasGroup.AfterCreateSwapChain;
+procedure TpvFrameGraph.TResourceAliasGroup.AcquireVolatileResources;
 begin
  if assigned(fResourcePhysicalData) then begin
-  fResourcePhysicalData.AfterCreateSwapChain;
+  fResourcePhysicalData.AcquireVolatileResources;
  end;
 end;
 
-procedure TpvFrameGraph.TResourceAliasGroup.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TResourceAliasGroup.ReleaseVolatileResources;
 begin
  if assigned(fResourcePhysicalData) then begin
-  fResourcePhysicalData.BeforeDestroySwapChain;
+  fResourcePhysicalData.ReleaseVolatileResources;
  end;
 end;
 
@@ -2334,7 +2494,7 @@ begin
  fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
  fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
 
- fLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+//fLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
 
  fLayoutHistory:=TLayoutHistory.Create(VK_IMAGE_LAYOUT_UNDEFINED);
 
@@ -2364,6 +2524,53 @@ begin
  inherited Destroy;
 end;
 
+{ TpvFrameGraph.TResourceTransitionList }
+
+function TpvFrameGraph.TResourceTransitionList.HasPhysicalPassesIntersectionWith(const aWith:TpvFrameGraph.TResourceTransitionList):boolean;
+var Index,OtherIndex:TpvSizeInt;
+    ResourceTransitions:array[0..1] of TpvFrameGraph.TResourceTransition;
+begin
+ for Index:=0 to Count-1 do begin
+  ResourceTransitions[0]:=Items[Index];
+  for OtherIndex:=0 to aWith.Count-1 do begin
+   ResourceTransitions[1]:=aWith.Items[OtherIndex];
+   if (ResourceTransitions[0]=ResourceTransitions[1]) or
+      (ResourceTransitions[0].fPass=ResourceTransitions[1].fPass) or
+      (ResourceTransitions[0].fPass.fPhysicalPass=ResourceTransitions[1].fPass.fPhysicalPass) then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
+ result:=false;
+end;
+
+function TpvFrameGraph.TResourceTransitionList.MergeCompatibleWith(const aWith:TpvFrameGraph.TResourceTransitionList):boolean;
+var Index,OtherIndex:TpvSizeInt;
+    ResourceTransitions:array[0..1] of TpvFrameGraph.TResourceTransition;
+begin
+ for Index:=0 to Count-1 do begin
+  ResourceTransitions[0]:=Items[Index];
+  for OtherIndex:=0 to aWith.Count-1 do begin
+   ResourceTransitions[1]:=aWith.Items[OtherIndex];
+   if ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllImages)) or
+      ((ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllBuffers)<>(ResourceTransitions[1].Kind in TpvFrameGraph.TResourceTransition.AllBuffers)) then begin
+    result:=false;
+    exit;
+   end else begin
+    if (ResourceTransitions[0].fKind in TpvFrameGraph.TResourceTransition.AllImages) and
+       (ResourceTransitions[1].fKind in TpvFrameGraph.TResourceTransition.AllImages) then begin
+     if (TpvFrameGraph.TResourceTransition.TFlag.Attachment in ResourceTransitions[0].fFlags)<>(TpvFrameGraph.TResourceTransition.TFlag.Attachment in ResourceTransitions[1].fFlags) then begin
+      result:=false;
+      exit;
+     end;
+    end;
+   end;
+  end;
+ end;
+ result:=true;
+end;
+
 { TpvFrameGraph.TResourceTransition }
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
@@ -2371,16 +2578,37 @@ constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameG
                                                      const aResource:TResource;
                                                      const aKind:TKind;
                                                      const aFlags:TFlags);
+var UsedFlags:TpvUInt32;
 begin
+
  inherited Create;
+
  fFrameGraph:=aFrameGraph;
+
  fFrameGraph.fResourceTransitions.Add(self);
+
  fPass:=aPass;
+
  fResource:=aResource;
+
  fKind:=aKind;
+
  fFlags:=aFlags;
+
  fResource.fResourceTransitions.Add(self);
+
  fPass.fResourceTransitions.Add(self);
+
+ UsedFlags:=0;
+ if fKind in TpvFrameGraph.TResourceTransition.AllImageInputs then begin
+  if TpvFrameGraph.TResourceTransition.TFlag.Attachment in fFlags then begin
+   UsedFlags:=UsedFlags or TpvFrameGraph.UsedAsImageDepthInputAttachmentFlag;
+  end else begin
+   UsedFlags:=UsedFlags or TpvFrameGraph.UsedAsImageDepthInputNonAttachmentFlag;
+  end;
+ end;
+ fResource.fUsedFlags:=fResource.fUsedFlags or UsedFlags;
+
 end;
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
@@ -2442,32 +2670,38 @@ begin
  end;
 end;
 
-function TpvFrameGraph.TPass.TUsedResource.AdjustSwapChainImageIndex(const aSwapChainImageIndex:TpvSizeInt):TpvSizeInt;
+function TpvFrameGraph.TPass.TUsedResource.AdjustInFlightFrameIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
 var Offset:TpvSizeInt;
 begin
  Offset:=(ord(TpvFrameGraph.TResourceTransition.TFlag.NextFrameOutput in fResourceTransition.fFlags) and 1)-
          (ord(TpvFrameGraph.TResourceTransition.TFlag.PreviousFrameInput in fResourceTransition.fFlags) and 1);
- result:=fFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(aSwapChainImageIndex,Offset);
+ result:=fFrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(aInFlightFrameIndex,Offset);
 end;
 
 { TpvFrameGraph.TPass.TUsedImageResource }
 
-function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImage(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImage;
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImage(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImage;
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
- result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImages[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImages[AdjustInFlightFrameIndex(aInFlightFrameIndex)];
 end;
 
-function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImageView(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImageView;
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
- result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImageViews[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImageViews[AdjustInFlightFrameIndex(aInFlightFrameIndex)];
 end;
 
-function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanMemoryBlock(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanAdditionalFormatImageView(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanImageView;
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
- result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanMemoryBlocks[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanAdditionalFormatImageViews[AdjustInFlightFrameIndex(aInFlightFrameIndex)];
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanMemoryBlock(const aInFlightFrameIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanMemoryBlocks[AdjustInFlightFrameIndex(aInFlightFrameIndex)];
 end;
 
 function TpvFrameGraph.TPass.TUsedImageResource.GetWidth:TpvSizeInt;
@@ -2505,12 +2739,13 @@ end;
 function TpvFrameGraph.TPass.TUsedBufferResource.GetVulkanBuffer(const aSwapChainBufferIndex:TpvSizeInt):TpvVulkanBuffer;
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalBufferData));
- result:=TResourcePhysicalBufferData(fResourcePhysicalData).fVulkanBuffers[AdjustSwapChainImageIndex(aSwapChainBufferIndex)];
+ result:=TResourcePhysicalBufferData(fResourcePhysicalData).fVulkanBuffers[AdjustInFlightFrameIndex(aSwapChainBufferIndex)];
 end;
 
 { TpvFrameGraph.TPass }
 
 constructor TpvFrameGraph.TPass.Create(const aFrameGraph:TpvFrameGraph);
+var Index:TpvSizeInt;
 begin
 
  inherited Create;
@@ -2546,6 +2781,10 @@ begin
  fFlags:=[TFlag.Enabled];
 
  fPhysicalPass:=nil;
+
+ for Index:=0 to length(fTimerQueryIndices)-1 do begin
+  fTimerQueryIndices[Index]:=-1;
+ end;
 
 end;
 
@@ -2815,6 +3054,58 @@ begin
  fFrameGraph.fValid:=false;
 end;
 
+procedure TpvFrameGraph.TPass.AddStartMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+const LabelInfoColors:array[0..15,0..3] of TVkFloat=
+       (
+        (1.0,0.8,0.5,1.0),
+        (1.0,0.2,0.2,1.0),
+        (0.2,1.0,0.2,1.0),
+        (0.2,0.2,1.0,1.0),
+        (1.0,0.2,1.0,1.0),
+        (1.0,0.8,0.5,1.0),
+        (1.0,1.0,0.2,1.0),
+        (0.2,1.0,1.0,1.0),
+        (0.5,0.8,0.5,1.0),
+        (0.8,0.5,1.0,1.0),
+        (0.5,1.0,0.5,1.0),
+        (0.5,0.5,1.0,1.0),
+        (1.0,0.5,1.0,1.0),
+        (0.8,0.8,1.0,1.0),
+        (1.0,1.0,0.5,1.0),
+        (0.5,1.0,1.0,1.0)
+       );
+var LabelInfo:TVkDebugUtilsLabelEXT;
+begin
+ if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
+    assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
+  FillChar(LabelInfo,SizeOf(TVkDebugUtilsLabelEXT),#0);
+  LabelInfo.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  LabelInfo.pNext:=nil;
+  LabelInfo.pLabelName:=PAnsiChar(fName);
+  LabelInfo.color[0]:=LabelInfoColors[fIndex and $f,0];
+  LabelInfo.color[1]:=LabelInfoColors[fIndex and $f,1];
+  LabelInfo.color[2]:=LabelInfoColors[fIndex and $f,2];
+  LabelInfo.color[3]:=LabelInfoColors[fIndex and $f,3];
+  aCommandBuffer.Device.Commands.CmdBeginDebugUtilsLabelEXT(aCommandBuffer.Handle,@LabelInfo);
+ end;
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Start(aQueue.fPhysicalQueue,aCommandBuffer,fName);
+ end else begin
+  fTimerQueryIndices[fFrameGraph.fDrawInFlightFrameIndex]:=-1;
+ end;
+end;
+
+procedure TpvFrameGraph.TPass.AddEndMarker(const aQueue:TpvFrameGraph.TQueue;const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
+  fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(aQueue.fPhysicalQueue,aCommandBuffer);
+ end;
+ if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
+    assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
+  aCommandBuffer.Device.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
+ end;
+end;
+
 function TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
                                            const aResourceName:TpvRawByteString;
                                            const aLayout:TVkImageLayout;
@@ -3000,27 +3291,27 @@ begin
                          aExternalBufferData);
 end;
 
-procedure TpvFrameGraph.TPass.Show;
+procedure TpvFrameGraph.TPass.AcquirePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TPass.Hide;
+procedure TpvFrameGraph.TPass.ReleasePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TPass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPass.AcquireVolatileResources;
 begin
 end;
 
-procedure TpvFrameGraph.TPass.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TPass.ReleaseVolatileResources;
 begin
 end;
 
-procedure TpvFrameGraph.TPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
 end;
 
-procedure TpvFrameGraph.TPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
 end;
 
@@ -3077,7 +3368,7 @@ begin
  fMemoryBarrierDynamicArray.Initialize;
  fBufferMemoryBarrierDynamicArray.Initialize;
  fImageMemoryBarrierDynamicArray.Initialize;
- for Index:=0 to MaxSwapChainImages-1 do begin
+ for Index:=0 to fFrameGraph.CountInFlightFrames-1 do begin
   fWorkMemoryBarrierDynamicArray[Index].Initialize;
   fWorkBufferMemoryBarrierDynamicArray[Index].Initialize;
   fWorkImageMemoryBarrierDynamicArray[Index].Initialize;
@@ -3088,32 +3379,32 @@ begin
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  FreeAndNil(fFromPhysicalPasses);
  fBarrierMapItemDynamicArray.Finalize;
  fMemoryBarrierDynamicArray.Finalize;
  fBufferMemoryBarrierDynamicArray.Finalize;
  fImageMemoryBarrierDynamicArray.Finalize;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fWorkFromPhysicalPassesEventHandles[SwapChainImageIndex].Finalize;
-  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Finalize;
-  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Finalize;
-  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Finalize;
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Finalize;
+  fWorkMemoryBarrierDynamicArray[InFlightFrameIndex].Finalize;
+  fWorkBufferMemoryBarrierDynamicArray[InFlightFrameIndex].Finalize;
+  fWorkImageMemoryBarrierDynamicArray[InFlightFrameIndex].Finalize;
  end;
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Show;
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.AcquirePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Hide;
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.ReleasePersistentResources;
 begin
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.AfterCreateSwapChain;
-var SwapChainImageIndex,
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.AcquireVolatileResources;
+var InFlightFrameIndex,
     BarrierMapItemIndex:TpvSizeInt;
     PhysicalPass:TPhysicalPass;
     BarrierMapItem:PBarrierMapItem;
@@ -3121,36 +3412,36 @@ var SwapChainImageIndex,
     BufferMemoryBarrier:PVkBufferMemoryBarrier;
     ImageMemoryBarrier:PVkImageMemoryBarrier;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Assign(fMemoryBarrierDynamicArray);
-  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Assign(fBufferMemoryBarrierDynamicArray);
-  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Assign(fImageMemoryBarrierDynamicArray);
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fWorkMemoryBarrierDynamicArray[InFlightFrameIndex].Assign(fMemoryBarrierDynamicArray);
+  fWorkBufferMemoryBarrierDynamicArray[InFlightFrameIndex].Assign(fBufferMemoryBarrierDynamicArray);
+  fWorkImageMemoryBarrierDynamicArray[InFlightFrameIndex].Assign(fImageMemoryBarrierDynamicArray);
   for BarrierMapItemIndex:=0 to fBarrierMapItemDynamicArray.Count-1 do begin
    BarrierMapItem:=@fBarrierMapItemDynamicArray.Items[BarrierMapItemIndex];
    case BarrierMapItem^.Kind of
     TBarrierMapItemKind.Memory:begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fMemoryBarrierDynamicArray.Count));
-     MemoryBarrier:=@fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
+     MemoryBarrier:=@fWorkMemoryBarrierDynamicArray[InFlightFrameIndex].Items[BarrierMapItem^.BarrierIndex];
      if assigned(MemoryBarrier) then begin
       // Nothing needed to do
      end;
     end;
     TBarrierMapItemKind.Buffer:begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fBufferMemoryBarrierDynamicArray.Count));
-     BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
+     BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[InFlightFrameIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalBufferData then begin
-      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[fFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(SwapChainImageIndex,BarrierMapItem^.ImageIndexOffset)].Handle;
+      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[fFrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(InFlightFrameIndex,BarrierMapItem^.ImageIndexOffset)].Handle;
      end else begin
       Assert(false);
      end;
     end;
     TBarrierMapItemKind.Image:begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fImageMemoryBarrierDynamicArray.Count));
-     ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
+     ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[InFlightFrameIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
-      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[fFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(SwapChainImageIndex,BarrierMapItem^.ImageIndexOffset)].Handle;
+      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[fFrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(InFlightFrameIndex,BarrierMapItem^.ImageIndexOffset)].Handle;
      end else begin
       Assert(false);
      end;
@@ -3160,24 +3451,24 @@ begin
     end;
    end;
   end;
-  fWorkFromPhysicalPassesEventHandles[SwapChainImageIndex].Clear;
+  fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Clear;
   for PhysicalPass in fFromPhysicalPasses do begin
-   if not assigned(PhysicalPass.fEvents[SwapChainImageIndex]) then begin
-    PhysicalPass.fEvents[SwapChainImageIndex]:=TpvVulkanEvent.Create(fFrameGraph.fVulkanDevice);
+   if not assigned(PhysicalPass.fEvents[InFlightFrameIndex]) then begin
+    PhysicalPass.fEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(fFrameGraph.fVulkanDevice);
    end;
-   fWorkFromPhysicalPassesEventHandles[SwapChainImageIndex].Add(PhysicalPass.fEvents[SwapChainImageIndex].Handle);
+   fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Add(PhysicalPass.fEvents[InFlightFrameIndex].Handle);
   end;
-  fWorkFromPhysicalPassesEventHandles[SwapChainImageIndex].Finish;
+  fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Finish;
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.BeforeDestroySwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.ReleaseVolatileResources;
+var InFlightFrameIndex:TpvSizeInt;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
-  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
-  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fWorkMemoryBarrierDynamicArray[InFlightFrameIndex].Clear;
+  fWorkBufferMemoryBarrierDynamicArray[InFlightFrameIndex].Clear;
+  fWorkImageMemoryBarrierDynamicArray[InFlightFrameIndex].Clear;
  end;
 end;
 
@@ -3186,42 +3477,42 @@ var MemoryBarriers,
     BufferMemoryBarriers,
     ImageMemoryBarriers:pointer;
 begin
- if fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
-  MemoryBarriers:=@fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Items[0];
+ if fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count>0 then begin
+  MemoryBarriers:=@fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Items[0];
  end else begin
   MemoryBarriers:=nil;
  end;
- if fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
-  BufferMemoryBarriers:=@fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Items[0];
+ if fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count>0 then begin
+  BufferMemoryBarriers:=@fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Items[0];
  end else begin
   BufferMemoryBarriers:=nil;
  end;
- if fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
-  ImageMemoryBarriers:=@fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Items[0];
+ if fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count>0 then begin
+  ImageMemoryBarriers:=@fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Items[0];
  end else begin
   ImageMemoryBarriers:=nil;
  end;
- if fWorkFromPhysicalPassesEventHandles[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
-  aCommandBuffer.CmdWaitEvents(fWorkFromPhysicalPassesEventHandles[fFrameGraph.fDrawSwapChainImageIndex].Count,
-                               @fWorkFromPhysicalPassesEventHandles[fFrameGraph.fDrawSwapChainImageIndex].Items[0],
+ if fWorkFromPhysicalPassesEventHandles[fFrameGraph.fDrawInFlightFrameIndex].Count>0 then begin
+  aCommandBuffer.CmdWaitEvents(fWorkFromPhysicalPassesEventHandles[fFrameGraph.fDrawInFlightFrameIndex].Count,
+                               @fWorkFromPhysicalPassesEventHandles[fFrameGraph.fDrawInFlightFrameIndex].Items[0],
                                fSrcStageMask,
                                fDstStageMask,
-                               fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                               fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count,
                                MemoryBarriers,
-                               fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                               fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count,
                                BufferMemoryBarriers,
-                               fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                               fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count,
                                ImageMemoryBarriers
                               );
  end else begin
   aCommandBuffer.CmdPipelineBarrier(fSrcStageMask,
                                     fDstStageMask,
                                     fDependencyFlags,
-                                    fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                                    fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count,
                                     MemoryBarriers,
-                                    fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                                    fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count,
                                     BufferMemoryBarriers,
-                                    fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                                    fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawInFlightFrameIndex].Count,
                                     ImageMemoryBarriers
                                    );
  end;
@@ -3240,7 +3531,7 @@ end;
 { TpvFrameGraph.TPhysicalPass }
 
 constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex:TpvSizeInt;
 begin
 
  inherited Create;
@@ -3270,9 +3561,9 @@ begin
  fAfterPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
  fAfterPipelineBarrierGroups.OwnsObjects:=true;
 
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fEvents[SwapChainImageIndex]:=nil;
-  fResetEvents[SwapChainImageIndex].Initialize;
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fEvents[InFlightFrameIndex]:=nil;
+  fResetEvents[InFlightFrameIndex].Initialize;
  end;
 
  fEventSrcStageMask:=0;
@@ -3282,11 +3573,11 @@ begin
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
-var SwapChainImageIndex,Index:TpvSizeInt;
+var InFlightFrameIndex,Index:TpvSizeInt;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fResetEvents[SwapChainImageIndex].Finalize;
-  FreeAndNil(fEvents[SwapChainImageIndex]);
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  fResetEvents[InFlightFrameIndex].Finalize;
+  FreeAndNil(fEvents[InFlightFrameIndex]);
  end;
  FreeAndNil(fEventPipelineBarrierGroups);
  FreeAndNil(fBeforePipelineBarrierGroups);
@@ -3296,84 +3587,84 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalPass.ResetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 var ResetEventIndex:TpvSizeInt;
     ResetEvent:PResetEvent;
 begin
- for ResetEventIndex:=0 to fResetEvents[aSwapChainImageIndex].Count-1 do begin
-  ResetEvent:=@fResetEvents[aSwapChainImageIndex].Items[ResetEventIndex];
+ for ResetEventIndex:=0 to fResetEvents[aInFlightFrameIndex].Count-1 do begin
+  ResetEvent:=@fResetEvents[aInFlightFrameIndex].Items[ResetEventIndex];
   aCommandBuffer.CmdResetEvent(ResetEvent^.Handle,ResetEvent^.StageMask);
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.SetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalPass.SetEvents(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 begin
- if assigned(fEvents[aSwapChainImageIndex]) then begin
-  aCommandBuffer.CmdSetEvent(fEvents[aSwapChainImageIndex].Handle,fEventSrcStageMask);
+ if assigned(fEvents[aInFlightFrameIndex]) then begin
+  aCommandBuffer.CmdSetEvent(fEvents[aInFlightFrameIndex].Handle,fEventSrcStageMask);
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.Show;
+procedure TpvFrameGraph.TPhysicalPass.AcquirePersistentResources;
 var PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
  for PipelineBarrierGroup in fEventPipelineBarrierGroups do begin
-  PipelineBarrierGroup.Show;
+  PipelineBarrierGroup.AcquirePersistentResources;
  end;
  for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
-  PipelineBarrierGroup.Show;
+  PipelineBarrierGroup.AcquirePersistentResources;
  end;
  for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
-  PipelineBarrierGroup.Show;
+  PipelineBarrierGroup.AcquirePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.Hide;
+procedure TpvFrameGraph.TPhysicalPass.ReleasePersistentResources;
 var PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
  for PipelineBarrierGroup in fEventPipelineBarrierGroups do begin
-  PipelineBarrierGroup.Hide;
+  PipelineBarrierGroup.ReleasePersistentResources;
  end;
  for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
-  PipelineBarrierGroup.Hide;
+  PipelineBarrierGroup.ReleasePersistentResources;
  end;
  for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
-  PipelineBarrierGroup.Hide;
+  PipelineBarrierGroup.ReleasePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalPass.AcquireVolatileResources;
 var PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
  for PipelineBarrierGroup in fEventPipelineBarrierGroups do begin
-  PipelineBarrierGroup.AfterCreateSwapChain;
+  PipelineBarrierGroup.AcquireVolatileResources;
  end;
  for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
-  PipelineBarrierGroup.AfterCreateSwapChain;
+  PipelineBarrierGroup.AcquireVolatileResources;
  end;
  for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
-  PipelineBarrierGroup.AfterCreateSwapChain;
+  PipelineBarrierGroup.AcquireVolatileResources;
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.BeforeDestroySwapChain;
-var SwapChainImageIndex,Index:TpvSizeInt;
+procedure TpvFrameGraph.TPhysicalPass.ReleaseVolatileResources;
+var InFlightFrameIndex,Index:TpvSizeInt;
     PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fEvents[SwapChainImageIndex]);
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  FreeAndNil(fEvents[InFlightFrameIndex]);
  end;
  for PipelineBarrierGroup in fEventPipelineBarrierGroups do begin
-  PipelineBarrierGroup.BeforeDestroySwapChain;
+  PipelineBarrierGroup.ReleaseVolatileResources;
  end;
  for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
-  PipelineBarrierGroup.BeforeDestroySwapChain;
+  PipelineBarrierGroup.ReleaseVolatileResources;
  end;
  for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
-  PipelineBarrierGroup.BeforeDestroySwapChain;
+  PipelineBarrierGroup.ReleaseVolatileResources;
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
 end;
 
@@ -3396,49 +3687,51 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalComputePass.Show;
+procedure TpvFrameGraph.TPhysicalComputePass.AcquirePersistentResources;
 begin
- inherited Show;
- fComputePass.Show;
+ inherited AcquirePersistentResources;
+ fComputePass.AcquirePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalComputePass.Hide;
+procedure TpvFrameGraph.TPhysicalComputePass.ReleasePersistentResources;
 begin
- fComputePass.Hide;
- inherited Hide;
+ fComputePass.ReleasePersistentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalComputePass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalComputePass.AcquireVolatileResources;
 begin
- inherited AfterCreateSwapChain;
- fComputePass.AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
+ fComputePass.AcquireVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalComputePass.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TPhysicalComputePass.ReleaseVolatileResources;
 begin
- fComputePass.BeforeDestroySwapChain;
- inherited BeforeDestroySwapChain;
+ fComputePass.ReleaseVolatileResources;
+ inherited ReleaseVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalComputePass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
- inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  if TPass.TFlag.Enabled in fComputePass.fFlags then begin
-  fComputePass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+  fComputePass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  end;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
+ fComputePass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if fComputePass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-  fComputePass.Execute(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+  fComputePass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
- SetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ fComputePass.AddEndMarker(fQueue,aCommandBuffer);
 end;
 
 { TpvFrameGraph.TPhysicalTransferPass }
@@ -3455,49 +3748,51 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalTransferPass.Show;
+procedure TpvFrameGraph.TPhysicalTransferPass.AcquirePersistentResources;
 begin
- inherited Show;
- fTransferPass.Show;
+ inherited AcquirePersistentResources;
+ fTransferPass.AcquirePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalTransferPass.Hide;
+procedure TpvFrameGraph.TPhysicalTransferPass.ReleasePersistentResources;
 begin
- fTransferPass.Hide;
- inherited Hide;
+ fTransferPass.ReleasePersistentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalTransferPass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalTransferPass.AcquireVolatileResources;
 begin
- inherited AfterCreateSwapChain;
- fTransferPass.AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
+ fTransferPass.AcquireVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalTransferPass.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TPhysicalTransferPass.ReleaseVolatileResources;
 begin
- fTransferPass.BeforeDestroySwapChain;
- inherited BeforeDestroySwapChain;
+ fTransferPass.ReleaseVolatileResources;
+ inherited ReleaseVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalTransferPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalTransferPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
- inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  if TPass.TFlag.Enabled in fTransferPass.fFlags then begin
-  fTransferPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+  fTransferPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  end;
 end;
 
 procedure TpvFrameGraph.TPhysicalTransferPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
+ fTransferPass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if fTransferPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-  fTransferPass.Execute(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+  fTransferPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
- SetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ fTransferPass.AddEndMarker(fQueue,aCommandBuffer);
 end;
 
 { TpvFrameGraph.TPhysicalCustomPass }
@@ -3514,49 +3809,51 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalCustomPass.Show;
+procedure TpvFrameGraph.TPhysicalCustomPass.AcquirePersistentResources;
 begin
- inherited Show;
- fCustomPass.Show;
+ inherited AcquirePersistentResources;
+ fCustomPass.AcquirePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalCustomPass.Hide;
+procedure TpvFrameGraph.TPhysicalCustomPass.ReleasePersistentResources;
 begin
- fCustomPass.Hide;
- inherited Hide;
+ fCustomPass.ReleasePersistentResources;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalCustomPass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalCustomPass.AcquireVolatileResources;
 begin
- inherited AfterCreateSwapChain;
- fCustomPass.AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
+ fCustomPass.AcquireVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalCustomPass.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TPhysicalCustomPass.ReleaseVolatileResources;
 begin
- fCustomPass.BeforeDestroySwapChain;
- inherited BeforeDestroySwapChain;
+ fCustomPass.ReleaseVolatileResources;
+ inherited ReleaseVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalCustomPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalCustomPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
- inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  if TPass.TFlag.Enabled in fCustomPass.fFlags then begin
-  fCustomPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+  fCustomPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  end;
 end;
 
 procedure TpvFrameGraph.TPhysicalCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  inherited Execute(aCommandBuffer);
+ fCustomPass.AddStartMarker(fQueue,aCommandBuffer);
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if fCustomPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-  fCustomPass.Execute(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+  fCustomPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
  end;
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
- SetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ fCustomPass.AddEndMarker(fQueue,aCommandBuffer);
 end;
 
 { TpvFrameGraph.TPhysicalRenderPass.TSubpass }
@@ -3584,30 +3881,30 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.Show;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.AcquirePersistentResources;
 begin
- fRenderPass.Show;
+ fRenderPass.AcquirePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.Hide;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.ReleasePersistentResources;
 begin
- fRenderPass.Hide;
+ fRenderPass.ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.AcquireVolatileResources;
 begin
- fRenderPass.AfterCreateSwapChain;
+ fRenderPass.AcquireVolatileResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.ReleaseVolatileResources;
 begin
- fRenderPass.BeforeDestroySwapChain;
+ fRenderPass.ReleaseVolatileResources;
 end;
 
 { TpvFrameGraph.TVulkanRenderPass }
 
 constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex,SurfaceIndex:TpvSizeInt;
 begin
  inherited Create(aFrameGraph,aQueue);
  fSubpasses:=TSubpasses.Create;
@@ -3615,22 +3912,33 @@ begin
  fSubpassDependencies.Initialize;
  fMultiview:=false;
  fHasSurfaceSubpassDependencies:=false;
+ fHasVulkanSurfaceFrameBuffers:=false;
  fAttachments.Initialize;
  fAttachmentReferences.Initialize;
  fFinalLayouts:=TResourcelLayoutHashMap.Create(VK_IMAGE_LAYOUT_UNDEFINED);
  fVulkanRenderPass:=nil;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
+   fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]:=nil;
+  end;
+  fVulkanSurfaceFrameBuffers[InFlightFrameIndex]:=nil;
+  fVulkanFrameBuffers[InFlightFrameIndex]:=nil;
  end;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex,SurfaceIndex:TpvSizeInt;
 begin
  FreeAndNil(fFinalLayouts);
  fSubpassDependencies.Finalize;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fVulkanFrameBuffers[SwapChainImageIndex]);
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  if fHasVulkanSurfaceFrameBuffers then begin
+   for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
+    FreeAndNil(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]);
+   end;
+  end;
+  fVulkanSurfaceFrameBuffers[InFlightFrameIndex]:=nil;
+  FreeAndNil(fVulkanFrameBuffers[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanRenderPass);
  fAttachments.Finalize;
@@ -3639,30 +3947,31 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.Show;
+procedure TpvFrameGraph.TPhysicalRenderPass.AcquirePersistentResources;
 var Subpass:TSubpass;
 begin
- inherited Show;
+ inherited AcquirePersistentResources;
  for Subpass in fSubpasses do begin
-  Subpass.Show;
+  Subpass.AcquirePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.Hide;
+procedure TpvFrameGraph.TPhysicalRenderPass.ReleasePersistentResources;
 var Subpass:TSubpass;
 begin
  for Subpass in fSubpasses do begin
-  Subpass.Hide;
+  Subpass.ReleasePersistentResources;
  end;
- inherited Hide;
+ inherited ReleasePersistentResources;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalRenderPass.AcquireVolatileResources;
 var AttachmentIndex,
     AttachmentReferenceIndex,
     SubpassIndex,
     SubpassDependencyIndex,
-    SwapChainImageIndex,
+    InFlightFrameIndex,
+    SurfaceIndex,
     Width,
     Height,
     Layers:TpvSizeInt;
@@ -3672,11 +3981,11 @@ var AttachmentIndex,
     AttachmentReference:PVkAttachmentReference;
     Subpass:TSubpass;
     SubpassDependency:PSubpassDependency;
-    RenderPass:TRenderPass;
+    RenderPass,a,b:TRenderPass;
     ResourcePhysicalImageData:TResourcePhysicalImageData;
     AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
 begin
- inherited AfterCreateSwapChain;
+ inherited AcquireVolatileResources;
 
  Width:=1;
  Height:=1;
@@ -3786,60 +4095,119 @@ begin
   fVulkanRenderPass.ClearValues[AttachmentIndex]^:=Attachment^.ClearValue;
  end;
 
- for SwapChainImageIndex:=0 to fFrameGraph.fCountSwapChainImages-1 do begin
-  fVulkanFrameBuffers[SwapChainImageIndex]:=TpvVulkanFrameBuffer.Create(fFrameGraph.fVulkanDevice,
+ fHasVulkanSurfaceFrameBuffers:=false;
+ for AttachmentIndex:=0 to fAttachments.Count-1 do begin
+  Attachment:=@fAttachments.Items[AttachmentIndex];
+  ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceAliasGroup.fResourcePhysicalData);
+  if ResourcePhysicalImageData.fIsSurface then begin
+   fHasVulkanSurfaceFrameBuffers:=true;
+   break;
+  end;
+ end;
+
+ if fHasVulkanSurfaceFrameBuffers then begin
+
+  for InFlightFrameIndex:=0 to fFrameGraph.fCountInFlightFrames-1 do begin
+   SetLength(fVulkanSurfaceFrameBuffers[InFlightFrameIndex],Max(1,fFrameGraph.fCountSurfaceImages));
+   for SurfaceIndex:=0 to fFrameGraph.fCountSurfaceImages-1 do begin
+    fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]:=TpvVulkanFrameBuffer.Create(fFrameGraph.fVulkanDevice,
+                                                                                             fVulkanRenderPass,
+                                                                                             Width,
+                                                                                             Height,
+                                                                                             Layers);
+    for AttachmentIndex:=0 to fAttachments.Count-1 do begin
+     Attachment:=@fAttachments.Items[AttachmentIndex];
+     ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceAliasGroup.fResourcePhysicalData);
+     if ResourcePhysicalImageData.fIsSurface then begin
+      fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
+                                                                                                                      ResourcePhysicalImageData.fVulkanSurfaceImages[SurfaceIndex],
+                                                                                                                      ResourcePhysicalImageData.fVulkanSurfaceImageViews[SurfaceIndex],
+                                                                                                                      ResourcePhysicalImageData.fExtent.width,
+                                                                                                                      ResourcePhysicalImageData.fExtent.height,
+                                                                                                                      Attachment^.Format,
+                                                                                                                      false));
+     end else begin
+      fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
+                                                                                                                      ResourcePhysicalImageData.fVulkanImages[InFlightFrameIndex],
+                                                                                                                      ResourcePhysicalImageData.fVulkanImageViews[InFlightFrameIndex],
+                                                                                                                      ResourcePhysicalImageData.fExtent.width,
+                                                                                                                      ResourcePhysicalImageData.fExtent.height,
+                                                                                                                      Attachment^.Format,
+                                                                                                                      false));
+     end;
+    end;
+    fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].Initialize;
+   end;
+  end;
+
+ end else begin
+
+  for InFlightFrameIndex:=0 to fFrameGraph.fCountInFlightFrames-1 do begin
+   fVulkanFrameBuffers[InFlightFrameIndex]:=TpvVulkanFrameBuffer.Create(fFrameGraph.fVulkanDevice,
                                                                         fVulkanRenderPass,
                                                                         Width,
                                                                         Height,
                                                                         Layers);
-  for AttachmentIndex:=0 to fAttachments.Count-1 do begin
-   Attachment:=@fAttachments.Items[AttachmentIndex];
-   ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceAliasGroup.fResourcePhysicalData);
-   fVulkanFrameBuffers[SwapChainImageIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
-                                                                                                ResourcePhysicalImageData.fVulkanImages[SwapChainImageIndex],
-                                                                                                ResourcePhysicalImageData.fVulkanImageViews[SwapChainImageIndex],
+   for AttachmentIndex:=0 to fAttachments.Count-1 do begin
+    Attachment:=@fAttachments.Items[AttachmentIndex];
+    ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceAliasGroup.fResourcePhysicalData);
+    fVulkanFrameBuffers[InFlightFrameIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
+                                                                                                ResourcePhysicalImageData.fVulkanImages[InFlightFrameIndex],
+                                                                                                ResourcePhysicalImageData.fVulkanImageViews[InFlightFrameIndex],
                                                                                                 ResourcePhysicalImageData.fExtent.width,
                                                                                                 ResourcePhysicalImageData.fExtent.height,
                                                                                                 Attachment^.Format,
                                                                                                 false));
+   end;
+   fVulkanFrameBuffers[InFlightFrameIndex].Initialize;
   end;
-  fVulkanFrameBuffers[SwapChainImageIndex].Initialize;
+
  end;
 
  for Subpass in fSubpasses do begin
-  Subpass.AfterCreateSwapChain;
+//write('Compiling render pass ', Subpass.fRenderPass.Name,' . . .');
+  Subpass.AcquireVolatileResources;
+//writeln(' OK!');
  end;
 
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+procedure TpvFrameGraph.TPhysicalRenderPass.ReleaseVolatileResources;
+var InFlightFrameIndex,SurfaceIndex:TpvSizeInt;
     Subpass:TSubpass;
 begin
 
  for Subpass in fSubpasses do begin
-  Subpass.BeforeDestroySwapChain;
+  Subpass.ReleaseVolatileResources;
  end;
 
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fVulkanFrameBuffers[SwapChainImageIndex]);
+ for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+  if fHasVulkanSurfaceFrameBuffers then begin
+   for SurfaceIndex:=0 to length(fVulkanSurfaceFrameBuffers[InFlightFrameIndex])-1 do begin
+    FreeAndNil(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex]);
+   end;
+  end;
+  fVulkanSurfaceFrameBuffers[InFlightFrameIndex]:=nil;
+  FreeAndNil(fVulkanFrameBuffers[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fVulkanRenderPass);
 
- inherited BeforeDestroySwapChain;
+ fHasVulkanSurfaceFrameBuffers:=false;
+
+ inherited ReleaseVolatileResources;
 
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.TPhysicalRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 var SubpassIndex:TpvSizeInt;
     Subpass:TSubpass;
 begin
- inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
  for SubpassIndex:=0 to fSubpasses.Count-1 do begin
   Subpass:=fSubpasses[SubpassIndex];
   if TPass.TFlag.Enabled in Subpass.fRenderPass.fFlags then begin
-   Subpass.fRenderPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+   Subpass.fRenderPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
   end;
  end;
 end;
@@ -3848,6 +4216,7 @@ procedure TpvFrameGraph.TPhysicalRenderPass.Execute(const aCommandBuffer:TpvVulk
 var SubpassIndex:TpvSizeInt;
     Subpass:TSubpass;
     SubpassContents:TVkSubpassContents;
+    SingleSubpassDebug:boolean;
 begin
  inherited Execute(aCommandBuffer);
  if fHasSecondaryBuffers then begin
@@ -3855,20 +4224,40 @@ begin
  end else begin
   SubpassContents:=VK_SUBPASS_CONTENTS_INLINE;
  end;
+ SingleSubpassDebug:=(fSubpasses.Count=1) and (fSubpasses[0].fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1]);
+ if SingleSubpassDebug then begin
+  fSubpasses[0].fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
+ end;
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
- ResetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
- fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
-                                   fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex],
+ ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ if fHasVulkanSurfaceFrameBuffers then begin
+  fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
+                                   fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex],
                                    SubpassContents,
                                    0,
                                    0,
-                                   fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Width,
-                                   fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Height);
+                                   fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex].Width,
+                                   fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex].Height);
+ end else begin
+  fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
+                                    fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex],
+                                    SubpassContents,
+                                    0,
+                                    0,
+                                    fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex].Width,
+                                    fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex].Height);
+ end;
  for SubpassIndex:=0 to fSubpasses.Count-1 do begin
   Subpass:=fSubpasses[SubpassIndex];
   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-   Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+   if not SingleSubpassDebug then begin
+    Subpass.fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
+   end;
+   Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
+   if not SingleSubpassDebug then begin
+    Subpass.fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+   end;
   end;
   if (SubpassIndex+1)<fSubpasses.Count then begin
    aCommandBuffer.CmdNextSubpass(SubpassContents);
@@ -3876,18 +4265,23 @@ begin
  end;
  fVulkanRenderPass.EndRenderPass(aCommandBuffer);
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
- SetEvents(aCommandBuffer,fFrameGraph.fDrawSwapChainImageIndex);
+ SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
+ if SingleSubpassDebug then begin
+  fSubpasses[0].fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+ end;
 end;
 
 { TpvFrameGraph }
 
-constructor TpvFrameGraph.Create(const aVulkanDevice:TpvVulkanDevice);
-var SwapChainImageIndex:TpvSizeInt;
+constructor TpvFrameGraph.Create(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt);
+var InFlightFrameIndex:TpvSizeInt;
 begin
 
  inherited Create;
 
  fVulkanDevice:=aVulkanDevice;
+
+ fSurfaceImages:=nil;
 
  fMultiviewEnabled:=(((fVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
                      (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>0)) or
@@ -3902,7 +4296,9 @@ begin
 
  fSurfaceDepthFormat:=VK_FORMAT_D32_SFLOAT;
 
- fCountSwapChainImages:=MaxSwapChainImages;
+ fCountInFlightFrames:=Min(Max(aCountInFlightFrames,1),MaxInFlightFrames);
+
+ fCountSurfaceImages:=MaxSwapChainImages;
 
  fCanDoParallelProcessing:=false;
 
@@ -3910,7 +4306,9 @@ begin
 
  fDoSignalSemaphore:=false;
 
- fDefaultResourceInstanceType:=TResourceInstanceType.InstancePerSwapChainImage;
+ fTryToMergeSubpasses:=false;
+
+ fDefaultResourceInstanceType:=TResourceInstanceType.InstancePerInFlightFrame;
 
  fQueues:=TQueues.Create;
  fQueues.OwnsObjects:=true;
@@ -3960,11 +4358,11 @@ begin
 
  fPresentQueue:=AddQueue(fVulkanDevice.PresentQueue);
 
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fDrawToWaitOnSemaphores[SwapChainImageIndex].Initialize;
-  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Initialize;
-  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Initialize;
-  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Initialize;
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fDrawToWaitOnSemaphores[InFlightFrameIndex].Initialize;
+  fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Initialize;
+  fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Initialize;
+  fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Initialize;
  end;
 
  fVulkanUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fUniversalQueue.fCommandPool,
@@ -3972,24 +4370,28 @@ begin
 
  fVulkanUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
 
- for SwapChainImageIndex:=0 to fCountSwapChainImages-1 do begin
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
   begin
-   FillChar(fDrawToWaitSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
-   fDrawToWaitSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   FillChar(fDrawToWaitSubmitInfos[InFlightFrameIndex],SizeOf(TVkSubmitInfo),#0);
+   fDrawToWaitSubmitInfos[InFlightFrameIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
   end;
   begin
-   FillChar(fDrawToSignalSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
-   fDrawToSignalSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   FillChar(fDrawToSignalSubmitInfos[InFlightFrameIndex],SizeOf(TVkSubmitInfo),#0);
+   fDrawToSignalSubmitInfos[InFlightFrameIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
   end;
  end;
 
  fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT});
 
+ fTimerQueries:=nil;
+
 end;
 
 destructor TpvFrameGraph.Destroy;
-var SwapChainImageIndex,Index:TpvSizeInt;
+var InFlightFrameIndex,Index:TpvSizeInt;
 begin
+
+ FreeAndNil(fTimerQueries);
 
  FreeAndNil(fPhysicalPasses);
 
@@ -4023,37 +4425,44 @@ begin
 
  fQueueFamilyIndices.Finalize;
 
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  for Index:=0 to fDrawToWaitOnSemaphores[SwapChainImageIndex].Count-1 do begin
-   FreeAndNil(fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[Index]);
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  for Index:=0 to fDrawToWaitOnSemaphores[InFlightFrameIndex].Count-1 do begin
+   FreeAndNil(fDrawToWaitOnSemaphores[InFlightFrameIndex].Items[Index]);
   end;
-  fDrawToWaitOnSemaphores[SwapChainImageIndex].Finalize;
-  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finalize;
-  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finalize;
-  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Finalize;
+  fDrawToWaitOnSemaphores[InFlightFrameIndex].Finalize;
+  fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Finalize;
+  fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Finalize;
+  fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Finalize;
  end;
+
+ fSurfaceImages:=nil;
 
  inherited Destroy;
 
 end;
 
-function TpvFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(const aCurrentSwapChainImageIndex,aRelativeSwapChainImageIndex:TpvSizeInt):TpvSizeInt;
+function TpvFrameGraph.ConvertRelativeToAbsoluteInFlightFrameIndex(const aCurrentInFlightFrameIndex,aRelativeInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
 begin
- result:=((((aCurrentSwapChainImageIndex+aRelativeSwapChainImageIndex)+fCountSwapChainImages) mod fCountSwapChainImages)+fCountSwapChainImages) mod fCountSwapChainImages;
+ result:=((((aCurrentInFlightFrameIndex+aRelativeInFlightFrameIndex)+fCountInFlightFrames) mod fCountInFlightFrames)+fCountInFlightFrames) mod fCountInFlightFrames;
 end;
 
 procedure TpvFrameGraph.SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
                                      const aSurfaceDepthFormat:TVkFormat);
-var SwapChainImageIndex:TpvSizeInt;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  fSurfaceIsSwapchain:=true;
  fSurfaceWidth:=aSwapChain.Width;
  fSurfaceHeight:=aSwapChain.Height;
- fCountSwapChainImages:=aSwapChain.CountImages;
+ fCountSurfaceImages:=aSwapChain.CountImages;
  fSurfaceColorFormat:=aSwapChain.ImageFormat;
  fSurfaceDepthFormat:=aSurfaceDepthFormat;
- for SwapChainImageIndex:=0 to fCountSwapChainImages-1 do begin
-  fSurfaceImages[SwapChainImageIndex]:=aSwapChain.Images[SwapChainImageIndex];
+ if fCountSurfaceImages>0 then begin
+  SetLength(fSurfaceImages,fCountSurfaceImages);
+  for InFlightFrameIndex:=0 to fCountSurfaceImages-1 do begin
+   fSurfaceImages[InFlightFrameIndex]:=aSwapChain.Images[InFlightFrameIndex];
+  end;
+ end else begin
+  fSurfaceImages:=nil;
  end;
 end;
 
@@ -4086,7 +4495,7 @@ begin
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
-                                            const aPersientent:boolean;
+                                            const aPersistent:boolean;
                                             const aFormat:TVkFormat;
                                             const aSamples:TVkSampleCountFlagBits;
                                             const aImageType:TImageType;
@@ -4094,12 +4503,13 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
                                             const aComponents:TVkComponentMapping;
-                                            const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                            const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType;
+                                            const aInitialLayout:TVkImageLayout;
+                                            const aFinalLayout:TVkImageLayout;
+                                            const aAdditionalFormat:TVkFormat):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
-                                   aPersientent,
+                                   aPersistent,
                                    aFormat,
                                    aSamples,
                                    aImageType,
@@ -4108,23 +4518,25 @@ begin
                                    aCountMipMapLevels,
                                    aComponents,
                                    aInitialLayout,
-                                   aFinalLayout);
+                                   aFinalLayout,
+                                   aAdditionalFormat);
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
-                                            const aPersientent:boolean;
+                                            const aPersistent:boolean;
                                             const aFormat:TVkFormat;
                                             const aSamples:TVkSampleCountFlagBits;
                                             const aImageType:TImageType;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
-                                            const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-                                            const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType;
+                                            const aInitialLayout:TVkImageLayout;
+                                            const aFinalLayout:TVkImageLayout;
+                                            const aAdditionalFormat:TVkFormat):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
-                                   aPersientent,
+                                   aPersistent,
                                    aFormat,
                                    aSamples,
                                    aImageType,
@@ -4132,32 +4544,37 @@ begin
                                    aImageUsage,
                                    aCountMipMapLevels,
                                    aInitialLayout,
-                                   aFinalLayout);
+                                   aFinalLayout,
+                                   aAdditionalFormat);
 end;
 
 function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
-                                             const aPersientent:boolean;
+                                             const aPersistent:boolean;
                                              const aSize:TVkDeviceSize;
                                              const aUsage:TVkBufferUsageFlags;
                                              const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                              const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                              const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                             const aMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags=0;
                                              const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                              const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                              const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                             const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                                              const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType;
 begin
  result:=TBufferResourceType.Create(self,
                                     aName,
-                                    aPersientent,
+                                    aPersistent,
                                     aSize,
                                     aUsage,
                                     aMemoryRequiredPropertyFlags,
                                     aMemoryPreferredPropertyFlags,
                                     aMemoryAvoidPropertyFlags,
+                                    aMemoryPreferredNotPropertyFlags,
                                     aMemoryRequiredHeapFlags,
                                     aMemoryPreferredHeapFlags,
                                     aMemoryAvoidHeapFlags,
+                                    aMemoryPreferredNotHeapFlags,
                                     aBufferFlags);
 end;
 
@@ -4209,9 +4626,17 @@ type TEventBeforeAfter=(Event,Before,After);
      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
      VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
      VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:begin
       result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
      end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
@@ -4289,13 +4714,23 @@ type TEventBeforeAfter=(Event,Before,After);
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
      end;
-     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:begin
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
      end;
      VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:begin
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
      end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
@@ -4323,13 +4758,23 @@ type TEventBeforeAfter=(Event,Before,After);
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
      end;
-     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:begin
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
      end;
      VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:begin
       result:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
-                      TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+              TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+      result:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
      end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
@@ -4665,9 +5110,10 @@ type TEventBeforeAfter=(Event,Before,After);
      TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
      PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
      inc(Index);
-     if (Pass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
-                      TPass.TFlag.SeparateCommandBuffer,
-                      TPass.TFlag.Toggleable])=[] then begin
+     if fTryToMergeSubpasses and
+        ((Pass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
+                       TPass.TFlag.SeparateCommandBuffer,
+                       TPass.TFlag.Toggleable])=[]) then begin
       while Index<Count do begin
        OtherPass:=fTopologicalSortedPasses[Index];
        if ((OtherPass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
@@ -4675,17 +5121,19 @@ type TEventBeforeAfter=(Event,Before,After);
                               TPass.TFlag.Toggleable])=[]) and
           (OtherPass is TRenderPass) and
           (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
-          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
+          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) and
+          (TRenderPass(OtherPass).fMultiviewMask=TRenderPass(Pass).fMultiviewMask) then begin
         CountFoundCrossSubpassAttachmentPairs:=0;
         Compatible:=true;
         for ResourceTransition in OtherPass.fResourceTransitions do begin
-         if (ResourceTransition.Kind in TResourceTransition.AllImageInputs) then begin
+         if ResourceTransition.Kind in TResourceTransition.AllImageInputs then begin
           if TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags then begin
-           if not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
+           if OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
+            inc(CountFoundCrossSubpassAttachmentPairs);
+           end else begin
             Compatible:=false;
             break;
            end;
-           inc(CountFoundCrossSubpassAttachmentPairs);
           end else begin
            if OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
             Compatible:=false;
@@ -4871,7 +5319,7 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure CreateResourceAliasGroups;
   function CanResourceReused(const aResource:TResource):boolean;
   begin
-   result:=(not aResource.fResourceType.fPersientent) and
+   result:=(not aResource.fResourceType.fPersistent) and
            (not assigned(aResource.fExternalData)) and
            (not ((aResource.fResourceType is TImageResourceType) and
                  (TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface))) and
@@ -4882,6 +5330,7 @@ type TEventBeforeAfter=(Event,Before,After);
      Resource,
      OtherResource:TResource;
      ResourceTransition:TResourceTransition;
+     ResourceAliasGroup:TResourceAliasGroup;
  begin
   // Construct resource alias groups, depending on the non-intersecting resource lifetime span
   // segments and resource types
@@ -4892,12 +5341,18 @@ type TEventBeforeAfter=(Event,Before,After);
   for Index:=0 to fResources.Count-1 do begin
    Resource:=fResources.Items[Index];
    if not assigned(Resource.fResourceAliasGroup) then begin
-    Resource.fResourceAliasGroup:=TResourceAliasGroup.Create(self);
-    Resource.fResourceAliasGroup.fResourceType:=Resource.fResourceType;
-    Resource.fResourceAliasGroup.fResourceInstanceType:=Resource.fResourceInstanceType;
-    Resource.fResourceAliasGroup.fExternalData:=Resource.fExternalData;
-    Resource.fResourceAliasGroup.fTransient:=Resource.fTransient;
-    Resource.fResourceAliasGroup.fResources.Add(Resource);
+    ResourceAliasGroup:=TResourceAliasGroup.Create(self);
+    try
+     ResourceAliasGroup.fResourceType:=Resource.fResourceType;
+     ResourceAliasGroup.fResourceInstanceType:=Resource.fResourceInstanceType;
+     ResourceAliasGroup.fExternalData:=Resource.fExternalData;
+     ResourceAliasGroup.fTransient:=Resource.fTransient;
+     ResourceAliasGroup.fMinimumPhysicalPassStepIndex:=Resource.fMinimumPhysicalPassStepIndex;
+     ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Resource.fMaximumPhysicalPassStepIndex;
+     ResourceAliasGroup.fResources.Add(Resource);
+    finally
+     Resource.fResourceAliasGroup:=ResourceAliasGroup;
+    end;
     if CanResourceReused(Resource) then begin
      for OtherIndex:=Index+1 to fResources.Count-1 do begin
       OtherResource:=fResources.Items[OtherIndex];
@@ -4906,10 +5361,16 @@ type TEventBeforeAfter=(Event,Before,After);
          (Resource.fResourceInstanceType=OtherResource.fResourceInstanceType) and
          (Resource.fExternalData=OtherResource.fExternalData) and
          CanResourceReused(OtherResource) then begin
-       if not ((Resource.fMinimumPhysicalPassStepIndex<=OtherResource.fMaximumPhysicalPassStepIndex) and
-              (OtherResource.fMinimumPhysicalPassStepIndex<=Resource.fMaximumPhysicalPassStepIndex)) then begin
+       if (not ((ResourceAliasGroup.fMinimumPhysicalPassStepIndex<=OtherResource.fMaximumPhysicalPassStepIndex) and
+               (OtherResource.fMinimumPhysicalPassStepIndex<=ResourceAliasGroup.fMaximumPhysicalPassStepIndex))) and
+          //Resource.fResourceTransitions.MergeCompatibleWith(OtherResource.fResourceTransitions) and
+          (((Resource.fUsedFlags or OtherResource.fUsedFlags) and TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination)<>TpvFrameGraph.ForbiddenUsedImageDepthInputFlagCombination) and
+          not Resource.fResourceTransitions.HasPhysicalPassesIntersectionWith(OtherResource.fResourceTransitions) then begin
+        ResourceAliasGroup.fMinimumPhysicalPassStepIndex:=Min(ResourceAliasGroup.fMinimumPhysicalPassStepIndex,OtherResource.fMinimumPhysicalPassStepIndex);
+        ResourceAliasGroup.fMaximumPhysicalPassStepIndex:=Max(ResourceAliasGroup.fMaximumPhysicalPassStepIndex,OtherResource.fMaximumPhysicalPassStepIndex);
+        ResourceAliasGroup.fResources.Add(OtherResource);
         OtherResource.fResourceAliasGroup:=Resource.fResourceAliasGroup;
-        OtherResource.fResourceAliasGroup.fResources.Add(OtherResource);
+        //writeln(Resource.fName,' ',OtherResource.fName);
        end;
       end;
      end;
@@ -4997,6 +5458,7 @@ type TEventBeforeAfter=(Event,Before,After);
      end;
      ResourcePhysicalImageData.fRequestedFormat:=ImageResourceType.fFormat;
      ResourcePhysicalImageData.fFormat:=ImageResourceType.fFormat;
+     ResourcePhysicalImageData.fAdditionalFormat:=ImageResourceType.fAdditionalFormat;
      ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
      ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
      ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
@@ -5056,9 +5518,11 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourcePhysicalBufferData.fMemoryRequiredPropertyFlags:=BufferResourceType.fMemoryRequiredPropertyFlags;
      ResourcePhysicalBufferData.fMemoryPreferredPropertyFlags:=BufferResourceType.fMemoryPreferredPropertyFlags;
      ResourcePhysicalBufferData.fMemoryAvoidPropertyFlags:=BufferResourceType.fMemoryAvoidPropertyFlags;
+     ResourcePhysicalBufferData.fMemoryPreferredNotPropertyFlags:=BufferResourceType.fMemoryPreferredNotPropertyFlags;
      ResourcePhysicalBufferData.fMemoryRequiredHeapFlags:=BufferResourceType.fMemoryRequiredHeapFlags;
      ResourcePhysicalBufferData.fMemoryPreferredHeapFlags:=BufferResourceType.fMemoryPreferredHeapFlags;
      ResourcePhysicalBufferData.fMemoryAvoidHeapFlags:=BufferResourceType.fMemoryAvoidHeapFlags;
+     ResourcePhysicalBufferData.fMemoryPreferredNotHeapFlags:=BufferResourceType.fMemoryPreferredNotHeapFlags;
      ResourcePhysicalBufferData.fBufferFlags:=BufferResourceType.fBufferFlags;
     end else begin
      raise EpvFrameGraph.Create('Invalid resource type');
@@ -5091,7 +5555,7 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
  end;
  procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependenciesAndExplicitPassDependencies;
-  procedure AddSubpassDependency(const aSubpassDependencies:TPhysicalRenderPass.TSubpassDependencies;
+  procedure AddSubpassDependency(var aSubpassDependencies:TPhysicalRenderPass.TSubpassDependencies;
                                  const aSubpassDependency:TPhysicalRenderPass.TSubpassDependency);
   var Index:TpvSizeInt;
       SubpassDependency:TPhysicalRenderPass.PSubpassDependency;
@@ -5216,11 +5680,11 @@ type TEventBeforeAfter=(Event,Before,After);
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     if TResourceTransition.TFlag.PreviousFrameInput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=-1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
     if TResourceTransition.TFlag.NextFrameOutput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
    end else if aResourcePhysicalData is TResourcePhysicalBufferData then begin
     FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
@@ -5248,11 +5712,11 @@ type TEventBeforeAfter=(Event,Before,After);
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     if TResourceTransition.TFlag.PreviousFrameInput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=-1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
     if TResourceTransition.TFlag.NextFrameOutput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
      BarrierMapItem.ImageIndexOffset:=1;
-     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+     //PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
     end;
    end else begin
     Assert(false);
@@ -5263,6 +5727,7 @@ type TEventBeforeAfter=(Event,Before,After);
      ExplicitPassDependency:TExplicitPassDependency;
      Pass,
      OtherPass:TPass;
+     ResourceAliasGroup:TResourceAliasGroup;
      Resource:TResource;
      ResourceTransition,
      FromResourceTransition,
@@ -5277,9 +5742,9 @@ type TEventBeforeAfter=(Event,Before,After);
      NeedSemaphore:boolean;
  begin
 
-  for Resource in fResources do begin
-   Resource.fLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-   Resource.fLastTransition:=nil;
+  for ResourceAliasGroup in fResourceAliasGroups do begin
+   ResourceAliasGroup.fLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+   ResourceAliasGroup.fLastTransition:=nil;
   end;
 
   for Pass in fTopologicalSortedPasses do begin
@@ -5333,13 +5798,14 @@ type TEventBeforeAfter=(Event,Before,After);
 
     // Then add the remaining Subpass dependencies
     for ResourceTransitionIndex:=0 to Pass.fResourceTransitions.Count-1 do begin
+
      ResourceTransition:=Pass.fResourceTransitions[ResourceTransitionIndex];
 
      Assert(ResourceTransition.Pass=Pass);
 
      Resource:=ResourceTransition.Resource;
 
-     FromResourceTransition:=Resource.fLastTransition;
+     FromResourceTransition:=Resource.ResourceAliasGroup.fLastTransition;
 
      ToResourceTransition:=ResourceTransition;
 
@@ -5352,6 +5818,10 @@ type TEventBeforeAfter=(Event,Before,After);
         (TPass.TFlag.Used in ToResourceTransition.fPass.fFlags) and
         assigned(FromResourceTransition.fPass.fPhysicalPass) and
         assigned(ToResourceTransition.fPass.fPhysicalPass) then begin
+
+      if ToResourceTransition.fPass.fName='DepthOfFieldResolveRenderPass' then begin
+       FromDirections:=GetDirections(FromResourceTransition);
+      end;
 
       FromDirections:=GetDirections(FromResourceTransition);
 
@@ -5378,10 +5848,29 @@ type TEventBeforeAfter=(Event,Before,After);
                       (SubpassDependency.SrcStageMask<>SubpassDependency.DstStageMask) or
                       (FromResourceTransition.Layout<>ToResourceTransition.Layout);
 
-      if (FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
-         (ToResourceTransition.fKind in TResourceTransition.AllInputs) then begin
+      if (
 
-       // Output => Input
+          // Output => Input
+          ((FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
+           (ToResourceTransition.fKind in TResourceTransition.AllInputs)) or
+
+          // Input => Input
+          ((FromResourceTransition.fKind in TResourceTransition.AllInputs) and
+           (ToResourceTransition.fKind in TResourceTransition.AllInputs)) or
+
+          // Input => Output
+          ((FromResourceTransition.fKind in TResourceTransition.AllInputs) and
+           (ToResourceTransition.fKind in TResourceTransition.AllOutputs)) or
+
+          // Output => Output
+          ((FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
+           (ToResourceTransition.fKind in TResourceTransition.AllOutputs))
+
+         ) and not
+         (
+          ((TResourceTransition.TFlag.PreviousFrameInput in FromResourceTransition.Flags) and not
+           (TResourceTransition.TFlag.PreviousFrameInput in ToResourceTransition.Flags))
+         ) then begin
 
        if (FromResourceTransition.fPass is TRenderPass) and
           (ToResourceTransition.fPass is TRenderPass) and
@@ -5587,232 +6076,6 @@ type TEventBeforeAfter=(Event,Before,After);
 
        end;
 
-      end else if (FromResourceTransition.fKind in TResourceTransition.AllInputs) and
-                  (ToResourceTransition.fKind in TResourceTransition.AllInputs) then begin
-
-       // Input => Input
-
-       if (FromResourceTransition.fPass is TRenderPass) and
-          (ToResourceTransition.fPass is TRenderPass) and
-          (FromResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-          (ToResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-          (FromResourceTransition.fKind in TResourceTransition.AllImages) and
-          (ToResourceTransition.fKind in TResourceTransition.AllImages) then begin
-
-        // Both passes are render passes
-
-        SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-
-        if FromResourceTransition.fPass.fPhysicalPass=ToResourceTransition.fPass.fPhysicalPass then begin
-
-         // Same physical render pass
-
-         SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
-         SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
-         AddSubpassDependency(TPhysicalRenderPass(FromResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
-                              SubpassDependency);
-
-         NeedBarriers:=not ((TResourceTransition.TFlag.Attachment in FromResourceTransition.fFlags) and
-                            (TResourceTransition.TFlag.Attachment in ToResourceTransition.fFlags));
-
-        end else begin
-
-         // Different physical render passes
-
-         SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
-         SubpassDependency.DstSubpass:=nil;
-         AddSubpassDependency(TPhysicalRenderPass(FromResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
-                              SubpassDependency);
-
-         SubpassDependency.SrcSubpass:=nil;
-         SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
-         AddSubpassDependency(TPhysicalRenderPass(ToResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
-                              SubpassDependency);
-
-         NeedBarriers:=true;
-
-        end;
-
-       end else begin
-
-        // Whether not both passes or none of the both passes are render passes, or any of the both resource
-        // transitions are not for a image attachment
-
-        if (FromResourceTransition.fPass is TRenderPass) and
-           (FromResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (FromResourceTransition.fKind in TResourceTransition.AllImages) then begin
-         SubpassDependency.SrcSubpass:=TRenderPass(FromResourceTransition.fPass).fPhysicalRenderPassSubpass;
-         SubpassDependency.DstSubpass:=nil;
-         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-         AddSubpassDependency(TPhysicalRenderPass(FromResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
-                              SubpassDependency);
-        end;
-
-        if (ToResourceTransition.fPass is TRenderPass) and
-           (ToResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (ToResourceTransition.fKind in TResourceTransition.AllImages) then begin
-         SubpassDependency.SrcSubpass:=nil;
-         SubpassDependency.DstSubpass:=TRenderPass(ToResourceTransition.fPass).fPhysicalRenderPassSubpass;
-         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-         AddSubpassDependency(TPhysicalRenderPass(ToResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,
-                              SubpassDependency);
-        end;
-
-        SubpassDependency.DependencyFlags:=0;
-
-        NeedBarriers:=true;
-
-       end;
-
-       if NeedBarriers then begin
-
-        if FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer=ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer then begin
-
-         // Same command buffer (which also means: same queue and same queue family)
-
-         AddPipelineBarrier(TEventBeforeAfter.Before,
-                            nil,
-                            ToResourceTransition.fPass.fPhysicalPass,
-                            Resource.fResourceAliasGroup.fResourcePhysicalData,
-                            FromResourceTransition,
-                            ToResourceTransition,
-                            SrcQueueFamilyIndex,
-                            DstQueueFamilyIndex,
-                            SubpassDependency.SrcStageMask,
-                            SubpassDependency.DstStageMask,
-                            SubpassDependency.SrcAccessMask,
-                            SubpassDependency.DstAccessMask,
-                            SubpassDependency.DependencyFlags
-                           );
-
-         // No semaphores and no events are needed in this case, because we are in the same command buffer
-
-        end else begin
-
-         // Different command buffers
-
-         if FromResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex=ToResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
-
-          // Same queue family
-
-          if FromResourceTransition.fPass.fQueue.fPhysicalQueue=ToResourceTransition.fPass.fQueue.fPhysicalQueue then begin
-
-           // Same queue => Use events
-
-           AddPipelineBarrier(TEventBeforeAfter.Event,
-                              FromResourceTransition.fPass.fPhysicalPass,
-                              ToResourceTransition.fPass.fPhysicalPass,
-                              Resource.fResourceAliasGroup.fResourcePhysicalData,
-                              FromResourceTransition,
-                              ToResourceTransition,
-                              SrcQueueFamilyIndex,
-                              DstQueueFamilyIndex,
-                              SubpassDependency.SrcStageMask,
-                              SubpassDependency.DstStageMask,
-                              SubpassDependency.SrcAccessMask,
-                              SubpassDependency.DstAccessMask,
-                              SubpassDependency.DependencyFlags
-                             );
-
-           NeedSemaphore:=false;
-
-          end else begin
-
-           // Different queues
-
-           AddPipelineBarrier(TEventBeforeAfter.Before,
-                              nil,
-                              ToResourceTransition.fPass.fPhysicalPass,
-                              Resource.fResourceAliasGroup.fResourcePhysicalData,
-                              FromResourceTransition,
-                              ToResourceTransition,
-                              SrcQueueFamilyIndex,
-                              DstQueueFamilyIndex,
-                              SubpassDependency.SrcStageMask,
-                              SubpassDependency.DstStageMask,
-                              SubpassDependency.SrcAccessMask,
-                              SubpassDependency.DstAccessMask,
-                              SubpassDependency.DependencyFlags
-                             );
-
-           NeedSemaphore:=true;
-
-          end;
-
-         end else begin
-
-          // Different queue families (and different queues, of course)
-
-          // Release
-          AddPipelineBarrier(TEventBeforeAfter.After,
-                             nil,
-                             FromResourceTransition.fPass.fPhysicalPass,
-                             Resource.fResourceAliasGroup.fResourcePhysicalData,
-                             FromResourceTransition,
-                             ToResourceTransition,
-                             SrcQueueFamilyIndex,
-                             DstQueueFamilyIndex,
-                             SubpassDependency.SrcStageMask,
-                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                             SubpassDependency.SrcAccessMask,
-                             0,
-                             SubpassDependency.DependencyFlags
-                            );
-
-          // Acquire
-          AddPipelineBarrier(TEventBeforeAfter.Before,
-                             nil,
-                             ToResourceTransition.fPass.fPhysicalPass,
-                             Resource.fResourceAliasGroup.fResourcePhysicalData,
-                             FromResourceTransition,
-                             ToResourceTransition,
-                             SrcQueueFamilyIndex,
-                             DstQueueFamilyIndex,
-                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                             SubpassDependency.DstStageMask,
-                             0,
-                             SubpassDependency.DstAccessMask,
-                             SubpassDependency.DependencyFlags
-                            );
-
-          NeedSemaphore:=true;
-
-         end;
-
-         if NeedSemaphore then begin
-
-          // Add a semaphore
-          AddSemaphoreSignalWait(FromResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
-                                 ToResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
-                                 SubpassDependency.DstStageMask
-                                );
-
-         end;
-
-        end;
-
-       end;
-
-      end else if (FromResourceTransition.fKind in TResourceTransition.AllInputs) and
-                  (ToResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
-
-       // Input => Output
-
-       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-34-0000');
-
-      end else if (FromResourceTransition.fKind in TResourceTransition.AllOutputs) and
-                  (ToResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
-
-       // Output => Output
-
-       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-34-0001');
-
-      end else begin
-
-       // ? => ?
-
-       raise EpvFrameGraph.Create('Internal error 2021-11-04-11-3-0000');
-
       end;
 
      end else begin
@@ -5821,7 +6084,7 @@ type TEventBeforeAfter=(Event,Before,After);
        raise EpvFrameGraph.Create('Internal error 2021-11-04-10-55-0000');
       end else begin
 
-       if (Resource.fLayout=VK_IMAGE_LAYOUT_UNDEFINED) and
+       if (Resource.ResourceAliasGroup.fLayout=VK_IMAGE_LAYOUT_UNDEFINED) and
           (ToResourceTransition.Kind in TResourceTransition.AllImages) then begin
 
         if (Pass.fPhysicalPass is TPhysicalRenderPass) and
@@ -5839,7 +6102,7 @@ type TEventBeforeAfter=(Event,Before,After);
 
          // Complete all graphics stages before making the memory barrier, but don't block any other previous
          // stuff from running, so set srcStageMask to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, and
-         // VK_ACCESS_MEMORY_READ_BIT as access mask, sine the presentation engine uses this access mask.
+         // VK_ACCESS_MEMORY_READ_BIT as access mask, since the presentation engine uses this access mask.
          SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
          SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
 
@@ -5858,8 +6121,8 @@ type TEventBeforeAfter=(Event,Before,After);
 
      end;
 
-     Resource.fLastTransition:=ResourceTransition;
-     Resource.fLayout:=ResourceTransition.Layout;
+     Resource.ResourceAliasGroup.fLastTransition:=ResourceTransition;
+     Resource.ResourceAliasGroup.fLayout:=ResourceTransition.Layout;
 
     end;
 
@@ -6072,7 +6335,7 @@ type TEventBeforeAfter=(Event,Before,After);
          AttachmentIndex:=PhysicalRenderPass.fAttachments.AddNew;
          Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
          Attachment^.Resource:=ResourceTransition.fResource;
-         Attachment^.Persientent:=ImageResourceType.fPersientent;
+         Attachment^.Persistent:=ImageResourceType.fPersistent;
          Attachment^.ImageType:=ImageResourceType.fImageType;
          Attachment^.Format:=ImageResourceType.fFormat;
          Attachment^.Samples:=ImageResourceType.fSamples;
@@ -6080,8 +6343,16 @@ type TEventBeforeAfter=(Event,Before,After);
          Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
          Attachment^.StencilLoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          Attachment^.StencilStoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-         Attachment^.InitialLayout:=ResourceTransition.fLayout;
-         Attachment^.FinalLayout:=ResourceTransition.fLayout;
+         if ImageResourceType.fInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+          Attachment^.InitialLayout:=ImageResourceType.fInitialLayout;
+         end else begin
+          Attachment^.InitialLayout:=ResourceTransition.fLayout;
+         end;
+         if ImageResourceType.fFinalLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+          Attachment^.FinalLayout:=ImageResourceType.fFinalLayout;
+         end else begin
+          Attachment^.FinalLayout:=ResourceTransition.fLayout;
+         end;
          Attachment^.ImageUsageFlags:=0;
          Attachment^.ClearValueInitialized:=false;
          Attachment^.HasInitialLayout:=false;
@@ -6131,6 +6402,18 @@ type TEventBeforeAfter=(Event,Before,After);
            VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:begin
             Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
            end;
+           VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:begin
+            Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+           end;
+           VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:begin
+            Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+           end;
+           VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:begin
+            Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+           end;
+           VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:begin
+            Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+           end;
           end;
           if not Attachment^.HasInitialLayout then begin
            if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
@@ -6163,7 +6446,13 @@ type TEventBeforeAfter=(Event,Before,After);
              Attachment^.InitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
             end else if Attachment^.InitialLayout=VK_IMAGE_LAYOUT_UNDEFINED then begin
              Attachment^.HasInitialLayout:=true;
-             Attachment^.InitialLayout:=ResourceTransition.fLayout;
+             if assigned(Attachment^.Resource.ResourceType) and
+                (Attachment^.Resource.ResourceType is TImageResourceType) and
+                (TImageResourceType(Attachment^.Resource.ResourceType).fInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED) then begin
+              Attachment^.InitialLayout:=TImageResourceType(Attachment^.Resource.ResourceType).fInitialLayout;
+             end else begin
+              Attachment^.InitialLayout:=ResourceTransition.fLayout;
+             end;
             end;
            end;
           end;
@@ -6174,7 +6463,13 @@ type TEventBeforeAfter=(Event,Before,After);
               (fRootPass=RenderPass))} then begin
            Attachment^.FinalLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
           end else begin
-           Attachment^.FinalLayout:=ResourceTransition.fLayout;
+           if assigned(Attachment^.Resource.ResourceType) and
+              (Attachment^.Resource.ResourceType is TImageResourceType) and
+              (TImageResourceType(Attachment^.Resource.ResourceType).fFinalLayout<>VK_IMAGE_LAYOUT_UNDEFINED) then begin
+            Attachment^.FinalLayout:=TImageResourceType(Attachment^.Resource.ResourceType).fFinalLayout;
+           end else begin
+            Attachment^.FinalLayout:=ResourceTransition.fLayout;
+           end;
           end;
           if not Attachment^.ClearValueInitialized then begin
            Attachment^.ClearValueInitialized:=true;
@@ -6293,7 +6588,7 @@ type TEventBeforeAfter=(Event,Before,After);
        end;
        UsedBefore:=Resource.fMinimumTopologicalSortPassIndex<Subpass.fRenderPass.fTopologicalSortIndex;
        UsedAfter:=Subpass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
-       IsSurfaceOrPersistent:=(Attachment^.ImageType=TImageType.Surface) or Attachment^.Persientent;
+       IsSurfaceOrPersistent:=(Attachment^.ImageType=TImageType.Surface) or Attachment^.Persistent;
        if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
         Subpass.fPreserveAttachments.Add(AttachmentIndex);
        end;
@@ -6394,6 +6689,16 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
   end;
  end;
+ procedure CreateTimerQuery;
+ var Index:TpvSizeInt;
+ begin
+  FreeAndNil(fTimerQueries);
+  fTimerQueries:=TpvTimerQueries.Create;
+  fTimerQueries.OwnsObjects:=true;
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   fTimerQueries.Add(TpvTimerQuery.Create(fVulkanDevice,Passes.Count));
+  end;
+ end;
 begin
 
  fQueueFamilyIndices.Finish;
@@ -6446,42 +6751,44 @@ begin
 
  FinishPassUsedResources;
 
+ CreateTimerQuery;
+
 end;
 
-procedure TpvFrameGraph.Show;
+procedure TpvFrameGraph.AcquirePersistentResources;
 var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
     Queue:TQueue;
 begin
  for ResourceAliasGroup in fResourceAliasGroups do begin
-  ResourceAliasGroup.Show;
+  ResourceAliasGroup.AcquirePersistentResources;
  end;
  for PhysicalPass in fPhysicalPasses do begin
-  PhysicalPass.Show;
+  PhysicalPass.AcquirePersistentResources;
  end;
  for Queue in fQueues do begin
-  Queue.Show;
+  Queue.AcquirePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.Hide;
+procedure TpvFrameGraph.ReleasePersistentResources;
 var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
     Queue:TQueue;
 begin
  for Queue in fQueues do begin
-  Queue.Hide;
+  Queue.ReleasePersistentResources;
  end;
  for PhysicalPass in fPhysicalPasses do begin
-  PhysicalPass.Hide;
+  PhysicalPass.ReleasePersistentResources;
  end;
  for ResourceAliasGroup in fResourceAliasGroups do begin
-  ResourceAliasGroup.Hide;
+  ResourceAliasGroup.ReleasePersistentResources;
  end;
 end;
 
-procedure TpvFrameGraph.AfterCreateSwapChain;
-var SwapChainImageIndex,
+procedure TpvFrameGraph.AcquireVolatileResources;
+var InFlightFrameIndex,
     Index,
     WaitingSemaphoreIndex,
     AbsoluteWaitingSemaphoreIndex:TpvSizeInt;
@@ -6495,41 +6802,41 @@ var SwapChainImageIndex,
     Queue:TQueue;
 begin
  for ResourceAliasGroup in fResourceAliasGroups do begin
-  ResourceAliasGroup.AfterCreateSwapChain;
+  ResourceAliasGroup.AcquireVolatileResources;
  end;
  for PhysicalPass in fPhysicalPasses do begin
-  PhysicalPass.AfterCreateSwapChain;
+  PhysicalPass.AcquireVolatileResources;
  end;
  for Queue in fQueues do begin
-  Queue.AfterCreateSwapChain;
+  Queue.AcquireVolatileResources;
  end;
  for CommandBuffer in fAllQueueCommandBuffers do begin
   CommandBuffer.fWaitingSemaphoreHandles.Clear;
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   CommandBuffer.fSignallingSemaphores[SwapChainImageIndex].Clear;
-   CommandBuffer.fSignallingSemaphoreHandles[SwapChainImageIndex].Clear;
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+   CommandBuffer.fSignallingSemaphores[InFlightFrameIndex].Clear;
+   CommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Clear;
   end;
  end;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  for Index:=0 to fDrawToWaitOnSemaphores[SwapChainImageIndex].Count-1 do begin
-   FreeAndNil(fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[Index]);
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  for Index:=0 to fDrawToWaitOnSemaphores[InFlightFrameIndex].Count-1 do begin
+   FreeAndNil(fDrawToWaitOnSemaphores[InFlightFrameIndex].Items[Index]);
   end;
-  fDrawToWaitOnSemaphores[SwapChainImageIndex].Clear;
-  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Clear;
-  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Clear;
-  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Clear;
+  fDrawToWaitOnSemaphores[InFlightFrameIndex].Clear;
+  fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Clear;
+  fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Clear;
+  fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Clear;
  end;
  for CommandBuffer in fAllQueueCommandBuffers do begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
    for WaitingSemaphoreIndex:=0 to CommandBuffer.fWaitingSemaphores.Count-1 do begin
     WaitingSemaphore:=@CommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
     if assigned(WaitingSemaphore^.SignallingCommandBuffer) then begin
-     WaitingSemaphore^.SignallingCommandBuffer.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
-     WaitingSemaphore^.SignallingCommandBuffer.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+     WaitingSemaphore^.SignallingCommandBuffer.fSignallingSemaphores[InFlightFrameIndex].Add(Semaphore);
+     WaitingSemaphore^.SignallingCommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
     end else begin
-     fDrawToWaitOnSemaphores[SwapChainImageIndex].Add(Semaphore);
-     fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+     fDrawToWaitOnSemaphores[InFlightFrameIndex].Add(Semaphore);
+     fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
     end;
     CommandBuffer.fWaitingSemaphoreHandles.Add(Semaphore.Handle);
    end;
@@ -6545,107 +6852,107 @@ begin
   CommandBuffer.fWaitingSemaphoreDstStageMasks.Finish;
  end;
  for CommandBuffer in fAllQueueCommandBuffers do begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   SubmitInfo:=@CommandBuffer.fSubmitInfos[SwapChainImageIndex];
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+   SubmitInfo:=@CommandBuffer.fSubmitInfos[InFlightFrameIndex];
    FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
    SubmitInfo^.pNext:=nil;
    SubmitInfo^.waitSemaphoreCount:=CommandBuffer.fWaitingSemaphores.Count;
    if SubmitInfo^.waitSemaphoreCount>0 then begin
-    SubmitInfo^.pWaitSemaphores:=@CommandBuffer.fWaitingSemaphoreHandles.Items[CommandBuffer.fWaitingSemaphores.Count*SwapChainImageIndex];
+    SubmitInfo^.pWaitSemaphores:=@CommandBuffer.fWaitingSemaphoreHandles.Items[CommandBuffer.fWaitingSemaphores.Count*InFlightFrameIndex];
     SubmitInfo^.pWaitDstStageMask:=@CommandBuffer.fWaitingSemaphoreDstStageMasks.Items[0];
    end;
    SubmitInfo^.commandBufferCount:=1;
-   SubmitInfo^.pCommandBuffers:=@CommandBuffer.fCommandBuffers[SwapChainImageIndex].Handle;
+   SubmitInfo^.pCommandBuffers:=@CommandBuffer.fCommandBuffers[InFlightFrameIndex].Handle;
    if fDoSignalSemaphore and
       (CommandBuffer=CommandBuffer.fQueue.fCommandBuffers[CommandBuffer.fQueue.fCommandBuffers.Count-1]) then begin
     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    CommandBuffer.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
-    CommandBuffer.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
-    fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
-    fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT}));
+    CommandBuffer.fSignallingSemaphores[InFlightFrameIndex].Add(Semaphore);
+    CommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
+    fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
+    fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT}));
    end;
-   SubmitInfo^.signalSemaphoreCount:=CommandBuffer.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
+   SubmitInfo^.signalSemaphoreCount:=CommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Count;
    if SubmitInfo^.signalSemaphoreCount>0 then begin
-    SubmitInfo^.pSignalSemaphores:=@CommandBuffer.fSignallingSemaphoreHandles[SwapChainImageIndex].Items[0];
+    SubmitInfo^.pSignalSemaphores:=@CommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Items[0];
    end;
   end;
  end;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fDrawToWaitOnSemaphores[SwapChainImageIndex].Finish;
-  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finish;
-  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finish;
-  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Finish;
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fDrawToWaitOnSemaphores[InFlightFrameIndex].Finish;
+  fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Finish;
+  fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Finish;
+  fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Finish;
  end;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Count;
-  if fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount>0 then begin
-   fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Items[0];
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fDrawToWaitSubmitInfos[InFlightFrameIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Count;
+  if fDrawToWaitSubmitInfos[InFlightFrameIndex].signalSemaphoreCount>0 then begin
+   fDrawToWaitSubmitInfos[InFlightFrameIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Items[0];
   end else begin
-   fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=nil;
+   fDrawToWaitSubmitInfos[InFlightFrameIndex].pSignalSemaphores:=nil;
   end;
  end;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
-  if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
-   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
-   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Items[0];
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  fDrawToSignalSubmitInfos[InFlightFrameIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Count;
+  if fDrawToSignalSubmitInfos[InFlightFrameIndex].waitSemaphoreCount>0 then begin
+   fDrawToSignalSubmitInfos[InFlightFrameIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Items[0];
+   fDrawToSignalSubmitInfos[InFlightFrameIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Items[0];
   end else begin
-   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=nil;
-   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=nil;
+   fDrawToSignalSubmitInfos[InFlightFrameIndex].pWaitSemaphores:=nil;
+   fDrawToSignalSubmitInfos[InFlightFrameIndex].pWaitDstStageMask:=nil;
   end;
  end;
  for PhysicalPass in fPhysicalPasses do begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   PhysicalPass.fResetEvents[SwapChainImageIndex].Clear;
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+   PhysicalPass.fResetEvents[InFlightFrameIndex].Clear;
   end;
  end;
  if assigned(fRootPhysicalPass) then begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
    for PhysicalPass in fPhysicalPasses do begin
-    if assigned(PhysicalPass.fEvents[SwapChainImageIndex]) then begin
-     ResetEvent.Handle:=PhysicalPass.fEvents[SwapChainImageIndex].Handle;
+    if assigned(PhysicalPass.fEvents[InFlightFrameIndex]) then begin
+     ResetEvent.Handle:=PhysicalPass.fEvents[InFlightFrameIndex].Handle;
      ResetEvent.StageMask:=PhysicalPass.fEventSrcStageMask;
-     fRootPhysicalPass.fResetEvents[SwapChainImageIndex].Add(ResetEvent);
+     fRootPhysicalPass.fResetEvents[InFlightFrameIndex].Add(ResetEvent);
     end;
    end;
   end;
  end;
  for PhysicalPass in fPhysicalPasses do begin
-  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   PhysicalPass.fResetEvents[SwapChainImageIndex].Finish;
+  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+   PhysicalPass.fResetEvents[InFlightFrameIndex].Finish;
   end;
  end;
 end;
 
-procedure TpvFrameGraph.BeforeDestroySwapChain;
-var SwapChainImageIndex,
+procedure TpvFrameGraph.ReleaseVolatileResources;
+var InFlightFrameIndex,
     Index:TpvSizeInt;
     ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
     Queue:TQueue;
 begin
  for Queue in fQueues do begin
-  Queue.BeforeDestroySwapChain;
+  Queue.ReleaseVolatileResources;
  end;
  for PhysicalPass in fPhysicalPasses do begin
-  PhysicalPass.BeforeDestroySwapChain;
+  PhysicalPass.ReleaseVolatileResources;
  end;
  for ResourceAliasGroup in fResourceAliasGroups do begin
-  ResourceAliasGroup.BeforeDestroySwapChain;
+  ResourceAliasGroup.ReleaseVolatileResources;
  end;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  for Index:=0 to fDrawToWaitOnSemaphores[SwapChainImageIndex].Count-1 do begin
-   FreeAndNil(fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[Index]);
+ for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+  for Index:=0 to fDrawToWaitOnSemaphores[InFlightFrameIndex].Count-1 do begin
+   FreeAndNil(fDrawToWaitOnSemaphores[InFlightFrameIndex].Items[Index]);
   end;
-  fDrawToWaitOnSemaphores[SwapChainImageIndex].Clear;
-  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Clear;
-  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Clear;
-  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Clear;
+  fDrawToWaitOnSemaphores[InFlightFrameIndex].Clear;
+  fDrawToWaitOnSemaphoreHandles[InFlightFrameIndex].Clear;
+  fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Clear;
+  fDrawToSignalSemaphoreDstStageMasks[InFlightFrameIndex].Clear;
  end;
 end;
 
-procedure TpvFrameGraph.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 var QueueIndex,Index,SubpassIndex:TpvSizeInt;
     Queue:TQueue;
     PhysicalPass:TPhysicalPass;
@@ -6662,21 +6969,21 @@ begin
    if assigned(PhysicalPass) then begin
     if PhysicalPass is TPhysicalComputePass then begin
      PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
-     PhysicalComputePass.fComputePass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+     PhysicalComputePass.fComputePass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
      PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
     end else if PhysicalPass is TPhysicalTransferPass then begin
      PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
-     PhysicalTransferPass.fTransferPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+     PhysicalTransferPass.fTransferPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
      PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalTransferPass.fTransferPass.fFlags;
     end else if PhysicalPass is TPhysicalCustomPass then begin
      PhysicalCustomPass:=TPhysicalCustomPass(PhysicalPass);
-     PhysicalCustomPass.fCustomPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+     PhysicalCustomPass.fCustomPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
      PhysicalCustomPass.fCustomPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalCustomPass.fCustomPass.fFlags;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
      for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
       PhysicalRenderPassSubpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
-      PhysicalRenderPassSubpass.fRenderPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+      PhysicalRenderPassSubpass.fRenderPass.Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
       PhysicalRenderPassSubpass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubpass.fRenderPass.fFlags;
      end;
     end;
@@ -6704,7 +7011,7 @@ begin
  Queue:=aData;
  for CommandBufferIndex:=aFromIndex to aToIndex do begin
   CommandBuffer:=Queue.fCommandBuffers[CommandBufferIndex];
-  VulkanCommandBuffer:=CommandBuffer.fCommandBuffers[fDrawSwapChainImageIndex];
+  VulkanCommandBuffer:=CommandBuffer.fCommandBuffers[fDrawInFlightFrameIndex];
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
   for PhysicalPassIndex:=0 to CommandBuffer.fPhysicalPasses.Count-1 do begin
    PhysicalPass:=CommandBuffer.fPhysicalPasses[PhysicalPassIndex];
@@ -6747,7 +7054,7 @@ begin
    end;
   end;
   VulkanCommandBuffer.EndRecording;
-  Queue.fSubmitInfos[CommandBuffer.fSubmitInfoIndex]:=CommandBuffer.fSubmitInfos[fDrawSwapChainImageIndex];
+  Queue.fSubmitInfos[CommandBuffer.fSubmitInfoIndex]:=CommandBuffer.fSubmitInfos[fDrawInFlightFrameIndex];
  end;
 end;
 
@@ -6755,8 +7062,8 @@ procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPa
 var Index:TpvSizeInt;
 begin
  if (aQueue=fUniversalQueue) and
-    (fDrawToWaitOnSemaphoreHandles[fDrawSwapChainImageIndex].Count>0) then begin
-  fUniversalQueue.fSubmitInfos[0]:=fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex];
+    (fDrawToWaitOnSemaphoreHandles[fDrawInFlightFrameIndex].Count>0) then begin
+  fUniversalQueue.fSubmitInfos[0]:=fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex];
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fCommandBuffers.Count-1,ExecuteQueueCommandBufferParallelForJobMethod,1,16,aJob,0));
@@ -6764,8 +7071,8 @@ begin
   ExecuteQueueCommandBufferParallelForJobMethod(nil,0,aQueue,0,aQueue.fCommandBuffers.Count-1);
  end;
  if (aQueue=fUniversalQueue) and
-    (fDrawToSignalSemaphoreHandles[fDrawSwapChainImageIndex].Count>0) then begin
-  fUniversalQueue.fSubmitInfos[fUniversalQueue.fCountSubmitInfos-1]:=fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex];
+    (fDrawToSignalSemaphoreHandles[fDrawInFlightFrameIndex].Count>0) then begin
+  fUniversalQueue.fSubmitInfos[fUniversalQueue.fCountSubmitInfos-1]:=fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex];
  end;
  if aQueue.fCountSubmitInfos>0 then begin
   if fRootPhysicalPass.fQueue=aQueue then begin
@@ -6785,6 +7092,7 @@ begin
 end;
 
 procedure TpvFrameGraph.Draw(const aDrawSwapChainImageIndex:TpvSizeInt;
+                             const aDrawInFlightFrameIndex:TpvSizeInt;
                              const aDrawFrameIndex:TpvSizeInt;
                              const aToWaitOnSemaphore:TpvVulkanSemaphore=nil;
                              const aToSignalSemaphore:TpvVulkanSemaphore=nil;
@@ -6793,31 +7101,42 @@ var SemaphoreIndex:TpvSizeInt;
     SubmitInfo:TVkSubmitInfo;
 begin
  fDrawSwapChainImageIndex:=aDrawSwapChainImageIndex;
+ fDrawPreviousInFlightFrameIndex:=aDrawInFlightFrameIndex-1;
+ if fDrawPreviousInFlightFrameIndex<0 then begin
+  inc(fDrawPreviousInFlightFrameIndex,fCountInFlightFrames);
+ end;
+ fDrawInFlightFrameIndex:=aDrawInFlightFrameIndex;
  fDrawFrameIndex:=aDrawFrameIndex;
  fDrawWaitFence:=aWaitFence;
  if assigned(aToWaitOnSemaphore) then begin
-  Assert(fDrawToWaitOnSemaphoreHandles[aDrawSwapChainImageIndex].Count>0);
-  fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=aToWaitOnSemaphore.Handle;
-  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].waitSemaphoreCount:=1;
-  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex];
-  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
+  Assert(fDrawToWaitOnSemaphoreHandles[fDrawInFlightFrameIndex].Count>0);
+  fDrawToWaitOnSemaphoreExternalHandles[fDrawInFlightFrameIndex]:=aToWaitOnSemaphore.Handle;
+  fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex].waitSemaphoreCount:=1;
+  fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[fDrawInFlightFrameIndex];
+  fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
  end else begin
-  Assert(fDrawToWaitOnSemaphoreHandles[aDrawSwapChainImageIndex].Count=0);
-  fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=VK_NULL_HANDLE;
-  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].waitSemaphoreCount:=0;
-  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitSemaphores:=nil;
-  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitDstStageMask:=nil;
+  Assert(fDrawToWaitOnSemaphoreHandles[fDrawInFlightFrameIndex].Count=0);
+  fDrawToWaitOnSemaphoreExternalHandles[fDrawInFlightFrameIndex]:=VK_NULL_HANDLE;
+  fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex].waitSemaphoreCount:=0;
+  fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex].pWaitSemaphores:=nil;
+  fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex].pWaitDstStageMask:=nil;
  end;
  if assigned(aToSignalSemaphore) then begin
-  Assert(fDrawToSignalSemaphoreHandles[aDrawSwapChainImageIndex].Count>0);
-  fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=aToSignalSemaphore.Handle;
-  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].signalSemaphoreCount:=1;
-  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex];
+  Assert(fDrawToSignalSemaphoreHandles[fDrawInFlightFrameIndex].Count>0);
+  fDrawToSignalSemaphoreExternalHandles[fDrawInFlightFrameIndex]:=aToSignalSemaphore.Handle;
+  fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].signalSemaphoreCount:=1;
+  fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[fDrawInFlightFrameIndex];
  end else begin
-  Assert(fDrawToSignalSemaphoreHandles[aDrawSwapChainImageIndex].Count=0);
-  fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=VK_NULL_HANDLE;
-  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].signalSemaphoreCount:=0;
-  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].pSignalSemaphores:=nil;
+  Assert(fDrawToSignalSemaphoreHandles[fDrawInFlightFrameIndex].Count=0);
+  fDrawToSignalSemaphoreExternalHandles[fDrawInFlightFrameIndex]:=VK_NULL_HANDLE;
+  fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].signalSemaphoreCount:=0;
+  fDrawToSignalSubmitInfos[fDrawInFlightFrameIndex].pSignalSemaphores:=nil;
+ end;
+ if assigned(fTimerQueries[fDrawInFlightFrameIndex]) then begin
+  if fTimerQueries[fDrawInFlightFrameIndex].Update then begin
+   fLastTimerQueryResults:=fTimerQueries[fDrawInFlightFrameIndex].Results;
+  end;
+  fTimerQueries[fDrawInFlightFrameIndex].Reset;
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));

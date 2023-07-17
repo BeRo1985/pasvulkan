@@ -43,6 +43,14 @@
  {$endif}
  {$define CAN_INLINE}
  {$define HAS_ADVANCED_RECORDS}
+ {$if defined(FPC_FULLVERSION) and (FPC_FULLVERSION>=30301)}
+  {$modeswitch functionreferences}
+  {$modeswitch anonymousfunctions}
+  {$warn 5036 off}
+  {$define HAS_ANONYMOUS_METHODS}
+ {$else}
+  {$undef HAS_ANONYMOUS_METHODS}
+ {$ifend}
 {$else}
  {$realcompatibility off}
  {$localsymbols on}
@@ -221,9 +229,15 @@
   {$warn symbol_platform off}
   {$warn symbol_deprecated off}
  {$endif}
+ {$ifdef Delphi2009AndUp}
+  {$define HAS_ANONYMOUS_METHODS}
+ {$endif}
 {$endif}
 {$if defined(Win32) or defined(Win64)}
  {$define Windows}
+{$ifend}
+{$if defined(Android) and defined(cpu386)}
+ {$define PasVulkanPICCode}
 {$ifend}
 {$rangechecks off}
 {$extendedsyntax on}

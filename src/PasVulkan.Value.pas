@@ -123,9 +123,9 @@ type PpvValueType=^TpvValueType;
        class operator Modulus(const aInputA,aInputB:TpvValue):TpvValue;
        class operator LeftShift(const aInputA,aInputB:TpvValue):TpvValue;
        class operator RightShift(const aInputA,aInputB:TpvValue):TpvValue;
-       class operator LogicalAnd(const aInputA,aInputB:TpvValue):TpvValue;
+{      class operator LogicalAnd(const aInputA,aInputB:TpvValue):TpvValue;
        class operator LogicalOr(const aInputA,aInputB:TpvValue):TpvValue;
-       class operator LogicalXor(const aInputA,aInputB:TpvValue):TpvValue;
+       class operator LogicalXor(const aInputA,aInputB:TpvValue):TpvValue;}
        class operator BitwiseAnd(const aInputA,aInputB:TpvValue):TpvValue;
        class operator BitwiseOr(const aInputA,aInputB:TpvValue):TpvValue;
        class operator BitwiseXor(const aInputA,aInputB:TpvValue):TpvValue;
@@ -1698,7 +1698,7 @@ begin
  end;
 end;
 
-class operator TpvValue.LogicalAnd(const aInputA,aInputB:TpvValue):TpvValue;
+{class operator TpvValue.LogicalAnd(const aInputA,aInputB:TpvValue):TpvValue;
 begin
  case aInputA.ValueType of
   TpvValueType.Boolean:begin
@@ -1813,7 +1813,7 @@ begin
    result.ValueType:=TpvValueType.Unknown;
   end;
  end;
-end;
+end;}
 
 class operator TpvValue.BitwiseAnd(const aInputA,aInputB:TpvValue):TpvValue;
 begin

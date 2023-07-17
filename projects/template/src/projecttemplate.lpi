@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+        <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <MainUnit Value="0"/>
       <Title Value="projecttemplate"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
+      <Icon Value="0"/>
     </General>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
@@ -40,28 +42,31 @@
       <Filename Value=".\..\bin\projecttemplate"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);.\;..\..\..\src"/>
+      <IncludeFiles Value="$(ProjOutDir);.;..\..\..\src"/>
       <OtherUnitFiles Value="..\..\..\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasmp\src;..\..\..\externals\pasjson\src;..\..\..\externals\kraft\src;..\..\..\externals\rnl\src;..\..\..\externals\pasgltf\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <Conditionals Value="if ((TargetOS='linux') or (TargetOS='freebsd') or (TargetOS='unix')) and not (TargetOS='android') then begin
- CustomOptions += ' -dWayland -dXCB -dXLIB';
+    <Conditionals Value="if ((TargetOS=&apos;linux&apos;) or (TargetOS=&apos;freebsd&apos;) or (TargetOS=&apos;unix&apos;)) and not (TargetOS=&apos;android&apos;) then begin
+ CustomOptions += &apos; -dWayland -dXCB -dXLIB&apos;;
 end;
 
-if TargetOS&lt;>'android' then begin
- CustomOptions += ' -dPasVulkanUseSDL2WithVulkanSupport';
+if TargetOS=&apos;linux&apos; then begin
+ CustomOptions += &apos; -dPasVulkanUseSDL2&apos;;
+ if TargetOS&lt;>&apos;android&apos; then begin
+  CustomOptions += &apos; -dPasVulkanUseSDL2WithVulkanSupport&apos;;
+ end;
 end;
 
- CustomOptions += ' -dPasVulkanPasMP -dPasVulkanUseSDL2';
+ CustomOptions += &apos; -dPasVulkanPasMP&apos;;
 
 // example for adding linker options on Mac OS X
-//if TargetOS='darwin' then
-//  LinkerOptions := ' -framework OpenGL';
+//if TargetOS=&apos;darwin&apos; then
+//  LinkerOptions := &apos; -framework OpenGL&apos;;
 
 // example for adding a unit and include path on Windows
-//if SrcOS='win' then begin
-//  UnitPath += ';win';
-//  IncPath += ';win';
+//if SrcOS=&apos;win&apos; then begin
+//  UnitPath += &apos;;win&apos;;
+//  IncPath += &apos;;win&apos;;
 //end;"/>
     <Parsing>
       <Style Value="1"/>
@@ -74,6 +79,7 @@ end;
     </CodeGeneration>
     <Linking>
       <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
     </Linking>

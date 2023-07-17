@@ -158,34 +158,52 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_no_texture.spv','CanvasFragmentNoTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture.spv','CanvasFragmentAtlasTextureSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_vectorpath.spv','CanvasFragmentVectorPathSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_no_blending.spv','CanvasFragmentGUINoTextureNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending.spv','CanvasFragmentNoTextureNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture_no_blending.spv','CanvasFragmentTextureNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending.spv','CanvasFragmentAtlasTextureNoBlendingSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_vectorpath_no_blending.spv','CanvasFragmentVectorPathNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_no_blending_no_discard.spv','CanvasFragmentGUINoTextureNoBlendingNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending_no_discard.spv','CanvasFragmentNoTextureNoBlendingNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture_no_blending_no_discard.spv','CanvasFragmentTextureNoBlendingNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending_no_discard.spv','CanvasFragmentAtlasTextureNoBlendingNoDiscardSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_vectorpath_no_blending_no_discard.spv','CanvasFragmentVectorPathNoBlendingNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_clip_distance.spv','CanvasFragmentGUINoTextureClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_clip_distance.spv','CanvasFragmentNoTextureClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture_clip_distance.spv','CanvasFragmentTextureClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_clip_distance.spv','CanvasFragmentAtlasTextureClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_vectorpath_clip_distance.spv','CanvasFragmentVectorPathClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_no_blending_clip_distance.spv','CanvasFragmentGUINoTextureNoBlendingClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending_clip_distance.spv','CanvasFragmentNoTextureNoBlendingClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture_no_blending_clip_distance.spv','CanvasFragmentTextureNoBlendingClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending_clip_distance.spv','CanvasFragmentAtlasTextureNoBlendingClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_vectorpath_no_blending_clip_distance.spv','CanvasFragmentVectorPathNoBlendingClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentGUINoTextureNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentNoTextureNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentTextureNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentAtlasTextureNoBlendingClipDistanceNoDiscardSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_vectorpath_no_blending_clip_distance_no_discard.spv','CanvasFragmentVectorPathNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
   ConvertFile('shaders/canvas/canvas_vert_clip_distance.spv','CanvasVertexClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_no_texture_vert.spv','CanvasNoTextureVertexSPIRV');
+  ConvertFile('shaders/canvas/canvas_no_texture_vert_clip_distance.spv','CanvasNoTextureVertexClipDistanceSPIRV');
   ConvertFile('shaders/canvas/vr_disabled_to_screen_blit_frag.spv','VRDisabledToScreenBlitFragSPIRV');
   ConvertFile('shaders/canvas/vr_disabled_to_screen_blit_vert.spv','VRDisabledToScreenBlitVertSPIRV');
   ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_frag.spv','VREnabledToScreenBlitFragSPIRV');
   ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_vert.spv','VREnabledToScreenBlitVertSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
-  StringList.Free;
+  FreeAndNil(StringList);
+ end;
+ StringList:=TStringList.Create;
+ try
+  ConvertFile('shaders/scene3d/scene3dshaders.zip','Scene3DSPIRVShaders');
+{ ConvertFile('textures/scene3d/lenscolor.png','Scene3DLensColor');
+  ConvertFile('textures/scene3d/lensdirt.png','Scene3DLensDirt');
+  ConvertFile('textures/scene3d/lensstar.png','Scene3DLensStar');}
+  StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanScene3DAssets.inc');
+ finally
+  FreeAndNil(StringList);
  end;
 end.

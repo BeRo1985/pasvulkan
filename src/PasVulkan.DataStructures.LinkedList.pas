@@ -73,8 +73,10 @@ procedure LinkedListInsertBefore(ListCurrent,ListNew:PpvLinkedListHead); {$ifdef
 procedure LinkedListInsertAfter(ListCurrent,ListNew:PpvLinkedListHead); {$ifdef caninline}inline;{$endif}
 procedure LinkedListPushFront(ListHead,ListNew:PpvLinkedListHead); {$ifdef caninline}inline;{$endif}
 procedure LinkedListPushBack(const ListHead,ListNew:PpvLinkedListHead); {$ifdef caninline}inline;{$endif}
-function LinkedListPopFront(const ListHead:PpvLinkedListHead):pointer; {$ifdef caninline}inline;{$endif}
-function LinkedListPopBack(const ListHead:PpvLinkedListHead):pointer; {$ifdef caninline}inline;{$endif}
+function LinkedListPopFront(const ListHead:PpvLinkedListHead):pointer; overload; {$ifdef caninline}inline;{$endif}
+function LinkedListPopFront(const ListHead:PpvLinkedListHead;out aListOut):boolean; overload; {$ifdef caninline}inline;{$endif}
+function LinkedListPopBack(const ListHead:PpvLinkedListHead):pointer; overload; {$ifdef caninline}inline;{$endif}
+function LinkedListPopBack(const ListHead:PpvLinkedListHead;out aListOut):boolean; overload; {$ifdef caninline}inline;{$endif}
 procedure LinkedListRemove(const ListEntry:PpvLinkedListHead); {$ifdef caninline}inline;{$endif}
 procedure LinkedListReplace(const ListOld,ListNew:PpvLinkedListHead); {$ifdef caninline}inline;{$endif}
 function LinkedListEmpty(const ListHead:PpvLinkedListHead):boolean; {$ifdef caninline}inline;{$endif}
@@ -147,6 +149,21 @@ begin
  end;
 end;
 
+function LinkedListPopFront(const ListHead:PpvLinkedListHead;out aListOut):boolean; overload; {$ifdef caninline}inline;{$endif}
+var ListNext,ListPrevious:PpvLinkedListHead;
+begin
+ result:=ListHead^.Next<>ListHead;
+ if result then begin
+  PpvLinkedListHead(aListOut):=ListHead^.Next;
+  ListNext:=PpvLinkedListHead(aListOut)^.Next;
+  ListPrevious:=PpvLinkedListHead(aListOut)^.Previous;
+  ListNext^.Previous:=ListPrevious;
+  ListPrevious^.Next:=ListNext;
+  PpvLinkedListHead(aListOut)^.Next:=PpvLinkedListHead(aListOut);
+  PpvLinkedListHead(aListOut)^.Previous:=PpvLinkedListHead(aListOut);
+ end;
+end;
+
 function LinkedListPopBack(const ListHead:PpvLinkedListHead):pointer; {$ifdef caninline}inline;{$endif}
 var ListNext,ListPrevious:PpvLinkedListHead;
 begin
@@ -160,6 +177,21 @@ begin
   PpvLinkedListHead(result)^.Previous:=result;
  end else begin
   result:=nil;
+ end;
+end;
+
+function LinkedListPopBack(const ListHead:PpvLinkedListHead;out aListOut):boolean; overload; {$ifdef caninline}inline;{$endif}
+var ListNext,ListPrevious:PpvLinkedListHead;
+begin
+ result:=ListHead^.Previous<>ListHead;
+ if result then begin
+  PpvLinkedListHead(aListOut):=ListHead^.Previous;
+  ListNext:=PpvLinkedListHead(aListOut)^.Next;
+  ListPrevious:=PpvLinkedListHead(aListOut)^.Previous;
+  ListNext^.Previous:=ListPrevious;
+  ListPrevious^.Next:=ListNext;
+  PpvLinkedListHead(aListOut)^.Next:=PpvLinkedListHead(aListOut);
+  PpvLinkedListHead(aListOut)^.Previous:=PpvLinkedListHead(aListOut);
  end;
 end;
 

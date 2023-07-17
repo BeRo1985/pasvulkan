@@ -1,0 +1,178 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(push_constant, std140, row_major) uniform PushConstants {
+  uvec4 tileSizeZNearZFar; 
+  vec4 viewRect;
+  uvec4 countLightsViewIndexSizeOffsetedViewIndex;
+  uvec4 clusterSize;
+  vec4 scaleBiasMax;
+} pushConstants;
+
+struct AABB {
+  vec4 minViewSpaceBounds;
+  vec4 maxViewSpaceBounds; 
+  vec4 minWorldSpaceBounds;
+  vec4 maxWorldSpaceBounds;
+  // vec4 worldSpaceSphere; // x = minViewSpaceBounds.w, y = maxViewSpaceBounds.w, z = minWorldSpaceBounds.w, radius = maxWorldSpaceBounds.w  
+};
+
+struct LightMetaInfo {
+  vec4 minBounds; // xyz = min. pos, w = light type (0 = none, 1 and 4 = directional light (4=primary), 2 = point light, 3 = spot light)
+  vec4 maxBounds; // xyz = max. pos, w = radius
+};
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(std140, set = 0, binding = 0) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+layout(std430, set = 0, binding = 1) buffer LightGridClusterAABBs {
+  AABB lightGridClusterAABBs[];
+};
+
+layout(std430, set = 0, binding = 2) buffer LightMetaInfos {
+  LightMetaInfo lightMetaInfos[];
+};
+
+layout (std430, set = 0, binding = 3) buffer LightGridIndexList {
+  uint lightGridIndexList[];
+};
+
+layout (std430, set = 0, binding = 4) buffer LightGridClusters {
+  uvec2 lightGridClusters[];
+};
+
+layout (std430, set = 0, binding = 5) buffer LightGridIndexListCounter {
+  uint lightGridIndexListCounter;
+};
+
+/* clang-format on */
+
+shared LightMetaInfo sharedLightMetaInfos[8 * 8 * 8];
+
+void main() {
+  //
+
+  View view = uView.views[pushConstants.countLightsViewIndexSizeOffsetedViewIndex.w];
+
+  uint localInvocationIndex = uint(gl_LocalInvocationIndex);
+
+  uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz);  //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz;
+  uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz);
+  uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
+
+  uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
+
+  uint countThreads = uint(gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z);
+  uint countLights = pushConstants.countLightsViewIndexSizeOffsetedViewIndex.x;
+  uint countBatches = (countLights + (countThreads - 1u)) / countThreads;
+
+  uint countVisibleLights = 0u;
+  uint visibleLightIndices[128];
+
+  mat4 worldSpaceToViewSpaceMatrix = view.viewMatrix;
+
+  for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
+    uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;
+    if(linuxTransferIndex < countLights){
+      sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
+    }else{ 
+      sharedLightMetaInfos[localInvocationIndex].minBounds = vec4(0.0);
+      sharedLightMetaInfos[localInvocationIndex].maxBounds = vec4(0.0);
+    }
+    barrier();
+    for (uint lightProcessIndex = 0u; (lightProcessIndex < countThreads) && (countVisibleLights < 128u); lightProcessIndex++) {
+      LightMetaInfo lightMetaInfo = sharedLightMetaInfos[lightProcessIndex];
+      if (lightMetaInfo.minBounds.w > 0.5) {
+        switch(int(lightMetaInfo.minBounds.w + 0.5)){
+          case 1:
+          case 4:{
+            // Directional light
+            // Primary directional light
+            // => always add without further checks, since directional lights are actually always scene global
+            visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+            countVisibleLights++;     
+            break;
+          }      
+#if 1
+          case 2:
+          case 3:{
+            // Check in view space
+            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
+            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds.xyz;
+            // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
+            // without scaling the radius in the worst case
+            vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
+            vec4 lightAABBMax = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.maxBounds.xyz, 1.0);
+            lightAABBMin /= lightAABBMin.w;
+            lightAABBMax /= lightAABBMax.w;
+            vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));
+            if(distance(clamp(lightSphere.xyz, clusterAABBMin, clusterAABBMax), lightSphere.xyz) <= lightSphere.w){
+              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              countVisibleLights++;     
+            }
+            break;
+          }
+#else
+          case 2:{
+            // Point light => check in view space
+            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
+            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds.xyz;
+            // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
+            // without scaling the radius in the worst case
+            vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
+            vec4 lightAABBMax = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.maxBounds.xyz, 1.0);
+            lightAABBMin /= lightAABBMin.w;
+            lightAABBMax /= lightAABBMax.w;
+            vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));
+            if(distance(clamp(lightSphere.xyz, clusterAABBMin, clusterAABBMax), lightSphere.xyz) <= lightSphere.w){
+              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              countVisibleLights++;     
+            }
+            break;
+          }
+          case 3:{
+            // Spot light => check in world space
+            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minWorldSpaceBounds.xyz;
+            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxWorldSpaceBounds.xyz;
+            vec3 lightAABBMin = lightMetaInfo.minBounds.xyz;
+            vec3 lightAABBMax = lightMetaInfo.maxBounds.xyz;
+            if (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax))) {
+              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              countVisibleLights++;     
+            }
+            break;
+          }
+#endif
+          default:{
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  barrier();
+
+  uint offset = atomicAdd(lightGridIndexListCounter, countVisibleLights);
+
+  for (uint lightIndex = 0u; lightIndex < countVisibleLights; lightIndex++) {
+    lightGridIndexList[offset + lightIndex] = visibleLightIndices[lightIndex];
+  }
+
+  lightGridClusters[clusterIndex] = uvec2(offset, countVisibleLights);
+}

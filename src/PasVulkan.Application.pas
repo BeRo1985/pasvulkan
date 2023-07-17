@@ -71,8 +71,11 @@ uses {$if defined(Unix)}
       ctypes,
      {$elseif defined(Windows)}
       Windows,
+      {$ifdef fpc}jwawinbase,{$endif}
+      {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}Messages,{$ifend}
       MMSystem,
       Registry,
+      {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}MultiMon,ShellAPI,PasVulkan.Win32.GameInput,{$ifend}
      {$ifend}
      SysUtils,
      Classes,
@@ -84,18 +87,22 @@ uses {$if defined(Unix)}
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
      PasVulkan.SDL2,
 {$ifend}
      PasVulkan.HighResolutionTimer,
      PasVulkan.Android,
      PasVulkan.Audio,
      PasVulkan.Resources,
+     PasVulkan.Collections,
      PasVulkan.NVIDIA.AfterMath;
 
 const MaxSwapChainImages=3;
 
+      MaxInFlightFrames=3;
+
       FrameTimesHistorySize=1 shl 10;
+      FrameTimesHistoryMask=FrameTimesHistorySize-1;
 
       LOG_NONE=0;
       LOG_INFO=1;
@@ -107,6 +114,7 @@ const MaxSwapChainImages=3;
       EVENT_KEY=1;
       EVENT_POINTER=2;
       EVENT_SCROLLED=3;
+      EVENT_DRAGDROPFILE=4;
 
       KEYCODE_QUIT=-2;
       KEYCODE_ANYKEY=-1;
@@ -404,6 +412,7 @@ const MaxSwapChainImages=3;
       KEYCODE_BUTTON_START=476;
       KEYCODE_BUTTON_SELECT=477;
       KEYCODE_BUTTON_MODE=478;
+      KEYCODE_TILDE=479;
 
       ORIENTATION_LANDSCAPE=0;
       ORIENTATION_PORTRAIT=1;
@@ -415,16 +424,16 @@ const MaxSwapChainImages=3;
       PERIPHERAL_COMPASS=4;
       PERIPHERAL_VIBRATOR=5;
 
-      JOYSTICK_HAT_NONE=0;
-      JOYSTICK_HAT_LEFTUP=1;
-      JOYSTICK_HAT_UP=2;
-      JOYSTICK_HAT_RIGHTUP=3;
-      JOYSTICK_HAT_LEFT=4;
-      JOYSTICK_HAT_CENTERED=5;
-      JOYSTICK_HAT_RIGHT=6;
-      JOYSTICK_HAT_LEFTDOWN=7;
-      JOYSTICK_HAT_DOWN=8;
-      JOYSTICK_HAT_RIGHTDOWN=9;
+      JOYSTICK_HAT_CENTERED=0;
+      JOYSTICK_HAT_LEFT=1 shl 0;
+      JOYSTICK_HAT_RIGHT=1 shl 1;
+      JOYSTICK_HAT_UP=1 shl 2;
+      JOYSTICK_HAT_DOWN=1 shl 3;
+      JOYSTICK_HAT_LEFTUP=JOYSTICK_HAT_LEFT or JOYSTICK_HAT_UP;
+      JOYSTICK_HAT_RIGHTUP=JOYSTICK_HAT_RIGHT or JOYSTICK_HAT_UP;
+      JOYSTICK_HAT_LEFTDOWN=JOYSTICK_HAT_LEFT or JOYSTICK_HAT_DOWN;
+      JOYSTICK_HAT_RIGHTDOWN=JOYSTICK_HAT_RIGHT or JOYSTICK_HAT_DOWN;
+      JOYSTICK_HAT_NONE=1 shl 4;
 
       GAME_CONTROLLER_BINDTYPE_NONE=0;
       GAME_CONTROLLER_BINDTYPE_BUTTON=1;
@@ -522,6 +531,7 @@ type EpvApplication=class(Exception)
        RMETA,
        NUM,
        CAPS,
+       SCROLL,
        MODE,
        RESERVED,
        CTRL,
@@ -556,9 +566,12 @@ type EpvApplication=class(Exception)
      PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
      TpvApplicationInputPointerButton=
       (
+       None,
        Left,
        Middle,
-       Right
+       Right,
+       X1,
+       X2
       );
 
      PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
@@ -598,12 +611,14 @@ type EpvApplication=class(Exception)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
+       function DragDropFileEvent(aFileName:TpvUTF8String):boolean; virtual;
      end;
 
      PpvApplicationInputProcessorQueueEvent=^TpvApplicationInputProcessorQueueEvent;
      TpvApplicationInputProcessorQueueEvent=record
       Next:PpvApplicationInputProcessorQueueEvent;
       Time:TpvInt64;
+      StringData:TpvUTF8String;
       case Event:TpvInt32 of
        EVENT_KEY:(
         KeyEvent:TpvApplicationInputKeyEvent;
@@ -637,6 +652,7 @@ type EpvApplication=class(Exception)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
+       function DragDropFileEvent(aFileName:TpvUTF8String):boolean; override;
      end;
 
      TpvApplicationInputMultiplexer=class(TpvApplicationInputProcessor)
@@ -655,6 +671,7 @@ type EpvApplication=class(Exception)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
+       function DragDropFileEvent(aFileName:TpvUTF8String):boolean; override;
      end;
 
      TpvApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TpvApplicationRawByteString) of object;
@@ -663,11 +680,24 @@ type EpvApplication=class(Exception)
 
      TpvApplicationJoystick=class
       private
+       fID:TpvInt64;
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        fIndex:TpvInt32;
-       fID:TpvInt32;
-{$if defined(PasVulkanUseSDL2)}
        fJoystick:PSDL_Joystick;
        fGameController:PSDL_GameController;
+{$elseif not defined(PasVulkanHeadless)}
+{$if defined(Windows)}
+       fJoystick:TpvUInt32;
+       fState:Pointer;
+       fJoyCaps:TJOYCAPSW;
+       fJoyInfoEx:TJoyInfoEx;
+       fWin32GameInputDevice:IGameInputDevice;
+       fWin32GameInputDeviceName:TpvUTF8String;
+       fWin32GameInputDeviceGUID:TGUID;
+{$ifend}
+       fAxes:array[0..GAME_CONTROLLER_AXIS_MAX-1] of TpvFloat;
+       fButtons:TpvUInt32;
+       fHats:TpvUInt32;
 {$ifend}
        fCountAxes:TpvInt32;
        fCountBalls:TpvInt32;
@@ -675,10 +705,10 @@ type EpvApplication=class(Exception)
        fCountButtons:TpvInt32;
        procedure Initialize;
       public
-{$if defined(PasVulkanUseSDL2)}
-       constructor Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+       constructor Create(const aID:TpvInt64;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
 {$else}
-       constructor Create(const aIndex:TpvInt32); reintroduce;
+       constructor Create(const aID:TpvInt64); reintroduce;
 {$ifend}
        destructor Destroy; override;
        function IsGameController:boolean;
@@ -692,24 +722,244 @@ type EpvApplication=class(Exception)
        function CountHats:TpvInt32;
        function CountButtons:TpvInt32;
        procedure Update;
-       function GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
+       function GetAxis(const aAxisIndex:TpvInt32):TpvFloat;
        function GetBall(const aBallIndex:TpvInt32;out aDeltaX,aDeltaY:TpvInt32):boolean;
        function GetHat(const aHatIndex:TpvInt32):TpvInt32;
        function GetButton(const aButtonIndex:TpvInt32):boolean;
        function IsGameControllerAttached:boolean;
-       function GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
+       function GetGameControllerAxis(const aAxis:TpvInt32):TpvFloat;
        function GetGameControllerButton(const aButton:TpvInt32):boolean;
        function GetGameControllerName:TpvApplicationRawByteString;
        function GetGameControllerMapping:TpvApplicationRawByteString;
      end;
 
+     TpvApplicationJoysticks=class(TpvObjectGenericList<TpvApplicationJoystick>);
+
+     TpvApplicationJoystickIDHashMap=class(TpvHashMap<TpvInt64,TpvApplicationJoystick>);
+
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
+{$if defined(Windows) and not defined(PasVulkanHeadless)}
+     TpvApplicationTOUCHINPUT=record
+      x:LONG;
+      y:LONG;
+      hSource:THANDLE;
+      dwID:DWORD;
+      dwFlags:DWORD;
+      dwMask:DWORD;
+      dwTime:DWORD;
+      dwExtraInfo:ULONG_PTR;
+      cxContact:DWORD;
+      cyContact:DWORD;
+     end;
+     PpvApplicationTOUCHINPUT=^TpvApplicationTOUCHINPUT;
+
+     TpvApplicationPOINTER_INPUT_TYPE=TpvUInt32;
+     PpvApplicationPOINTER_INPUT_TYPE=^TpvApplicationPOINTER_INPUT_TYPE;
+
+     TpvApplicationPOINTER_FLAGS=TpvUInt32;
+     PpvApplicationPOINTER_FLAGS=^TpvApplicationPOINTER_FLAGS;
+
+     TpvApplicationPOINTER_BUTTON_CHANGE_TYPE=TpvUInt32;
+     PpvApplicationPOINTER_BUTTON_CHANGE_TYPE=^TpvApplicationPOINTER_BUTTON_CHANGE_TYPE;
+
+     TpvApplicationPOINTER_INFO=record
+      pointerType:TpvApplicationPOINTER_INPUT_TYPE;
+      pointerId:TpvUInt32;
+      frameId:TpvUInt32;
+      pointerFlags:TpvApplicationPOINTER_FLAGS;
+      sourceDevice:THandle;
+      hwndTarget:HWND;
+      ptPixelLocation:TPoint;
+      ptHimetricLocation:TPoint;
+      ptPixelLocationRaw:TPoint;
+      ptHimetricLocationRaw:TPoint;
+      dwTime:DWORD;
+      historyCount:TpvUInt32;
+      InputData:TpvInt32;
+      dwKeyStates:DWORD;
+      PerformanceCount:TpvUInt64;
+      ButtonChangeType:TpvApplicationPOINTER_BUTTON_CHANGE_TYPE;
+     end;
+
+     PpvApplicationPOINTER_INFO=^TpvApplicationPOINTER_INFO;
+
+     TpvApplicationTOUCH_FLAGS=TpvUInt32;
+     PpvApplicationTOUCH_FLAGS=^TpvApplicationTOUCH_FLAGS;
+
+     TpvApplicationTOUCH_MASK=TpvUInt32;
+     PpvApplicationTOUCH_MASK=^TpvApplicationTOUCH_MASK;
+
+     TpvApplicationPOINTER_TOUCH_INFO=record
+      pointerInfo:TpvApplicationPOINTER_INFO;
+      touchFlags:TpvApplicationTOUCH_FLAGS;
+      touchMask:TpvApplicationTOUCH_MASK;
+      rcContact:TRect;
+      rcContactRaw:TRect;
+      orientation:TpvUInt32;
+      pressure:TpvUInt32;
+     end;
+
+     PpvApplicationPOINTER_TOUCH_INFO=^TpvApplicationPOINTER_TOUCH_INFO;
+
+     TpvApplicationPEN_FLAGS=TpvUInt32;
+     PpvApplicationPEN_FLAGS=^TpvApplicationPEN_FLAGS;
+
+     TpvApplicationPEN_MASK=TpvUInt32;
+     PpvApplicationPEN_MASK=^TpvApplicationPEN_MASK;
+
+     TpvApplicationPOINTER_PEN_INFO=record
+      pointerInfo:TpvApplicationPOINTER_INFO;
+      penFlags:TpvApplicationPEN_FLAGS;
+      penMask:TpvApplicationPEN_MASK;
+      pressure:TpvUInt32;
+      rotation:TpvUInt32;
+      tiltX:TpvInt32;
+      tiltY:TpvInt32;
+     end;
+
+     PpvApplicationPOINTER_PEN_INFO=^TpvApplicationPOINTER_PEN_INFO;
+
+     TpvApplicationCOMBINED_POINTER_INFO=record
+      case TpvUInt8 of
+       0:(
+        pointerInfo:TpvApplicationPOINTER_INFO;
+       );
+       1:(
+        pointerTouchInfo:TpvApplicationPOINTER_TOUCH_INFO;
+       );
+       2:(
+        pointerPenInfo:TpvApplicationPOINTER_PEN_INFO;
+       );
+     end;
+
+     PpvApplicationCOMBINED_POINTER_INFO=^TpvApplicationCOMBINED_POINTER_INFO;
+
+     TpvApplicationWin32GameInputDeviceCallbackQueueItem=record
+      Device:IGameInputDevice;
+      Timestamp:TpvUInt64;
+      CurrentStatus:TGameInputDeviceStatus;
+      PreviousStatus:TGameInputDeviceStatus;
+     end;
+
+     PpvApplicationWin32GameInputDeviceCallbackQueueItem=^TpvApplicationWin32GameInputDeviceCallbackQueueItem;
+
+     TpvApplicationWin32GameInputDeviceCallbackQueue=TPasMPUnboundedQueue<TpvApplicationWin32GameInputDeviceCallbackQueueItem>;
+
+{$ifend}
+
+     TpvApplicationNativeEventKind=
+      (
+       None,
+       Resize,
+       Quit,
+       Close,
+       Destroy,
+       LowMemory,
+       WillEnterBackground,
+       DidEnterBackground,
+       WillEnterForeground,
+       DidEnterForeground,
+       GraphicsReset,
+       DropFile,
+       TextInput,
+       KeyDown,
+       KeyUp,
+       KeyTyped,
+       UnicodeCharTyped,
+       MouseButtonDown,
+       MouseButtonUp,
+       MouseWheel,
+       MouseMoved,
+       MouseEnter,
+       MouseLeave,
+       TouchDown,
+       TouchUp,
+       TouchMotion
+      );
+
+     PpvApplicationNativeEventKind=^TpvApplicationNativeEventKind;
+
+     TpvApplicationNativeEvent=record
+      StringValue:TpvUTF8String;
+      case Kind:TpvApplicationNativeEventKind of
+       TpvApplicationNativeEventKind.None:(
+       );
+       TpvApplicationNativeEventKind.Resize:(
+        ResizeWidth:TpvInt32;
+        ResizeHeight:TpvInt32;
+       );
+       TpvApplicationNativeEventKind.Close:(
+       );
+       TpvApplicationNativeEventKind.Destroy:(
+       );
+       TpvApplicationNativeEventKind.DropFile:(
+       );
+       TpvApplicationNativeEventKind.KeyDown,
+       TpvApplicationNativeEventKind.KeyUp,
+       TpvApplicationNativeEventKind.KeyTyped:(
+        KeyCode:TpvInt32;
+        KeyModifiers:TpvApplicationInputKeyModifiers;
+        KeyRepeat:Boolean;
+       );
+       TpvApplicationNativeEventKind.UnicodeCharTyped:(
+        CharVal:TPUCUUTF32Char;
+       );
+       TpvApplicationNativeEventKind.MouseButtonDown,
+       TpvApplicationNativeEventKind.MouseButtonUp,
+       TpvApplicationNativeEventKind.MouseWheel,
+       TpvApplicationNativeEventKind.MouseMoved,
+       TpvApplicationNativeEventKind.MouseEnter,
+       TpvApplicationNativeEventKind.MouseLeave:(
+        MouseCoordX:TpvInt32;
+        MouseCoordY:TpvInt32;
+        MouseDeltaX:TpvInt32;
+        MouseDeltaY:TpvInt32;
+        MouseKeyModifiers:TpvApplicationInputKeyModifiers;
+        MouseButtons:TpvApplicationInputPointerButtons;
+        case TpvApplicationNativeEventKind of
+         TpvApplicationNativeEventKind.MouseWheel:(
+          MouseScrollOffsetX:TpvDouble;
+          MouseScrollOffsetY:TpvDouble;
+         );
+         TpvApplicationNativeEventKind.MouseButtonDown,
+         TpvApplicationNativeEventKind.MouseButtonUp,
+         TpvApplicationNativeEventKind.MouseMoved,
+         TpvApplicationNativeEventKind.MouseEnter,
+         TpvApplicationNativeEventKind.MouseLeave:(
+          MouseButton:TpvApplicationInputPointerButton;
+         );
+       );
+       TpvApplicationNativeEventKind.TouchDown,
+       TpvApplicationNativeEventKind.TouchUp,
+       TpvApplicationNativeEventKind.TouchMotion:(
+        TouchID:TpvUInt16;
+        TouchX:TpvDouble;
+        TouchY:TpvDouble;
+        TouchDeltaX:TpvDouble;
+        TouchDeltaY:TpvDouble;
+        TouchPressure:TpvDouble;
+        TouchPen:Boolean;
+       );
+     end;
+
+     PpvApplicationNativeEvent=^TpvApplicationNativeEvent;
+
+     TpvApplicationNativeEventQueue=TPasMPUnboundedQueue<TpvApplicationNativeEvent>;
+
+     TpvApplicationNativeEventLocalQueue=TpvDynamicQueue<TpvApplicationNativeEvent>;
+
+{$ifend}
+
      TpvApplicationEvent=record
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
       SDLEvent:TSDL_Event;
+      StringData:TpvUTF8String;
 {$else}
-      Dummy:TpvUInt32;
+      NativeEvent:TpvApplicationNativeEvent;
 {$ifend}
      end;
+
+     PpvApplicationEvent=^TpvApplicationEvent;
 
      TpvApplicationInput=class
       private
@@ -718,9 +968,9 @@ type EpvApplication=class(Exception)
        fCriticalSection:TPasMPCriticalSection;
        fProcessor:TpvApplicationInputProcessor;
        fEvents:array of TpvApplicationEvent;
-       fEventTimes:array of int64;
+       fEventTimes:array of TpvInt64;
        fEventCount:TpvInt32;
-       fCurrentEventTime:int64;
+       fCurrentEventTime:TpvInt64;
        fKeyDown:array[0..$ffff] of boolean;
        fKeyDownCount:TpvInt32;
        fJustKeyDown:array[0..$ffff] of boolean;
@@ -740,11 +990,12 @@ type EpvApplication=class(Exception)
        fMouseDeltaY:TpvInt32;
        fJustTouched:longbool;
        fMaxPointerID:TpvInt32;
-       fJoysticks:TList;
+       fJoysticks:TpvApplicationJoysticks;
+       fJoystickIDHashMap:TpvApplicationJoystickIDHashMap;
        fMainJoystick:TpvApplicationJoystick;
        fTextInput:longbool;
        fLastTextInput:longbool;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
 {$else}
@@ -794,7 +1045,9 @@ type EpvApplication=class(Exception)
        function IsCursorCatched:boolean;
        procedure SetCursorPosition(const pX,pY:TpvInt32);
        function GetJoystickCount:TpvInt32;
-       function GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
+       function GetJoystick(const aID:TpvInt64=-1):TpvApplicationJoystick;
+       function GetJoystickByID(const aID:TpvInt64=-1):TpvApplicationJoystick;
+       function GetJoystickByIndex(const aIndex:TpvSizeInt=-1):TpvApplicationJoystick;
      end;
 
      TpvApplicationLifecycleListener=class
@@ -838,6 +1091,8 @@ type EpvApplication=class(Exception)
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
+       function DragDropFileEvent(aFileName:TpvUTF8String):boolean; virtual;
+
        function CanBeParallelProcessed:boolean; virtual;
 
        procedure Check(const aDeltaTime:TpvDouble); virtual;
@@ -846,7 +1101,7 @@ type EpvApplication=class(Exception)
 
        procedure BeginFrame(const aDeltaTime:TpvDouble); virtual;
 
-       function IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean; virtual;
+       function IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean; virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
@@ -873,7 +1128,7 @@ type EpvApplication=class(Exception)
        function ExistAsset(const aFileName:TpvUTF8String):boolean;
        function GetAssetStream(const aFileName:TpvUTF8String):TStream;
        function GetAssetSize(const aFileName:TpvUTF8String):TpVInt64;
-       function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDierectory:boolean=false):TFileNameList;
+       function GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
        property BasePath:TpvUTF8String read fBasePath;
      end;
 
@@ -921,7 +1176,13 @@ type EpvApplication=class(Exception)
        FIFORelaxed=3,
        NoVSync={$ifdef fpc}0{$else}TpvApplicationPresentMode.Immediate{$endif},
        GreedyVSync={$ifdef fpc}1{$else}TpvApplicationPresentMode.Mailbox{$endif},
-       Vsync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
+       VSync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
+      );
+
+     TpvApplicationProcessingMode=
+      (
+       Strict=0,
+       Flexible=1
       );
 
      TpvApplicationSwapChainColorSpace=
@@ -930,9 +1191,25 @@ type EpvApplication=class(Exception)
        SRGB=1
       );
 
+     TpvApplicationPresentFrameLatencyMode=
+      (
+       None=-1,
+       Auto=0,
+       PresentWait=1,
+       FenceWait=2,
+       CombinedWait=3
+      );
+
+     { TpvApplication }
+
      TpvApplication=class
       private
-       type TAcquireVulkanBackBufferState=
+       type TVulkanBackBufferState=
+             (
+              Acquire,
+              Present
+             );
+            TAcquireVulkanBackBufferState=
              (
               Entry,
               WaitOnPreviousFrames,
@@ -945,6 +1222,9 @@ type EpvApplication=class(Exception)
               RecreateSurface,
               RecreateDevice
              );
+             TWin32TouchIDFreeList=TpvDynamicQueue<TpvUInt32>;
+             TWin32TouchIDHashMap=class(TpvHashMap<TpvUInt32,TpvUInt32>)
+             end;
        const PresentModeToVulkanPresentMode:array[TpvApplicationPresentMode.Immediate..TpvApplicationPresentMode.FIFORelaxed] of TVkPresentModeKHR=
               (
                VK_PRESENT_MODE_IMMEDIATE_KHR,
@@ -956,6 +1236,10 @@ type EpvApplication=class(Exception)
 
        fTitle:TpvUTF8String;
        fVersion:TpvUInt32;
+
+       fWindowTitle:TpvUTF8String;
+
+       fHasNewWindowTitle:TPasMPBool32;
 
        fPathName:TpvUTF8String;
 
@@ -997,10 +1281,15 @@ type EpvApplication=class(Exception)
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
+       fCurrentMaximized:TpvInt32;
        fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
+       fCurrentCatchMouseOnButton:TpvInt32;
        fCurrentCatchMouse:TpvInt32;
+       fCurrentEffectiveCatchMouse:TpvInt32;
+       fCurrentRelativeMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
+       fCurrentAcceptDragDropFiles:TpvInt32;
        fCurrentBlocking:TpvInt32;
        fCurrentWaitOnPreviousFrames:TpvInt32;
 
@@ -1009,11 +1298,19 @@ type EpvApplication=class(Exception)
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fFullscreen:boolean;
+       fMaximized:boolean;
        fPresentMode:TpvApplicationPresentMode;
+       fPresentFrameLatency:TpvUInt64;
+       fPresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode;
+       fProcessingMode:TpvApplicationProcessingMode;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
+       fCatchMouseOnButton:boolean;
        fCatchMouse:boolean;
+       fEffectiveCatchMouse:boolean;
+       fRelativeMouse:boolean;
        fHideSystemBars:boolean;
+       fAcceptDragDropFiles:boolean;
        fAndroidMouseTouchEvents:boolean;
        fAndroidTouchMouseEvents:boolean;
        fAndroidBlockOnPause:boolean;
@@ -1026,7 +1323,7 @@ type EpvApplication=class(Exception)
 
        fBackgroundResourceLoaderFrameTimeout:TpvInt64;
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        fSDLVersion:TSDL_Version;
 
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
@@ -1042,7 +1339,7 @@ type EpvApplication=class(Exception)
 
        fTerminated:boolean;
 
-{$if defined(fpc) and defined(android) and not defined(PasVulkanUseSDL2)}
+{$if defined(fpc) and defined(android) and not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fAndroidApp:TpvPointer;
        fAndroidWindow:PANativeWindow;
        fAndroidReady:TPasMPBool32;
@@ -1050,7 +1347,7 @@ type EpvApplication=class(Exception)
        fAndroidAppProcessMessages:procedure(const aAndroidApp:TpvPointer;const aWait:boolean);
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        fSDLWaveFormat:TSDL_AudioSpec;
 
        fSDLDisplayMode:TSDL_DisplayMode;
@@ -1068,17 +1365,25 @@ type EpvApplication=class(Exception)
        fScreenWidth:TpvInt32;
        fScreenHeight:TpvInt32;
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        fVideoFlags:TSDLUInt32;
 {$ifend}
 
+       fExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode;
+
        fFullscreenFocusNeeded:boolean;
 
+       fStayActiveRegardlessOfVisibility:boolean;
+
        fGraphicsReady:boolean;
+
+       fReinitializeGraphics:boolean;
 
        fVulkanRecreateSwapChainOnSuboptimalSurface:boolean;
 
        fVulkanDebugging:boolean;
+
+       fVulkanShaderPrintfDebugging:boolean;
 
        fVulkanValidation:boolean;
 
@@ -1092,20 +1397,6 @@ type EpvApplication=class(Exception)
 
        fVulkanMultiviewSupportEnabled:boolean;
 
-       fVulkanMultiviewGeometryShader:boolean;
-
-       fVulkanMultiviewTessellationShader:boolean;
-
-       fVulkanMaxMultiviewViewCount:TpvUInt32;
-
-       fVulkanMaxMultiviewInstanceIndex:TpvUInt32;
-
-       fVulkanFragmentShaderSampleInterlock:boolean;
-
-       fVulkanFragmentShaderPixelInterlock:boolean;
-
-       fVulkanFragmentShaderShadingRateInterlock:boolean;
-
        fVulkanInstance:TpvVulkanInstance;
 
        fVulkanDevice:TpvVulkanDevice;
@@ -1113,20 +1404,6 @@ type EpvApplication=class(Exception)
        fVulkanPipelineCache:TpvVulkanPipelineCache;
 
        fVulkanPipelineCacheFileName:TpvUTF8String;
-
-       fVulkanPhysicalDeviceFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
-
-       fVulkanPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
-
-       fVulkanPhysicalDeviceVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;
-
-       fVulkanPhysicalDeviceMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
-
-       fVulkanPhysicalDeviceProperties2KHR:TVkPhysicalDeviceProperties2KHR;
-
-       fVulkanPhysicalDeviceMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
-
-       fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
 
        fCountCPUThreads:TpvInt32;
 
@@ -1191,6 +1468,8 @@ type EpvApplication=class(Exception)
 
        fHasLastTime:boolean;
 
+       fDoUpdateMainJoystick:boolean;
+
        fLastTime:TpvHighResolutionTime;
        fNowTime:TpvHighResolutionTime;
        fDeltaTime:TpvHighResolutionTime;
@@ -1200,8 +1479,9 @@ type EpvApplication=class(Exception)
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
-       fFrameTimesHistoryReadIndex:TPasMPInt32;
-       fFrameTimesHistoryWriteIndex:TPasMPInt32;
+       fFrameTimesHistoryIndex:TpvSizeInt;
+       fFrameTimesHistoryCount:TpvSizeInt;
+       fFrameTimesHistorySum:TpvDouble;
 
        fFramesPerSecond:TpvDouble;
 
@@ -1213,19 +1493,35 @@ type EpvApplication=class(Exception)
        
        fDrawFrameCounter:TpvInt64;
 
+       fDesiredCountInFlightFrames:TpvInt32;
+
+       fCountInFlightFrames:TpvInt32;
+
+       fCurrentInFlightFrameIndex:TpvInt32;
+
+       fNextInFlightFrameIndex:TpvInt32;
+
+       fDrawInFlightFrameIndex:TpvInt32;
+
+       fUpdateInFlightFrameIndex:TpvInt32;
+
        fCountSwapChainImages:TpvInt32;
 
        fDesiredCountSwapChainImages:TpvInt32;
 
-       fUpdateSwapChainImageIndex:TpvInt32;
+       fSwapChainImageCounterIndex:TpvInt32;
 
-       fDrawSwapChainImageIndex:TpvInt32;
+       fSwapChainImageIndex:TpvInt32;
 
-       fRealUsedDrawSwapChainImageIndex:TpvInt32;
+       fVulkanPresentID:TpvUInt64;
+
+       fVulkanPresentLastID:TpvUInt64;
 
        fVulkanAPIVersion:TvkUInt32;
 
        fVulkanPhysicalDeviceHandle:TVkPhysicalDevice;
+
+       fVulkanBackBufferState:TVulkanBackBufferState;
 
        fAcquireVulkanBackBufferState:TAcquireVulkanBackBufferState;
 
@@ -1239,17 +1535,19 @@ type EpvApplication=class(Exception)
 
        fVulkanOldSwapChain:TpvVulkanSwapChain;
 
-       fVulkanTransferInflightCommandsFromOldSwapChain:boolean;
+       fVulkanTransferInFlightCommandsFromOldSwapChain:boolean;
 
-       fVulkanWaitFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
+       fVulkanInFlightFenceIndices:array[0..MaxInFlightFrames-1] of TpvInt32;
 
-       fVulkanWaitFencesReady:array[0..MaxSwapChainImages-1] of boolean;
+       fVulkanWaitFences:array of TpvVulkanFence;
 
-       fVulkanPresentCompleteSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanWaitFencesReady:array of boolean;
 
-       fVulkanPresentCompleteFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
+       fVulkanPresentCompleteSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanPresentCompleteFencesReady:array[0..MaxSwapChainImages-1] of boolean;
+       fVulkanPresentCompleteFences:array of TpvVulkanFence;
+
+       fVulkanPresentCompleteFencesReady:array of boolean;
 
        fVulkanDepthImageFormat:TVkFormat;
 
@@ -1265,27 +1563,101 @@ type EpvApplication=class(Exception)
 
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
 
-       fVulkanBlankCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+       fVulkanSurfaceRecreated:boolean;
 
-       fVulkanBlankCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanBlankCommandBuffers:array of TpvVulkanCommandBuffer;
 
-       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanBlankCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
 
-       fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-       fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
+
+       fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:array of TpvVulkanSemaphore;
+
+       fVulkanFrameFences:array[0..3] of TpvVulkanFence;
+       fVulkanFrameFencesReady:TpvUInt32;
+       fVulkanFrameFenceCounter:TpvUInt32;
+       fVulkanFrameFenceCommandBuffers:array of array[0..3] of TpvVulkanCommandBuffer;
+       fVulkanFrameFenceSemaphores:array of array[0..3] of TpvVulkanSemaphore;
+
+       fVulkanWaitFenceCommandBuffers:array of TpvVulkanCommandBuffer;
+       fVulkanWaitFenceSemaphores:array of TpvVulkanSemaphore;
+
+       fVulkanDelayResizeBugWorkaround:boolean;
 
        fVulkanNVIDIADiagnosticConfigExtensionFound:boolean;
 
        fVulkanNVIDIADiagnosticCheckPointsExtensionFound:boolean;
 
        fVulkanNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
+
+       fUniverse:TObject;
+
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
+       fNativeEventQueue:TpvApplicationNativeEventQueue;
+
+       fNativeEventLocalQueue:TpvApplicationNativeEventLocalQueue;
+{$ifend}
+
+{$if not defined(PasVulkanHeadless)}
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+       fWin32HInstance:HINST;
+       fWin32Handle:HWND;
+       fWin32Callback:{$ifdef fpc}WNDPROC{$else}Pointer{$endif};
+       fWin32Cursor:HCURSOR;
+       fWin32HiddenCursor:HCURSOR;
+       fWin32Icon:HICON;
+       fWin32KeyRepeat:Boolean;
+       fWin32MouseInside:Boolean;
+       fWin32WindowClass:ATOM;
+       fWin32Style:DWORD;
+       fWin32Rect:TRect;
+       fWin32Title:WideString;
+       //fWin32KeyState:TKeyboardState;
+       fWin32MouseCoordX:TpvInt32;
+       fWin32MouseCoordY:TpvInt32;
+       fWin32AudioThread:TPasMPThread;
+       fWin32HasFocus:Boolean;
+       fWin32OldLeft:TpvInt32;
+       fWin32OldTop:TpvInt32;
+       fWin32OldWidth:TpvInt32;
+       fWin32OldHeight:TpvInt32;
+       fWin32Fullscreen:Boolean;
+       fWin32HighSurrogate:TpvUInt32;
+       fWin32LowSurrogate:TpvUInt32;
+       fWin32TouchActive:Boolean;
+       fWin32TouchInputs:array of TpvApplicationTOUCHINPUT;
+       fWin32TouchIDHashMap:TWin32TouchIDHashMap;
+       fWin32TouchIDFreeList:TWin32TouchIDFreeList;
+       fWin32TouchIDCounter:TpvUInt32;
+       fWin32TouchLastX:array[0..$1fff] of TpvDouble;
+       fWin32TouchLastY:array[0..$1fff] of TpvDouble;
+       fWin32MainFiber:LPVOID;
+       fWin32MessageFiber:LPVOID;
+       fWin32NCMouseButton:UINT;
+       fWin32NCMousePos:LParam;
+       fWin32HasGameInput:boolean;
+       fWin32GameInput:IGameInput;
+       fWin32GameInputDeviceCallbackQueue:TpvApplicationWin32GameInputDeviceCallbackQueue;
+       fWin32GameInputDeviceCallbackToken:TGameInputCallbackToken;
+
+       function Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
+
+{$ifend}
+{$ifend}
+
+       procedure SetTitle(const aTitle:TpvUTF8String);
+
+       procedure SetWindowTitle(const aWindowTitle:TpvUTF8String);
+
+       procedure SetDesiredCountInFlightFrames(const aDesiredCountInFlightFrames:TpvInt32);
 
        procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
 
@@ -1297,6 +1669,12 @@ type EpvApplication=class(Exception)
 
        procedure InitializeAudio;
        procedure DeinitializeAudio;
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+       procedure ProcessWin32APIMessages;
+{$ifend}
+
+       procedure UpdateJoysticks(const aInitial:boolean);
 
       protected
 
@@ -1326,6 +1704,10 @@ type EpvApplication=class(Exception)
        procedure CreateVulkanCommandBuffers;
        procedure DestroyVulkanCommandBuffers;
 
+       function ShouldSkipNextFrameForRendering:boolean;
+
+       function WaitForSwapChainLatency:boolean;
+
        function AcquireVulkanBackBuffer:boolean;
        function PresentVulkanBackBuffer:boolean;
 
@@ -1349,6 +1731,8 @@ type EpvApplication=class(Exception)
        function IsVisibleToUser:boolean;
 
        function WaitForReadyState:boolean;
+
+       procedure DrawBlackScreen(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
       public
 
@@ -1376,6 +1760,8 @@ type EpvApplication=class(Exception)
        procedure ProcessMessages;
 
        procedure Run;
+
+       procedure SetFocus;
 
        procedure SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance); virtual;
 
@@ -1413,6 +1799,8 @@ type EpvApplication=class(Exception)
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
+       function DragDropFileEvent(aFileName:TpvUTF8String):boolean; virtual;
+
        function CanBeParallelProcessed:boolean; virtual;
 
        procedure Check(const aDeltaTime:TpvDouble); virtual; // example for VR input handling
@@ -1421,7 +1809,7 @@ type EpvApplication=class(Exception)
 
        procedure BeginFrame(const aDeltaTime:TpvDouble); virtual;
 
-       function IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean; virtual;
+       function IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean; virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
@@ -1453,8 +1841,10 @@ type EpvApplication=class(Exception)
 
        property ResourceManager:TpvResourceManager read fResourceManager;
 
-       property Title:TpvUTF8String read fTitle write fTitle;
+       property Title:TpvUTF8String read fTitle write SetTitle;
        property Version:TpvUInt32 read fVersion write fVersion;
+
+       property WindowTitle:TpvUTF8String read fWindowTitle write SetWindowTitle;
 
        property PathName:TpvUTF8String read fPathName write fPathName;
 
@@ -1467,17 +1857,37 @@ type EpvApplication=class(Exception)
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
+       property Maximized:boolean read fMaximized write fMaximized;
+
+       property ExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode read fExclusiveFullScreenMode write fExclusiveFullScreenMode;
+
        property FullscreenFocusNeeded:boolean read fFullscreenFocusNeeded write fFullscreenFocusNeeded;
 
+       property StayActiveRegardlessOfVisibility:boolean read fStayActiveRegardlessOfVisibility write fStayActiveRegardlessOfVisibility;
+
+       property ReinitializeGraphics:boolean read fReinitializeGraphics write fReinitializeGraphics;
+
        property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
+
+       property PresentFrameLatency:TpvUInt64 read fPresentFrameLatency write fPresentFrameLatency;
+
+       property PresentFrameLatencyMode:TpvApplicationPresentFrameLatencyMode read fPresentFrameLatencyMode write fPresentFrameLatencyMode;
+
+       property ProcessingMode:TpvApplicationProcessingMode read fProcessingMode write fProcessingMode;
 
        property Resizable:boolean read fResizable write fResizable;
 
        property VisibleMouseCursor:boolean read fVisibleMouseCursor write fVisibleMouseCursor;
 
+       property CatchMouseOnButton:boolean read fCatchMouseOnButton write fCatchMouseOnButton;
+
        property CatchMouse:boolean read fCatchMouse write fCatchMouse;
 
+       property RelativeMouse:boolean read fRelativeMouse write fRelativeMouse;
+
        property HideSystemBars:boolean read fHideSystemBars write fHideSystemBars;
+
+       property AcceptDragDropFiles:boolean read fAcceptDragDropFiles write fAcceptDragDropFiles;
 
        property DisplayOrientations:TpvApplicationDisplayOrientations read fDisplayOrientations write fDisplayOrientations;
 
@@ -1522,6 +1932,8 @@ type EpvApplication=class(Exception)
 
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
+       property VulkanShaderPrintfDebugging:boolean read fVulkanShaderPrintfDebugging write fVulkanShaderPrintfDebugging;
+
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
 
        property VulkanNVIDIAAfterMath:boolean read fVulkanNVIDIAAfterMath write fVulkanNVIDIAAfterMath;
@@ -1533,20 +1945,6 @@ type EpvApplication=class(Exception)
        property VulkanPreferDedicatedGPUs:boolean read fVulkanPreferDedicatedGPUs write fVulkanPreferDedicatedGPUs;
 
        property VulkanMultiviewSupportEnabled:boolean read fVulkanMultiviewSupportEnabled;
-
-       property VulkanMultiviewGeometryShader:boolean read fVulkanMultiviewGeometryShader;
-
-       property VulkanMultiviewTessellationShader:boolean read fVulkanMultiviewTessellationShader;
-
-       property VulkanMaxMultiviewViewCount:TpvUInt32 read fVulkanMaxMultiviewViewCount;
-
-       property VulkanMaxMultiviewInstanceIndex:TpvUInt32 read fVulkanMaxMultiviewInstanceIndex;
-
-       property VulkanFragmentShaderSampleInterlock:boolean read fVulkanFragmentShaderSampleInterlock;
-
-       property VulkanFragmentShaderPixelInterlock:boolean read fVulkanFragmentShaderPixelInterlock;
-
-       property VulkanFragmentShaderShadingRateInterlock:boolean read fVulkanFragmentShaderShadingRateInterlock;
 
        property VulkanInstance:TpvVulkanInstance read fVulkanInstance;
 
@@ -1579,7 +1977,7 @@ type EpvApplication=class(Exception)
 
        property VulkanSwapChain:TpvVulkanSwapChain read fVulkanSwapChain;
 
-       property VulkanTransferInflightCommandsFromOldSwapChain:boolean read fVulkanTransferInflightCommandsFromOldSwapChain write fVulkanTransferInflightCommandsFromOldSwapChain;
+       property VulkanTransferInFlightCommandsFromOldSwapChain:boolean read fVulkanTransferInFlightCommandsFromOldSwapChain write fVulkanTransferInFlightCommandsFromOldSwapChain;
 
        property VulkanDepthImageFormat:TVkFormat read fVulkanDepthImageFormat;
 
@@ -1609,15 +2007,27 @@ type EpvApplication=class(Exception)
 
        property DrawFrameCounter:TpvInt64 read fDrawFrameCounter;
 
+       property DesiredCountInFlightFrames:TpvInt32 read fDesiredCountInFlightFrames write SetDesiredCountInFlightFrames;
+
+       property CountInFlightFrames:TpvInt32 read fCountInFlightFrames;
+
+       property CurrentInFlightFrameIndex:TpvInt32 read fCurrentInFlightFrameIndex;
+
+       property NextInFlightFrameIndex:TpvInt32 read fNextInFlightFrameIndex;
+
+       property DrawInFlightFrameIndex:TpvInt32 read fDrawInFlightFrameIndex;
+
+       property UpdateInFlightFrameIndex:TpvInt32 read fUpdateInFlightFrameIndex;
+
        property DesiredCountSwapChainImages:TpvInt32 read fDesiredCountSwapChainImages write SetDesiredCountSwapChainImages;
 
        property CountSwapChainImages:TpvInt32 read fCountSwapChainImages;
 
-       property UpdateSwapChainImageIndex:TpvInt32 read fUpdateSwapChainImageIndex;
+       property SwapChainImageCounterIndex:TpvInt32 read fSwapChainImageCounterIndex;
 
-       property DrawSwapChainImageIndex:TpvInt32 read fDrawSwapChainImageIndex;
+       property SwapChainImageIndex:TpvInt32 read fSwapChainImageIndex;
 
-       property RealUsedDrawSwapChainImageIndex:TpvInt32 read fRealUsedDrawSwapChainImageIndex;
+       property Universe:TObject read fUniverse write fUniverse;
 
      end;
 
@@ -1634,7 +2044,7 @@ var pvApplication:TpvApplication=nil;
      AndroidSavedState:TpvPointer=nil;
      AndroidSavedStateSize:TpvSizeUInt=0;
 
-{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
+{$if defined(fpc) and defined(android) and (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
      AndroidAssetManagerObject:JObject=nil;
 {$ifend}
 
@@ -1649,13 +2059,13 @@ var pvApplication:TpvApplication=nil;
 function AndroidGetManufacturerName:TpvApplicationUnicodeString;
 function AndroidGetModelName:TpvApplicationUnicodeString;
 function AndroidGetDeviceName:TpvApplicationUnicodeString;
-{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
+{$if defined(fpc) and defined(android) and (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
 procedure AndroidGetAssetManager;
 procedure AndroidReleaseAssetManager;
 {$ifend}
 //function Android_JNI_GetEnv:PJNIEnv; cdecl;
 
-{$if not defined(PasVulkanUseSDL2)}
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
 procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32;const aApplicationClass:TpvApplicationClass);
 {$ifend}
 
@@ -1666,6 +2076,300 @@ implementation
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
       BoolToLongBool:array[boolean] of longbool=(false,true);
+
+{$if not defined(PasVulkanHeadless)}
+{$if defined(Windows) and not defined(PasVulkanUseSDL2)}
+const Win32ClassName='PasVulkanWindow';
+
+      Win32CursorMaskAND:TpvUInt8=$ff;
+      Win32CursorMaskXOR:TpvUInt8=$00;
+
+      PT_POINTER=1;
+      PT_TOUCH=2;
+      PT_PEN=3;
+      PT_MOUSE=4;
+      PT_TOUCHPAD=5;
+
+      POINTER_MESSAGE_FLAG_NEW=$00000001;
+      POINTER_MESSAGE_FLAG_INRANGE=$00000002;
+      POINTER_MESSAGE_FLAG_INCONTACT=$00000004;
+      POINTER_MESSAGE_FLAG_FIRSTBUTTON=$00000010;
+      POINTER_MESSAGE_FLAG_SECONDBUTTON=$00000020;
+      POINTER_MESSAGE_FLAG_THIRDBUTTON=$00000040;
+      POINTER_MESSAGE_FLAG_FOURTHBUTTON=$00000080;
+      POINTER_MESSAGE_FLAG_FIFTHBUTTON=$00000100;
+      POINTER_MESSAGE_FLAG_PRIMARY=$00000200;
+      POINTER_MESSAGE_FLAG_CONFIDENCE=$00000400;
+      POINTER_MESSAGE_FLAG_CANCELED=$0000800;
+
+      POINTER_FLAG_NONE=$00000000;
+      POINTER_FLAG_NEW=$00000001;
+      POINTER_FLAG_INRANGE=$00000002;
+      POINTER_FLAG_INCONTACT=$00000004;
+      POINTER_FLAG_FIRSTBUTTON=$00000010;
+      POINTER_FLAG_SECONDBUTTON=$00000020;
+      POINTER_FLAG_THIRDBUTTON=$00000040;
+      POINTER_FLAG_FOURTHBUTTON=$00000080;
+      POINTER_FLAG_FIFTHBUTTON=$00000100;
+      POINTER_FLAG_PRIMARY=$00002000;
+      POINTER_FLAG_CONFIDENCE=$00004000;
+      POINTER_FLAG_CANCELED=$00008000;
+      POINTER_FLAG_DOWN=$00010000;
+      POINTER_FLAG_UPDATE=$00020000;
+      POINTER_FLAG_UP=$00040000;
+      POINTER_FLAG_WHEEL=$00080000;
+      POINTER_FLAG_HWHEEL=$00100000;
+      POINTER_FLAG_CAPTURECHANGED=$00200000;
+      POINTER_FLAG_HASTRANSFORM=$00400000;
+
+      POINTER_MOD_SHIFT=$0004;
+      POINTER_MOD_CTRL=$0008;
+
+      POINTER_CHANGE_NONE=0;
+      POINTER_CHANGE_FIRSTBUTTON_DOWN=1;
+      POINTER_CHANGE_FIRSTBUTTON_UP=2;
+      POINTER_CHANGE_SECONDBUTTON_DOWN=3;
+      POINTER_CHANGE_SECONDBUTTON_UP=4;
+      POINTER_CHANGE_THIRDBUTTON_DOWN=5;
+      POINTER_CHANGE_THIRDBUTTON_UP=6;
+      POINTER_CHANGE_FOURTHBUTTON_DOWN=7;
+      POINTER_CHANGE_FOURTHBUTTON_UP=8;
+      POINTER_CHANGE_FIFTHBUTTON_DOWN=9;
+      POINTER_CHANGE_FIFTHBUTTON_UP=10;
+
+      TOUCH_FLAG_NONE=$00000000;
+
+      TOUCH_MASK_NONE=$00000000;
+      TOUCH_MASK_CONTACTAREA=$00000001;
+      TOUCH_MASK_ORIENTATION=$00000002;
+      TOUCH_MASK_PRESSURE=$00000004;
+
+      PEN_FLAG_NONE=$00000000;
+      PEN_FLAG_BARREL=$00000001;
+      PEN_FLAG_INVERTED=$00000002;
+      PEN_FLAG_ERASER=$00000004;
+
+      PEN_MASK_NONE=$00000000;
+      PEN_MASK_PRESSURE=$00000001;
+      PEN_MASK_ROTATION=$00000002;
+      PEN_MASK_TILT_X=$00000004;
+      PEN_MASK_TILT_Y=$00000008;
+
+      TWF_FINETOUCH=$00000001;
+      TWF_WANTPALM=$00000002;
+
+      WM_GESTURE=$00000119;
+      WM_TOUCH=$00000240;
+      WM_TOUCHMOVE=$00000240;
+      WM_TOUCHDOWN=$00000241;
+      WM_TOUCHUP=$00000242;
+      WM_POINTERUPDATE=$00000245;
+      WM_POINTERDOWN=$00000246;
+      WM_POINTERUP=$00000247;
+      WM_POINTERCAPTURECHANGED=$0000024c;
+      WM_TABLET_QUERYSYSTEMGESTURESTATUS=$000002cc;
+
+      TOUCHEVENTF_MOVE=$0001;
+      TOUCHEVENTF_DOWN=$0002;
+      TOUCHEVENTF_UP=$0004;
+      TOUCHEVENTF_INRANGE=$0008;
+      TOUCHEVENTF_PRIMARY=$0010;
+      TOUCHEVENTF_NOCOALESCE=$0020;
+      TOUCHEVENTF_PEN=$0040;
+      TOUCHEVENTF_PALM=$0080;
+
+var Win32WindowClass:TWNDCLASSW=(
+     style:0;
+     lpfnWndProc:nil;
+     cbClsExtra:0;
+     cbWndExtra:0;
+     hInstance:0;
+     hIcon:0;
+     hCursor:0;
+     hbrBackground:0;
+     lpszMenuName:nil;
+     lpszClassName:Win32ClassName;
+    );
+
+function RegisterTouchWindow(h:HWND;ulFlags:ULONG):BOOL; stdcall; external 'user32.dll' name 'RegisterTouchWindow';
+function UnregisterTouchWindow(h:HWND):BOOL; stdcall; external 'user32.dll' name 'UnregisterTouchWindow';
+function GetTouchInputInfo(hTouchInput:THANDLE;cInput:ULONG;pInputs:PpvApplicationTOUCHINPUT;cbSize:LONG):BOOL; stdcall; external 'user32.dll' name 'GetTouchInputInfo';
+procedure CloseTouchInputHandle(hTouchInput:THANDLE); stdcall; external 'user32.dll' name 'CloseTouchInputHandle';
+
+function SetPropA(h:HWND;p:LPCSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropA';
+function SetPropW(h:HWND;p:LPWSTR;hData:THANDLE):BOOL; stdcall; external 'user32.dll' name 'SetPropW';
+
+const XINPUT_DLL='xinput1_4.dll'; // >= Windows 8
+
+const XINPUT_DEVTYPE_GAMEPAD=$01;
+
+      XINPUT_DEVSUBTYPE_UNKNOWN=$00;
+      XINPUT_DEVSUBTYPE_GAMEPAD=$01;
+      XINPUT_DEVSUBTYPE_WHEEL=$02;
+      XINPUT_DEVSUBTYPE_ARCADE_STICK=$03;
+      XINPUT_DEVSUBTYPE_FLIGHT_STICK=$04;
+      XINPUT_DEVSUBTYPE_DANCE_PAD=$05;
+      XINPUT_DEVSUBTYPE_GUITAR=$06;
+      XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE=$07;
+      XINPUT_DEVSUBTYPE_DRUM_KIT=$08;
+      XINPUT_DEVSUBTYPE_GUITAR_BASS=$0b;
+      XINPUT_DEVSUBTYPE_ARCADE_PAD=$13;
+
+      XINPUT_CAPS_FFB_SUPPORTED=$0001;
+      XINPUT_CAPS_WIRELESS=$0002;
+      XINPUT_CAPS_VOICE_SUPPORTED=$0004;
+      XINPUT_CAPS_PMD_SUPPORTED=$0008;
+      XINPUT_CAPS_NO_NAVIGATION=$0010;
+
+      XINPUT_GAMEPAD_DPAD_UP=$0001;
+      XINPUT_GAMEPAD_DPAD_DOWN=$0002;
+      XINPUT_GAMEPAD_DPAD_LEFT=$0004;
+      XINPUT_GAMEPAD_DPAD_RIGHT=$0008;
+      XINPUT_GAMEPAD_START=$0010;
+      XINPUT_GAMEPAD_BACK=$0020;
+      XINPUT_GAMEPAD_LEFT_THUMB=$0040;
+      XINPUT_GAMEPAD_RIGHT_THUMB=$0080;
+      XINPUT_GAMEPAD_LEFT_SHOULDER=$0100;
+      XINPUT_GAMEPAD_RIGHT_SHOULDER=$0200;
+      XINPUT_GAMEPAD_GUIDE=$0400;
+      XINPUT_GAMEPAD_A=$1000;
+      XINPUT_GAMEPAD_B=$2000;
+      XINPUT_GAMEPAD_X=$4000;
+      XINPUT_GAMEPAD_Y=$8000;
+
+      XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE=7849;
+      XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE=8689;
+      XINPUT_GAMEPAD_TRIGGER_THRESHOLD=30;
+
+      XINPUT_FLAG_GAMEPAD=$00000001;
+
+      XINPUT_BATTERY_DEVTYPE_GAMEPAD=$00;
+      XINPUT_BATTERY_DEVTYPE_HEADSET=$01;
+
+      XINPUT_BATTERY_TYPE_DISCONNECTED=$00;
+      XINPUT_BATTERY_TYPE_WIRED=$01;
+      XINPUT_BATTERY_TYPE_ALKALINE=$02;
+      XINPUT_BATTERY_TYPE_NIMH=$03;
+      XINPUT_BATTERY_TYPE_UNKNOWN=$ff;
+
+      XINPUT_BATTERY_LEVEL_EMPTY=$00;
+      XINPUT_BATTERY_LEVEL_LOW=$01;
+      XINPUT_BATTERY_LEVEL_MEDIUM=$02;
+      XINPUT_BATTERY_LEVEL_FULL=$03;
+
+      XUSER_MAX_COUNT=4;
+
+      XUSER_INDEX_ANY=$000000ff;
+
+      XINPUT_VK_PAD_A=$5800;
+      XINPUT_VK_PAD_B=$5801;
+      XINPUT_VK_PAD_X=$5802;
+      XINPUT_VK_PAD_Y=$5803;
+      XINPUT_VK_PAD_RSHOULDER=$5804;
+      XINPUT_VK_PAD_LSHOULDER=$5805;
+      XINPUT_VK_PAD_LTRIGGER=$5806;
+      XINPUT_VK_PAD_RTRIGGER=$5807;
+
+      XINPUT_VK_PAD_DPAD_UP=$5810;
+      XINPUT_VK_PAD_DPAD_DOWN=$5811;
+      XINPUT_VK_PAD_DPAD_LEFT=$5812;
+      XINPUT_VK_PAD_DPAD_RIGHT=$5813;
+      XINPUT_VK_PAD_START=$5814;
+      XINPUT_VK_PAD_BACK=$5815;
+      XINPUT_VK_PAD_LTHUMB_PRESS=$5816;
+      XINPUT_VK_PAD_RTHUMB_PRESS=$5817;
+
+      XINPUT_VK_PAD_LTHUMB_UP=$5820;
+      XINPUT_VK_PAD_LTHUMB_DOWN=$5821;
+      XINPUT_VK_PAD_LTHUMB_RIGHT=$5822;
+      XINPUT_VK_PAD_LTHUMB_LEFT=$5823;
+      XINPUT_VK_PAD_LTHUMB_UPLEFT=$5824;
+      XINPUT_VK_PAD_LTHUMB_UPRIGHT=$5825;
+      XINPUT_VK_PAD_LTHUMB_DOWNRIGHT=$5826;
+      XINPUT_VK_PAD_LTHUMB_DOWNLEFT=$5827;
+
+      XINPUT_VK_PAD_RTHUMB_UP=$5830;
+      XINPUT_VK_PAD_RTHUMB_DOWN=$5831;
+      XINPUT_VK_PAD_RTHUMB_RIGHT=$5832;
+      XINPUT_VK_PAD_RTHUMB_LEFT=$5833;
+      XINPUT_VK_PAD_RTHUMB_UPLEFT=$5834;
+      XINPUT_VK_PAD_RTHUMB_UPRIGHT=$5835;
+      XINPUT_VK_PAD_RTHUMB_DOWNRIGHT=$5836;
+      XINPUT_VK_PAD_RTHUMB_DOWNLEFT=$5837;
+
+      XINPUT_KEYSTROKE_KEYDOWN=$0001;
+      XINPUT_KEYSTROKE_KEYUP=$0002;
+      XINPUT_KEYSTROKE_REPEAT=$0004;
+
+type TXINPUT_GAMEPAD=record
+      wButtons:TpvUInt16;
+      bLeftTrigger:TpvUInt8;
+      bRightTrigger:TpvUInt8;
+      sThumbLX:TpvInt16;
+      sThumbLY:TpvInt16;
+      sThumbRX:TpvInt16;
+      sThumbRY:TpvInt16;
+     end;
+     PXINPUT_GAMEPAD=^TXINPUT_GAMEPAD;
+
+     TXINPUT_STATE=record
+      dwPacketNumber:TpvUInt32;
+      Gamepad:TXINPUT_GAMEPAD;
+     end;
+     PXINPUT_STATE=^TXINPUT_STATE;
+
+     TXINPUT_VIBRATION=record
+      wLeftMotorSpeed:TpvUInt16;
+      wRightMotorSpeed:TpvUInt16;
+     end;
+     PXINPUT_VIBRATION=^TXINPUT_VIBRATION;
+
+     TXINPUT_CAPABILITIES=record
+      Type_:TpvUInt8;
+      SubType:TpvUInt8;
+      Flags:TpvUInt16;
+      Gamepad:TXINPUT_GAMEPAD;
+      Vibration:TXINPUT_VIBRATION;
+     end;
+     PXINPUT_CAPABILITIES=^TXINPUT_CAPABILITIES;
+
+     TXINPUT_BATTERY_INFORMATION=record
+      BatteryType:TpvUInt8;
+      BatteryLevel:TpvUInt8;
+     end;
+     PXINPUT_BATTERY_INFORMATION=^TXINPUT_BATTERY_INFORMATION;
+
+     TXINPUT_KEYSTROKE=record
+      VirtualKey:TpvUInt16;
+      Unicode:WCHAR;
+      Flags:TpvUInt16;
+      UserIndex:TpvUInt8;
+      HidCode:TpvUInt8;
+     end;
+     PXINPUT_KEYSTROKE=^TXINPUT_KEYSTROKE;
+
+function XInputGetState(dwUserIndex:TpvUInt32;pState:PXINPUT_STATE):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetState';
+function XInputSetState(dwUserIndex:TpvUInt32;pVibration:PXINPUT_VIBRATION):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputSetState';
+function XInputGetCapabilities(dwUserIndex,dwFlags:TpvUInt32;pCapabilities:PXINPUT_CAPABILITIES):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetCapabilities';
+procedure XInputEnable(Enable:BOOL); {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputEnable';
+function XInputGetAudioDeviceIds(dwUserIndex:TpvUInt32;pRenderDeviceId:PLPWSTR;pRenderCount:PUINT;pCaptureDeviceId:PLPWSTR;pCaptureCount:PUINT):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetAudioDeviceIds';
+function XInputGetBatteryInformation(dwUserIndex:TpvUInt32;devType:TpvUInt8;pBatteryInformation:PXINPUT_BATTERY_INFORMATION):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetBatteryInformation';
+function XInputGetKeystroke(dwUserIndex,dwReserved:TpvUInt32;pKeystroke:PXINPUT_KEYSTROKE):TpvUInt32; {$ifdef cpu386}stdcall;{$endif} external XINPUT_DLL name 'XInputGetKeystroke';
+
+type TGetPointerType=function(pointerId:TpvUInt32;pointerType:PpvApplicationPOINTER_INPUT_TYPE):BOOL; stdcall;
+     TGetPointerTouchInfo=function(pointerId:TpvUInt32;touchInfo:PpvApplicationPOINTER_TOUCH_INFO):BOOL; stdcall;
+     TGetPointerPenInfo=function(pointerId:TpvUInt32;penInfo:PpvApplicationPOINTER_PEN_INFO):BOOL; stdcall;
+     TEnableMouseInPointer=function(fEnable:BOOL):BOOL; stdcall;
+
+var GetPointerType:TGetPointerType=nil;
+    GetPointerTouchInfo:TGetPointerTouchInfo=nil;
+    GetPointerPenInfo:TGetPointerPenInfo=nil;
+    EnableMouseInPointer:TEnableMouseInPointer=nil;
+
+    Win32HasGetPointer:boolean=false;
+
+{$ifend}
+{$ifend}
 
 {$if defined(fpc) and defined(Windows)}
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
@@ -1690,10 +2394,15 @@ end;
 {$else}
 function DumpException(e:Exception):string;
 const LineEnding={$ifdef Unix}#10{$else}#13#10{$endif};
+var s:string;
 begin
  result:='Program exception! '+LineEnding;
  if assigned(e) then begin
   result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
+  s:=e.StackTrace;
+  if length(s)>0 then begin
+   result:=result+s;
+  end;
  end;
 end;
 {$ifend}
@@ -2336,6 +3045,11 @@ begin
  result:=false;
 end;
 
+function TpvApplicationInputProcessor.DragDropFileEvent(aFileName:TpvUTF8String):boolean;
+begin
+ result:=false;
+end;
+
 constructor TpvApplicationInputProcessorQueue.Create;
 begin
  inherited Create;
@@ -2439,6 +3153,13 @@ begin
     EVENT_SCROLLED:begin
      fProcessor.Scrolled(CurrentEvent^.RelativeAmount);
     end;
+    EVENT_DRAGDROPFILE:begin
+     try
+      fProcessor.DragDropFileEvent(CurrentEvent^.StringData);
+     finally
+      CurrentEvent^.StringData:='';
+     end;
+    end;
    end;
   end;
   FreeEvent(CurrentEvent);
@@ -2495,6 +3216,23 @@ begin
   if assigned(Event) then begin
    Event^.Event:=EVENT_SCROLLED;
    Event^.RelativeAmount:=aRelativeAmount;
+   PushEvent(Event);
+  end;
+ finally
+  fCriticalSection.Release;
+ end;
+end;
+
+function TpvApplicationInputProcessorQueue.DragDropFileEvent(aFileName:TpvUTF8String):boolean;
+var Event:PpvApplicationInputProcessorQueueEvent;
+begin
+ result:=false;
+ fCriticalSection.Acquire;
+ try
+  Event:=NewEvent;
+  if assigned(Event) then begin
+   Event^.Event:=EVENT_DRAGDROPFILE;
+   Event^.StringData:=aFileName;
    PushEvent(Event);
   end;
  finally
@@ -2596,54 +3334,150 @@ begin
  end;
 end;
 
-{$if defined(PasVulkanUseSDL2)}
-constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
+function TpvApplicationInputMultiplexer.DragDropFileEvent(aFileName:TpvUTF8String):boolean;
+var i:TpvInt32;
+    p:TpvApplicationInputProcessor;
 begin
- inherited Create;
- fIndex:=aIndex;
- fJoystick:=aJoystick;
- fGameController:=aGameController;
- if assigned(fJoystick) then begin
-  fID:=SDL_JoystickInstanceID(fJoystick);
- end else begin
-  fID:=-1;
+ result:=false;
+ for i:=0 to fProcessors.Count-1 do begin
+  p:=fProcessors.Items[i];
+  if assigned(p) then begin
+   if p.DragDropFileEvent(aFileName) then begin
+    result:=true;
+    exit;
+   end;
+  end;
  end;
 end;
-{$else}
-constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32);
+
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+constructor TpvApplicationJoystick.Create(const aID:TpvInt64;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
 begin
  inherited Create;
- fIndex:=aIndex;
- fID:=-1;
+ fJoystick:=aJoystick;
+ fGameController:=aGameController;
+ fID:=aID;
+end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+constructor TpvApplicationJoystick.Create(const aID:TpvInt64);
+begin
+ inherited Create;
+ fJoystick:=aID;
+ fID:=fJoystick;
+ GetMem(fState,SizeOf(TXINPUT_STATE));
+ fWin32GameInputDevice:=nil;
+end;
+{$else}
+constructor TpvApplicationJoystick.Create(const aID:TpvInt64);
+begin
+ inherited Create;
+ fID:=aID;
 end;
 {$ifend}
 
 destructor TpvApplicationJoystick.Destroy;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   SDL_GameControllerClose(fGameController);
  end else if assigned(fJoystick) then begin
   SDL_JoystickClose(fJoystick);
  end;
+{$elseif (defined(Windows) and not defined(PasVulkanHeadless))}
+ if assigned(fState) then begin
+  try
+   FreeMem(fState);
+  finally
+   fState:=nil;
+  end;
+ end;
+ fWin32GameInputDevice:=nil;
 {$ifend}
  inherited Destroy;
 end;
 
 procedure TpvApplicationJoystick.Initialize;
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+var GameInputDeviceInfo:PGameInputDeviceInfo;
+{$ifend}
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  fCountAxes:=SDL_JoystickNumAxes(fJoystick);
  fCountBalls:=SDL_JoystickNumBalls(fJoystick);
  fCountHats:=SDL_JoystickNumHats(fJoystick);
  fCountButtons:=SDL_JoystickNumButtons(fJoystick);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if assigned(fWin32GameInputDevice) then begin
+  fWin32GameInputDeviceName:='';
+  FillChar(fWin32GameInputDeviceGUID,SizeOf(TGUID),#0);
+  GameInputDeviceInfo:=fWin32GameInputDevice.GetDeviceInfo;
+  if assigned(GameInputDeviceInfo) then begin
+   if assigned(GameInputDeviceInfo^.displayName) then begin
+    SetString(fWin32GameInputDeviceName,GameInputDeviceInfo^.displayName^.data,GameInputDeviceInfo^.displayName^.sizeInBytes);
+   end;
+   if length(fWin32GameInputDeviceName)=0 then begin
+    fWin32GameInputDeviceName:='GameInput device';
+   end;
+   fWin32GameInputDeviceGUID.D1:=(TpvUInt32(GameInputDeviceInfo.revisionNumber) shl 16) or
+                                 (TpvUInt32(GameInputDeviceInfo.interfaceNumber) shl 8) or
+                                 (TpvUInt32(GameInputDeviceInfo.collectionNumber) shl 0);
+   fWin32GameInputDeviceGUID.D2:=GameInputDeviceInfo.vendorId;
+   fWin32GameInputDeviceGUID.D3:=GameInputDeviceInfo.productId;
+   fWin32GameInputDeviceGUID.D4[0]:=GameInputDeviceInfo.deviceId.value[0];
+   fWin32GameInputDeviceGUID.D4[1]:=GameInputDeviceInfo.deviceId.value[1];
+   fWin32GameInputDeviceGUID.D4[2]:=GameInputDeviceInfo.deviceId.value[2];
+   fWin32GameInputDeviceGUID.D4[3]:=GameInputDeviceInfo.deviceId.value[3];
+   fWin32GameInputDeviceGUID.D4[4]:=GameInputDeviceInfo.deviceId.value[4];
+   fWin32GameInputDeviceGUID.D4[5]:=GameInputDeviceInfo.deviceId.value[5];
+   fWin32GameInputDeviceGUID.D4[6]:=GameInputDeviceInfo.deviceId.value[6];
+   fWin32GameInputDeviceGUID.D4[7]:=GameInputDeviceInfo.deviceId.value[7];
+   fCountAxes:=GameInputDeviceInfo^.controllerAxisCount;
+   fCountBalls:=0;
+   fCountHats:=GameInputDeviceInfo^.controllerSwitchCount;
+   fCountButtons:=GameInputDeviceInfo^.controllerButtonCount;
+  end else begin
+   fCountAxes:=0;
+   fCountBalls:=0;
+   fCountHats:=0;
+   fCountButtons:=0;
+  end;
+ end else if fJoystick<XUSER_MAX_COUNT then begin
+  // The XInput API has a hard coded button/axis mapping, so we just match it
+  fCountAxes:=6;
+  fCountBalls:=0;
+  fCountHats:=1;
+  fCountButtons:=11;
+ end else begin
+  if joyGetDevCapsW(fJoystick-XUSER_MAX_COUNT,@fJoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR then begin
+   fCountAxes:=fJoyCaps.wMaxAxes;
+   fCountBalls:=0;
+   fCountHats:=1;
+   fCountButtons:=fJoyCaps.wMaxButtons;
+  end else begin
+   fCountAxes:=0;
+   fCountBalls:=0;
+   fCountHats:=0;
+   fCountButtons:=0;
+  end;
+ end;
 {$ifend}
 end;
 
 function TpvApplicationJoystick.IsGameController:boolean;
+{$if (defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless)))}
+var Capabilities:TXINPUT_CAPABILITIES;
+{$ifend}
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=assigned(fGameController);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if assigned(fWin32GameInputDevice) then begin
+  result:=true;
+ end else if (fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS) then begin
+  result:=Capabilities.SubType=XINPUT_DEVSUBTYPE_GAMEPAD;
+ end else begin
+  result:=false;
+ end;
 {$else}
  result:=false;
 {$ifend}
@@ -2651,13 +3485,15 @@ end;
 
 function TpvApplicationJoystick.Index:TpvInt32;
 begin
- result:=fIndex;
+ result:=pvApplication.Input.fJoysticks.IndexOf(self);
 end;
 
 function TpvApplicationJoystick.ID:TpvInt32;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickInstanceID(fJoystick);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ result:=fJoystick;
 {$else}
  result:=0;
 {$ifend}
@@ -2665,8 +3501,16 @@ end;
 
 function TpvApplicationJoystick.Name:TpvApplicationRawByteString;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickName(fJoystick);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if assigned(fWin32GameInputDevice) then begin
+  result:=fWin32GameInputDeviceName;
+ end else if fJoystick<XUSER_MAX_COUNT then begin
+  result:='XInput'+IntToStr(fJoystick);
+ end else begin
+  result:=PUCUUTF16ToUTF8(PWideChar(@fJoyCaps.szPname[0]));
+ end;
 {$else}
  result:='';
 {$ifend}
@@ -2674,8 +3518,21 @@ end;
 
 function TpvApplicationJoystick.GUID:TGUID;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetGUID(fJoystick);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if assigned(fWin32GameInputDevice) then begin
+  result:=fWin32GameInputDeviceGUID;
+ end else begin
+  FillChar(result,SizeOf(TGUID),#0);
+  if fJoystick<XUSER_MAX_COUNT then begin
+   result.D1:=TpvUInt32($10000000) or fJoystick;
+  end else begin
+   result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
+   result.D2:=fJoyCaps.wMid;
+   result.D3:=fJoyCaps.wPid;
+  end;
+ end;
 {$else}
  FillChar(result,SizeOf(TGUID),#0);
 {$ifend}
@@ -2683,8 +3540,21 @@ end;
 
 function TpvApplicationJoystick.DeviceGUID:TGUID;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetDeviceGUID(fJoystick);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if assigned(fWin32GameInputDevice) then begin
+  result:=fWin32GameInputDeviceGUID;
+ end else begin
+  FillChar(result,SizeOf(TGUID),#0);
+  if fJoystick<XUSER_MAX_COUNT then begin
+   result.D1:=TpvUInt32($10000000) or fJoystick;
+  end else begin
+   result.D1:=TpvUInt32($20000000) or (fJoystick-XUSER_MAX_COUNT);
+   result.D2:=fJoyCaps.wMid;
+   result.D3:=fJoyCaps.wPid;
+  end;
+ end;
 {$else}
  FillChar(result,SizeOf(TGUID),#0);
 {$ifend}
@@ -2711,17 +3581,258 @@ begin
 end;
 
 procedure TpvApplicationJoystick.Update;
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+var GameInputReading:IGameInputReading;
+    GameInputGamepadState:TGameInputGamepadState;
+{$ifend}
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_JoystickUpdate;
-{$else}
+{$elseif not defined(PasVulkanHeadless)}
+ fAxes[0]:=0.0;
+ fAxes[1]:=0.0;
+ fAxes[2]:=0.0;
+ fAxes[3]:=0.0;
+ fAxes[4]:=0.0;
+ fAxes[5]:=0.0;
+ fButtons:=0;
+ fHats:=0;
+{$if defined(Windows) and not defined(PasVulkanHeadless)}
+ if assigned(fWin32GameInputDevice) then begin
+  GameInputReading:=nil;
+  try
+   if pvApplication.fWin32GameInput.GetCurrentReading(GameInputKindGamepad,fWin32GameInputDevice,GameInputReading)=NO_ERROR then begin
+    if GameInputReading.GetGamepadState(@GameInputGamepadState) then begin
+     fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=GameInputGamepadState.leftThumbstickX;
+     fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=-GameInputGamepadState.leftThumbstickY;
+     fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=GameInputGamepadState.rightThumbstickX;
+     fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=-GameInputGamepadState.rightThumbstickY;
+     fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=GameInputGamepadState.leftTrigger;
+     fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=GameInputGamepadState.rightTrigger;
+     if (GameInputGamepadState.buttons and GameInputGamepadA)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_A);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadB)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_B);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadX)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_X);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadY)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_Y);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadMenu)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_BACK);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadView)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_START);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadLeftThumbstick)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadRightThumbstick)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadLeftShoulder)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadRightShoulder)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadUp)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_UP);
+      fHats:=fHats or JOYSTICK_HAT_UP;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadDown)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_DOWN);
+      fHats:=fHats or JOYSTICK_HAT_DOWN;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadLeft)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_LEFT);
+      fHats:=fHats or JOYSTICK_HAT_LEFT;
+     end;
+     if (GameInputGamepadState.buttons and GameInputGamepadDPadRight)<>0 then begin
+      fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_RIGHT);
+      fHats:=fHats or JOYSTICK_HAT_RIGHT;
+     end;
+    end;
+   end;
+  finally
+   GameInputReading:=nil;
+  end;
+ end else if fJoystick<XUSER_MAX_COUNT then begin
+  if XInputGetState(fJoystick,fState)=ERROR_SUCCESS then begin
+   fAxes[GAME_CONTROLLER_AXIS_LEFTX]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.sThumbLX/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_LEFTY]:=Min(Max(TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbLY)/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_RIGHTX]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.sThumbRX/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_RIGHTY]:=Min(Max(TpvInt16(not PXINPUT_STATE(fState)^.Gamepad.sThumbRY)/32767.0,-1.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_TRIGGERLEFT]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.bLeftTrigger/255.0,0.0),1.0);
+   fAxes[GAME_CONTROLLER_AXIS_TRIGGERRIGHT]:=Min(Max(PXINPUT_STATE(fState)^.Gamepad.bRightTrigger/255.0,0.0),1.0);
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_A)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_A);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_B)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_B);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_X)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_X);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_Y)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_Y);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_BACK)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_BACK);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_GUIDE)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_GUIDE);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_START)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_START);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_LEFT_THUMB)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_RIGHT_THUMB)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_LEFT_SHOULDER)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_RIGHT_SHOULDER)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_UP)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_UP);
+    fHats:=fHats or JOYSTICK_HAT_UP;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_DOWN)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_DOWN);
+    fHats:=fHats or JOYSTICK_HAT_DOWN;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_LEFT)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_LEFT);
+    fHats:=fHats or JOYSTICK_HAT_LEFT;
+   end;
+   if (PXINPUT_STATE(fState)^.Gamepad.wButtons and XINPUT_GAMEPAD_DPAD_RIGHT)<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_DPAD_RIGHT);
+    fHats:=fHats or JOYSTICK_HAT_RIGHT;
+   end;
+  end;
+ end else begin
+  fJoyInfoEx.dwSize:=SizeOf(TJoyInfoEx);
+  fJoyInfoEx.dwFlags:=JOY_RETURNALL;
+  if joyGetPosEx(fJoystick-XUSER_MAX_COUNT,@fJoyInfoEx)=JOYERR_NOERROR then begin
+   if CountAxes>0 then begin
+    fAxes[0]:=((fJoyInfoEx.wXpos-fJoyCaps.wXmin)*(2.0/(fJoyCaps.wXmax-fJoyCaps.wXmin)))-1.0;
+   end else begin
+    fAxes[0]:=0;
+   end;
+   if CountAxes>1 then begin
+    fAxes[1]:=-(((fJoyInfoEx.wYpos-fJoyCaps.wYmin)*(2.0/(fJoyCaps.wYmax-fJoyCaps.wYmin)))-1.0);
+   end else begin
+    fAxes[1]:=0;
+   end;
+   if CountAxes>2 then begin
+    fAxes[2]:=((fJoyInfoEx.wZpos-fJoyCaps.wZmin)*(2.0/(fJoyCaps.wZmax-fJoyCaps.wZmin)))-1.0;
+   end else begin
+    fAxes[2]:=0;
+   end;
+   if CountAxes>3 then begin
+    fAxes[3]:=-(((fJoyInfoEx.dwRpos-fJoyCaps.wRmin)*(2.0/(fJoyCaps.wRmax-fJoyCaps.wRmin)))-1.0);
+   end else begin
+    fAxes[3]:=0;
+   end;
+   if CountAxes>4 then begin
+    fAxes[4]:=((fJoyInfoEx.dwUpos-fJoyCaps.wUmin)*(2.0/(fJoyCaps.wUmax-fJoyCaps.wUmin)))-1.0;
+   end else begin
+    fAxes[4]:=0;
+   end;
+   if CountAxes>5 then begin
+    fAxes[5]:=((fJoyInfoEx.dwVpos-fJoyCaps.wVmin)*(2.0/(fJoyCaps.wVmax-fJoyCaps.wVmin)))-1.0;
+   end else begin
+    fAxes[5]:=0;
+   end;
+   case fJoyInfoEx.dwPOV of
+    0..2249:begin // 0
+     fHats:=JOYSTICK_HAT_UP;
+    end;
+    2250..6749:begin // 4500
+     fHats:=JOYSTICK_HAT_RIGHTUP;
+    end;
+    6750..11249:begin // 9000
+     fHats:=JOYSTICK_HAT_RIGHT;
+    end;
+    11250..15749:begin // 13500
+     fHats:=JOYSTICK_HAT_RIGHTDOWN;
+    end;
+    15750..20249:begin // 18000
+     fHats:=JOYSTICK_HAT_DOWN;
+    end;
+    20250..24749:begin // 22500
+     fHats:=JOYSTICK_HAT_LEFTDOWN;
+    end;
+    24750..29249:begin // 27000
+     fHats:=JOYSTICK_HAT_LEFT;
+    end;
+    29250..33749:begin // 31500
+     fHats:=JOYSTICK_HAT_LEFTUP;
+    end;
+    33750..35999:begin // 0
+     fHats:=JOYSTICK_HAT_UP;
+    end;
+    else begin
+     fHats:=JOYSTICK_HAT_CENTERED;
+    end;
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 0))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_A);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 1))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_B);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 2))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_X);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 3))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_Y);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 4))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_BACK);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 5))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_GUIDE);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 6))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_START);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 7))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSTICK);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 8))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSTICK);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 9))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_LEFTSHOULDER);
+   end;
+   if (fJoyInfoEx.wButtons and (TpvUInt32(1) shl 10))<>0 then begin
+    fButtons:=fButtons or (TpvUInt32(1) shl GAME_CONTROLLER_BUTTON_RIGHTSHOULDER);
+   end;
+  end;
+ end;
+{$ifend}
 {$ifend}
 end;
 
-function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvFloat;
 begin
-{$if defined(PasVulkanUseSDL2)}
- result:=SDL_JoystickGetAxis(fJoystick,aAxisIndex);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ result:=Min(Max(SDL_JoystickGetAxis(fJoystick,aAxisIndex)/32767.0,-1.0),1.0);
+{$elseif not defined(PasVulkanHeadless)}
+ if aAxisIndex in [0..GAME_CONTROLLER_AXIS_MAX-1] then begin
+  result:=fAxes[aAxisIndex];
+ end else begin
+  result:=0;
+ end;
 {$else}
  result:=0;
 {$ifend}
@@ -2729,7 +3840,7 @@ end;
 
 function TpvApplicationJoystick.GetBall(const aBallIndex:TpvInt32;out aDeltaX,aDeltaY:TpvInt32):boolean;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetBall(fJoystick,aBallIndex,@aDeltaX,@aDeltaY)<>0;
 {$else}
  result:=false;
@@ -2738,7 +3849,7 @@ end;
 
 function TpvApplicationJoystick.GetHat(const aHatIndex:TpvInt32):TpvInt32;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  case SDL_JoystickGetHat(fJoystick,aHatIndex) of
   SDL_HAT_LEFTUP:begin
    result:=JOYSTICK_HAT_LEFTUP;
@@ -2771,6 +3882,8 @@ begin
    result:=JOYSTICK_HAT_NONE;
   end;
  end;
+{$elseif not defined(PasVulkanHeadless)}
+ result:=fHats;
 {$else}
  result:=JOYSTICK_HAT_NONE;
 {$ifend}
@@ -2778,51 +3891,57 @@ end;
 
 function TpvApplicationJoystick.GetButton(const aButtonIndex:TpvInt32):boolean;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_JoystickGetButton(fJoystick,aButtonIndex)<>0;
+{$elseif not defined(PasVulkanHeadless)}
+ result:=(fButtons and (TpvUInt32(1) shl aButtonIndex))<>0;
 {$else}
  result:=false;
 {$ifend}
 end;
 
 function TpvApplicationJoystick.IsGameControllerAttached:boolean;
+{$if (defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless)))}
+var Capabilities:TXINPUT_CAPABILITIES;
+{$ifend}
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   result:=SDL_GameControllerGetAttached(fGameController)<>0;
  end else begin
   result:=false;
  end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ result:=assigned(fWin32GameInputDevice) or
+         ((fJoystick<XUSER_MAX_COUNT) and (XInputGetCapabilities(fJoystick,0,@Capabilities)=ERROR_SUCCESS)) or
+         ((fJoystick>=XUSER_MAX_COUNT) and (joyGetDevCapsW(fJoystick-XUSER_MAX_COUNT,@fJoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR));
 {$else}
  result:=false;
 {$ifend}
 end;
 
-function TpvApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
+function TpvApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvFloat;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   case aAxis of
    GAME_CONTROLLER_AXIS_LEFTX:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTX);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTX)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_LEFTY:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTY);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_LEFTY)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_RIGHTX:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTX);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTX)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_RIGHTY:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTY);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_RIGHTY)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_TRIGGERLEFT:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERLEFT)/32767.0,-1.0),1.0);
    end;
    GAME_CONTROLLER_AXIS_TRIGGERRIGHT:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
-   end;
-   GAME_CONTROLLER_AXIS_MAX:begin
-    result:=SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_MAX);
+    result:=Min(Max(SDL_GameControllerGetAxis(fGameController,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)/32767.0,-1.0),1.0);
    end;
    else begin
     result:=0;
@@ -2831,6 +3950,15 @@ begin
  end else begin
   result:=0;
  end;
+{$elseif not defined(PasVulkanHeadless)}
+ case aAxis of
+  0..GAME_CONTROLLER_AXIS_MAX-1:begin
+   result:=fAxes[aAxis];
+  end;
+  else begin
+   result:=0;
+  end;
+ end;
 {$else}
  result:=0;
 {$ifend}
@@ -2838,7 +3966,7 @@ end;
 
 function TpvApplicationJoystick.GetGameControllerButton(const aButton:TpvInt32):boolean;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   case aButton of
    GAME_CONTROLLER_BUTTON_A:begin
@@ -2893,6 +4021,8 @@ begin
  end else begin
   result:=false;
  end;
+{$elseif not defined(PasVulkanHeadless)}
+ result:=(fButtons and (TpvUInt32(1) shl aButton))<>0;
 {$else}
  result:=false;
 {$ifend}
@@ -2900,12 +4030,14 @@ end;
 
 function TpvApplicationJoystick.GetGameControllerName:TpvApplicationRawByteString;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   result:=SDL_GameControllerName(fGameController);
  end else begin
   result:='';
  end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ result:=Name;
 {$else}
  result:='';
 {$ifend}
@@ -2913,7 +4045,7 @@ end;
 
 function TpvApplicationJoystick.GetGameControllerMapping:TpvApplicationRawByteString;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if assigned(fGameController) then begin
   result:=SDL_GameControllerMapping(fGameController);
  end else begin
@@ -3067,7 +4199,7 @@ begin
  fKeyCodeNames[KEYCODE_SYSREQ]:='SYSREQ';
  fKeyCodeNames[KEYCODE_MENU]:='MENU';
  fKeyCodeNames[KEYCODE_POWER]:='POWER';
- fKeyCodeNames[KEYCODE_APPLICATION]:='Engine';
+ fKeyCodeNames[KEYCODE_APPLICATION]:='APPLICATION';
  fKeyCodeNames[KEYCODE_SELECT]:='SELECT';
  fKeyCodeNames[KEYCODE_STOP]:='STOP';
  fKeyCodeNames[KEYCODE_AGAIN]:='AGAIN';
@@ -3251,7 +4383,9 @@ begin
  fMaxPointerID:=-1;
  SetLength(fEvents,1024);
  SetLength(fEventTimes,1024);
- fJoysticks:=TList.Create;
+ fJoysticks:=TpvApplicationJoysticks.Create;
+ fJoysticks.OwnsObjects:=true;
+ fJoystickIDHashMap:=TpvApplicationJoystickIDHashMap.Create(nil);
  fMainJoystick:=nil;
  fTextInput:=false;
  fLastTextInput:=false;
@@ -3259,17 +4393,14 @@ end;
 
 destructor TpvApplicationInput.Destroy;
 begin
- while fJoysticks.Count>0 do begin
-  TpvApplicationJoystick(fJoysticks[fJoysticks.Count-1]).Free;
-  fJoysticks.Delete(fJoysticks.Count-1);
- end;
- fJoysticks.Free;
- SetLength(fEvents,0);
+ FreeAndNil(fJoysticks);
+ FreeAndNil(fJoystickIDHashMap);
+ fEvents:=nil;
  fCriticalSection.Free;
  inherited Destroy;
 end;
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 function TpvApplicationInput.TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
 begin
  case aKeyCode of
@@ -4114,10 +5245,11 @@ begin
 end;
 
 procedure TpvApplicationInput.ProcessEvents;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 var Index,PointerID,KeyCode,Position:TpvInt32;
     KeyModifiers:TpvApplicationInputKeyModifiers;
-    Event:PSDL_Event;
+    Event:PpvApplicationEvent;
+    SDLEvent:PSDL_Event;
     OK:boolean;
 begin
  fCriticalSection.Acquire;
@@ -4126,8 +5258,9 @@ begin
   if fEventCount>0 then begin
    for Index:=0 to fEventCount-1 do begin
     Event:=@fEvents[Index];
+    SDLEvent:=@Event^.SDLEvent;
     fCurrentEventTime:=fEventTimes[fEventCount];
-    case Event^.type_ of
+    case SDLEvent^.type_ of
      SDL_QUITEV:begin
       if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
        fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]));
@@ -4139,10 +5272,19 @@ begin
        fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
       end;
      end;
+     SDL_DROPFILE:begin
+      try
+       if (not pvApplication.DragDropFileEvent(Event^.StringData)) and assigned(fProcessor) then begin
+        fProcessor.DragDropFileEvent(Event^.StringData);
+       end;
+      finally
+       Event^.StringData:='';
+      end;
+     end;
      SDL_KEYDOWN,SDL_KEYUP,SDL_KEYTYPED:begin
-      KeyCode:=TranslateSDLKeyCode(Event^.key.keysym.sym,Event^.key.keysym.scancode);
-      KeyModifiers:=TranslateSDLKeyModifier(Event^.key.keysym.modifier);
-      case Event^.type_ of
+      KeyCode:=TranslateSDLKeyCode(SDLEvent^.key.keysym.sym,SDLEvent^.key.keysym.scancode);
+      KeyModifiers:=TranslateSDLKeyModifier(SDLEvent^.key.keysym.modifier);
+      case SDLEvent^.type_ of
        SDL_KEYDOWN:begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
@@ -4171,8 +5313,8 @@ begin
      SDL_TEXTINPUT:begin
       KeyModifiers:=[];
       Position:=0;
-      while Position<length(Event^.tedit.text) do begin
-       KeyCode:=PUCUUTF8PtrCodeUnitGetCharAndIncFallback(PAnsiChar(TpvPointer(@Event^.tedit.text[0])),length(Event^.tedit.text),Position);
+      while Position<length(SDLEvent^.tedit.text) do begin
+       KeyCode:=PUCUUTF8PtrCodeUnitGetCharAndIncFallback(PAnsiChar(TpvPointer(@SDLEvent^.tedit.text[0])),length(SDLEvent^.tedit.text),Position);
        case KeyCode of
         0:begin
          break;
@@ -4187,21 +5329,21 @@ begin
      end;
      SDL_MOUSEMOTION:begin
       KeyModifiers:=GetKeyModifiers;
-      fMouseX:=Event^.motion.x;
-      fMouseY:=Event^.motion.y;
-      fMouseDeltaX:=Event^.motion.xrel;
-      fMouseDeltaY:=Event^.motion.yrel;
+      fMouseX:=SDLEvent^.motion.x;
+      fMouseY:=SDLEvent^.motion.y;
+      fMouseDeltaX:=SDLEvent^.motion.xrel;
+      fMouseDeltaY:=SDLEvent^.motion.yrel;
       OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
-                                                                            TpvVector2.Create(Event^.motion.x,Event^.motion.y),
-                                                                            TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
+                                                                            TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),
+                                                                            TpvVector2.Create(SDLEvent^.motion.xrel,SDLEvent^.motion.yrel),
                                                                             ord(fMouseDown<>[]) and 1,
                                                                             0,
                                                                             fMouseDown,
                                                                             KeyModifiers));
       if assigned(fProcessor) and not OK then begin
        fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
-                                                                      TpvVector2.Create(Event^.motion.x,Event^.motion.y),
-                                                                      TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
+                                                                      TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),
+                                                                      TpvVector2.Create(SDLEvent^.motion.xrel,SDLEvent^.motion.yrel),
                                                                       ord(fMouseDown<>[]) and 1,
                                                                       0,
                                                                       fMouseDown,
@@ -4211,33 +5353,33 @@ begin
      SDL_MOUSEBUTTONDOWN:begin
       KeyModifiers:=GetKeyModifiers;
       fMaxPointerID:=max(fMaxPointerID,0);
- {    fMouseDeltaX:=Event^.button.x-fMouseX;
-      fMouseDeltaY:=Event^.button.y-fMouseY;}
-      fMouseX:=Event^.button.x;
-      fMouseY:=Event^.button.y;
-      case Event^.button.button of
+ {    fMouseDeltaX:=SDLEvent^.button.x-fMouseX;
+      fMouseDeltaY:=SDLEvent^.button.y-fMouseY;}
+      fMouseX:=SDLEvent^.button.x;
+      fMouseY:=SDLEvent^.button.y;
+      case SDLEvent^.button.button of
        SDL_BUTTON_LEFT:begin
         Include(fMouseDown,TpvApplicationInputPointerButton.Left);
         Include(fMouseJustDown,TpvApplicationInputPointerButton.Left);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         Include(fMouseDown,TpvApplicationInputPointerButton.Right);
         Include(fMouseJustDown,TpvApplicationInputPointerButton.Right);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         Include(fMouseDown,TpvApplicationInputPointerButton.Middle);
         Include(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -4245,48 +5387,48 @@ begin
      SDL_MOUSEBUTTONUP:begin
       KeyModifiers:=GetKeyModifiers;
       fMaxPointerID:=max(fMaxPointerID,0);
- {    fMouseDeltaX:=Event^.button.x-fMouseX;
-      fMouseDeltaY:=Event^.button.y-fMouseY;}
-      fMouseX:=Event^.button.x;
-      fMouseY:=Event^.button.y;
-      case Event^.button.button of
+ {    fMouseDeltaX:=SDLEvent^.button.x-fMouseX;
+      fMouseDeltaY:=SDLEvent^.button.y-fMouseY;}
+      fMouseX:=SDLEvent^.button.x;
+      fMouseY:=SDLEvent^.button.y;
+      case SDLEvent^.button.button of
        SDL_BUTTON_LEFT:begin
         Exclude(fMouseDown,TpvApplicationInputPointerButton.Left);
         Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Left);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         Exclude(fMouseDown,TpvApplicationInputPointerButton.Right);
         Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Right);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         Exclude(fMouseDown,TpvApplicationInputPointerButton.Middle);
         Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(SDLEvent^.motion.x,SDLEvent^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
         end;
        end;
       end;
      end;
      SDL_MOUSEWHEEL:begin
-      if (not pvApplication.Scrolled(TpvVector2.Create(Event^.wheel.x,Event^.wheel.y))) and assigned(fProcessor) then begin
-       fProcessor.Scrolled(TpvVector2.Create(Event^.wheel.x,Event^.wheel.y));
+      if (not pvApplication.Scrolled(TpvVector2.Create(SDLEvent^.wheel.x,SDLEvent^.wheel.y))) and assigned(fProcessor) then begin
+       fProcessor.Scrolled(TpvVector2.Create(SDLEvent^.wheel.x,SDLEvent^.wheel.y));
       end;
      end;
      SDL_FINGERMOTION:begin
       KeyModifiers:=GetKeyModifiers;
-      PointerID:=Event^.tfinger.fingerId and $ffff;
+      PointerID:=SDLEvent^.tfinger.fingerId and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=Event^.tfinger.x*pvApplication.fWidth;
-      fPointerY[PointerID]:=Event^.tfinger.y*pvApplication.fHeight;
-      fPointerPressure[PointerID]:=Event^.tfinger.pressure;
-      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
+      fPointerX[PointerID]:=SDLEvent^.tfinger.x*pvApplication.fWidth;
+      fPointerY[PointerID]:=SDLEvent^.tfinger.y*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=SDLEvent^.tfinger.pressure;
+      fPointerDeltaX[PointerID]:=SDLEvent^.tfinger.dx*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=SDLEvent^.tfinger.dy*pvApplication.fHeight;
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
        fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
       end;
@@ -4294,13 +5436,13 @@ begin
      SDL_FINGERDOWN:begin
       KeyModifiers:=GetKeyModifiers;
       inc(fPointerDownCount);
-      PointerID:=Event^.tfinger.fingerId and $ffff;
+      PointerID:=SDLEvent^.tfinger.fingerId and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=Event^.tfinger.x*pvApplication.fWidth;
-      fPointerY[PointerID]:=Event^.tfinger.y*pvApplication.fHeight;
-      fPointerPressure[PointerID]:=Event^.tfinger.pressure;
-      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
+      fPointerX[PointerID]:=SDLEvent^.tfinger.x*pvApplication.fWidth;
+      fPointerY[PointerID]:=SDLEvent^.tfinger.y*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=SDLEvent^.tfinger.pressure;
+      fPointerDeltaX[PointerID]:=SDLEvent^.tfinger.dx*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=SDLEvent^.tfinger.dy*pvApplication.fHeight;
       Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
       Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       fJustTouched:=true;
@@ -4313,13 +5455,13 @@ begin
       if fPointerDownCount>0 then begin
        dec(fPointerDownCount);
       end;
-      PointerID:=Event^.tfinger.fingerId and $ffff;
+      PointerID:=SDLEvent^.tfinger.fingerId and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=Event^.tfinger.x*pvApplication.fWidth;
-      fPointerY[PointerID]:=Event^.tfinger.y*pvApplication.fHeight;
-      fPointerPressure[PointerID]:=Event^.tfinger.pressure;
-      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
-      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
+      fPointerX[PointerID]:=SDLEvent^.tfinger.x*pvApplication.fWidth;
+      fPointerY[PointerID]:=SDLEvent^.tfinger.y*pvApplication.fHeight;
+      fPointerPressure[PointerID]:=SDLEvent^.tfinger.pressure;
+      fPointerDeltaX[PointerID]:=SDLEvent^.tfinger.dx*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=SDLEvent^.tfinger.dy*pvApplication.fHeight;
       Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
       Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
@@ -4334,9 +5476,283 @@ begin
   fEventCount:=0;
  end;
 end;
-{$else}
+{$elseif defined(PasVulkanHeadless)}
 begin
  fEventCount:=0;
+end;
+{$else}
+var Index,PointerID,KeyCode,Position:TpvInt32;
+    KeyModifiers:TpvApplicationInputKeyModifiers;
+    Event:PpvApplicationEvent;
+    NativeEvent:PpvApplicationNativeEvent;
+    OK:boolean;
+begin
+ fCriticalSection.Acquire;
+ try
+  fJustTouched:=false;
+  if fEventCount>0 then begin
+   for Index:=0 to fEventCount-1 do begin
+    Event:=@fEvents[Index];
+    NativeEvent:=@Event^.NativeEvent;
+    fCurrentEventTime:=fEventTimes[fEventCount];
+    case NativeEvent^.Kind of
+     TpvApplicationNativeEventKind.Quit:begin
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]));
+      end;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]));
+      end;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
+      end;
+     end;
+     TpvApplicationNativeEventKind.DropFile:begin
+      try
+       if (not pvApplication.DragDropFileEvent(Event^.NativeEvent.StringValue)) and assigned(fProcessor) then begin
+        fProcessor.DragDropFileEvent(Event^.NativeEvent.StringValue);
+       end;
+      finally
+       Event^.NativeEvent.StringValue:='';
+      end;
+     end;
+     TpvApplicationNativeEventKind.KeyDown,
+     TpvApplicationNativeEventKind.KeyUp,
+     TpvApplicationNativeEventKind.KeyTyped:begin
+      KeyCode:=NativeEvent^.KeyCode;
+      KeyModifiers:=NativeEvent^.KeyModifiers;
+      case NativeEvent^.Kind of
+       TpvApplicationNativeEventKind.KeyDown:begin
+        fKeyDown[KeyCode and $ffff]:=true;
+        inc(fKeyDownCount);
+        fJustKeyDown[KeyCode and $ffff]:=true;
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers));
+        end;
+       end;
+       TpvApplicationNativeEventKind.KeyUp:begin
+        fKeyDown[KeyCode and $ffff]:=false;
+        if fKeyDownCount>0 then begin
+         dec(fKeyDownCount);
+        end;
+        fJustKeyDown[KeyCode and $ffff]:=false;
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers));
+        end;
+       end;
+       TpvApplicationNativeEventKind.KeyTyped:begin
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers));
+        end;
+       end;
+       else begin
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.UnicodeCharTyped:begin
+      KeyModifiers:=[];
+      KeyCode:=NativeEvent^.CharVal;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.TextInput:begin
+      KeyModifiers:=[];
+      Position:=0;
+      while Position<length(NativeEvent^.StringValue) do begin
+       KeyCode:=PUCUUTF8PtrCodeUnitGetCharAndIncFallback(PAnsiChar(TpvPointer(@NativeEvent^.StringValue[1])),length(NativeEvent^.StringValue),Position);
+       case KeyCode of
+        0:begin
+         break;
+        end;
+        else begin
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
+         end;
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseMoved:begin
+      KeyModifiers:=GetKeyModifiers;
+      fMouseX:=NativeEvent^.MouseCoordX;
+      fMouseY:=NativeEvent^.MouseCoordY;
+      fMouseDeltaX:=NativeEvent^.MouseDeltaX;
+      fMouseDeltaY:=NativeEvent^.MouseDeltaY;
+      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
+                                                                            TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),
+                                                                            TpvVector2.Create(NativeEvent^.MouseDeltaX,NativeEvent^.MouseDeltaY),
+                                                                            ord(fMouseDown<>[]) and 1,
+                                                                            0,
+                                                                            fMouseDown,
+                                                                            KeyModifiers));
+      if assigned(fProcessor) and not OK then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
+                                                                      TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),
+                                                                      TpvVector2.Create(NativeEvent^.MouseDeltaX,NativeEvent^.MouseDeltaY),
+                                                                      ord(fMouseDown<>[]) and 1,
+                                                                      0,
+                                                                      fMouseDown,
+                                                                      KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseButtonDown:begin
+      KeyModifiers:=GetKeyModifiers;
+      fMaxPointerID:=max(fMaxPointerID,0);
+ {    fMouseDeltaX:=NativeEvent^.MouseCoordX-fMouseX;
+      fMouseDeltaY:=NativeEvent^.MouseCoordY-fMouseY;}
+      fMouseX:=NativeEvent^.MouseCoordX;
+      fMouseY:=NativeEvent^.MouseCoordY;
+      case NativeEvent^.MouseButton of
+       TpvApplicationInputPointerButton.Left:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.Left);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Left);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.Right);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Right);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.Middle);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X1:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.X1);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.X1);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X2:begin
+        Include(fMouseDown,TpvApplicationInputPointerButton.X2);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.X2);
+        fJustTouched:=true;
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers));
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseButtonUp:begin
+      KeyModifiers:=GetKeyModifiers;
+      fMaxPointerID:=max(fMaxPointerID,0);
+ {    fMouseDeltaX:=NativeEvent^.MouseCoordX-fMouseX;
+      fMouseDeltaY:=NativeEvent^.MouseCoordY-fMouseY;}
+      fMouseX:=NativeEvent^.MouseCoordX;
+      fMouseY:=NativeEvent^.MouseCoordY;
+      case NativeEvent^.MouseButton of
+       TpvApplicationInputPointerButton.Left:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Left);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Left);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Right);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Right);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Middle);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X1:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.X1);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.X1);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X1,fMouseDown,KeyModifiers));
+        end;
+       end;
+       TpvApplicationInputPointerButton.X2:begin
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.X2);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.X2);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(NativeEvent^.MouseCoordX,NativeEvent^.MouseCoordY),1.0,0,TpvApplicationInputPointerButton.X2,fMouseDown,KeyModifiers));
+        end;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.MouseWheel:begin
+      if (not pvApplication.Scrolled(TpvVector2.Create(NativeEvent^.MouseScrollOffsetX,NativeEvent^.MouseScrollOffsetY))) and assigned(fProcessor) then begin
+       fProcessor.Scrolled(TpvVector2.Create(NativeEvent^.MouseScrollOffsetX,NativeEvent^.MouseScrollOffsetY));
+      end;
+     end;
+     TpvApplicationNativeEventKind.TouchMotion:begin
+      KeyModifiers:=GetKeyModifiers;
+      PointerID:=NativeEvent^.TouchID and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=NativeEvent^.TouchX;
+      fPointerY[PointerID]:=NativeEvent^.TouchY;
+      fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY;
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.TouchDown:begin
+      KeyModifiers:=GetKeyModifiers;
+      inc(fPointerDownCount);
+      PointerID:=NativeEvent^.TouchID and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=NativeEvent^.TouchX;
+      fPointerY[PointerID]:=NativeEvent^.TouchY;
+      fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY;
+      Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
+      Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
+      fJustTouched:=true;
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
+      end;
+     end;
+     TpvApplicationNativeEventKind.TouchUp:begin
+      KeyModifiers:=GetKeyModifiers;
+      if fPointerDownCount>0 then begin
+       dec(fPointerDownCount);
+      end;
+      PointerID:=NativeEvent^.TouchID and $ffff;
+      fMaxPointerID:=max(fMaxPointerID,PointerID+1);
+      fPointerX[PointerID]:=NativeEvent^.TouchX;
+      fPointerY[PointerID]:=NativeEvent^.TouchY;
+      fPointerPressure[PointerID]:=NativeEvent^.TouchPressure;
+      fPointerDeltaX[PointerID]:=NativeEvent^.TouchDeltaX;
+      fPointerDeltaY[PointerID]:=NativeEvent^.TouchDeltaY;
+      Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
+      Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
+      end;
+     end;
+     else begin
+     end;
+    end;
+   end;
+  end;
+ finally
+  fCriticalSection.Release;
+  fEventCount:=0;
+ end;
 end;
 {$ifend}
 
@@ -4573,10 +5989,62 @@ end;
 
 function TpvApplicationInput.GetKeyModifiers:TpvApplicationInputKeyModifiers;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=TranslateSDLKeyModifier(SDL_GetModState);
 {$else}
  result:=[];
+{$if not defined(PasVulkanHeadless)}
+{$if defined(Windows)}
+ if HIWORD(GetAsyncKeyState(VK_MENU))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.ALT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_LMENU))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RMENU))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.RALT];
+ end;
+
+ if HIWORD(GetAsyncKeyState(VK_CONTROL))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CTRL];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_LCONTROL))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.LCTRL];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RCONTROL))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.RCTRL];
+ end;
+
+ if HIWORD(GetAsyncKeyState(VK_SHIFT))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SHIFT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_LSHIFT))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.LSHIFT];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RSHIFT))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.RSHIFT];
+ end;
+
+ if HIWORD(GetAsyncKeyState(VK_LWIN))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA];
+ end;
+ if HIWORD(GetAsyncKeyState(VK_RWIN))<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.RMETA];
+ end;
+
+ if (GetAsyncKeyState(VK_CAPITAL) and $0001)<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.CAPS];
+ end;
+
+ if (GetAsyncKeyState(VK_NUMLOCK) and $0001)<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.NUM];
+ end;
+
+ if (GetAsyncKeyState(VK_SCROLL) and $0001)<>0 then begin
+  result:=result+[TpvApplicationInputKeyModifier.SCROLL];
+ end;
+{$ifend}
+{$ifend}
 {$ifend}
 end;
 
@@ -4624,7 +6092,7 @@ procedure TpvApplicationInput.GetRotationMatrix(const aMatrix3x3:pointer);
 begin
 end;
 
-function TpvApplicationInput.GetCurrentEventTime:int64;
+function TpvApplicationInput.GetCurrentEventTime:TpvInt64;
 begin
  result:=fCurrentEventTime;
 end;
@@ -4678,7 +6146,7 @@ begin
 end;
 
 function TpvApplicationInput.GetNativeOrientation:TpvInt32;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 var SDLDisplayMode:TSDL_DisplayMode;
 begin
  if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(pvApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
@@ -4718,11 +6186,18 @@ begin
 end;
 
 procedure TpvApplicationInput.SetCursorPosition(const pX,pY:TpvInt32);
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+var Rect:TRect;
+{$ifend}
 begin
  fCriticalSection.Acquire;
  try
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   SDL_WarpMouseInWindow(pvApplication.fSurfaceWindow,pX,pY);
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  if GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+   Windows.SetCursorPos(Rect.Left+pX,Rect.Top+pY);
+  end;
 {$else}
 {$ifend}
  finally
@@ -4732,34 +6207,45 @@ end;
 
 function TpvApplicationInput.GetJoystickCount:TpvInt32;
 begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  result:=SDL_NumJoysticks;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ result:=Max(fJoysticks.Count,0);
 {$else}
  result:=0;
 {$ifend}
 end;
 
-function TpvApplicationInput.GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
-{$if defined(PasVulkanUseSDL2)}
-var ListIndex:TpvInt32;
+function TpvApplicationInput.GetJoystick(const aID:TpvInt64=-1):TpvApplicationJoystick;
 begin
- if (aIndex>=0) and (aIndex<SDL_NumJoysticks) then begin
-  result:=nil;
-  for ListIndex:=0 to fJoysticks.Count-1 do begin
-   if TpvApplicationJoystick(fJoysticks[ListIndex]).fIndex=aIndex then begin
-    result:=TpvApplicationJoystick(fJoysticks[ListIndex]);
-    exit;
-   end;
+ if aID>=0 then begin
+  result:=fJoystickIDHashMap[aID];
+ end else begin
+  result:=fMainJoystick;
+ end;
+end;
+
+function TpvApplicationInput.GetJoystickByID(const aID:TpvInt64=-1):TpvApplicationJoystick;
+begin
+ if aID>=0 then begin
+  result:=fJoystickIDHashMap[aID];
+ end else begin
+  result:=fMainJoystick;
+ end;
+end;
+
+function TpvApplicationInput.GetJoystickByIndex(const aIndex:TpvSizeInt=-1):TpvApplicationJoystick;
+begin
+ if aIndex>=0 then begin
+  if aIndex<fJoysticks.Count then begin
+   result:=fJoysticks[aIndex];
+  end else begin
+   result:=nil;
   end;
  end else begin
   result:=fMainJoystick;
  end;
 end;
-{$else}
-begin
- result:=fMainJoystick;
-end;
-{$ifend}
 
 constructor TpvApplicationLifecycleListener.Create;
 begin
@@ -4853,6 +6339,11 @@ begin
  result:=false;
 end;
 
+function TpvApplicationScreen.DragDropFileEvent(aFileName:TpvUTF8String):boolean;
+begin
+ result:=false;
+end;
+
 function TpvApplicationScreen.CanBeParallelProcessed:boolean;
 begin
  result:=false;
@@ -4870,7 +6361,7 @@ procedure TpvApplicationScreen.BeginFrame(const aDeltaTime:TpvDouble);
 begin
 end;
 
-function TpvApplicationScreen.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
+function TpvApplicationScreen.IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean;
 begin
  result:=true;
 end;
@@ -5002,7 +6493,7 @@ begin
 end;
 {$endif}
 
-function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDierectory:boolean=false):TFileNameList;
+function TpvApplicationAssets.GetDirectoryFileList(const aPath:TpvUTF8String;const aRaiseExceptionOnNonExistentDirectory:boolean=false):TFileNameList;
 {$ifdef Android}
 var AssetDir:PAAssetDir;
     Count:TpvSizeInt;
@@ -5071,7 +6562,7 @@ begin
    end;
   end;
  end else begin
-  if aRaiseExceptionOnNonExistentDierectory then begin
+  if aRaiseExceptionOnNonExistentDirectory then begin
    raise Exception.Create('Asset directory "'+String(aPath)+'" not found');
   end;
  end;
@@ -5160,27 +6651,31 @@ function TpvApplicationClipboard.HasText:boolean;
 {$if defined(Windows)}
 var ClipboardHandle:THandle;
     Data:pointer;
+    Error:TpvUInt32;
 begin
  result:=false;
- if OpenClipboard(0) then begin
+ if Windows.OpenClipboard(0) then begin
   try
-   ClipboardHandle:=GetClipboardData(CF_UNICODETEXT);
+   ClipboardHandle:=Windows.GetClipboardData(CF_UNICODETEXT);
    if ClipboardHandle<>0 then begin
-    Data:=GlobalLock(ClipboardHandle);
+    Data:=Windows.GlobalLock(ClipboardHandle);
     try
      if assigned(Data) then begin
       result:=PWideChar(Data)^<>#0;
      end;
     finally
-     GlobalUnlock(ClipboardHandle);
+     Windows.GlobalUnlock(ClipboardHandle);
     end;
+   end else begin
+    Error:=GetLastError;
+    pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
    end;
   finally
-   CloseClipboard;
+   Windows.CloseClipboard;
   end;
  end;
 end;
-{$elseif defined(PasVulkanUseSDL2)}
+{$elseif defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 begin
  result:=SDL_HasClipboardText<>SDL_FALSE;
 end;
@@ -5195,28 +6690,32 @@ function TpvApplicationClipboard.GetText:TpvApplicationUTF8String;
 var ClipboardHandle:THandle;
     Data:pointer;
     UTF16Data:WideString;
+    Error:TpvUInt32;
 begin
  result:='';
- if OpenClipboard(0) then begin
+ if Windows.OpenClipboard(0) then begin
   try
-   ClipboardHandle:=GetClipboardData(CF_UNICODETEXT);
+   ClipboardHandle:=Windows.GetClipboardData(CF_UNICODETEXT);
    if ClipboardHandle<>0 then begin
-    Data:=GlobalLock(ClipboardHandle);
+    Data:=Windows.GlobalLock(ClipboardHandle);
     try
      if assigned(Data) then begin
       UTF16Data:=PWideChar(Data);
       result:=PUCUUTF16ToUTF8(UTF16Data);
      end;
     finally
-     GlobalUnlock(ClipboardHandle);
+     Windows.GlobalUnlock(ClipboardHandle);
     end;
+   end else begin
+    Error:=GetLastError;
+    pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
    end;
   finally
-   CloseClipboard;
+   Windows.CloseClipboard;
   end;
  end;
 end;
-{$elseif defined(PasVulkanUseSDL2)}
+{$elseif defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 var p:PAnsiChar;
     l:TpvInt32;
 begin
@@ -5245,30 +6744,39 @@ procedure TpvApplicationClipboard.SetText(const aTextString:TpvApplicationUTF8St
 var ClipboardHandle:THandle;
     Data:pointer;
     UTF16Data:WideString;
+    Error:TpvUInt32;
+    Size:TpvSizeInt;
 begin
  UTF16Data:=PUCUUTF8ToUTF16(aTextString);
- if OpenClipboard(0) then begin
+ if Windows.OpenClipboard(0) then begin
   try
-   EmptyClipboard;
-   ClipboardHandle:=GlobalAlloc(GMEM_MOVEABLE,(length(UTF16Data)+1)*sizeof(WideChar));
+   Size:=(length(UTF16Data)+1)*SizeOf(WideChar);
+   ClipboardHandle:=Windows.GlobalAlloc(GMEM_MOVEABLE or GMEM_ZEROINIT or GMEM_DDESHARE,Size);
    if ClipboardHandle<>0 then begin
-    Data:=GlobalLock(ClipboardHandle);
-    try
-     if assigned(Data) then begin
-      Move(UTF16Data[1],Data^,length(UTF16Data)*sizeof(WideChar));
+    Data:=Windows.GlobalLock(ClipboardHandle);
+    if assigned(Data) then begin
+     try
+      Move(UTF16Data[1],Data^,length(UTF16Data)*SizeOf(WideChar));
       PWideChar(Data)[length(UTF16Data)+1]:=#0;
+     finally
+      Windows.GlobalUnlock(ClipboardHandle);
      end;
-    finally
-     GlobalUnlock(ClipboardHandle);
     end;
-    SetClipboardData(CF_UNICODETEXT,ClipboardHandle);
+    Windows.EmptyClipboard;
+    if Windows.SetClipboardData(CF_UNICODETEXT,ClipboardHandle)=0 then begin
+     Error:=GetLastError;
+     pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
+    end;
+   end else begin
+    Error:=GetLastError;
+    pvApplication.Log(LOG_DEBUG,'Clipboard','GetLastError '+IntToStr(Error));
    end;
   finally
-   CloseClipboard;
+   Windows.CloseClipboard;
   end;
  end;
 end;
-{$elseif defined(PasVulkanUseSDL2)}
+{$elseif defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 begin
  SDL_SetClipboardText(PAnsiChar(aTextString));
 end;
@@ -5292,7 +6800,7 @@ begin
  FillChar(Buffer^,Len,0);
 end;
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 procedure SDLFillBuffer(UserData:TpvPointer;Stream:PSDLUInt8;Remain:TSDLInt32); cdecl;
 begin
  AudioFillBuffer(UserData,Stream,Remain);
@@ -5300,10 +6808,23 @@ end;
 {$else}
 {$ifend}
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+procedure TpvApplicationMessageFiberProc(const lpFiberParameter:LPVOID); stdcall;
+var Application:TpvApplication;
+begin
+ Application:=TpvApplication(lpFiberParameter);
+ repeat
+  Application.ProcessWin32APIMessages;
+  SwitchToFiber(Application.fWin32MainFiber);
+ until false;
+end;
+{$ifend}
+
 constructor TpvApplication.Create;
+var FrameIndex:TpvInt32;
 begin
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
@@ -5326,6 +6847,10 @@ begin
 
  fTitle:='PasVulkan Application';
  fVersion:=$0100;
+
+ fWindowTitle:=fTitle;
+
+ fHasNewWindowTitle:=false;
 
  fPathName:='PasVulkanApplication';
 
@@ -5365,6 +6890,13 @@ begin
 
  fResourceManager:=TpvResourceManager.Create;
 
+ for FrameIndex:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
+  fVulkanFrameFences[FrameIndex]:=nil;
+ end;
+
+ fVulkanFrameFencesReady:=0;
+ fVulkanFrameFenceCounter:=0;
+
  fRunnableList:=nil;
  fRunnableListCount:=0;
  fRunnableListCriticalSection:=TPasMPCriticalSection.Create;
@@ -5372,9 +6904,10 @@ begin
  fLifecycleListenerList:=TList.Create;
  fLifecycleListenerListCriticalSection:=TPasMPCriticalSection.Create;
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  fLastPressedKeyEvent.SDLEvent.type_:=0;
 {$else}
+ fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
 {$ifend}
  fKeyRepeatTimeAccumulator:=0;
  fKeyRepeatInterval:=fHighResolutionTimer.MillisecondInterval*100;
@@ -5384,10 +6917,15 @@ begin
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
  fCurrentFullscreen:=-1;
+ fCurrentMaximized:=-1;
  fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
+ fCurrentCatchMouseOnButton:=-1;
  fCurrentCatchMouse:=-1;
+ fCurrentEffectiveCatchMouse:=-1;
+ fCurrentRelativeMouse:=-1;
  fCurrentHideSystemBars:=-1;
+ fCurrentAcceptDragDropFiles:=-1;
  fCurrentBlocking:=-1;
  fCurrentWaitOnPreviousFrames:=-1;
 
@@ -5396,11 +6934,20 @@ begin
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
+ fMaximized:=false;
+ fExclusiveFullScreenMode:=TpvVulkanExclusiveFullScreenMode.Default;
  fPresentMode:=TpvApplicationPresentMode.Immediate;
+ fPresentFrameLatency:={$ifdef Android}2{$else}1{$endif};
+ fPresentFrameLatencyMode:=TpvApplicationPresentFrameLatencyMode.CombinedWait;
+ fProcessingMode:=TpvApplicationProcessingMode.Flexible;
  fResizable:=true;
  fVisibleMouseCursor:=false;
+ fCatchMouseOnButton:=false;
  fCatchMouse:=false;
+ fEffectiveCatchMouse:=false;
+ fRelativeMouse:=false;
  fHideSystemBars:=false;
+ fAcceptDragDropFiles:=false;
  fDisplayOrientations:=[TpvApplicationDisplayOrientation.LandscapeLeft,TpvApplicationDisplayOrientation.LandscapeRight];
  fAndroidMouseTouchEvents:=false;
  fAndroidTouchMouseEvents:=false;
@@ -5422,11 +6969,15 @@ begin
 
  fGraphicsReady:=false;
 
+ fReinitializeGraphics:=false;
+
  fSkipNextDrawFrame:=false;
 
  fVulkanRecreateSwapChainOnSuboptimalSurface:=false;
 
  fVulkanDebugging:=false;
+
+ fVulkanShaderPrintfDebugging:=false;
 
  fVulkanDebuggingEnabled:=false;
 
@@ -5440,13 +6991,7 @@ begin
 
  fVulkanMultiviewSupportEnabled:=false;
 
- fVulkanMultiviewGeometryShader:=false;
-
- fVulkanMultiviewTessellationShader:=false;
-
- fVulkanMaxMultiviewViewCount:=0;
-
- fVulkanMaxMultiviewInstanceIndex:=0;
+ fVulkanDelayResizeBugWorkaround:=false;
 
  fVulkanInstance:=nil;
 
@@ -5457,6 +7002,12 @@ begin
  fCountCPUThreads:=Max(1,TPasMP.GetCountOfHardwareThreads(fAvailableCPUCores));
 {$if defined(fpc) and defined(android)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
+{$ifend}
+
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
+ fNativeEventQueue:=TpvApplicationNativeEventQueue.Create;
+
+ fNativeEventLocalQueue.Initialize;
 {$ifend}
 
 {fVulkanCountCommandQueues:=0;
@@ -5485,9 +7036,15 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;}
 
+ fVulkanPresentID:=0;
+
+ fVulkanPresentLastID:=0;
+
  fVulkanAPIVersion:=VK_API_VERSION_1_0;
 
  fVulkanPhysicalDeviceHandle:=VK_NULL_HANDLE;
+
+ fVulkanBackBufferState:=TVulkanBackBufferState.Acquire;
 
  fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
 
@@ -5497,7 +7054,7 @@ begin
 
  fVulkanOldSwapChain:=nil;
 
- fVulkanTransferInflightCommandsFromOldSwapChain:=false;
+ fVulkanTransferInFlightCommandsFromOldSwapChain:=false;
 
  fScreen:=nil;
 
@@ -5520,17 +7077,31 @@ begin
 
  fDrawFrameCounter:=0;
 
+ SetDesiredCountInFlightFrames(2);
+
+ fCurrentInFlightFrameIndex:=0;
+
+ fNextInFlightFrameIndex:=1;
+
+ fDrawInFlightFrameIndex:=0;
+
+ fUpdateInFlightFrameIndex:=1;
+
  SetDesiredCountSwapChainImages(3);
 
  fCountSwapChainImages:=1;
 
- fUpdateSwapChainImageIndex:=0;
+ fSwapChainImageCounterIndex:=0;
 
- fDrawSwapChainImageIndex:=0;
-
- fRealUsedDrawSwapChainImageIndex:=0;
+ fSwapChainImageIndex:=0;
 
  fOnEvent:=nil;
+
+ fUniverse:=nil;
+
+ for FrameIndex:=0 to MaxInFlightFrames-1 do begin
+  fVulkanInFlightFenceIndices[FrameIndex]:=-1;
+ end;
 
  pvApplication:=self;
 
@@ -5539,8 +7110,16 @@ end;
 destructor TpvApplication.Destroy;
 begin
 
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
+ fNativeEventLocalQueue.Finalize;
+
+ FreeAndNil(fNativeEventQueue);
+{$ifend}
+
  FreeAndNil(fLifecycleListenerList);
  FreeAndNil(fLifecycleListenerListCriticalSection);
+
+ FreeAndNil(fUniverse);
 
  fRunnableList:=nil;
  fRunnableListCount:=0;
@@ -5582,8 +7161,8 @@ begin
  TemporaryString:=WideString(What);
  OutputDebugStringW(PWideChar(TemporaryString));
  StdOut:=GetStdHandle(Std_Output_Handle);
- Win32Check(StdOut<>Invalid_Handle_Value);
- if StdOut<>0 then begin
+//Win32Check(StdOut<>Invalid_Handle_Value);
+ if (StdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
   WriteLn(What);
  end;
 {$ifend}
@@ -5641,6 +7220,35 @@ begin
 {$ifend}
 end;
 
+procedure TpvApplication.SetTitle(const aTitle:TpvUTF8String);
+begin
+ if fTitle<>aTitle then begin
+  fTitle:=aTitle;
+  SetWindowTitle(fTitle);
+ end;
+end;
+
+procedure TpvApplication.SetWindowTitle(const aWindowTitle:TpvUTF8String);
+begin
+ if fWindowTitle<>aWindowTitle then begin
+  fWindowTitle:=aWindowTitle;
+  TPasMPInterlocked.Write(fHasNewWindowTitle,true);
+ end;
+end;
+
+procedure TpvApplication.SetDesiredCountInFlightFrames(const aDesiredCountInFlightFrames:TpvInt32);
+begin
+ if aDesiredCountInFlightFrames<0 then begin
+  fDesiredCountInFlightFrames:=-1;
+ end else if aDesiredCountInFlightFrames<1 then begin
+  fDesiredCountInFlightFrames:=1;
+ end else if aDesiredCountInFlightFrames>MaxInFlightFrames then begin
+  fDesiredCountInFlightFrames:=MaxInFlightFrames;
+ end else begin
+  fDesiredCountInFlightFrames:=aDesiredCountInFlightFrames;
+ end;
+end;
+
 procedure TpvApplication.SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
 begin
  if aDesiredCountSwapChainImages<1 then begin
@@ -5694,28 +7302,37 @@ end;
 procedure TpvApplication.VulkanWaitIdle;
 var Index,SubIndex:TpvInt32;
 begin
- if assigned(fVulkanDevice) then begin
-  fVulkanDevice.WaitIdle;
-  for Index:=0 to fCountSwapChainImages-1 do begin
-   if fVulkanPresentCompleteFencesReady[Index] then begin
-    fVulkanPresentCompleteFences[Index].WaitFor;
-    fVulkanPresentCompleteFences[Index].Reset;
-    fVulkanPresentCompleteFencesReady[Index]:=false;
-   end;
-   if fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
-    fVulkanWaitFences[Index].WaitFor;
-    fVulkanWaitFences[Index].Reset;
-    fVulkanWaitFencesReady[Index]:=false;
-   end;
-  end;
-  for Index:=0 to length(fVulkanDevice.QueueFamilyQueues)-1 do begin
-   for SubIndex:=0 to length(fVulkanDevice.QueueFamilyQueues[Index])-1 do begin
-    if assigned(fVulkanDevice.QueueFamilyQueues[Index,SubIndex]) then begin
-     fVulkanDevice.QueueFamilyQueues[Index,SubIndex].WaitIdle;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.VulkanWaitIdle');
+{$ifend}
+ try
+  if assigned(fVulkanDevice) then begin
+   fVulkanDevice.WaitIdle;
+   for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
+    if (Index<length(fVulkanPresentCompleteFencesReady)) and fVulkanPresentCompleteFencesReady[Index] then begin
+     fVulkanPresentCompleteFences[Index].WaitFor;
+     fVulkanPresentCompleteFences[Index].Reset;
+     fVulkanPresentCompleteFencesReady[Index]:=false;
+    end;
+    if (Index<length(fVulkanWaitFencesReady)) and fVulkanWaitFencesReady[Index] and assigned(fVulkanWaitFences[Index]) then begin
+     fVulkanWaitFences[Index].WaitFor;
+     fVulkanWaitFences[Index].Reset;
+     fVulkanWaitFencesReady[Index]:=false;
     end;
    end;
+   for Index:=0 to length(fVulkanDevice.QueueFamilyQueues)-1 do begin
+    for SubIndex:=0 to length(fVulkanDevice.QueueFamilyQueues[Index])-1 do begin
+     if assigned(fVulkanDevice.QueueFamilyQueues[Index,SubIndex]) then begin
+      fVulkanDevice.QueueFamilyQueues[Index,SubIndex].WaitIdle;
+     end;
+    end;
+   end;
+   fVulkanDevice.WaitIdle;
   end;
-  fVulkanDevice.WaitIdle;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.VulkanWaitIdle');
+{$ifend}
  end;
 end;
 
@@ -5728,8 +7345,7 @@ procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil)
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex,Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
     PhysicalDevice:TpvVulkanPhysicalDevice;
-    DoMultiviewFeaturesStuff,
-    DoMultiviewVulkan11PropertiesStuff:boolean;
+    DriverVersionString:RawByteString;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanDevice');
@@ -5773,7 +7389,19 @@ begin
 
   VulkanDebugLn('Device Vulkan API version: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.GetAPIVersionString));
 
-  VulkanDebugLn('Device driver version: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.GetDriverVersionString));
+  DriverVersionString:=fVulkanDevice.PhysicalDevice.GetDriverVersionString;
+
+  fVulkanDelayResizeBugWorkaround:=false;
+
+  if fVulkanDevice.PhysicalDevice.Properties.vendorID=TpvUInt32(TpvVulkanVendorID.NVIDIA) then begin
+{$if defined(Linux)}
+   {if DriverVersionString='525.105.17.0' then}begin
+    fVulkanDelayResizeBugWorkaround:=true;
+   end;
+{$ifend}
+  end;
+
+  VulkanDebugLn('Device driver version: '+TpvUTF8String(DriverVersionString));
 
   for Index:=0 to fVulkanDevice.PhysicalDevice.AvailableLayerNames.Count-1 do begin
    VulkanDebugLn('Device layer: '+TpvUTF8String(fVulkanDevice.PhysicalDevice.AvailableLayerNames[Index]));
@@ -5792,6 +7420,22 @@ begin
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
   end;
 
   if fVulkanDebugging and
@@ -5816,7 +7460,7 @@ begin
   end;
 
   if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
-   // > Vulkan API version 1.0
+   // = Vulkan API version 1.0
    if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
     if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
      fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MULTIVIEW_EXTENSION_NAME);
@@ -5832,6 +7476,10 @@ begin
      fVulkanMultiviewSupportEnabled:=true;
     end;
    end;
+  end;
+
+  if fVulkanShaderPrintfDebugging and (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)>=0) then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
   end;
 
   SetupVulkanDevice(fVulkanDevice);
@@ -5981,100 +7629,11 @@ begin
    raise EpvVulkanException.Create('No suitable depth image format!');
   end;
 
-  DoMultiviewFeaturesStuff:=false;
-
-  DoMultiviewVulkan11PropertiesStuff:=false;
-
-  FillChar(fVulkanPhysicalDeviceFeatures2KHR,SizeOf(TVkPhysicalDeviceFeatures2KHR),#0);
-  fVulkanPhysicalDeviceFeatures2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-
-  FillChar(fVulkanPhysicalDeviceProperties2KHR,SizeOf(TVkPhysicalDeviceProperties2KHR),#0);
-  fVulkanPhysicalDeviceProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
-
-  if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
-
-   fVulkanPhysicalDeviceVulkan11Features:=fVulkanDevice.PhysicalDeviceVulkan11Features^;
-
-   FillChar(fVulkanPhysicalDeviceVulkan11Properties,SizeOf(TVkPhysicalDeviceVulkan11Properties),#0);
-   fVulkanPhysicalDeviceVulkan11Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
-   fVulkanPhysicalDeviceVulkan11Properties.pNext:=fVulkanPhysicalDeviceProperties2KHR.pNext;
-   fVulkanPhysicalDeviceProperties2KHR.pNext:=@fVulkanPhysicalDeviceVulkan11Properties;
-
-   fVulkanMultiviewSupportEnabled:=fVulkanMultiviewSupportEnabled and (fVulkanPhysicalDeviceVulkan11Features.multiview<>VK_FALSE);
-
-   if fVulkanMultiviewSupportEnabled then begin
-    fVulkanMultiviewGeometryShader:=fVulkanPhysicalDeviceVulkan11Features.multiviewGeometryShader<>0;
-    fVulkanMultiviewTessellationShader:=fVulkanPhysicalDeviceVulkan11Features.multiviewTessellationShader<>0;
-    DoMultiviewVulkan11PropertiesStuff:=true;
-   end;
-
-  end else begin
-
-   if fVulkanMultiviewSupportEnabled then begin
-    FillChar(fVulkanPhysicalDeviceMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
-    fVulkanPhysicalDeviceMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
-    fVulkanPhysicalDeviceMultiviewFeaturesKHR.pNext:=fVulkanPhysicalDeviceFeatures2KHR.pNext;
-    fVulkanPhysicalDeviceFeatures2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewFeaturesKHR;
-    DoMultiviewFeaturesStuff:=true;
-   end;
-
-  end;
-
-  begin
-   FillChar(fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
-   fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
-   if fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
-    fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.pNext:=fVulkanPhysicalDeviceFeatures2KHR.pNext;
-    fVulkanPhysicalDeviceFeatures2KHR.pNext:=@fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
-   end;
-  end;
-
-  if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
-   fVulkanInstance.Commands.GetPhysicalDeviceFeatures2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
-  end else begin
-   fVulkanInstance.Commands.GetPhysicalDeviceFeatures2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceFeatures2KHR);
-  end;
-
-  if DoMultiviewFeaturesStuff then begin
-
-   fVulkanMultiviewSupportEnabled:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiview<>VK_FALSE;
-
-   if fVulkanMultiviewSupportEnabled then begin
-
-    fVulkanMultiviewGeometryShader:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE;
-    fVulkanMultiviewTessellationShader:=fVulkanPhysicalDeviceMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE;
-
-    FillChar(fVulkanPhysicalDeviceMultiviewPropertiesKHR,SizeOf(TVkPhysicalDeviceMultiviewPropertiesKHR),#0);
-    fVulkanPhysicalDeviceMultiviewPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
-    fVulkanPhysicalDeviceMultiviewPropertiesKHR.pNext:=fVulkanPhysicalDeviceProperties2KHR.pNext;
-    fVulkanPhysicalDeviceProperties2KHR.pNext:=@fVulkanPhysicalDeviceMultiviewPropertiesKHR;
-
-   end;
-  end;
-
-  if (fVulkanInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0 then begin
-   fVulkanInstance.Commands.GetPhysicalDeviceProperties2KHR(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
-  end else begin
-   fVulkanInstance.Commands.GetPhysicalDeviceProperties2(fVulkanDevice.PhysicalDevice.Handle,@fVulkanPhysicalDeviceProperties2KHR);
-  end;
-
-  if DoMultiviewFeaturesStuff and fVulkanMultiviewSupportEnabled then begin
-   fVulkanMaxMultiviewViewCount:=fVulkanPhysicalDeviceMultiviewPropertiesKHR.maxMultiviewViewCount;
-   fVulkanMaxMultiviewInstanceIndex:=fVulkanPhysicalDeviceMultiviewPropertiesKHR.maxMultiviewInstanceIndex;
-  end else if DoMultiviewVulkan11PropertiesStuff then begin
-   fVulkanMaxMultiviewViewCount:=fVulkanPhysicalDeviceVulkan11Properties.maxMultiviewViewCount;
-   fVulkanMaxMultiviewInstanceIndex:=fVulkanPhysicalDeviceVulkan11Properties.maxMultiviewInstanceIndex;
-  end;
-
-  fVulkanFragmentShaderSampleInterlock:=fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE;
-  fVulkanFragmentShaderPixelInterlock:=fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE;
-  fVulkanFragmentShaderShadingRateInterlock:=fVulkanPhysicalDeviceFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE;
-
  end;
 end;
 
 procedure TpvApplication.CreateVulkanInstance;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 type TExtensions=array of PAnsiChar;
 var i:TpvInt32;
     SDL_SysWMinfo:TSDL_SysWMinfo;
@@ -6088,13 +7647,14 @@ begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
      (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then begin
-   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(Title),
+   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
                                              Version,
                                              'PasVulkanApplication',
                                              $0100,
                                              fVulkanAPIVersion,
                                              false,
                                              nil);
+   VulkanDebugLn('Instance Vulkan API version: '+TpvUTF8String(fVulkanInstance.GetAPIVersionString));
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
     VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
    end;
@@ -6114,6 +7674,9 @@ begin
      end;
      for i:=0 to CountExtensions-1 do begin
       fVulkanInstance.EnabledExtensionNames.Add(String(Extensions[i]));
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+      VulkanDebugLn('Instance SDL2 extension: '+TpvUTF8String(Extensions[i]));
+{$ifend}
      end;
     finally
      Extensions:=nil;
@@ -6211,12 +7774,114 @@ begin
       end;
      end;
 {$ifend}
+     if {$ifdef Android}(fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)<0) and{$endif}
+        (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0) then begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+     end;
     end;
    end else begin
     fVulkanDebuggingEnabled:=false;
    end;
    if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+   end;
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+   end;
+   SetupVulkanInstance(fVulkanInstance);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   VulkanDebugLn('Calling TpvVulkanInstance.Initialize() . . .');
+{$ifend}
+   fVulkanInstance.ShaderPrintfDebugging:=fVulkanDebuggingEnabled and fVulkanShaderPrintfDebugging;
+   fVulkanInstance.Initialize;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   VulkanDebugLn('Called TpvVulkanInstance.Initialize() . . .');
+{$ifend}
+   if fVulkanDebuggingEnabled then begin
+    fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
+    fVulkanInstance.InstallDebugReportCallback;
+   end;
+  end;
+ end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanInstance');
+{$ifend}
+end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+type TExtensions=array of PAnsiChar;
+var i:TpvInt32;
+    CountExtensions:TpvInt32;
+    Extensions:TExtensions;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanInstance');
+{$ifend}
+ if not assigned(fVulkanInstance) then begin
+  begin
+   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
+                                             Version,
+                                             'PasVulkanApplication',
+                                             $0100,
+                                             fVulkanAPIVersion,
+                                             false,
+                                             nil);
+   VulkanDebugLn('Instance Vulkan API version: '+TpvUTF8String(fVulkanInstance.GetAPIVersionString));
+   for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
+    VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
+   end;
+   for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
+    VulkanDebugLn('Instance extension: '+TpvUTF8String(fVulkanInstance.AvailableExtensionNames[i]));
+   end;
+   begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+   end;
+   if fVulkanDebugging and
+      (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)>=0) then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    fVulkanDebuggingEnabled:=true;
+    if fVulkanValidation then begin
+     if fVulkanNoUniqueObjectsValidation then begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
+      end;
+     end else begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_KHRONOS_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_KHRONOS_validation');
+      end else if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
+      end;
+     end;
+     if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+     end;
+    end;
+   end else begin
+    fVulkanDebuggingEnabled:=false;
+   end;
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+   end;
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
    end;
    SetupVulkanInstance(fVulkanInstance);
    fVulkanInstance.Initialize;
@@ -6301,7 +7966,7 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanSurface;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 var SDL_SysWMinfo:TSDL_SysWMinfo;
     VulkanSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
@@ -6393,6 +8058,43 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
 {$ifend}
 end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+var VulkanSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.AllocateVulkanSurface');
+{$ifend}
+ if not assigned(fVulkanSurface) then begin
+  begin
+   begin
+    FillChar(VulkanSurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
+    VulkanSurfaceCreateInfo.Win32.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    VulkanSurfaceCreateInfo.Win32.hwnd_:=fWin32Handle;
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan surface');
+{$ifend}
+    fVulkanSurface:=TpvVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan surface');
+{$ifend}
+
+   end;
+
+  end;
+
+  if assigned(fVulkanSurface) and not assigned(fVulkanDevice) then begin
+   CreateVulkanDevice(fVulkanSurface);
+   if not assigned(fVulkanDevice) then begin
+    raise EpvVulkanSurfaceException.Create('Device does not support surface');
+   end;
+  end;
+
+ end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
+{$ifend}
+end;
 {$else}
 begin
  Assert(false);
@@ -6412,6 +8114,12 @@ end;
 
 procedure TpvApplication.CreateVulkanSwapChain;
 var Index:TpvInt32;
+{$if defined(Windows) and not defined(PasVulkanHeadless)}
+{$if defined(PasVulkanUseSDL2)}
+    WMInfo:TSDL_SysWMinfo;
+{$ifend}
+    WindowHandle:HWND;
+{$ifend}
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanSwapChain');
@@ -6419,13 +8127,35 @@ begin
 
  DestroyVulkanSwapChain;
 
+{$if not defined(PasVulkanHeadless)}
  if fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.PresentQueueFamilyIndex then begin
   fVulkanSwapChainQueueFamilyIndices.Clear;
   fVulkanSwapChainQueueFamilyIndices.Add(fVulkanDevice.GraphicsQueueFamilyIndex);
   fVulkanSwapChainQueueFamilyIndices.Add(fVulkanDevice.PresentQueueFamilyIndex);
   fVulkanSwapChainQueueFamilyIndices.Finish;
  end;
+{$ifend}
 
+{$if defined(Windows)}
+{$if defined(PasVulkanHeadless)}
+  WindowHandle:=0;
+{$elseif defined(PasVulkanUseSDL2)}
+  SDL_VERSION(WMInfo.version);
+  SDL_GetWindowWMInfo(fSurfaceWindow,@WMInfo);
+  WindowHandle:=WMInfo.window;
+{$else}
+  WindowHandle:=fWin32Handle;
+{$ifend}
+{$ifend}
+
+ fVulkanPresentID:=0;
+
+ fVulkanPresentLastID:=0;
+
+{$if defined(PasVulkanHeadless)}
+ fVulkanSwapChain:=nil;
+ fCountSwapChainImages:=0;
+{$else}
  fVulkanSwapChain:=TpvVulkanSwapChain.Create(fVulkanDevice,
                                              fVulkanSurface,
                                              fVulkanOldSwapChain,
@@ -6443,15 +8173,27 @@ begin
                                              PresentModeToVulkanPresentMode[fPresentMode],
                                              true,
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
-                                             fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB);
+                                             fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
+                                             fFullscreen,
+                                             fExclusiveFullScreenMode,
+                                             {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
+{$ifend}
 
- fUpdateSwapChainImageIndex:=1;
+ fSwapChainImageCounterIndex:=0;
 
- fDrawSwapChainImageIndex:=0;
+ fSwapChainImageIndex:=0;
 
- fRealUsedDrawSwapChainImageIndex:=0;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fVulkanInFlightFenceIndices[Index]:=-1;
+ end;
+
+ SetLength(fVulkanWaitFences,fCountSwapChainImages);
+ SetLength(fVulkanWaitFencesReady,fCountSwapChainImages);
+ SetLength(fVulkanPresentCompleteSemaphores,fCountSwapChainImages);
+ SetLength(fVulkanPresentCompleteFences,fCountSwapChainImages);
+ SetLength(fVulkanPresentCompleteFencesReady,fCountSwapChainImages);
 
  for Index:=0 to fCountSwapChainImages-1 do begin
   fVulkanWaitFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
@@ -6472,12 +8214,28 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanSwapChain');
 {$ifend}
- for Index:=0 to fCountSwapChainImages-1 do begin
+ for Index:=0 to length(fVulkanWaitFencesReady)-1 do begin
   fVulkanWaitFencesReady[Index]:=false;
+ end;
+ for Index:=0 to length(fVulkanPresentCompleteFencesReady)-1 do begin
   fVulkanPresentCompleteFencesReady[Index]:=false;
+ end;
+ for Index:=0 to length(fVulkanWaitFences)-1 do begin
   FreeAndNil(fVulkanWaitFences[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentCompleteSemaphores)-1 do begin
   FreeAndNil(fVulkanPresentCompleteSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentCompleteFences)-1 do begin
   FreeAndNil(fVulkanPresentCompleteFences[Index]);
+ end;
+ fVulkanWaitFences:=nil;
+ fVulkanWaitFencesReady:=nil;
+ fVulkanPresentCompleteSemaphores:=nil;
+ fVulkanPresentCompleteFences:=nil;
+ fVulkanPresentCompleteFencesReady:=nil;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fVulkanInFlightFenceIndices[Index]:=-1;
  end;
  FreeAndNil(fVulkanSwapChain);
  fVulkanSwapChainQueueFamilyIndices.Finalize;
@@ -6494,57 +8252,79 @@ begin
 
  DestroyVulkanRenderPass;
 
- fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
+ if assigned(pvApplication.VulkanDevice) then begin
 
- fVulkanRenderPass.AddSubpassDescription(0,
-                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                         [],
-                                         [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                              fVulkanSwapChain.ImageFormat,
+  fVulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
+
+  fVulkanRenderPass.AddSubpassDescription(0,
+                                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                          [],
+                                          [fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                                                                               fVulkanSwapChain.ImageFormat,
+                                                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                                                                                               VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                                                                                               VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                                                                                               VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                                              ),
+                                                                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                             )],
+                                          [],
+                                          fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
+                                                                                                                              fVulkanDepthImageFormat,
                                                                                                                               VK_SAMPLE_COUNT_1_BIT,
                                                                                                                               VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                              VK_ATTACHMENT_STORE_OP_STORE,
+                                                                                                                              VK_ATTACHMENT_STORE_OP_DONT_CARE,
                                                                                                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                                                                                                                               VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                                                                                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR //VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR  // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                                                                                              VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                                                                                              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                                                                                              ),
-                                                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                                                                            )],
-                                         [],
-                                         fVulkanRenderPass.AddAttachmentReference(fVulkanRenderPass.AddAttachmentDescription(0,
-                                                                                                                             fVulkanDepthImageFormat,
-                                                                                                                             VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                             VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                                                                                             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                                                                                             VK_IMAGE_LAYOUT_UNDEFINED, //VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // VK_IMAGE_LAYOUT_UNDEFINED, // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                                                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                                                            ),
-                                                                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                                                                                 ),
-                                         []);
- fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
-                                        0,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                        TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                        TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
- fVulkanRenderPass.AddSubpassDependency(0,
-                                        VK_SUBPASS_EXTERNAL,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                        TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                        TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
- fVulkanRenderPass.Initialize;
+                                                                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                                                  ),
+                                          []);
+{ fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                         0,
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  fVulkanRenderPass.AddSubpassDependency(0,
+                                         VK_SUBPASS_EXTERNAL,
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));}
+  fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                         0,
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  fVulkanRenderPass.AddSubpassDependency(0,
+                                         VK_SUBPASS_EXTERNAL,
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                                         TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                         TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+  fVulkanRenderPass.Initialize;
 
- fVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
- fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
- fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
- fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
+  fVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
+  fVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
+  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
+  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
+
+ end else begin
+
+  fVulkanRenderPass:=nil;
+
+ end;
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanRenderPass');
@@ -6574,105 +8354,108 @@ begin
 
  DestroyVulkanFrameBuffers;
 
- SetLength(fVulkanFrameBufferColorAttachments,fVulkanSwapChain.CountImages);
+ if assigned(fVulkanSwapChain) then begin
 
- for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
-  fVulkanFrameBufferColorAttachments[Index]:=nil;
- end;
+  SetLength(fVulkanFrameBufferColorAttachments,fVulkanSwapChain.CountImages);
 
- for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
+  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
+   fVulkanFrameBufferColorAttachments[Index]:=nil;
+  end;
 
-  ColorAttachmentImage:=nil;
+  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
 
-  ColorAttachmentImageView:=nil;
+   ColorAttachmentImage:=nil;
 
-  try
+   ColorAttachmentImageView:=nil;
 
-   ColorAttachmentImage:=TpvVulkanImage.Create(fVulkanDevice,
-                                               fVulkanSwapChain.Images[Index].Handle,
-                                               nil,
-                                               false);
+   try
+
+    ColorAttachmentImage:=TpvVulkanImage.Create(fVulkanDevice,
+                                                fVulkanSwapChain.Images[Index].Handle,
+                                                nil,
+                                                false);
 
 
-   if (fVulkanDevice.GraphicsQueue=fVulkanDevice.PresentQueue) or
-      ((fVulkanDevice.PhysicalDevice.QueueFamilyProperties[fVulkanDevice.PresentQueue.QueueFamilyIndex].queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) then begin
-    SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-   end else begin
-    SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+    if (fVulkanDevice.GraphicsQueue=fVulkanDevice.PresentQueue) or
+       ((fVulkanDevice.PhysicalDevice.QueueFamilyProperties[fVulkanDevice.PresentQueue.QueueFamilyIndex].queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) then begin
+     SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    end else begin
+     SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+    end;
+
+    ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                   TVkAccessFlags(0),
+                                   TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                   SrcPipelineStageFlags,
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                   nil,
+                                   fInternalPresentQueueCommandBuffer,
+                                   fVulkanDevice.PresentQueue,
+                                   fInternalPresentQueueCommandBufferFence,
+                                   true);
+
+    ColorAttachmentImageView:=TpvVulkanImageView.Create(fVulkanDevice,
+                                                        ColorAttachmentImage,
+                                                        VK_IMAGE_VIEW_TYPE_2D,
+                                                        fVulkanSwapChain.ImageFormat,
+                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                        TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                        0,
+                                                        1,
+                                                        0,
+                                                        1);
+
+    ColorAttachmentImage.ImageView:=ColorAttachmentImageView;
+    ColorAttachmentImageView.Image:=ColorAttachmentImage;
+
+    fVulkanFrameBufferColorAttachments[Index]:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
+                                                                                     ColorAttachmentImage,
+                                                                                     ColorAttachmentImageView,
+                                                                                     fVulkanSwapChain.Width,
+                                                                                     fVulkanSwapChain.Height,
+                                                                                     fVulkanSwapChain.ImageFormat,
+                                                                                     true);
+
+   except
+    FreeAndNil(fVulkanFrameBufferColorAttachments[Index]);
+    FreeAndNil(ColorAttachmentImageView);
+    FreeAndNil(ColorAttachmentImage);
+    raise;
    end;
 
-   ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                  VK_IMAGE_LAYOUT_UNDEFINED,
-                                  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                  TVkAccessFlags(0),
-                                  TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                  SrcPipelineStageFlags,
-                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                  nil,
-                                  fInternalPresentQueueCommandBuffer,
-                                  fVulkanDevice.PresentQueue,
-                                  fInternalPresentQueueCommandBufferFence,
-                                  true);
+  end;
 
-   ColorAttachmentImageView:=TpvVulkanImageView.Create(fVulkanDevice,
-                                                       ColorAttachmentImage,
-                                                       VK_IMAGE_VIEW_TYPE_2D,
-                                                       fVulkanSwapChain.ImageFormat,
-                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                       TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                       0,
-                                                       1,
-                                                       0,
-                                                       1);
+  fVulkanDepthFrameBufferAttachment:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
+                                                                           fVulkanDevice.GraphicsQueue,
+                                                                           fInternalGraphicsQueueCommandBuffer,
+                                                                           fInternalGraphicsQueueCommandBufferFence,
+                                                                           fVulkanSwapChain.Width,
+                                                                           fVulkanSwapChain.Height,
+                                                                           fVulkanDepthImageFormat,
+                                                                           TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
+                                                                           VK_SHARING_MODE_EXCLUSIVE,
+                                                                           fVulkanSwapChainQueueFamilyIndices.Items);
 
-   ColorAttachmentImage.ImageView:=ColorAttachmentImageView;
-   ColorAttachmentImageView.Image:=ColorAttachmentImage;
-
-   fVulkanFrameBufferColorAttachments[Index]:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
-                                                                                    ColorAttachmentImage,
-                                                                                    ColorAttachmentImageView,
-                                                                                    fVulkanSwapChain.Width,
-                                                                                    fVulkanSwapChain.Height,
-                                                                                    fVulkanSwapChain.ImageFormat,
-                                                                                    true);
-
-  except
-   FreeAndNil(fVulkanFrameBufferColorAttachments[Index]);
-   FreeAndNil(ColorAttachmentImageView);
-   FreeAndNil(ColorAttachmentImage);
-   raise;
+  SetLength(fVulkanFrameBuffers,fVulkanSwapChain.CountImages);
+  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
+   fVulkanFrameBuffers[Index]:=nil;
+  end;
+  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
+   fVulkanFrameBuffers[Index]:=TpvVulkanFrameBuffer.Create(fVulkanDevice,
+                                                           fVulkanRenderPass,
+                                                           fVulkanSwapChain.Width,
+                                                           fVulkanSwapChain.Height,
+                                                           1,
+                                                           [fVulkanFrameBufferColorAttachments[Index],fVulkanDepthFrameBufferAttachment],
+                                                           false);
   end;
 
  end;
-
- fVulkanDepthFrameBufferAttachment:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
-                                                                          fVulkanDevice.GraphicsQueue,
-                                                                          fInternalGraphicsQueueCommandBuffer,
-                                                                          fInternalGraphicsQueueCommandBufferFence,
-                                                                          fVulkanSwapChain.Width,
-                                                                          fVulkanSwapChain.Height,
-                                                                          fVulkanDepthImageFormat,
-                                                                          TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
-                                                                          VK_SHARING_MODE_EXCLUSIVE,
-                                                                          fVulkanSwapChainQueueFamilyIndices.Items);
-
- SetLength(fVulkanFrameBuffers,fVulkanSwapChain.CountImages);
- for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
-  fVulkanFrameBuffers[Index]:=nil;
- end;
- for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
-  fVulkanFrameBuffers[Index]:=TpvVulkanFrameBuffer.Create(fVulkanDevice,
-                                                          fVulkanRenderPass,
-                                                          fVulkanSwapChain.Width,
-                                                          fVulkanSwapChain.Height,
-                                                          1,
-                                                          [fVulkanFrameBufferColorAttachments[Index],fVulkanDepthFrameBufferAttachment],
-                                                          false);
- end;
-
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanFrameBuffers');
 {$ifend}
@@ -6699,7 +8482,7 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanCommandBuffers;
-var Index:TpvInt32;
+var Index,OtherIndex:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -6708,204 +8491,288 @@ begin
 
  DestroyVulkanCommandBuffers;
 
- fVulkanPresentCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                                        fVulkanDevice.PresentQueueFamilyIndex,
-                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ if CountSwapChainImages>0 then begin
 
- fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                                         fVulkanDevice.GraphicsQueueFamilyIndex,
+  SetLength(fVulkanFrameFenceCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanFrameFenceSemaphores,CountSwapChainImages);
+  SetLength(fVulkanWaitFenceCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanWaitFenceSemaphores,CountSwapChainImages);
+  SetLength(fVulkanBlankCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanBlankCommandBufferSemaphores,CountSwapChainImages);
+  SetLength(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores,CountSwapChainImages);
+  SetLength(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores,CountSwapChainImages);
+  SetLength(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores,CountSwapChainImages);
+  SetLength(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers,CountSwapChainImages);
+  SetLength(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores,CountSwapChainImages);
+
+  fVulkanPresentCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                         fVulkanDevice.PresentQueueFamilyIndex,
                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
- for Index:=0 to CountSwapChainImages-1 do begin
+  fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                          fVulkanDevice.GraphicsQueueFamilyIndex,
+                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
-  fVulkanBlankCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fVulkanBlankCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+  for Index:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
+   fVulkanFrameFences[Index]:=TpvVulkanFence.Create(fVulkanDevice);
+  end;
 
-  if (fVulkanDevice.PresentQueueFamilyIndex<>fVulkanDevice.GraphicsQueueFamilyIndex) or
-     ((assigned(fVulkanDevice.PresentQueue) and assigned(fVulkanDevice.GraphicsQueue)) and
-      (fVulkanDevice.PresentQueue<>fVulkanDevice.GraphicsQueue)) then begin
+  fVulkanFrameFencesReady:=0;
+  fVulkanFrameFenceCounter:=0;
 
-   // If present and graphics queue families are different, then image barriers are required
+  for Index:=0 to CountSwapChainImages-1 do begin
 
-   begin
-    // Present => graphics on graphics queue
-    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    ImageMemoryBarrier.pNext:=nil;
-    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
-    ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
-    ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
-    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-    ImageMemoryBarrier.subresourceRange.levelCount:=1;
-    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-    ImageMemoryBarrier.subresourceRange.layerCount:=1;
-
-    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    fVulkanDevice.DebugMarker.SetObjectName(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].Handle,
-                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-                                            'PresentToGraphics_GraphicsQueue');
-    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
-    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                          0,
-                                                                                          0,nil,
-                                                                                          0,nil,
-                                                                                          1,@ImageMemoryBarrier);
-    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].EndRecording;
-
+   for OtherIndex:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
+    fVulkanFrameFenceCommandBuffers[Index,OtherIndex]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanFrameFenceSemaphores[Index,OtherIndex]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanFrameFenceCommandBuffers[Index,OtherIndex].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+    fVulkanFrameFenceCommandBuffers[Index,OtherIndex].EndRecording;
    end;
 
-   begin
-    // Present => graphics on present queue
-    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    ImageMemoryBarrier.pNext:=nil;
-    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-    ImageMemoryBarrier.dstAccessMask:=0;
-    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
-    ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
-    ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
-    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-    ImageMemoryBarrier.subresourceRange.levelCount:=1;
-    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-    ImageMemoryBarrier.subresourceRange.layerCount:=1;
+   fVulkanWaitFenceCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanWaitFenceSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanWaitFenceCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+   fVulkanWaitFenceCommandBuffers[Index].EndRecording;
 
-    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanPresentCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    fVulkanDevice.DebugMarker.SetObjectName(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].Handle,
-                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-                                            'PresentToGraphics_PresentQueue');
-    fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
-    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                                                                         0,
-                                                                                         0,nil,
-                                                                                         0,nil,
-                                                                                         1,@ImageMemoryBarrier);
-    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].EndRecording;
+   fVulkanBlankCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   fVulkanBlankCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
 
-   end;
+   if (fVulkanDevice.PresentQueueFamilyIndex<>fVulkanDevice.GraphicsQueueFamilyIndex) or
+      ((assigned(fVulkanDevice.PresentQueue) and assigned(fVulkanDevice.GraphicsQueue)) and
+       (fVulkanDevice.PresentQueue<>fVulkanDevice.GraphicsQueue)) then begin
 
-   begin
-    // Graphics => present on graphics queue
-    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    ImageMemoryBarrier.pNext:=nil;
-    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
-    ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
-    ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
-    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-    ImageMemoryBarrier.subresourceRange.levelCount:=1;
-    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-    ImageMemoryBarrier.subresourceRange.layerCount:=1;
+    // If present and graphics queue families are different, then image barriers are required
 
-    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    fVulkanDevice.DebugMarker.SetObjectName(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].Handle,
-                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-                                            'GraphicsToPresent_GraphicsQueue');
-    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
-    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+    begin
+     // Present => graphics on graphics queue
+     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier.pNext:=nil;
+     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+     ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+     ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+     ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
+     ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
+     ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
+     ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier.subresourceRange.layerCount:=1;
+
+     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     fVulkanDevice.DebugMarker.SetObjectName(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].Handle,
+                                             VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                             'PresentToGraphics_GraphicsQueue');
+     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                           0,
+                                                                                           0,nil,
+                                                                                           0,nil,
+                                                                                           1,@ImageMemoryBarrier);
+     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].EndRecording;
+
+    end;
+
+    begin
+     // Present => graphics on present queue
+     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier.pNext:=nil;
+     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+     ImageMemoryBarrier.dstAccessMask:=0;
+     ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+     ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
+     ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
+     ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
+     ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier.subresourceRange.layerCount:=1;
+
+     fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanPresentCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     fVulkanDevice.DebugMarker.SetObjectName(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].Handle,
+                                             VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                             'PresentToGraphics_PresentQueue');
+     fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+     fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+     fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                                                                           0,
                                                                                           0,nil,
                                                                                           0,nil,
                                                                                           1,@ImageMemoryBarrier);
-    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].EndRecording;
+     fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].EndRecording;
+
+    end;
+
+    begin
+     // Graphics => present on graphics queue
+     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier.pNext:=nil;
+     ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+     ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+     ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+     ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
+     ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
+     ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
+     ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier.subresourceRange.layerCount:=1;
+
+     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     fVulkanDevice.DebugMarker.SetObjectName(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].Handle,
+                                             VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                             'GraphicsToPresent_GraphicsQueue');
+     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                                           0,
+                                                                                           0,nil,
+                                                                                           0,nil,
+                                                                                           1,@ImageMemoryBarrier);
+     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].EndRecording;
+
+    end;
+
+    begin
+     // Graphics => present on present queue
+     // A layout transition which happens as part of an ownership transfer needs to be specified twice
+     // one for the release, and one for the acquire.
+     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+     ImageMemoryBarrier.pNext:=nil;
+     ImageMemoryBarrier.srcAccessMask:=0; // No srcAccessMask is needed, waiting for a semaphore does that automatically.
+     ImageMemoryBarrier.dstAccessMask:=0; // No dstAccessMask is needed, signalling a semaphore does that automatically.
+     ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+     ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
+     ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
+     ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
+     ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+     ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+     ImageMemoryBarrier.subresourceRange.levelCount:=1;
+     ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+     ImageMemoryBarrier.subresourceRange.layerCount:=1;
+
+     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanPresentCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     fVulkanDevice.DebugMarker.SetObjectName(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].Handle,
+                                             VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                             'GraphicsToPresent_PresentQueue');
+     fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                                          0,
+                                                                                          0,nil,
+                                                                                          0,nil,
+                                                                                          1,@ImageMemoryBarrier);
+     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].EndRecording;
+
+    end;
+
+   end else begin
+
+    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]:=nil;
+    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=nil;
+
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]:=nil;
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]:=nil;
+
+    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]:=nil;
+    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=nil;
+
+    fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]:=nil;
+    fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]:=nil;
 
    end;
-
-   begin
-    // Graphics => present on present queue
-    // A layout transition which happens as part of an ownership transfer needs to be specified twice
-    // one for the release, and one for the acquire.
-    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
-    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    ImageMemoryBarrier.pNext:=nil;
-    ImageMemoryBarrier.srcAccessMask:=0; // No srcAccessMask is needed, waiting for a semaphore does that automatically.
-    ImageMemoryBarrier.dstAccessMask:=0; // No dstAccessMask is needed, signalling a semaphore does that automatically.
-    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
-    ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
-    ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
-    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-    ImageMemoryBarrier.subresourceRange.levelCount:=1;
-    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-    ImageMemoryBarrier.subresourceRange.layerCount:=1;
-
-    fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanPresentCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    fVulkanDevice.DebugMarker.SetObjectName(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].Handle,
-                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
-                                            'GraphicsToPresent_PresentQueue');
-    fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
-    fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                                                                         0,
-                                                                                         0,nil,
-                                                                                         0,nil,
-                                                                                         1,@ImageMemoryBarrier);
-    fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].EndRecording;
-
-   end;
-
-  end else begin
-
-   fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]:=nil;
-   fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=nil;
-
-   fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]:=nil;
-   fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]:=nil;
-
-   fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]:=nil;
-   fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=nil;
-
-   fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]:=nil;
-   fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]:=nil;
 
   end;
 
  end;
-
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanCommandBuffers');
 {$ifend}
 end;
 
 procedure TpvApplication.DestroyVulkanCommandBuffers;
-var Index:TpvInt32;
+var Index,OtherIndex:TpvInt32;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DestroyVulkanCommandBuffers');
 {$ifend}
- for Index:=0 to CountSwapChainImages-1 do begin
+ for OtherIndex:=low(fVulkanFrameFences) to high(fVulkanFrameFences) do begin
+  FreeAndNil(fVulkanFrameFences[OtherIndex]);
+  for Index:=0 to length(fVulkanFrameFenceCommandBuffers)-1 do begin
+   FreeAndNil(fVulkanFrameFenceCommandBuffers[Index,OtherIndex]);
+  end;
+  for Index:=0 to length(fVulkanFrameFenceSemaphores)-1 do begin
+   FreeAndNil(fVulkanFrameFenceSemaphores[Index,OtherIndex]);
+  end;
+ end;
+ for Index:=0 to length(fVulkanFrameFenceSemaphores)-1 do begin
+  FreeAndNil(fVulkanWaitFenceCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanWaitFenceSemaphores)-1 do begin
+  FreeAndNil(fVulkanWaitFenceSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanBlankCommandBuffers)-1 do begin
   FreeAndNil(fVulkanBlankCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanBlankCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanBlankCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]);
+ end;
+ for Index:=0 to length(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores)-1 do begin
   FreeAndNil(fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]);
  end;
+ fVulkanFrameFenceCommandBuffers:=nil;
+ fVulkanFrameFenceSemaphores:=nil;
+ fVulkanWaitFenceCommandBuffers:=nil;
+ fVulkanWaitFenceSemaphores:=nil;
+ fVulkanBlankCommandBuffers:=nil;
+ fVulkanBlankCommandBufferSemaphores:=nil;
+ fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:=nil;
+ fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:=nil;
+ fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:=nil;
+ fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:=nil;
+ fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:=nil;
+ fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:=nil;
+ fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers:=nil;
+ fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores:=nil;
  FreeAndNil(fVulkanPresentCommandPool);
  FreeAndNil(fVulkanGraphicsCommandPool);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -6952,382 +8819,650 @@ begin
  end;
 end;
 
+function TpvApplication.ShouldSkipNextFrameForRendering:boolean;
+begin
+ result:=fSkipNextDrawFrame or not
+         ((not (CanBeParallelProcessed and (fCountInFlightFrames>1))) or
+         IsReadyForDrawOfInFlightFrameIndex(fCurrentInFlightFrameIndex));
+end;
+
+function TpvApplication.WaitForSwapChainLatency:boolean;
+var Target,TimeOut:TpvUInt64;
+    WaitResult:TVkResult;
+    PrepreviousFrameFrenceIndex:TpvInt32;
+    PrepreviousFrameFrenceMask:TpvUInt32;
+    PrepreviousFrameFrence:TpvVulkanFence;
+begin
+
+ if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
+
+  // Frame present waiting part
+  if (fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                   TpvApplicationPresentFrameLatencyMode.PresentWait,
+                                   TpvApplicationPresentFrameLatencyMode.CombinedWait]) and
+     assigned(fVulkanDevice) and
+     fVulkanDevice.PresentIDSupport and
+     fVulkanDevice.PresentWaitSupport and
+     (fPresentFrameLatency<>0) and
+     (fVulkanPresentLastID>fPresentFrameLatency) and
+     (fPresentMode=TpvApplicationPresentMode.VSync{=TpvApplicationPresentMode.FIFO}) and
+     assigned(fVulkanDevice.Commands.Commands.WaitForPresentKHR) then begin
+   Target:=fVulkanPresentLastID-fPresentFrameLatency;
+   if fBlocking then begin
+    TimeOut:=High(TpvUInt64);
+   end else begin
+    TimeOut:=1; // one nanosecond
+   end;
+   WaitResult:=fVulkanDevice.Commands.WaitForPresentKHR(fVulkanDevice.Handle,fVulkanSwapChain.Handle,Target,TimeOut);
+   case WaitResult of
+    VK_SUCCESS,
+    VK_SUBOPTIMAL_KHR:begin
+     result:=true;
+    end;
+    VK_ERROR_OUT_OF_DATE_KHR,
+    VK_TIMEOUT:begin
+     result:=false;
+    end;
+    else begin
+     Log(LOG_INFO,'TpvApplication.WaitForSwapChainLatency','vkWaitForPresentKHR failed: '+VulkanErrorToString(WaitResult));
+     result:=true;
+    end;
+   end;
+  end else begin
+   result:=true;
+  end;
+
+  // Frame fence waiting part
+  if result then begin
+
+   result:=false;
+
+   if (fVulkanBackBufferState=TVulkanBackBufferState.Present) or
+      (fPresentFrameLatencyMode=TpvApplicationPresentFrameLatencyMode.None) or
+      ((fPresentFrameLatencyMode in [TpvApplicationPresentFrameLatencyMode.Auto,
+                                     TpvApplicationPresentFrameLatencyMode.PresentWait]) and
+       assigned(fVulkanDevice) and
+       fVulkanDevice.PresentIDSupport and
+       fVulkanDevice.PresentWaitSupport and
+       (fPresentMode=TpvApplicationPresentMode.VSync) and
+       (fPresentFrameLatency>0)) then begin
+
+    result:=true;
+
+   end else begin
+
+    // Based on a Sebastian Aaltonen tweet thread, which can found at
+    // https://twitter.com/SebAaltonen/status/1569608367618011136 .
+    // Reformulated summary:
+    // If instead of waiting for the GPU to finish with previous frame
+    // respectively the Minus-InFlightFrameCount frame at the beginning
+    // of the simulation, we consider waiting for the GPU to finish with
+    // the frame before the previous frame (-2 frame index), so we will
+    // have a lower overall latency (input lag) and only have to buffer
+    // twice the dynamic resources.
+    // This approach stabilizes latencies and results in up to three frames
+    // in flight, and furthermore the simulation can then also write directly
+    // to GPU buffer data pointers if desired.
+    // Indeed, in a GPU-bound scenario, this can have only marginally worse
+    // latency than waiting for idle, but however far higher throughput.
+    // Moreover, it seems to be the best compromise between latency and
+    // throughput.
+    // However, spiky CPU frames with variable length that happen to exceed
+    // the GPU budget could become a problem here. In this case, an extra
+    // frame for buffering would better hide the variable CPU cost, and
+    // now we get a GPU blast instead.
+    // Nevertheless, this problem only occurs when the CPU/GPU utilization
+    // is very close to 100%/100% and the frame costs fluctuate strongly.
+    // Normally, however, the CPU or GPU usually have a bit of headroom
+    // to hide the latency.
+
+    PrepreviousFrameFrenceIndex:=(fVulkanFrameFenceCounter+(4-2)) and 3;
+
+    PrepreviousFrameFrenceMask:=TpvUInt32(1) shl PrepreviousFrameFrenceIndex;
+
+    PrepreviousFrameFrence:=fVulkanFrameFences[PrepreviousFrameFrenceIndex];
+
+    result:=false;
+
+    if fBlocking or
+       (((fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)=0) or
+        ((not assigned(PrepreviousFrameFrence)) or
+         (PrepreviousFrameFrence.GetStatus=VK_SUCCESS))) then begin
+
+     try
+      if (fVulkanFrameFencesReady and PrepreviousFrameFrenceMask)<>0 then begin
+       fVulkanFrameFencesReady:=fVulkanFrameFencesReady and not PrepreviousFrameFrenceMask;
+       if assigned(PrepreviousFrameFrence) then begin
+        if fBlocking then begin
+         PrepreviousFrameFrence.WaitFor;
+        end;
+        PrepreviousFrameFrence.Reset;
+       end;
+      end;
+     except
+      Log(LOG_VERBOSE,'TpvApplication.WaitForSwapChainLatency','Exception at preprevious waiting');
+      raise;
+     end;
+
+     result:=true;
+
+    end;
+
+   end;
+
+  end;
+
+ end else begin
+
+  result:=false;
+
+ end;
+
+end;
+
 function TpvApplication.AcquireVulkanBackBuffer:boolean;
 var RecreationTries,
-    ImageIndex:TpvInt32;
+    ImageIndex,FrameIndex,NextInFlightFrameIndex,InFlightFenceIndex:TpvInt32;
     TimeOut:TpvUInt64;
 begin
 
  result:=false;
 
- if not assigned(fVulkanSwapChain) then begin
-  fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
- end;
+ fVulkanSurfaceRecreated:=false;
 
- RecreationTries:=0;
+ try
 
- repeat
+  case fVulkanBackBufferState of
 
-  case fAcquireVulkanBackBufferState of
+   TVulkanBackBufferState.Acquire:begin
 
-   TAcquireVulkanBackBufferState.Entry:begin
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPreviousFrames;
-    continue;
-   end;
-
-   TAcquireVulkanBackBufferState.WaitOnPreviousFrames:begin
-    if fWaitOnPreviousFrames then begin
-     for ImageIndex:=0 to fCountSwapChainImages-1 do begin
-      if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
-       if fVulkanPresentCompleteFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
-        if fBlocking then begin
-         fVulkanPresentCompleteFences[ImageIndex].WaitFor;
-        end else begin
-         exit;
-        end;
-       end;
-       fVulkanPresentCompleteFences[ImageIndex].Reset;
-       fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
-      end;
-      if fVulkanWaitFencesReady[ImageIndex] then begin
-       if fVulkanWaitFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
-        if fBlocking then begin
-         fVulkanWaitFences[ImageIndex].WaitFor;
-        end else begin
-         exit;
-        end;
-       end;
-       fVulkanWaitFences[ImageIndex].Reset;
-       fVulkanWaitFencesReady[ImageIndex]:=false;
-      end;
-     end;
-     fVulkanDevice.WaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
+    if not assigned(fVulkanSwapChain) then begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+     fVulkanSurfaceRecreated:=true;
     end;
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence;
-    continue;
-   end;
 
-   TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence:begin
-    if fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex] then begin
-     if fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
-      if fBlocking then begin
-       fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].WaitFor;
-      end else begin
-       break;
-      end;
-     end;
-     fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].Reset;
-     fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=false;
-    end;
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.CheckSettings;
-    continue;
-   end;
+    RecreationTries:=0;
 
-   TAcquireVulkanBackBufferState.CheckSettings:begin
-    if (fVulkanSwapChain.Width<>fWidth) or
-       (fVulkanSwapChain.Height<>fHeight) or
-       (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
-     VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
-     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
-    end else begin
-     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Acquire;
-    end;
-    continue;
-   end;
+    repeat
 
-   TAcquireVulkanBackBufferState.Acquire:begin
-    try
-     if fBlocking then begin
-      if fCountSwapChainImages>1 then begin
-       TimeOut:=TpvUInt64(high(TpvUInt64));
-      end else begin
-       TimeOut:=1000000000; // 1e+9 nanoseconds = 1000 milliseconds = 1 second, for AMD drivers, which have a immediate-present-mode deadlock problem at fullscreen otherwise
-      end;
-     end else begin
-      TimeOut:=0;
-     end;
-     case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex],
-                                            fVulkanPresentCompleteFences[fDrawSwapChainImageIndex],
-                                            TimeOut) of
-      VK_SUCCESS:begin
-       fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=true;
-       fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
-       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnFence;
+     case fAcquireVulkanBackBufferState of
+
+      TAcquireVulkanBackBufferState.Entry:begin
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPreviousFrames;
        continue;
       end;
-      VK_SUBOPTIMAL_KHR:begin
-       if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
-        VulkanDebugLn('Suboptimal surface detected!');
+
+      TAcquireVulkanBackBufferState.WaitOnPreviousFrames:begin
+       if fWaitOnPreviousFrames then begin
+        for ImageIndex:=0 to fCountSwapChainImages-1 do begin
+         if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
+          if fVulkanPresentCompleteFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
+           if fBlocking then begin
+            fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+           end else begin
+            exit;
+           end;
+          end;
+          fVulkanPresentCompleteFences[ImageIndex].Reset;
+          fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
+         end;
+         if fVulkanWaitFencesReady[ImageIndex] then begin
+          if fVulkanWaitFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
+           if fBlocking then begin
+            fVulkanWaitFences[ImageIndex].WaitFor;
+           end else begin
+            exit;
+           end;
+          end;
+          fVulkanWaitFences[ImageIndex].Reset;
+          fVulkanWaitFencesReady[ImageIndex]:=false;
+         end;
+        end;
+        fVulkanDevice.WaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
+        for FrameIndex:=0 to MaxInFlightFrames-1 do begin
+         fVulkanInFlightFenceIndices[FrameIndex]:=-1;
+        end;
+       end;
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence;
+       continue;
+      end;
+
+      TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence:begin
+       if fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex] then begin
+        if fVulkanPresentCompleteFences[fSwapChainImageCounterIndex].GetStatus<>VK_SUCCESS then begin
+         if fBlocking then begin
+          fVulkanPresentCompleteFences[fSwapChainImageCounterIndex].WaitFor;
+         end else begin
+          break;
+         end;
+        end;
+        fVulkanPresentCompleteFences[fSwapChainImageCounterIndex].Reset;
+        fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=false;
+       end;
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.CheckSettings;
+       continue;
+      end;
+
+      TAcquireVulkanBackBufferState.CheckSettings:begin
+       if ((not fVulkanDelayResizeBugWorkaround) and
+           ((fVulkanSwapChain.Width<>fWidth) or
+            (fVulkanSwapChain.Height<>fHeight))) or
+          (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
+        VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected! Old width: '+IntToStr(fWidth)+' - Old height: '+IntToStr(fHeight)+' - Old preset mode: '+IntToStr(Int32(fPresentMode))+' - New width: '+IntToStr(fVulkanSwapChain.Width)+' - New height: '+IntToStr(fVulkanSwapChain.Height)+' - New preset mode: '+IntToStr(Int32(fVulkanSwapChain.PresentMode)));
         fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       end else begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Acquire;
+       end;
+       continue;
+      end;
+
+      TAcquireVulkanBackBufferState.Acquire:begin
+       try
+        if fBlocking then begin
+         if fCountSwapChainImages>1 then begin
+          TimeOut:=TpvUInt64(high(TpvUInt64));
+         end else begin
+          TimeOut:=1000000000; // 1e+9 nanoseconds = 1000 milliseconds = 1 second, for AMD drivers, which have a immediate-present-mode deadlock problem at fullscreen otherwise
+         end;
+        end else begin
+         TimeOut:=0;
+        end;
+        NextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+        if NextInFlightFrameIndex>=fCountInFlightFrames then begin
+         dec(NextInFlightFrameIndex,fCountInFlightFrames);
+        end;
+        case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex],
+                                               fVulkanPresentCompleteFences[fSwapChainImageCounterIndex],
+                                               TimeOut) of
+         VK_SUCCESS:begin
+          fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=true;
+          fCurrentInFlightFrameIndex:=NextInFlightFrameIndex;
+          fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+          if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+           dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+          end;
+          fSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
+          fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnFence;
+          continue;
+         end;
+         VK_SUBOPTIMAL_KHR:begin
+          if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
+           VulkanDebugLn('Suboptimal surface detected!');
+           fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+           continue;
+          end else begin
+           fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=true;
+           fCurrentInFlightFrameIndex:=NextInFlightFrameIndex;
+           fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+           if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+            dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+           end;
+           fSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
+           fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnFence;
+           continue;
+          end;
+         end;
+         else {VK_TIMEOUT:}begin
+          break;
+         end;
+        end;
+       except
+        on VulkanResultException:EpvVulkanResultException do begin
+         case VulkanResultException.ResultCode of
+          VK_ERROR_SURFACE_LOST_KHR,
+          VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+           fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+           VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
+          end;
+          VK_ERROR_OUT_OF_DATE_KHR,
+          VK_SUBOPTIMAL_KHR:begin
+           fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+           VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
+          end;
+          else begin
+           raise;
+          end;
+         end;
+        end;
+       end;
+      end;
+
+      TAcquireVulkanBackBufferState.WaitOnFence:begin
+       InFlightFenceIndex:=fVulkanInFlightFenceIndices[fCurrentInFlightFrameIndex];
+       if (InFlightFenceIndex>=0) and
+          fVulkanWaitFencesReady[InFlightFenceIndex] then begin
+        if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
+         if fBlocking then begin
+          fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+         end else begin
+          break;
+         end;
+        end;
+        fVulkanWaitFences[InFlightFenceIndex].Reset;
+        fVulkanWaitFencesReady[InFlightFenceIndex]:=false;
+        fVulkanInFlightFenceIndices[fCurrentInFlightFrameIndex]:=-1;
+       end;
+       if fVulkanWaitFencesReady[fSwapChainImageIndex] then begin
+        if fVulkanWaitFences[fSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
+         if fBlocking then begin
+          fVulkanWaitFences[fSwapChainImageIndex].WaitFor;
+         end else begin
+          break;
+         end;
+        end;
+        fVulkanWaitFences[fSwapChainImageIndex].Reset;
+        fVulkanWaitFencesReady[fSwapChainImageIndex]:=false;
+       end;
+       fVulkanInFlightFenceIndices[fCurrentInFlightFrameIndex]:=fSwapChainImageIndex;
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Apply;
+       continue;
+      end;
+
+      TAcquireVulkanBackBufferState.Apply:begin
+
+       fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fSwapChainImageCounterIndex];
+
+       if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex]) then begin
+
+        // If present and graphics queue families are different, then a image barrier is required
+
+        fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[fSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
+                                                                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                                             fVulkanWaitSemaphore,
+                                                                                                             fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fSwapChainImageIndex],
+                                                                                                             nil,
+                                                                                                             false);
+        fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fSwapChainImageIndex];
+
+        fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                                              fVulkanWaitSemaphore,
+                                                                                                              fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fSwapChainImageIndex],
+                                                                                                              nil,
+                                                                                                              false);
+        fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fSwapChainImageIndex];
+
+       end;
+
+ {     if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex]) and
+          assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fSwapChainImageIndex]) then begin
+        fVulkanWaitFence:=nil;
+       end else begin
+        fVulkanWaitFence:=fVulkanWaitFences[fSwapChainImageIndex];
+       end;}
+
+       fVulkanWaitFence:=nil;
+
+       result:=true;
+
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
+
+       fVulkanBackBufferState:=TVulkanBackBufferState.Present;
+
+       break;
+
+      end;
+
+      TAcquireVulkanBackBufferState.RecreateSwapChain,
+      TAcquireVulkanBackBufferState.RecreateSurface:begin
+
+       for ImageIndex:=0 to fCountSwapChainImages-1 do begin
+        if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
+         fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+         fVulkanPresentCompleteFences[ImageIndex].Reset;
+         fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
+        end;
+        if fVulkanWaitFencesReady[ImageIndex] then begin
+         fVulkanWaitFences[ImageIndex].WaitFor;
+         fVulkanWaitFences[ImageIndex].Reset;
+         fVulkanWaitFencesReady[ImageIndex]:=false;
+        end;
+       end;
+
+       fVulkanDevice.WaitIdle;
+
+       if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
+        VulkanDebugLn('Recreating vulkan surface... ');
+       end else begin
+        VulkanDebugLn('Recreating vulkan swap chain... ');
+       end;
+       if fVulkanTransferInFlightCommandsFromOldSwapChain then begin
+        fVulkanOldSwapChain:=fVulkanSwapChain;
+       end else begin
+        fVulkanOldSwapChain:=nil;
+       end;
+       try
+        VulkanWaitIdle;
+        BeforeDestroySwapChainWithCheck;
+        if fVulkanTransferInFlightCommandsFromOldSwapChain then begin
+         fVulkanSwapChain:=nil;
+        end;
+        DestroyVulkanCommandBuffers;
+        DestroyVulkanFrameBuffers;
+        DestroyVulkanRenderPass;
+        DestroyVulkanSwapChain;
+        if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
+         DestroyVulkanSurface;
+         CreateVulkanSurface;
+        end;
+        CreateVulkanSwapChain;
+        CreateVulkanRenderPass;
+        CreateVulkanFrameBuffers;
+        CreateVulkanCommandBuffers;
+        VulkanWaitIdle;
+        AfterCreateSwapChainWithCheck;
+       finally
+        FreeAndNil(fVulkanOldSwapChain);
+       end;
+       if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
+        VulkanDebugLn('Recreated vulkan surface... ');
+       end else begin
+        VulkanDebugLn('Recreated vulkan swap chain... ');
+       end;
+
+       fVulkanWaitSemaphore:=nil;
+       fVulkanWaitFence:=nil;
+
+       fSwapChainImageCounterIndex:=0;
+
+       fSwapChainImageIndex:=0;
+
+       fVulkanSurfaceRecreated:=true;
+
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
+
+       if RecreationTries<3 then begin
+        inc(RecreationTries);
         continue;
        end else begin
-        fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=true;
-        fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
-        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnFence;
-        continue;
+        // For to avoid main loop deadlocks
+        break;
        end;
+
       end;
-      else {VK_TIMEOUT:}begin
+
+      else begin
        break;
       end;
+
      end;
-    except
-     on VulkanResultException:EpvVulkanResultException do begin
-      case VulkanResultException.ResultCode of
-       VK_ERROR_SURFACE_LOST_KHR:begin
-        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
-        VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
-       end;
-       VK_ERROR_OUT_OF_DATE_KHR,
-       VK_SUBOPTIMAL_KHR:begin
-        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
-        VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
-       end;
-       else begin
-        raise;
-       end;
-      end;
-     end;
-    end;
-   end;
 
-   TAcquireVulkanBackBufferState.WaitOnFence:begin
-    if fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
-     if fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
-      if fBlocking then begin
-       fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].WaitFor;
-      end else begin
-       break;
-      end;
-     end;
-     fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].Reset;
-     fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex]:=false;
-    end;
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Apply;
-    continue;
-   end;
-
-   TAcquireVulkanBackBufferState.Apply:begin
-
-    fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex];
-
-    if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
-
-     // If present and graphics queue families are different, then a image barrier is required
-
-     fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
-                                                                                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                                          fVulkanWaitSemaphore,
-                                                                                                          fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                                          nil,
-                                                                                                          false);
-     fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
-
-     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
-                                                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                                           fVulkanWaitSemaphore,
-                                                                                                           fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                                           nil,
-                                                                                                           false);
-     fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
-
-    end;
-
-    if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) and
-       assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
-     fVulkanWaitFence:=nil;
-    end else begin
-     fVulkanWaitFence:=fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex];
-    end;
-
-    result:=true;
-
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
-
-    break;
-
-   end;
-
-   TAcquireVulkanBackBufferState.RecreateSwapChain,
-   TAcquireVulkanBackBufferState.RecreateSurface:begin
-
-    for ImageIndex:=0 to fCountSwapChainImages-1 do begin
-     if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
-      fVulkanPresentCompleteFences[ImageIndex].WaitFor;
-      fVulkanPresentCompleteFences[ImageIndex].Reset;
-      fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
-     end;
-     if fVulkanWaitFencesReady[ImageIndex] then begin
-      fVulkanWaitFences[ImageIndex].WaitFor;
-      fVulkanWaitFences[ImageIndex].Reset;
-      fVulkanWaitFencesReady[ImageIndex]:=false;
-     end;
-    end;
-
-    fVulkanDevice.WaitIdle;
-
-    if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
-     VulkanDebugLn('Recreating vulkan surface... ');
-    end else begin
-     VulkanDebugLn('Recreating vulkan swap chain... ');
-    end;
-    if fVulkanTransferInflightCommandsFromOldSwapChain then begin
-     fVulkanOldSwapChain:=fVulkanSwapChain;
-    end else begin
-     fVulkanOldSwapChain:=nil;
-    end;
-    try
-     VulkanWaitIdle;
-     BeforeDestroySwapChainWithCheck;
-     if fVulkanTransferInflightCommandsFromOldSwapChain then begin
-      fVulkanSwapChain:=nil;
-     end;
-     DestroyVulkanCommandBuffers;
-     DestroyVulkanFrameBuffers;
-     DestroyVulkanRenderPass;
-     DestroyVulkanSwapChain;
-     if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
-      DestroyVulkanSurface;
-      CreateVulkanSurface;
-     end;
-     CreateVulkanSwapChain;
-     CreateVulkanRenderPass;
-     CreateVulkanFrameBuffers;
-     CreateVulkanCommandBuffers;
-     VulkanWaitIdle;
-     AfterCreateSwapChainWithCheck;
-    finally
-     FreeAndNil(fVulkanOldSwapChain);
-    end;
-    if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
-     VulkanDebugLn('Recreated vulkan surface... ');
-    end else begin
-     VulkanDebugLn('Recreated vulkan swap chain... ');
-    end;
-
-    fVulkanWaitSemaphore:=nil;
-    fVulkanWaitFence:=nil;
-
-    fDrawSwapChainImageIndex:=0;
-
-    fRealUsedDrawSwapChainImageIndex:=0;
-
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
-
-    if RecreationTries<3 then begin
-     inc(RecreationTries);
-     continue;
-    end else begin
-     // For to avoid main loop deadlocks
      break;
-    end;
+
+    until false;
 
    end;
 
-   else begin
-    break;
+   else {TVulkanBackBufferState.Present:}begin
+    result:=true;
    end;
 
   end;
 
-  break;
-
- until false;
+ except
+  Log(LOG_VERBOSE,'TpvApplication.AcquireVulkanBackBuffer','Exception');
+  raise;
+ end;
 
 end;
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
+var PresentIdKHR:TVkPresentIdKHR;
+    PresentNext:Pointer;
 begin
+
  result:=false;
 
- if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) and
-    assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
-
-  // If present and graphics queue families are different, then a image barrier is required
-
-  fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
-                                                                                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                                        fVulkanWaitSemaphore,
-                                                                                                        fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                                        nil,
-                                                                                                        false);
-  fVulkanWaitSemaphore:=fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
-
-  fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
-                                                                                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                                       fVulkanWaitSemaphore,
-                                                                                                       fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                                       fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex],
-                                                                                                       false);
-  fVulkanWaitSemaphore:=fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
-
-  fVulkanWaitFence:=fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex];
- end;
-
- fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex]:=true;
-
-//fVulkanDevice.GraphicsQueue.WaitIdle; // A GPU/CPU graphics queue synchronization point only for debug cases here, when something got run wrong
-
  try
-  case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore) of
-   VK_SUCCESS:begin
-    //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
-    inc(fDrawSwapChainImageIndex);
-    if fDrawSwapChainImageIndex>=fCountSwapChainImages then begin
-     dec(fDrawSwapChainImageIndex,fCountSwapChainImages);
-    end;
-    fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex+1;
-    if fUpdateSwapChainImageIndex>=fCountSwapChainImages then begin
-     dec(fUpdateSwapChainImageIndex,fCountSwapChainImages);
-    end;
-    result:=true;
-   end;
-   VK_SUBOPTIMAL_KHR:begin
-    if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
-     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
-                                               TAcquireVulkanBackBufferState.RecreateSurface,
-                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-      VulkanDebugLn('Suboptimal surface detected!');
-      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
-     end;
-    end else begin
+
+  if (fVulkanFrameFencesReady and (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3)))<>0 then begin
+   fVulkanFrameFences[fVulkanFrameFenceCounter and 3].Reset;
+  end;
+
+  fVulkanFrameFenceCommandBuffers[fSwapChainImageIndex,fVulkanFrameFenceCounter].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                                         fVulkanWaitSemaphore,
+                                                                                         fVulkanFrameFenceSemaphores[fSwapChainImageIndex,fVulkanFrameFenceCounter],
+                                                                                         fVulkanFrameFences[fVulkanFrameFenceCounter],
+                                                                                         false);
+  fVulkanWaitSemaphore:=fVulkanFrameFenceSemaphores[fSwapChainImageIndex,fVulkanFrameFenceCounter];
+
+  fVulkanFrameFencesReady:=fVulkanFrameFencesReady or (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3));
+
+  fVulkanFrameFenceCounter:=(fVulkanFrameFenceCounter+1) and 3;
+
+  if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex]) and
+     assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fSwapChainImageIndex]) then begin
+
+   // If present and graphics queue families are different, then a image barrier is required
+
+   fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                             fVulkanWaitSemaphore,
+                                                                                             fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[fSwapChainImageIndex],
+                                                                                             nil,
+                                                                                             false);
+   fVulkanWaitSemaphore:=fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[fSwapChainImageIndex];
+
+   fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
+                                                                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                            fVulkanWaitSemaphore,
+                                                                                            fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[fSwapChainImageIndex],
+                                                                                            fVulkanWaitFences[fSwapChainImageIndex],
+                                                                                            false);
+   fVulkanWaitSemaphore:=fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[fSwapChainImageIndex];
+
+   fVulkanWaitFence:=fVulkanWaitFences[fSwapChainImageIndex];
+
+  end else if not assigned(fVulkanWaitFence) then begin
+
+   fVulkanWaitFenceCommandBuffers[fSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                fVulkanWaitSemaphore,
+                                                                fVulkanWaitFenceSemaphores[fSwapChainImageIndex],
+                                                                fVulkanWaitFences[fSwapChainImageIndex],
+                                                                false);
+   fVulkanWaitSemaphore:=fVulkanWaitFenceSemaphores[fSwapChainImageIndex];
+
+   fVulkanWaitFence:=fVulkanWaitFences[fSwapChainImageIndex];
+
+  end;
+
+  fVulkanWaitFencesReady[fSwapChainImageIndex]:=true;
+
+ //fVulkanDevice.GraphicsQueue.WaitIdle; // A GPU/CPU graphics queue synchronization point only for debug cases here, when something got run wrong
+
+  fVulkanBackBufferState:=TVulkanBackBufferState.Acquire;
+
+  PresentNext:=nil;
+
+  if fVulkanDevice.PresentIDSupport then begin
+   FillChar(PresentIdKHR,SizeOf(TVkPresentIdKHR),#0);
+   PresentIdKHR.sType:=VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+   PresentIdKHR.swapchainCount:=1;
+   PresentIdKHR.pPresentIds:=@fVulkanPresentID;
+   inc(fVulkanPresentID);
+   PresentNext:=@PresentIdKHR;
+  end;
+
+  try
+   case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore,PresentNext) of
+    VK_SUCCESS:begin
      //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
-     inc(fDrawSwapChainImageIndex);
-     if fDrawSwapChainImageIndex>=fCountSwapChainImages then begin
-      dec(fDrawSwapChainImageIndex,fCountSwapChainImages);
+     fVulkanPresentLastID:=fVulkanPresentID;
+     fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+     if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+      dec(fNextInFlightFrameIndex,fCountInFlightFrames);
      end;
-     fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex+1;
-     if fUpdateSwapChainImageIndex>=fCountSwapChainImages then begin
-      dec(fUpdateSwapChainImageIndex,fCountSwapChainImages);
+     inc(fSwapChainImageCounterIndex);
+     if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
+      dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
      end;
      result:=true;
     end;
-   end;
-  end;
- except
-  on VulkanResultException:EpvVulkanResultException do begin
-   case VulkanResultException.ResultCode of
-    VK_ERROR_SURFACE_LOST_KHR:begin
-     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
-                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
-     end;
-     VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
-    end;
-    VK_ERROR_OUT_OF_DATE_KHR,
     VK_SUBOPTIMAL_KHR:begin
-     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
-                                               TAcquireVulkanBackBufferState.RecreateSurface,
-                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
-      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+     fVulkanPresentLastID:=fVulkanPresentID;
+     if fVulkanRecreateSwapChainOnSuboptimalSurface then begin
+      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                TAcquireVulkanBackBufferState.RecreateSurface,
+                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+       VulkanDebugLn('Suboptimal surface detected!');
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+      end;
+     end else begin
+      //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
+      fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+      if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+       dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+      end;
+      inc(fSwapChainImageCounterIndex);
+      if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
+       dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
+      end;
+      result:=true;
      end;
-     VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
     end;
     else begin
-     raise;
+    end;
+   end;
+  except
+   on VulkanResultException:EpvVulkanResultException do begin
+    case VulkanResultException.ResultCode of
+     VK_ERROR_SURFACE_LOST_KHR,
+     VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:begin
+      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
+                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+      end;
+      VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
+     end;
+     VK_ERROR_OUT_OF_DATE_KHR,
+     VK_SUBOPTIMAL_KHR:begin
+      if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                TAcquireVulkanBackBufferState.RecreateSurface,
+                                                TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+      end;
+ {    inc(fCurrentInFlightFrameIndex);
+      if fCurrentInFlightFrameIndex>=fCountInFlightFrames then begin
+       dec(fCurrentInFlightFrameIndex,fCountInFlightFrames);
+      end;}
+      fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+      if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+       dec(fNextInFlightFrameIndex,fCountInFlightFrames);
+      end;
+      VulkanDebugLn(TpvUTF8String(VulkanResultException.ClassName+': '+VulkanResultException.Message));
+     end;
+     else begin
+      raise;
+     end;
     end;
    end;
   end;
+
+ except
+  Log(LOG_VERBOSE,'TpvApplication.PresentVulkanBackBuffer','Exception');
+  raise;
  end;
 
 end;
@@ -7455,8 +9590,132 @@ begin
 {$ifend}
 end;
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+
+// On Windows >= 10 the old MMSYSTEM WaveOut and DirectSound APIs are just thin WASAPI API wrappers now, so
+// that we can use the old but simple to use MMSYSTEM WAVEOUT API here without big disadvantages over using
+// WASAPI directly.
+
+type { TpvWin32AudioThread }
+
+     TpvWin32AudioThread=class(TPasMPThread)
+      private
+       const SampleRate=44100;
+             Channels=2;
+             Bits=16;
+             BufferSize=1024;
+      private
+       fApplication:TpvApplication;
+       fAudio:TpvAudio;
+       fEvent:THandle;
+      protected
+       procedure TerminatedSet; override;
+       procedure Execute; override;
+      public
+       constructor Create(aApplication:TpvApplication;aAudio:TpvAudio); reintroduce;
+       destructor Destroy; override;
+     end;
+
+constructor TpvWin32AudioThread.Create(aApplication:TpvApplication;aAudio:TpvAudio);
+begin
+ fApplication:=aApplication;
+ fAudio:=aAudio;
+ fEvent:=CreateEventW(nil,false,false,nil);
+ inherited Create(false);
+end;
+
+destructor TpvWin32AudioThread.Destroy;
+begin
+ if not Terminated then begin
+  Terminate;
+  WaitFor;
+ end;
+ if fEvent<>0 then begin
+  CloseHandle(fEvent);
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvWin32AudioThread.TerminatedSet;
+begin
+ if fEvent<>0 then begin
+  SetEvent(fEvent);
+ end;
+ inherited TerminatedSet;
+end;
+
+procedure TpvWin32AudioThread.Execute;
+const CountBuffers=4;
+var WaveFormat:TWaveFormatEx;
+    WaveHandler:array[0..CountBuffers-1] of TWAVEHDR;
+    WaveOutHandle:HWAVEOUT;
+    BufferCounter:TpvInt32;
+begin
+ if fEvent<>0 then begin
+  Priority:=TThreadPriority.tpTimeCritical;
+  try
+   FillChar(WaveFormat,SizeOf(TWaveFormatEx),#0);
+   WaveFormat.wFormatTag:=WAVE_FORMAT_PCM;
+   WaveFormat.nChannels:=2;
+   WaveFormat.nSamplesPerSec:=SampleRate;
+   WaveFormat.nAvgBytesPerSec:=SampleRate*SizeOf(TpvInt16)*2;
+   WaveFormat.nBlockAlign:=SizeOf(TpvInt16)*WaveFormat.nChannels;
+   WaveFormat.wBitsPerSample:=SizeOf(TpvInt16)*8;
+   WaveFormat.cbSize:=0;
+   for BufferCounter:=0 to CountBuffers-1 do begin
+    FillChar(WaveHandler[BufferCounter],SizeOf(TWAVEHDR),#0);
+    WaveHandler[BufferCounter].dwBufferLength:=BufferSize*SizeOf(TpvInt16)*2;
+    WaveHandler[BufferCounter].dwBytesRecorded:=0;
+    WaveHandler[BufferCounter].dwUser:=0;
+    WaveHandler[BufferCounter].dwFlags:=WHDR_DONE;
+    WaveHandler[BufferCounter].dwLoops:=0;
+    GetMem(WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
+   end;
+   try
+    BufferCounter:=0;
+    if waveOutOpen(@WaveOutHandle,WAVE_MAPPER,@WaveFormat,DWORD_PTR(fEvent),0,CALLBACK_EVENT)=MMSYSERR_NOERROR then begin
+     try
+      while not Terminated do begin
+       for BufferCounter:=0 to CountBuffers-1 do begin
+        if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)<>0 then begin
+         if waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR))<>WAVERR_STILLPLAYING then begin
+          WaveHandler[BufferCounter].dwFlags:=WaveHandler[BufferCounter].dwFlags and not WHDR_DONE;
+          AudioFillBuffer(fAudio,WaveHandler[BufferCounter].lpData,WaveHandler[BufferCounter].dwBufferLength);
+          waveOutPrepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR));
+          waveOutWrite(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR));
+         end;
+        end;
+       end;
+       WaitForSingleObject(fEvent,1000);
+      end;
+      for BufferCounter:=0 to CountBuffers-1 do begin
+       if (WaveHandler[BufferCounter].dwFlags and WHDR_DONE)=0 then begin
+        while waveOutUnprepareHeader(WaveOutHandle,@WaveHandler[BufferCounter],SizeOf(TWAVEHDR))=WAVERR_STILLPLAYING do begin
+         sleep(1);
+        end;
+       end;
+      end;
+     finally
+      waveOutReset(WaveOutHandle);
+      waveOutClose(WaveOutHandle);
+     end;
+    end;
+   finally
+    for BufferCounter:=0 to CountBuffers-1 do begin
+     if assigned(WaveHandler[BufferCounter].lpData) then begin
+      FreeMem(WaveHandler[BufferCounter].lpData);
+     end;
+    end;
+   end;
+  finally
+  end;
+ end;
+end;
+
+{$ifend}
+
 procedure TpvApplication.InitializeAudio;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.InitializeAudio . . .');
@@ -7465,10 +9724,10 @@ begin
   FillChar(fSDLWaveFormat,SizeOf(TSDL_AudioSpec),#0);
   fSDLWaveFormat.Channels:=2;
   fSDLWaveFormat.Format:=AUDIO_S16;
-  fSDLWaveFormat.Freq:=44100;
+  fSDLWaveFormat.Freq:=48000;
   fSDLWaveFormat.Callback:=@SDLFillBuffer;
   fSDLWaveFormat.silence:=0;
-  fSDLWaveFormat.Samples:=1024;
+  fSDLWaveFormat.Samples:=512;
   fSDLWaveFormat.Size:=((fSDLWaveFormat.Samples*fSDLWaveFormat.Channels*(fSDLWaveFormat.Format and $ff))+7) shr 3;
   fAudio:=TpvAudio.Create(fSDLWaveFormat.Freq,
                           fSDLWaveFormat.Channels,
@@ -7486,6 +9745,18 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.InitializeAudio . . .');
 {$ifend}
 end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+begin
+ if fUseAudio and not assigned(fAudio) then begin
+  fAudio:=TpvAudio.Create(TpvWin32AudioThread.SampleRate,
+                          TpvWin32AudioThread.Channels,
+                          TpvWin32AudioThread.Bits,
+                          TpvWin32AudioThread.BufferSize);
+  fAudio.SetMixerAGC(true);
+  fAudio.UpdateHook:=UpdateAudioHook;
+  fWin32AudioThread:=TpvWin32AudioThread.Create(self,fAudio);
+ end;
+end;
 {$else}
 begin
  if fUseAudio and not assigned(fAudio) then begin
@@ -7495,7 +9766,7 @@ end;
 {$ifend}
 
 procedure TpvApplication.DeinitializeAudio;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DeinitializeAudio . . .');
@@ -7508,6 +9779,17 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DeinitializeAudio . . .');
 {$ifend}
 end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+begin
+ if assigned(fWin32AudioThread) then begin
+  fWin32AudioThread.Terminate;
+  fWin32AudioThread.WaitFor;
+  FreeAndNil(fWin32AudioThread);
+ end;
+ if assigned(fAudio) then begin
+  FreeAndNil(fAudio);
+ end;
+end;
 {$else}
 begin
  if assigned(fAudio) then begin
@@ -7517,41 +9799,38 @@ end;
 {$ifend}
 
 procedure TpvApplication.UpdateFrameTimesHistory;
-var Index,Count:TpvInt32;
-    SumOfFrameTimes:TpvDouble;
+var Index:TpvSizeInt;
 begin
 
  if fFloatDeltaTime>0.0 then begin
 
-  fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryWriteIndex]:=fFloatDeltaTime;
-  fFrameTimesHistoryTimePoints[fFrameTimesHistoryWriteIndex]:=fNowTime;
-  inc(fFrameTimesHistoryWriteIndex);
-  if fFrameTimesHistoryWriteIndex>=FrameTimesHistorySize then begin
-   fFrameTimesHistoryWriteIndex:=0;
-  end;
-
-  while (fFrameTimesHistoryReadIndex<>fFrameTimesHistoryWriteIndex) and
-        ((fNowTime-fFrameTimesHistoryTimePoints[fFrameTimesHistoryReadIndex])>=fHighResolutionTimer.SecondInterval) do begin
-   inc(fFrameTimesHistoryReadIndex);
-   if fFrameTimesHistoryReadIndex>=FrameTimesHistorySize then begin
-    fFrameTimesHistoryReadIndex:=0;
+  while fFrameTimesHistoryCount>0 do begin
+   Index:=((fFrameTimesHistoryIndex+FrameTimesHistorySize)-fFrameTimesHistoryCount) and FrameTimesHistoryMask;
+   if abs(fNowTime-fFrameTimesHistoryTimePoints[Index])>=fHighResolutionTimer.SecondInterval then begin
+    fFrameTimesHistorySum:=fFrameTimesHistorySum-fFrameTimesHistoryDeltaTimes[Index];
+    fFrameTimesHistoryDeltaTimes[Index]:=0.0;
+    fFrameTimesHistoryTimePoints[Index]:=0;
+    dec(fFrameTimesHistoryCount);
+   end else begin
+    break;
    end;
   end;
+
+  if fFrameTimesHistoryCount<FrameTimesHistorySize then begin
+   inc(fFrameTimesHistoryCount);
+  end else begin
+   fFrameTimesHistorySum:=fFrameTimesHistorySum-fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryIndex];
+  end;
+  fFrameTimesHistorySum:=fFrameTimesHistorySum+fFloatDeltaTime;
+  fFrameTimesHistoryDeltaTimes[fFrameTimesHistoryIndex]:=fFloatDeltaTime;
+  fFrameTimesHistoryTimePoints[fFrameTimesHistoryIndex]:=fNowTime;
+
+  fFrameTimesHistoryIndex:=(fFrameTimesHistoryIndex+1) and FrameTimesHistoryMask;
+
  end;
 
- SumOfFrameTimes:=0.0;
- Count:=0;
- Index:=fFrameTimesHistoryReadIndex;
- while Index<>fFrameTimesHistoryWriteIndex do begin
-  SumOfFrameTimes:=SumOfFrameTimes+fFrameTimesHistoryDeltaTimes[Index];
-  inc(Count);
-  inc(Index);
-  if Index>FrameTimesHistorySize then begin
-   Index:=0;
-  end;
- end;
- if (Count>0) and (SumOfFrameTimes>0.0) then begin
-  fFramesPerSecond:=Count/SumOfFrameTimes;
+ if (fFrameTimesHistoryCount>0) and (fFrameTimesHistorySum>0.0) then begin
+  fFramesPerSecond:=fFrameTimesHistoryCount/fFrameTimesHistorySum;
  end else if fFloatDeltaTime>0.0 then begin
   fFramesPerSecond:=1.0/fFloatDeltaTime;
  end else begin
@@ -7586,7 +9865,7 @@ end;
 
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
- Draw(fRealUsedDrawSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+ Draw(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
 end;
 
 procedure TpvApplication.UpdateAudioHook;
@@ -7645,7 +9924,7 @@ begin
 end;
 
 function TpvApplication.IsVisibleToUser:boolean;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {or SDL_WINDOW_MOUSE_FOCUS};
       FullScreenActiveFlags=SDL_WINDOW_SHOWN {or SDL_WINDOW_MOUSE_FOCUS};
 var WindowFlags:TSDLUInt32;
@@ -7656,6 +9935,17 @@ begin
            ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
          ((WindowFlags and SDL_WINDOW_MINIMIZED)=0);
 end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+const FullScreenFocusActiveFlags=WS_VISIBLE;
+      FullScreenActiveFlags=WS_VISIBLE;
+var WindowFlags:DWORD;
+begin
+ WindowFlags:=GetWindowLong(fWin32Handle,GWL_STYLE);
+ result:=((fCurrentFullScreen=0) or
+          (((fFullscreenFocusNeeded and ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and fWin32HasFocus and ((Windows.GetActiveWindow=fWin32Handle) or (Windows.GetFocus=fWin32Handle))) or
+           ((not fFullscreenFocusNeeded) and ((WindowFlags and FullScreenActiveFlags)=FullScreenActiveFlags)))) and
+         (((WindowFlags and WS_MINIMIZE)=0) and not IsIconic(fWin32Handle));
+end;
 {$else}
 begin
  result:=true;
@@ -7663,7 +9953,7 @@ end;
 {$ifend}
 
 function TpvApplication.WaitForReadyState:boolean;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 begin
  result:=true;
 end;
@@ -7676,35 +9966,245 @@ begin
  end;
  result:=fAndroidReady and not fAndroidQuit;
 end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+begin
+ result:=true;
+end;
+{$elseif defined(PasVulkanHeadless)}
+begin
+ result:=true;
+end;
 {$else}
 begin
  result:=false;
 end;
 {$ifend}
 
-procedure TpvApplication.ProcessMessages;
-{$define TpvApplicationUpdateJobOnMainThread}
-var Index,Counter,Tries:TpvInt32;
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+procedure TpvApplication.ProcessWin32APIMessages;
+var Msg:TMsg;
+begin
+ while PeekMessageW(Msg,0,0,0,PM_REMOVE) do begin
+  TranslateMessage(Msg);
+  DispatchMessageW(Msg);
+ end;
+end;
+{$ifend}
+
+procedure TpvApplication.UpdateJoysticks(const aInitial:boolean);
+var Index:TpvSizeInt;
     Joystick:TpvApplicationJoystick;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
-{$else}
+    GameControllerDBStream:TStream;
+    GameControllerDBMemoryStream:TMemoryStream;
+    SDLRW:PSDL_RWops;
+{$elseif defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+    IDCounter:TpvSizeInt;
+    XInputCapabilities:TXINPUT_CAPABILITIES;
+    JoyCaps:TJOYCAPSW;
+    Attached:boolean;
+    DeviceCallbackQueueItem:TpvApplicationWin32GameInputDeviceCallbackQueueItem;
+    Device:IGameInputDevice;
 {$ifend}
-    OK,Found,DoUpdateMainJoystick:boolean;
-{$ifdef TpvApplicationUpdateJobOnMainThread}
+begin
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ if aInitial then begin
+  if Assets.ExistAsset('gamecontrollerdb.txt') then begin
+   GameControllerDBStream:=Assets.GetAssetStream('gamecontrollerdb.txt');
+   if assigned(GameControllerDBStream) then begin
+    try
+     GameControllerDBMemoryStream:=TMemoryStream.Create;
+     try
+      GameControllerDBMemoryStream.CopyFrom(GameControllerDBStream,GameControllerDBStream.Size);
+      SDLRW:=SDL_RWFromConstMem(GameControllerDBMemoryStream.Memory,GameControllerDBMemoryStream.Size);
+      if assigned(SDLRW) then begin
+       try
+        SDL_GameControllerAddMappingsFromRW(SDLRW,0);
+       finally
+        SDL_FreeRW(SDLRW);
+       end;
+      end;
+     finally
+      FreeAndNil(GameControllerDBMemoryStream);
+     end;
+    finally
+     FreeAndNil(GameControllerDBStream);
+    end;
+   end;
+  end;
+  for Index:=0 to SDL_NumJoysticks-1 do begin
+   if SDL_IsGameController(Index)<>0 then begin
+    SDLGameController:=SDL_GameControllerOpen(Index);
+    if assigned(SDLGameController) then begin
+     SDLJoystick:=SDL_GameControllerGetJoystick(SDLGameController);
+    end else begin
+     SDLJoystick:=nil;
+    end;
+   end else begin
+    SDLGameController:=nil;
+    SDLJoystick:=SDL_JoystickOpen(Index);
+   end;
+   if assigned(SDLJoystick) then begin
+    Joystick:=TpvApplicationJoystick.Create(SDL_JoystickInstanceID(SDLJoystick),SDLJoystick,SDLGameController);
+    try
+     Joystick.fIndex:=Index;
+     Joystick.Initialize;
+    finally
+     try
+      fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+     finally
+      fInput.fJoysticks.Add(Joystick);
+     end;
+    end;
+    fDoUpdateMainJoystick:=true;
+   end;
+  end;
+ end;
+{$elseif defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+ if fWin32HasGameInput then begin
+  Device:=nil;
+  try
+   while fWin32GameInputDeviceCallbackQueue.Dequeue(DeviceCallbackQueueItem) do begin
+    try
+     Device:=DeviceCallbackQueueItem.Device;
+     if assigned(Device) then begin
+      IDCounter:=TpvInt64(TpvPtrInt(Device));
+      Joystick:=fInput.fJoystickIDHashMap[IDCounter];
+      Attached:=(DeviceCallbackQueueItem.CurrentStatus and GameInputDeviceConnected)<>0;
+      if assigned(Joystick) and not Attached then begin
+       try
+        Joystick.fWin32GameInputDevice:=nil;
+       finally
+        try
+         fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+        finally
+         fInput.fJoysticks.Remove(Joystick);
+        end;
+       end;
+       fDoUpdateMainJoystick:=true;
+      end else if Attached and not assigned(Joystick) then begin
+       Joystick:=TpvApplicationJoystick.Create(IDCounter);
+       try
+        Joystick.fWin32GameInputDevice:=Device;
+        Joystick.Initialize;
+       finally
+        try
+         fInput.fJoysticks.Add(Joystick);
+        finally
+         fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+        end;
+       end;
+       fDoUpdateMainJoystick:=true;
+      end;
+     end;
+    finally
+     DeviceCallbackQueueItem.Device:=nil;
+    end;
+   end;
+  finally
+   Device:=nil;
+  end;
+ end else begin
+  for IDCounter:=0 to (XUSER_MAX_COUNT+joyGetNumDevs)-1 do begin
+   if IDCounter<XUSER_MAX_COUNT then begin
+    Attached:=XInputGetCapabilities(IDCounter,0,@XInputCapabilities)=ERROR_SUCCESS;
+   end else begin
+    Attached:=joyGetDevCapsW(IDCounter-XUSER_MAX_COUNT,@JoyCaps,SizeOf(TJOYCAPSW))=MMSYSERR_NOERROR;
+   end;
+   Joystick:=fInput.fJoystickIDHashMap[IDCounter];
+   if assigned(Joystick) and not Attached then begin
+    try
+     fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+    finally
+     fInput.fJoysticks.Remove(Joystick);
+    end;
+    fDoUpdateMainJoystick:=true;
+   end else if Attached and not assigned(Joystick) then begin
+    Joystick:=TpvApplicationJoystick.Create(IDCounter);
+    try
+     Joystick.Initialize;
+    finally
+     try
+      fInput.fJoysticks.Add(Joystick);
+     finally
+      fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+     end;
+    end;
+    fDoUpdateMainJoystick:=true;
+   end;
+  end;
+ end;
+{$ifend}
+ if fDoUpdateMainJoystick then begin
+  fInput.fMainJoystick:=nil;
+  if fInput.fJoysticks.Count>0 then begin
+   for Index:=0 to fInput.fJoysticks.Count-1 do begin
+    Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Index]);
+    if assigned(Joystick) then begin
+     fInput.fMainJoystick:=Joystick;
+     break;
+    end;
+   end;
+  end;
+ end;
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
+ for Index:=0 to fInput.fJoysticks.Count-1 do begin
+  Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Index]);
+  if assigned(Joystick) then begin
+   Joystick.Update;
+  end;
+ end;
+{$ifend}
+end;
+
+procedure TpvApplication.ProcessMessages;
+{-$define TpvApplicationUpdateJobOnMainThread}
+{$define TpvApplicationDrawJobOnMainThread}
+var Index,Counter,Tries:TpvInt32;
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+    SDLJoystick:PSDL_Joystick;
+    SDLGameController:PSDL_GameController;
+    Joystick:TpvApplicationJoystick;
+{$else}
+ {$if defined(Windows) and not defined(PasVulkanHeadless)}
+    devMode:{$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif};
+    Rect:TRect;
+    Point:TPoint;
+    MonitorInfo:TMonitorInfo;
+ {$ifend}
+{$ifend}
+    OK,Found:boolean;
+{$if defined(TpvApplicationUpdateJobOnMainThread)}
     DrawJob:PPasMPJob;
+{$elseif defined(TpvApplicationDrawJobOnMainThread)}
+    UpdateJob:PPasMPJob;
 {$else}
     Jobs:array[0..1] of PPasMPJob;
-{$endif}
+{$ifend}
+    DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
 begin
+
+ DoSkipNextFrameForRendering:=ShouldSkipNextFrameForRendering;
+
+ ReadyForSwapChainLatency:=DoSkipNextFrameForRendering or WaitForSwapChainLatency;
 
  ProcessRunnables;
 
- DoUpdateMainJoystick:=false;
+ fDoUpdateMainJoystick:=false;
+
+ if TPasMPInterlocked.CompareExchange(fHasNewWindowTitle,false,true) then begin
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  SDL_SetWindowTitle(fSurfaceWindow,PAnsiChar(TpvApplicationRawByteString(fWindowTitle)));
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  fWin32Title:=PUCUUTF8ToUTF16(fWindowTitle);
+  SetWindowTextW(fWin32Handle,PWideChar(fWin32Title));
+{$ifend}
+ end;
 
  if fCurrentHideSystemBars<>ord(fHideSystemBars) then begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   if fHideSystemBars then begin
    SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
   end else begin
@@ -7716,36 +10216,124 @@ begin
 
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
   fCurrentVisibleMouseCursor:=ord(fVisibleMouseCursor);
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   if fVisibleMouseCursor then begin
    SDL_ShowCursor(1);
   end else begin
    SDL_ShowCursor(0);
   end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  if fVisibleMouseCursor then begin
+   fWin32Cursor:=LoadCursor(0,IDC_ARROW);
+  end else begin
+   fWin32Cursor:=fWin32HiddenCursor;
+  end;
+  SetCursor(fWin32Cursor);
 {$else}
 {$ifend}
  end;
 
  if fCurrentCatchMouse<>ord(fCatchMouse) then begin
   fCurrentCatchMouse:=ord(fCatchMouse);
-{$if defined(PasVulkanUseSDL2)}
-  if fCatchMouse then begin
+ end;
+
+ fEffectiveCatchMouse:=fCatchMouse;
+
+ if fCurrentCatchMouseOnButton<>ord(fCatchMouseOnButton) then begin
+  fCurrentCatchMouseOnButton:=ord(fCatchMouseOnButton);
+  fEffectiveCatchMouse:=fCatchMouseOnButton and (fInput.fMouseDown<>[]);
+ end else if fCatchMouseOnButton then begin
+  fEffectiveCatchMouse:=fInput.fMouseDown<>[];
+ end;
+
+ if fEffectiveCatchMouse and not IsVisibleToUser then begin
+  fEffectiveCatchMouse:=false;
+ end;
+
+ if fCurrentEffectiveCatchMouse<>ord(fEffectiveCatchMouse) then begin
+  fCurrentEffectiveCatchMouse:=ord(fEffectiveCatchMouse);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  if fEffectiveCatchMouse then begin
    SDL_SetRelativeMouseMode(1);
   end else begin
    SDL_SetRelativeMouseMode(0);
   end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  if fEffectiveCatchMouse then begin
+   SetForegroundWindow(fWin32Handle);
+   Windows.SetFocus(fWin32Handle);
+   SetCapture(fWin32Handle);
+   if GetClientRect(fWin32Handle,Rect) then begin
+    if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
+     ClipCursor({$ifdef fpc}Rect{$else}@Rect{$endif});
+    end;
+   end;
+  end else begin
+   if GetCapture<>0 then begin
+    ReleaseCapture;
+   end;
+   ClipCursor(nil);
+  end;
 {$else}
+{$ifend}
+ end;
+
+ if fCurrentRelativeMouse<>ord(fRelativeMouse) then begin
+  fCurrentRelativeMouse:=ord(fRelativeMouse);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  if fRelativeMouse and GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+   Point.x:=(fWidth+1) shr 1;
+   Point.y:=(fHeight+1) shr 1;
+   if ClientToScreen(fWin32Handle,Point) then begin
+    Windows.SetCursorPos(Point.x,Point.y);
+   end;
+  end;
+{$ifend}
+ end;
+
+
+ if fCurrentAcceptDragDropFiles<>ord(fAcceptDragDropFiles) then begin
+  fCurrentAcceptDragDropFiles:=ord(fAcceptDragDropFiles);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  if fAcceptDragDropFiles then begin
+   SDL_EventState(SDL_DROPFILE,SDL_ENABLE);
+  end else begin
+   SDL_EventState(SDL_DROPFILE,SDL_DISABLE);
+  end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  DragAcceptFiles(fWin32Handle,fAcceptDragDropFiles);
 {$ifend}
  end;
 
  if fHasNewNextScreen then begin
   fHasNewNextScreen:=false;
   if assigned(fNextScreenClass) then begin
-   SetScreen(fNextScreenClass.Create);
+   if not (assigned(fScreen) and (fScreen is fNextScreenClass)) then begin
+    SetScreen(fNextScreenClass.Create);
+   end;
   end else if fScreen<>fNextScreen then begin
    SetScreen(fNextScreen);
   end;
   fNextScreen:=nil;
+  fNextScreenClass:=nil;
+ end;
+
+ if fCurrentMaximized<>TpvInt32(fMaximized) then begin
+  fCurrentMaximized:=TpvInt32(fMaximized);
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  if fMaximized then begin
+   SDL_MinimizeWindow(fSurfaceWindow);
+  end else begin
+   SDL_RestoreWindow(fSurfaceWindow);
+  end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  if fMaximized then begin
+   ShowWindow(fWin32Handle,SW_MAXIMIZE);
+  end else begin
+   ShowWindow(fWin32Handle,SW_RESTORE);
+  end;
+{$ifend}
  end;
 
  if (fCurrentWidth<>fWidth) or (fCurrentHeight<>fHeight) or (fCurrentPresentMode<>TpvInt32(fPresentMode)) then begin
@@ -7753,7 +10341,7 @@ begin
   fCurrentHeight:=fHeight;
   fCurrentPresentMode:=TpvInt32(fPresentMode);
   if not fFullscreen then begin
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    SDL_SetWindowSize(fSurfaceWindow,fWidth,fHeight);
 {$else}
 {$ifend}
@@ -7771,11 +10359,13 @@ begin
 
     if fInput.fLastTextInput<>fInput.fTextInput then begin
      fInput.fLastTextInput:=fInput.fTextInput;
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
      if fInput.fTextInput then begin
       SDL_StartTextInput;
      end else begin
       SDL_StopTextInput;
      end;
+{$ifend}
     end;
 
    fInput.fEventCount:=0;
@@ -7785,7 +10375,7 @@ begin
    FillChar(fInput.fPointerDeltaX,SizeOf(fInput.fPointerDeltaX[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
    FillChar(fInput.fPointerDeltaY,SizeOf(fInput.fPointerDeltaY[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    if fLastPressedKeyEvent.SDLEvent.type_<>0 then begin
     if fKeyRepeatTimeAccumulator>0 then begin
      dec(fKeyRepeatTimeAccumulator,fDeltaTime);
@@ -7868,6 +10458,18 @@ begin
       end;
       fHasLastTime:=false;
      end;
+     SDL_DROPFILE:begin
+      if assigned(fEvent.SDLEvent.drop.FileName) then begin
+       try
+        if pvApplication.fAcceptDragDropFiles then begin
+         fEvent.StringData:=fEvent.SDLEvent.drop.FileName;
+         fInput.AddEvent(fEvent);
+        end;
+       finally
+        SDL_free(fEvent.SDLEvent.drop.FileName);
+       end;
+      end;
+     end;
      SDL_WINDOWEVENT:begin
       case fEvent.SDLEvent.window.event of
        SDL_WINDOWEVENT_RESIZED:begin
@@ -7881,7 +10483,7 @@ begin
         fCurrentWidth:=fWidth;
         fCurrentHeight:=fHeight;
         if fGraphicsReady then begin
-         VulkanDebugLn('New surface dimension size detected!');
+         VulkanDebugLn('New surface dimension size detected! '+IntToStr(fWidth)+'x'+IntToStr(fHeight));
 {$if true}
          if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
                                                    TAcquireVulkanBackBufferState.RecreateSurface,
@@ -7904,7 +10506,7 @@ begin
       Found:=false;
       for Counter:=0 to fInput.fJoysticks.Count-1 do begin
        Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-       if assigned(Joystick) and (Joystick.Index=Index) then begin
+       if assigned(Joystick) and (Joystick.fIndex=Index) then begin
         Found:=true;
         break;
        end;
@@ -7922,27 +10524,31 @@ begin
         SDLJoystick:=SDL_JoystickOpen(Index);
        end;
        if assigned(SDLJoystick) then begin
-        Joystick:=TpvApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
-        if Index<fInput.fJoysticks.Count then begin
-         fInput.fJoysticks.Items[Index]:=Joystick;
-        end else begin
-         while fInput.fJoysticks.Count<Index do begin
-          fInput.fJoysticks.Add(nil);
+        Joystick:=TpvApplicationJoystick.Create(SDL_JoystickInstanceID(SDLJoystick),SDLJoystick,SDLGameController);
+        try
+         Joystick.fIndex:=Index;
+         Joystick.Initialize;
+        finally
+         try
+          fInput.fJoystickIDHashMap.Add(Joystick.fID,Joystick);
+         finally
+          fInput.fJoysticks.Add(Joystick);
          end;
-         fInput.fJoysticks.Add(Joystick);
         end;
-        Joystick.Initialize;
-        DoUpdateMainJoystick:=true;
+        fDoUpdateMainJoystick:=true;
        end;
       end;
      end;
      SDL_JOYDEVICEREMOVED:begin
       for Counter:=0 to fInput.fJoysticks.Count-1 do begin
        Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-       if assigned(Joystick) and (Joystick.ID=fEvent.SDLEvent.jdevice.which) then begin
-        Joystick.Free;
-        fInput.fJoysticks.Delete(Counter);
-        DoUpdateMainJoystick:=true;
+       if assigned(Joystick) and (Joystick.fIndex=fEvent.SDLEvent.jdevice.which) then begin
+        try
+         fInput.fJoystickIDHashMap.Delete(Joystick.fID);
+        finally
+         fInput.fJoysticks.Delete(Counter);
+        end;
+        fDoUpdateMainJoystick:=true;
         break;
        end;
       end;
@@ -8037,19 +10643,228 @@ begin
     end;
    end;
  {$else}
- {$ifend}
-   if DoUpdateMainJoystick then begin
-    fInput.fMainJoystick:=nil;
-    if fInput.fJoysticks.Count>0 then begin
-     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-      if assigned(Joystick) then begin
-       fInput.fMainJoystick:=Joystick;
-       break;
-      end;
+
+   if fLastPressedKeyEvent.NativeEvent.Kind<>TpvApplicationNativeEventKind.None then begin
+    if fKeyRepeatTimeAccumulator>0 then begin
+     dec(fKeyRepeatTimeAccumulator,fDeltaTime);
+     while fKeyRepeatTimeAccumulator<0 do begin
+      inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
+      fInput.AddEvent(fLastPressedKeyEvent);
      end;
     end;
    end;
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+   if assigned(fWin32MainFiber) then begin
+    SwitchToFiber(fWin32MessageFiber);
+   end else begin
+    ProcessWin32APIMessages;
+   end;
+{$ifend}
+
+   while fNativeEventLocalQueue.Dequeue(fEvent.NativeEvent) or
+         fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
+    case fEvent.NativeEvent.Kind of
+     TpvApplicationNativeEventKind.None:begin
+      break;
+     end;
+     TpvApplicationNativeEventKind.Resize:begin
+      fWidth:=fEvent.NativeEvent.ResizeWidth;
+      fHeight:=fEvent.NativeEvent.ResizeHeight;
+      while fNativeEventQueue.Dequeue(fEvent.NativeEvent) do begin
+       if fEvent.NativeEvent.Kind=TpvApplicationNativeEventKind.Resize then begin
+        fWidth:=fEvent.NativeEvent.ResizeWidth;
+        fHeight:=fEvent.NativeEvent.ResizeHeight;
+       end else begin
+        // Reenqueue for as next event
+        fNativeEventLocalQueue.Enqueue(fEvent.NativeEvent);
+        break;
+       end;
+      end;
+      fCurrentWidth:=fWidth;
+      fCurrentHeight:=fHeight;
+      if fGraphicsReady then begin
+       VulkanDebugLn('New surface dimension size detected! '+IntToStr(fWidth)+'x'+IntToStr(fHeight));
+ {$if true}
+       if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                 TAcquireVulkanBackBufferState.RecreateSurface,
+                                                 TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       end;
+ {$else}
+       DeinitializeGraphics;
+       InitializeGraphics;
+ {$ifend}
+      end;
+      if assigned(fScreen) then begin
+       fScreen.Resize(fWidth,fHeight);
+      end;
+     end;
+     TpvApplicationNativeEventKind.Close:begin
+      if fTerminationOnQuitEvent then begin
+       VulkanWaitIdle;
+       Pause;
+       DeinitializeGraphics;
+       Terminate;
+      end else begin
+       fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.Quit;
+       fInput.AddEvent(fEvent);
+      end;
+     end;
+     TpvApplicationNativeEventKind.Destroy:begin
+      if not fTerminationOnQuitEvent then begin
+       VulkanWaitIdle;
+       Pause;
+       DeinitializeGraphics;
+       Terminate;
+      end;
+     end;
+     TpvApplicationNativeEventKind.LowMemory:begin
+      LowMemory;
+     end;
+     TpvApplicationNativeEventKind.WillEnterBackground:begin
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
+ {$ifend}
+      fActive:=false;
+      VulkanWaitIdle;
+      Pause;
+      DeinitializeGraphics;
+      fHasLastTime:=false;
+     end;
+     TpvApplicationNativeEventKind.DidEnterBackground:begin
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
+ {$ifend}
+     end;
+     TpvApplicationNativeEventKind.WillEnterForeground:begin
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
+ {$ifend}
+     end;
+     TpvApplicationNativeEventKind.DidEnterForeground:begin
+      InitializeGraphics;
+      Resume;
+      fActive:=true;
+      fHasLastTime:=false;
+ {$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
+ {$ifend}
+     end;
+     TpvApplicationNativeEventKind.GraphicsReset:begin
+      VulkanWaitIdle;
+      if fActive then begin
+       Pause;
+      end;
+      if fGraphicsReady then begin
+       DeinitializeGraphics;
+       InitializeGraphics;
+      end;
+      if fActive then begin
+       Resume;
+      end;
+      fHasLastTime:=false;
+     end;
+     TpvApplicationNativeEventKind.KeyDown:begin
+      OK:=true;
+      case fEvent.NativeEvent.KeyCode of
+       KEYCODE_F4:begin
+        if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
+         OK:=false;
+         if not fEvent.NativeEvent.KeyRepeat then begin
+          Terminate;
+         end;
+        end;
+       end;
+       KEYCODE_RETURN:begin
+        if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
+         if not fEvent.NativeEvent.KeyRepeat then begin
+          OK:=false;
+          fFullScreen:=not fFullScreen;
+         end;
+        end;
+       end;
+      end;
+      if OK then begin
+       if fNativeKeyRepeat then begin
+        if not fEvent.NativeEvent.KeyRepeat then begin
+         fInput.AddEvent(fEvent);
+        end;
+        fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
+        fInput.AddEvent(fEvent);
+       end else if not fEvent.NativeEvent.KeyRepeat then begin
+        fInput.AddEvent(fEvent);
+        fEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyTyped;
+        fInput.AddEvent(fEvent);
+        fLastPressedKeyEvent:=fEvent;
+        fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.KeyUp:begin
+      OK:=true;
+      case fEvent.NativeEvent.KeyCode of
+       KEYCODE_F4:begin
+        if fTerminationWithAltF4 and ((fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[]) then begin
+         OK:=false;
+        end;
+       end;
+       KEYCODE_RETURN:begin
+        if (fEvent.NativeEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT,TpvApplicationInputKeyModifier.RALT,TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA,TpvApplicationInputKeyModifier.RMETA])<>[] then begin
+         OK:=false;
+        end;
+       end;
+      end;
+      if OK then begin
+      {if not fEvent.NativeEvent.KeyRepeat then}begin
+        fInput.AddEvent(fEvent);
+        //writeln('6');
+        fLastPressedKeyEvent.NativeEvent.Kind:=TpvApplicationNativeEventKind.None;
+       end;
+      end;
+     end;
+     TpvApplicationNativeEventKind.KeyTyped:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.UnicodeCharTyped:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseButtonDown:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseButtonUp:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseWheel:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseMoved:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseEnter:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.MouseLeave:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.TouchDown:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.TouchUp:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.TouchMotion:begin
+      fInput.AddEvent(fEvent);
+     end;
+     TpvApplicationNativeEventKind.DropFile:Begin
+      fInput.AddEvent(fEvent);
+     end;
+     else begin
+     end;
+    end;
+   end;
+{$ifend}
+   UpdateJoysticks(false);
    fInput.ProcessEvents;
   finally
    fInput.fCriticalSection.Release;
@@ -8068,7 +10883,7 @@ begin
     VulkanDebugLn('New fullscreen setting detected!');
     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
    end;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    if fFullScreen then begin
 {   case fVulkanDevice.PhysicalDevice.Properties.vendorID of
      $00001002:begin // AMD
@@ -8082,14 +10897,65 @@ begin
    end else begin
     SDL_SetWindowFullscreen(fSurfaceWindow,0);
    end;
-{$if defined(PasVulkanUseSDL2)}
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin
     SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
    end else{$ifend}begin
     SDL_GetWindowSize(fSurfaceWindow,fWidth,fHeight);
    end;
-{$ifend}
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+   if fFullScreen then begin
+    FillChar(MonitorInfo,SizeOf(TMonitorInfo),#0);
+    MonitorInfo.cbSize:=SizeOf(TMonitorInfo);
+    if (not fWin32Fullscreen) and
+       GetWindowRect(fWin32Handle,Rect) and
+       GetMonitorInfo(MonitorFromWindow(fWin32Handle,MONITOR_DEFAULTTONEAREST),@MonitorInfo) then begin
+     fScreenWidth:=MonitorInfo.rcMonitor.Width;
+     fScreenHeight:=MonitorInfo.rcMonitor.Height;
+     fWin32OldLeft:=Rect.Left;
+     fWin32OldTop:=Rect.Top;
+     fWin32OldWidth:=fWidth;
+     fWin32OldHeight:=fHeight;
+     devMode.dmSize:=SizeOf({$ifdef fpc}TDEVMODEW{$else}DEVMODEW{$endif});
+     devMode.dmPelsWidth:=fScreenWidth;
+     devMode.dmPelsHeight:=fScreenHeight;
+     devMode.dmBitsPerPel:=32;
+     devMode.dmFields:=DM_BITSPERPEL or DM_PELSWIDTH or DM_PELSHEIGHT;
+     {if ChangeDisplaySettingsW(@devMode,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_POPUP or WS_CLIPCHILDREN or WS_CLIPSIBLINGS);
+      if fAcceptDragDropFiles then begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+      end else begin
+       SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+      end;
+      SetWindowPos(fWin32Handle,HWND_TOP,MonitorInfo.rcMonitor.Left,MonitorInfo.rcMonitor.Top,fScreenWidth,fScreenHeight,SWP_FRAMECHANGED);
+      ShowWindow(fWin32Handle,SW_SHOW);
+      fWin32Fullscreen:=true;
+{    end else begin
+      fFullscreen:=false;}
+     end;
+    end else begin
+     fFullscreen:=false;
+    end;
+   end else if fWin32Fullscreen then begin
+{   if ChangeDisplaySettingsW(nil,CDS_FULLSCREEN)=DISP_CHANGE_SUCCESSFUL then}begin
+     if fResizable then begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_THICKFRAME or WS_MAXIMIZEBOX or WS_SYSMENU);
+     end else begin
+      SetWindowLongW(fWin32Handle,GWL_STYLE,WS_VISIBLE or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU);
+     end;
+     if fAcceptDragDropFiles then begin
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+     end else begin
+      SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+     end;
+     SetWindowPos(fWin32Handle,HWND_TOP,fWin32OldLeft,fWin32OldTop,fWin32OldWidth,fWin32OldHeight,SWP_FRAMECHANGED);
+     ShowWindow(fWin32Handle,SW_SHOW);
+     fWin32Fullscreen:=false;
+{   end else begin
+     fFullscreen:=true;}
+    end;
+   end;
 {$else}
 {$ifend}
    continue;
@@ -8099,13 +10965,33 @@ begin
 
  end;
 
- if fGraphicsReady and IsVisibleToUser then begin
+ if fGraphicsReady and (fStayActiveRegardlessOfVisibility or IsVisibleToUser) then begin
 
-  fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
+  if fReinitializeGraphics then begin
+   try
+{$if true}
+    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                              TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+    end;
+{$else}
+    DeinitializeGraphics;
+    InitializeGraphics;
+{$ifend}
+   finally
+    fReinitializeGraphics:=false;
+   end;
+  end;
 
-  if fSkipNextDrawFrame or not
-     ((not (CanBeParallelProcessed and (fCountSwapChainImages>1))) or
-      IsReadyForDrawOfSwapChainImageIndex(fDrawSwapChainImageIndex)) then begin
+  try
+   fResourceManager.FinishResources(fBackgroundResourceLoaderFrameTimeout);
+  except
+   Log(LOG_VERBOSE,'TpvApplication.ProcessMessages','Exception at fResourceManager.FinishResources');
+   raise;
+  end;
+
+  if ShouldSkipNextFrameForRendering then begin
 
    fSkipNextDrawFrame:=false;
 
@@ -8125,6 +11011,17 @@ begin
 
    fUpdateFrameCounter:=fFrameCounter;
    fDrawFrameCounter:=fFrameCounter;
+
+   fCurrentInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+   fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
+   if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
+    fNextInFlightFrameIndex:=0;
+   end;
+
+   fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+   fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
    Check(fUpdateDeltaTime);
    UpdateJobFunction(nil,0);
 
@@ -8132,92 +11029,202 @@ begin
 
    FrameRateLimiter;
 
-   inc(fDrawSwapChainImageIndex);
-   if fDrawSwapChainImageIndex>=fCountSwapChainImages then begin
-    dec(fDrawSwapChainImageIndex,fCountSwapChainImages);
-   end;
-   fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex+1;
-   if fUpdateSwapChainImageIndex>=fCountSwapChainImages then begin
-    dec(fUpdateSwapChainImageIndex,fCountSwapChainImages);
+   inc(fSwapChainImageCounterIndex);
+   if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
+    dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
    end;
 
-  end else begin
+  end else if ReadyForSwapChainLatency then begin
 
-   if AcquireVulkanBackBuffer then begin
+   case fProcessingMode of
 
-    fNowTime:=fHighResolutionTimer.GetTime;
-    if fHasLastTime then begin
-     fDeltaTime:=fNowTime-fLastTime;
-    end else begin
-     fDeltaTime:=0;
-    end;
-    fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
-    fLastTime:=fNowTime;
-    fHasLastTime:=true;
+    TpvApplicationProcessingMode.Flexible:begin
 
-    UpdateFrameTimesHistory;
-
-    fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
-
-    try
-
-     if CanBeParallelProcessed and (fCountSwapChainImages>1) then begin
-
-      fUpdateFrameCounter:=fFrameCounter;
-
-      fDrawFrameCounter:=fFrameCounter-1;
-
-      Check(fUpdateDeltaTime);
-
-      BeginFrame(fUpdateDeltaTime);
-
-{$ifdef TpvApplicationUpdateJobOnMainThread}
-      DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
-      try
-       fPasMPInstance.Run(DrawJob);
-       UpdateJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
-      finally
-       fPasMPInstance.WaitRelease(DrawJob);
-      end;
-{$else}
-      Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
-      Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
-      fPasMPInstance.Invoke(Jobs);
-{$endif}
-
-      FinishFrame(fRealUsedDrawSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-
-     end else begin
-
-      fUpdateFrameCounter:=fFrameCounter;
-
-      fDrawFrameCounter:=fFrameCounter;
-
-      fUpdateSwapChainImageIndex:=fDrawSwapChainImageIndex;
-
-      Check(fUpdateDeltaTime);
-
-      UpdateJobFunction(nil,0);
-
-      BeginFrame(fUpdateDeltaTime);
-
-      DrawJobFunction(nil,0);
-
-      FinishFrame(fRealUsedDrawSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
-
-     end;
-
-    finally
+     UpdateJob:=nil;
      try
-      PresentVulkanBackBuffer;
+
+      if fVulkanBackBufferState=TVulkanBackBufferState.Acquire then begin
+
+       fNowTime:=fHighResolutionTimer.GetTime;
+       if fHasLastTime then begin
+        fDeltaTime:=fNowTime-fLastTime;
+       end else begin
+        fDeltaTime:=0;
+       end;
+       fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+       fLastTime:=fNowTime;
+       fHasLastTime:=true;
+
+       UpdateFrameTimesHistory;
+
+       fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+
+       if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
+
+        fDrawFrameCounter:=fFrameCounter-1;
+
+        fUpdateFrameCounter:=fFrameCounter;
+
+        fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+        fUpdateInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+        Check(fUpdateDeltaTime);
+
+        UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+
+        fPasMPInstance.Run(UpdateJob);
+
+       end else begin
+
+        fUpdateFrameCounter:=fFrameCounter;
+
+        fDrawFrameCounter:=fFrameCounter;
+
+        fDrawInFlightFrameIndex:=fNextInFlightFrameIndex;
+
+        fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+        Check(fUpdateDeltaTime);
+
+        UpdateJobFunction(nil,0);
+
+       end;
+
+       if assigned(fVulkanDevice) then begin
+        while not AcquireVulkanBackBuffer do begin
+         TPasMP.Yield;
+        end;
+       end;
+
+      end;
+
+      if fVulkanBackBufferState=TVulkanBackBufferState.Present then begin
+       try
+        BeginFrame(fUpdateDeltaTime);
+        DrawJobFunction(nil,0);
+        FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+       finally
+        if assigned(fVulkanDevice) then begin
+         try
+          PresentVulkanBackBuffer;
+         finally
+          PostPresent(fSwapChainImageIndex);
+         end;
+        end;
+       end;
+       inc(fFrameCounter);
+       FrameRateLimiter;
+      end;
+
      finally
-      PostPresent(fRealUsedDrawSwapChainImageIndex);
+      if assigned(UpdateJob) then begin
+       fPasMPInstance.WaitRelease(UpdateJob);
+      end;
      end;
+
     end;
 
-    inc(fFrameCounter);
+    else {TpvApplicationProcessingMode.Strict:}begin
 
-    FrameRateLimiter;
+     if (not assigned(fVulkanDevice)) or AcquireVulkanBackBuffer then begin
+
+      fNowTime:=fHighResolutionTimer.GetTime;
+      if fHasLastTime then begin
+       fDeltaTime:=fNowTime-fLastTime;
+      end else begin
+       fDeltaTime:=0;
+      end;
+      fFloatDeltaTime:=fHighResolutionTimer.ToFloatSeconds(fDeltaTime);
+      fLastTime:=fNowTime;
+      fHasLastTime:=true;
+
+      UpdateFrameTimesHistory;
+
+      fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+
+      try
+
+       if CanBeParallelProcessed and (fCountInFlightFrames>1) then begin
+
+        fDrawFrameCounter:=fFrameCounter-1;
+
+        fUpdateFrameCounter:=fFrameCounter;
+
+        fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex-1;
+        if fDrawInFlightFrameIndex<0 then begin
+         inc(fDrawInFlightFrameIndex,fCountInFlightFrames);
+        end;
+
+        fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+        Check(fUpdateDeltaTime);
+
+        BeginFrame(fUpdateDeltaTime);
+
+ {$if defined(TpvApplicationUpdateJobOnMainThread)}
+        DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
+        try
+         fPasMPInstance.Run(DrawJob);
+         UpdateJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+        finally
+         fPasMPInstance.WaitRelease(DrawJob);
+        end;
+ {$elseif defined(TpvApplicationDrawJobOnMainThread)}
+        UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+        try
+         fPasMPInstance.Run(UpdateJob);
+         DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+        finally
+         fPasMPInstance.WaitRelease(UpdateJob);
+        end;
+ {$else}
+        Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
+        Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
+        fPasMPInstance.Invoke(Jobs);
+ {$ifend}
+
+        FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+
+       end else begin
+
+        fUpdateFrameCounter:=fFrameCounter;
+
+        fDrawFrameCounter:=fFrameCounter;
+
+        fDrawInFlightFrameIndex:=fCurrentInFlightFrameIndex;
+
+        fUpdateInFlightFrameIndex:=fDrawInFlightFrameIndex;
+
+        Check(fUpdateDeltaTime);
+
+        UpdateJobFunction(nil,0);
+
+        BeginFrame(fUpdateDeltaTime);
+
+        DrawJobFunction(nil,0);
+
+        FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
+
+       end;
+
+      finally
+       if assigned(fVulkanDevice) then begin
+        try
+         PresentVulkanBackBuffer;
+        finally
+         PostPresent(fSwapChainImageIndex);
+        end;
+       end;
+      end;
+
+      inc(fFrameCounter);
+
+      FrameRateLimiter;
+
+     end;
+
+    end;
 
    end;
 
@@ -8231,12 +11238,918 @@ begin
 
 end;
 
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+
+function TpvApplicationWin32WndProc(aHWnd:HWND;uMsg:UINT;wParam:WParam;lParam:LParam):LRESULT; {$ifdef cpu386}stdcall;{$endif}
+var WindowPtr:LONG_PTR;
+    Application:TpvApplication;
+    ResultCode:TpvInt64;
+begin
+ if aHWnd<>0 then begin
+  if uMsg=WM_CREATE then begin
+   WindowPtr:=LONG_PTR(PCREATESTRUCT(lParam)^.lpCreateParams);
+   SetWindowLongPtrW(aHWnd,GWLP_USERDATA,WindowPtr);
+  end;
+  Application:=Pointer(LONG_PTR(GetWindowLongPtrW(aHWnd,GWLP_USERDATA)));
+ end else begin
+  Application:=nil;
+ end;
+ if assigned(Application) then begin
+  ResultCode:=Application.Win32ProcessEvent(uMsg,wParam,lParam);
+  if ResultCode>=0 then begin
+   result:=ResultCode;
+   exit;
+  end;
+  if assigned(Application.fWin32Callback) then begin
+   result:=CallWindowProcW(Application.fWin32Callback,aHWnd,uMsg,wParam,lParam);
+   exit;
+  end;
+ end;
+ if uMsg=WM_CLOSE then begin
+  // We don't forward the WM_CLOSE message to prevent the OS from automatically destroying the window
+  result:=0;
+ end else if (uMsg=WM_SYSCOMMAND) and (wParam=SC_KEYMENU) then begin
+  // Don't forward the menu system command, so that pressing ALT or F10 doesn't steal the focus
+  result:=0;
+ end else if (uMsg=WM_NCLBUTTONDOWN) and (wParam=HTCAPTION) then begin
+  Application.fWin32NCMouseButton:=uMsg;
+  Application.fWin32NCMousePos:=lParam;
+  result:=0;
+ end else begin
+  case uMsg of
+   WM_NCMOUSEMOVE:begin
+    if Application.fWin32NCMouseButton<>0 then begin
+     if Application.fWin32NCMousePos<>lParam then begin
+      DefWindowProcW(aHWnd,Application.fWin32NCMouseButton,HTCAPTION,Application.fWin32NCMousePos);
+      Application.fWin32NCMouseButton:=0;
+     end;
+    end;
+   end;
+   WM_MOUSEMOVE:begin
+    if Application.fWin32NCMouseButton<>0 then begin
+     if Application.fWin32NCMousePos<>lParam then begin
+      DefWindowProcW(aHWnd,Application.fWin32NCMouseButton,HTCAPTION,Application.fWin32NCMousePos);
+      Application.fWin32NCMouseButton:=0;
+     end;
+    end;
+   end;
+   WM_ENTERSIZEMOVE,WM_ENTERMENULOOP:begin
+    if assigned(Application.fWin32MainFiber) then begin
+     SetTimer(aHWnd,1,1,nil);
+    end;
+   end;
+   WM_EXITSIZEMOVE,WM_EXITMENULOOP:begin
+    if assigned(Application.fWin32MainFiber) then begin
+     KillTimer(aHWnd,1);
+    end;
+   end;
+   WM_TIMER:begin
+    if assigned(Application.fWin32MainFiber) and (wParam=1) then begin
+     SwitchToFiber(Application.fWin32MainFiber);
+    end;
+   end;
+  end;
+  result:=DefWindowProcW(aHWnd,uMsg,wParam,lParam);
+ end;
+end;
+
+function TpvApplication.Win32ProcessEvent(aMsg:UINT;aWParam:WParam;aLParam:LParam):TpvInt64;
+var Index,FileNameLength,DroppedFileCount,CountInputs,OtherIndex:TpvSizeInt;
+    PointerID,TouchID:TpvUInt32;
+    NativeEvent:TpvApplicationNativeEvent;
+    Rect:TRect;
+    DropHandle:HDROP;
+    DropPoint:TPoint;
+    FileName:WideString;
+    TouchInput:PpvApplicationTOUCHINPUT;
+    x,y:TpvDouble;
+    Point:TPoint;
+ function IsTouchOrPenMouseEvent:boolean;
+ var MessageExtraInfo:TpvUInt32;
+ begin
+  MessageExtraInfo:=GetMessageExtraInfo;
+  result:=((MessageExtraInfo and $ffffff00)=$ff515700) or ((MessageExtraInfo and $82)=$82);
+ end;
+ procedure TranslateKeyEvent;
+ var VirtualKey:WPARAM;
+     ScanCode:DWORD;
+     Extended:Boolean;
+ begin
+
+  NativeEvent.KeyRepeat:=(HIWORD(aLParam) and KF_REPEAT)<>0;
+
+  VirtualKey:=aWParam;
+  ScanCode:=(aLParam and $00ff0000) shr 16;
+  Extended:=(aLParam and $01000000)<>0;
+
+  case VirtualKey of
+   VK_SHIFT:begin
+    VirtualKey:=MapVirtualKey(ScanCode,MAPVK_VSC_TO_VK_EX);
+   end;
+   VK_CONTROL:begin
+    if Extended then begin
+     VirtualKey:=VK_RCONTROL;
+    end else begin
+     VirtualKey:=VK_LCONTROL;
+    end;
+   end;
+   VK_MENU:begin
+    if Extended then begin
+     VirtualKey:=VK_RMENU;
+    end else begin
+     VirtualKey:=VK_LMENU;
+    end;
+   end;
+  end;
+
+  case VirtualKey of
+   VK_F1:begin
+    NativeEvent.KeyCode:=KEYCODE_F1;
+   end;
+   VK_F2:begin
+    NativeEvent.KeyCode:=KEYCODE_F2;
+   end;
+   VK_F3:begin
+    NativeEvent.KeyCode:=KEYCODE_F3;
+   end;
+   VK_F4:begin
+    NativeEvent.KeyCode:=KEYCODE_F4;
+   end;
+   VK_F5:begin
+    NativeEvent.KeyCode:=KEYCODE_F5;
+   end;
+   VK_F6:begin
+    NativeEvent.KeyCode:=KEYCODE_F6;
+   end;
+   VK_F7:begin
+    NativeEvent.KeyCode:=KEYCODE_F7;
+   end;
+   VK_F8:begin
+    NativeEvent.KeyCode:=KEYCODE_F8;
+   end;
+   VK_F9:begin
+    NativeEvent.KeyCode:=KEYCODE_F9;
+   end;
+   VK_F10:begin
+    NativeEvent.KeyCode:=KEYCODE_F10;
+   end;
+   VK_F11:begin
+    NativeEvent.KeyCode:=KEYCODE_F11;
+   end;
+   VK_F12:begin
+    NativeEvent.KeyCode:=KEYCODE_F12;
+   end;
+   VK_F13:begin
+    NativeEvent.KeyCode:=KEYCODE_F13;
+   end;
+   VK_F14:begin
+    NativeEvent.KeyCode:=KEYCODE_F14;
+   end;
+   VK_F15:begin
+    NativeEvent.KeyCode:=KEYCODE_F15;
+   end;
+   ord('A')..ord('Z'):begin
+    NativeEvent.KeyCode:=(VirtualKey-ord('A'))+KEYCODE_A;
+   end;
+   ord('0')..ord('9'):begin
+    NativeEvent.KeyCode:=(VirtualKey-ord('0'))+KEYCODE_0;
+   end;
+   VK_ESCAPE:begin
+    NativeEvent.KeyCode:=KEYCODE_ESCAPE;
+   end;
+   VK_LCONTROL:begin
+    NativeEvent.KeyCode:=KEYCODE_LCTRL;
+   end;
+   VK_LSHIFT:begin
+    NativeEvent.KeyCode:=KEYCODE_LSHIFT;
+   end;
+   VK_LMENU:begin
+    NativeEvent.KeyCode:=KEYCODE_LALT;
+   end;
+   VK_LWIN:begin
+    NativeEvent.KeyCode:=KEYCODE_LGUI;
+   end;
+   VK_RCONTROL:begin
+    NativeEvent.KeyCode:=KEYCODE_RCTRL;
+   end;
+   VK_RSHIFT:begin
+    NativeEvent.KeyCode:=KEYCODE_RSHIFT;
+   end;
+   VK_RMENU:begin
+    NativeEvent.KeyCode:=KEYCODE_RALT;
+   end;
+   VK_RWIN:begin
+    NativeEvent.KeyCode:=KEYCODE_RGUI;
+   end;
+   VK_APPS:begin
+    NativeEvent.KeyCode:=KEYCODE_APPLICATION;
+   end;
+   VK_OEM_4:begin
+    NativeEvent.KeyCode:=KEYCODE_LEFTBRACKET;
+   end;
+   VK_OEM_6:begin
+    NativeEvent.KeyCode:=KEYCODE_RIGHTBRACKET;
+   end;
+   VK_OEM_1:begin
+    NativeEvent.KeyCode:=KEYCODE_SEMICOLON;
+   end;
+   VK_OEM_COMMA:begin
+    NativeEvent.KeyCode:=KEYCODE_COMMA;
+   end;
+   VK_OEM_PERIOD:begin
+    NativeEvent.KeyCode:=KEYCODE_PERIOD;
+   end;
+   VK_OEM_7:begin
+    NativeEvent.KeyCode:=KEYCODE_QUOTE;
+   end;
+   VK_OEM_2:begin
+    NativeEvent.KeyCode:=KEYCODE_SLASH;
+   end;
+   VK_OEM_5:begin
+    NativeEvent.KeyCode:=KEYCODE_BACKSLASH;
+   end;
+   VK_OEM_3:begin
+    NativeEvent.KeyCode:=KEYCODE_TILDE;
+   end;
+   VK_OEM_PLUS:begin
+    NativeEvent.KeyCode:=KEYCODE_EQUALS;
+   end;
+   VK_OEM_MINUS:begin
+    NativeEvent.KeyCode:=KEYCODE_MINUS;
+   end;
+   VK_SPACE:begin
+    NativeEvent.KeyCode:=KEYCODE_SPACE;
+   end;
+   VK_RETURN:begin
+    NativeEvent.KeyCode:=KEYCODE_RETURN;
+   end;
+   VK_ADD:begin
+    NativeEvent.KeyCode:=KEYCODE_PLUS;
+   end;
+   VK_SUBTRACT:begin
+    NativeEvent.KeyCode:=KEYCODE_MINUS;
+   end;
+   VK_MULTIPLY:begin
+    NativeEvent.KeyCode:=KEYCODE_ASTERISK;
+   end;
+   VK_DIVIDE:begin
+    NativeEvent.KeyCode:=KEYCODE_SLASH;
+   end;
+   VK_NUMPAD0..VK_NUMPAD8:begin
+    NativeEvent.KeyCode:=(VirtualKey-ord('0'))+KEYCODE_KP0;
+   end;
+   VK_BACK:begin
+    NativeEvent.KeyCode:=KEYCODE_BACKSPACE;
+   end;
+   VK_TAB:begin
+    NativeEvent.KeyCode:=KEYCODE_TAB;
+   end;
+   VK_PRIOR:begin
+    NativeEvent.KeyCode:=KEYCODE_PAGEUP;
+   end;
+   VK_NEXT:begin
+    NativeEvent.KeyCode:=KEYCODE_PAGEDOWN;
+   end;
+   VK_END:begin
+    NativeEvent.KeyCode:=KEYCODE_END;
+   end;
+   VK_HOME:begin
+    NativeEvent.KeyCode:=KEYCODE_HOME;
+   end;
+   VK_INSERT:begin
+    NativeEvent.KeyCode:=KEYCODE_INSERT;
+   end;
+   VK_DELETE:begin
+    NativeEvent.KeyCode:=KEYCODE_DELETE;
+   end;
+   VK_LEFT:begin
+    NativeEvent.KeyCode:=KEYCODE_LEFT;
+   end;
+   VK_RIGHT:begin
+    NativeEvent.KeyCode:=KEYCODE_RIGHT;
+   end;
+   VK_UP:begin
+    NativeEvent.KeyCode:=KEYCODE_UP;
+   end;
+   VK_DOWN:begin
+    NativeEvent.KeyCode:=KEYCODE_DOWN;
+   end;
+   VK_PAUSE:begin
+    NativeEvent.KeyCode:=KEYCODE_PAUSE;
+   end;
+   else begin
+    NativeEvent.KeyCode:=KEYCODE_UNKNOWN;
+   end;
+  end;
+
+  NativeEvent.KeyModifiers:=[];
+
+{ FillChar(fWin32KeyState,SizeOf(fWin32KeyState),#0);
+
+  if GetKeyboardState(fWin32KeyState) then} begin
+
+   if HIWORD(GetAsyncKeyState(VK_MENU))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.ALT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_LMENU))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.LALT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RMENU))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.ALT,TpvApplicationInputKeyModifier.RALT];
+   end;
+
+   if HIWORD(GetAsyncKeyState(VK_CONTROL))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CTRL];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_LCONTROL))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.LCTRL];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RCONTROL))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.RCTRL];
+   end;
+
+   if HIWORD(GetAsyncKeyState(VK_SHIFT))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SHIFT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_LSHIFT))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.LSHIFT];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RSHIFT))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.RSHIFT];
+   end;
+
+   if HIWORD(GetAsyncKeyState(VK_LWIN))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.LMETA];
+   end;
+   if HIWORD(GetAsyncKeyState(VK_RWIN))<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.META,TpvApplicationInputKeyModifier.RMETA];
+   end;
+
+   if (GetAsyncKeyState(VK_CAPITAL) and $0001)<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.CAPS];
+   end;
+
+   if (GetAsyncKeyState(VK_NUMLOCK) and $0001)<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.NUM];
+   end;
+
+   if (GetAsyncKeyState(VK_SCROLL) and $0001)<>0 then begin
+    NativeEvent.KeyModifiers:=NativeEvent.KeyModifiers+[TpvApplicationInputKeyModifier.SCROLL];
+   end;
+
+  end;
+
+ end;
+ procedure TranslateMouseCoord;
+ var MouseCoordX,MouseCoordY,DeltaX,DeltaY:TpvInt32;
+     Point:TPoint;
+ begin
+{ if fRelativeMouse and
+     ((NativeEvent.MouseCoordX<0) or (NativeEvent.MouseCoordX>=fWidth) or
+      (NativeEvent.MouseCoordY<0) or (NativeEvent.MouseCoordY>=fHeight)) then begin
+   MouseCoordX:=NativeEvent.MouseCoordX;
+   MouseCoordY:=NativeEvent.MouseCoordY;
+   DeltaX:=((((MouseCoordX+fWidth) mod fWidth)+fWidth) mod fWidth)-MouseCoordX;
+   DeltaY:=((((MouseCoordY+fHeight) mod fHeight)+fHeight) mod fHeight)-MouseCoordX;
+   inc(MouseCoordX,DeltaX);
+   inc(MouseCoordY,DeltaY);
+   inc(fWin32MouseCoordX,DeltaX);
+   inc(fWin32MouseCoordY,DeltaY);
+   NativeEvent.MouseCoordX:=MouseCoordX;
+   NativeEvent.MouseCoordY:=MouseCoordY;
+   if GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+    Windows.SetCursorPos(Rect.Left+NativeEvent.MouseCoordX,Rect.Top+NativeEvent.MouseCoordY);
+   end;
+  end;}
+  NativeEvent.MouseCoordX:=TpvInt16(LOWORD(aLParam));
+  NativeEvent.MouseCoordY:=TpvInt16(HIWORD(aLParam));
+  if fRelativeMouse then begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-((fWidth+1) shr 1);
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-((fHeight+1) shr 1);
+   if ((NativeEvent.MouseDeltaX<>0) or (NativeEvent.MouseDeltaY<>0)) and GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+    Point.x:=(fWidth+1) shr 1;
+    Point.y:=(fHeight+1) shr 1;
+    if ClientToScreen(fWin32Handle,Point) then begin
+     Windows.SetCursorPos(Point.x,Point.y);
+    end;
+   end;
+  end else begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-fWin32MouseCoordX;
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-fWin32MouseCoordY;
+  end;
+  fWin32MouseCoordX:=NativeEvent.MouseCoordX;
+  fWin32MouseCoordY:=NativeEvent.MouseCoordY;
+ end;
+ procedure TranslateMouseEventModifier;
+ var Modifiers:TpvUInt32;
+ begin
+  Modifiers:=LOWORD(aWParam);
+  NativeEvent.MouseKeyModifiers:=[];
+  if (Modifiers and MK_CONTROL)<>0 then begin
+   NativeEvent.MouseKeyModifiers:=NativeEvent.MouseKeyModifiers+[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.LCTRL,TpvApplicationInputKeyModifier.RCTRL];
+  end;
+  if (Modifiers and MK_SHIFT)<>0 then begin
+   NativeEvent.MouseKeyModifiers:=NativeEvent.MouseKeyModifiers+[TpvApplicationInputKeyModifier.SHIFT,TpvApplicationInputKeyModifier.LSHIFT,TpvApplicationInputKeyModifier.RSHIFT];
+  end;
+  if (Modifiers and MK_LBUTTON)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Left];
+  end;
+  if (Modifiers and MK_RBUTTON)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Right];
+  end;
+  if (Modifiers and MK_MBUTTON)<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Middle];
+  end;
+  if (Modifiers and {$ifdef fpc}MK_XBUTTON1{$else}$20{$endif})<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X1];
+  end;
+  if (Modifiers and {$ifdef fpc}MK_XBUTTON1{$else}$40{$endif})<>0 then begin
+   NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X2];
+  end;
+ end;
+ procedure TranslateMouseEvent;
+ begin
+  NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+  NativeEvent.MouseButtons:=[];
+  TranslateMouseCoord;
+  TranslateMouseEventModifier;
+ end;
+ procedure TranslateMouseButtonEvent;
+ var Rect:TRect;
+     Point:TPoint;
+ begin
+  case aMsg of
+   WM_LBUTTONDOWN,
+   WM_LBUTTONUP:begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Left;
+    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Left];
+   end;
+   WM_RBUTTONDOWN,
+   WM_RBUTTONUP:begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Right;
+    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Right];
+   end;
+   WM_MBUTTONDOWN,
+   WM_MBUTTONUP:begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.Middle;
+    NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.Middle];
+   end;
+   WM_XBUTTONDOWN,
+   WM_XBUTTONUP:begin
+    if HIWORD(aWParam)={$ifdef fpc}XBUTTON1{$else}TpvUInt16($0001){$endif} then begin
+     NativeEvent.MouseButton:=TpvApplicationInputPointerButton.X1;
+     NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X1];
+    end else begin
+     NativeEvent.MouseButton:=TpvApplicationInputPointerButton.X2;
+     NativeEvent.MouseButtons:=NativeEvent.MouseButtons+[TpvApplicationInputPointerButton.X2];
+    end;
+   end;
+   else begin
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+   end;
+  end;
+  NativeEvent.MouseCoordX:=TpvInt16(LOWORD(aLParam));
+  NativeEvent.MouseCoordY:=TpvInt16(HIWORD(aLParam));
+  if fRelativeMouse then begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-((fWidth+1) shr 1);
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-((fHeight+1) shr 1);
+   if ((NativeEvent.MouseDeltaX<>0) or (NativeEvent.MouseDeltaY<>0)) and GetWindowRect(pvApplication.fWin32Handle,Rect) then begin
+    Point.x:=(fWidth+1) shr 1;
+    Point.y:=(fHeight+1) shr 1;
+    if ClientToScreen(fWin32Handle,Point) then begin
+     Windows.SetCursorPos(Point.x,Point.y);
+    end;
+   end;
+  end else begin
+   NativeEvent.MouseDeltaX:=NativeEvent.MouseCoordX-fWin32MouseCoordX;
+   NativeEvent.MouseDeltaY:=NativeEvent.MouseCoordY-fWin32MouseCoordY;
+  end;
+  fWin32MouseCoordX:=NativeEvent.MouseCoordX;
+  fWin32MouseCoordY:=NativeEvent.MouseCoordY;
+ end;
+ procedure TranslateMouseWheelEvent;
+ begin
+  if aMsg=WM_MOUSEHWHEEL then begin
+   NativeEvent.MouseScrollOffsetX:=TpvInt16(HIWORD(aWParam))/WHEEL_DELTA;
+  end else begin
+   NativeEvent.MouseScrollOffsetX:=0.0;
+  end;
+  if aMsg=WM_MOUSEWHEEL then begin
+   NativeEvent.MouseScrollOffsetY:=TpvInt16(HIWORD(aWParam))/WHEEL_DELTA;
+  end else begin
+   NativeEvent.MouseScrollOffsetY:=0.0;
+  end;
+ end;
+ function TranslatePointer:boolean;
+ var PointerType:TpvApplicationPOINTER_INPUT_TYPE;
+     PointerInfo:TpvApplicationCOMBINED_POINTER_INFO;
+     Pressure:TpvFloat;
+     IsNewTouchID:boolean;
+ begin
+  result:=false;
+  begin
+   Pressure:=0.0;
+   PointerID:=LOWORD(aWParam);
+   PointerType:=PT_POINTER;
+   if not GetPointerType(PointerID,@PointerType) then begin
+    PointerType:=PT_POINTER;
+   end;
+   case PointerType of
+    PT_TOUCH:begin
+     if not GetPointerTouchInfo(PointerID,@PointerInfo.pointerTouchInfo) then begin
+      exit;
+     end;
+     Pressure:=Min(Max(PointerInfo.pointerTouchInfo.pressure/1024.0,0.0),1.0);
+    end;
+    PT_PEN:begin
+     if not GetPointerPenInfo(PointerID,@PointerInfo.pointerPenInfo) then begin
+      exit;
+     end;
+     if PointerInfo.pointerPenInfo.pressure=0 then begin
+      Pressure:=1.0;
+     end else begin
+      Pressure:=Min(Max(PointerInfo.pointerPenInfo.pressure/1024.0,0.0),1.0);
+     end;
+    end;
+    else begin
+     exit;
+    end;
+   end;
+   TouchID:=$ffffffff;
+   IsNewTouchID:=not fWin32TouchIDHashMap.TryGet(PointerID,TouchID);
+   if IsNewTouchID then begin
+    if not fWin32TouchIDFreeList.Dequeue(TouchID) then begin
+     repeat
+      TouchID:=fWin32TouchIDCounter;
+      inc(fWin32TouchIDCounter);
+     until TouchID<>0;
+    end;
+    fWin32TouchIDHashMap.Add(PointerID,TouchID);
+   end;
+   if (TouchID<>$ffffffff) and
+      (TpvSizeInt(TouchID)<length(fWin32TouchLastX)) and
+      (TpvSizeInt(TouchID)<length(fWin32TouchLastY)) then begin
+    Point:=PointerInfo.pointerInfo.ptPixelLocation;
+    if ScreenToClient(fWin32Handle,Point) then begin
+     x:=Point.x;
+     y:=Point.y;
+    end else begin
+     x:=fWin32TouchLastX[TouchID];
+     y:=fWin32TouchLastY[TouchID];
+    end;
+{$if false}
+    writeln('Msg: ',aMsg:16,' - ',
+            'Pressure: ',Pressure:1:8,' - ',
+            'Flags: $',IntToHex(TpvInt64(PointerInfo.pointerInfo.pointerFlags),8),' - ',
+            'InContact: ',(ord((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0) and 1):1,' - ',
+            'Down: ',(ord((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_DOWN)<>0) and 1):1,' - ',
+            'Up: ',(ord((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_UP)<>0) and 1):1,' - ',
+            'PointerID: ',PointerID:8,' - ',
+            'TouchID: ',TouchID:8,' - ',
+            '');
+{$ifend}
+    if (aMsg=WM_POINTERDOWN) or
+       ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_DOWN)<>0) or
+       (((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0) and IsNewTouchID) then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
+     fWin32TouchLastX[TouchID]:=x;
+     fWin32TouchLastY[TouchID]:=y;
+    end else if (aMsg=WM_POINTERUP) or
+                ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_UP)<>0) or
+                ((PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)=0) then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
+     fWin32TouchIDHashMap.Delete(PointerID);
+     fWin32TouchIDFreeList.Enqueue(TouchID);
+    end else if (PointerInfo.pointerInfo.pointerFlags and POINTER_FLAG_INCONTACT)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchMotion;
+    end else begin
+     // Ignore
+     exit;
+    end;
+    NativeEvent.TouchID:=TouchID;
+    NativeEvent.TouchX:=x;
+    NativeEvent.TouchY:=y;
+    NativeEvent.TouchDeltaX:=x-fWin32TouchLastX[TouchID];
+    NativeEvent.TouchDeltaY:=y-fWin32TouchLastY[TouchID];
+    NativeEvent.TouchPressure:=Pressure;
+    NativeEvent.TouchPen:=PointerType=PT_PEN;
+    fWin32TouchLastX[TouchID]:=x;
+    fWin32TouchLastY[TouchID]:=y;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end else begin
+    exit;
+   end;
+  end;
+  result:=true;
+ end;
+begin
+ result:=-1;
+ case aMsg of
+  WM_SIZE:begin
+   if GetClientRect(fWin32Handle,Rect) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.Resize;
+    NativeEvent.ResizeWidth:=Rect.Right-Rect.Left;
+    NativeEvent.ResizeHeight:=Rect.Bottom-Rect.Top;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    if fCatchMouse then begin
+     if GetWindowRect(fWin32Handle,Rect) then begin
+      if ClientToScreen(fWin32Handle,Rect.TopLeft) and ClientToScreen(fWin32Handle,Rect.BottomRight) then begin
+       ClipCursor({$ifdef fpc}Rect{$else}@Rect{$endif});
+      end;
+     end;
+    end;
+   end;
+  end;
+  WM_CLOSE:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.Close;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_DESTROY:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.Destroy;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_SETCURSOR:begin
+   if LOWORD(aLParam)=HTCLIENT then begin
+    SetCursor(fWin32Cursor);
+   end;
+  end;
+  WM_DROPFILES:begin
+   DropHandle:=aWParam;
+   if DropHandle<>0 then begin
+    FileName:='';
+    try
+     try
+      DragQueryPoint(DropHandle,{$ifdef fpc}@DropPoint{$else}DropPoint{$endif});
+      DroppedFileCount:=DragQueryFile(DropHandle,$ffffffff,nil,0);
+      for Index:=0 to DroppedFileCount-1 do begin
+       FileNameLength:=DragQueryFileW(DropHandle,Index,nil,0);
+       if FileNameLength>0 then begin
+        SetLength(FileName,FileNameLength);
+        if DragQueryFileW(DropHandle,Index,PWideChar(FileName),FileNameLength+1)<>0 then begin
+         NativeEvent.Kind:=TpvApplicationNativeEventKind.DropFile;
+         NativeEvent.StringValue:=PUCUUTF16ToUTF8(FileName);
+         fNativeEventQueue.Enqueue(NativeEvent);
+        end;
+       end;
+      end;
+     finally
+      DragFinish(DropHandle);
+     end;
+    finally
+     FileName:='';
+    end;
+   end;
+  end;
+  WM_KEYDOWN,
+  WM_SYSKEYDOWN:begin
+   if fWin32KeyRepeat or ((HIWORD(aLParam) and KF_REPEAT)=0) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyDown;
+    TranslateKeyEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_KEYUP,
+  WM_SYSKEYUP:begin
+   NativeEvent.Kind:=TpvApplicationNativeEventKind.KeyUp;
+   TranslateKeyEvent;
+   fNativeEventQueue.Enqueue(NativeEvent);
+  end;
+  WM_INPUTLANGCHANGE:begin
+
+  end;
+  $109{WM_UNICHAR}:begin
+   if aWParam=$ffff{UNICODE_NOCHAR} then begin
+    result:=1;
+   end else if aWParam>=32 then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+    NativeEvent.CharVal:=aWParam;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_CHAR:begin
+   if (TpvUInt16(aWParam)>=$d800) and (TpvUInt16(aWParam)<=$dbff) then begin
+    fWin32HighSurrogate:=TpvUInt16(aWParam);
+   end else if ((TpvUInt16(fWin32HighSurrogate)>=$d800) and (TpvUInt16(fWin32HighSurrogate)<=$dbff)) and
+               ((TpvUInt16(aWParam)>=$dc00) and (TpvUInt16(aWParam)<=$dfff)) then begin
+    fWin32LowSurrogate:=TpvUInt16(aWParam);
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+    NativeEvent.CharVal:=(TPUCUUTF32Char(TPUCUUTF32Char(fWin32HighSurrogate) shl 10) or
+                          TPUCUUTF32Char(TPUCUUInt16(fWin32LowSurrogate) and $3ff))+$10000;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    fWin32HighSurrogate:=0;
+   end else if aWParam>=32 then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.UnicodeCharTyped;
+    NativeEvent.CharVal:=TPUCUUTF32Char(TpvUInt16(aWParam));
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_RBUTTONDOWN,
+  WM_LBUTTONDOWN,
+  WM_MBUTTONDOWN,
+  WM_XBUTTONDOWN:begin
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonDown;
+    TranslateMouseEvent;
+    TranslateMouseButtonEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_RBUTTONUP,
+  WM_LBUTTONUP,
+  WM_MBUTTONUP,
+  WM_XBUTTONUP:begin
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseButtonUp;
+    TranslateMouseEvent;
+    TranslateMouseButtonEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_MOUSEMOVE:begin
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseMoved;
+    NativeEvent.MouseButton:=TpvApplicationInputPointerButton.None;
+    TranslateMouseEvent;
+    if not fWin32MouseInside then begin
+     fWin32MouseInside:=true;
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseEnter;
+    end;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+  WM_MOUSELEAVE:begin
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseLeave;
+    TranslateMouseEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    fWin32MouseInside:=false;
+   end;
+  end;
+  WM_MOUSEWHEEL,
+  WM_MOUSEHWHEEL:begin
+   if not IsTouchOrPenMouseEvent then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.MouseWheel;
+    TranslateMouseEvent;
+    TranslateMouseWheelEvent;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end;
+{ WM_SYSCOMMAND:begin
+   case aWParam of
+    SC_MINIMIZE:begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
+  end;
+  WM_ACTIVATE:begin
+   if (LOWORD(aWParam)=WA_INACTIVE) and (HIWORD(aWParam)<>0) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterBackground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterBackground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end else if ((LOWORD(aWParam)=WA_ACTIVE) or (LOWORD(aWParam)=WA_CLICKACTIVE)) and (HIWORD(aWParam)<>0) then begin
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterForeground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+    NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterForeground;
+    fNativeEventQueue.Enqueue(NativeEvent);
+   end;
+  end; }
+  WM_WINDOWPOSCHANGING:begin
+   if aLParam<>0 then begin
+    if (PWINDOWPOS(aLParam)^.flags and SWP_SHOWWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterForeground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end else if (PWINDOWPOS(aLParam)^.flags and SWP_HIDEWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.WillEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
+  end;
+  WM_WINDOWPOSCHANGED:begin
+   if aLParam<>0 then begin
+    if (PWINDOWPOS(aLParam)^.flags and SWP_SHOWWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterForeground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end else if (PWINDOWPOS(aLParam)^.flags and SWP_HIDEWINDOW)<>0 then begin
+     NativeEvent.Kind:=TpvApplicationNativeEventKind.DidEnterBackground;
+     fNativeEventQueue.Enqueue(NativeEvent);
+    end;
+   end;
+  end;
+  WM_POINTERUPDATE,
+  WM_POINTERDOWN,
+  WM_POINTERUP,
+  WM_POINTERCAPTURECHANGED:begin
+   if Win32HasGetPointer then begin
+    if TranslatePointer then begin
+     result:=0;
+    end;
+   end;
+  end;
+  WM_TOUCH:begin
+   if fWin32TouchActive and not Win32HasGetPointer then begin
+    CountInputs:=LOWORD(aWParam);
+    if CountInputs>0 then begin
+     if length(fWin32TouchInputs)<CountInputs then begin
+      SetLength(fWin32TouchInputs,CountInputs);
+     end;
+     if GetTouchInputInfo(aLParam,CountInputs,@fWin32TouchInputs[0],CountInputs) then begin
+      try
+       for Index:=0 to CountInputs-1 do begin
+        TouchInput:=@fWin32TouchInputs[Index];
+        if (TouchInput^.dwFlags and (TOUCHEVENTF_DOWN or TOUCHEVENTF_UP or TOUCHEVENTF_MOVE))<>0 then begin
+         x:=TouchInput^.x*0.01;
+         y:=TouchInput^.y*0.01;
+         Point.x:=trunc(x);
+         Point.y:=trunc(y);
+         if ScreenToClient(fWin32Handle,Point) then begin
+          x:=Point.x+frac(x);
+          y:=Point.y+frac(y);
+          TouchID:=$ffffffff;
+          if not fWin32TouchIDHashMap.TryGet(TouchInput^.dwID,TouchID) then begin
+           if not fWin32TouchIDFreeList.Dequeue(TouchID) then begin
+            repeat
+             TouchID:=fWin32TouchIDCounter;
+             inc(fWin32TouchIDCounter);
+            until TouchID<>0;
+           end;
+           fWin32TouchIDHashMap.Add(TouchInput^.dwID,TouchID);
+          end;
+          if (TouchID<>$ffffffff) and
+             (TpvSizeInt(TouchID)<length(fWin32TouchLastX)) and
+             (TpvSizeInt(TouchID)<length(fWin32TouchLastY)) then begin
+           if (TouchInput^.dwFlags and TOUCHEVENTF_DOWN)<>0 then begin
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchDown;
+            fWin32TouchLastX[TouchID]:=x;
+            fWin32TouchLastY[TouchID]:=y;
+           end else if (TouchInput^.dwFlags and TOUCHEVENTF_UP)<>0 then begin
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchUp;
+            fWin32TouchIDHashMap.Delete(TouchInput^.dwID);
+            fWin32TouchIDFreeList.Enqueue(TouchID);
+           end else{if (TouchInput^.dwFlags and TOUCHEVENTF_MOVE)<>0 then}begin
+            NativeEvent.Kind:=TpvApplicationNativeEventKind.TouchMotion;
+           end;
+           NativeEvent.TouchID:=TouchID;
+           NativeEvent.TouchX:=x;
+           NativeEvent.TouchY:=y;
+           NativeEvent.TouchDeltaX:=x-fWin32TouchLastX[TouchID];
+           NativeEvent.TouchDeltaY:=y-fWin32TouchLastY[TouchID];
+           NativeEvent.TouchPressure:=1.0; // <= TODO
+           NativeEvent.TouchPen:=(TouchInput^.dwFlags and TOUCHEVENTF_PEN)<>0;
+           fWin32TouchLastX[TouchID]:=x;
+           fWin32TouchLastY[TouchID]:=y;
+           fNativeEventQueue.Enqueue(NativeEvent);
+          end;
+         end;
+        end;
+       end;
+      finally
+       CloseTouchInputHandle(aLParam);
+      end;
+     end;
+    end;
+   end;
+  end;
+  WM_SETFOCUS:begin
+   fWin32HasFocus:=true;
+  end;
+  WM_KILLFOCUS:begin
+   fWin32HasFocus:=false;
+  end;
+  else begin
+  end;
+ end;
+end;
+
+{$ifend}
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+procedure TpvApplicationWin32GameInputOnDeviceEnumerated(callbackToken:TGameInputCallbackToken;context:TpvPointer;device:IGameInputDevice;timestamp:TpvUInt64;currentStatus,previousStatus:TGameInputDeviceStatus); {$ifdef cpu386}stdcall;{$endif}
+var Application:TpvApplication;
+    DeviceCallbackQueueItem:TpvApplicationWin32GameInputDeviceCallbackQueueItem;
+begin
+ Application:=TpvApplication(context);
+ if assigned(Application) and (callbackToken=Application.fWin32GameInputDeviceCallbackToken) then begin
+  DeviceCallbackQueueItem.Device:=device;
+  DeviceCallbackQueueItem.Timestamp:=timestamp;
+  DeviceCallbackQueueItem.CurrentStatus:=currentStatus;
+  DeviceCallbackQueueItem.PreviousStatus:=previousStatus;
+  Application.fWin32GameInputDeviceCallbackQueue.Enqueue(DeviceCallbackQueueItem);
+ end;
+end;
+{$ifend}
+
 procedure TpvApplication.Run;
 var Index:TpvInt32;
     ExceptionString:String;
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDL2Flags:TpvUInt32;
     SDL2HintParameter:TpvUTF8String;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+    ScreenDC:HDC;
 {$ifend}
 {$if defined(Android)}
     AndroidEnv:PJNIEnv;
@@ -8397,7 +12310,7 @@ begin
 
  ReadConfig;
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  SDL_GetVersion(fSDLVersion);
 
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
@@ -8410,7 +12323,7 @@ begin
 {$ifend}
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if GetAndroidSeparateMouseAndTouch then begin
   SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
  end else begin
@@ -8463,7 +12376,7 @@ begin
 {$else}
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  if fHideSystemBars then begin
   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
  end else begin
@@ -8475,8 +12388,13 @@ begin
 
  if WaitForReadyState then begin
 
-{$if defined(PasVulkanUseSDL2)}
-  SDL2Flags:=SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER;
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+  SDL2Flags:=SDL_INIT_VIDEO or
+             SDL_INIT_EVENTS or
+             SDL_INIT_TIMER or
+             SDL_INIT_JOYSTICK or
+             SDL_INIT_HAPTIC or
+             SDL_INIT_GAMECONTROLLER;
   if fUseAudio then begin
    SDL2Flags:=SDL2Flags or SDL_INIT_AUDIO;
   end;
@@ -8501,7 +12419,7 @@ begin
   InstallSignalHandlers;
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   if SDL_GetCurrentDisplayMode(0,@fSDLDisplayMode)=0 then begin
    fScreenWidth:=fSDLDisplayMode.w;
    fScreenHeight:=fSDLDisplayMode.h;
@@ -8509,13 +12427,28 @@ begin
    fScreenWidth:=-1;
    fScreenHeight:=-1;
   end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+  ScreenDC:=GetDC(0);
+  try
+{  fScreenWidth:=GetSystemMetrics(SM_CXSCREEN);
+   fScreenHeight:=GetSystemMetrics(SM_CYSCREEN);}
+   fScreenWidth:=GetDeviceCaps(ScreenDC,HORZRES);
+   fScreenHeight:=GetDeviceCaps(ScreenDC,VERTRES);
+  finally
+   ReleaseDC(0,ScreenDC);
+  end;
+  fWin32KeyRepeat:=true;
 {$else}
   fScreenWidth:=-1;
   fScreenHeight:=-1;
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
+{ if fMaximized then begin
+   fVideoFlags:=fVideoFlags or SDL_WINDOW_MAXIMIZED;
+  end;
+  fCurrentMaximized:=TpvInt32(fMaximized);//}
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
   if fSDLVersionWithVulkanSupport then begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_VULKAN;
@@ -8537,6 +12470,7 @@ begin
   if fResizable then begin
    fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
   end;
+
 {$endif}
 
 {$if defined(fpc) and defined(android)}
@@ -8551,7 +12485,7 @@ begin
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
   repeat
 {$ifend}
-   fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
+   fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fWindowTitle)),
 {$ifdef Android}
                                     SDL_WINDOWPOS_CENTERED_MASK,
                                     SDL_WINDOWPOS_CENTERED_MASK,
@@ -8577,10 +12511,143 @@ begin
    break;
   until false;
 {$ifend}
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+
+  fWin32HInstance:=GetModuleHandleW(nil);
+
+  Win32WindowClass.lpfnWndProc:=@TpvApplicationWin32WndProc;
+  Win32WindowClass.hInstance:=fWin32HInstance;
+  Win32WindowClass.hIcon:=LoadIconA(fWin32HInstance,'MAINICON');
+// Win32WindowClass.hIcon:=LoadIcon(fWin32HInstance,{$ifdef fpc}'MAINICON'{$else}IDI_APPLICATION{$endif});
+
+  fWin32WindowClass:=RegisterClassW(Win32WindowClass);
+  if fWin32WindowClass=0 then begin
+   raise EpvApplication.Create('Windows','Failed to register the window class.',LOG_ERROR);
+  end;
+
+  fWin32Style:=WS_VISIBLE;
+  if fFullscreen then begin
+   fWin32Style:=fWin32Style or WS_POPUP;
+  end else begin
+   fWin32Style:=fWin32Style or WS_CAPTION or WS_MINIMIZEBOX or WS_SYSMENU;
+   if fResizable then begin
+    fWin32Style:=fWin32Style or WS_THICKFRAME or WS_MAXIMIZEBOX;
+   end;
+  end;
+
+  fWin32Rect.Left:=0;
+  fWin32Rect.Top:=0;
+  fWin32Rect.Width:=fWidth;
+  fWin32Rect.Height:=fHeight;
+  if not Fullscreen then begin
+   AdjustWindowRect(fWin32Rect,fWin32Style,false);
+  end;
+
+  fWin32Title:=PUCUUTF8ToUTF16(fWindowTitle);
+
+  fWin32Callback:=nil;
+
+  fWin32Handle:=CreateWindowW(Win32WindowClass.lpszClassName,
+                              PWideChar(fWin32Title),
+                              fWin32Style,
+                              ((fScreenWidth-fWidth)+1) div 2,
+                              ((fScreenHeight-fHeight)+1) div 2,
+                              fWin32Rect.Right-fWin32Rect.Left,
+                              fWin32Rect.Bottom-fWin32Rect.Top,
+                              0,
+                              0,
+                              fWin32HInstance,
+                              self
+                             );
+  if fWin32Handle=0 then begin
+   raise EpvApplication.Create('Windows','Failed to create the window.',LOG_ERROR);
+  end;
+
+  fCurrentFullscreen:=0;
+
+  if fAcceptDragDropFiles then begin
+   SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW or WS_EX_ACCEPTFILES);
+  end else begin
+   SetWindowLongW(fWin32Handle,GWL_EXSTYLE,WS_EX_APPWINDOW);
+  end;
+
+  if Win32HasGetPointer then begin
+   EnableMouseInPointer(false);
+   fWin32TouchActive:=false;
+  end else begin
+   fWin32TouchActive:=RegisterTouchWindow(fWin32Handle,TWF_FINETOUCH or TWF_WANTPALM);
+  end;
+
+  fWin32TouchInputs:=nil;
+
+  fWin32TouchIDHashMap:=TWin32TouchIDHashMap.Create(0);
+
+  fWin32TouchIDFreeList.Initialize;
+
+  fWin32TouchIDCounter:=0;
+
+  if fWin32TouchActive or Win32HasGetPointer then begin
+   SetPropA(fWin32Handle,
+            'MicrosoftTabletPenServiceProperty',
+            THANDLE(LONG_PTR($00000001 or   // TABLET_DISABLE_PRESSANDHOLD
+                             $00000008 or   // TABLET_DISABLE_PENTAPFEEDBACK
+                             $00000010 or   // TABLET_DISABLE_PENBARRELFEEDBACK
+                             $00000100 or   // TABLET_DISABLE_TOUCHUIFORCEON
+                             $00000200 or   // TABLET_DISABLE_TOUCHUIFORCEOFF
+                             $00008000 or   // TABLET_DISABLE_TOUCHSWITCH
+                             $00010000 or   // TABLET_DISABLE_FLICKS
+                             $00080000 or   // TABLET_DISABLE_SMOOTHSCROLLING
+                             $00100000 or   // TABLET_DISABLE_FLICKFALLBACKKEYS
+                             $01000000)));  // TABLET_ENABLE_MULTITOUCHDATA
+  end;
+
+  fWin32HiddenCursor:=CreateCursor(fWin32HInstance,0,0,1,1,@Win32CursorMaskAND,@Win32CursorMaskXOR);
+
+  fWin32Fullscreen:=false;
+
+  if fVisibleMouseCursor then begin
+   fWin32Cursor:=LoadCursor(0,IDC_ARROW);
+  end else begin
+   fWin32Cursor:=fWin32HiddenCursor;
+  end;
+  SetCursor(fWin32Cursor);
+
+{ if fMaximized then begin
+   ShowWindow(fWin32Handle,SW_MAXIMIZE);
+  end else begin
+   ShowWindow(fWin32Handle,SW_NORMAL);
+  end;
+  fCurrentMaximized:=TpvInt32(fMaximized);
+
+  Windows.SetForegroundWindow(fWin32Handle);
+  Windows.SetFocus(fWin32Handle);}
+
+  fWin32GameInput:=nil;
+
+  fWin32HasGameInput:=assigned(GameInputCreate) and (GameInputCreate(fWin32GameInput)=NO_ERROR);
+  fWin32HasGameInput:=fWin32HasGameInput and assigned(fWin32GameInput);
+
+  fWin32GameInputDeviceCallbackQueue:=TpvApplicationWin32GameInputDeviceCallbackQueue.Create;
+
+  fWin32GameInputDeviceCallbackToken:=GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE;
+
+  if fWin32HasGameInput then begin
+   if fWin32GameInput.RegisterDeviceCallback(nil,
+                                             GameInputKindGamepad,
+                                             GameInputDeviceAnyStatus,
+                                             GameInputAsyncEnumeration,
+                                             self,
+                                             TpvApplicationWin32GameInputOnDeviceEnumerated,
+                                             @fWin32GameInputDeviceCallbackToken)<>NO_ERROR then begin
+    fWin32GameInputDeviceCallbackToken:=GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE;
+    fWin32HasGameInput:=false;
+   end;
+  end;
+
 {$else}
 {$ifend}
 
-{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport)}
+{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport) and not defined(PasVulkanHeadless)}
   if fSDLVersionWithVulkanSupport then begin
    SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
   end;
@@ -8591,7 +12658,7 @@ begin
 
   fCurrentPresentMode:=TpvInt32(fPresentMode);
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
  {SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
   SDL_EventState(SDL_MOUSEBUTTONDOWN,SDL_ENABLE);
   SDL_EventState(SDL_MOUSEBUTTONUP,SDL_ENABLE);
@@ -8604,17 +12671,27 @@ begin
 
   FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
   FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
-  fFrameTimesHistoryReadIndex:=0;
-  fFrameTimesHistoryWriteIndex:=0;
+  fFrameTimesHistoryIndex:=0;
+  fFrameTimesHistoryCount:=0;
+  fFrameTimesHistorySum:=0.0;
 
   fFramesPerSecond:=0.0;
 
   fSkipNextDrawFrame:=false;
 
+  if fDesiredCountInFlightFrames<1 then begin
+   raise EpvApplication.Create('Internal error','DesiredCountInFlightFrames must be >= 1',LOG_ERROR);
+  end else begin
+   fCountInFlightFrames:=fDesiredCountInFlightFrames;
+  end;
+
   try
 
    CreateVulkanInstance;
    try
+
+    fDoUpdateMainJoystick:=false;
+    UpdateJoysticks(true);
 
     Start;
     try
@@ -8653,11 +12730,24 @@ begin
           try
 
            if assigned(fAudio) then begin
-  {$if defined(PasVulkanUseSDL2)}
+  {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
             SDL_PauseAudio(0);
   {$else}
   {$ifend}
            end;
+           try
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+           fWin32MainFiber:=LPVOID(ConvertThreadToFiberEx(nil,$1{FIBER_FLAG_FLOAT_SWITCH}));
+           if not assigned(fWin32MainFiber) then begin
+            raise EpvApplication.Create('Internal error','ConvertThreadToFiberEx failed',LOG_ERROR);
+           end;
+
+           fWin32MessageFiber:=LPVOID(CreateFiber(0,@TpvApplicationMessageFiberProc,self));
+           if not assigned(fWin32MessageFiber) then begin
+            raise EpvApplication.Create('Internal error','CreateFiber failed',LOG_ERROR);
+           end;
+{$ifend}
            try
 
             while not fTerminated do begin
@@ -8665,8 +12755,19 @@ begin
             end;
 
            finally
+
+{$if defined(Windows) and not (defined(PasVulkanUseSDL2) or defined(PasVulkanHeadless))}
+           if assigned(fWin32MessageFiber) then begin
+            DeleteFiber(fWin32MessageFiber);
+            ConvertFiberToThread;
+           end;
+{$ifend}
+
+           end;
+
+           finally
             if assigned(fAudio) then begin
-  {$if defined(PasVulkanUseSDL2)}
+  {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
              SDL_PauseAudio(1);
   {$else}
   {$ifend}
@@ -8749,11 +12850,52 @@ begin
 
   finally
 
-{$if defined(PasVulkanUseSDL2)}
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
    if assigned(fSurfaceWindow) then begin
     SDL_DestroyWindow(fSurfaceWindow);
     fSurfaceWindow:=nil;
    end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+
+   if fWin32HasGameInput then begin
+    if fWin32GameInputDeviceCallbackToken<>GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE then begin
+     fWin32GameInput.UnregisterCallback(fWin32GameInputDeviceCallbackToken,1000);
+    end;
+   end;
+
+   FreeAndNil(fWin32GameInputDeviceCallbackQueue);
+
+   fWin32GameInput:=nil;
+
+   if fWin32Icon<>0 then begin
+    DestroyIcon(fWin32Icon);
+   end;
+
+   if fWin32TouchActive then begin
+    UnregisterTouchWindow(fWin32Handle);
+   end;
+
+   fWin32TouchInputs:=nil;
+
+   FreeAndNil(fWin32TouchIDHashMap);
+
+   fWin32TouchIDFreeList.Finalize;
+
+
+   if assigned(fWin32Callback) then begin
+
+    SetWindowLongPtrW(fWin32Handle,GWLP_WNDPROC,LONG_PTR(Pointer(Addr(fWin32Callback))));
+
+   end else begin
+
+    DestroyWindow(fWin32Handle);
+
+    UnregisterClassW(Win32WindowClass.lpszClassName,fWin32HInstance);
+
+    DestroyCursor(fWin32HiddenCursor);
+
+   end;
+
 {$else}
 {$ifend}
 
@@ -8763,12 +12905,26 @@ begin
 
  end;
 
-{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport)}
+{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport) and not defined(PasVulkanHeadless)}
  if fSDLVersionWithVulkanSupport then begin
   SDL_Vulkan_UnloadLibrary;
  end;
 {$ifend}
 
+end;
+
+procedure TpvApplication.SetFocus;
+begin
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+ if assigned(fSurfaceWindow) then begin
+  SDL_RaiseWindow(fSurfaceWindow);
+ end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+ if fWin32Handle<>0 then begin
+  Windows.SetForegroundWindow(fWin32Handle);
+  Windows.SetFocus(fWin32Handle);
+ end;
+{$ifend}
 end;
 
 procedure TpvApplication.SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance);
@@ -8925,6 +13081,15 @@ begin
  end;
 end;
 
+function TpvApplication.DragDropFileEvent(aFileName:TpvUTF8String):boolean;
+begin
+ if assigned(fScreen) then begin
+  result:=fScreen.DragDropFileEvent(aFileName);
+ end else begin
+  result:=false;
+ end;
+end;
+
 function TpvApplication.CanBeParallelProcessed:boolean;
 begin
  if assigned(fScreen) then begin
@@ -8955,43 +13120,48 @@ begin
  end;
 end;
 
-function TpvApplication.IsReadyForDrawOfSwapChainImageIndex(const aSwapChainImageIndex:TpvInt32):boolean;
+function TpvApplication.IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean;
 begin
- result:=assigned(fScreen) and fScreen.IsReadyForDrawOfSwapChainImageIndex(aSwapChainImageIndex);
+ result:=assigned(fScreen) and fScreen.IsReadyForDrawOfInFlightFrameIndex(aInFlightFrameIndex);
+end;
+
+procedure TpvApplication.DrawBlackScreen(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+var VulkanCommandBuffer:TpvVulkanCommandBuffer;
+begin
+ VulkanCommandBuffer:=fVulkanBlankCommandBuffers[aSwapChainImageIndex];
+
+ VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+
+ VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+ fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
+                                   fVulkanFrameBuffers[aSwapChainImageIndex],
+                                   VK_SUBPASS_CONTENTS_INLINE,
+                                   0,
+                                   0,
+                                   fVulkanSwapChain.Width,
+                                   fVulkanSwapChain.Height);
+
+ fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
+
+ VulkanCommandBuffer.EndRecording;
+
+ VulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                             aWaitSemaphore,
+                             fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex],
+                             aWaitFence,
+                             false);
+
+ aWaitSemaphore:=fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex];
 end;
 
 procedure TpvApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-var VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
  if assigned(fScreen) then begin
   fScreen.Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end else begin
-
-  VulkanCommandBuffer:=fVulkanBlankCommandBuffers[aSwapChainImageIndex];
-
-  VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-
-  VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
-
-  fVulkanRenderPass.BeginRenderPass(VulkanCommandBuffer,
-                                    fVulkanFrameBuffers[aSwapChainImageIndex],
-                                    VK_SUBPASS_CONTENTS_INLINE,
-                                    0,
-                                    0,
-                                    fVulkanSwapChain.Width,
-                                    fVulkanSwapChain.Height);
-
-  fVulkanRenderPass.EndRenderPass(VulkanCommandBuffer);
-
-  VulkanCommandBuffer.Execute(fVulkanDevice.GraphicsQueue,
-                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                              aWaitSemaphore,
-                              fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex],
-                              aWaitFence,
-                              false);
-
-  aWaitSemaphore:=fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex];
-
+  DrawBlackScreen(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
  end;
 end;
 
@@ -9126,7 +13296,7 @@ begin
 {$ifend}
 end;*)
 
-{$if not defined(PasVulkanUseSDL2)}
+{$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
 function LibCMalloc(Size:ptruint):pointer; cdecl; external 'c' name 'malloc';
 procedure LibCFree(p:pointer); cdecl; external 'c' name 'free';
 
@@ -10139,6 +14309,16 @@ end;
 {$ifdef Windows}
 initialization
  timeBeginPeriod(1);
+{$ifndef PasVulkanUseSDL2}
+ @GetPointerType:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerType');
+ @GetPointerTouchInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerTouchInfo');
+ @GetPointerPenInfo:=GetProcAddress(LoadLibrary('user32.dll'),'GetPointerPenInfo');
+ @EnableMouseInPointer:=GetProcAddress(LoadLibrary('user32.dll'),'EnableMouseInPointer');
+ Win32HasGetPointer:=assigned(GetPointerType) and
+                     assigned(GetPointerTouchInfo) and
+                     assigned(GetPointerPenInfo) and
+                     assigned(EnableMouseInPointer);
+{$endif}
 finalization
  timeEndPeriod(1);
 {$endif}

@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2020, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2023, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -58,7 +58,6 @@ unit PasVulkan.Components.Parent;
   {$ifend}
  {$endif}
 {$endif}
-{$m+}
 
 interface
 
@@ -68,48 +67,48 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type PpvComponentParent=^TpvComponentParent;
-     TpvComponentParent=record
+type TpvComponentParent=class(TpvComponent)
+      private
+       fParent:TpvEntityID;
       public
-       Parent:TpvEntityComponentSystem.TEntityID;
+       constructor Create; override;
+       destructor Destroy; override;
+       class function ClassPath:string; override;
+       class function ClassUUID:TpvUUID; override;
+       class function ClassInstanceMemoryCopyable:boolean; override;
+      published
+       property Parent:TpvEntityID read fParent write fParent;
      end;
-
-const pvComponentParentDefault:TpvComponentParent=
-       (
-        Parent:$ffffffff;
-       );
-
-var pvComponentParent:TpvEntityComponentSystem.TRegisteredComponentType=nil;
-
-    pvComponentParentID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
-procedure Register;
+constructor TpvComponentParent.Create;
 begin
+ inherited Create;
+ fParent:=-1;
+end;
 
- pvComponentParent:=TpvEntityComponentSystem.TRegisteredComponentType.Create('parent',
-                                                                             'Parent',
-                                                                             ['Base','Parent'],
-                                                                             SizeOf(TpvComponentParent),
-                                                                             @pvComponentParentDefault);
+destructor TpvComponentParent.Destroy;
+begin
+ inherited Destroy;
+end;
 
- pvComponentParentID:=pvComponentParent.ID;
+class function TpvComponentParent.ClassPath:string;
+begin
+ result:='Parent';
+end;
 
- pvComponentParent.Add('parent',
-                       'Parent',
-                       TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.EntityID,
-                       SizeOf(PpvComponentParent(nil)^.Parent),
-                       1,
-                       TpvPtrUInt(@PpvComponentParent(nil)^.Parent),
-                       SizeOf(PpvComponentParent(nil)^.Parent),
-                       []
-                      );
+class function TpvComponentParent.ClassUUID:TpvUUID;
+begin
+ result.UInt64s[0]:=TpvUInt64($54fe159df6d445b0);
+ result.UInt64s[1]:=TpvUInt64($98b0a12e19b6ea3a);
+end;
 
+class function TpvComponentParent.ClassInstanceMemoryCopyable:boolean;
+begin
+ result:=true;
 end;
 
 initialization
- Register;
 end.
-
 

@@ -1227,6 +1227,13 @@ const SDL2LibName={$if defined(Win32)}
       SDL_MESSAGEBOX_COLOR_BUTTON_BORDER=2;
       SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND=3;
       SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED=4;
+
+      SDL_RWOPS_UNKNOWN=0;
+      SDL_RWOPS_WINFILE=1;
+      SDL_RWOPS_STDFILE=2;
+      SDL_RWOPS_JNIFILE=3;
+      SDL_RWOPS_MEMORY=4;
+      SDL_RWOPS_MEMORY_RO=5;
       
 type PSDLInt8=^TSDLInt8;
      TSDLInt8={$ifdef fpc}Int8{$else}ShortInt{$endif};
@@ -1245,6 +1252,12 @@ type PSDLInt8=^TSDLInt8;
 
      PSDLUInt32=^TSDLUInt32;
      TSDLUInt32={$ifdef fpc}UInt32{$else}LongWord{$endif};
+
+     PSDLSizeInt=^TSDLSizeInt;
+     TSDLSizeInt={$ifdef fpc}SizeInt{$else}NativeInt{$endif};
+
+     PSDLSizeUInt=^TSDLSizeUInt;
+     TSDLSizeUInt={$ifdef fpc}SizeUInt{$else}NativeUInt{$endif};
 
      PSDLInt64=^TSDLInt64;
      TSDLInt64=Int64;
@@ -1451,6 +1464,7 @@ type PSDLInt8=^TSDLInt8;
      end;
 
      PSDL_RWops=^TSDL_RWops;
+
      TSeek=function(context:PSDL_RWops;offset:TSDLInt32;whence:TSDLInt32):TSDLInt32; cdecl;
      TRead=function(context:PSDL_RWops;Ptr:Pointer;size:TSDLInt32;maxnum:TSDLInt32):TSDLInt32;  cdecl;
      TWrite=function(context:PSDL_RWops;Ptr:Pointer;size:TSDLInt32;num:TSDLInt32):TSDLInt32; cdecl;
@@ -1481,6 +1495,30 @@ type PSDLInt8=^TSDLInt8;
        0:(stdio:TStdio);
        1:(mem:TMem);
        2:(unknown:TUnknown);
+       3:(
+        AndroidIO:record
+         fileNameRef:Pointer;
+         inputStreamRef:Pointer;
+         readableByteChannelRef:Pointer;
+         readMethod:Pointer;
+         assetFileDescriptorRef:Pointer;
+         position:TSDLInt32;
+         size:TSDLInt32;
+         offset:TSDLInt32;
+         fd:TSDLInt32;
+        end;
+       );
+       4:(
+        WindowsIO:record
+         Append:TSDLUInt8;
+         h:Pointer;
+         Buffer:record
+          Data:Pointer;
+          Size:TSDLSizeUInt;
+          Left:TSDLSizeUInt;
+         end;
+        end;
+       );
      end;
 
      PSDL_version=^TSDL_version;
@@ -2044,7 +2082,12 @@ function SDL_DisplayFormat(Surface:PSDL_Surface):PSDL_Surface; cdecl; external {
 function SDL_DisplayFormatAlpha(Surface:PSDL_Surface):PSDL_Surface; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_RWFromFile(filename,mode:pansichar):PSDL_RWops; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RWFromMem(mem:Pointer;size:TSDLInt32):PSDL_RWops; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_RWFromConstMem(mem:Pointer;size:TSDLInt32):PSDL_RWops; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SaveBMP_RW(surface:PSDL_Surface;dst:PSDL_RWops;freedst:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_AllocRW:PSDL_RWops; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_FreeRW(rw:PSDL_RWops); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GetClipboardText:PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetClipboardText(const Text:PAnsiChar):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
@@ -2070,6 +2113,10 @@ function SDL_CreateTexture(renderer:PSDL_Texture;format:TSDLUInt32;access,w,h:TS
 function SDL_DestroyWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_DestroyRenderer(renderer:PSDL_Renderer):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_DestroyTexture(texture:PSDL_Texture):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+procedure SDL_MinimizeWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_MaximizeWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_RestoreWindow(window:PSDL_Window); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 function SDL_GL_MakeCurrent(window:PSDL_Window;context:PSDL_GLContext):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
@@ -2288,6 +2335,10 @@ function SDL_GetWindowDisplayIndex(window:PSDL_Window):TSDLInt32; cdecl; externa
 function SDL_GetWindowDisplayMode(window:PSDL_Window;mode:PSDL_DisplayMode):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_SetWindowDisplayMode(window:PSDL_Window;mode:PSDL_DisplayMode):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GetWindowWMInfo(window:PSDL_Window;info:PSDL_SysWMinfo):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_SetWindowInputFocus(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
+function SDL_RaiseWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
 procedure SDL_DisableScreenSaver; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_EnableScreenSaver; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};

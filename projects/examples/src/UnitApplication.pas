@@ -128,6 +128,7 @@ begin
 {$else}
  StartScreen:=TScreenMainMenu;
 {$endif}
+//StartScreen:=TScreenExampleGUI;
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
@@ -136,11 +137,17 @@ begin
  WaitOnPreviousFrames:=false;
  VulkanAPIVersion:=VK_API_VERSION_1_0;
 //DesiredCountSwapChainImages:=2;
+ Blocking:=true;
+{-$ifdef Android}
  if fForceNoVSync then begin
   PresentMode:=TpvApplicationPresentMode.Mailbox;
  end else begin
   PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
  end;
+(*{$else}
+ PresentMode:=TpvApplicationPresentMode.Mailbox;
+{$endif}*)
+//PresentMode:=TpvApplicationPresentMode.VSync;
 end;
 
 procedure TApplication.Start;

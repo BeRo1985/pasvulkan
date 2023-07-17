@@ -60,6 +60,7 @@ unit PasVulkan.GUI;
 {$endif}
 {$m+}
 {-$define PasVulkanGUIDebug}
+{-$define PasVulkanGUIFreeDebug}
 
 interface
 
@@ -74,6 +75,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Utils,
      PasVulkan.Collections,
+     PasVulkan.DataStructures.LinkedList,
+     PasVulkan.BVH.DynamicRectTree,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
@@ -122,6 +125,8 @@ type TpvGUIObject=class;
 
      TpvGUIColorPanel=class;
 
+     TpvGUITab=class;
+
      TpvGUITabPanel=class;
 
      TpvGUIListBox=class;
@@ -142,19 +147,25 @@ type TpvGUIObject=class;
 
      TpvGUIListView=class;
 
+     TpvGUITreeNode=class;
+
+     TpvGUITreeView=class;
+
      TpvGUIFileDialog=class;
 
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
 
-     TpvGUIOnEnterLeaveEvent=function(const aSender:TpvGUIObject):boolean of object;
+     TpvGUIOnEnterLeaveEvent=function(const aSender:TpvGUIObject):Boolean of object;
 
-     TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean of object;
+     TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean of object;
 
-     TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):boolean of object;
+     TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):Boolean of object;
 
-     TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):boolean of object;
+     TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):Boolean of object;
+
+     TpvGUIOnTabEvent=procedure(const aSender:TpvGUITab) of object;
 
      TpvGUIDrawEngine=class
       public
@@ -198,7 +209,7 @@ type TpvGUIObject=class;
                );
                TKind.DrawGUIElement:(
                 fDrawGUIElementGUIElement:TVkInt32;
-                fDrawGUIElementFocused:boolean;
+                fDrawGUIElementFocused:Boolean;
                 fDrawGUIElementMin:TpvVector2;
                 fDrawGUIElementMax:TpvVector2;
                 fDrawGUIElementMetaMin:TpvVector2;
@@ -230,7 +241,7 @@ type TpvGUIObject=class;
        fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
        fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fStrategy:TStrategy;
-       fTransparent:boolean;
+       fTransparent:Boolean;
        fClipRects:TClipRects;
        fCountClipRects:TpvSizeInt;
        fModelMatrices:TModelMatrices;
@@ -247,11 +258,13 @@ type TpvGUIObject=class;
        fTransparentBatchItems:TBatchItems;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
-       fDoNeedNewState:boolean;
-       fUseScissor:boolean;
+       fResortedTransparentBatchItems:TBatchItems;
+       fCountResortedTransparentBatchItems:TpvSizeInt;
+       fDoNeedNewState:Boolean;
+       fUseScissor:Boolean;
        procedure AcquireNewStateIfNeeded;
-       function GetTransparent:boolean; inline;
-       procedure SetTransparent(const aTransparent:boolean); inline;
+       function GetTransparent:Boolean; inline;
+       procedure SetTransparent(const aTransparent:Boolean); inline;
        function GetClipRect:TpvRect; inline;
        procedure SetClipRect(const aClipRect:TpvRect);
        function GetModelMatrix:TpvMatrix4x4; inline;
@@ -268,8 +281,8 @@ type TpvGUIObject=class;
        procedure Next;
        procedure Draw;
        procedure DrawVulkanCanvas(const aVulkanCanvas:TpvGUIVulkanCanvas;const aRect:TpvRect);
-       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
-       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
+       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:Boolean=true);
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
        procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
        procedure DrawFilledRectangle(const aRect:TpvRect);
@@ -280,13 +293,13 @@ type TpvGUIObject=class;
        property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
        property Color:TpvVector4 read GetColor write SetColor;
       published
-       property Transparent:boolean read GetTransparent write SetTransparent;
+       property Transparent:Boolean read GetTransparent write SetTransparent;
        property Font:TpvFont read fFont write fFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
        property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property Strategy:TStrategy read fStrategy write fStrategy;
-       property UseScissor:boolean read fUseScissor write fUseScissor;
+       property UseScissor:Boolean read fUseScissor write fUseScissor;
      end;
 
      TpvGUIObjectList=class
@@ -298,40 +311,41 @@ type TpvGUIObject=class;
               function GetCurrent:TpvGUIObject; inline;
              public
               constructor Create(const aObjectList:TpvGUIObjectList);
-              function MoveNext:boolean; inline;
+              function MoveNext:Boolean; inline;
               property Current:TpvGUIObject read GetCurrent;
             end;
       private
        fItems:array of TpvGUIObject;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
-       fNotifyObjects:boolean;
-       fOwnsObjects:boolean;
+       fNotifyObjects:Boolean;
+       fOwnsObjects:Boolean;
        procedure HandleAdd(const aValue:TpvGUIObject);
        procedure HandleRemoveAndNil(var aValue:TpvGUIObject);
        procedure SetCount(const aNewCount:TpvSizeInt);
        function GetItem(const aIndex:TpvSizeInt):TpvGUIObject;
        procedure SetItem(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
       public
-       constructor Create(const aOwnsObjects:boolean);
+       constructor Create(const aOwnsObjects:Boolean);
        destructor Destroy; override;
        procedure Clear;
        function IndexOf(const aItem:TpvGUIObject):TpvSizeInt;
-       function Contains(const aItem:TpvGUIObject):boolean;
+       function Contains(const aItem:TpvGUIObject):Boolean;
        function Add(const aItem:TpvGUIObject):TpvSizeInt;
        procedure Insert(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
        procedure Delete(const aIndex:TpvSizeInt);
        procedure DeleteRangeBackwards(const aFromIndex,aToIndex:TpvSizeInt);
        procedure Remove(const aItem:TpvGUIObject);
        procedure Extract(const aItem:TpvGUIObject);
+       function ExtractIndex(const aIndex:TpvSizeInt):TpvGUIObject;
        procedure Exchange(const aIndex,aWithIndex:TpvSizeInt);
        procedure Move(const aIndex,aToIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const aIndex:TpvSizeInt]:TpvGUIObject read GetItem write SetItem; default;
-       property NotifyObjects:boolean read fNotifyObjects write fNotifyObjects;
-       property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
+       property NotifyObjects:Boolean read fNotifyObjects write fNotifyObjects;
+       property OwnsObjects:Boolean read fOwnsObjects write fOwnsObjects;
      end;
 
      IpvGUIObject=interface(IpvReferenceCountedObject)['{DF4E2599-646B-42AF-A138-7C213997EE3D}']
@@ -354,6 +368,7 @@ type TpvGUIObject=class;
        fTag:TpvPtrInt;
        fProtectedObjectCounter:TPasMPUInt32;
        fGarbageDisposerCounter:TPasMPUInt32;
+       fIsOnGarbageDisposerList:TPasMPBool32;
        fMarkBits:TPasMPUInt32;
       public
        constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
@@ -361,8 +376,10 @@ type TpvGUIObject=class;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
        function GetGUIObject:TpvGUIObject;
-       function HasParent(const aParent:TpvGUIObject):boolean; virtual;
-       function HasParentOrIs(const aParent:TpvGUIObject):boolean; virtual;
+       function HasParent(const aParent:TpvGUIObject):Boolean; virtual;
+       function HasParentOrIs(const aParent:TpvGUIObject):Boolean; virtual;
+       procedure ResetRenderDirty; virtual;
+       procedure SetRenderDirty; virtual;
        procedure Check; virtual;
        procedure Update; virtual;
       published
@@ -376,24 +393,30 @@ type TpvGUIObject=class;
 
      EpvGUIObjectGarbageDisposer=class(Exception);
 
+     TpvGUIObjectGarbageDisposerObjectList=class(TpvObjectGenericList<TpvGUIObject>)
+     end;
+
+     { TpvGUIObjectGarbageDisposer }
+
      TpvGUIObjectGarbageDisposer=class
       private
-       // This is NOT a garbage collector, it's reallly just a Directed-Acyclic-Graph-
+       // This is NOT a garbage collector, it's really just a Directed-Acyclic-Graph-
        // Topological-Sort-based garbage disposer for TpvGUIObject object instances,
        // so that all garbage objects are freed in a controlled topological order
        // relatively to each another.
        fInstance:TpvGUIInstance;
-       fLock:TPasMPSlimReaderWriterLock;
-       fToDisposeList:TList;
-       fTopologicalSortedList:TList;
-       fToFreeList:TList;
+       fLock:TPasMPCriticalSection;
+       fToDisposeList:TpvGUIObjectGarbageDisposerObjectList;
+       fTopologicalSortedList:TpvGUIObjectGarbageDisposerObjectList;
+       fToFreeList:TpvGUIObjectGarbageDisposerObjectList;
        fCountToDisposeObjects:{$ifdef cpu64}TPasMPInt64{$else}TPasMPInt32{$endif};
-       procedure Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+       procedure Visit(const aObject:TpvGUIObject;const aIsChild:Boolean);
       public
        constructor Create(const aInstance:TpvGUIInstance); reintroduce;
        destructor Destroy; override;
        procedure AddGarbage(const aObject:TpvGUIObject);
-       procedure DisposeAllGarbage(const aForce:boolean);
+       procedure RemoveGarbage(const aObject:TpvGUIObject);
+       procedure DisposeAllGarbage(const aForce:Boolean);
      end;
 
      TpvGUIObjectHolder=class(TpvGUIObject)
@@ -609,7 +632,7 @@ type TpvGUIObject=class;
 
      PpvGUIAdvancedGridLayoutAnchorVector=^TpvGUIAdvancedGridLayoutAnchorVector;
      TpvGUIAdvancedGridLayoutAnchorVector=record
-      case boolean of
+      case Boolean of
        false:(
         x,y:TpvUInt8;
        );
@@ -620,7 +643,7 @@ type TpvGUIObject=class;
 
      PpvGUIAdvancedGridLayoutAnchorAlignmentVector=^TpvGUIAdvancedGridLayoutAnchorAlignmentVector;
      TpvGUIAdvancedGridLayoutAnchorAlignmentVector=record
-      case boolean of
+      case Boolean of
        false:(
         x,y:TpvGUILayoutAlignment;
        );
@@ -636,7 +659,7 @@ type TpvGUIObject=class;
        constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill;const aVerticalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill); overload;
        constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment); overload;
        constructor Create(const aX,aY:TpvUInt8); overload;
-       case boolean of
+       case Boolean of
         false:(
          Position:TpvGUIAdvancedGridLayoutAnchorVector;
          Size:TpvGUIAdvancedGridLayoutAnchorVector;
@@ -677,7 +700,7 @@ type TpvGUIObject=class;
        fSizes:TpvVector2Array;
        fFixedSizes:TpvVector2Array;
        fTargetSizes:TpvVector2Array;
-       procedure ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:boolean);
+       procedure ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:Boolean);
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
@@ -726,7 +749,7 @@ type TpvGUIObject=class;
        fSpacingProperty:TpvVector2Property;
        fDirection:TpvGUIFlowLayoutDirection;
        fAlignments:TpvGUIFlowLayoutAlignments;
-       fAlignmentOnBaseLine:boolean;
+       fAlignmentOnBaseLine:Boolean;
        fPositions:TpvVector2Array;
        fSizes:TpvVector2Array;
        function GetHorizontalAlignment:TpvGUIFlowLayoutAlignment; inline;
@@ -747,7 +770,7 @@ type TpvGUIObject=class;
                           const aDirection:TpvGUIFlowLayoutDirection=TpvGUIFlowLayoutDirection.LeftToRight;
                           const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
                           const aVerticalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
-                          const aAlignmentOnBaseLine:boolean=false); reintroduce; virtual;
+                          const aAlignmentOnBaseLine:Boolean=false); reintroduce; virtual;
        destructor Destroy; override;
       published
        property Orientation:TpvGUILayoutOrientation read fOrientation write fOrientation;
@@ -757,7 +780,7 @@ type TpvGUIObject=class;
        property Direction:TpvGUIFlowLayoutDirection read fDirection write fDirection;
        property HorizontalAlignment:TpvGUIFlowLayoutAlignment read GetHorizontalAlignment write SetHorizontalAlignment;
        property VerticalAlignment:TpvGUIFlowLayoutAlignment read GetVerticalAlignment write SetVerticalAlignment;
-       property AlignmentOnBaseLine:boolean read fAlignmentOnBaseLine write fAlignmentOnBaseLine;
+       property AlignmentOnBaseLine:Boolean read fAlignmentOnBaseLine write fAlignmentOnBaseLine;
      end;
 
      TpvGUISkin=class(TpvGUIObject)
@@ -833,6 +856,34 @@ type TpvGUIObject=class;
        fIconSearch:TObject;
        fIconSearchNext:TObject;
        fIconReplace:TObject;
+       fIconCog:TObject;
+       fIconCogs:TObject;
+       fIconCheckThick:TObject;
+       fIconCloseThick:TObject;
+       fIconSave:TObject;
+       fIconSaveAll:TObject;
+       fIconSaveCog:TObject;
+       fIconSaveEdit:TObject;
+       fIconSaveMove:TObject;
+       fIconSaveSettings:TObject;
+       fIconFolderOpen:TObject;
+       fIconTreeViewClose:TObject;
+       fIconTreeViewCloseL:TObject;
+       fIconTreeViewCloseLU:TObject;
+       fIconTreeViewCloseU:TObject;
+       fIconTreeViewL_H:TObject;
+       fIconTreeViewL_H_S:TObject;
+       fIconTreeViewL_HV_L:TObject;
+       fIconTreeViewL_HV_L_F:TObject;
+       fIconTreeViewL_HV_LU:TObject;
+       fIconTreeViewL_HV_U:TObject;
+       fIconTreeViewL_V_L:TObject;
+       fIconTreeViewL_V_LU:TObject;
+       fIconTreeViewL_V_U:TObject;
+       fIconTreeViewOpen:TObject;
+       fIconTreeViewOpenL:TObject;
+       fIconTreeViewOpenLU:TObject;
+       fIconTreeViewOpenU:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -910,6 +961,12 @@ type TpvGUIObject=class;
        function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; virtual;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); virtual;
       public
+       function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; virtual;
+       procedure CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
+       procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); virtual;
+       function IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; virtual;
+       function IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -978,6 +1035,34 @@ type TpvGUIObject=class;
        property IconSearch:TObject read fIconSearch write fIconSearch;
        property IconSearchNext:TObject read fIconSearchNext write fIconSearchNext;
        property IconReplace:TObject read fIconReplace write fIconReplace;
+       property IconCog:TObject read fIconCog write fIconCog;
+       property IconCogs:TObject read fIconCogs write fIconCogs;
+       property IconCheckThick:TObject read fIconCheckThick write fIconCheckThick;
+       property IconCloseThick:TObject read fIconCloseThick write fIconCloseThick;
+       property IconSave:TObject read fIconSave write fIconSave;
+       property IconSaveAll:TObject read fIconSaveAll write fIconSaveAll;
+       property IconSaveCog:TObject read fIconSaveCog write fIconSaveCog;
+       property IconSaveEdit:TObject read fIconSaveEdit write fIconSaveEdit;
+       property IconSaveMove:TObject read fIconSaveMove write fIconSaveMove;
+       property IconSaveSettings:TObject read fIconSaveSettings write fIconSaveSettings;
+       property IconFolderOpen:TObject read fIconFolderOpen write fIconFolderOpen;
+       property IconTreeViewClose:TObject read fIconTreeViewClose write fIconTreeViewClose;
+       property IconTreeViewCloseL:TObject read fIconTreeViewCloseL write fIconTreeViewCloseL;
+       property IconTreeViewCloseLU:TObject read fIconTreeViewCloseLU write fIconTreeViewCloseLU;
+       property IconTreeViewCloseU:TObject read fIconTreeViewCloseU write fIconTreeViewCloseU;
+       property IconTreeViewL_H:TObject read fIconTreeViewL_H write fIconTreeViewL_H;
+       property IconTreeViewL_H_S:TObject read fIconTreeViewL_H_S write fIconTreeViewL_H_S;
+       property IconTreeViewL_HV_L:TObject read fIconTreeViewL_HV_L write fIconTreeViewL_HV_L;
+       property IconTreeViewL_HV_L_F:TObject read fIconTreeViewL_HV_L_F write fIconTreeViewL_HV_L_F;
+       property IconTreeViewL_HV_LU:TObject read fIconTreeViewL_HV_LU write fIconTreeViewL_HV_LU;
+       property IconTreeViewL_HV_U:TObject read fIconTreeViewL_HV_U write fIconTreeViewL_HV_U;
+       property IconTreeViewL_V_L:TObject read fIconTreeViewL_V_L write fIconTreeViewL_V_L;
+       property IconTreeViewL_V_LU:TObject read fIconTreeViewL_V_LU write fIconTreeViewL_V_LU;
+       property IconTreeViewL_V_U:TObject read fIconTreeViewL_V_U write fIconTreeViewL_V_U;
+       property IconTreeViewOpen:TObject read fIconTreeViewOpen write fIconTreeViewOpen;
+       property IconTreeViewOpenL:TObject read fIconTreeViewOpenL write fIconTreeViewOpenL;
+       property IconTreeViewOpenLU:TObject read fIconTreeViewOpenLU write fIconTreeViewOpenLU;
+       property IconTreeViewOpenU:TObject read fIconTreeViewOpenU write fIconTreeViewOpenU;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -990,11 +1075,13 @@ type TpvGUIObject=class;
              TabButtonSize=24;
              BoxCornerMargin=3.0;
              ListBoxHorizontalMargin=2.0;
+             ListViewHorizontalMargin=2.0;
+             TreeViewHorizontalMargin=2.0;
              ComboBoxHorizontalMargin=2.0;
              MultiLineTextEditorMargin=4.0;
       protected
-       fUnfocusedWindowHeaderFontShadow:boolean;
-       fFocusedWindowHeaderFontShadow:boolean;
+       fUnfocusedWindowHeaderFontShadow:Boolean;
+       fFocusedWindowHeaderFontShadow:Boolean;
        fUnfocusedWindowHeaderFontShadowOffset:TpvVector2;
        fFocusedWindowHeaderFontShadowOffset:TpvVector2;
        fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
@@ -1083,6 +1170,12 @@ type TpvGUIObject=class;
        function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; override;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); override;
       public
+       function GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2; override;
+       procedure CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
+       procedure DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView); override;
+       function IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; override;
+       function IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean; override;
+      public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
        property UnfocusedWindowHeaderFontShadowColor:TpvVector4 read fUnfocusedWindowHeaderFontShadowColor write fUnfocusedWindowHeaderFontShadowColor;
@@ -1090,8 +1183,8 @@ type TpvGUIObject=class;
        property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
        property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
       published
-       property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
-       property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
+       property UnfocusedWindowHeaderFontShadow:Boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
+       property FocusedWindowHeaderFontShadow:Boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
        property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
        property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
@@ -1123,7 +1216,7 @@ type TpvGUIObject=class;
        function GetCurrent:TpvGUIWidget; inline;
       public
        constructor Create(const aWidget:TpvGUIWidget);
-       function MoveNext:boolean; inline;
+       function MoveNext:Boolean; inline;
        property Current:TpvGUIWidget read GetCurrent;
      end;
 
@@ -1183,27 +1276,27 @@ type TpvGUIObject=class;
        fParentClipRect:TpvRect;
        fClipRect:TpvRect;
        fModelMatrix:TpvMatrix4x4;
-       function GetEnabled:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetAutoSize:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetAutoSize(const aAutoSize:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetVisible(const aVisible:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetDraggable:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetDraggable(const aDraggable:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetFocused(const aFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetTopLevelFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetPointerFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetTabStop:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetKeyPreview:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetKeyPreview(const aKeyPreview:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetWantTabKey:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetWantTabKey(const aWantTabKey:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetEnabled:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetEnabled(const aEnabled:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetAutoSize:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetAutoSize(const aAutoSize:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetVisible:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetVisible(const aVisible:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetDraggable:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetDraggable(const aDraggable:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFocused:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFocused(const aFocused:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTopLevelFocused:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetPointerFocused:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetPointerFocused(const aPointerFocused:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTabStop:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTabStop(const aTabStop:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetKeyPreview:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetKeyPreview(const aKeyPreview:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWantAllKeys:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWantAllKeys(const aWantAllKeys:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWantTabKey:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWantTabKey(const aWantTabKey:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1217,7 +1310,7 @@ type TpvGUIObject=class;
        function GetFixedHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRecursiveVisible:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
        function GetLastParentWindow:TpvGUIWindow;
        function GetScissorParent:TpvGUIWidget;
@@ -1245,27 +1338,27 @@ type TpvGUIObject=class;
        procedure BeforeDestruction; override;
        procedure Release; virtual;
        function GetEnumerator:TpvGUIWidgetEnumerator;
-       function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aPosition:TpvVector2):Boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetTabList(const aList:Classes.TList);
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; virtual;
-       function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
-       function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
-       function FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow; virtual;
-       function ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
+       function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:Boolean):TpvGUIWidget; virtual;
+       function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean; virtual;
+       function FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:Boolean):TpvGUIWindow; virtual;
+       function ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean; virtual;
        procedure SetSizeToPreferredSize; virtual;
        procedure PerformLayout; virtual;
        procedure RequestFocus; virtual;
        procedure Show; virtual;
        procedure Hide; virtual;
-       function Enter:boolean; virtual;
-       function Leave:boolean; virtual;
-       function PointerEnter:boolean; virtual;
-       function PointerLeave:boolean; virtual;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; virtual;
-       function DragReleaseEvent:boolean; virtual;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
+       function Enter:Boolean; virtual;
+       function Leave:Boolean; virtual;
+       function PointerEnter:Boolean; virtual;
+       function PointerLeave:Boolean; virtual;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; virtual;
+       function DragReleaseEvent:Boolean; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; virtual;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; virtual;
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
        procedure Draw; virtual;
@@ -1287,18 +1380,18 @@ type TpvGUIObject=class;
        property Size:TpvVector2Property read fSizeProperty;
        property FixedSize:TpvVector2Property read fFixedSizeProperty;
        property WidgetFlags:TpvGUIWidgetFlags read fWidgetFlags write fWidgetFlags;
-       property Enabled:boolean read GetEnabled write SetEnabled;
-       property AutoSize:boolean read GetAutoSize write SetAutoSize;
-       property Visible:boolean read GetVisible write SetVisible;
-       property Draggable:boolean read GetDraggable write SetDraggable;
-       property RecursiveVisible:boolean read GetRecursiveVisible;
-       property Focused:boolean read GetFocused write SetFocused;
-       property TopLevelFocused:boolean read GetTopLevelFocused write SetFocused;
-       property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
-       property TabStop:boolean read GetTabStop write SetTabStop;
-       property KeyPreview:boolean read GetKeyPreview write SetKeyPreview;
-       property WantAllKeys:boolean read GetWantAllKeys write SetWantAllKeys;
-       property WantTabKey:boolean read GetWantTabKey write SetWantTabKey;
+       property Enabled:Boolean read GetEnabled write SetEnabled;
+       property AutoSize:Boolean read GetAutoSize write SetAutoSize;
+       property Visible:Boolean read GetVisible write SetVisible;
+       property Draggable:Boolean read GetDraggable write SetDraggable;
+       property RecursiveVisible:Boolean read GetRecursiveVisible;
+       property Focused:Boolean read GetFocused write SetFocused;
+       property TopLevelFocused:Boolean read GetTopLevelFocused write SetFocused;
+       property PointerFocused:Boolean read GetPointerFocused write SetPointerFocused;
+       property TabStop:Boolean read GetTabStop write SetTabStop;
+       property KeyPreview:Boolean read GetKeyPreview write SetKeyPreview;
+       property WantAllKeys:Boolean read GetWantAllKeys write SetWantAllKeys;
+       property WantTabKey:Boolean read GetWantTabKey write SetWantTabKey;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -1340,6 +1433,8 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
+     { TpvGUIInstance }
+
      TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
@@ -1350,9 +1445,11 @@ type TpvGUIObject=class;
        fFontCodePointRanges:TpvFontCodePointRanges;
        fMonoFontCodePointRanges:TpvFontCodePointRanges;
        fStandardSkin:TpvGUISkin;
-       fDrawWidgetBounds:boolean;
-       fWindowTabbing:boolean;
-       fSwapChainReady:boolean;
+       fDrawWidgetBounds:Boolean;
+       fWindowTabbing:Boolean;
+       fSwapChainReady:Boolean;
+       fRenderDirtyBitMask:{$ifdef cpu64}TPasMPUInt64{$else}TPasMPUInt32{$endif};
+       fRenderDirtyCounter:TPasMPUInt32;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -1397,12 +1494,16 @@ type TpvGUIObject=class;
        procedure ProtectObjectForNextDraw(const aObject:TpvGUIObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        function AddMenu:TpvGUIWindowMenu;
-       function HasModalWindows:boolean;
+       function HasModalWindows:Boolean;
        procedure PerformLayout; override;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure ResetRenderDirty; override;
+       procedure SetRenderDirty; override;
+       function CheckRenderDirty(const aReset:Boolean=true):Boolean; overload;
+       function CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean=true):Boolean; overload;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
@@ -1414,7 +1515,7 @@ type TpvGUIObject=class;
        property Canvas:TpvCanvas read fCanvas;
        property DrawEngine:TpvGUIDrawEngine read fDrawEngine write SetDrawEngine;
        property StandardSkin:TpvGUISkin read fStandardSkin;
-       property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
+       property DrawWidgetBounds:Boolean read fDrawWidgetBounds write fDrawWidgetBounds;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
@@ -1481,12 +1582,12 @@ type TpvGUIObject=class;
                            TpvGUIWindowFlag.ResizableW,
                            TpvGUIWindowFlag.ResizableE];
       private
-       fWindowDisposed:boolean;
+       fWindowDisposed:Boolean;
        fLastFocused:TpvGUIWidget;
       protected
        fTitle:TpvUTF8String;
        fCachedTitle:TpvUTF8String;
-       fCachedTitleInvalidated:boolean;
+       fCachedTitleInvalidated:Boolean;
        fMouseAction:TpvGUIWindowMouseAction;
        fWindowFlags:TpvGUIWindowFlags;
        fLastWindowState:TpvGUIWindowState;
@@ -1502,8 +1603,8 @@ type TpvGUIObject=class;
        function GetFixedSize:TpvVector2; override;
        procedure SetWindowFlags(const aWindowFlags:TpvGUIWindowFlags);
        procedure SetWindowState(const aWindowState:TpvGUIWindowState);
-       function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetModal:Boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetModal(const aModal:Boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIPanel;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -1523,11 +1624,11 @@ type TpvGUIObject=class;
        procedure Center;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        procedure PerformLayout; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       public
        property FontColor;
@@ -1537,7 +1638,7 @@ type TpvGUIObject=class;
        property Title:TpvUTF8String read fTitle write SetTitle;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write SetWindowFlags;
        property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
-       property Modal:boolean read GetModal write SetModal;
+       property Modal:Boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIPanel read GetButtonPanel;
        property Content:TpvGUIPanel read fContent;
        property Menu:TpvGUIWindowMenu read fMenu;
@@ -1605,7 +1706,7 @@ type TpvGUIObject=class;
                           const aIcon:TObject=nil;
                           const aIconHeight:TpvFloat=36.0); reintroduce; overload;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
       published
        property OnButtonClick:TpvGUIMessageDialogOnButtonClick read fOnButtonClick write fOnButtonClick;
      end;
@@ -1646,27 +1747,27 @@ type TpvGUIObject=class;
 
      TpvGUIPanel=class(TpvGUIWidget)
       private
-       fBackground:boolean;
+       fBackground:Boolean;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Draw; override;
       published
-       property Background:boolean read fBackground write fBackground;
+       property Background:Boolean read fBackground write fBackground;
      end;
 
      TpvGUIColorPanel=class(TpvGUIWidget)
       private
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
-       fSRGB:boolean;
+       fSRGB:Boolean;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Draw; override;
       published
        property RGBA:TpvVector4Property read fRGBAProperty;
-       property SRGB:boolean read fSRGB write fSRGB;
+       property SRGB:Boolean read fSRGB write fSRGB;
      end;
 
      TpvGUIImage=class(TpvGUIWidget)
@@ -1686,7 +1787,7 @@ type TpvGUIObject=class;
       private
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
       protected
        function GetFont:TpvFont; override;
        procedure SetFont(const aFont:TpvFont);
@@ -1699,9 +1800,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       public
@@ -1745,7 +1846,7 @@ type TpvGUIObject=class;
        fButtonGroup:TpvGUIButtonGroup;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
        fIconPosition:TpvGUIButtonIconPosition;
        fIcon:TObject;
        fIconHeight:TpvFloat;
@@ -1754,8 +1855,8 @@ type TpvGUIObject=class;
        procedure ProcessDown(const aPosition:TpvVector2);
        procedure ProcessUp(const aPosition:TpvVector2);
       protected
-       function GetDown:boolean; inline;
-       procedure SetDown(const aDown:boolean); virtual;
+       function GetDown:Boolean; inline;
+       procedure SetDown(const aDown:Boolean); virtual;
        procedure SetCaption(const aCaption:TpvUTF8String);
        procedure SetFont(const aFont:TpvFont);
        function GetFontSize:TpvFloat; override;
@@ -1765,9 +1866,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       public
@@ -1777,7 +1878,7 @@ type TpvGUIObject=class;
        property FontSize write SetFontSize;
        property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
        property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
-       property Down:boolean read GetDown write SetDown;
+       property Down:Boolean read GetDown write SetDown;
        property Caption:TpvUTF8String read fCaption write SetCaption;
        property IconPosition:TpvGUIButtonIconPosition read fIconPosition write fIconPosition;
        property Icon:TObject read fIcon write fIcon;
@@ -1804,7 +1905,7 @@ type TpvGUIObject=class;
        fPopup:TpvGUIPopup;
        fToFocusWidget:TpvGUIWidget;
       protected
-       procedure SetDown(const aDown:boolean); override;
+       procedure SetDown(const aDown:Boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        procedure PerformLayout; override;
@@ -1817,7 +1918,7 @@ type TpvGUIObject=class;
       private
        fPopupMenu:TpvGUIPopupMenu;
       protected
-       procedure SetDown(const aDown:boolean); override;
+       procedure SetDown(const aDown:Boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        procedure Draw; override;
@@ -1849,12 +1950,12 @@ type TpvGUIObject=class;
        fCheckBoxGroup:TpvGUICheckBoxGroup;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
        fOnChange:TpvGUIOnEvent;
-       function GetPushed:boolean; inline;
-       procedure SetPushed(const aPushed:boolean); inline;
-       function GetChecked:boolean; inline;
-       procedure SetChecked(const aChecked:boolean);
+       function GetPushed:Boolean; inline;
+       procedure SetPushed(const aPushed:Boolean); inline;
+       function GetChecked:Boolean; inline;
+       procedure SetChecked(const aChecked:Boolean);
       protected
        function GetHighlightRect:TpvRect; override;
        function GetFont:TpvFont; override;
@@ -1868,9 +1969,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       public
@@ -1881,8 +1982,8 @@ type TpvGUIObject=class;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
        property TextTruncation write SetTextTruncation;
-       property Pushed:boolean read GetPushed write SetPushed;
-       property Checked:boolean read GetChecked write SetChecked;
+       property Pushed:Boolean read GetPushed write SetPushed;
+       property Checked:Boolean read GetChecked write SetChecked;
        property Caption:TpvUTF8String read fCaption write SetCaption;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
@@ -1892,12 +1993,14 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
      end;
 
-     TpvGUITextEditOnCheckText=function(const aText:TpvUTF8String):boolean of object;
+     TpvGUITextEditOnCheckText=function(const aText:TpvUTF8String):Boolean of object;
+
+     { TpvGUITextEdit }
 
      TpvGUITextEdit=class(TpvGUIWidget)
       private
-       fEditable:boolean;
-       fSpinnable:boolean;
+       fEditable:Boolean;
+       fSpinnable:Boolean;
        fText:TpvUTF8String;
        fTextGlyphRects:TpvCanvasTextGlyphRects;
        fCountTextGlyphRects:TpvInt32;
@@ -1911,48 +2014,56 @@ type TpvGUIObject=class;
        fTime:TpvDouble;
        fDragRect:TpvRect;
        fPopupMenu:TpvGUIPopupMenu;
+       fMenuItemCut:TpvGUIMenuItem;
+       fMenuItemCopy:TpvGUIMenuItem;
+       fMenuItemPaste:TpvGUIMenuItem;
+       fMenuItemDelete:TpvGUIMenuItem;
+       fMenuItemSelectAll:TpvGUIMenuItem;
+       fMenuItemSelectNone:TpvGUIMenuItem;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
        fOnCheckText:TpvGUITextEditOnCheckText;
+       procedure PopupMenuOnActivate(const aSender:TpvGUIObject);
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
-       property Spinnable:boolean read fSpinnable write fSpinnable;
+      private
+       property Spinnable:Boolean read fSpinnable write fSpinnable;
       protected
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
-       function GetEditable:boolean;
-       procedure SetEditable(const aEditable:boolean);
+       function GetEditable:Boolean;
+       procedure SetEditable(const aEditable:Boolean);
        procedure UpdateText; virtual;
-       function CheckText(const aText:TpvUTF8String):boolean; virtual;
+       function CheckText(const aText:TpvUTF8String):Boolean; virtual;
        function GetText:TpvUTF8String; virtual;
        procedure SetText(const aText:TpvUTF8String); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
        procedure CutSelectedText;
        procedure CopySelectedText;
        procedure PasteText;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
        property Font;
        property FontSize;
-       property Editable:boolean read GetEditable write SetEditable;
+       property Editable:Boolean read GetEditable write SetEditable;
        property Text:TpvUTF8String read GetText write SetText;
        property MinimumWidth:TpvFloat read fMinimumWidth write fMinimumWidth;
        property MinimumHeight:TpvFloat read fMinimumHeight write fMinimumHeight;
@@ -1964,27 +2075,33 @@ type TpvGUIObject=class;
        property TextTruncation;
      end;
 
+     { TpvGUIIntegerEdit }
+
      TpvGUIIntegerEdit=class(TpvGUITextEdit)
       private
        fMinimumValue:TpvInt64;
        fMaximumValue:TpvInt64;
        fSmallStep:TpvInt64;
        fLargeStep:TpvInt64;
-       procedure UpdateText; override;
+       procedure Accept;
        procedure ApplyMinMaxValueBounds;
        procedure SetMinimumValue(const aMinimumValue:TpvInt64);
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        function GetValue:TpvInt64;
        procedure SetValue(const aValue:TpvInt64);
-       function CheckText(const aText:TpvUTF8String):boolean; override;
+      protected
+       procedure UpdateText; override;
+       function CheckText(const aText:TpvUTF8String):Boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
       published
        property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
        property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
@@ -1994,6 +2111,8 @@ type TpvGUIObject=class;
        property Spinnable;
      end;
 
+     { TpvGUIFloatEdit }
+
      TpvGUIFloatEdit=class(TpvGUITextEdit)
       private
        fMinimumValue:TpvDouble;
@@ -2001,21 +2120,25 @@ type TpvGUIObject=class;
        fSmallStep:TpvDouble;
        fLargeStep:TpvDouble;
        fDigits:TpvInt32;
-       procedure UpdateText; override;
+       procedure Accept;
        procedure ApplyMinMaxValueBounds;
        procedure SetMinimumValue(const aMinimumValue:TpvDouble);
        procedure SetMaximumValue(const aMaximumValue:TpvDouble);
        function GetValue:TpvDouble;
        procedure SetValue(const aValue:TpvDouble);
-       function CheckText(const aText:TpvUTF8String):boolean; override;
+      protected
+       procedure UpdateText; override;
+       function CheckText(const aText:TpvUTF8String):Boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
       published
        property MinimumValue:TpvDouble read fMinimumValue write SetMinimumValue;
        property MaximumValue:TpvDouble read fMaximumValue write SetMaximumValue;
@@ -2045,16 +2168,16 @@ type TpvGUIObject=class;
        fRect:TpvRect;
        fOpenRect:TpvRect;
        fOnClick:TpvGUIOnEvent;
-       function GetEnabled:boolean; inline;
-       procedure SetEnabled(const aEnabled:boolean); inline;
-       function GetSelectable:boolean; inline;
+       function GetEnabled:Boolean; inline;
+       procedure SetEnabled(const aEnabled:Boolean); inline;
+       function GetSelectable:Boolean; inline;
        function GetMenu:TpvGUIPopupMenu;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
       published
-       property Enabled:boolean read GetEnabled write SetEnabled;
-       property Selectable:boolean read GetSelectable;
+       property Enabled:Boolean read GetEnabled write SetEnabled;
+       property Selectable:Boolean read GetSelectable;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property ShortcutHint:TpvUTF8String read fShortcutHint write fShortcutHint;
        property Icon:TObject read fIcon write fIcon;
@@ -2072,12 +2195,14 @@ type TpvGUIObject=class;
        fPosition:TpvVector2;
        fPositionProperty:TpvVector2Property;
        fSize:TpvVector2;
-       fHasSubMenus:boolean;
-       fReleaseOnDeactivation:boolean;
+       fHasSubMenus:Boolean;
+       fReleaseOnDeactivation:Boolean;
        fSelectedMenuItem:TpvGUIMenuItem;
        fFocusedMenuItem:TpvGUIMenuItem;
        fHoveredMenuItem:TpvGUIMenuItem;
-       function GetActivated:boolean;
+       fOnActivate:TpvGUIOnEvent;
+       fOnDeactivate:TpvGUIOnEvent;
+       function GetActivated:Boolean;
       protected
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
@@ -2092,19 +2217,21 @@ type TpvGUIObject=class;
        procedure Deactivate;
        procedure DeactivateWindowMenu;
        procedure DeactivateSubmenus;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
        procedure Draw(const aDrawEngine:TpvGUIDrawEngine);
       public
        property FontColor:TpvVector4 read GetFontColor write fFontColor;
       published
-       property Activated:boolean read GetActivated;
+       property Activated:Boolean read GetActivated;
        property Skin:TpvGUISkin read GetSkin write SetSkin;
        property Font:TpvFont read GetFont write fFont;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
        property Position:TpvVector2Property read fPositionProperty;
-       property ReleaseOnDeactivation:boolean read fReleaseOnDeactivation write fReleaseOnDeactivation;
+       property ReleaseOnDeactivation:Boolean read fReleaseOnDeactivation write fReleaseOnDeactivation;
+       property OnActivate:TpvGUIOnEvent read fOnActivate write fOnActivate;
+       property OnDeactivate:TpvGUIOnEvent read fOnDeactivate write fOnDeactivate;
      end;
 
      TpvGUIWindowMenu=class(TpvGUIWidget)
@@ -2118,11 +2245,11 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       published
      end;
@@ -2153,8 +2280,8 @@ type TpvGUIObject=class;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
        fThumbButtonSize:TpvFloat;
-       fSliderPushed:boolean;
-       fDragActive:boolean;
+       fSliderPushed:Boolean;
+       fDragActive:Boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
        fPushedSubWidget:TpvGUIScrollBarSubWidget;
@@ -2173,15 +2300,15 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
       published
@@ -2222,7 +2349,7 @@ type TpvGUIObject=class;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
        fThumbButtonSize:TpvFloat;
-       fSliderPushed:boolean;
+       fSliderPushed:Boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUISliderSubWidget;
        fPushedSubWidget:TpvGUISliderSubWidget;
@@ -2239,15 +2366,15 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       published
        property Orientation:TpvGUISliderOrientation read fOrientation write SetOrientation;
@@ -2337,34 +2464,44 @@ type TpvGUIObject=class;
      PpvGUITabFlags=^TpvGUITabFlags;
      TpvGUITabFlags=set of TpvGUITabFlag;
 
+     { TpvGUITab }
+
      TpvGUITab=class(TCollectionItem)
       private
+       fOwner:TpvGUITabPanel;
        fFlags:TpvGUITabFlags;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
-       fCachedCaptionInvalidated:boolean;
+       fCachedCaptionInvalidated:Boolean;
        fData:TObject;
        fContent:TpvGUIWidget;
        fTag:TpvSizeInt;
        fPosition:TpvVector2;
        fSize:TpvVector2;
        fRect:TpvRect;
+       fOnDestroy:TpvGUIOnTabEvent;
        procedure SetCaption(const aCaption:TpvUTF8String);
-       function GetModified:boolean; inline;
-       procedure SetModified(const aModified:boolean);
-       function GetSelected:boolean; inline;
-       procedure SetSelected(const aSelected:boolean);
+       function GetModified:Boolean; inline;
+       procedure SetModified(const aModified:Boolean);
+       function GetSelected:Boolean; inline;
+       procedure SetSelected(const aSelected:Boolean);
       public
        constructor Create(aCollection:TCollection); override;
        destructor Destroy; override;
+       procedure BeforeDestruction; override;
+       procedure Close;
        property Data:TObject read fData write fData;
        property Content:TpvGUIWidget read fContent write fContent;
       published
+       property Owner:TpvGUITabPanel read fOwner;
        property Caption:TpvUTF8String read fCaption write SetCaption;
-       property Modified:boolean read GetModified write SetModified;
-       property Selected:boolean read GetSelected write SetSelected;
+       property Modified:Boolean read GetModified write SetModified;
+       property Selected:Boolean read GetSelected write SetSelected;
+       property OnDestroy:TpvGUIOnTabEvent read fOnDestroy write fOnDestroy;
        property Tag:TpvSizeInt read fTag write fTag;
      end;
+
+     { TpvGUITabList }
 
      TpvGUITabList=class(TCollection)
       private
@@ -2372,6 +2509,7 @@ type TpvGUIObject=class;
        function GetItem(const aIndex:TpvSizeInt):TpvGUITab; inline;
        procedure SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab); inline;
       protected
+       procedure Notify(Item:Classes.TCollectionItem;Action:Classes.TCollectionNotification); override;
       public
        constructor Create(const aOwner:TpvGUITabPanel); reintroduce;
        destructor Destroy; override;
@@ -2384,7 +2522,7 @@ type TpvGUIObject=class;
        property Items[const aIndex:TpvSizeInt]:TpvGUITab read GetItem write SetItem; default;
      end;
 
-     TpvGUITabPanelOnTabEvent=function(const aSender:TObject;const aTab:TpvGUITab):boolean of object;
+     TpvGUITabPanelOnTabEvent=function(const aSender:TObject;const aTab:TpvGUITab):Boolean of object;
 
      PpvGUITabPanelFlag=^TpvGUITabPanelFlag;
      TpvGUITabPanelFlag=
@@ -2399,6 +2537,8 @@ type TpvGUIObject=class;
      PpvGUITabPanelFlags=^TpvGUITabPanelFlags;
      TpvGUITabPanelFlags=set of TpvGUITabPanelFlag;
 
+     { TpvGUITabPanel }
+
      TpvGUITabPanel=class(TpvGUIWidget)
       private
        fFlags:TpvGUITabPanelFlags;
@@ -2412,15 +2552,18 @@ type TpvGUIObject=class;
        fContent:TpvGUIPanel;
        fOnTabSelected:TpvGUITabPanelOnTabEvent;
        fOnTabUnselected:TpvGUITabPanelOnTabEvent;
+       fDestroying:Boolean;
        procedure SetContentMargin(const aContentMargin:TpvFloat);
-       function GetVisibleHeader:boolean; inline;
-       procedure SetVisibleHeader(const aVisibleHeader:boolean);
-       function GetVisibleContent:boolean; inline;
-       procedure SetVisibleContent(const aVisibleContent:boolean);
-       function GetVisibleContentBackground:boolean; inline;
-       procedure SetVisibleContentBackground(const aVisibleContentBackground:boolean);
+       function GetVisibleHeader:Boolean; inline;
+       procedure SetVisibleHeader(const aVisibleHeader:Boolean);
+       function GetVisibleContent:Boolean; inline;
+       procedure SetVisibleContent(const aVisibleContent:Boolean);
+       function GetVisibleContentBackground:Boolean; inline;
+       procedure SetVisibleContentBackground(const aVisibleContentBackground:Boolean);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+      private
        procedure SetTabs(const aTabs:TpvGUITabList);
        function GetTabIndex:TpvSizeInt;
        procedure SetTabIndex(const aTabIndex:TpvSizeInt);
@@ -2430,16 +2573,17 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       procedure BeforeDestruction; override;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
       published
        property Tabs:TpvGUITabList read fTabs write SetTabs;
@@ -2447,9 +2591,9 @@ type TpvGUIObject=class;
        property Tab:TpvGUITab read GetTab write SetTab;
        property Content:TpvGUIPanel read fContent;
        property ContentMargin:TpvFloat read fContentMargin write SetContentMargin;
-       property VisibleHeader:boolean read GetVisibleHeader write SetVisibleHeader;
-       property VisibleContent:boolean read GetVisibleContent write SetVisibleContent;
-       property VisibleContentBackground:boolean read GetVisibleContentBackground write SetVisibleContentBackground;
+       property VisibleHeader:Boolean read GetVisibleHeader write SetVisibleHeader;
+       property VisibleContent:Boolean read GetVisibleContent write SetVisibleContent;
+       property VisibleContentBackground:Boolean read GetVisibleContentBackground write SetVisibleContentBackground;
        property OnTabSelected:TpvGUITabPanelOnTabEvent read fOnTabSelected write fOnTabSelected;
        property OnTabUnselected:TpvGUITabPanelOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
@@ -2473,9 +2617,11 @@ type TpvGUIObject=class;
        Mark
       );
 
-     TpvGUIListBoxOnDrawItem=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+     TpvGUIListBoxOnDrawItem=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):Boolean of object;
 
      TpvGUIListBoxOnGetItemText=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
+
+     { TpvGUIListBox }
 
      TpvGUIListBox=class(TpvGUIWidget)
       private
@@ -2489,21 +2635,26 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
+       fOnDoubleClick:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIListBoxOnDrawItem;
        fOnGetItemText:TpvGUIListBoxOnGetItemText;
        fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
        fAction:TpvGUIListBoxAction;
        fActionStartIndex:TpvSizeInt;
        fActionStopIndex:TpvSizeInt;
+       fDoubleClickTimeAccumulator:double;
+       fDoubleClickCounter:TpvSizeInt;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
-       function GetSelected(const aItemIndex:TpvSizeInt):boolean;
-       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
-       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
-       function GetMultiSelect:boolean; inline;
-       procedure SetMultiSelect(const aMultiSelect:boolean);
+       function GetSelected(const aItemIndex:TpvSizeInt):Boolean;
+       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
+       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
+       function GetMultiSelect:Boolean; inline;
+       procedure SetMultiSelect(const aMultiSelect:Boolean);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+      private
        function GetCountVisibleItems:TpvSizeInt;
        procedure AdjustScrollBar;
        procedure UpdateScrollBar;
@@ -2512,30 +2663,32 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure ClearSelection;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure Check; override;
        procedure Draw; override;
-       property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
+       property Selected[const aItemIndex:TpvSizeInt]:Boolean read GetSelected write SetSelected;
       published
        property Items:TStrings read fItems write SetItems;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
-       property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
+       property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawItem:TpvGUIListBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
 
-     TpvGUIComboBoxOnDrawItem=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+     TpvGUIComboBoxOnDrawItem=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):Boolean of object;
 
      TpvGUIComboBoxOnGetItemText=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
 
@@ -2549,34 +2702,35 @@ type TpvGUIObject=class;
        fItemIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkRowHeight:TpvFloat;
-       fClosePopup:boolean;
+       fClosePopup:Boolean;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIComboBoxOnDrawItem;
        fOnGetItemText:TpvGUIComboBoxOnGetItemText;
        procedure PopupButtonOnChange(const aSender:TpvGUIObject);
-       function PopupOnEnter(const aSender:TpvGUIObject):boolean;
-       function PopupOnLeave(const aSender:TpvGUIObject):boolean;
+       function PopupOnEnter(const aSender:TpvGUIObject):Boolean;
+       function PopupOnLeave(const aSender:TpvGUIObject):Boolean;
        procedure ListBoxOnChangeItemIndex(const aSender:TpvGUIObject);
-       function ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
@@ -2599,16 +2753,17 @@ type TpvGUIObject=class;
 
      TpvGUISplitterPanelGripButton=class(TpvGUIWidget)
       private
-       fDown:boolean;
+       fDown:Boolean;
+      protected
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Draw; override;
      end;
 
@@ -2620,7 +2775,7 @@ type TpvGUIObject=class;
        fLeftTopPanel:TpvGUIPanel;
        fRightBottomPanel:TpvGUIPanel;
        fGripButton:TpvGUISplitterPanelGripButton;
-       fDirty:boolean;
+       fDirty:Boolean;
        procedure SetOrientation(const aOrientation:TpvGUISplitterPanelOrientation);
        procedure SetGripSize(const aGripSize:TpvFloat);
        procedure SetPartitionFactor(const aPartitionFactor:TpvFloat);
@@ -2660,17 +2815,17 @@ type TpvGUIObject=class;
        fFind:TpvUTF8String;
        fRegularExpression:TpvTextEditor.TRegularExpression;
        fReplace:TpvUTF8String;
-       fUseRegularExpression:boolean;
-       fWholeWords:boolean;
-       fCaseInsensitive:boolean;
-       fMultiLine:boolean;
-       fReplaceAll:boolean;
-       fPromptOnReplace:boolean;
-       fSearchSelection:boolean;
-       fEntrieScope:boolean;
-       fDoReplace:boolean;
-       fDoIt:boolean;
-       fDoRefocusTextEditor:boolean;
+       fUseRegularExpression:Boolean;
+       fWholeWords:Boolean;
+       fCaseInsensitive:Boolean;
+       fMultiLine:Boolean;
+       fReplaceAll:Boolean;
+       fPromptOnReplace:Boolean;
+       fSearchSelection:Boolean;
+       fEntrieScope:Boolean;
+       fDoReplace:Boolean;
+       fDoIt:Boolean;
+       fDoRefocusTextEditor:Boolean;
        fCodePointIndex:TpvSizeInt;
        fSelectionStart:TpvSizeInt;
        fSelectionEnd:TpvSizeInt;
@@ -2684,9 +2839,25 @@ type TpvGUIObject=class;
        procedure Process;
      end;
 
+     TpvGUIMultiLineTextEditOnLineColor=function(const aLine:TpvSizeInt;out aColor:TpvVector4):Boolean of object;
+
+     { TpvGUIMultiLineTextEdit }
+
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
       private
        fPopupMenu:TpvGUIPopupMenu;
+       fMenuItemCut:TpvGUIMenuItem;
+       fMenuItemCopy:TpvGUIMenuItem;
+       fMenuItemPaste:TpvGUIMenuItem;
+       fMenuItemDelete:TpvGUIMenuItem;
+       fMenuItemSelectAll:TpvGUIMenuItem;
+       fMenuItemSelectNone:TpvGUIMenuItem;
+       fMenuItemUndo:TpvGUIMenuItem;
+       fMenuItemRedo:TpvGUIMenuItem;
+       fMenuItemGoToLineNumber:TpvGUIMenuItem;
+       fMenuItemSearch:TpvGUIMenuItem;
+       fMenuItemFindNext:TpvGUIMenuItem;
+       fMenuItemReplace:TpvGUIMenuItem;
        fSpacerPanel:TpvGUIPanel;
        fHorizontalScrollBar:TpvGUIScrollBar;
        fVerticalScrollBar:TpvGUIScrollBar;
@@ -2707,12 +2878,13 @@ type TpvGUIObject=class;
        fViewNonScrollMaximumVisibleColumnWidth:TpvSizeInt;
        fViewNonScrollCountVisibleLines:TpvSizeInt;
        fTime:TpvDouble;
-       fDirty:boolean;
-       fLeftSideBar:boolean;
-       fEditable:boolean;
-       fOverwrite:boolean;
-       fOldLineWrap:boolean;
-       fLineWrap:boolean;
+       fDirty:Boolean;
+       fViewDirty:Boolean;
+       fLeftSideBar:Boolean;
+       fEditable:Boolean;
+       fOverwrite:Boolean;
+       fOldLineWrap:Boolean;
+       fLineWrap:Boolean;
        fVisibleAreaRect:TpvRect;
        fLeftSideBarAreaRect:TpvRect;
        fTextAreaRect:TpvRect;
@@ -2720,11 +2892,16 @@ type TpvGUIObject=class;
        fFontCharSize:TpvVector2;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
+       fOnStatusChange:TpvGUIOnEvent;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
-       procedure OpenSearchReplaceDialog(const aReplace:boolean);
+       fOnLeftSideBarLineColor:TpvGUIMultiLineTextEditOnLineColor;
+       fOnLineColor:TpvGUIMultiLineTextEditOnLineColor;
+       procedure SetViewDirty;
+       procedure OpenSearchReplaceDialog(const aReplace:Boolean);
        procedure FindNext;
+       procedure PopupMenuOnActivate(const aSender:TpvGUIObject);
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -2737,12 +2914,15 @@ type TpvGUIObject=class;
        procedure PopupMenuOnSearchClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
+       procedure SetFont(const aFont:TpvFont);
+       procedure SetFontSize(const aFontSize:TpvFloat);
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
        procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
        procedure SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
        procedure HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
        procedure VerticalScrollBarOnChange(const aSender:TpvGUIObject);
+      protected
        function GetFont:TpvFont; override;
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
@@ -2750,22 +2930,25 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
        procedure CutSelectedText;
        procedure CopySelectedText;
        procedure PasteText;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure SetDirty;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
+       property Font read GetFont write SetFont;
+       property FontSize read GetFontSize write SetFontSize;
        property HorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection read fHorizontalScrollDirection write SetHorizontalScrollDirection;
        property VerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection read fVerticalScrollDirection write SetVerticalScrollDirection;
        property HorizontalScrollBar:TpvGUIScrollBar read fHorizontalScrollBar;
@@ -2773,12 +2956,15 @@ type TpvGUIObject=class;
        property TextEditor:TpvTextEditor read fTextEditor;
        property View:TpvTextEditor.TView read fView;
        property Text:TpvUTF8String read GetText write SetText;
-       property LeftSideBar:boolean read fLeftSideBar write fLeftSideBar;
-       property Editable:boolean read fEditable write fEditable;
-       property Overwrite:boolean read fOverwrite write fOverwrite;
-       property LineWrap:boolean read fLineWrap write fLineWrap;
+       property LeftSideBar:Boolean read fLeftSideBar write fLeftSideBar;
+       property Editable:Boolean read fEditable write fEditable;
+       property Overwrite:Boolean read fOverwrite write fOverwrite;
+       property LineWrap:Boolean read fLineWrap write fLineWrap;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnStatusChange:TpvGUIOnEvent read fOnStatusChange write fOnStatusChange;
+       property OnLeftSideBarLineColor:TpvGUIMultiLineTextEditOnLineColor read fOnLeftSideBarLineColor write fOnLeftSideBarLineColor;
+       property OnLineColor:TpvGUIMultiLineTextEditOnLineColor read fOnLineColor write fOnLineColor;
      end;
 
      TpvGUIMultiLineTextEditSearchReplaceWindow=class(TpvGUIWindow)
@@ -2805,17 +2991,17 @@ type TpvGUIObject=class;
        fCheckBoxPromptOnReplace:TpvGUICheckBox;
        fCheckBoxSearchSelection:TpvGUICheckBox;
        fCheckBoxEntrieScope:TpvGUICheckBox;
-       fReplace:boolean;
-       function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       fReplace:Boolean;
+       function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure NewSearchReplaceState;
        procedure ButtonFindOnClick(const aSender:TpvGUIObject);
        procedure ButtonReplaceOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
-       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean); reintroduce;
+       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:Boolean); reintroduce;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
      end;
 
      TpvGUIMultiLineTextEditGoToLineWindow=class(TpvGUIWindow)
@@ -2827,19 +3013,19 @@ type TpvGUIObject=class;
        fPanelButtons:TpvGUIPanel;
        fButtonOK:TpvGUIButton;
        fButtonCancel:TpvGUIButton;
-       function IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure ButtonOKOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
        constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
      end;
 
      TpvGUIVulkanCanvas=class(TpvGUIWidget)
       private
-       fDrawRects:array[0..1] of TpvRect;
-       fClipRects:array[0..1] of TpvRect;
+       fDrawRects:array[0..MaxInFlightFrames-1] of TpvRect;
+       fClipRects:array[0..MaxInFlightFrames-1] of TpvRect;
       protected
        procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
        procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
@@ -2857,7 +3043,7 @@ type TpvGUIObject=class;
        fHSVProperty:TpvVector3Property;
        fRGB:TpvVector3;
        fRGBProperty:TpvVector3Property;
-       fSRGB:boolean;
+       fSRGB:Boolean;
        fDrawOffset:TpvVector2;
        fDrawSize:TpvVector2;
        fMode:TpvInt32;
@@ -2867,16 +3053,16 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
       published
        property HSV:TpvVector3Property read fHSVProperty;
        property RGB:TpvVector3Property read fRGBProperty;
-       property SRGB:boolean read fSRGB write fSRGB;
+       property SRGB:Boolean read fSRGB write fSRGB;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
@@ -2886,7 +3072,7 @@ type TpvGUIObject=class;
        fHSVProperty:TpvVector3Property;
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
-       fSRGB:boolean;
+       fSRGB:Boolean;
        fOnChange:TpvGUIOnEvent;
        fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
        fColorWheel:TpvGUIColorWheel;
@@ -2910,7 +3096,7 @@ type TpvGUIObject=class;
        fFloatEditB:TpvGUIFloatEdit;
        fLabelA:TpvGUILabel;
        fFloatEditA:TpvGUIFloatEdit;
-       procedure SetSRGB(const aSRGB:boolean);
+       procedure SetSRGB(const aSRGB:Boolean);
        procedure UpdateEditFields;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
@@ -2933,7 +3119,7 @@ type TpvGUIObject=class;
       published
        property HSV:TpvVector3Property read fHSVProperty;
        property RGBA:TpvVector4Property read fRGBAProperty;
-       property SRGB:boolean read fSRGB write SetSRGB;
+       property SRGB:Boolean read fSRGB write SetSRGB;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
@@ -2947,14 +3133,14 @@ type TpvGUIObject=class;
              );
       private
        fAlignment:TAlignment;
-       fAutoSize:boolean;
+       fAutoSize:Boolean;
        fCaption:TpvUTF8String;
        fWidth:TpvFloat;
        fStretch:TpvFloat;
        fMinWidth:TpvFloat;
        fMaxWidth:TpvFloat;
        fTag:TpvSizeInt;
-       fVisible:boolean;
+       fVisible:Boolean;
        fWorkWidth:TpvFloat;
        fRect:TpvRect;
       protected
@@ -2967,14 +3153,14 @@ type TpvGUIObject=class;
        procedure Assign(Source:TPersistent); override;
       published
        property Alignment:TAlignment read fAlignment write fAlignment default TAlignment.Leading;
-       property AutoSize:boolean read fAutoSize write fAutoSize default false;
+       property AutoSize:Boolean read fAutoSize write fAutoSize default false;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Width:TpvFloat read GetStoredWidth write fWidth;
        property Stretch:TpvFloat read fStretch write fStretch;
        property MinWidth:TpvFloat read fMinWidth write fMinWidth;
        property MaxWidth:TpvFloat read fMaxWidth write fMaxWidth;
        property Tag:TpvSizeInt read fTag write fTag default 0;
-       property Visible:boolean read fVisible write fVisible default true;
+       property Visible:Boolean read fVisible write fVisible default true;
      end;
 
      TpvGUIListViewColumns=class(TCollection)
@@ -2990,9 +3176,9 @@ type TpvGUIObject=class;
        fParent:TpvGUIListViewItems;
        fCaption:TpvUTF8String;
        fData:pointer;
-       fFocused:boolean;
+       fFocused:Boolean;
        fImage:TObject;
-       fSelected:boolean;
+       fSelected:Boolean;
        fSubItems:TStrings;
        fTag:TpvSizeInt;
        fRect:TpvRect;
@@ -3007,9 +3193,9 @@ type TpvGUIObject=class;
       published
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Index:TpvSizeInt read GetIndex;
-       property Focused:boolean read fFocused write fFocused;
+       property Focused:Boolean read fFocused write fFocused;
        property Image:TObject read fImage write fImage;
-       property Selected:boolean read fSelected write fSelected;
+       property Selected:Boolean read fSelected write fSelected;
        property SubItems:TStrings read fSubItems write SetSubItems;
        property Tag:TpvSizeInt read fTag write fTag default 0;
      end;
@@ -3041,7 +3227,7 @@ type TpvGUIObject=class;
        Mark
       );
 
-     TpvGUIListViewOnDrawItem=function(const aSender:TpvGUIListView;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+     TpvGUIListViewOnDrawItem=function(const aSender:TpvGUIListView;const aItemIndex:TpvSizeInt;const aRect:TpvRect):Boolean of object;
 
      TpvGUIListViewOnGetItemText=function(const aSender:TpvGUIListView;const aItemIndex,aSubItemIndex:TpvSizeInt):TpvUTF8String of object;
 
@@ -3083,15 +3269,17 @@ type TpvGUIObject=class;
        procedure SetViewMode(const aViewMode:TViewMode);
        procedure SetItems(const aItems:TpvGUIListViewItems);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
-       function GetSelected(const aItemIndex:TpvSizeInt):boolean;
-       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
-       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
-       function GetMultiSelect:boolean; inline;
-       procedure SetMultiSelect(const aMultiSelect:boolean);
-       function GetHeader:boolean; inline;
-       procedure SetHeader(const aHeader:boolean);
+       function GetSelected(const aItemIndex:TpvSizeInt):Boolean;
+       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
+       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
+       function GetMultiSelect:Boolean; inline;
+       procedure SetMultiSelect(const aMultiSelect:Boolean);
+       function GetHeader:Boolean; inline;
+       procedure SetHeader(const aHeader:Boolean);
+      protected
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+      private
        function GetCountItemsPerRow:TpvSizeInt;
        function GetCountVisibleRows:TpvSizeInt;
        function GetCountVisibleItems:TpvSizeInt;
@@ -3102,18 +3290,18 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure ClearSelection;
        procedure PerformLayout; override;
-       function Enter:boolean; override;
-       function Leave:boolean; override;
-       function PointerEnter:boolean; override;
-       function PointerLeave:boolean; override;
-       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
-       function DragReleaseEvent:boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
        procedure Check; override;
        procedure Draw; override;
-       property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
+       property Selected[const aItemIndex:TpvSizeInt]:Boolean read GetSelected write SetSelected;
       published
        property ViewMode:TViewMode read fViewMode write SetViewMode;
        property Columns:TpvGUIListViewColumns read fColumns;
@@ -3122,14 +3310,255 @@ type TpvGUIObject=class;
        property ItemWidth:TpvFloat read fItemWidth write fItemWidth;
        property ItemHeight:TpvFloat read fItemHeight write fItemHeight;
        property HeaderHeight:TpvFloat read fHeaderHeight write fHeaderHeight;
-       property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
-       property Header:boolean read GetHeader write SetHeader;
+       property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
+       property Header:Boolean read GetHeader write SetHeader;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
        property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawItem:TpvGUIListViewOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListViewOnGetItemText read fOnGetItemText write fOnGetItemText;
+     end;
+
+     TpvGUITreeNodes=class(TpvObjectGenericList<TpvGUITreeNode>);
+
+     TpvGUITreeNodeStack=TpvDynamicStack<TpvGUITreeNode>;
+
+     TpvGUITreeNodeBooleanHashMap=TpvHashMap<TpvGUITreeNode,Boolean>;
+
+     TpvGUITreeNode=class
+      public
+       type TFlag=
+             (
+              OwnsDataObject,
+              Selected,
+              Expanded,
+              Visible,
+              CheckBox,
+              Checked
+             );
+            PFlag=^TFlag;
+            TFlags=set of TFlag;
+            TVisualKind=
+             (
+              None,
+              First,
+              Both,
+              Last
+             );
+      private
+       fTreeView:TpvGUITreeView;
+       fParent:TpvGUITreeNode;
+       fChildren:TpvGUITreeNodes;
+       fCaption:TpvUTF8String;
+       fIcon:TObject;
+       fIconHeight:TpvFloat;
+       fIconPaddingLeft:TpvFloat;
+       fIconPaddingRight:TpvFloat;
+       fIconPaddingVertical:TpvFloat;
+       fGUIObjectMargin:TpvFloat;
+       fGUIObjectPadding:TpvFloat;
+       fGUIObjectHorziontalAlignment:TpvGUILayoutAlignment;
+       fGUIObjectVerticalAlignment:TpvGUILayoutAlignment;
+       fFlags:TFlags;
+       fDepth:TpvSizeInt;
+       fDerivedVisibleCount:TpvSizeInt;
+       fNodeIndex:TpvSizeInt;
+       fGUIObjects:TpvGUIObjectList;
+       fTag:TpvPtrUInt;
+       fDataObject:TObject;
+       fVisualKind:TpvGUITreeNode.TVisualKind;
+       fFirstVisualChild:TpvGUITreeNode;
+       fLastVisualChild:TpvGUITreeNode;
+       function GetIndex:TpvSizeInt; inline;
+       procedure SetParentEx(const aParent:TpvGUITreeNode);
+       procedure SetParent(const aParent:TpvGUITreeNode);
+       function GetOwnsDataObject:boolean; inline;
+       procedure SetOwnsDataObject(const aOwnsDataObject:boolean);
+       function GetSelected:boolean; inline;
+       procedure SetSelected(const aSelected:boolean);
+       function GetExpanded:boolean; inline;
+       procedure SetExpanded(const aExpanded:boolean);
+       function GetVisible:boolean; inline;
+       procedure SetVisible(const aVisible:boolean);
+       function GetCheckBox:boolean; inline;
+       procedure SetCheckBox(const aCheckBox:boolean);
+       function GetChecked:boolean; inline;
+       procedure SetChecked(const aChecked:boolean);
+      protected
+       procedure CreateGUIObjects; virtual;
+       procedure DestroyGUIObjects; virtual;
+       procedure UpdateGUIObjects; virtual;
+      public
+       constructor Create(const aParent:TpvGUITreeNode=nil;const aIndex:TpvSizeInt=-1;const aCaption:TpvUTF8String='';const aTag:TpvPtrUInt=0;const aDataObject:TObject=nil;const aOwnsDataObject:boolean=false); reintroduce;
+       destructor Destroy; override;
+       function Add(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+       function Insert(const aIndex:TpvSizeInt;const aNode:TpvGUITreeNode):TpvGUITreeNode;
+       procedure Exchange(const aIndex,aWithIndex:TpvSizeInt); overload;
+       procedure Exchange(const aNode,aWithNode:TpvGUITreeNode); overload;
+       function Extract(const aIndex:TpvSizeInt):TpvGUITreeNode; overload;
+       function Extract(const aNode:TpvGUITreeNode):TpvGUITreeNode; overload;
+       function Extract:TpvGUITreeNode; overload;
+       function Remove(const aIndex:TpvSizeInt):TpvGUITreeNode; overload;
+       function Remove(const aNode:TpvGUITreeNode):TpvGUITreeNode; overload;
+       function Remove:TpvGUITreeNode; overload;
+       procedure Clear;
+       procedure Collapse;
+       procedure CollapseAll;
+       procedure Expand;
+       procedure ExpandAll;
+       procedure EnsureVisible;
+      public
+       property TreeView:TpvGUITreeView read fTreeView write fTreeView;
+       property Parent:TpvGUITreeNode read fParent write SetParent;
+       property Children:TpvGUITreeNodes read fChildren;
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Flags:TFlags read fFlags write fFlags;
+       property Depth:TpvSizeInt read fDepth;
+       property DerivedVisibleCount:TpvSizeInt read fDerivedVisibleCount;
+       property NodeIndex:TpvSizeInt read fNodeIndex;
+       property GUIObjects:TpvGUIObjectList read fGUIObjects;
+       property Tag:TpvPtrUInt read fTag write fTag;
+       property DataObject:TObject read fDataObject write fDataObject;
+       property Icon:TObject read fIcon write fIcon;
+       property IconHeight:TpvFloat read fIconHeight write fIconHeight;
+       property IconPaddingLeft:TpvFloat read fIconPaddingLeft write fIconPaddingLeft;
+       property IconPaddingRight:TpvFloat read fIconPaddingRight write fIconPaddingRight;
+       property IconPaddingVertical:TpvFloat read fIconPaddingVertical write fIconPaddingVertical;
+       property GUIObjectMargin:TpvFloat read fGUIObjectMargin write fGUIObjectMargin;
+       property GUIObjectPadding:TpvFloat read fGUIObjectPadding write fGUIObjectPadding;
+       property GUIObjectHorziontalAlignment:TpvGUILayoutAlignment read fGUIObjectHorziontalAlignment write fGUIObjectHorziontalAlignment;
+       property GUIObjectVerticalAlignment:TpvGUILayoutAlignment read fGUIObjectVerticalAlignment write fGUIObjectVerticalAlignment;
+      published
+       property OwnsDataObject:boolean read GetOwnsDataObject write SetOwnsDataObject;
+       property Selected:boolean read GetSelected write SetSelected;
+       property Expanded:boolean read GetExpanded write SetExpanded;
+       property Visible:boolean read GetVisible write SetVisible;
+       property CheckBox:boolean read GetCheckBox write SetCheckBox;
+       property Checked:boolean read GetChecked write SetChecked;
+     end;
+
+     TpvGUITreeViewAction=
+      (
+       None,
+       PreMark,
+       Mark
+      );
+     PpvGUITreeViewAction=^TpvGUITreeViewAction;
+
+     TpvGUIOnTreeViewNodeEvent=procedure(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode) of object;
+
+     TpvGUITreeViewOnDrawTreeNode=function(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aRect:TpvRect):Boolean of object;
+
+     TpvGUITreeViewOnGetTreeNodeText=function(const aSender:TpvGUITreeView;const aTreeNode:TpvGUITreeNode):TpvUTF8String of object;
+
+     TpvGUITreeViewFlag=
+      (
+       ShowRootNode,
+       MultiSelect
+      );
+
+     PpvGUITreeViewFlag=^TpvGUITreeViewFlag;
+
+     TpvGUITreeViewFlags=set of TpvGUITreeViewFlag;
+
+     PpvGUITreeViewFlags=^TpvGUITreeViewFlags;
+
+     { TpvGUITreeView }
+
+     TpvGUITreeView=class(TpvGUIWidget)
+      private
+       fHorziontalScrollBar:TpvGUIScrollBar;
+       fVerticalScrollBar:TpvGUIScrollBar;
+       fClipContentPanel:TpvGUIPanel;
+       fContent:TpvGUIPanel;
+       fNodeIndex:TpvSizeInt;
+       fRowHeight:TpvFloat;
+       fWorkYOffset:TpvFloat;
+       fWorkRowHeight:TpvFloat;
+       fIndentWidth:TpvFloat;
+       fWorkIndentWidth:TpvFloat;
+       fMaximumContentWidth:TpvFloat;
+       fCurrentGeneration:TpvUInt64;
+       fLastProcessedGeneration:TpvUInt64;
+       fCurrentCheckGeneration:TpvUInt64;
+       fLastCheckedGeneration:TpvUInt64;
+       fCurrentContentGeneration:TpvUInt64;
+       fLastContentGeneration:TpvUInt64;
+       fFlags:TpvGUITreeViewFlags;
+       fRoot:TpvGUITreeNode;
+       fNodes:TpvGUITreeNodes;
+       fAllNodes:TpvGUITreeNodes;
+       fTreeNodeSelectedHashMap:TpvGUITreeNodeBooleanHashMap;
+       fOnChange:TpvGUIOnEvent;
+       fOnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent;
+       fOnChangeNodeCheckBox:TpvGUIOnTreeViewNodeEvent;
+       fOnChangeNode:TpvGUIOnEvent;
+       fOnChangeSelection:TpvGUIOnEvent;
+       fOnDoubleClick:TpvGUIOnEvent;
+       fOnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode;
+       fOnGetTreeNodeText:TpvGUITreeViewOnGetTreeNodeText;
+       fAction:TpvGUITreeViewAction;
+       fActionStartIndex:TpvSizeInt;
+       fActionStopIndex:TpvSizeInt;
+       fDoubleClickTimeAccumulator:double;
+       fDoubleClickCounter:TpvSizeInt;
+       fLastSize:TpvVector2;
+       function GetShowRootNode:Boolean; inline;
+       procedure SetShowRootNode(const aValue:Boolean);
+       function GetMultiSelect:Boolean; inline;
+       procedure SetMultiSelect(const aValue:Boolean);
+       procedure SetNodeIndex(const aNodeIndex:TpvSizeInt);
+       function GetNode:TpvGUITreeNode; inline;
+       procedure SetNode(const aNode:TpvGUITreeNode);
+       procedure UpdateNodes;
+      protected
+       function GetHighlightRect:TpvRect; override;
+       function GetPreferredSize:TpvVector2; override;
+       procedure InternalClearSelection;
+      private
+       function GetCountVisibleNodes:TpvSizeInt;
+       procedure AdjustScrollBars;
+       procedure UpdateScrollBars;
+       procedure CheckNodeWidths;
+       procedure UpdateGUIObjects;
+       procedure UpdateContent;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure ClearSelection;
+       procedure PerformLayout; override;
+       function Enter:Boolean; override;
+       function Leave:Boolean; override;
+       function PointerEnter:Boolean; override;
+       function PointerLeave:Boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean; override;
+       function DragReleaseEvent:Boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean; override;
+       procedure Check; override;
+       procedure Draw; override;
+      published
+       property HorziontalScrollBar:TpvGUIScrollBar read fHorziontalScrollBar;
+       property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
+       property Content:TpvGUIPanel read fContent;
+       property Root:TpvGUITreeNode read fRoot;
+       property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property IndentWidth:TpvFloat read fIndentWidth write fIndentWidth;
+       property ShowRootNode:Boolean read GetShowRootNode write SetShowRootNode;
+       property MultiSelect:Boolean read GetMultiSelect write SetMultiSelect;
+       property CurrentNode:TpvGUITreeNode read GetNode write SetNode;
+       property Node:TpvGUITreeNode read GetNode write SetNode;
+       property NodeIndex:TpvSizeInt read fNodeIndex write SetNodeIndex;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChangeNodeExpandCollapse:TpvGUIOnTreeViewNodeEvent read fOnChangeNodeExpandCollapse write fOnChangeNodeExpandCollapse;
+       property OnChangeNodeCheckBox:TpvGUIOnTreeViewNodeEvent read fOnChangeNodeCheckBox write fOnChangeNodeCheckBox;
+       property OnChangeNode:TpvGUIOnEvent read fOnChangeNode write fOnChangeNode;
+       property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
+       property OnDrawTreeNode:TpvGUITreeViewOnDrawTreeNode read fOnDrawTreeNode write fOnDrawTreeNode;
+       property OnGetTreeNodeText:TpvGUITreeViewOnGetTreeNodeText read fOnGetTreeNodeText write fOnGetTreeNodeText;
      end;
 
      TpvGUIFileDialogOverwritePromptMessageDialog=class(TpvGUIMessageDialog)
@@ -3142,7 +3571,9 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
-     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:boolean;aFileName:TpvUTF8String) of object;
+     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:Boolean;aFileName:TpvUTF8String) of object;
+
+     { TpvGUIFileDialog }
 
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
@@ -3156,7 +3587,7 @@ type TpvGUIObject=class;
               LowerCaseFileName:TpvUTF8String;
               FileExtension:TpvUTF8String;
               LowerCaseFileExtension:TpvUTF8String;
-              Directory:boolean;
+              Directory:Boolean;
               Size:TpvInt64;
               DateTime:TDateTime;
              end;
@@ -3181,14 +3612,14 @@ type TpvGUIObject=class;
        fDefaultFileExtension:TpvUTF8String;
        fOverwritePromptFileName:TpvUTF8String;
        fListItems:TListItems;
-       fOK:boolean;
-       fOverwritePrompt:boolean;
+       fOK:Boolean;
+       fOverwritePrompt:Boolean;
        fOverwritePromptDialog:TpvGUIFileDialogOverwritePromptMessageDialog;
        fOnResult:TpvGUIFileDialogOnResult;
-       function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-       function ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+       function ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
        procedure ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
        procedure ListViewOnDoubleClick(const aSender:TpvGUIObject);
        procedure ButtonUpOnClick(const aSender:TpvGUIObject);
@@ -3200,20 +3631,21 @@ type TpvGUIObject=class;
        procedure SetFileName(const aFileName:TpvUTF8String);
        function GetFilter:TpvUTF8String;
        procedure SetFilter(const aFilter:TpvUTF8String);
-       function Accept(const aNewItemIndex:TpvSizeInt=-1):boolean;
+       function Accept(const aNewItemIndex:TpvSizeInt=-1):Boolean;
        procedure Reject;
       public
        constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
        destructor Destroy; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean; override;
        procedure Check; override;
+       procedure Setup;
       published
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName write SetFileName;
        property Filter:TpvUTF8String read GetFilter write SetFilter;
        property DefaultFileExtension:TpvUTF8String read fDefaultFileExtension write fDefaultFileExtension;
-       property OK:boolean read fOK write fOK;
-       property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
+       property OK:Boolean read fOK write fOK;
+       property OverwritePrompt:Boolean read fOverwritePrompt write fOverwritePrompt;
        property OnResult:TpvGUIFileDialogOnResult read fOnResult write fOnResult;
      end;
 
@@ -3221,8 +3653,14 @@ implementation
 
 uses PasDblStrUtils,
      PasVulkan.Assets,
+     PasVulkan.SignedDistanceField2D,
      PasVulkan.VectorPath,
      PasVulkan.Image.PNG;
+
+{$ifdef PasVulkanGUIFreeDebug}
+var FreePointerHashMap:TpvHashMap<TpvGUIObject,boolean>;
+    FreePointerHashMapLock:TPasMPCriticalSection=nil;
+{$endif}
 
 const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_WINDOW_FILL=2;
@@ -3296,6 +3734,8 @@ begin
   end;
  end;
 
+ fStrategy:=TStrategy.TwoPassBidirectional;
+
  fUseScissor:=pvApplication.VulkanDevice.PhysicalDevice.Features.shaderClipDistance=0;
 
 {$endif}
@@ -3321,6 +3761,9 @@ begin
  fTransparentBatchItems:=nil;
  fCountTransparentBatchItems:=0;
 
+ fResortedTransparentBatchItems:=nil;
+ fCountResortedTransparentBatchItems:=0;
+
  fCountTotalBatchItems:=0;
 
  SetLength(fClipRects,1);
@@ -3344,6 +3787,7 @@ begin
  fForcedBackToFrontOpaqueBatchItems:=nil;
  fOpaqueBatchItems:=nil;
  fTransparentBatchItems:=nil;
+ fResortedTransparentBatchItems:=nil;
  inherited Destroy;
 end;
 
@@ -3360,12 +3804,12 @@ begin
  end;
 end;
 
-function TpvGUIDrawEngine.GetTransparent:boolean;
+function TpvGUIDrawEngine.GetTransparent:Boolean;
 begin
  result:=fTransparent;
 end;
 
-procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:boolean);
+procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:Boolean);
 begin
  fTransparent:=aTransparent;
 end;
@@ -3525,8 +3969,8 @@ begin
  VulkanCanvas:=aData;
  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
- LocalDrawRect.Vector4:=(VulkanCanvas.fDrawRects[fInstance.fDrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
- LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.fDrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalDrawRect.Vector4:=(VulkanCanvas.fDrawRects[fInstance.fDrawBufferIndex].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.fDrawBufferIndex].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
  VulkanCanvas.DrawContent(aVulkanCommandBuffer,
                           aBufferIndex,
                           LocalDrawRect,
@@ -3539,6 +3983,40 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     InverseCountTotalBatchItems:TpvDouble;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
     LastScissorRect:TpvRect;
+ procedure AddResortedBatchItem(const aBatchItem:TBatchItem); overload;
+ begin
+  inc(fCountResortedTransparentBatchItems);
+  if length(fResortedTransparentBatchItems)<fCountResortedTransparentBatchItems then begin
+   SetLength(fResortedTransparentBatchItems,fCountResortedTransparentBatchItems*2);
+  end;
+  fResortedTransparentBatchItems[fCountResortedTransparentBatchItems-1]:=aBatchItem;
+ end;
+ function GetBatchItemRect(const aBatchItem:TBatchItem):TpvRect;
+ begin
+  case aBatchItem.fKind of
+   TBatchItem.TKind.DrawVulkanCanvas:begin
+    result:=aBatchItem.fDrawVulkanCanvas.fDrawRects[0];
+   end;
+   TBatchItem.TKind.DrawInvisibleDepthRect:begin
+    result:=aBatchItem.fDrawInvisibleDepthRect;
+   end;
+   TBatchItem.TKind.DrawGUIElement:begin
+    result:=TpvRect.CreateAbsolute(aBatchItem.fDrawGUIElementMin,aBatchItem.fDrawGUIElementMax);
+   end;
+   TBatchItem.TKind.DrawSprite:begin
+    result:=aBatchItem.fDrawSpriteDestRect;
+   end;
+   TBatchItem.TKind.DrawTexturedRectangle:begin
+    result:=aBatchItem.fDrawTexturedRectangleRect;
+   end;
+   TBatchItem.TKind.DrawFilledRectangle:begin
+    result:=aBatchItem.fDrawFilledRectangleRect;
+   end;
+   else begin
+    result:=TpvRect.CreateAbsolute(1.0,1.0,-1.0,-1.0);
+   end;
+  end;
+ end;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  var ClipRect:TpvRect;
      ClipRect2D:TVkRect2D;
@@ -3685,7 +4163,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
 var BatchItem:PBatchItem;
 begin
  BatchItem:=NewBatchItem;
@@ -3699,7 +4177,7 @@ begin
  BatchItem^.fDrawGUIElementMeta:=aMeta;
 end;
 
-procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
+procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:Boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:Boolean=true);
 var BatchItem:PBatchItem;
     RowIndex,ColumnIndex:TpvInt32;
     Rect:TpvRect;
@@ -4011,7 +4489,7 @@ begin
  fIndex:=-1;
 end;
 
-function TpvGUIObjectList.TValueEnumerator.MoveNext:boolean;
+function TpvGUIObjectList.TValueEnumerator.MoveNext:Boolean;
 begin
  inc(fIndex);
  result:=fIndex<fObjectList.fCount;
@@ -4022,7 +4500,7 @@ begin
  result:=fObjectList.fItems[fIndex];
 end;
 
-constructor TpvGUIObjectList.Create(const aOwnsObjects:boolean);
+constructor TpvGUIObjectList.Create(const aOwnsObjects:Boolean);
 begin
  inherited Create;
  fItems:=nil;
@@ -4137,7 +4615,7 @@ begin
  result:=-1;
 end;
 
-function TpvGUIObjectList.Contains(const aItem:TpvGUIObject):boolean;
+function TpvGUIObjectList.Contains(const aItem:TpvGUIObject):Boolean;
 var Index:TpvInt32;
 begin
  for Index:=0 to fCount-1 do begin
@@ -4231,8 +4709,19 @@ var Index:TpvSizeInt;
 begin
  Index:=IndexOf(aItem);
  if Index>=0 then begin
-  FillChar(fItems[Index],SizeOf(TpvGUIObject),#0);
+  fItems[Index]:=nil;
   Delete(Index);
+ end;
+end;
+
+function TpvGUIObjectList.ExtractIndex(const aIndex:TpvSizeInt):TpvGUIObject;
+begin
+ if aIndex>=0 then begin
+  result:=fItems[aIndex];
+  fItems[aIndex]:=nil;
+  Delete(aIndex);
+ end else begin
+  result:=nil;
  end;
 end;
 
@@ -4274,6 +4763,17 @@ begin
 
  inherited Create;
 
+{$ifdef PasVulkanGUIFreeDebug}
+ FreePointerHashMapLock.Acquire;
+ try
+  if FreePointerHashMap.ExistKey(self) then begin
+   FreePointerHashMap.Delete(self);
+  end;
+ finally
+  FreePointerHashMapLock.Release;
+ end;
+{$endif}
+
  if assigned(aParent) then begin
   fInstance:=aParent.fInstance;
  end else if self is TpvGUIInstance then begin
@@ -4294,6 +4794,8 @@ begin
 
  fGarbageDisposerCounter:=0;
 
+ fIsOnGarbageDisposerList:=false;
+
 end;
 
 {-$define PasVulkanGUIDebug}
@@ -4309,7 +4811,22 @@ begin
   fChildren[Index].fParent:=nil;
  end;
 {$endif}
+{$ifdef PasVulkanGUIFreeDebug}
+ FreePointerHashMapLock.Acquire;
+ try
+  if FreePointerHashMap.ExistKey(self) then begin
+   pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.Destroy','Double free! self: '+IntToHex(TpvPtrInt(self),16));
+  end else begin
+   FreePointerHashMap.Add(self,true);
+  end;
+ finally
+  FreePointerHashMapLock.Release;
+ end;
+{$endif}
  FreeAndNil(fChildren);
+ if assigned(fInstance) and assigned(fInstance.fObjectGarbageDisposer) then begin
+  fInstance.fObjectGarbageDisposer.RemoveGarbage(self);
+ end;
  inherited Destroy;
 {$ifdef PasVulkanGUIDebug}
  fChildren:=pointer(TpvPtrUInt(1)); // for intentionally intended SIGSERV exceptions at Use-After-Free problems
@@ -4322,7 +4839,7 @@ begin
  result:=nil;
 end;
 
-function TpvGUIObject.HasParent(const aParent:TpvGUIObject):boolean;
+function TpvGUIObject.HasParent(const aParent:TpvGUIObject):Boolean;
 var CurrentParent:TpvGUIObject;
 begin
  CurrentParent:=fParent;
@@ -4336,7 +4853,7 @@ begin
  result:=false;
 end;
 
-function TpvGUIObject.HasParentOrIs(const aParent:TpvGUIObject):boolean;
+function TpvGUIObject.HasParentOrIs(const aParent:TpvGUIObject):Boolean;
 var CurrentParent:TpvGUIObject;
 begin
  CurrentParent:=self;
@@ -4348,6 +4865,24 @@ begin
   CurrentParent:=CurrentParent.Parent;
  end;
  result:=false;
+end;
+
+procedure TpvGUIObject.ResetRenderDirty;
+var Instance_:TpvGUIInstance;
+begin
+ Instance_:=Instance;
+ if assigned(Instance_) then begin
+  Instance_.ResetRenderDirty;
+ end;
+end;
+
+procedure TpvGUIObject.SetRenderDirty;
+var Instance_:TpvGUIInstance;
+begin
+ Instance_:=Instance;
+ if assigned(Instance_) then begin
+  Instance_.SetRenderDirty;
+ end;
 end;
 
 procedure TpvGUIObject.Check;
@@ -4403,13 +4938,16 @@ begin
 
  fInstance:=aInstance;
 
- fLock:=TPasMPSlimReaderWriterLock.Create;
+ fLock:=TPasMPCriticalSection.Create;
 
- fToDisposeList:=TList.Create;
+ fToDisposeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fToDisposeList.OwnsObjects:=false;
 
- fTopologicalSortedList:=TList.Create;
+ fTopologicalSortedList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fTopologicalSortedList.OwnsObjects:=false;
 
- fToFreeList:=TList.Create;
+ fToFreeList:=TpvGUIObjectGarbageDisposerObjectList.Create;
+ fToFreeList.OwnsObjects:=false;
 
  fCountToDisposeObjects:=0;
 
@@ -4449,20 +4987,60 @@ end;
 
 procedure TpvGUIObjectGarbageDisposer.AddGarbage(const aObject:TpvGUIObject);
 begin
- fLock.Acquire;
- try
-  fToDisposeList.Add(aObject);
-  aObject.IncRef;
-  TPasMPInterlocked.Increment(fCountToDisposeObjects);
- finally
-  fLock.Release;
+ if assigned(aObject) then begin
+  fLock.Acquire;
+  try
+   fToDisposeList.Add(aObject);
+   aObject.IncRef;
+   aObject.fIsOnGarbageDisposerList:=true;
+   TPasMPInterlocked.Increment(fCountToDisposeObjects);
+  finally
+   fLock.Release;
+  end;
  end;
 end;
 
-procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+procedure TpvGUIObjectGarbageDisposer.RemoveGarbage(const aObject:TpvGUIObject);
+var Index:TpvSizeInt;
+begin
+ if assigned(aObject) then begin
+  fLock.Acquire;
+  try
+   if aObject.fIsOnGarbageDisposerList then begin
+    try
+     begin
+      Index:=fToDisposeList.IndexOf(aObject);
+      if Index>=0 then begin
+       TPasMPInterlocked.Decrement(fCountToDisposeObjects);
+       fToDisposeList.Delete(Index);
+      end;
+     end;
+     begin
+      Index:=fTopologicalSortedList.IndexOf(aObject);
+      if Index>=0 then begin
+       fTopologicalSortedList.Delete(Index);
+      end;
+     end;
+     begin
+      Index:=fToFreeList.IndexOf(aObject);
+      if Index>=0 then begin
+       fToFreeList.Delete(Index);
+      end;
+     end;
+    finally
+     aObject.fIsOnGarbageDisposerList:=false;
+    end;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:Boolean);
 var Index:TpvSizeInt;
     OldGarbageDisposerData,NewGarbageDisposerData,
-    OldMarkBits,NewMarkBits:TPasMPUInt32;
+    OldMarkBits,ChildMarkBit:TPasMPUInt32;
 begin
  OldMarkBits:=TPasMPInterlocked.Read(aObject.fMarkBits);
  case OldMarkBits and (TpvGUIObject.TemporarilyMarkBit or
@@ -4480,13 +5058,15 @@ begin
    end;
    begin
     // Mark it permanently
+    if aIsChild then begin
+     // Mark it also as child of an another garbage parent object
+     ChildMarkBit:=TpvGUIObject.ChildMarkBit;
+    end else begin
+     ChildMarkBit:=0;
+    end;
     repeat
      OldGarbageDisposerData:=TPasMPInterlocked.Read(aObject.fMarkBits);
-     NewGarbageDisposerData:=(OldGarbageDisposerData and not TpvGUIObject.TemporarilyMarkBit) or TpvGUIObject.PermanentlyMarkBit;
-     if aIsChild then begin
-      // Mark it also as child of an another garbage parent object
-      NewGarbageDisposerData:=NewGarbageDisposerData or TpvGUIObject.ChildMarkBit;
-     end;
+     NewGarbageDisposerData:=((OldGarbageDisposerData and not TpvGUIObject.TemporarilyMarkBit) or TpvGUIObject.PermanentlyMarkBit) or ChildMarkBit;
     until TPasMPInterlocked.CompareExchange(aObject.fMarkBits,NewGarbageDisposerData,OldGarbageDisposerData)=OldGarbageDisposerData;
    end;
    if (OldMarkBits and TpvGUIObject.PermanentlyMarkBit)=0 then begin
@@ -4501,7 +5081,7 @@ begin
  end;
 end;
 
-procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage(const aForce:boolean);
+procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage(const aForce:Boolean);
 var Index:TpvSizeInt;
     CurrentObject:TpvGUIObject;
 begin
@@ -4512,37 +5092,42 @@ begin
    try
     try
      if aForce then begin
-      for Index:=0 to fToDisposeList.Count-1 do begin
+      Index:=0;
+      while Index<fToDisposeList.Count do begin
        CurrentObject:=TpvGUIObject(fToDisposeList.Items[Index]);
-       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ProtectedMarkBit));
+       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TpvUInt32(not TpvUInt32(TpvGUIObject.ProtectedMarkBit)));
+       inc(Index);
       end;
      end;
-     for Index:=0 to fToDisposeList.Count-1 do begin
+     Index:=0;
+     while Index<fToDisposeList.Count do begin
       Visit(TpvGUIObject(fToDisposeList.Items[Index]),false);
+      inc(Index);
      end;
     finally
      fToDisposeList.Clear;
     end;
     try
-     for Index:=0 to fTopologicalSortedList.Count-1 do begin
+     Index:=0;
+     while Index<fTopologicalSortedList.Count do begin
       CurrentObject:=TpvGUIObject(fTopologicalSortedList.Items[Index]);
       if CurrentObject.fGarbageDisposerCounter>0 then begin
        // Delayed garbage
-       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit));
+       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TpvUInt32(not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit)));
        TPasMPInterlocked.Decrement(CurrentObject.fGarbageDisposerCounter);
        fToDisposeList.Add(CurrentObject);
        TPasMPInterlocked.Increment(fCountToDisposeObjects);
       end else begin
        case TPasMPInterlocked.Read(CurrentObject.fMarkBits) and (TpvGUIObject.ChildMarkBit or
                                                                  TpvGUIObject.ProtectedMarkBit) of
-        TpvGUIObject.ChildMarkBit:begin
+        TpvGUIObject.ChildMarkBit,
+        TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit:begin
          // Do nothing, if it is a child of an another garbage parent object, because
          // the another garbage parent object will freeing it already anyway then.
         end;
-        TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit,
         TpvGUIObject.ProtectedMarkBit:begin
          // Delayed garbage
-         TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit));
+         TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TpvUInt32(not TpvUInt32(TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit)));
          fToDisposeList.Add(CurrentObject);
          TPasMPInterlocked.Increment(fCountToDisposeObjects);
         end;
@@ -4552,11 +5137,17 @@ begin
         end;
        end;
       end;
+      inc(Index);
      end;
-     for Index:=fToFreeList.Count-1 downto 0 do begin
-//    writeln(TpvPtrUint(TpvGUIObject(fToFreeList.Items[Index])),' ',TpvGUIObject(fToFreeList.Items[Index]).ClassName,' ',TpvGUIObject(fToFreeList.Items[Index]).fReferenceCounter);
-      TpvGUIObject(fToFreeList.Items[Index]).DecRefWithoutFree;
-      TpvGUIObject(fToFreeList.Items[Index]).Free;
+{    if fToFreeList.Count>0 then begin
+      writeln;
+      writeln(fToFreeList.Count);
+     end;}
+     while fToFreeList.Count>0 do begin
+      CurrentObject:=TpvGUIObject(fToFreeList.Extract(fToFreeList.Count-1));
+//    writeln(TpvPtrUInt(CurrentObject),' ',CurrentObject.ClassName,' ',CurrentObject.fReferenceCounter);
+      CurrentObject.DecRefWithoutFree;
+      CurrentObject.Free;
      end;
     finally
      fToFreeList.Clear;
@@ -4615,7 +5206,7 @@ const Axis0=1;
 var ChildIndex:TpvInt32;
     YOffset:TpvFloat;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -4672,7 +5263,7 @@ var ChildIndex:TpvInt32;
     Offset,YOffset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
-    IsInstance,First:boolean;
+    IsInstance,First:Boolean;
     Child:TpvGUIObject;
     ChildWidget,LastVisibleChildWidget:TpvGUIWidget;
 begin
@@ -4821,7 +5412,7 @@ end;
 procedure TpvGUIFillLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var ChildIndex:TpvInt32;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -4893,7 +5484,7 @@ end;
 function TpvGUIBoxLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 var Axis0,Axis1,ChildIndex:TpvInt32;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -4947,7 +5538,7 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
     Offset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
-    First:boolean;
+    First:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
@@ -5062,7 +5653,7 @@ end;
 function TpvGUIGroupLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 var ChildIndex:TpvInt32;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
-    First,Indent,IndentCurrent:boolean;
+    First,Indent,IndentCurrent:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     ChildLabel:TpVGUILabel;
@@ -5121,7 +5712,7 @@ procedure TpvGUIGroupLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var ChildIndex:TpvInt32;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
     AvailableWidth:TpvFloat;
-    First,Indent,IndentCurrent:boolean;
+    First,Indent,IndentCurrent:Boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     ChildLabel:TpVGUILabel;
@@ -5689,7 +6280,7 @@ begin
 
 end;
 
-procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:boolean);
+procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:Boolean);
 var AxisIndex,PhaseIndex,ChildIndex,Index:TpvInt32;
     FixedSize,ContainerSize:TpvVector2;
     ColumnRows:TpvGUIAdvancedGridLayoutColumnRows;
@@ -5972,7 +6563,7 @@ constructor TpvGUIFlowLayout.Create(const aParent:TpvGUIObject;
                                     const aDirection:TpvGUIFlowLayoutDirection=TpvGUIFlowLayoutDirection.LeftToRight;
                                     const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
                                     const aVerticalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
-                                    const aAlignmentOnBaseLine:boolean=false);
+                                    const aAlignmentOnBaseLine:Boolean=false);
 begin
 
  inherited Create(aParent);
@@ -6042,7 +6633,7 @@ function TpvGUIFlowLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector
 var Axis0,Axis1,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    First:boolean;
+    First:Boolean;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
     MaxAxis1:TpvFloat;
@@ -6232,7 +6823,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    First:boolean;
+    First:Boolean;
     FixedSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
     MaxAxis1,MinPosition,MaxPosition,MaxHeight,Difference:TpvFloat;
@@ -6460,6 +7051,34 @@ begin
  fIconSearch:=nil;
  fIconSearchNext:=nil;
  fIconReplace:=nil;
+ fIconCog:=nil;
+ fIconCogs:=nil;
+ fIconCheckThick:=nil;
+ fIconCloseThick:=nil;
+ fIconSave:=nil;
+ fIconSaveAll:=nil;
+ fIconSaveCog:=nil;
+ fIconSaveEdit:=nil;
+ fIconSaveMove:=nil;
+ fIconSaveSettings:=nil;
+ fIconFolderOpen:=nil;
+ fIconTreeViewClose:=nil;
+ fIconTreeViewCloseL:=nil;
+ fIconTreeViewCloseLU:=nil;
+ fIconTreeViewCloseU:=nil;
+ fIconTreeViewL_H:=nil;
+ fIconTreeViewL_H_S:=nil;
+ fIconTreeViewL_HV_L:=nil;
+ fIconTreeViewL_HV_L_F:=nil;
+ fIconTreeViewL_HV_LU:=nil;
+ fIconTreeViewL_HV_U:=nil;
+ fIconTreeViewL_V_L:=nil;
+ fIconTreeViewL_V_LU:=nil;
+ fIconTreeViewL_V_U:=nil;
+ fIconTreeViewOpen:=nil;
+ fIconTreeViewOpenL:=nil;
+ fIconTreeViewOpenLU:=nil;
+ fIconTreeViewOpenU:=nil;
  Setup;
 end;
 
@@ -6695,6 +7314,29 @@ begin
 
 end;
 
+function TpvGUISkin.GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aTreeView);
+end;
+
+procedure TpvGUISkin.CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+begin
+end;
+
+procedure TpvGUISkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+begin
+end;
+
+function TpvGUISkin.IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUISkin.IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
 constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
@@ -6706,10 +7348,10 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{51D9BE81-87CD-4894-8524-86AA0DA27908}';
+const CacheVersionGUID:TGUID='{C76972BC-7A04-40F3-9864-D199DE12857B}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
-    RecreateCacheFiles:boolean;
+    RecreateCacheFiles:Boolean;
     CacheStoragePath,CacheStorageFile:string;
     FileStream:TFileStream;
     CacheStorageCacheVersionGUID:TGUID;
@@ -6851,7 +7493,9 @@ begin
                                               fInstance.fFontCodePointRanges,
                                               true,
                                               2,
-                                              1);
+                                              1,
+                                              false,
+                                              TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -6870,7 +7514,9 @@ begin
                                                   fInstance.fFontCodePointRanges,
                                                   true,
                                                   2,
-                                                  1);
+                                                  1,
+                                                  false,
+                                                  TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -6889,7 +7535,9 @@ begin
                                                         fInstance.fFontCodePointRanges,
                                                         true,
                                                         2,
-                                                        1);
+                                                        1,
+                                                        false,
+                                                        TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -6908,7 +7556,9 @@ begin
                                                     fInstance.fFontCodePointRanges,
                                                     true,
                                                     2,
-                                                    1);
+                                                    1,
+                                                    false,
+                                                    TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -6927,7 +7577,9 @@ begin
                                               fInstance.fMonoFontCodePointRanges,
                                               true,
                                               2,
-                                              1);
+                                              1,
+                                              false,
+                                              TpvSignedDistanceField2DVariant.Default);
    finally
     TrueTypeFont.Free;
    end;
@@ -7371,6 +8023,414 @@ begin
                                                                               2,
                                                                               1);
 
+  fIconCog:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCog',
+                                                                          'M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65'+
+                                                                          ' 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05'+
+                                                                          ' 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18'+
+                                                                          ' 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22'+
+                                                                          '2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05'+
+                                                                          ' 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82'+
+                                                                          ' 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03'+
+                                                                          ' 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z',
+                                                                          48,
+                                                                          48,
+                                                                          48.0/24.0,
+                                                                          0.0,
+                                                                          0.0,
+                                                                          TpvVectorPathFillRule.NonZero,
+                                                                          true,
+                                                                          2,
+                                                                          1);
+
+  fIconCogs:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCogs',
+                                                                           'M15.9,18.45C17.25,18.45 18.35,17.35 18.35,16C18.35,14.65 17.25,13.55 15.9,13.55C14.54,13.55 13.45,14.65 13.45,16C13.45,17.35'+
+                                                                           ' 14.54,18.45 15.9,18.45M21.1,16.68L22.58,17.84C22.71,17.95 22.75,18.13 22.66,18.29L21.26,20.71C21.17,20.86 21,20.92'+
+                                                                           ' 20.83,20.86L19.09,20.16C18.73,20.44 18.33,20.67 17.91,20.85L17.64,22.7C17.62,22.87 17.47,23 17.3,23H14.5C14.32,23'+
+                                                                           ' 14.18,22.87 14.15,22.7L13.89,20.85C13.46,20.67 13.07,20.44 12.71,20.16L10.96,20.86C10.81,20.92 10.62,20.86 10.54,20.71L9.14,18.29C9.05,18.13'+
+                                                                           ' 9.09,17.95 9.22,17.84L10.7,16.68L10.65,16L10.7,15.31L9.22,14.16C9.09,14.05 9.05,13.86 9.14,13.71L10.54,11.29C10.62,11.13 10.81,11.07'+
+                                                                           ' 10.96,11.13L12.71,11.84C13.07,11.56 13.46,11.32 13.89,11.15L14.15,9.29C14.18,9.13 14.32,9 14.5,9H17.3C17.47,9 17.62,9.13'+
+                                                                           ' 17.64,9.29L17.91,11.15C18.33,11.32 18.73,11.56 19.09,11.84L20.83,11.13C21,11.07 21.17,11.13 21.26,11.29L22.66,13.71C22.75,13.86'+
+                                                                           ' 22.71,14.05 22.58,14.16L21.1,15.31L21.15,16L21.1,16.68M6.69,8.07C7.56,8.07 8.26,7.37 8.26,6.5C8.26,5.63 7.56,4.92 6.69,4.92A1.58,1.58'+
+                                                                           ' 0 0,0 5.11,6.5C5.11,7.37 5.82,8.07 6.69,8.07M10.03,6.94L11,7.68C11.07,7.75 11.09,7.87 11.03,7.97L10.13,9.53C10.08,9.63 9.96,9.67'+
+                                                                           ' 9.86,9.63L8.74,9.18L8,9.62L7.81,10.81C7.79,10.92 7.7,11 7.59,11H5.79C5.67,11 5.58,10.92 5.56,10.81L5.4,9.62L4.64,9.18L3.5,9.63C3.41,9.67'+
+                                                                           ' 3.3,9.63 3.24,9.53L2.34,7.97C2.28,7.87 2.31,7.75 2.39,7.68L3.34,6.94L3.31,6.5L3.34,6.06L2.39,5.32C2.31,5.25 2.28,5.13 2.34,5.03L3.24,3.47C3.3,3.37'+
+                                                                           ' 3.41,3.33 3.5,3.37L4.63,3.82L5.4,3.38L5.56,2.19C5.58,2.08 5.67,2 5.79,2H7.59C7.7,2 7.79,2.08 7.81,2.19L8,3.38L8.74,3.82L9.86,3.37C9.96,3.33'+
+                                                                           ' 10.08,3.37 10.13,3.47L11.03,5.03C11.09,5.13 11.07,5.25 11,5.32L10.03,6.06L10.06,6.5L10.03,6.94Z',
+                                                                           48,
+                                                                           48,
+                                                                           48.0/24.0,
+                                                                           0.0,
+                                                                           0.0,
+                                                                           TpvVectorPathFillRule.NonZero,
+                                                                           true,
+                                                                           2,
+                                                                           1);
+
+ fIconCheckThick:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheckThick',
+                                                                                'M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                TpvVectorPathFillRule.NonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
+
+ fIconCloseThick:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCloseThick',
+                                                                                'M20 6.91L17.09 4L12 9.09L6.91 4L4 6.91L9.09 12L4 17.09L6.91 20L12 14.91L17.09 20L20 17.09L14.91 12L20 6.91Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                TpvVectorPathFillRule.NonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
+
+ fIconSave:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSave',
+                                                                          'M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z',
+                                                                          48,
+                                                                          48,
+                                                                          48.0/24.0,
+                                                                          0.0,
+                                                                          0.0,
+                                                                          TpvVectorPathFillRule.NonZero,
+                                                                          true,
+                                                                          2,
+                                                                          1);
+
+ fIconSaveAll:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSaveAll',
+                                                                             'M17,7V3H7V7H17M14,17A3,3 0 0,0 17,14A3,3 0 0,0 14,11A3,3 0 0,0 11,14A3,3 0 0,0 14,17M19,1L23,5V17A2,2'+
+                                                                             ' 0 0,1 21,19H7C5.89,19 5,18.1 5,17V3A2,2 0 0,1 7,1H19M1,7H3V21H17V23H3A2,2 0 0,1 1,21V7Z',
+                                                                             48,
+                                                                             48,
+                                                                             48.0/24.0,
+                                                                             0.0,
+                                                                             0.0,
+                                                                             TpvVectorPathFillRule.NonZero,
+                                                                             true,
+                                                                             2,
+                                                                             1);
+
+ fIconSaveCog:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSaveCog',
+                                                                             'M21 11.7V7L17 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5'+
+                                                                             ' 21H11.7C11.4 20.3 11.2 19.6 11.1 18.8C9.9 18.4 9 17.3'+
+                                                                             ' 9 16C9 14.3 10.3 13 12 13C12.3 13 12.6 13.1 12.9'+
+                                                                             ' 13.2C14.2 11.8 16 11 18 11C19.1 11 20.1 11.2 21 11.7M15'+
+                                                                             ' 9H5V5H15V9M21.7 18.6V17.6L22.8 16.8C22.9 16.7 23 16.6 22.9'+
+                                                                             ' 16.5L21.9 14.8C21.9 14.7 21.7 14.7 21.6 14.7L20.4 15.2C20.1'+
+                                                                             ' 15 19.8 14.8 19.5 14.7L19.3 13.4C19.3 13.3 19.2 13.2 19.1'+
+                                                                             ' 13.2H17.1C16.9 13.2 16.8 13.3 16.8 13.4L16.6 14.7C16.3 14.9'+
+                                                                             ' 16.1 15 15.8 15.2L14.6 14.7C14.5 14.7 14.4 14.7 14.3 14.8L13.3'+
+                                                                             ' 16.5C13.3 16.6 13.3 16.7 13.4 16.8L14.5 17.6V18.6L13.4 19.4C13.3'+
+                                                                             ' 19.5 13.2 19.6 13.3 19.7L14.3 21.4C14.4 21.5 14.5 21.5 14.6'+
+                                                                             ' 21.5L15.8 21C16 21.2 16.3 21.4 16.6 21.5L16.8 22.8C16.9 22.9 17 23 17.1'+
+                                                                             ' 23H19.1C19.2 23 19.3 22.9 19.3 22.8L19.5 21.5C19.8 21.3 20 21.2 20.3 21L21.5'+
+                                                                             ' 21.4C21.6 21.4 21.7 21.4 21.8 21.3L22.8 19.6C22.9 19.5 22.9 19.4 22.8 19.4L21.7'+
+                                                                             ' 18.6M18 19.5C17.2 19.5 16.5 18.8 16.5 18S17.2 16.5 18 16.5 19.5 17.2 19.5 18 18.8 19.5 18 19.5Z',
+                                                                             48,
+                                                                             48,
+                                                                             48.0/24.0,
+                                                                             0.0,
+                                                                             0.0,
+                                                                             TpvVectorPathFillRule.NonZero,
+                                                                             true,
+                                                                             2,
+                                                                             1);
+
+  fIconSaveEdit:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSaveEdit',
+                                                                               'M10,19L10.14,18.86C8.9,18.5 8,17.36 8,16A3,3 0 0,1 11,13C12.36,13 13.5,13.9 13.86,15.14L20,9V7L16,3H4C2.89,3 2,3.9 2,5V19A2,2 0 0,0'+
+                                                                               ' 4,21H10V19M4,5H14V9H4V5M20.04,12.13C19.9,12.13 19.76,12.19 19.65,12.3L18.65,13.3L20.7,15.35L21.7,14.35C21.92,14.14 21.92,13.79 21.7,13.58L20.42,12.3C20.31,12.19 20.18,12.13 20.04,12.13M18.07,13.88L12,19.94V22H14.06L20.12,15.93L18.07,13.88Z',
+                                                                               48,
+                                                                               48,
+                                                                               48.0/24.0,
+                                                                               0.0,
+                                                                               0.0,
+                                                                               TpvVectorPathFillRule.NonZero,
+                                                                               true,
+                                                                               2,
+                                                                               1);
+
+  fIconSaveMove:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSaveMove',
+                                                                               'M17,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H11.81C11.42,20.34 11.17,19.6 11.07,18.84C9.5,18.31 8.66,16.6 9.2,15.03C9.61,13.83 10.73,13'+
+                                                                               ' 12,13C12.44,13 12.88,13.1 13.28,13.29C15.57,11.5 18.83,11.59 21,13.54V7L17,3M15,9H5V5H15V9M13,17H17V14L22,18.5L17,23V20H13V17',
+                                                                               48,
+                                                                               48,
+                                                                               48.0/24.0,
+                                                                               0.0,
+                                                                               0.0,
+                                                                               TpvVectorPathFillRule.NonZero,
+                                                                               true,
+                                                                               2,
+                                                                               1);
+
+  fIconSaveSettings:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSaveSettings',
+                                                                                   'M15,8V4H5V8H15M12,18A3,3 0 0,0 15,15A3,3 0 0,0 12,12A3,3 0 0,0 9,15A3,3 0 0,0 12,18M17,2L21,6V18A2,2 0 0,1 19,20H5C3.89,20'+
+                                                                                   ' 3,19.1 3,18V4A2,2 0 0,1 5,2H17M11,22H13V24H11V22M7,22H9V24H7V22M15,22H17V24H15V22Z',
+                                                                                   48,
+                                                                                   48,
+                                                                                   48.0/24.0,
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   TpvVectorPathFillRule.NonZero,
+                                                                                   true,
+                                                                                   2,
+                                                                                   1);
+
+  fIconFolderOpen:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconFolderOpen',
+                                                                                 'M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18.5C20.7,19.37 19.92,20 19,20Z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 TpvVectorPathFillRule.NonZero,
+                                                                                 true,
+                                                                                 2,
+                                                                                 1);
+
+  fIconTreeViewClose:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewClose',
+                                                                                    'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    4,
+                                                                                    2,
+                                                                                    TpvSignedDistanceField2DVariant.Default,
+                                                                                    true);
+
+  fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewCloseL',
+                                                                                     'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z M 11,19 h 2 v 5 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     4,
+                                                                                     2,
+                                                                                     TpvSignedDistanceField2DVariant.Default,
+                                                                                     true);
+
+  fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewCloseLU',
+                                                                                      'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z M 11,0 h 2 v 3 h -2 z M 11,19 h 2 v 5 h -2 z',
+                                                                                      48,
+                                                                                      48,
+                                                                                      48.0/24.0,
+                                                                                      0.0,
+                                                                                      0.0,
+                                                                                      TpvVectorPathFillRule.NonZero,
+                                                                                      true,
+                                                                                      4,
+                                                                                      2,
+                                                                                      TpvSignedDistanceField2DVariant.Default,
+                                                                                      true);
+
+  fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewCloseU',
+                                                                                     'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M17,11V13H7V11H17Z M 11,0 h 2 v 3 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     4,
+                                                                                     2,
+                                                                                     TpvSignedDistanceField2DVariant.Default,
+                                                                                     true);
+
+  fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_H',
+                                                                                  'M 11,11 v 2 h 14 v -2 z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  false,
+                                                                                  4,
+                                                                                  2,
+                                                                                  TpvSignedDistanceField2DVariant.Default,
+                                                                                  true);
+
+  fIconTreeViewL_H_S:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_H_S',
+                                                                                    'M 0,11 v 2 h 3 v -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    false,
+                                                                                    4,
+                                                                                    2,
+                                                                                    TpvSignedDistanceField2DVariant.Default,
+                                                                                    true);
+
+  fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_L',
+                                                                                     'M 11,11 h 2 v 13 h -2 z M 13,11 v 2 h 12 v -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     false,
+                                                                                     4,
+                                                                                     2,
+                                                                                     TpvSignedDistanceField2DVariant.Default,
+                                                                                     true);
+
+  fIconTreeViewL_HV_L_F:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_L_F',
+                                                                                       'M 11,11 h 2 v 13 h -2 z M -2,11 v 2 h 13 v -2 z M 13,11 v 2 h 10 v -2 z',
+                                                                                       48,
+                                                                                       48,
+                                                                                       48.0/24.0,
+                                                                                       0.0,
+                                                                                       0.0,
+                                                                                       TpvVectorPathFillRule.NonZero,
+                                                                                       false,
+                                                                                       4,
+                                                                                       2,
+                                                                                       TpvSignedDistanceField2DVariant.Default,
+                                                                                       true);
+
+  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_LU',
+                                                                                      'M 11,0 h 2 v 24 h -2 z M 13,11 v 2 h 12 v -2 z',
+                                                                                      48,
+                                                                                      48,
+                                                                                      48.0/24.0,
+                                                                                      0.0,
+                                                                                      0.0,
+                                                                                      TpvVectorPathFillRule.NonZero,
+                                                                                      false,
+                                                                                      4,
+                                                                                      2,
+                                                                                      TpvSignedDistanceField2DVariant.Default,
+                                                                                      true);
+
+  fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_HV_U',
+                                                                                     'M 11,0 h 2 v 13 h -2 z M 13,11 v 2 h 15 v -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     false,
+                                                                                     4,
+                                                                                     2,
+                                                                                     TpvSignedDistanceField2DVariant.Default,
+                                                                                     true);
+
+  fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_V_L',
+                                                                                    'M 11,11 h 2 v 13 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    false,
+                                                                                    4,
+                                                                                    2,
+                                                                                    TpvSignedDistanceField2DVariant.Default,
+                                                                                    true);
+
+  fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_V_LU',
+                                                                                     'M 11,0 h 2 v 24 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     false,
+                                                                                     4,
+                                                                                     2,
+                                                                                     TpvSignedDistanceField2DVariant.Default,
+                                                                                     true);
+
+  fIconTreeViewL_V_U:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewL_V_U',
+                                                                                    'M 11,0 h 2 v 13 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    false,
+                                                                                    4,
+                                                                                    2,
+                                                                                    TpvSignedDistanceField2DVariant.Default,
+                                                                                    true);
+
+  fIconTreeViewOpen:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpen',
+                                                                                   'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z',
+                                                                                   48,
+                                                                                   48,
+                                                                                   48.0/24.0,
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   TpvVectorPathFillRule.NonZero,
+                                                                                   false,
+                                                                                   4,
+                                                                                   2,
+                                                                                   TpvSignedDistanceField2DVariant.Default,
+                                                                                   true);
+
+  fIconTreeViewOpenL:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpenL',
+                                                                                    'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z M 11,19 h 2 v 5 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    false,
+                                                                                    4,
+                                                                                    2,
+                                                                                    TpvSignedDistanceField2DVariant.Default,
+                                                                                    true);
+
+  fIconTreeViewOpenLU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpenLU',
+                                                                                     'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z M 11,19 h 2 v 5 h -2 z M 11,0 h 2 v 3 h -2 z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     false,
+                                                                                     4,
+                                                                                     2,
+                                                                                     TpvSignedDistanceField2DVariant.Default,
+                                                                                     true);
+
+
+  fIconTreeViewOpenU:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconTreeViewOpenU',
+                                                                                    'M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z M 11,0 h 2 v 3 h -2 z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    false,
+                                                                                    4,
+                                                                                    2,
+                                                                                    TpvSignedDistanceField2DVariant.Default,
+                                                                                    true);
+
   if length(CacheStoragePath)>0 then begin
 
    fSignedDistanceFieldSpriteAtlas.SaveToFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip',true);
@@ -7444,6 +8504,34 @@ begin
   fIconSearch:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSearch'];
   fIconSearchNext:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSearchNext'];
   fIconReplace:=fSignedDistanceFieldSpriteAtlas.Sprites['IconReplace'];
+  fIconCog:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCog'];
+  fIconCogs:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCogs'];
+  fIconCheckThick:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCheckThick'];
+  fIconCloseThick:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCloseThick'];
+  fIconSave:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSave'];
+  fIconSaveAll:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveAll'];
+  fIconSaveCog:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveCog'];
+  fIconSaveEdit:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveEdit'];
+  fIconSaveMove:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveMove'];
+  fIconSaveSettings:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSaveSettings'];
+  fIconFolderOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconFolderOpen'];
+  fIconTreeViewClose:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewClose'];
+  fIconTreeViewCloseL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseL'];
+  fIconTreeViewCloseLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseLU'];
+  fIconTreeViewCloseU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewCloseU'];
+  fIconTreeViewL_H:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_H'];
+  fIconTreeViewL_H_S:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_H_S'];
+  fIconTreeViewL_HV_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_L'];
+  fIconTreeViewL_HV_L_F:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_L_F'];
+  fIconTreeViewL_HV_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_LU'];
+  fIconTreeViewL_HV_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_HV_U'];
+  fIconTreeViewL_V_L:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_L'];
+  fIconTreeViewL_V_LU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_LU'];
+  fIconTreeViewL_V_U:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewL_V_U'];
+  fIconTreeViewOpen:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpen'];
+  fIconTreeViewOpenL:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpenL'];
+  fIconTreeViewOpenLU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpenLU'];
+  fIconTreeViewOpenU:=fSignedDistanceFieldSpriteAtlas.Sprites['IconTreeViewOpenU'];
 
  end;
 
@@ -10064,7 +11152,7 @@ begin
                       TpvRect.CreateRelative(Offset,
                                              TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize)));
 
-  end;{}
+  end;//}
 
  end;
 
@@ -10095,7 +11183,6 @@ begin
  aDrawEngine.Next;
 
 end;
-
 
 function TpvGUIDefaultVectorBasedSkin.GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2;
 var CurrentFont:TpvFont;
@@ -10627,7 +11714,7 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 var ViewBufferX,ViewBufferY,ViewBufferIndex,StartViewBufferX,Index:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
-    CurrentFontColor,Color:TpvVector4;
+    CurrentFontColor,Color,TemporaryColor,LineColor:TpvVector4;
     Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
     OldClipRect,TextClipRect,Rect:TpvRect;
@@ -10690,9 +11777,30 @@ begin
 
  if aMultiLineTextEdit.fLeftSideBar then begin
   Color:=CurrentFontColor;
+  if assigned(aMultiLineTextEdit.fOnLeftSideBarLineColor) then begin
+   LineColor:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+   for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+    if (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+       aMultiLineTextEdit.fOnLeftSideBarLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+     aDrawEngine.Color:=LineColor;
+     Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                  TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*ViewBufferY),
+                                  aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                  TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width-(aMultiLineTextEdit.fFontCharSize.x*0.5),aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
+     aDrawEngine.Transparent:=true;
+     aDrawEngine.DrawFilledRectangle(Rect);
+    end;
+   end;
+  end;
   if (aMultiLineTextEdit.fViewBufferCursorY>=0) and
      (aMultiLineTextEdit.fViewBufferCursorY<aMultiLineTextEdit.fViewBufferHeight) then begin
-   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+   TemporaryColor:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+   if assigned(aMultiLineTextEdit.fOnLeftSideBarLineColor) and
+      (aMultiLineTextEdit.fViewBufferLineIndices[aMultiLineTextEdit.fViewBufferCursorY]>=0) and
+       aMultiLineTextEdit.fOnLeftSideBarLineColor(aMultiLineTextEdit.fViewBufferLineIndices[aMultiLineTextEdit.fViewBufferCursorY],LineColor) then begin
+    TemporaryColor:=TemporaryColor.Lerp(LineColor,0.25);
+   end;
+   aDrawEngine.Color:=TemporaryColor;
 // aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
    Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                                 TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*aMultiLineTextEdit.fViewBufferCursorY),
@@ -10736,6 +11844,20 @@ begin
 
  aDrawEngine.Transparent:=true;
 
+ if assigned(aMultiLineTextEdit.fOnLineColor) then begin
+  LineColor:=TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0);
+  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+   if (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+      aMultiLineTextEdit.fOnLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+    aDrawEngine.Color:=LineColor;
+    aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                           (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(0,ViewBufferY)),
+                                                           aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                           (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferWidth,ViewBufferY+1.0))));
+   end;
+  end;
+ end;
+
  ViewBufferIndex:=0;
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   ViewBufferX:=0;
@@ -10749,7 +11871,13 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     TemporaryColor:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     if assigned(aMultiLineTextEdit.fOnLineColor) and
+        (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+         aMultiLineTextEdit.fOnLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+      TemporaryColor:=TemporaryColor.Lerp(LineColor,0.25);
+     end;
+     aDrawEngine.Color:=TemporaryColor;
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
                                                             aMultiLineTextEdit.fTextAreaRect.Offset+
@@ -10762,7 +11890,13 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+     TemporaryColor:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+     if assigned(aMultiLineTextEdit.fOnLineColor) and
+        (aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0) and
+         aMultiLineTextEdit.fOnLineColor(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY],LineColor) then begin
+      TemporaryColor:=TemporaryColor.Lerp(LineColor,0.25);
+     end;
+     aDrawEngine.Color:=TemporaryColor;
 //   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
@@ -10816,7 +11950,8 @@ begin
       TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
        Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
       end;
-      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_,
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.MultiLineString:begin
        Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,1.0,1.0);
       end;
       TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
@@ -10993,7 +12128,7 @@ begin
    end;
    TpvGUIListView.TViewMode.Report:begin
 
-    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListViewHorizontalMargin,BoxCornerMargin);
 
     if TpvGUIListViewFlag.Header in aListView.fFlags then begin
 
@@ -11081,8 +12216,8 @@ begin
      if aListView.fColumns.Count=0 then begin
 
       Item.fColumnRects[0]:=Item.fRect;
-      Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListBoxHorizontalMargin;
-      Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListBoxHorizontalMargin;
+      Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListViewHorizontalMargin;
+      Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListViewHorizontalMargin;
 
      end else begin
 
@@ -11092,9 +12227,9 @@ begin
 
        if Column.fVisible then begin
 
-        Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListBoxHorizontalMargin,
+        Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListViewHorizontalMargin,
                                                                                  Item.fRect.Top),
-                                                               TpvVector2.Create(Column.fRect.Width-(ListBoxHorizontalMargin*2.0),
+                                                               TpvVector2.Create(Column.fRect.Width-(ListViewHorizontalMargin*2.0),
                                                                                  Item.fRect.Height));
 
        end else begin
@@ -11116,7 +12251,7 @@ begin
 
    TpvGUIListView.TViewMode.List:begin
 
-    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListViewHorizontalMargin,BoxCornerMargin);
 
     Position.y:=Position.y-(aListView.fScrollBar.Value*aListView.fWorkItemHeight);
 
@@ -11136,8 +12271,8 @@ begin
      end;
 
      Item.fColumnRects[0]:=Item.fRect;
-     Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListBoxHorizontalMargin;
-     Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListBoxHorizontalMargin;
+     Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListViewHorizontalMargin;
+     Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListViewHorizontalMargin;
 
      Position.y:=Position.y+aListView.fWorkItemHeight;
 
@@ -11235,7 +12370,7 @@ begin
                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
                                                 true);
 
- Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListViewHorizontalMargin,BoxCornerMargin);
 
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
@@ -11309,7 +12444,7 @@ begin
      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
      TextPosition:=Column.fRect.LeftTop+(Column.fRect.Size*0.5);
      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+Column.fRect.LeftTop,
-                                                  Column.fRect.Size);
+                                                  Column.fRect.Size).GetIntersection(ClipRect);
      aDrawEngine.DrawText(Column.fCaption,TextPosition);
     end;
 
@@ -11517,13 +12652,568 @@ begin
 
 end;
 
+function TpvGUIDefaultVectorBasedSkin.GetTreeViewPreferredSize(const aTreeView:TpvGUITreeView):TpvVector2;
+var CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight:TpvFloat;
+begin
+
+ CurrentFont:=aTreeView.Font;
+
+ CurrentFontSize:=aTreeView.FontSize;
+
+ if aTreeView.fRowHeight>0.0 then begin
+  RowHeight:=aTreeView.fRowHeight;
+ end else begin
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aTreeView.fWorkYOffset:=BoxCornerMargin;
+
+ aTreeView.fWorkRowHeight:=RowHeight;
+
+ if aTreeView.fIndentWidth>0.0 then begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fIndentWidth;
+ end else begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fWorkRowHeight;
+ end;
+
+ result:=TpvVector2.InlineableCreate((BoxCornerMargin*2.0)+100.0,
+                                     (RowHeight*8.0)+(BoxCornerMargin*2.0));
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.CheckTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+var IndentOffset,IndentIndex:TpvSizeInt;
+    TreeNode:TpvGUITreeNode;
+    CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight,Indent,Left:TpvFloat;
+    ItemText:TpvUTF8String;
+    IconSize,CheckBoxSize:TpvVector2;
+begin
+
+ aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
+
+ CurrentFont:=aTreeView.Font;
+
+ CurrentFontSize:=aTreeView.FontSize;
+
+ if aTreeView.fRowHeight>0.0 then begin
+  RowHeight:=aTreeView.fRowHeight;
+ end else begin
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aTreeView.fWorkYOffset:=BoxCornerMargin;
+
+ aTreeView.fWorkRowHeight:=RowHeight;
+
+ if aTreeView.fIndentWidth>0.0 then begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fIndentWidth;
+ end else begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fWorkRowHeight;
+ end;
+
+ if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+  IndentOffset:=0;
+ end else begin
+  IndentOffset:=1;
+ end;
+
+ aTreeView.fMaximumContentWidth:=0.0;
+
+ if assigned(CurrentFont) then begin
+
+  for TreeNode in aTreeView.fNodes do begin
+
+   if assigned(TreeNode) then begin
+
+    Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+    Left:=Indent+aTreeView.fWorkIndentWidth;
+
+    if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+     Left:=Left+TreeNode.IconPaddingLeft;
+     if TreeNode.fIconHeight>0.0 then begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*TreeNode.fIconHeight;
+     end else begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*(RowHeight-(TreeNode.IconPaddingVertical*2));
+     end;
+     Left:=Left+CheckBoxSize.x+TreeNode.IconPaddingRight;
+    end;
+
+    if assigned(TreeNode.fIcon) then begin
+     if TreeNode.fIcon is TpvSprite then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height);
+     end else if TreeNode.fIcon is TpvVulkanTexture then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(TreeNode.fIcon).Width,TpvVulkanTexture(TreeNode.fIcon).Height);
+     end else begin
+      IconSize:=TpvVector2.Null;
+     end;
+     Left:=Left+TreeNode.fIconPaddingLeft;
+     if TreeNode.fIconHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*TreeNode.fIconHeight)/IconSize.y;
+      IconSize.y:=TreeNode.fIconHeight;
+     end else if aTreeView.fWorkRowHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0)))/IconSize.y;
+      IconSize.y:=Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0));
+     end;
+     Left:=Left+(IconSize.x+TreeNode.fIconPaddingRight);
+    end else begin
+     IconSize:=TpvVector2.Null;
+    end;
+
+    if assigned(aTreeView.fOnGetTreeNodeText) then begin
+     ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
+    end else begin
+     ItemText:=TpvUTF8String(TreeNode.fCaption);
+    end;
+
+    aTreeView.fMaximumContentWidth:=Max(aTreeView.fMaximumContentWidth,((BoxCornerMargin+TreeViewHorizontalMargin)*2.0)+Left+CurrentFont.TextWidth(ItemText,CurrentFontSize));
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawTreeView(const aDrawEngine:TpvGUIDrawEngine;const aTreeView:TpvGUITreeView);
+var Element:TpvInt32;
+    NodeIndex,IndentOffset,IndentIndex:TpvSizeInt;
+    CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight,Indent,Left:TpvFloat;
+    Offset,Position,IconSize,CheckBoxSize,CheckBoxPosition:TpvVector2;
+    FontColor:TpvVector4;
+    ClipRect,DrawRect,Rect,IconRect:TpvRect;
+    ItemText:TpvUTF8String;
+    TreeNode:TpvGUITreeNode;
+    SpriteEx:TObject;
+    Sprite:TpvSprite;
+begin
+
+ aDrawEngine.ModelMatrix:=aTreeView.fModelMatrix;
+
+ ClipRect:=aTreeView.fClipRect;
+
+ if aTreeView.fHorziontalScrollBar.Visible then begin
+  ClipRect.Bottom:=ClipRect.Bottom-aTreeView.fHorziontalScrollBar.fSize.y;
+ end;
+
+ if aTreeView.fVerticalScrollBar.Visible then begin
+  ClipRect.Right:=ClipRect.Right-aTreeView.fVerticalScrollBar.fSize.x;
+ end;
+
+ aDrawEngine.ClipRect:=ClipRect;
+
+ CurrentFont:=aTreeView.Font;
+
+ CurrentFontSize:=aTreeView.FontSize;
+
+ aDrawEngine.Font:=CurrentFont;
+
+ aDrawEngine.FontSize:=CurrentFontSize;
+
+ if aTreeView.Enabled then begin
+  FontColor:=aTreeView.FontColor;
+  if aTreeView.Focused then begin
+   Element:=GUI_ELEMENT_BOX_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+  FontColor:=TpvVector4.InlineableCreate(aTreeView.FontColor.rgb,aTreeView.FontColor.a*0.25);
+ end;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aTreeView.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aTreeView.fClipRect.LeftTop;
+
+ aDrawEngine.Transparent:=false;
+
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
+
+ Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,0);
+
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+TreeViewHorizontalMargin,BoxCornerMargin)-Offset;
+
+ if aTreeView.fRowHeight>0.0 then begin
+  RowHeight:=aTreeView.fRowHeight;
+ end else begin
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aTreeView.fWorkYOffset:=BoxCornerMargin;
+
+ aTreeView.fWorkRowHeight:=RowHeight;
+
+ if aTreeView.fIndentWidth>0.0 then begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fIndentWidth;
+ end else begin
+  aTreeView.fWorkIndentWidth:=aTreeView.fWorkRowHeight;
+ end;
+
+ aDrawEngine.Color:=FontColor;
+
+ ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ aDrawEngine.ClipRect:=ClipRect;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aTreeView.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aTreeView.fClipRect.LeftTop;
+
+ if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+  IndentOffset:=0;
+ end else begin
+  IndentOffset:=1;
+ end;
+
+ for NodeIndex:=aTreeView.fVerticalScrollBar.Value to aTreeView.fNodes.Count-1 do begin
+
+  TreeNode:=aTreeView.fNodes[NodeIndex];
+
+  if assigned(TreeNode) then begin
+
+   Indent:=(TreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+   if not (assigned(aTreeView.fOnDrawTreeNode) and
+           aTreeView.fOnDrawTreeNode(aTreeView,
+                                     TreeNode,
+                                     TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                        Position.y),
+                                                            TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                        Position.y+RowHeight)))) then begin
+
+    Left:=Indent+aTreeView.fWorkIndentWidth;
+
+    aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+    aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+    if TpvGUITreeNode.TFlag.Selected in TreeNode.fFlags then begin
+     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     aDrawEngine.Transparent:=false;
+     aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                        Position.y),
+                                                            TpvVector2.InlineableCreate(aTreeView.fSize.x-(BoxCornerMargin*2.0),
+                                                                                        RowHeight)));
+     aDrawEngine.Color:=FontColor;
+    end;
+
+    begin
+     for IndentIndex:=0 to (TreeNode.fDepth-IndentOffset)-1 do begin
+      if NodeIndex=(aTreeView.fNodes.Count-1) then begin
+       SpriteEx:=fIconTreeViewL_V_U;
+      end else begin
+       SpriteEx:=fIconTreeViewL_V_LU;
+      end;
+      if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+       Sprite:=TpvSprite(SpriteEx);
+       aDrawEngine.Transparent:=true;
+       aDrawEngine.DrawSprite(Sprite,
+                              TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                              TpvRect.CreateRelative((DrawRect.Left-Offset.x)+(IndentIndex*aTreeView.fWorkIndentWidth),Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+      end;
+     end;
+     if TreeNode.fChildren.Count>0 then begin
+      case TreeNode.fVisualKind of
+       TpvGUITreeNode.TVisualKind.First:begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=fIconTreeViewCloseL;
+        end else begin
+         SpriteEx:=fIconTreeViewOpenL;
+        end;
+       end;
+       TpvGUITreeNode.TVisualKind.Both:begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=fIconTreeViewCloseLU;
+        end else begin
+         SpriteEx:=fIconTreeViewOpenU;
+        end;
+       end;
+       TpvGUITreeNode.TVisualKind.Last:begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=fIconTreeViewCloseLU;
+        end else begin
+         SpriteEx:=fIconTreeViewOpenU;
+        end;
+       end;
+       else {TpvGUITreeNode.TVisualKind.None:}begin
+        if TpvGUITreeNode.TFlag.Expanded in TreeNode.Flags then begin
+         SpriteEx:=fIconTreeViewCloseLU;
+        end else begin
+         SpriteEx:=fIconTreeViewOpenLU;
+        end;
+       end;
+      end;
+     end else begin
+      case TreeNode.fVisualKind of
+       TpvGUITreeNode.TVisualKind.First:begin
+        if assigned(TreeNode.fParent) then begin
+         SpriteEx:=fIconTreeViewL_HV_LU;
+        end else begin
+         SpriteEx:=fIconTreeViewL_HV_L;
+        end;
+       end;
+       TpvGUITreeNode.TVisualKind.Both:begin
+        SpriteEx:=fIconTreeViewL_HV_U;
+       end;
+       TpvGUITreeNode.TVisualKind.Last:begin
+        SpriteEx:=fIconTreeViewL_HV_U;
+       end;
+       else {TpvGUITreeNode.TVisualKind.None:}begin
+        SpriteEx:=fIconTreeViewL_HV_LU;
+       end;
+      end;
+     end;
+     if assigned(SpriteEx) and (SpriteEx is TpvSprite) then begin
+      Sprite:=TpvSprite(SpriteEx);
+      aDrawEngine.Transparent:=true;
+      aDrawEngine.DrawSprite(Sprite,
+                             TpvRect.CreateRelative(0,0,Sprite.Width,Sprite.Height),
+                             TpvRect.CreateRelative((DrawRect.Left-Offset.x)+Indent,Position.y,aTreeView.fWorkIndentWidth,aTreeView.fWorkRowHeight));
+     end;
+    end;
+
+    if assigned(aTreeView.fOnGetTreeNodeText) then begin
+     ItemText:=aTreeView.fOnGetTreeNodeText(aTreeView,TreeNode);
+    end else begin
+     ItemText:=TpvUTF8String(TreeNode.fCaption);
+    end;
+
+    if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+
+     if aTreeView.Enabled then begin
+      aDrawEngine.Color:=FontColor;
+     end else begin
+      aDrawEngine.Color:=TpvVector4.InlineableCreate(FontColor.rgb,FontColor.a*0.25);
+     end;
+
+     if not aTreeView.Enabled then begin
+
+      Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
+
+     end else if aTreeView.Focused and (aTreeView.fNodeIndex=NodeIndex) then begin
+
+      Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
+
+     end else begin
+
+      Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
+
+     end;
+
+     Left:=Left+TreeNode.IconPaddingLeft;
+
+     if TreeNode.fIconHeight>0.0 then begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*TreeNode.fIconHeight;
+     end else begin
+      CheckBoxSize:=TpvVector2.Create(1.0)*(RowHeight-(TreeNode.IconPaddingVertical*2));
+     end;
+
+     CheckBoxPosition:=Position+TpvVector2.InlineableCreate(Left,(RowHeight-CheckBoxSize.y)*0.5);
+
+     aDrawEngine.Transparent:=false;
+
+     aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                    Element=GUI_ELEMENT_BOX_DARK_FOCUSED,
+                                                    CheckBoxPosition,
+                                                    CheckBoxPosition+CheckBoxSize,
+                                                    CheckBoxPosition,
+                                                    CheckBoxPosition+CheckBoxSize,
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                    true);{}
+
+     if TpvGUITreeNode.TFlag.Checked in TreeNode.fFlags then begin
+
+      Sprite:=TpvSprite(fIconCheck);
+
+      aDrawEngine.Transparent:=true;
+
+      aDrawEngine.DrawSprite(Sprite,
+                             TpvRect.CreateRelative(0.0,0.0,TpvSprite(Sprite).Width,TpvSprite(Sprite).Height),
+                             TpvRect.CreateRelative(CheckBoxPosition,CheckBoxSize));
+
+     end;
+
+     Left:=Left+CheckBoxSize.x+TreeNode.IconPaddingRight;
+
+     aDrawEngine.Color:=FontColor;
+
+    end;
+
+    if assigned(TreeNode.fIcon) then begin
+     if TreeNode.fIcon is TpvSprite then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height);
+     end else if TreeNode.fIcon is TpvVulkanTexture then begin
+      IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(TreeNode.fIcon).Width,TpvVulkanTexture(TreeNode.fIcon).Height);
+     end else begin
+      IconSize:=TpvVector2.Null;
+     end;
+     if TreeNode.fIconHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*TreeNode.fIconHeight)/IconSize.y;
+      IconSize.y:=TreeNode.fIconHeight;
+     end else if aTreeView.fWorkRowHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0)))/IconSize.y;
+      IconSize.y:=Max(0.0,aTreeView.fWorkRowHeight-(TreeNode.fIconPaddingVertical*2.0));
+     end;
+     Left:=Left+TreeNode.fIconPaddingLeft;
+     IconRect:=TpvRect.CreateRelative(Position+TpvVector2.InlineableCreate(Left,(RowHeight-IconSize.y)*0.5),
+                                      IconSize);
+     if assigned(TreeNode.fIcon) then begin
+      if TreeNode.fIcon is TpvSprite then begin
+       aDrawEngine.Transparent:=true;
+       aDrawEngine.DrawSprite(TpvSprite(TreeNode.fIcon),
+                              TpvRect.CreateRelative(TpvVector2.Null,
+                                                     TpvVector2.InlineableCreate(TpvSprite(TreeNode.fIcon).Width,TpvSprite(TreeNode.fIcon).Height)),
+                              TpvRect.CreateRelative(IconRect.LeftTop,IconRect.Size));
+      end else if TreeNode.fIcon is TpvVulkanTexture then begin
+       aDrawEngine.Transparent:=true;
+       aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(TreeNode.fIcon),
+                                         TpvRect.CreateAbsolute(IconRect.LeftTop,Offset+IconRect.RightBottom));
+      end;
+     end;
+     Left:=Left+(IconSize.x+TreeNode.fIconPaddingRight);
+    end else begin
+     IconSize:=TpvVector2.Null;
+    end;
+
+    aDrawEngine.Transparent:=true;
+    aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Left,RowHeight*0.5));
+
+    if aTreeView.fNodeIndex=NodeIndex then begin
+     if aTreeView.Focused then begin
+      Element:=GUI_ELEMENT_FOCUSED;
+     end else begin
+      Element:=GUI_ELEMENT_HOVERED;
+     end;
+     Rect:=ClipRect;
+     Rect.Left:=ClipRect.Left-1.0;
+     Rect.Right:=ClipRect.Right+1.0;
+     aDrawEngine.ClipRect:=Rect;
+     Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                              Position.y),
+                                  TpvVector2.InlineableCreate(DrawRect.Right,
+                                                              Position.y+RowHeight));
+     aDrawEngine.Transparent:=true;
+     aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                    true,
+                                                    Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                    Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                    Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                    Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                    true);
+     aDrawEngine.ClipRect:=ClipRect;
+    end;
+
+   end;
+
+   Position.y:=Position.y+RowHeight;
+
+   if Position.y>aTreeView.fSize.y then begin
+    break;
+   end;
+
+  end;
+
+ end;
+
+ aDrawEngine.Next;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.IsTreeViewExpandCollapseButtonTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+var IndentOffset:TpvSizeInt;
+    Indent,Left:TpvFloat;
+    Offset,Position:TpvVector2;
+begin
+
+ result:=false;
+
+ if assigned(aTreeView) and assigned(aTreeNode) and (aTreeNode.fNodeIndex>=0) and (aTreeNode.fChildren.Count>0) then begin
+
+  if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+   IndentOffset:=0;
+  end else begin
+   IndentOffset:=1;
+  end;
+
+  Indent:=(aTreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+  Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,aTreeView.fVerticalScrollBar.fValue*aTreeView.fWorkRowHeight);
+
+  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+TreeViewHorizontalMargin,BoxCornerMargin+(aTreeNode.fNodeIndex*aTreeView.fWorkRowHeight))-Offset;
+
+  Left:=Indent;
+
+  if TpvRect.CreateRelative(Position.x+Left,Position.y,aTreeView.fWorkRowHeight,aTreeView.fWorkIndentWidth).Touched(aPosition) then begin
+   result:=true;
+  end;
+
+ end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.IsTreeViewCheckBoxTouched(const aTreeView:TpvGUITreeView;const aTreeNode:TpvGUITreeNode;const aPosition:TpvVector2):boolean;
+var IndentOffset:TpvSizeInt;
+    Indent,Left:TpvFloat;
+    Offset,Position,CheckBoxSize:TpvVector2;
+begin
+
+ result:=false;
+
+ if assigned(aTreeView) and assigned(aTreeNode) and (aTreeNode.fNodeIndex>=0) then begin
+
+  if TpvGUITreeViewFlag.ShowRootNode in aTreeView.fFlags then begin
+   IndentOffset:=0;
+  end else begin
+   IndentOffset:=1;
+  end;
+
+  Indent:=(aTreeNode.fDepth-IndentOffset)*aTreeView.fWorkIndentWidth;
+
+  Offset:=TpvVector2.InlineableCreate(aTreeView.fHorziontalScrollBar.fValue,aTreeView.fVerticalScrollBar.fValue*aTreeView.fWorkRowHeight);
+
+  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+TreeViewHorizontalMargin,BoxCornerMargin+(aTreeNode.fNodeIndex*aTreeView.fWorkRowHeight))-Offset;
+
+  Left:=Indent+aTreeView.fWorkIndentWidth;
+
+  if TpvGUITreeNode.TFlag.CheckBox in aTreeNode.fFlags then begin
+   Left:=Left+aTreeNode.IconPaddingLeft;
+   if aTreeNode.fIconHeight>0.0 then begin
+    CheckBoxSize:=TpvVector2.Create(1.0)*aTreeNode.fIconHeight;
+   end else begin
+    CheckBoxSize:=TpvVector2.Create(1.0)*(aTreeView.fWorkRowHeight-(aTreeNode.IconPaddingVertical*2));
+   end;
+   if TpvRect.CreateRelative(Position.x+Left,Position.y,CheckBoxSize.x,CheckBoxSize.y).Touched(aPosition) then begin
+    result:=true;
+   end;
+  end;
+
+ end;
+
+end;
+
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
  fWidget:=aWidget;
  fIndex:=-1;
 end;
 
-function TpvGUIWidgetEnumerator.MoveNext:boolean;
+function TpvGUIWidgetEnumerator.MoveNext:Boolean;
 begin
  inc(fIndex);
  while (fIndex<fWidget.fChildren.Count) and not (fWidget.fChildren[fIndex] is TpvGUIWidget) do begin
@@ -11541,6 +13231,8 @@ constructor TpvGUIWidget.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create(aParent);
+
+ SetRenderDirty;
 
  fLayout:=nil;
 
@@ -11629,6 +13321,10 @@ begin
 
  FreeAndNil(fFixedSizeProperty);
 
+ SetRenderDirty;
+
+//writeln('Destroy ',ClassName,' ',TpvPtrUInt(self));
+
  inherited Destroy;
 
 end;
@@ -11686,12 +13382,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetEnabled:boolean;
+function TpvGUIWidget.GetEnabled:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Enabled in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetEnabled(const aEnabled:boolean);
+procedure TpvGUIWidget.SetEnabled(const aEnabled:Boolean);
 begin
  if aEnabled then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Enabled);
@@ -11700,12 +13396,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetAutoSize:boolean;
+function TpvGUIWidget.GetAutoSize:Boolean;
 begin
  result:=TpvGUIWidgetFlag.AutoSize in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetAutoSize(const aAutoSize:boolean);
+procedure TpvGUIWidget.SetAutoSize(const aAutoSize:Boolean);
 begin
  if aAutoSize then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.AutoSize);
@@ -11714,12 +13410,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetVisible:boolean;
+function TpvGUIWidget.GetVisible:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Visible in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetVisible(const aVisible:boolean);
+procedure TpvGUIWidget.SetVisible(const aVisible:Boolean);
 begin
  if aVisible then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Visible);
@@ -11728,12 +13424,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetDraggable:boolean;
+function TpvGUIWidget.GetDraggable:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Draggable in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetDraggable(const aDraggable:boolean);
+procedure TpvGUIWidget.SetDraggable(const aDraggable:Boolean);
 begin
  if aDraggable then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
@@ -11742,12 +13438,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetFocused:boolean;
+function TpvGUIWidget.GetFocused:Boolean;
 begin
  result:=TpvGUIWidgetFlag.Focused in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetFocused(const aFocused:boolean);
+procedure TpvGUIWidget.SetFocused(const aFocused:Boolean);
 begin
  if aFocused then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
@@ -11756,7 +13452,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetTopLevelFocused:boolean;
+function TpvGUIWidget.GetTopLevelFocused:Boolean;
 begin
  result:=(TpvGUIWidgetFlag.Focused in fWidgetFlags) and
          assigned(fInstance) and
@@ -11764,12 +13460,12 @@ begin
          (fInstance.fCurrentFocusPath.fItems[fInstance.fCurrentFocusPath.fCount-1]=self);
 end;
 
-function TpvGUIWidget.GetPointerFocused:boolean;
+function TpvGUIWidget.GetPointerFocused:Boolean;
 begin
  result:=TpvGUIWidgetFlag.PointerFocused in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetPointerFocused(const aPointerFocused:boolean);
+procedure TpvGUIWidget.SetPointerFocused(const aPointerFocused:Boolean);
 begin
  if aPointerFocused then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
@@ -11778,12 +13474,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetTabStop:boolean;
+function TpvGUIWidget.GetTabStop:Boolean;
 begin
  result:=TpvGUIWidgetFlag.TabStop in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetTabStop(const aTabStop:boolean);
+procedure TpvGUIWidget.SetTabStop(const aTabStop:Boolean);
 begin
  if aTabStop then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
@@ -11792,12 +13488,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetKeyPreview:boolean;
+function TpvGUIWidget.GetKeyPreview:Boolean;
 begin
  result:=TpvGUIWidgetFlag.KeyPreview in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetKeyPreview(const aKeyPreview:boolean);
+procedure TpvGUIWidget.SetKeyPreview(const aKeyPreview:Boolean);
 begin
  if aKeyPreview then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.KeyPreview);
@@ -11806,12 +13502,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetWantAllKeys:boolean;
+function TpvGUIWidget.GetWantAllKeys:Boolean;
 begin
  result:=TpvGUIWidgetFlag.WantAllKeys in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetWantAllKeys(const aWantAllKeys:boolean);
+procedure TpvGUIWidget.SetWantAllKeys(const aWantAllKeys:Boolean);
 begin
  if aWantAllKeys then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.WantAllKeys);
@@ -11820,12 +13516,12 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetWantTabKey:boolean;
+function TpvGUIWidget.GetWantTabKey:Boolean;
 begin
  result:=TpvGUIWidgetFlag.WantTabKey in fWidgetFlags;
 end;
 
-procedure TpvGUIWidget.SetWantTabKey(const aWantTabKey:boolean);
+procedure TpvGUIWidget.SetWantTabKey(const aWantTabKey:Boolean);
 begin
  if aWantTabKey then begin
   Include(fWidgetFlags,TpvGUIWidgetFlag.WantTabKey);
@@ -11903,7 +13599,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetRecursiveVisible:boolean;
+function TpvGUIWidget.GetRecursiveVisible:Boolean;
 var CurrentWidget:TpvGUIWidget;
 begin
  CurrentWidget:=self;
@@ -11991,7 +13687,7 @@ begin
  result:=TpvGUIWidgetEnumerator.Create(self);
 end;
 
-function TpvGUIWidget.Contains(const aPosition:TpvVector2):boolean;
+function TpvGUIWidget.Contains(const aPosition:TpvVector2):Boolean;
 begin
  result:=(aPosition.x>=0.0) and
          (aPosition.y>=0.0) and
@@ -12049,8 +13745,8 @@ begin
  end;
 end;
 
-function TpvGUIWidget.FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget;
-const Directions:array[boolean] of TpvInt32=(-1,1);
+function TpvGUIWidget.FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:Boolean):TpvGUIWidget;
+const Directions:array[Boolean] of TpvInt32=(-1,1);
 var Count,Index,StartIndex:TpvInt32;
     Widget:TpvGUIWidget;
     List:Classes.TList;
@@ -12092,7 +13788,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean;
+function TpvGUIWidget.ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean;
 var CurrentWidget,ParentWidget:TpvGUIWidget;
 begin
  result:=false;
@@ -12112,8 +13808,8 @@ begin
  end;
 end;
 
-function TpvGUIWidget.FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow;
-const Directions:array[boolean] of TpvInt32=(-1,1);
+function TpvGUIWidget.FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:Boolean):TpvGUIWindow;
+const Directions:array[Boolean] of TpvInt32=(-1,1);
 var Count,Index,StartIndex:TpvInt32;
     Object_:TpvGUIObject;
     Window:TpvGUIWindow;
@@ -12161,7 +13857,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean;
+function TpvGUIWidget.ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:Boolean):Boolean;
 var CurrentWindow,ParentWindow:TpvGUIWindow;
 begin
  result:=false;
@@ -12314,51 +14010,51 @@ begin
  end;
 end;
 
-function TpvGUIWidget.Enter:boolean;
+function TpvGUIWidget.Enter:Boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  result:=assigned(fOnEnter) and fOnEnter(self);
 end;
 
-function TpvGUIWidget.Leave:boolean;
+function TpvGUIWidget.Leave:Boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  result:=assigned(fOnLeave) and fOnLeave(self);
 end;
 
-function TpvGUIWidget.PointerEnter:boolean;
+function TpvGUIWidget.PointerEnter:Boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  result:=assigned(fOnPointerEnter) and fOnPointerEnter(self);
 end;
 
-function TpvGUIWidget.PointerLeave:boolean;
+function TpvGUIWidget.PointerLeave:Boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  result:=assigned(fOnPointerLeave) and fOnPointerLeave(self);
 end;
 
-function TpvGUIWidget.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIWidget.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIWidget.DragReleaseEvent:boolean;
+function TpvGUIWidget.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
-function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     ChildPointerEvent:TpvApplicationInputPointerEvent;
-    PreviousContained,CurrentContained:boolean;
+    PreviousContained,CurrentContained:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -12407,7 +14103,7 @@ begin
  end;
 end;
 
-function TpvGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -12591,6 +14287,8 @@ begin
 
  fSwapChainReady:=false;
 
+ SetRenderDirty;
+
  fBuffers:=nil;
 
  fCountBuffers:=0;
@@ -12672,6 +14370,7 @@ begin
  if fDrawEngine<>aDrawEngine then begin
   FreeAndNil(fDrawEngine);
   fDrawEngine:=aDrawEngine;
+  SetRenderDirty;
  end;
 end;
 
@@ -12779,7 +14478,7 @@ procedure TpvGUIInstance.UpdateFocusForReleaseObject(const aGUIObject:TpvGUIObje
 var Index:TpvSizeInt;
     OtherObject:TpvGUIObject;
     RootWidget,OtherWidget:TpvGUIWidget;
-    Found:boolean;
+    Found:Boolean;
 begin
 
  repeat
@@ -12852,6 +14551,8 @@ begin
   fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
  end;
 
+ SetRenderDirty;
+
 end;
 
 procedure TpvGUIInstance.ReleaseObject(const aGUIObject:TpvGUIObject);
@@ -12896,6 +14597,7 @@ begin
   if assigned(fChildren) and fChildren.Contains(aGUIObject) then begin
    fChildren.Remove(aGUIObject);
   end;
+  SetRenderDirty;
  end;
 end;
 
@@ -13049,6 +14751,8 @@ begin
   MoveWindowToFront(fWindow);
  end;
 
+ SetRenderDirty;
+
 end;
 
 procedure TpvGUIInstance.DisposeWindow(const aWindow:TpvGUIWindow);
@@ -13064,12 +14768,13 @@ begin
    aWindow.PerformLayout;
   end;
   aWindow.fPosition:=(fSize-aWindow.fSize)*0.5;
+  SetRenderDirty;
  end;
 end;
 
 procedure TpvGUIInstance.MoveWindowToFront(const aWindow:TpvGUIWindow);
 var Index,BaseIndex:TpvInt32;
-    Changed:boolean;
+    Changed:Boolean;
     Current:TpvGUIObject;
     PopupWidget:TpvGUIPopup;
 begin
@@ -13103,6 +14808,7 @@ begin
     end;
    until not Changed;
   end;
+  SetRenderDirty;
  end;
 end;
 
@@ -13110,11 +14816,12 @@ function TpvGUIInstance.AddMenu:TpvGUIWindowMenu;
 begin
  if not assigned(fMenu) then begin
   fMenu:=TpvGUIWindowMenu.Create(self);
+  SetRenderDirty;
  end;
  result:=fMenu;
 end;
 
-function TpvGUIInstance.HasModalWindows:boolean;
+function TpvGUIInstance.HasModalWindows:Boolean;
 begin
  result:=assigned(fModalWindowStack) and (fModalWindowStack.Count>0);
 end;
@@ -13169,13 +14876,14 @@ begin
 end;
 {$ifend}
 
-function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
     CurrentWindow:TpvGUIWindow;
     List:Classes.TList;
 begin
+ SetRenderDirty;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
   if fPopupMenuStack.Count>0 then begin
@@ -13298,14 +15006,15 @@ begin
  end;
 end;
 
-function TpvGUIInstance.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIInstance.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWindow:TpvGUIWindow;
     CurrentWidget:TpvGUIWidget;
     LocalPointerEvent:TpvApplicationInputPointerEvent;
-    DoUpdateCursor,IsCursorOnMenu:boolean;
+    DoUpdateCursor,IsCursorOnMenu:Boolean;
 begin
+ SetRenderDirty;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   DoUpdateCursor:=false;
@@ -13416,9 +15125,10 @@ begin
  end;
 end;
 
-function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var Index:TpvInt32;
 begin
+ SetRenderDirty;
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
   for Index:=fPopupMenuStack.Count-1 downto 0 do begin
@@ -13436,7 +15146,7 @@ end;
 procedure TpvGUIInstance.FindHoveredWidget;
 var Index:TpvInt32;
     CurrentWidget:TpvGUIWidget;
-    IsOnPopupMenu:boolean;
+    IsOnPopupMenu:Boolean;
 begin
  IsOnPopupMenu:=false;
  if fPopupMenuStack.Count>0 then begin
@@ -13465,6 +15175,39 @@ begin
   if assigned(fHoveredWidget) then begin
    fHoveredWidget.IncRef;
   end;
+ end;
+end;
+
+procedure TpvGUIInstance.ResetRenderDirty;
+begin
+ TPasMPInterlocked.Write(fRenderDirtyBitMask,{$ifdef cpu64}TPasMPUInt64($0000000000000000){$else}TpvUInt32($00000000){$endif});
+ TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000000));
+end;
+
+procedure TpvGUIInstance.SetRenderDirty;
+begin
+ TPasMPInterlocked.Write(fRenderDirtyBitMask,{$ifdef cpu64}TPasMPUInt64($ffffffffffffffff){$else}TpvUInt32($ffffffff){$endif});
+ TPasMPInterlocked.Write(fRenderDirtyCounter,TpvUInt32($00000010));
+end;
+
+function TpvGUIInstance.CheckRenderDirty(const aReset:Boolean):Boolean;
+begin
+ result:=fRenderDirtyCounter>0;
+ if result and aReset then begin
+  result:=TPasMPInterlocked.Decrement(fRenderDirtyCounter)>0;
+ end;
+end;
+
+function TpvGUIInstance.CheckRenderDirty(const aInFlightFrameIndex,aSwapChainImageIndex:TpvUInt32;const aReset:Boolean):Boolean;
+var Index:TpvUInt32;
+    Mask:{$ifdef cpu64}TPasMPUInt64{$else}TPasMPUInt32{$endif};
+begin
+ Index:=(aInFlightFrameIndex*pvApplication.CountSwapChainImages)+aSwapChainImageIndex;
+ Mask:={$ifdef cpu64}TPasMPUInt64{$else}TPasMPUInt32{$endif}(1) shl Index;
+ if aReset then begin
+  result:=(TPasMPInterlocked.ExchangeBitwiseAnd(fRenderDirtyBitMask,not Mask) and Mask)<>0;
+ end else begin
+  result:=(TPasMPInterlocked.Read(fRenderDirtyBitMask) and Mask)<>0;
  end;
 end;
 
@@ -13788,12 +15531,12 @@ begin
  end;
 end;
 
-function TpvGUIWindow.GetModal:boolean;
+function TpvGUIWindow.GetModal:Boolean;
 begin
  result:=TpvGUIWindowFlag.Modal in fWindowFlags;
 end;
 
-procedure TpvGUIWindow.SetModal(const aModal:boolean);
+procedure TpvGUIWindow.SetModal(const aModal:Boolean);
 begin
  if aModal then begin
   SetWindowFlags(fWindowFlags+[TpvGUIWindowFlag.Modal]);
@@ -13962,17 +15705,17 @@ begin
  end;
 end;
 
-function TpvGUIWindow.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIWindow.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIWindow.DragReleaseEvent:boolean;
+function TpvGUIWindow.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
@@ -13994,9 +15737,9 @@ begin
  end;
 end;
 
-function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var ClampedRelativePosition,MinimumPosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
-    OK:boolean;
+    OK:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -14303,7 +16046,7 @@ begin
  end;
 end;
 
-function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -14506,12 +16249,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index,KeyCodeIndex:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+ if not result then begin
   if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
                               TpvApplicationInputKeyModifier.CTRL,
                               TpvApplicationInputKeyModifier.SHIFT,
@@ -14520,11 +16263,13 @@ begin
     MessageDialogButton:=@fButtons[Index];
     for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
      if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
-      if assigned(fOnButtonClick) then begin
-       fOnButtonClick(self,MessageDialogButton^.fID);
+      if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+       if assigned(fOnButtonClick) then begin
+        fOnButtonClick(self,MessageDialogButton^.fID);
+       end;
+       result:=true;
+       Close;
       end;
-      result:=true;
-      Close;
       break;
      end;
     end;
@@ -14532,6 +16277,9 @@ begin
      break;
     end;
    end;
+  end;
+  if not result then begin
+   result:=inherited KeyEvent(aKeyEvent);
   end;
  end;
 end;
@@ -14802,12 +16550,12 @@ begin
  end;
 end;
 
-function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
-function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -14815,7 +16563,7 @@ begin
  end;
 end;
 
-function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -14872,12 +16620,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIButton.GetDown:boolean;
+function TpvGUIButton.GetDown:Boolean;
 begin
  result:=TpvGUIButtonFlag.Down in fButtonFlags;
 end;
 
-procedure TpvGUIButton.SetDown(const aDown:boolean);
+procedure TpvGUIButton.SetDown(const aDown:Boolean);
 begin
  if (TpvGUIButtonFlag.Down in fButtonFlags)<>aDown then begin
   if aDown then begin
@@ -14942,7 +16690,7 @@ procedure TpvGUIButton.ProcessDown(const aPosition:TpvVector2);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildButton:TpvGUIButton;
-    OldDown:boolean;
+    OldDown:Boolean;
 begin
  OldDown:=Down;
  if TpvGUIButtonFlag.RadioButton in fButtonFlags then begin
@@ -14989,7 +16737,7 @@ begin
 end;
 
 procedure TpvGUIButton.ProcessUp(const aPosition:TpvVector2);
-var OldDown:boolean;
+var OldDown:Boolean;
 begin
  OldDown:=Down;
  if assigned(fOnClick) and Contains(aPosition) then begin
@@ -15000,7 +16748,7 @@ begin
  end;
 end;
 
-function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -15022,11 +16770,11 @@ begin
  end;
 end;
 
-function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildButton:TpvGUIButton;
-    OldDown:boolean;
+    OldDown:Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -15050,7 +16798,7 @@ begin
  end;
 end;
 
-function TpvGUIButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -15121,7 +16869,7 @@ begin
  end;
 end;
 
-procedure TpvGUIPopupButton.SetDown(const aDown:boolean);
+procedure TpvGUIPopupButton.SetDown(const aDown:Boolean);
 var ChildFixedSize,ChildPreferredSize:TpvVector2;
 begin
  inherited SetDown(aDown);
@@ -15160,7 +16908,7 @@ begin
 
 end;
 
-procedure TpvGUIPopupMenuButton.SetDown(const aDown:boolean);
+procedure TpvGUIPopupMenuButton.SetDown(const aDown:Boolean);
 begin
  inherited SetDown(aDown);
  if aDown then begin
@@ -15213,12 +16961,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUICheckBox.GetPushed:boolean;
+function TpvGUICheckBox.GetPushed:Boolean;
 begin
  result:=TpvGUICheckBoxFlag.Pushed in fCheckBoxFlags;
 end;
 
-procedure TpvGUICheckBox.SetPushed(const aPushed:boolean);
+procedure TpvGUICheckBox.SetPushed(const aPushed:Boolean);
 begin
  if aPushed then begin
   Include(fCheckBoxFlags,TpvGUICheckBoxFlag.Pushed);
@@ -15227,12 +16975,12 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.GetChecked:boolean;
+function TpvGUICheckBox.GetChecked:Boolean;
 begin
  result:=TpvGUICheckBoxFlag.Checked in fCheckBoxFlags;
 end;
 
-procedure TpvGUICheckBox.SetChecked(const aChecked:boolean);
+procedure TpvGUICheckBox.SetChecked(const aChecked:Boolean);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildCheckBox:TpvGUICheckBox;
@@ -15346,7 +17094,7 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -15367,7 +17115,7 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -15401,7 +17149,7 @@ begin
  end;
 end;
 
-function TpvGUICheckBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUICheckBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -15437,50 +17185,51 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
+ fPopupMenu.OnActivate:=PopupMenuOnActivate;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Cut';
- MenuItem.ShortcutHint:='Ctrl-X';
- MenuItem.fIcon:=Skin.fIconContentCut;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCutClick;
+ fMenuItemCut:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCut.Caption:='Cut';
+ fMenuItemCut.ShortcutHint:='Ctrl-X';
+ fMenuItemCut.fIcon:=Skin.fIconContentCut;
+ fMenuItemCut.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCut.OnClick:=PopupMenuOnCutClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Copy';
- MenuItem.ShortcutHint:='Ctrl-C';
- MenuItem.fIcon:=Skin.fIconContentCopy;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCopyClick;
+ fMenuItemCopy:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCopy.Caption:='Copy';
+ fMenuItemCopy.ShortcutHint:='Ctrl-C';
+ fMenuItemCopy.fIcon:=Skin.fIconContentCopy;
+ fMenuItemCopy.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCopy.OnClick:=PopupMenuOnCopyClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Paste';
- MenuItem.ShortcutHint:='Ctrl-V';
- MenuItem.fIcon:=Skin.fIconContentPaste;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnPasteClick;
+ fMenuItemPaste:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemPaste.Caption:='Paste';
+ fMenuItemPaste.ShortcutHint:='Ctrl-V';
+ fMenuItemPaste.fIcon:=Skin.fIconContentPaste;
+ fMenuItemPaste.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemPaste.OnClick:=PopupMenuOnPasteClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Delete';
- MenuItem.ShortcutHint:='Del';
- MenuItem.fIcon:=Skin.fIconContentDelete;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnDeleteClick;
+ fMenuItemDelete:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemDelete.Caption:='Delete';
+ fMenuItemDelete.ShortcutHint:='Del';
+ fMenuItemDelete.fIcon:=Skin.fIconContentDelete;
+ fMenuItemDelete.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemDelete.OnClick:=PopupMenuOnDeleteClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='-';
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select all';
- MenuItem.ShortcutHint:='Ctrl+A';
- MenuItem.fIcon:=Skin.fIconSelectAll;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectAllClick;
+ fMenuItemSelectAll:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectAll.Caption:='Select all';
+ fMenuItemSelectAll.ShortcutHint:='Ctrl+A';
+ fMenuItemSelectAll.fIcon:=Skin.fIconSelectAll;
+ fMenuItemSelectAll.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectAll.OnClick:=PopupMenuOnSelectAllClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select none';
- MenuItem.fIcon:=Skin.fIconSelectNone;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
+ fMenuItemSelectNone:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectNone.Caption:='Select none';
+ fMenuItemSelectNone.fIcon:=Skin.fIconSelectNone;
+ fMenuItemSelectNone.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectNone.OnClick:=PopupMenuOnSelectNoneClick;
 
  fTextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
@@ -15552,12 +17301,12 @@ begin
  result:=Skin.GetTextEditPreferredSize(self);
 end;
 
-function TpvGUITextEdit.GetEditable:boolean;
+function TpvGUITextEdit.GetEditable:Boolean;
 begin
  result:=fEditable;
 end;
 
-procedure TpvGUITextEdit.SetEditable(const aEditable:boolean);
+procedure TpvGUITextEdit.SetEditable(const aEditable:Boolean);
 begin
  fEditable:=aEditable;
  if fEditable then begin
@@ -15571,7 +17320,7 @@ procedure TpvGUITextEdit.UpdateText;
 begin
 end;
 
-function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):boolean;
+function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):Boolean;
 begin
  if assigned(fOnCheckText) then begin
   result:=fOnCheckText(aText);
@@ -15616,17 +17365,19 @@ begin
 
   fTextSelectionEnd:=0;
 
+  SetRenderDirty;
+
  end;
 
 end;
 
-function TpvGUITextEdit.Enter:boolean;
+function TpvGUITextEdit.Enter:Boolean;
 begin
  result:=inherited Enter;
  pvApplication.Input.StartTextInput;
 end;
 
-function TpvGUITextEdit.Leave:boolean;
+function TpvGUITextEdit.Leave:Boolean;
 begin
  pvApplication.Input.StopTextInput;
  result:=inherited Leave;
@@ -15636,27 +17387,30 @@ procedure TpvGUITextEdit.CutSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
     TemporaryUncheckedText:TpvUTF8String;
 begin
- if (fTextSelectionStart>0) and
-    (fTextSelectionEnd>0) then begin
-  CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-  OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-  pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-  TemporaryUncheckedText:=fText;
-  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-  if CheckText(TemporaryUncheckedText) then begin
-   fTextCursorPositionIndex:=CurrentPosition;
-   fTextSelectionStart:=0;
-   fTextSelectionEnd:=0;
-   if fText<>TemporaryUncheckedText then begin
-    fText:=TemporaryUncheckedText;
-    UpdateText;
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+ if fEditable then begin
+  if (fTextSelectionStart>0) and
+     (fTextSelectionEnd>0) then begin
+   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
+   TemporaryUncheckedText:=fText;
+   Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+   if CheckText(TemporaryUncheckedText) then begin
+    fTextCursorPositionIndex:=CurrentPosition;
+    fTextSelectionStart:=0;
+    fTextSelectionEnd:=0;
+    if fText<>TemporaryUncheckedText then begin
+     fText:=TemporaryUncheckedText;
+     UpdateText;
+     if assigned(fOnChange) then begin
+      fOnChange(self);
+     end;
     end;
    end;
   end;
+  fTime:=0.0;
  end;
- fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.CopySelectedText;
@@ -15669,6 +17423,7 @@ begin
   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
  end;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.PasteText;
@@ -15676,48 +17431,52 @@ var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryUncheckedText,TemporaryText:TpvUTF8String;
 begin
- TemporaryUncheckedText:=fText;
- TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
- TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
- TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
- if (TemporaryUncheckedTextSelectionStart>0) and
-    (TemporaryUncheckedTextSelectionEnd>0) then begin
-  CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-  OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-  TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-  TemporaryUncheckedTextSelectionStart:=0;
-  TemporaryUncheckedTextSelectionEnd:=0;
- end;
- if pvApplication.Clipboard.HasText then begin
-  TemporaryText:=pvApplication.Clipboard.GetText;
-  if length(TemporaryText)>0 then begin
-   Insert(TemporaryText,
-          TemporaryUncheckedText,
-          PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-   inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+ if fEditable then begin
+  TemporaryUncheckedText:=fText;
+  TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+  TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+  TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+  if (TemporaryUncheckedTextSelectionStart>0) and
+     (TemporaryUncheckedTextSelectionEnd>0) then begin
+   CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+   OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+   Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+   TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+   TemporaryUncheckedTextSelectionStart:=0;
+   TemporaryUncheckedTextSelectionEnd:=0;
   end;
- end;
- if CheckText(TemporaryUncheckedText) then begin
-  fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-  fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-  fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-  if fText<>TemporaryUncheckedText then begin
-   fText:=TemporaryUncheckedText;
-   UpdateText;
-   if assigned(fOnChange) then begin
-    fOnChange(self);
+  if pvApplication.Clipboard.HasText then begin
+   TemporaryText:=pvApplication.Clipboard.GetText;
+   if length(TemporaryText)>0 then begin
+    Insert(TemporaryText,
+           TemporaryUncheckedText,
+           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+    inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
    end;
   end;
+  if CheckText(TemporaryUncheckedText) then begin
+   fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+   fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+   fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+   if fText<>TemporaryUncheckedText then begin
+    fText:=TemporaryUncheckedText;
+    UpdateText;
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
+  end;
+  fTime:=0.0;
  end;
- fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.DeleteSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
     TemporaryUncheckedText:TpvUTF8String;
 begin
- if (fTextSelectionStart>0) and
+ if fEditable and
+    (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
@@ -15737,6 +17496,7 @@ begin
   end;
  end;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.SelectAll;
@@ -15744,6 +17504,7 @@ begin
  fTextSelectionStart:=1;
  fTextSelectionEnd:=PUCUUTF8Length(Text)+1;
  fTime:=0.0;
+ SetRenderDirty;
 end;
 
 procedure TpvGUITextEdit.SelectNone;
@@ -15751,6 +17512,14 @@ begin
  fTextSelectionStart:=0;
  fTextSelectionEnd:=0;
  fTime:=0.0;
+ SetRenderDirty;
+end;
+
+procedure TpvGUITextEdit.PopupMenuOnActivate(const aSender:TpvGUIObject);
+begin
+ fMenuItemCut.Enabled:=fEditable;
+ fMenuItemPaste.Enabled:=fEditable;
+ fMenuItemDelete.Enabled:=fEditable;
 end;
 
 procedure TpvGUITextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
@@ -15783,17 +17552,17 @@ begin
  SelectNone;
 end;
 
-function TpvGUITextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUITextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITextEdit.DragReleaseEvent:boolean;
+function TpvGUITextEdit.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
@@ -15884,7 +17653,8 @@ begin
      end;
      KEYCODE_BACKSPACE:begin
       if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
+         (fTextSelectionEnd>0) and
+         fEditable then begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
        TemporaryUncheckedText:=fText;
@@ -15903,7 +17673,8 @@ begin
        end;
       end else begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) then begin
+       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) and
+          fEditable then begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Dec(fText,OtherPosition);
         if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
@@ -15940,7 +17711,7 @@ begin
        TemporaryUncheckedTextSelectionEnd:=0;
       end;
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if pvApplication.Clipboard.HasText then begin
+       if pvApplication.Clipboard.HasText and fEditable then begin
         TemporaryText:=pvApplication.Clipboard.GetText;
         if length(TemporaryText)>0 then begin
          Insert(TemporaryText,
@@ -15949,7 +17720,7 @@ begin
          inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
         end;
        end;
-      end else begin
+      end else if fEditable then begin
        Insert(#32,
               TemporaryUncheckedText,
               PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
@@ -15971,7 +17742,8 @@ begin
      end;
      KEYCODE_DELETE:begin
       if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
+         (fTextSelectionEnd>0) and
+         fEditable then begin
        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
         CutSelectedText;
        end else begin
@@ -15979,7 +17751,7 @@ begin
        end;
       end else begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) then begin
+       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) and fEditable then begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Inc(fText,OtherPosition);
         if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
@@ -16013,56 +17785,63 @@ begin
      end;
      KEYCODE_V:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       PasteText;
+       if fEditable then begin
+        PasteText;
+       end;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       CutSelectedText;
+       if fEditable then begin
+        CutSelectedText;
+       end;
        result:=true;
       end;
      end;
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
-    TemporaryUncheckedText:=fText;
-    TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
-    TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
-    TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
-    if (TemporaryUncheckedTextSelectionStart>0) and
-       (TemporaryUncheckedTextSelectionEnd>0) then begin
-     CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-     OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-     Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-     TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-     TemporaryUncheckedTextSelectionStart:=0;
-     TemporaryUncheckedTextSelectionEnd:=0;
-    end;
-    Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
-           TemporaryUncheckedText,
-           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-    inc(TemporaryUncheckedTextCursorPositionIndex);
-    if CheckText(TemporaryUncheckedText) then begin
-     fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-     fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-     fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-     if fText<>TemporaryUncheckedText then begin
-      fText:=TemporaryUncheckedText;
-      UpdateText;
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+    if fEditable then begin
+     TemporaryUncheckedText:=fText;
+     TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+     TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+     TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+     if (TemporaryUncheckedTextSelectionStart>0) and
+        (TemporaryUncheckedTextSelectionEnd>0) then begin
+      CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+      OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+      Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+      TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+      TemporaryUncheckedTextSelectionStart:=0;
+      TemporaryUncheckedTextSelectionEnd:=0;
+     end;
+     Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
+            TemporaryUncheckedText,
+            PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+     inc(TemporaryUncheckedTextCursorPositionIndex);
+     if CheckText(TemporaryUncheckedText) then begin
+      fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+      fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+      fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+      if fText<>TemporaryUncheckedText then begin
+       fText:=TemporaryUncheckedText;
+       UpdateText;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end;
      end;
+     fTime:=0.0;
     end;
-    fTime:=0.0;
     result:=true;
    end;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -16155,9 +17934,10 @@ begin
    end;
   end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUITextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUITextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -16166,8 +17946,13 @@ begin
 end;
 
 procedure TpvGUITextEdit.Update;
+var CursorVisibleChangeCheck:Boolean;
 begin
+ CursorVisibleChangeCheck:=frac(fTime)<0.5;
  fTime:=fTime+fInstance.fDeltaTime;
+ if CursorVisibleChangeCheck<>(frac(fTime)<0.5) then begin
+  SetRenderDirty;
+ end;
  inherited Update;
 end;
 
@@ -16203,10 +17988,31 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUIIntegerEdit.Enter:Boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIIntegerEdit.Leave:Boolean;
+begin
+ Accept;
+ result:=inherited Leave;
+end;
+
+procedure TpvGUIIntegerEdit.Accept;
+var OldText,NewText:TpvUTF8String;
+begin
+ OldText:=fText;
+ ApplyMinMaxValueBounds;
+ NewText:=IntToStr(GetValue);
+ if OldText<>NewText then begin
+  SetText(NewText);
+ end;
+end;
+
 procedure TpvGUIIntegerEdit.UpdateText;
 begin
  inherited UpdateText;
- ApplyMinMaxValueBounds;
 end;
 
 procedure TpvGUIIntegerEdit.ApplyMinMaxValueBounds;
@@ -16307,6 +18113,7 @@ begin
    end;
   end;
  end;
+ result:=Min(Max(result,fMinimumValue),fMaximumValue);
 end;
 
 procedure TpvGUIIntegerEdit.SetValue(const aValue:TpvInt64);
@@ -16324,7 +18131,7 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):boolean;
+function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):Boolean;
 type TCharSet=set of AnsiChar;
 var Index,Len:TpvSizeInt;
     DigitCharSet:TCharSet;
@@ -16384,17 +18191,17 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIIntegerEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=fSpinnable and fDragRect.Touched(aPosition);
 end;
 
-function TpvGUIIntegerEdit.DragReleaseEvent:boolean;
+function TpvGUIIntegerEdit.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var TemporaryValue:TpvInt64;
 begin
  result:=inherited KeyEvent(aKeyEvent);
@@ -16402,39 +18209,51 @@ begin
   case aKeyEvent.KeyEventType of
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
+     KEYCODE_RETURN:begin
+      Accept;
+      result:=true;
+     end;
      KEYCODE_UP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
-       SetValue(TemporaryValue+fSmallStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+        SetValue(TemporaryValue+fSmallStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
-       SetValue(TemporaryValue-fSmallStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+        SetValue(TemporaryValue-fSmallStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
-       SetValue(TemporaryValue+fLargeStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+        SetValue(TemporaryValue+fLargeStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
-       SetValue(TemporaryValue-fLargeStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+        SetValue(TemporaryValue-fLargeStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
@@ -16444,7 +18263,7 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIIntegerEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -16452,20 +18271,22 @@ begin
  if not result then begin
   case aPointerEvent.PointerEventType of
    TpvApplicationInputPointerEventType.Drag:begin
-    TemporaryValue:=GetValue;
-    v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-    if v<0.0 then begin
-     Step:=floor(v)*fSmallStep;
-    end else begin
-     Step:=ceil(v)*fSmallStep;
-    end;
-    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-     SetValue(TemporaryValue+Step);
-    end else if Step<0 then begin
-     SetValue(fMinimumValue);
-    end else if Step>0 then begin
-     SetValue(fMaximumValue);
+    if fEditable then begin
+     TemporaryValue:=GetValue;
+     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
+     if v<0.0 then begin
+      Step:=floor(v)*fSmallStep;
+     end else begin
+      Step:=ceil(v)*fSmallStep;
+     end;
+     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+      SetValue(TemporaryValue+Step);
+     end else if Step<0 then begin
+      SetValue(fMinimumValue);
+     end else if Step>0 then begin
+      SetValue(fMaximumValue);
+     end;
     end;
     result:=true;
    end;
@@ -16473,26 +18294,28 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
-  TemporaryValue:=GetValue;
-  v:=aRelativeAmount.x+aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v)*fSmallStep;
-  end else begin
-   Step:=ceil(v)*fSmallStep;
-  end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-   SetValue(TemporaryValue+Step);
-  end else if Step<0 then begin
-   SetValue(fMinimumValue);
-  end else if Step>0 then begin
-   SetValue(fMaximumValue);
+  if fEditable then begin
+   TemporaryValue:=GetValue;
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v)*fSmallStep;
+   end else begin
+    Step:=ceil(v)*fSmallStep;
+   end;
+   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    SetValue(TemporaryValue+Step);
+   end else if Step<0 then begin
+    SetValue(fMinimumValue);
+   end else if Step>0 then begin
+    SetValue(fMaximumValue);
+   end;
   end;
   result:=true;
  end;
@@ -16526,10 +18349,31 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUIFloatEdit.Enter:Boolean;
+begin
+ Result:=inherited Enter;
+end;
+
+function TpvGUIFloatEdit.Leave:Boolean;
+begin
+ Accept;
+ Result:=inherited Leave;
+end;
+
+procedure TpvGUIFloatEdit.Accept;
+var OldText,NewText:TpvUTF8String;
+begin
+ OldText:=fText;
+ ApplyMinMaxValueBounds;
+ NewText:=PasDblStrUtils.ConvertDoubleToString(GetValue,omStandard,fDigits);
+ if OldText<>NewText then begin
+  SetText(NewText);
+ end;
+end;
+
 procedure TpvGUIFloatEdit.UpdateText;
 begin
  inherited UpdateText;
- ApplyMinMaxValueBounds;
 end;
 
 procedure TpvGUIFloatEdit.ApplyMinMaxValueBounds;
@@ -16562,7 +18406,9 @@ begin
  end else begin
   OK:=false;
   result:=PasDblStrUtils.ConvertStringToDouble(fText,rmNearest,@OK,fDigits);
-  if not OK then begin
+  if OK then begin
+   result:=Min(Max(result,fMinimumValue),fMaximumValue);
+  end else begin
    result:=0.0;
   end;
  end;
@@ -16583,7 +18429,7 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.CheckText(const aText:TpvUTF8String):boolean;
+function TpvGUIFloatEdit.CheckText(const aText:TpvUTF8String):Boolean;
 type TCharSet=set of AnsiChar;
 var Index,Len:TpvSizeInt;
     DigitCharSet:TCharSet;
@@ -16657,17 +18503,17 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIFloatEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=fSpinnable and fDragRect.Touched(aPosition);
 end;
 
-function TpvGUIFloatEdit.DragReleaseEvent:boolean;
+function TpvGUIFloatEdit.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var TemporaryValue:TpvDouble;
 begin
  result:=inherited KeyEvent(aKeyEvent);
@@ -16675,39 +18521,52 @@ begin
   case aKeyEvent.KeyEventType of
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
+     KEYCODE_RETURN:begin
+      Accept;
+      result:=true;
+     end;
+
      KEYCODE_UP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
-       SetValue(TemporaryValue+fSmallStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+        SetValue(TemporaryValue+fSmallStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
-       SetValue(TemporaryValue-fSmallStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+        SetValue(TemporaryValue-fSmallStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
-       SetValue(TemporaryValue+fLargeStep);
-      end else begin
-       SetValue(fMaximumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+        SetValue(TemporaryValue+fLargeStep);
+       end else begin
+        SetValue(fMaximumValue);
+       end;
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
-      TemporaryValue:=GetValue;
-      if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
-       SetValue(TemporaryValue-fLargeStep);
-      end else begin
-       SetValue(fMinimumValue);
+      if fEditable then begin
+       TemporaryValue:=GetValue;
+       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+        SetValue(TemporaryValue-fLargeStep);
+       end else begin
+        SetValue(fMinimumValue);
+       end;
       end;
       result:=true;
      end;
@@ -16717,7 +18576,7 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIFloatEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
@@ -16725,20 +18584,22 @@ begin
  if not result then begin
   case aPointerEvent.PointerEventType of
    TpvApplicationInputPointerEventType.Drag:begin
-    TemporaryValue:=GetValue;
-    v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
-    if v<0.0 then begin
-     Step:=floor(v)*fSmallStep;
-    end else begin
-     Step:=ceil(v)*fSmallStep;
-    end;
-    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-     SetValue(TemporaryValue+Step);
-    end else if Step<0 then begin
-     SetValue(fMinimumValue);
-    end else if Step>0 then begin
-     SetValue(fMaximumValue);
+    if fEditable then begin
+     TemporaryValue:=GetValue;
+     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
+     if v<0.0 then begin
+      Step:=floor(v)*fSmallStep;
+     end else begin
+      Step:=ceil(v)*fSmallStep;
+     end;
+     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+      SetValue(TemporaryValue+Step);
+     end else if Step<0 then begin
+      SetValue(fMinimumValue);
+     end else if Step>0 then begin
+      SetValue(fMaximumValue);
+     end;
     end;
     result:=true;
    end;
@@ -16746,26 +18607,28 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIFloatEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
-  TemporaryValue:=GetValue;
-  v:=aRelativeAmount.x+aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v)*fSmallStep;
-  end else begin
-   Step:=ceil(v)*fSmallStep;
-  end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
-   SetValue(TemporaryValue+Step);
-  end else if Step<0 then begin
-   SetValue(fMinimumValue);
-  end else if Step>0 then begin
-   SetValue(fMaximumValue);
+  if fEditable then begin
+   TemporaryValue:=GetValue;
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v)*fSmallStep;
+   end else begin
+    Step:=ceil(v)*fSmallStep;
+   end;
+   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    SetValue(TemporaryValue+Step);
+   end else if Step<0 then begin
+    SetValue(fMinimumValue);
+   end else if Step>0 then begin
+    SetValue(fMaximumValue);
+   end;
   end;
   result:=true;
  end;
@@ -16797,12 +18660,12 @@ begin
 
 end;
 
-function TpvGUIMenuItem.GetEnabled:boolean;
+function TpvGUIMenuItem.GetEnabled:Boolean;
 begin
  result:=TpvGUIMenuItemFlag.Enabled in fFlags;
 end;
 
-procedure TpvGUIMenuItem.SetEnabled(const aEnabled:boolean);
+procedure TpvGUIMenuItem.SetEnabled(const aEnabled:Boolean);
 begin
  if aEnabled then begin
   Include(fFlags,TpvGUIMenuItemFlag.Enabled);
@@ -16811,7 +18674,7 @@ begin
  end;
 end;
 
-function TpvGUIMenuItem.GetSelectable:boolean;
+function TpvGUIMenuItem.GetSelectable:Boolean;
 begin
  result:=fCaption<>'-';
 end;
@@ -16853,6 +18716,10 @@ begin
  fPositionProperty:=TpvVector2Property.Create(@fPosition);
 
  fReleaseOnDeactivation:=false;
+
+ fOnActivate:=nil;
+
+ fOnDeactivate:=nil;
 
 end;
 
@@ -16917,7 +18784,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.GetActivated:boolean;
+function TpvGUIPopupMenu.GetActivated:Boolean;
 begin
  result:=fInstance.fPopupMenuStack.Contains(self);
 end;
@@ -16926,6 +18793,10 @@ procedure TpvGUIPopupMenu.Activate(const aPosition:TpvVector2);
 var Index:TpvInt32;
     ParentPopupMenu:TpvGUIPopupMenu;
 begin
+
+ if assigned(fOnActivate) then begin
+  fOnActivate(self);
+ end;
 
  fPosition:=aPosition;
 
@@ -16999,6 +18870,9 @@ procedure TpvGUIPopupMenu.Deactivate;
 var Index:TpvInt32;
 begin
  if fInstance.fPopupMenuStack.Contains(self) then begin
+  if assigned(fOnDeactivate) then begin
+   fOnDeactivate(self);
+  end;
   IncRef;
   try
    Index:=fInstance.fPopupMenuStack.IndexOf(self);
@@ -17050,7 +18924,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index,OtherIndex:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17231,7 +19105,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17308,7 +19182,7 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIPopupMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPosition);
  if result then begin
@@ -17346,7 +19220,7 @@ begin
 
 end;
 
-function TpvGUIWindowMenu.Enter:boolean;
+function TpvGUIWindowMenu.Enter:Boolean;
 var Index:TpvInt32;
     Child:TpvGUIObject;
 begin
@@ -17363,7 +19237,7 @@ begin
  result:=inherited Enter;
 end;
 
-function TpvGUIWindowMenu.Leave:boolean;
+function TpvGUIWindowMenu.Leave:Boolean;
 begin
  result:=inherited Leave;
  fFocusedMenuItem:=nil;
@@ -17393,7 +19267,7 @@ begin
  result:=Skin.GetWindowMenuPreferredSize(self);
 end;
 
-function TpvGUIWindowMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIWindowMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var Index,OtherIndex:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17510,7 +19384,7 @@ begin
  end;
 end;
 
-function TpvGUIWindowMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIWindowMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -17585,7 +19459,7 @@ begin
  end;
 end;
 
-function TpvGUIWindowMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWindowMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -17767,12 +19641,12 @@ begin
  result.RightBottom:=result.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
 end;
 
-function TpvGUIScrollBar.Enter:boolean;
+function TpvGUIScrollBar.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIScrollBar.Leave:boolean;
+function TpvGUIScrollBar.Leave:Boolean;
 begin
  fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
  fStepSize:=0;
@@ -17780,12 +19654,12 @@ begin
  result:=inherited Leave;
 end;
 
-function TpvGUIScrollBar.PointerEnter:boolean;
+function TpvGUIScrollBar.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIScrollBar.PointerLeave:boolean;
+function TpvGUIScrollBar.PointerLeave:Boolean;
 begin
  if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
   fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
@@ -17793,7 +19667,7 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIScrollBar.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIScrollBar.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=GetThumbButtonRect.Touched(aPosition) and (aButton=TpvApplicationInputPointerButton.Left);
  if result then begin
@@ -17801,13 +19675,13 @@ begin
  end;
 end;
 
-function TpvGUIScrollBar.DragReleaseEvent:boolean;
+function TpvGUIScrollBar.DragReleaseEvent:Boolean;
 begin
  fDragActive:=false;
  result:=true;
 end;
 
-function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -17880,7 +19754,7 @@ begin
  end;
 end;
 
-function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Step:TpvInt64;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -18044,7 +19918,7 @@ begin
  end;
 end;
 
-function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -18225,12 +20099,12 @@ begin
  result.RightBottom:=result.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);}
 end;
 
-function TpvGUISlider.Enter:boolean;
+function TpvGUISlider.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUISlider.Leave:boolean;
+function TpvGUISlider.Leave:Boolean;
 begin
  fPushedSubWidget:=TpvGUISliderSubWidget.None;
  fStepSize:=0;
@@ -18238,12 +20112,12 @@ begin
  result:=inherited Leave;
 end;
 
-function TpvGUISlider.PointerEnter:boolean;
+function TpvGUISlider.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUISlider.PointerLeave:boolean;
+function TpvGUISlider.PointerLeave:Boolean;
 begin
  if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
   fPushedSubWidget:=TpvGUISliderSubWidget.None;
@@ -18251,17 +20125,17 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUISlider.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUISlider.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=GetThumbButtonRect.Touched(aPosition);
 end;
 
-function TpvGUISlider.DragReleaseEvent:boolean;
+function TpvGUISlider.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -18334,7 +20208,7 @@ begin
  end;
 end;
 
-function TpvGUISlider.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUISlider.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Step:TpvInt64;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -18453,7 +20327,7 @@ begin
  end;
 end;
 
-function TpvGUISlider.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUISlider.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -18770,7 +20644,31 @@ end;
 
 destructor TpvGUITab.Destroy;
 begin
+ if assigned(fContent) then begin
+  try
+   if assigned(fOwner) and not fOwner.fDestroying then begin
+    fContent.Release;
+   end;
+  finally
+   fContent:=nil;
+  end;
+ end;
  inherited Destroy;
+end;
+
+procedure TpvGUITab.BeforeDestruction;
+begin
+ if assigned(fOnDestroy) then begin
+  fOnDestroy(self);
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvGUITab.Close;
+begin
+ if assigned(Collection) then begin
+  (Collection as TpvGUITabList).Remove(self);
+ end;
 end;
 
 procedure TpvGUITab.SetCaption(const aCaption:TpvUTF8String);
@@ -18781,12 +20679,12 @@ begin
  end;
 end;
 
-function TpvGUITab.GetModified:boolean;
+function TpvGUITab.GetModified:Boolean;
 begin
  result:=TpvGUITabFlag.Modified in fFlags;
 end;
 
-procedure TpvGUITab.SetModified(const aModified:boolean);
+procedure TpvGUITab.SetModified(const aModified:Boolean);
 begin
  if (TpvGUITabFlag.Modified in fFlags)<>aModified then begin
   if aModified then begin
@@ -18797,12 +20695,12 @@ begin
  end;
 end;
 
-function TpvGUITab.GetSelected:boolean;
+function TpvGUITab.GetSelected:Boolean;
 begin
  result:=(Collection as TpvGUITabList).fOwner.fTabIndex=Index;
 end;
 
-procedure TpvGUITab.SetSelected(const aSelected:boolean);
+procedure TpvGUITab.SetSelected(const aSelected:Boolean);
 begin
  if (Collection as TpvGUITabList).fOwner.fTabIndex<>Index then begin
   if aSelected then begin
@@ -18832,6 +20730,30 @@ end;
 procedure TpvGUITabList.SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab);
 begin
  inherited Items[aIndex]:=TCollectionItem(aTab);
+end;
+
+procedure TpvGUITabList.Notify(Item:Classes.TCollectionItem;Action:Classes.TCollectionNotification);
+var Index:TpvSizeInt;
+begin
+ inherited Notify(Item,Action);
+ if assigned(fOwner) then begin
+  case Action of
+   Classes.TCollectionNotification.cnDeleting:begin
+    if fOwner.fTabIndex=(Count-1) then begin
+     Index:=fOwner.fTabIndex-1;
+     fOwner.fTabIndex:=-1;
+     fOwner.SetTabIndex(Index);
+    end else begin
+     Index:=Min(fOwner.fTabIndex+1,Count-1);
+     fOwner.fTabIndex:=-1;
+     fOwner.SetTabIndex(Index);
+     dec(fOwner.fTabIndex);
+    end;
+   end;
+   else begin
+   end;
+  end;
+ end;
 end;
 
 function TpvGUITabList.IndexOf(const aTab:TpvGUITab):TpvSizeInt;
@@ -18885,6 +20807,7 @@ end;
 function TpvGUITabList.Add(const aCaption:TpvUTF8String):TpvGUITab;
 begin
  result:=TpvGUITab.Create(self);
+ result.fOwner:=fOwner;
  result.fCaption:=aCaption;
 end;
 
@@ -18930,12 +20853,26 @@ begin
 
  fOnTabUnselected:=nil;
 
+ fDestroying:=false;
+
 end;
 
 destructor TpvGUITabPanel.Destroy;
 begin
+ fDestroying:=true;
  FreeAndNil(fTabs);
  inherited Destroy;
+end;
+
+procedure TpvGUITabPanel.BeforeDestruction;
+begin
+ if assigned(fTabs) then begin
+  try
+   fTabs.fOwner:=nil;
+  finally
+  end;
+ end;
+ inherited BeforeDestruction;
 end;
 
 procedure TpvGUITabPanel.SetContentMargin(const aContentMargin:TpvFloat);
@@ -18950,12 +20887,12 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.GetVisibleHeader:boolean;
+function TpvGUITabPanel.GetVisibleHeader:Boolean;
 begin
  result:=TpvGUITabPanelFlag.VisibleHeader in fFlags;
 end;
 
-procedure TpvGUITabPanel.SetVisibleHeader(const aVisibleHeader:boolean);
+procedure TpvGUITabPanel.SetVisibleHeader(const aVisibleHeader:Boolean);
 begin
  if (TpvGUITabPanelFlag.VisibleHeader in fFlags)<>aVisibleHeader then begin
   if aVisibleHeader then begin
@@ -18973,12 +20910,12 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.GetVisibleContent:boolean;
+function TpvGUITabPanel.GetVisibleContent:Boolean;
 begin
  result:=TpvGUITabPanelFlag.VisibleContent in fFlags;
 end;
 
-procedure TpvGUITabPanel.SetVisibleContent(const aVisibleContent:boolean);
+procedure TpvGUITabPanel.SetVisibleContent(const aVisibleContent:Boolean);
 begin
  if (TpvGUITabPanelFlag.VisibleContent in fFlags)<>aVisibleContent then begin
   if aVisibleContent then begin
@@ -18990,12 +20927,12 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.GetVisibleContentBackground:boolean;
+function TpvGUITabPanel.GetVisibleContentBackground:Boolean;
 begin
  result:=TpvGUITabPanelFlag.VisibleContentBackground in fFlags;
 end;
 
-procedure TpvGUITabPanel.SetVisibleContentBackground(const aVisibleContentBackground:boolean);
+procedure TpvGUITabPanel.SetVisibleContentBackground(const aVisibleContentBackground:Boolean);
 begin
  if (TpvGUITabPanelFlag.VisibleContentBackground in fFlags)<>aVisibleContentBackground then begin
   if aVisibleContentBackground then begin
@@ -19038,7 +20975,11 @@ end;
 
 function TpvGUITabPanel.GetTabIndex:TpvSizeInt;
 begin
- result:=Min(Max(fTabIndex,0),fTabs.Count-1);
+ if assigned(fTabs) then begin
+  result:=Min(Max(fTabIndex,0),fTabs.Count-1);
+ end else begin
+  result:=0;
+ end;
 end;
 
 procedure TpvGUITabPanel.SetTabIndex(const aTabIndex:TpvSizeInt);
@@ -19131,37 +21072,37 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.Enter:boolean;
+function TpvGUITabPanel.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUITabPanel.Leave:boolean;
+function TpvGUITabPanel.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUITabPanel.PointerEnter:boolean;
+function TpvGUITabPanel.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUITabPanel.PointerLeave:boolean;
+function TpvGUITabPanel.PointerLeave:Boolean;
 begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUITabPanel.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUITabPanel.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITabPanel.DragReleaseEvent:boolean;
+function TpvGUITabPanel.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  ExecuteInvalidateActions;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
@@ -19233,7 +21174,7 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentTabIndex:TpvSizeInt;
     CurrentTab:TpvGUITab;
 begin
@@ -19276,7 +21217,7 @@ begin
  end;
 end;
 
-function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -19337,11 +21278,17 @@ begin
 
  fOnDrawItem:=nil;
 
+ fOnDoubleClick:=nil;
+
  fOnGetItemText:=nil;
 
  fSelectedBitmap:=nil;
 
  fAction:=TpvGUIListBoxAction.None;
+
+ fDoubleClickTimeAccumulator:=0.0;
+
+ fDoubleClickCounter:=0;
 
 end;
 
@@ -19352,12 +21299,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIListBox.GetMultiSelect:boolean;
+function TpvGUIListBox.GetMultiSelect:Boolean;
 begin
  result:=TpvGUIListBoxFlag.MultiSelect in fFlags;
 end;
 
-procedure TpvGUIListBox.SetMultiSelect(const aMultiSelect:boolean);
+procedure TpvGUIListBox.SetMultiSelect(const aMultiSelect:Boolean);
 begin
  if (TpvGUIListBoxFlag.MultiSelect in fFlags)<>aMultiSelect then begin
   if aMultiSelect then begin
@@ -19393,7 +21340,7 @@ begin
  end;
 end;
 
-function TpvGUIListBox.GetSelected(const aItemIndex:TpvSizeInt):boolean;
+function TpvGUIListBox.GetSelected(const aItemIndex:TpvSizeInt):Boolean;
 begin
  if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
   result:=((aItemIndex>=0) and (aItemIndex<fItems.Count) and ((aItemIndex shr 5)<length(fSelectedBitmap))) and
@@ -19403,7 +21350,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListBox.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
+procedure TpvGUIListBox.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
 var OldSize,NewSize:TpvSizeInt;
 begin
  if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
@@ -19444,7 +21391,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
 begin
  ChangeSelected(aItemIndex,aSelected,true);
 end;
@@ -19525,39 +21472,39 @@ begin
  end;
 end;
 
-function TpvGUIListBox.Enter:boolean;
+function TpvGUIListBox.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIListBox.Leave:boolean;
+function TpvGUIListBox.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIListBox.PointerEnter:boolean;
+function TpvGUIListBox.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIListBox.PointerLeave:boolean;
+function TpvGUIListBox.PointerLeave:Boolean;
 begin
  fAction:=TpvGUIListBoxAction.None;
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIListBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIListBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListBox.DragReleaseEvent:boolean;
+function TpvGUIListBox.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
- procedure DoSelection(const aForce:boolean);
+function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+ procedure DoSelection(const aForce:Boolean);
  var CurrentItemIndex:TpvSizeInt;
  begin
   if aForce or (fAction in [TpvGUIListBoxAction.PreMark,TpvGUIListBoxAction.Mark]) then begin
@@ -19672,7 +21619,7 @@ begin
  end;
 end;
 
-function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
  UpdateScrollBar;
@@ -19694,6 +21641,11 @@ begin
       fSelectedBitmap:=nil;
       SetSelected(fItemIndex,true);
      end;
+     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+      if fDoubleClickCounter=0 then begin
+       fDoubleClickTimeAccumulator:=0.0;
+      end;
+     end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
@@ -19706,6 +21658,18 @@ begin
       end;
       if assigned(fOnChangeSelection) then begin
        fOnChangeSelection(self);
+      end;
+     end;
+     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+      if fDoubleClickCounter<2 then begin
+       inc(fDoubleClickCounter);
+       if fDoubleClickCounter=2 then begin
+        fDoubleClickCounter:=0;
+        fDoubleClickTimeAccumulator:=0.0;
+        if assigned(fOnDoubleClick) then begin
+         fOnDoubleClick(self);
+        end;
+       end;
       end;
      end;
      fAction:=TpvGUIListBoxAction.None;
@@ -19744,7 +21708,7 @@ begin
  end;
 end;
 
-function TpvGUIListBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIListBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -19760,6 +21724,16 @@ begin
   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
   result:=true;
  end;
+end;
+
+procedure TpvGUIListBox.Check;
+begin
+ fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
+ if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
+  fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
+  fDoubleClickCounter:=0;
+ end;
+inherited Check;
 end;
 
 procedure TpvGUIListBox.Draw;
@@ -19832,13 +21806,13 @@ begin
  fListBox.SetItemIndex(fItemIndex);
 end;
 
-function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):boolean;
+function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):Boolean;
 begin
  fClosePopup:=false;
  result:=false;
 end;
 
-function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):boolean;
+function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):Boolean;
 begin
  fClosePopup:=true;
  result:=false;
@@ -19851,7 +21825,7 @@ begin
  end;
 end;
 
-function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  case aKeyEvent.KeyCode of
@@ -19927,37 +21901,37 @@ begin
  fPopupButton.Popup.fFixedSize.y:=fListBox.GetPreferredSize.y;
 end;
 
-function TpvGUIComboBox.Enter:boolean;
+function TpvGUIComboBox.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIComboBox.Leave:boolean;
+function TpvGUIComboBox.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIComboBox.PointerEnter:boolean;
+function TpvGUIComboBox.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIComboBox.PointerLeave:boolean;
+function TpvGUIComboBox.PointerLeave:Boolean;
 begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIComboBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIComboBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIComboBox.DragReleaseEvent:boolean;
+function TpvGUIComboBox.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIComboBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIComboBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -20022,7 +21996,7 @@ begin
  end;
 end;
 
-function TpvGUIComboBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIComboBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -20034,7 +22008,7 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
-     fPopupButton.SetDown(false);
+     fPopupButton.SetDown(not fPopupButton.Down);
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
@@ -20051,7 +22025,7 @@ begin
  end;
 end;
 
-function TpvGUIComboBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIComboBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -20110,17 +22084,17 @@ begin
  result:=Skin.GetSplitterPanelGripButtonPreferredSize(self);
 end;
 
-function TpvGUISplitterPanelGripButton.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUISplitterPanelGripButton.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUISplitterPanelGripButton.DragReleaseEvent:boolean;
+function TpvGUISplitterPanelGripButton.DragReleaseEvent:Boolean;
 begin
  result:=true;
 end;
 
-function TpvGUISplitterPanelGripButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUISplitterPanelGripButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -20177,7 +22151,7 @@ begin
  end;
 end;
 
-function TpvGUISplitterPanelGripButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUISplitterPanelGripButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex:TpvSizeInt;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -20215,7 +22189,7 @@ begin
  end;
 end;
 
-function TpvGUISplitterPanelGripButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUISplitterPanelGripButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
@@ -20522,7 +22496,7 @@ end;
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
 var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
     MessageDialog:TpvGUIMessageDialog;
-    First:boolean;
+    First:Boolean;
 begin
  if fDoIt then begin
   fDoIt:=false;
@@ -20634,101 +22608,102 @@ begin
  fVerticalScrollDirection:=TpvGUIMultiLineTextEditScrollDirection.Auto;
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
+ fPopupMenu.OnActivate:=PopupMenuOnActivate;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Cut';
- MenuItem.ShortcutHint:='Ctrl-X';
- MenuItem.fIcon:=Skin.fIconContentCut;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCutClick;
+ fMenuItemCut:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCut.Caption:='Cut';
+ fMenuItemCut.ShortcutHint:='Ctrl-X';
+ fMenuItemCut.fIcon:=Skin.fIconContentCut;
+ fMenuItemCut.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCut.OnClick:=PopupMenuOnCutClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Copy';
- MenuItem.ShortcutHint:='Ctrl-C';
- MenuItem.fIcon:=Skin.fIconContentCopy;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnCopyClick;
+ fMenuItemCopy:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemCopy.Caption:='Copy';
+ fMenuItemCopy.ShortcutHint:='Ctrl-C';
+ fMenuItemCopy.fIcon:=Skin.fIconContentCopy;
+ fMenuItemCopy.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemCopy.OnClick:=PopupMenuOnCopyClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Paste';
- MenuItem.ShortcutHint:='Ctrl-V';
- MenuItem.fIcon:=Skin.fIconContentPaste;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnPasteClick;
+ fMenuItemPaste:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemPaste.Caption:='Paste';
+ fMenuItemPaste.ShortcutHint:='Ctrl-V';
+ fMenuItemPaste.fIcon:=Skin.fIconContentPaste;
+ fMenuItemPaste.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemPaste.OnClick:=PopupMenuOnPasteClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Delete';
- MenuItem.ShortcutHint:='Del';
- MenuItem.fIcon:=Skin.fIconContentDelete;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnDeleteClick;
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='-';
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select all';
- MenuItem.ShortcutHint:='Ctrl+A';
- MenuItem.fIcon:=Skin.fIconSelectAll;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectAllClick;
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Select none';
- MenuItem.fIcon:=Skin.fIconSelectNone;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
+ fMenuItemDelete:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemDelete.Caption:='Delete';
+ fMenuItemDelete.ShortcutHint:='Del';
+ fMenuItemDelete.fIcon:=Skin.fIconContentDelete;
+ fMenuItemDelete.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemDelete.OnClick:=PopupMenuOnDeleteClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='-';
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Undo';
- MenuItem.ShortcutHint:='Ctrl-Z';
- MenuItem.fIcon:=Skin.fIconUndo;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnUndoClick;
+ fMenuItemSelectAll:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectAll.Caption:='Select all';
+ fMenuItemSelectAll.ShortcutHint:='Ctrl+A';
+ fMenuItemSelectAll.fIcon:=Skin.fIconSelectAll;
+ fMenuItemSelectAll.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectAll.OnClick:=PopupMenuOnSelectAllClick;
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Redo';
- MenuItem.ShortcutHint:='Ctrl-Shift-Z';
- MenuItem.fIcon:=Skin.fIconRedo;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnRedoClick;
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='-';
-
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Go to line number';
- MenuItem.ShortcutHint:='Ctrl-G';
- MenuItem.fIcon:=Skin.fIconSearch;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnGoToLineNumberClick;
+ fMenuItemSelectNone:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSelectNone.Caption:='Select none';
+ fMenuItemSelectNone.fIcon:=Skin.fIconSelectNone;
+ fMenuItemSelectNone.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSelectNone.OnClick:=PopupMenuOnSelectNoneClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='-';
 
- MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Search';
- MenuItem.ShortcutHint:='Ctrl-F';
- MenuItem.fIcon:=Skin.fIconSearch;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnSearchClick;
+ fMenuItemUndo:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemUndo.Caption:='Undo';
+ fMenuItemUndo.ShortcutHint:='Ctrl-Z';
+ fMenuItemUndo.fIcon:=Skin.fIconUndo;
+ fMenuItemUndo.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemUndo.OnClick:=PopupMenuOnUndoClick;
+
+ fMenuItemRedo:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemRedo.Caption:='Redo';
+ fMenuItemRedo.ShortcutHint:='Ctrl-Shift-Z';
+ fMenuItemRedo.fIcon:=Skin.fIconRedo;
+ fMenuItemRedo.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemRedo.OnClick:=PopupMenuOnRedoClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Find next';
- MenuItem.ShortcutHint:='F3';
- MenuItem.fIcon:=Skin.fIconSearchNext;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnFindNextClick;
+ MenuItem.Caption:='-';
+
+ fMenuItemGoToLineNumber:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemGoToLineNumber.Caption:='Go to line number';
+ fMenuItemGoToLineNumber.ShortcutHint:='Ctrl-G';
+ fMenuItemGoToLineNumber.fIcon:=Skin.fIconSearch;
+ fMenuItemGoToLineNumber.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemGoToLineNumber.OnClick:=PopupMenuOnGoToLineNumberClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
- MenuItem.Caption:='Replace';
- MenuItem.ShortcutHint:='Ctrl-H';
- MenuItem.fIcon:=Skin.fIconReplace;
- MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
- MenuItem.OnClick:=PopupMenuOnReplaceClick;
+ MenuItem.Caption:='-';
+
+ fMenuItemSearch:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemSearch.Caption:='Search';
+ fMenuItemSearch.ShortcutHint:='Ctrl-F';
+ fMenuItemSearch.fIcon:=Skin.fIconSearch;
+ fMenuItemSearch.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemSearch.OnClick:=PopupMenuOnSearchClick;
+
+ fMenuItemFindNext:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemFindNext.Caption:='Find next';
+ fMenuItemFindNext.ShortcutHint:='F3';
+ fMenuItemFindNext.fIcon:=Skin.fIconSearchNext;
+ fMenuItemFindNext.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemFindNext.OnClick:=PopupMenuOnFindNextClick;
+
+ fMenuItemReplace:=TpvGUIMenuItem.Create(fPopupMenu);
+ fMenuItemReplace.Caption:='Replace';
+ fMenuItemReplace.ShortcutHint:='Ctrl-H';
+ fMenuItemReplace.fIcon:=Skin.fIconReplace;
+ fMenuItemReplace.fIconHeight:=Skin.fIconPopupMenuHeight;
+ fMenuItemReplace.OnClick:=PopupMenuOnReplaceClick;
 
  fTextEditor:=TpvTextEditor.Create;
 
@@ -20743,6 +22718,8 @@ begin
  fViewOldCountLines:=-2;
 
  fViewCountLines:=-2;
+
+ fViewDirty:=true;
 
  fTime:=0.0;
 
@@ -20762,11 +22739,17 @@ begin
 
  fOnChange:=nil;
 
+ fOnStatusChange:=nil;
+
  fSearchReplaceWindow:=nil;
 
  fSearchReplaceState:=nil;
 
  fGoToLineWindow:=nil;
+
+ fOnLeftSideBarLineColor:=nil;
+
+ fOnLineColor:=nil;
 
 end;
 
@@ -20800,7 +22783,12 @@ begin
 
 end;
 
-procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:boolean);
+procedure TpvGUIMultiLineTextEdit.SetViewDirty;
+begin
+ fViewDirty:=true;
+end;
+
+procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:Boolean);
 begin
  if assigned(fView) then begin
   if not assigned(fSearchReplaceWindow) then begin
@@ -20832,6 +22820,16 @@ begin
  if assigned(fSearchReplaceState) and not fSearchReplaceState.fDoReplace then begin
   fSearchReplaceState.fDoIt:=true;
  end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnActivate(const aSender:TpvGUIObject);
+begin
+ fMenuItemCut.Enabled:=fEditable;
+ fMenuItemPaste.Enabled:=fEditable;
+ fMenuItemDelete.Enabled:=fEditable;
+ fMenuItemUndo.Enabled:=fEditable;
+ fMenuItemRedo.Enabled:=fEditable;
+ fMenuItemReplace.Enabled:=fEditable;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
@@ -20866,26 +22864,34 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnUndoClick(const aSender:TpvGUIObject);
 begin
- if assigned(fView) then begin
+ if assigned(fView) and fEditable then begin
   fView.Undo;
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnRedoClick(const aSender:TpvGUIObject);
 begin
- if assigned(fView) then begin
+ if assigned(fView) and fEditable then begin
   fView.Redo;
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnGoToLineNumberClick(const aSender:TpvGUIObject);
@@ -20909,7 +22915,9 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
 begin
- OpenSearchReplaceDialog(true);
+ if fEditable then begin
+  OpenSearchReplaceDialog(true);
+ end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
@@ -20917,6 +22925,10 @@ begin
  if fHorizontalScrollDirection<>aHorizontalScrollDirection then begin
   fHorizontalScrollDirection:=aHorizontalScrollDirection;
   PerformLayout;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+  SetRenderDirty;
  end;
 end;
 
@@ -20925,6 +22937,10 @@ begin
  if fVerticalScrollDirection<>aVerticalScrollDirection then begin
   fVerticalScrollDirection:=aVerticalScrollDirection;
   PerformLayout;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+  SetRenderDirty;
  end;
 end;
 
@@ -20939,7 +22955,11 @@ begin
    fDirty:=true;
    fTime:=0.0;
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.VerticalScrollBarOnChange(const aSender:TpvGUIObject);
@@ -20953,6 +22973,26 @@ begin
    fDirty:=true;
    fTime:=0.0;
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+ end;
+ SetRenderDirty;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetFont(const aFont:TpvFont);
+begin
+ if fFont<>aFont then begin
+  fFont:=aFont;
+  SetRenderDirty;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetFontSize(const aFontSize:TpvFloat);
+begin
+ if fFontSize<>aFontSize then begin
+  fFontSize:=aFontSize;
+  SetRenderDirty;
  end;
 end;
 
@@ -20974,7 +23014,11 @@ begin
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 function TpvGUIMultiLineTextEdit.GetFont:TpvFont;
@@ -21094,7 +23138,7 @@ begin
 
 end;
 
-function TpvGUIMultiLineTextEdit.Enter:boolean;
+function TpvGUIMultiLineTextEdit.Enter:Boolean;
 begin
  result:=inherited Enter;
  if fEditable then begin
@@ -21102,7 +23146,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEdit.Leave:boolean;
+function TpvGUIMultiLineTextEdit.Leave:Boolean;
 begin
  if fEditable then begin
   pvApplication.Input.StopTextInput;
@@ -21112,44 +23156,60 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.CutSelectedText;
 begin
- if assigned(fView) and fView.HasMarkedRange then begin
+ if assigned(fView) and fEditable and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.CopySelectedText;
 begin
  if assigned(fView) and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.GetMarkedRangeText);
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PasteText;
 begin
- if assigned(fView) and pvApplication.Clipboard.HasText then begin
+ if assigned(fView) and fEditable and pvApplication.Clipboard.HasText then begin
   fView.Paste(pvApplication.Clipboard.GetText);
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
 begin
- if assigned(fView) and fView.DeleteMarkedRange then begin
+ if assigned(fView) and fEditable and fView.DeleteMarkedRange then begin
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SelectAll;
@@ -21158,7 +23218,11 @@ begin
   fView.MarkAll;
   fDirty:=true;
   fTime:=0.0;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SelectNone;
@@ -21167,10 +23231,20 @@ begin
   fView.UnmarkAll;
   fDirty:=true;
   fTime:=0.0;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+procedure TpvGUIMultiLineTextEdit.SetDirty;
+begin
+ fDirty:=true;
+ SetRenderDirty;
+end;
+
+function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=aButton=TpvApplicationInputPointerButton.Left;
  if result and assigned(fView) then begin
@@ -21182,15 +23256,20 @@ begin
   if assigned(fPopupMenu) then begin
    fPopupMenu.Deactivate;
   end;
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
  end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.DragReleaseEvent:boolean;
+function TpvGUIMultiLineTextEdit.DragReleaseEvent:Boolean;
 begin
  result:=true;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
@@ -21218,11 +23297,13 @@ begin
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
-      fView.Enter(fOverwrite);
-      fDirty:=true;
-      fTime:=0.0;
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+      if fEditable then begin
+       fView.Enter(fOverwrite);
+       fDirty:=true;
+       fTime:=0.0;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end;
       result:=true;
      end;
@@ -21231,12 +23312,34 @@ begin
                                   TpvApplicationInputKeyModifier.CTRL,
                                   TpvApplicationInputKeyModifier.ALT,
                                   TpvApplicationInputKeyModifier.META])=[] then begin
-       fView.InsertCodePoint(9,fOverwrite);
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        fView.InsertCodePoint(9,fOverwrite);
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
+       result:=true;
+      end;
+     end;
+     KEYCODE_KP_MINUS,KEYCODE_MINUS:begin
+      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                  TpvApplicationInputKeyModifier.CTRL,
+                                  TpvApplicationInputKeyModifier.SHIFT,
+                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+       FontSize:=Min(Max(abs(FontSize)-1,2),48)*Sign(FontSize);
+       SetViewDirty;
+       result:=true;
+      end;
+     end;
+     KEYCODE_KP_PLUS,KEYCODE_PLUS:begin
+      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                  TpvApplicationInputKeyModifier.CTRL,
+                                  TpvApplicationInputKeyModifier.SHIFT,
+                                  TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+       FontSize:=Min(Max(abs(FontSize)+1,2),48)*Sign(FontSize);
+       SetViewDirty;
        result:=true;
       end;
      end;
@@ -21375,20 +23478,26 @@ begin
      end;
      KEYCODE_BACKSPACE:begin
       if fView.HasMarkedRange then begin
-       DeleteSelectedText;
+       if fEditable then begin
+        DeleteSelectedText;
+       end;
       end else begin
-       fView.Backspace;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        fView.Backspace;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
       end;
       result:=true;
      end;
      KEYCODE_INSERT:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       PasteText;
+       if fEditable then begin
+        PasteText;
+       end;
       end else begin
        fOverwrite:=not fOverwrite;
       end;
@@ -21398,17 +23507,21 @@ begin
      end;
      KEYCODE_DELETE:begin
       if fView.HasMarkedRange then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        CutSelectedText;
-       end else begin
-        DeleteSelectedText;
+       if fEditable then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         CutSelectedText;
+        end else begin
+         DeleteSelectedText;
+        end;
        end;
       end else begin
-       fView.Delete;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        fView.Delete;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
       end;
       result:=true;
@@ -21427,42 +23540,50 @@ begin
      end;
      KEYCODE_V:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       PasteText;
+       if fEditable then begin
+        PasteText;
+       end;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       CutSelectedText;
+       if fEditable then begin
+        CutSelectedText;
+       end;
        result:=true;
       end;
      end;
      KEYCODE_Y:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.Undo;
-       end else begin
-        fView.Redo;
-       end;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         fView.Undo;
+        end else begin
+         fView.Redo;
+        end;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
        result:=true;
       end;
      end;
      KEYCODE_Z:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.Redo;
-       end else begin
-        fView.Undo;
-       end;
-       fDirty:=true;
-       fTime:=0.0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       if fEditable then begin
+        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+         fView.Redo;
+        end else begin
+         fView.Undo;
+        end;
+        fDirty:=true;
+        fTime:=0.0;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
        end;
        result:=true;
       end;
@@ -21481,7 +23602,9 @@ begin
      end;
      KEYCODE_H,KEYCODE_R:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-       OpenSearchReplaceDialog(true);
+       if fEditable then begin
+        OpenSearchReplaceDialog(true);
+       end;
        result:=true;
       end;
      end;
@@ -21492,19 +23615,27 @@ begin
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
-    fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
-    fDirty:=true;
-    fTime:=0.0;
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+    if fEditable then begin
+     fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
+     fDirty:=true;
+     fTime:=0.0;
+     if assigned(fOnChange) then begin
+      fOnChange(self);
+     end;
     end;
     result:=true;
    end;
   end;
  end;
+ if result then begin
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+ end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -21569,48 +23700,79 @@ begin
    end;
   end;
  end;
+ if result then begin
+  if assigned(fOnStatusChange) then begin
+   fOnStatusChange(self);
+  end;
+ end;
+ SetRenderDirty;
 end;
 
-function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if assigned(fView) and not result then begin
-  v:=aRelativeAmount.x+aRelativeAmount.y;
-  if v<0.0 then begin
-   Step:=floor(v);
+  if (pvApplication.Input.GetKeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                           TpvApplicationInputKeyModifier.CTRL,
+                                           TpvApplicationInputKeyModifier.SHIFT,
+                                           TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL] then begin
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+   FontSize:=Min(Max(abs(FontSize)+Step,2),48)*Sign(FontSize);
+   SetViewDirty;
   end else begin
-   Step:=ceil(v);
-  end;
-{ if Step<0 then begin
-   fView.MoveDown;
-   fDirty:=true;
-  end else if Step>0 then begin
-   fView.MoveUp;
-   fDirty:=true;
-  end;}
-  if fVerticalScrollBar.Visible and (Step<>0) then begin
-   fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
-   fDirty:=true;
-   fTime:=0.0;
+   v:=aRelativeAmount.x+aRelativeAmount.y;
+   if v<0.0 then begin
+    Step:=floor(v);
+   end else begin
+    Step:=ceil(v);
+   end;
+ { if Step<0 then begin
+    fView.MoveDown;
+    fDirty:=true;
+   end else if Step>0 then begin
+    fView.MoveUp;
+    fDirty:=true;
+   end;}
+   if fVerticalScrollBar.Visible and (Step<>0) then begin
+    fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
+    fDirty:=true;
+    fTime:=0.0;
+   end;
+   if assigned(fOnStatusChange) then begin
+    fOnStatusChange(self);
+   end;
   end;
   result:=true;
  end;
+ SetRenderDirty;
 end;
 
 procedure TpvGUIMultiLineTextEdit.Update;
+var CursorVisibleChangeCheck:Boolean;
 begin
  if assigned(fSearchReplaceState) then begin
   fSearchReplaceState.Process;
  end;
  if assigned(fView) then begin
   Skin.GetMultiLineTextEditPreferredSize(self);
-  if (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
+  if fViewDirty or
+     (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
      (fViewOldCountLines<>fViewCountLines) then begin
+   fViewDirty:=false;
    fViewOldMaximumVisibleColumnWidth:=fViewMaximumVisibleColumnWidth;
    fViewOldCountLines:=fViewCountLines;
    PerformLayout;
+   if assigned(fOnStatusChange) then begin
+    fOnStatusChange(self);
+   end;
+   SetRenderDirty;
   end;
   if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
    fHorizontalScrollBar.Value:=fView.CursorOffset.x;
@@ -21618,7 +23780,11 @@ begin
   if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
    fVerticalScrollBar.Value:=fView.CursorOffset.y;
   end;
+  CursorVisibleChangeCheck:=frac(fTime)<0.5;
   fTime:=fTime+fInstance.fDeltaTime;
+  if CursorVisibleChangeCheck<>(frac(fTime)<0.5) then begin
+   SetRenderDirty;
+  end;
  end;
  inherited Update;
 end;
@@ -21637,7 +23803,7 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean);
+constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:Boolean);
 begin
 
  inherited Create(aParent);
@@ -21820,7 +23986,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIMultiLineTextEditSearchReplaceWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditSearchReplaceWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
@@ -21833,7 +23999,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -21850,7 +24016,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -22039,7 +24205,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIMultiLineTextEditGotoLineWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditGotoLineWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
@@ -22052,7 +24218,7 @@ begin
  end;
 end;
 
-function TpvGUIMultiLineTextEditGotoLineWindow.IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMultiLineTextEditGotoLineWindow.IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -22123,19 +24289,19 @@ var ModelMatrix:TpvMatrix4x4;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
     LocalDrawRect,LocalClipRect:TpvRect;
 begin
- fDrawRects[fInstance.fUpdateBufferIndex and 1]:=TpvRect.CreateRelative(GetAbsolutePosition,fSize);
- fClipRects[fInstance.fUpdateBufferIndex and 1]:=fClipRect;
+ fDrawRects[fInstance.fUpdateBufferIndex]:=TpvRect.CreateRelative(GetAbsolutePosition,fSize);
+ fClipRects[fInstance.fUpdateBufferIndex]:=fClipRect;
  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fInstance.fDrawEngine.fCanvas.Viewport^.width,fInstance.fDrawEngine.fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fInstance.fDrawEngine.fCanvas.Width,fInstance.fDrawEngine.fCanvas.Height)).xyxy;
  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fInstance.fDrawEngine.fCanvas.Viewport.x,fInstance.fDrawEngine.fCanvas.Viewport.y).xyxy;
- LocalDrawRect.Vector4:=(fDrawRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
- LocalClipRect.Vector4:=(fClipRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalDrawRect.Vector4:=(fDrawRects[fInstance.fUpdateBufferIndex].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalClipRect.Vector4:=(fClipRects[fInstance.fUpdateBufferIndex].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
  UpdateContent(fInstance.fUpdateBufferIndex,
-               fDrawRects[fInstance.UpdateBufferIndex and 1],
-               fClipRects[fInstance.UpdateBufferIndex and 1]);
+               fDrawRects[fInstance.UpdateBufferIndex],
+               fClipRects[fInstance.UpdateBufferIndex]);
  ModelMatrix:=fInstance.fDrawEngine.ModelMatrix;
  fInstance.fDrawEngine.ModelMatrix:=TpvMatrix4x4.Identity;
  fInstance.fDrawEngine.ClipRect:=fClipRect;
- fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex and 1]);
+ fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex]);
  fInstance.fDrawEngine.ModelMatrix:=ModelMatrix;
  inherited Draw;
 end;
@@ -22187,7 +24353,7 @@ begin
  fHSV:=ConvertHSVToRGB(fRGB);
 end;
 
-function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
@@ -22280,7 +24446,7 @@ begin
  end;
 end;
 
-function TpvGUIColorWheel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIColorWheel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var Index:TpvInt32;
  function Rotate(const aPoint:TpvVector2;const aAngle:TpvScalar):TpvVector2;
  var s,c:TpvScalar;
@@ -22290,7 +24456,7 @@ var Index:TpvInt32;
   SinCos(aAngle,s,c);
   result:=TpvMatrix2x2.Create(c,-s,s,c)*aPoint;
  end;
- function Process(const aPoint:TpvVector2;const aDoHandle:boolean;const aMode:TpvInt32;var aOutMode:TpvInt32):boolean;
+ function Process(const aPoint:TpvVector2;const aDoHandle:Boolean;const aMode:TpvInt32;var aOutMode:TpvInt32):Boolean;
  var p,p2,p3,p4,LocalSize:TpvVector2;
      Radius,Radius2,d,s,t:TpvScalar;
      bc:TpvVector3;
@@ -22402,7 +24568,7 @@ begin
  end;
 end;
 
-function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -22637,7 +24803,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUIColorPicker.SetSRGB(const aSRGB:boolean);
+procedure TpvGUIColorPicker.SetSRGB(const aSRGB:Boolean);
 begin
  if fSRGB<>aSRGB then begin
   fSRGB:=aSRGB;
@@ -23034,12 +25200,12 @@ begin
  end;
 end;
 
-function TpvGUIListView.GetMultiSelect:boolean;
+function TpvGUIListView.GetMultiSelect:Boolean;
 begin
  result:=TpvGUIListViewFlag.MultiSelect in fFlags;
 end;
 
-procedure TpvGUIListView.SetMultiSelect(const aMultiSelect:boolean);
+procedure TpvGUIListView.SetMultiSelect(const aMultiSelect:Boolean);
 begin
  if (TpvGUIListViewFlag.MultiSelect in fFlags)<>aMultiSelect then begin
   if aMultiSelect then begin
@@ -23054,12 +25220,12 @@ begin
  end;
 end;
 
-function TpvGUIListView.GetHeader:boolean;
+function TpvGUIListView.GetHeader:Boolean;
 begin
  result:=TpvGUIListViewFlag.Header in fFlags;
 end;
 
-procedure TpvGUIListView.SetHeader(const aHeader:boolean);
+procedure TpvGUIListView.SetHeader(const aHeader:Boolean);
 begin
  if (TpvGUIListViewFlag.Header in fFlags)<>aHeader then begin
   if aHeader then begin
@@ -23101,7 +25267,7 @@ begin
  end;
 end;
 
-function TpvGUIListView.GetSelected(const aItemIndex:TpvSizeInt):boolean;
+function TpvGUIListView.GetSelected(const aItemIndex:TpvSizeInt):Boolean;
 begin
  if TpvGUIListViewFlag.MultiSelect in fFlags then begin
   result:=((aItemIndex>=0) and (aItemIndex<fItems.Count) and ((aItemIndex shr 5)<length(fSelectedBitmap))) and
@@ -23111,7 +25277,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListView.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
+procedure TpvGUIListView.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:Boolean);
 var OldSize,NewSize:TpvSizeInt;
 begin
  if TpvGUIListViewFlag.MultiSelect in fFlags then begin
@@ -23152,7 +25318,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListView.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+procedure TpvGUIListView.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:Boolean);
 begin
  ChangeSelected(aItemIndex,aSelected,true);
 end;
@@ -23253,39 +25419,39 @@ begin
  end;
 end;
 
-function TpvGUIListView.Enter:boolean;
+function TpvGUIListView.Enter:Boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIListView.Leave:boolean;
+function TpvGUIListView.Leave:Boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIListView.PointerEnter:boolean;
+function TpvGUIListView.PointerEnter:Boolean;
 begin
  result:=inherited PointerEnter;
 end;
 
-function TpvGUIListView.PointerLeave:boolean;
+function TpvGUIListView.PointerLeave:Boolean;
 begin
  fAction:=TpvGUIListViewAction.None;
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIListView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIListView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListView.DragReleaseEvent:boolean;
+function TpvGUIListView.DragReleaseEvent:Boolean;
 begin
  result:=false;
 end;
 
-function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
- procedure DoSelection(const aForce:boolean);
+function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+ procedure DoSelection(const aForce:Boolean);
  var CurrentItemIndex:TpvSizeInt;
  begin
   if aForce or (fAction in [TpvGUIListViewAction.PreMark,TpvGUIListViewAction.Mark]) then begin
@@ -23411,7 +25577,7 @@ begin
  end;
 end;
 
-function TpvGUIListView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIListView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
 var CurrentItemIndex,
     FoundItemIndex:TpvSizeInt;
     Item:TpvGUIListViewItem;
@@ -23542,7 +25708,7 @@ begin
  end;
 end;
 
-function TpvGUIListView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIListView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
@@ -23574,6 +25740,1616 @@ procedure TpvGUIListView.Draw;
 begin
  UpdateScrollBar;
  Skin.DrawListView(fInstance.DrawEngine,self);
+ inherited Draw;
+end;
+
+constructor TpvGUITreeNode.Create(const aParent:TpvGUITreeNode;const aIndex:TpvSizeInt;const aCaption:TpvUTF8String;const aTag:TpvPtrUInt;const aDataObject:TObject;const aOwnsDataObject:boolean);
+begin
+ inherited Create;
+
+ fParent:=aParent;
+
+ if assigned(fParent) then begin
+  fTreeView:=fParent.fTreeView;
+  fDepth:=fParent.fDepth+1;
+ end else begin
+  fTreeView:=nil;
+  fDepth:=0;
+ end;
+
+ fChildren:=TpvGUITreeNodes.Create;
+ fChildren.OwnsObjects:=true;
+
+ fGUIObjects:=TpvGUIObjectList.Create(false);
+
+ fCaption:=aCaption;
+
+ fIcon:=nil;
+
+ fIconHeight:=0;
+
+ fIconPaddingLeft:=0;
+
+ fIconPaddingRight:=2;
+
+ fIconPaddingVertical:=2;
+
+ fGUIObjectMargin:=8;
+
+ fGUIObjectPadding:=8;
+
+ fGUIObjectHorziontalAlignment:=TpvGUILayoutAlignment.Tailing;
+
+ fGUIObjectVerticalAlignment:=TpvGUILayoutAlignment.Middle;
+
+ fTag:=aTag;
+
+ fDataObject:=aDataObject;
+
+ fDerivedVisibleCount:=1;
+
+ fNodeIndex:=-1;
+
+ fFlags:=[TpvGUITreeNode.TFlag.Visible];
+
+ if aOwnsDataObject then begin
+  Include(fFlags,TpvGUITreeNode.TFlag.OwnsDataObject);
+ end;
+
+ if assigned(fParent) then begin
+  if aIndex<0 then begin
+   fParent.fChildren.Add(self);
+  end else begin
+   fParent.fChildren.Insert(aIndex,self);
+  end;
+ end;
+
+ if assigned(fTreeView) then begin
+
+  inc(fTreeView.fCurrentGeneration);
+
+  CreateGUIObjects;
+
+ end;
+
+
+end;
+
+destructor TpvGUITreeNode.Destroy;
+var Index:TpvSizeInt;
+begin
+
+ DestroyGUIObjects;
+
+ if assigned(fTreeView) and assigned(fTreeView.fNodes) and (fTreeView.fNodeIndex=fNodeIndex) then begin
+  fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
+ end;
+
+ if assigned(fTreeView) and assigned(fTreeView.fTreeNodeSelectedHashMap) and fTreeView.fTreeNodeSelectedHashMap.ExistKey(self) then begin
+  fTreeView.fTreeNodeSelectedHashMap.Delete(self);
+ end;
+
+ if assigned(fParent) and assigned(fParent.fChildren) then begin
+  Index:=fParent.fChildren.IndexOf(self);
+  if Index>=0 then begin
+   fParent.fChildren.Extract(Index);
+   if (fParent.fChildren.Count=0) and (assigned(fParent.fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
+    Exclude(fParent.fFlags,TpvGUITreeNode.TFlag.Expanded);
+   end;
+  end;
+ end;
+
+ if assigned(fTreeView) then begin
+  inc(fTreeView.fCurrentGeneration);
+ end;
+
+ fParent:=nil;
+
+ fTreeView:=nil;
+
+ fCaption:='';
+
+ if TpvGUITreeNode.TFlag.OwnsDataObject in fFlags then begin
+  FreeAndNil(fDataObject);
+ end else begin
+  fDataObject:=nil;
+ end;
+
+ FreeAndNil(fGUIObjects);
+
+ FreeAndNil(fChildren);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvGUITreeNode.CreateGUIObjects;
+begin
+
+end;
+
+procedure TpvGUITreeNode.DestroyGUIObjects;
+var Index:TpvSizeInt;
+    GUIObject:TpvGUIObject;
+begin
+ try
+  for Index:=0 to fGUIObjects.Count-1 do begin
+   GUIObject:=fGUIObjects[Index];
+   try
+    if assigned(GUIObject) then begin
+     if GUIObject is TpvGUIWidget then begin
+      try
+       TpvGUIWidget(GUIObject).Release;
+      finally
+       GUIObject:=nil;
+      end;
+     end else begin
+      FreeAndNil(GUIObject);
+     end;
+    end;
+   finally
+    fGUIObjects[Index]:=nil;
+   end;
+  end;
+ finally
+  fGUIObjects.Clear;
+ end;
+end;
+
+procedure TpvGUITreeNode.UpdateGUIObjects;
+var Index:TpvSizeInt;
+    GUIObject:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
+    Visible:boolean;
+    CurrentX,TotalWidth,YOffset,Scale:TpvFloat;
+begin
+
+ if assigned(fTreeView) then begin
+
+  Visible:=fNodeIndex>=0;
+
+  // Pass 1
+  CurrentX:=0;
+  TotalWidth:=0.0;
+  for Index:=0 to fGUIObjects.Count-1 do begin
+   GUIObject:=fGUIObjects[Index];
+   if assigned(GUIObject) then begin
+    if GUIObject is TpvGUIWidget then begin
+     TpvGUIWidget(GUIObject).Visible:=Visible;
+     if Visible then begin
+      ChildWidget:=TpvGUIWidget(GUIObject);
+      ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
+      ChildWidgetFixedSize:=ChildWidget.GetFixedSize;
+      if ChildWidgetFixedSize.x>0.0 then begin
+       ChildWidgetSize.x:=ChildWidgetFixedSize.x;
+      end else begin
+       ChildWidgetSize.x:=ChildWidgetPreferredSize.x;
+      end;
+      if ChildWidgetFixedSize.y>0.0 then begin
+       ChildWidgetSize.y:=ChildWidgetFixedSize.y;
+      end else begin
+       if fGUIObjectVerticalAlignment=TpvGUILayoutAlignment.Fill then begin
+        ChildWidgetSize.y:=fTreeView.fWorkRowHeight;
+       end else begin
+        ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
+       end;
+      end;
+      ChildWidget.fSize:=ChildWidgetSize;
+      case fGUIObjectVerticalAlignment of
+       TpvGUILayoutAlignment.Leading:begin
+        YOffset:=0.0;
+       end;
+       TpvGUILayoutAlignment.Middle:begin
+        YOffset:=(fTreeView.fWorkRowHeight-ChildWidget.fSize.y)*0.5;
+       end;
+       TpvGUILayoutAlignment.Tailing:begin
+        YOffset:=fTreeView.fWorkRowHeight-ChildWidget.fSize.y;
+       end;
+       else {TpvGUILayoutAlignment.Fill:}begin
+        YOffset:=0.0;
+       end;
+      end;
+      if not IsZero(TotalWidth) then begin
+       TotalWidth:=TotalWidth+fGUIObjectPadding;
+      end;
+      ChildWidget.fPosition:=TpvVector2.InlineableCreate(CurrentX,
+                                                         fTreeView.fWorkYOffset+(fTreeView.fWorkRowHeight*fNodeIndex)+YOffset);
+      CurrentX:=CurrentX+(ChildWidget.fSize.x+fGUIObjectPadding);
+      TotalWidth:=TotalWidth+ChildWidget.fSize.x;
+     end;
+    end;
+   end;
+  end;
+
+  if Visible then begin
+
+   // Pass 2
+   case fGUIObjectHorziontalAlignment of
+    TpvGUILayoutAlignment.Leading:begin
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=ChildWidget.fPosition.x+fGUIObjectMargin;
+      end;
+     end;
+    end;
+    TpvGUILayoutAlignment.Middle:begin
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=ChildWidget.fPosition.x+((fTreeView.fContent.fSize.x-TotalWidth)*0.5);
+      end;
+     end;
+    end;
+    TpvGUILayoutAlignment.Tailing:begin
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=ChildWidget.fPosition.x+(fTreeView.fContent.fSize.x-(TotalWidth+fGUIObjectMargin));
+      end;
+     end;
+    end;
+    else {TpvGUILayoutAlignment.Fill:}begin
+     Scale:=(fTreeView.fContent.fSize.x-(fGUIObjectMargin*2.0))/Max(1,TotalWidth);
+     for Index:=0 to fGUIObjects.Count-1 do begin
+      GUIObject:=fGUIObjects[Index];
+      if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+       ChildWidget:=TpvGUIWidget(GUIObject);
+       ChildWidget.fPosition.x:=(ChildWidget.fPosition.x*Scale)+fGUIObjectMargin;
+       ChildWidget.fSize.x:=(ChildWidget.fSize.x*Scale);
+      end;
+     end;
+    end;
+   end;
+
+   // Pass 3
+   for Index:=0 to fGUIObjects.Count-1 do begin
+    GUIObject:=fGUIObjects[Index];
+    if assigned(GUIObject) and (GUIObject is TpvGUIWidget) then begin
+     ChildWidget:=TpvGUIWidget(GUIObject);
+     ChildWidget.PerformLayout;
+    end;
+   end;
+
+  end;
+
+ end;
+
+end;
+
+function TpvGUITreeNode.GetIndex:TpvSizeInt;
+begin
+ if assigned(fParent) then begin
+  result:=fParent.fChildren.IndexOf(self);
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TpvGUITreeNode.SetParentEx(const aParent:TpvGUITreeNode);
+var Index:TpvSizeInt;
+    DoNeedRecreateGUIObjects:boolean;
+begin
+ if (fParent<>aParent) or (assigned(aParent) and (fDepth<>(fParent.fDepth+1))) then begin
+  DoNeedRecreateGUIObjects:=false;
+  if assigned(fParent) then begin
+   if fParent<>aParent then begin
+    fParent.Extract(self);
+   end;
+   if fGUIObjects.Count>0 then begin
+    if fTreeView<>fParent.fTreeView then begin
+     DestroyGUIObjects;
+     fTreeView:=fParent.fTreeView;
+     DoNeedRecreateGUIObjects:=assigned(fTreeView);
+    end;
+   end else begin
+    fTreeView:=fParent.fTreeView;
+   end;
+  end else begin
+   if (fGUIObjects.Count>0) and assigned(fTreeView) then begin
+    DestroyGUIObjects;
+   end;
+   fTreeView:=nil;
+  end;
+  fParent:=aParent;
+  fDepth:=fParent.fDepth+1;
+  Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
+  for Index:=0 to fChildren.Count-1 do begin
+   fChildren[Index].SetParentEx(self);
+  end;
+  if assigned(fTreeView) then begin
+   inc(fTreeView.fCurrentGeneration);
+   if DoNeedRecreateGUIObjects then begin
+    CreateGUIObjects;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUITreeNode.SetParent(const aParent:TpvGUITreeNode);
+var DoNeedRecreateGUIObjects:boolean;
+begin
+
+ if fParent<>aParent then begin
+
+  DoNeedRecreateGUIObjects:=(fGUIObjects.Count>0) and
+                            ((assigned(fParent) and (fTreeView<>fParent.fTreeView)) or not assigned(fParent));
+
+  if DoNeedRecreateGUIObjects then begin
+   DestroyGUIObjects;
+  end;
+
+  if assigned(fParent) then begin
+   fParent.Extract(self);
+  end;
+
+  fParent:=aParent;
+
+  if assigned(fParent) then begin
+   fTreeView:=fParent.fTreeView;
+   fParent.Add(self);
+  end else begin
+   fTreeView:=nil;
+  end;
+
+  if assigned(fTreeView) then begin
+
+   inc(fTreeView.fCurrentGeneration);
+
+   if DoNeedRecreateGUIObjects then begin
+    CreateGUIObjects;
+   end;
+
+  end;
+
+  Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
+
+ end;
+end;
+
+function TpvGUITreeNode.GetOwnsDataObject:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.OwnsDataObject in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetOwnsDataObject(const aOwnsDataObject:boolean);
+begin
+ if aOwnsDataObject<>(TpvGUITreeNode.TFlag.OwnsDataObject in fFlags) then begin
+  if aOwnsDataObject then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.OwnsDataObject);
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.OwnsDataObject);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetSelected:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Selected in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetSelected(const aSelected:boolean);
+begin
+ if aSelected<>(TpvGUITreeNode.TFlag.Selected in fFlags) then begin
+  if aSelected then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.Selected);
+   if assigned(fTreeView) and assigned(fTreeView.fTreeNodeSelectedHashMap) and not fTreeView.fTreeNodeSelectedHashMap[self] then begin
+    fTreeView.fTreeNodeSelectedHashMap[self]:=true;
+   end;
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Selected);
+   if assigned(fTreeView) and assigned(fTreeView.fTreeNodeSelectedHashMap) and fTreeView.fTreeNodeSelectedHashMap[self] then begin
+    fTreeView.fTreeNodeSelectedHashMap.Delete(self);
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetExpanded:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Expanded in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetExpanded(const aExpanded:boolean);
+var State,IsHiddenRootNode:boolean;
+begin
+ if aExpanded<>(TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+  State:=aExpanded;
+  IsHiddenRootNode:=(not assigned(fParent)) and not (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags));
+  if IsHiddenRootNode then begin
+   State:=true;
+  end else if fChildren.Count=0 then begin
+   State:=false;
+  end;
+  if State<>(TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+   if State and not (TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+    Include(fFlags,TpvGUITreeNode.TFlag.Expanded);
+   end else if (not State) and (TpvGUITreeNode.TFlag.Expanded in fFlags) then begin
+    Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+   end;
+   if assigned(fTreeView) then begin
+    inc(fTreeView.fCurrentGeneration);
+    if assigned(fTreeView.fOnChangeNodeExpandCollapse) then begin
+     fTreeView.UpdateNodes;
+     fTreeView.fOnChangeNodeExpandCollapse(fTreeView,self);
+     fTreeView.UpdateNodes;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetVisible:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Visible in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetVisible(const aVisible:boolean);
+begin
+ if aVisible<>(TpvGUITreeNode.TFlag.Visible in fFlags) then begin
+  if aVisible then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.Visible);
+   if assigned(fParent) then begin
+    fParent.SetVisible(true);
+   end;
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Visible);
+  end;
+  if assigned(fTreeView) then begin
+   inc(fTreeView.fCurrentGeneration);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetCheckBox:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.CheckBox in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetCheckBox(const aCheckBox:boolean);
+begin
+ if aCheckBox<>(TpvGUITreeNode.TFlag.CheckBox in fFlags) then begin
+  if aCheckBox then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.CheckBox);
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.CheckBox);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.GetChecked:boolean;
+begin
+ result:=TpvGUITreeNode.TFlag.Checked in fFlags;
+end;
+
+procedure TpvGUITreeNode.SetChecked(const aChecked:boolean);
+begin
+ if aChecked<>(TpvGUITreeNode.TFlag.Checked in fFlags) then begin
+  if aChecked then begin
+   Include(fFlags,TpvGUITreeNode.TFlag.Checked);
+  end else begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Checked);
+  end;
+  if assigned(fTreeView) and assigned(fTreeView.fOnChangeNodeCheckBox) then begin
+   fTreeView.fOnChangeNodeCheckBox(fTreeView,self);
+  end;
+ end;
+end;
+
+function TpvGUITreeNode.Add(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ aNode.SetParentEx(self);
+ aNode.fTreeView:=fTreeView;
+ fChildren.Add(aNode);
+ if assigned(fTreeView) then begin
+  inc(fTreeView.fCurrentGeneration);
+  if aNode.fGUIObjects.Count=0 then begin
+   aNode.CreateGUIObjects;
+  end;
+ end;
+ result:=aNode;
+end;
+
+function TpvGUITreeNode.Insert(const aIndex:TpvSizeInt;const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ aNode.SetParentEx(self);
+ aNode.fTreeView:=fTreeView;
+ fChildren.Insert(aIndex,aNode);
+ if assigned(fTreeView) then begin
+  inc(fTreeView.fCurrentGeneration);
+  if aNode.fGUIObjects.Count=0 then begin
+   aNode.CreateGUIObjects;
+  end;
+ end;
+ result:=aNode;
+end;
+
+procedure TpvGUITreeNode.Exchange(const aIndex,aWithIndex:TpvSizeInt);
+begin
+ fChildren.Exchange(aIndex,aWithIndex);
+ if assigned(fTreeView) then begin
+  inc(fTreeView.fCurrentGeneration);
+ end;
+end;
+
+procedure TpvGUITreeNode.Exchange(const aNode,aWithNode:TpvGUITreeNode);
+begin
+ Exchange(fChildren.IndexOf(aNode),fChildren.IndexOf(aWithNode));
+end;
+
+function TpvGUITreeNode.Extract(const aIndex:TpvSizeInt):TpvGUITreeNode;
+begin
+ if (aIndex>=0) and (aIndex<fChildren.Count) then begin
+  result:=fChildren[aIndex];
+  if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
+   fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
+  end;
+  if assigned(result) and (result.fGUIObjects.Count>0) then begin
+   result.DestroyGUIObjects;
+  end;
+  result.fParent:=nil;
+  result.fTreeView:=nil;
+  fChildren.Extract(aIndex);
+  if (fChildren.Count=0) and (assigned(fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+  end;
+  if assigned(fTreeView) then begin
+   inc(fTreeView.fCurrentGeneration);
+  end;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvGUITreeNode.Extract(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ result:=Extract(fChildren.IndexOf(aNode));
+end;
+
+function TpvGUITreeNode.Extract:TpvGUITreeNode;
+begin
+ if assigned(fParent) then begin
+  result:=fParent.Extract(self);
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvGUITreeNode.Remove(const aIndex:TpvSizeInt):TpvGUITreeNode;
+begin
+ if (aIndex>=0) and (aIndex<fChildren.Count) then begin
+  result:=fChildren[aIndex];
+  if assigned(fTreeView) and (fTreeView.fNodeIndex=fNodeIndex) then begin
+   fTreeView.fNodeIndex:=Min(fTreeView.fNodeIndex,fTreeView.fNodes.Count-2);
+  end;
+  if assigned(result) and (result.fGUIObjects.Count>0) then begin
+   result.DestroyGUIObjects;
+  end;
+  result.fParent:=nil;
+  result.fTreeView:=nil;
+  fChildren.Delete(aIndex);
+  if (fChildren.Count=0) and (assigned(fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags))) then begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+  end;
+  if assigned(fTreeView) then begin
+   inc(fTreeView.fCurrentGeneration);
+  end;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvGUITreeNode.Remove(const aNode:TpvGUITreeNode):TpvGUITreeNode;
+begin
+ result:=Remove(fChildren.IndexOf(aNode));
+end;
+
+function TpvGUITreeNode.Remove:TpvGUITreeNode;
+begin
+ if assigned(fParent) then begin
+  result:=fParent.Remove(self);
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvGUITreeNode.Clear;
+begin
+ if fChildren.Count>0 then begin
+  fChildren.Clear;
+  if assigned(fParent) or (assigned(fTreeView) and (TpvGUITreeViewFlag.ShowRootNode in fTreeView.fFlags)) then begin
+   Exclude(fFlags,TpvGUITreeNode.TFlag.Expanded);
+  end;
+  if assigned(fTreeView) then begin
+   inc(fTreeView.fCurrentGeneration);
+  end;
+ end;
+end;
+
+procedure TpvGUITreeNode.Collapse;
+begin
+ SetExpanded(false);
+end;
+
+procedure TpvGUITreeNode.CollapseAll;
+var Index:TpvSizeInt;
+    TreeNodeStack:TpvGUITreeNodeStack;
+    TreeNode:TpvGUITreeNode;
+begin
+ TreeNodeStack.Initialize;
+ try
+  TreeNodeStack.Push(self);
+  while TreeNodeStack.Pop(TreeNode) do begin
+   if assigned(TreeNode) then begin
+    TreeNode.Collapse;
+    for Index:=0 to TreeNode.fChildren.Count-1 do begin
+     TreeNodeStack.Push(TreeNode.fChildren[Index]);
+    end;
+   end;
+  end;
+ finally
+  TreeNodeStack.Finalize;
+ end;
+end;
+
+procedure TpvGUITreeNode.Expand;
+begin
+ SetExpanded(true);
+end;
+
+procedure TpvGUITreeNode.ExpandAll;
+var Index:TpvSizeInt;
+    TreeNodeStack:TpvGUITreeNodeStack;
+    TreeNode:TpvGUITreeNode;
+begin
+ TreeNodeStack.Initialize;
+ try
+  TreeNodeStack.Push(self);
+  while TreeNodeStack.Pop(TreeNode) do begin
+   if assigned(TreeNode) then begin
+    TreeNode.Expand;
+    for Index:=0 to TreeNode.fChildren.Count-1 do begin
+     TreeNodeStack.Push(TreeNode.fChildren[Index]);
+    end;
+   end;
+  end;
+ finally
+  TreeNodeStack.Finalize;
+ end;
+end;
+
+procedure TpvGUITreeNode.EnsureVisible;
+begin
+ if assigned(fParent) then begin
+  fParent.ExpandAll;
+  fParent.EnsureVisible;
+ end;
+end;
+
+constructor TpvGUITreeView.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+//Include(fWidgetFlags,TpvGUIWidgetFlag.Scissor);
+
+ fFlags:=[TpvGUITreeViewFlag.MultiSelect];
+
+ fHorziontalScrollBar:=TpvGUIScrollBar.Create(self);
+ fHorziontalScrollBar.Visible:=false;
+ fHorziontalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
+ fHorziontalScrollBar.MinimumValue:=0;
+ fHorziontalScrollBar.MaximumValue:=1;
+
+ fVerticalScrollBar:=TpvGUIScrollBar.Create(self);
+ fVerticalScrollBar.Visible:=false;
+ fVerticalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
+ fVerticalScrollBar.MinimumValue:=0;
+ fVerticalScrollBar.MaximumValue:=1;
+
+ fClipContentPanel:=TpvGUIPanel.Create(self);
+ fClipContentPanel.fBackground:=false;
+ Include(fClipContentPanel.fWidgetFlags,TpvGUIWidgetFlag.Scissor);
+
+ fContent:=TpvGUIPanel.Create(fClipContentPanel);
+//fContent.Layout:=TpvGUIBoxLayout.Create(fContent,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,4.0);
+ fContent.fBackground:=false;
+
+ fCurrentGeneration:=1;
+
+ fLastProcessedGeneration:=0;
+
+ fCurrentCheckGeneration:=1;
+
+ fLastCheckedGeneration:=0;
+
+ fCurrentContentGeneration:=1;
+
+ fLastContentGeneration:=0;
+
+ fNodeIndex:=-1;
+
+ fRowHeight:=0.0;
+
+ fWorkRowHeight:=0.0;
+
+ fWorkYOffset:=0.0;
+
+ fIndentWidth:=0.0;
+
+ fWorkIndentWidth:=0.0;
+
+ fNodes:=TpvGUITreeNodes.Create;
+ fNodes.OwnsObjects:=false;
+
+ fAllNodes:=TpvGUITreeNodes.Create;
+ fAllNodes.OwnsObjects:=false;
+
+ fTreeNodeSelectedHashMap:=TpvGUITreeNodeBooleanHashMap.Create(false);
+
+ fRoot:=TpvGUITreeNode.Create(nil,-1);
+ fRoot.fTreeView:=self;
+ fRoot.SetExpanded(true);
+
+ fOnChange:=nil;
+
+ fOnChangeNodeExpandCollapse:=nil;
+
+ fOnChangeNodeCheckBox:=nil;
+
+ fOnChangeNode:=nil;
+
+ fOnChangeSelection:=nil;
+
+ fOnDoubleClick:=nil;
+
+ fOnDrawTreeNode:=nil;
+
+ fOnGetTreeNodeText:=nil;
+
+ fAction:=TpvGUITreeViewAction.None;
+
+ fDoubleClickTimeAccumulator:=0.0;
+
+ fDoubleClickCounter:=0;
+
+end;
+
+destructor TpvGUITreeView.Destroy;
+begin
+
+ FreeAndNil(fTreeNodeSelectedHashMap);
+
+ FreeAndNil(fAllNodes);
+
+ FreeAndNil(fNodes);
+
+ FreeAndNil(fRoot);
+
+ inherited Destroy;
+
+end;
+
+function TpvGUITreeView.GetShowRootNode:Boolean;
+begin
+ result:=TpvGUITreeViewFlag.ShowRootNode in fFlags;
+end;
+
+procedure TpvGUITreeView.SetShowRootNode(const aValue:Boolean);
+begin
+ if aValue<>(TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
+  if aValue then begin
+   Include(fFlags,TpvGUITreeViewFlag.ShowRootNode);
+  end else begin
+   Exclude(fFlags,TpvGUITreeViewFlag.ShowRootNode);
+  end;
+  inc(fCurrentGeneration);
+ end;
+end;
+
+function TpvGUITreeView.GetMultiSelect:Boolean;
+begin
+ result:=TpvGUITreeViewFlag.MultiSelect in fFlags;
+end;
+
+procedure TpvGUITreeView.SetMultiSelect(const aValue:Boolean);
+begin
+ if aValue<>(TpvGUITreeViewFlag.MultiSelect in fFlags) then begin
+  if aValue then begin
+   Include(fFlags,TpvGUITreeViewFlag.MultiSelect);
+  end else begin
+   Exclude(fFlags,TpvGUITreeViewFlag.MultiSelect);
+  end;
+  ClearSelection;
+  inc(fCurrentGeneration);
+ end;
+end;
+
+procedure TpvGUITreeView.SetNodeIndex(const aNodeIndex:TpvSizeInt);
+begin
+ UpdateNodes;
+ if fNodeIndex<>aNodeIndex then begin
+  fNodeIndex:=Min(Max(aNodeIndex,-1),fNodes.Count-1);
+  AdjustScrollBars;
+  if assigned(fOnChangeNode) then begin
+   fOnChangeNode(self);
+  end;
+ end;
+end;
+
+function TpvGUITreeView.GetNode:TpvGUITreeNode;
+begin
+ if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+  result:=fNodes[fNodeIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvGUITreeView.SetNode(const aNode:TpvGUITreeNode);
+begin
+ if assigned(aNode) then begin
+  SetNodeIndex(aNode.fNodeIndex);
+ end else begin
+  SetNodeIndex(-1);
+ end;
+end;
+
+procedure TpvGUITreeView.UpdateNodes;
+var Index:TpvSizeInt;
+    TreeNodeStack,InvisibleTreeNodeStack:TpvGUITreeNodeStack;
+    TreeNode:TpvGUITreeNode;
+begin
+ if (fLastProcessedGeneration<>fCurrentGeneration) or (fAllNodes.Count=0) then begin
+  try
+   fNodes.Clear;
+   fAllNodes.Clear;
+   if assigned(fRoot) then begin
+    TreeNodeStack.Initialize;
+    try
+     InvisibleTreeNodeStack.Initialize;
+     try
+      fRoot.fDepth:=0;
+      TreeNodeStack.Push(fRoot);
+      while TreeNodeStack.Pop(TreeNode) do begin
+       if assigned(TreeNode) then begin
+        if assigned(TreeNode.fParent) then begin
+         TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
+        end;
+        if TpvGUITreeNode.TFlag.Visible in TreeNode.fFlags then begin
+         TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
+         TreeNode.fFirstVisualChild:=nil;
+         TreeNode.fLastVisualChild:=nil;
+         fAllNodes.Add(TreeNode);
+         if (TreeNode<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags) then begin
+          TreeNode.fNodeIndex:=fNodes.Add(TreeNode);
+          TreeNode.fDerivedVisibleCount:=1;
+         end else begin
+          TreeNode.fNodeIndex:=-1;
+          TreeNode.fDerivedVisibleCount:=0;
+         end;
+         if TpvGUITreeNode.TFlag.Expanded in TreeNode.fFlags then begin
+          for Index:=TreeNode.fChildren.Count-1 downto 0 do begin
+           TreeNodeStack.Push(TreeNode.fChildren[Index]);
+          end;
+         end else begin
+          for Index:=0 to TreeNode.fChildren.Count-1 do begin
+           InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
+          end;
+         end;
+        end else begin
+         InvisibleTreeNodeStack.Push(TreeNode);
+        end;
+       end;
+      end;
+      while InvisibleTreeNodeStack.Pop(TreeNode) do begin
+       if assigned(TreeNode) then begin
+        fAllNodes.Add(TreeNode);
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
+        TreeNode.fFirstVisualChild:=nil;
+        TreeNode.fLastVisualChild:=nil;
+        if assigned(TreeNode.fParent) then begin
+         TreeNode.fDepth:=TreeNode.fParent.fDepth+1;
+        end;
+        TreeNode.fNodeIndex:=-1;
+        TreeNode.fDerivedVisibleCount:=0;
+        for Index:=0 to TreeNode.fChildren.Count-1 do begin
+         InvisibleTreeNodeStack.Push(TreeNode.fChildren[Index]);
+        end;
+       end;
+      end;
+     finally
+      InvisibleTreeNodeStack.Finalize;
+     end;
+    finally
+     TreeNodeStack.Finalize;
+    end;
+    for Index:=0 to fNodes.Count-1 do begin
+     TreeNode:=fNodes[Index];
+     if assigned(TreeNode) and assigned(TreeNode.fParent) then begin
+      if not assigned(TreeNode.fParent.fFirstVisualChild) then begin
+       TreeNode.fParent.fFirstVisualChild:=TreeNode;
+      end;
+      TreeNode.fParent.fLastVisualChild:=TreeNode;
+     end;
+    end;
+    for Index:=fNodes.Count-1 downto 0 do begin
+     TreeNode:=fNodes[Index];
+     if assigned(TreeNode) and assigned(TreeNode.fParent) then begin
+      if TreeNode.fParent.fFirstVisualChild=TreeNode then begin
+       if TreeNode.fParent.fLastVisualChild=TreeNode then begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.Both;
+       end else begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.First;
+       end;
+      end else begin
+       if TreeNode.fParent.fLastVisualChild=TreeNode then begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.Last;
+       end else begin
+        TreeNode.fVisualKind:=TpvGUITreeNode.TVisualKind.None;
+       end;
+      end;
+      inc(TreeNode.fParent.fDerivedVisibleCount,TreeNode.fDerivedVisibleCount);
+     end;
+    end;
+   end;
+  finally
+   try
+    fLastProcessedGeneration:=fCurrentGeneration;
+   finally
+    inc(fCurrentCheckGeneration);
+    inc(fCurrentContentGeneration);
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITreeView.GetHighlightRect:TpvRect;
+begin
+ if fHorziontalScrollBar.Visible or fVerticalScrollBar.Visible then begin
+  if (fHorziontalScrollBar.Focused and fHorziontalScrollBar.PointerFocused) or
+     (fVerticalScrollBar.Focused and fVerticalScrollBar.PointerFocused) then begin
+   result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(-16777216.0,-16777216.0),TpvVector2.Null);
+  end else if fHorziontalScrollBar.Visible then begin
+   if fVerticalScrollBar.Visible then begin
+    result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y));
+   end else begin
+    result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(0,fHorziontalScrollBar.fSize.y));
+   end;
+  end else begin
+   result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,0));
+  end;
+ end else begin
+  result:=inherited GetHighlightRect;
+ end;
+end;
+
+function TpvGUITreeView.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetTreeViewPreferredSize(self);
+end;
+
+function TpvGUITreeView.GetCountVisibleNodes:TpvSizeInt;
+begin
+ result:=trunc(((fSize.y-(fWorkYOffset*2.0))-IfThen(fHorziontalScrollBar.Visible,fHorziontalScrollBar.Size.y,0.0))/Max(fWorkRowHeight,1));
+end;
+
+procedure TpvGUITreeView.AdjustScrollBars;
+var VisibleNodes{,w}:TpvSizeInt;
+begin
+ if fHorziontalScrollBar.Visible then begin
+{ w:=Trunc(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0));
+  if (w-fHorziontalScrollBar.Value)<0 then begin
+   fHorziontalScrollBar.Value:=w;
+  end else begin
+   if ((w-fVerticalScrollBar.Value)+1)>=fMaximumContentWidth then begin
+    fVerticalScrollBar.Value:=Max(0,(fNodeIndex-fMaximumContentWidth)+1);
+   end;
+  end; }
+ end else begin
+  fHorziontalScrollBar.Value:=0;
+ end;
+ if fVerticalScrollBar.Visible then begin
+  if (fNodeIndex-fVerticalScrollBar.Value)<0 then begin
+   fVerticalScrollBar.Value:=fNodeIndex;
+  end else begin
+   VisibleNodes:=GetCountVisibleNodes;
+   if ((fNodeIndex-fVerticalScrollBar.Value)+1)>=VisibleNodes then begin
+    fVerticalScrollBar.Value:=Max(0,(fNodeIndex-VisibleNodes)+1);
+   end;
+  end;
+ end else begin
+  fVerticalScrollBar.Value:=0;
+ end;
+end;
+
+procedure TpvGUITreeView.CheckNodeWidths;
+begin
+ if fLastCheckedGeneration<>fCurrentCheckGeneration then begin
+  try
+   Skin.CheckTreeView(fInstance.DrawEngine,self);
+  finally
+   fLastCheckedGeneration:=fCurrentCheckGeneration;
+  end;
+ end;
+end;
+
+procedure TpvGUITreeView.UpdateGUIObjects;
+var TreeNode:TpvGUITreeNode;
+begin
+ for TreeNode in fAllNodes do begin
+  if assigned(TreeNode) then begin
+   TreeNode.UpdateGUIObjects;
+  end;
+ end;
+end;
+
+procedure TpvGUITreeView.UpdateScrollBars;
+var VisibleNodes:TpvSizeInt;
+    b:boolean;
+begin
+ CheckNodeWidths;
+ VisibleNodes:=GetCountVisibleNodes;
+ b:=fNodes.Count>VisibleNodes;
+ if fVerticalScrollBar.Visible<>b then begin
+  inc(fCurrentContentGeneration);
+ end;
+ fVerticalScrollBar.Visible:=b;
+ fVerticalScrollBar.MaximumValue:=Max(1,fNodes.Count-VisibleNodes);
+ if not fVerticalScrollBar.Visible then begin
+  fVerticalScrollBar.Value:=0;
+ end;
+ b:=fMaximumContentWidth>=(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0));
+ if fHorziontalScrollBar.Visible<>b then begin
+  inc(fCurrentContentGeneration);
+ end;
+ fHorziontalScrollBar.Visible:=b;
+ fHorziontalScrollBar.MaximumValue:=Max(1,Trunc(fMaximumContentWidth-(fSize.x-IfThen(fVerticalScrollBar.Visible,fVerticalScrollBar.Size.x,0.0))));
+ if not fHorziontalScrollBar.Visible then begin
+  fHorziontalScrollBar.Value:=0;
+ end;
+ if fHorziontalScrollBar.Visible then begin
+  if fVerticalScrollBar.Visible then begin
+   fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x-fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y);
+   fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fSize.y-fHorziontalScrollBar.fSize.y);
+  end else begin
+   fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,fHorziontalScrollBar.fSize.y);
+  end;
+ end else begin
+  if fVerticalScrollBar.Visible then begin
+   fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fSize.y);
+  end else begin
+  end;
+ end;
+end;
+
+procedure TpvGUITreeView.InternalClearSelection;
+var TreeNode:TpvGUITreeNode;
+    TreeNodeStack:TpvGUITreeNodeStack;
+begin
+ TreeNodeStack.Initialize;
+ try
+  for TreeNode in fTreeNodeSelectedHashMap.Keys do begin
+   if assigned(TreeNode) then begin
+    TreeNodeStack.Push(TreeNode);
+   end;
+  end;
+  while TreeNodeStack.Pop(TreeNode) do begin
+   if assigned(TreeNode) then begin
+    TreeNode.SetSelected(false);
+   end;
+  end;
+  fTreeNodeSelectedHashMap.Clear;
+ finally
+  TreeNodeStack.Finalize;
+ end;
+end;
+
+procedure TpvGUITreeView.ClearSelection;
+begin
+ InternalClearSelection;
+ if assigned(fOnChangeSelection) then begin
+  fOnChangeSelection(self);
+ end;
+end;
+
+procedure TpvGUITreeView.UpdateContent;
+var AvailiableSize,ContentSize:TpvVector2;
+begin
+
+ if fSize<>fLastSize then begin
+  fLastSize:=fSize;
+  inc(fCurrentContentGeneration);
+ end;
+
+ if fLastContentGeneration<>fCurrentContentGeneration then begin
+
+  try
+
+   if fHorziontalScrollBar.Visible then begin
+    if fVerticalScrollBar.Visible then begin
+     ContentSize:=fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,fHorziontalScrollBar.fSize.y);
+    end else begin
+     ContentSize:=fSize-TpvVector2.InlineableCreate(0,fHorziontalScrollBar.fSize.y);
+    end;
+   end else begin
+    if fVerticalScrollBar.Visible then begin
+     ContentSize:=fSize-TpvVector2.InlineableCreate(fVerticalScrollBar.fSize.x,0);
+    end else begin
+     ContentSize:=fSize;
+    end;
+   end;
+
+   fClipContentPanel.fPosition:=TpvVector2.Null;
+   fClipContentPanel.fSize:=ContentSize;
+
+   ContentSize.y:=Max(ContentSize.y,fWorkYOffset+((fWorkRowHeight+1)*fNodes.Count));
+
+   fContent.fPosition:=TpvVector2.Null;
+   if fContent.fSize<>ContentSize then begin
+    fContent.fSize:=ContentSize;
+    fContent.PerformLayout;
+   end;
+
+   UpdateGUIObjects;
+
+  finally
+   fLastContentGeneration:=fCurrentContentGeneration;
+  end;
+
+ end;
+
+ fContent.fPosition:=TpvVector2.InlineableCreate(-fHorziontalScrollBar.fValue,-fVerticalScrollBar.Value*fWorkRowHeight);
+
+end;
+
+procedure TpvGUITreeView.PerformLayout;
+var HorziontalScrollBarSize,
+    VerticalScrollBarSize:TpvVector2;
+begin
+
+ fHorziontalScrollBar.Visible:=false;
+ fVerticalScrollBar.Visible:=false;
+ inherited PerformLayout;
+ fHorziontalScrollBar.Visible:=true;
+ fVerticalScrollBar.Visible:=true;
+
+ HorziontalScrollBarSize:=fHorziontalScrollBar.GetPreferredSize;
+ fHorziontalScrollBar.fPosition:=TpvVector2.InlineableCreate(0,fSize.y-HorziontalScrollBarSize.y);
+ fHorziontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,HorziontalScrollBarSize.y);
+
+ VerticalScrollBarSize:=fVerticalScrollBar.GetPreferredSize;
+ fVerticalScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarSize.x,0);
+ fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarSize.x,fSize.y);
+
+ UpdateScrollBars;
+ AdjustScrollBars;
+
+ UpdateContent;
+
+end;
+
+function TpvGUITreeView.Enter:Boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUITreeView.Leave:Boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUITreeView.PointerEnter:Boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUITreeView.PointerLeave:Boolean;
+begin
+ fAction:=TpvGUITreeViewAction.None;
+ result:=inherited PointerLeave;
+end;
+
+function TpvGUITreeView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):Boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITreeView.DragReleaseEvent:Boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITreeView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
+ procedure DoSelection(const aForce:Boolean);
+ var CurrentNodeIndex:TpvSizeInt;
+ begin
+  if MultiSelect then begin
+   if aForce or (fAction in [TpvGUITreeViewAction.PreMark,TpvGUITreeViewAction.Mark]) then begin
+    fAction:=TpvGUITreeViewAction.Mark;
+    fActionStopIndex:=fNodeIndex;
+    InternalClearSelection;
+    for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+     fNodes[CurrentNodeIndex].SetSelected(true);
+    end;
+    if assigned(fOnChangeSelection) then begin
+     fOnChangeSelection(self);
+    end;
+   end;
+  end;
+ end;
+var TreeNode:TpvGUITreeNode;
+begin
+ UpdateNodes;
+ UpdateContent;
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Down:begin
+      fAction:=TpvGUITreeViewAction.PreMark;
+      fActionStartIndex:=fNodeIndex;
+      fActionStopIndex:=fNodeIndex;
+     end;
+     TpvApplicationInputKeyEventType.Up:begin
+      if fAction=TpvGUITreeViewAction.Mark then begin
+       DoSelection(true);
+       fAction:=TpvGUITreeViewAction.None;
+      end else if fAction=TpvGUITreeViewAction.PreMark then begin
+       fAction:=TpvGUITreeViewAction.None;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_LEFT,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       if TreeNode.Expanded and (TreeNode.fChildren.Count>0) then begin
+        TreeNode.SetExpanded(false);
+       end else if assigned(TreeNode.fParent) and TreeNode.fParent.Expanded and ((TreeNode.fParent<>fRoot) or (TpvGUITreeViewFlag.ShowRootNode in fFlags)) then begin
+        TreeNode.fParent.SetExpanded(false);
+        SetNodeIndex(TreeNode.fParent.fNodeIndex);
+       end;
+       UpdateNodes;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_PLUS,KEYCODE_KP_PLUS,KEYCODE_RETURN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       TreeNode.SetExpanded(true);
+       UpdateNodes;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_UP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetNodeIndex(Min(Max(fNodeIndex-1,0),fNodes.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_DOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetNodeIndex(Min(Max(fNodeIndex+1,0),fNodes.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetNodeIndex(Min(Max(fNodeIndex+4,0),fNodes.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetNodeIndex(Min(Max(fNodeIndex-4,0),fNodes.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetNodeIndex(Min(0,fNodes.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetNodeIndex(fNodes.Count-1);
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_BACKSPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      ClearSelection;
+     end;
+    end;
+    result:=true;
+   end;
+{  KEYCODE_DELETE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+       if assigned(TreeNode.fParent) then begin
+        TreeNode.fParent.Remove(TreeNode);
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;}
+   KEYCODE_SPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       if not MultiSelect then begin
+        InternalClearSelection;
+       end;
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        TreeNode.SetSelected(not TreeNode.Selected);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end else begin
+       if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+        TreeNode:=fNodes[fNodeIndex];
+        if TpvGUITreeNode.TFlag.CheckBox in TreeNode.fFlags then begin
+         TreeNode.SetChecked(not TreeNode.Checked);
+        end;
+       end;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITreeView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):Boolean;
+var CurrentNodeIndex,IndentOffset:TpvSizeInt;
+    TreeNode:TpvGUITreeNode;
+    Skin:TpvGUISkin;
+begin
+ Skin:=GetSkin;
+ if assigned(Skin) then begin
+  UpdateNodes;
+  UpdateScrollBars;
+  UpdateContent;
+  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+  if not result then begin
+   result:=inherited PointerEvent(aPointerEvent);
+   if not result then begin
+    if TpvGUITreeViewFlag.ShowRootNode in fFlags then begin
+     IndentOffset:=0;
+    end else begin
+     IndentOffset:=1;
+    end;
+    case aPointerEvent.PointerEventType of
+     TpvApplicationInputPointerEventType.Down:begin
+      RequestFocus;
+      fAction:=TpvGUITreeViewAction.None;
+      SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+      end else begin
+       TreeNode:=nil;
+      end;
+      if assigned(TreeNode) and
+         Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) then begin
+       TreeNode.Expanded:=not TreeNode.Expanded;
+       UpdateNodes;
+      end else if assigned(TreeNode) and
+                  Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position) then begin
+       TreeNode.Checked:=not TreeNode.Checked;
+      end else begin
+       if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+        if not MultiSelect then begin
+         InternalClearSelection;
+        end;
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(not TreeNode.Selected);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
+       end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+        fAction:=TpvGUITreeViewAction.Mark;
+        fActionStartIndex:=fNodeIndex;
+        fActionStopIndex:=fNodeIndex;
+        InternalClearSelection;
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(not TreeNode.Selected);
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
+       end;
+       if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+        if fDoubleClickCounter=0 then begin
+         fDoubleClickTimeAccumulator:=0.0;
+        end;
+       end;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Up:begin
+      if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+       TreeNode:=fNodes[fNodeIndex];
+      end else begin
+       TreeNode:=nil;
+      end;
+      if assigned(TreeNode) and
+         (Skin.IsTreeViewExpandCollapseButtonTouched(self,TreeNode,aPointerEvent.Position) or
+          Skin.IsTreeViewCheckBoxTouched(self,TreeNode,aPointerEvent.Position)) then begin
+       // Nothing
+      end else begin
+       if fAction=TpvGUITreeViewAction.Mark then begin
+        SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+        fActionStopIndex:=fNodeIndex;
+        InternalClearSelection;
+        if MultiSelect then begin
+         for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+          fNodes[CurrentNodeIndex].SetSelected(true);
+         end;
+        end else begin
+         if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+          TreeNode:=fNodes[fNodeIndex];
+          TreeNode.SetSelected(true);
+         end;
+        end;
+        if assigned(fOnChangeSelection) then begin
+         fOnChangeSelection(self);
+        end;
+       end;
+       if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+        if fDoubleClickCounter<2 then begin
+         inc(fDoubleClickCounter);
+         if fDoubleClickCounter=2 then begin
+          fDoubleClickCounter:=0;
+          fDoubleClickTimeAccumulator:=0.0;
+          if assigned(fOnDoubleClick) then begin
+           fOnDoubleClick(self);
+          end;
+         end;
+        end;
+       end;
+      end;
+      fAction:=TpvGUITreeViewAction.None;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Motion:begin
+      if fAction=TpvGUITreeViewAction.Mark then begin
+       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+       fActionStopIndex:=fNodeIndex;
+       InternalClearSelection;
+       if MultiSelect then begin
+        for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+         fNodes[CurrentNodeIndex].SetSelected(true);
+        end;
+       end else begin
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(true);
+        end;
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end;
+      result:=true;
+     end;
+     TpvApplicationInputPointerEventType.Drag:begin
+      if fAction=TpvGUITreeViewAction.Mark then begin
+       SetNodeIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fVerticalScrollBar.Value);
+       fActionStopIndex:=fNodeIndex;
+       InternalClearSelection;
+       if MultiSelect then begin
+        for CurrentNodeIndex:=Max(0,Min(fActionStartIndex,fActionStopIndex)) to Min(Max(fActionStartIndex,fActionStopIndex),fNodes.Count-1) do begin
+         fNodes[CurrentNodeIndex].SetSelected(true);
+        end;
+       end else begin
+        if (fNodeIndex>=0) and (fNodeIndex<fNodes.Count) then begin
+         TreeNode:=fNodes[fNodeIndex];
+         TreeNode.SetSelected(true);
+        end;
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
+      end;
+      result:=true;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITreeView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):Boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ UpdateNodes;
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  TemporaryValue:=fNodeIndex;
+  v:=aRelativeAmount.x-aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  SetNodeIndex(Min(Max(fNodeIndex+Step,0),fNodes.Count-1));
+  result:=true;
+ end;
+end;
+
+procedure TpvGUITreeView.Check;
+begin
+ UpdateNodes;
+ UpdateScrollBars;
+ UpdateContent;
+ fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
+ if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
+  fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
+  fDoubleClickCounter:=0;
+ end;
+ inherited Check;
+end;
+
+procedure TpvGUITreeView.Draw;
+begin
+ UpdateNodes;
+ UpdateScrollBars;
+ UpdateContent;
+ Skin.DrawTreeView(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -23673,7 +27449,7 @@ begin
   Title:='Save';
  end;
 
- fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,4.0);
+ fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Content,4.0);
  Content.Layout:=fAdvancedGridLayout;
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Path
  fAdvancedGridLayout.Rows.Add(240.0,1.0); // List
@@ -23839,7 +27615,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvGUIFileDialog.TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23852,7 +27628,7 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23868,7 +27644,7 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
@@ -23881,19 +27657,21 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=false;
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
-  case aKeyEvent.KeyCode of
-   KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+ case aKeyEvent.KeyCode of
+  KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER:begin
+   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
     Accept(0);
-    result:=true;
    end;
-   KEYCODE_BACKSPACE:begin
+   result:=true;
+  end;
+  KEYCODE_BACKSPACE:begin
+   if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
     SetPath('..');
-    result:=true;
    end;
+   result:=true;
   end;
  end;
 end;
@@ -23970,7 +27748,7 @@ type TFilter=record
      end;
      PFilter=^TFilter;
      TFilters=TpvDynamicArray<TFilter>;
- function Add(const aFileName:TpvUTF8String;const aDirectory:boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
+ function Add(const aFileName:TpvUTF8String;const aDirectory:Boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
  var ListItem:PListItem;
  begin
   result:=fListItems.AddNew;
@@ -24273,15 +28051,20 @@ begin
  end;
 end;
 
-function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):Boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+ if not result then begin
   case aKeyEvent.KeyCode of
    KEYCODE_ESCAPE:begin
-    Reject;
+    if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up then begin
+     Reject;
+    end;
     result:=true;
    end;
+  end;
+  if not result then begin
+   result:=inherited KeyEvent(aKeyEvent);
   end;
  end;
 end;
@@ -24295,7 +28078,11 @@ begin
  inherited Check;
 end;
 
-function TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1):boolean;
+procedure TpvGUIFileDialog.Setup;
+begin
+end;
+
+function TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1):Boolean;
 var NewFileName,FileExtension:TpvUTF8String;
 begin
  result:=false;
@@ -24374,4 +28161,14 @@ begin
  Close;
 end;
 
+initialization
+{$ifdef PasVulkanGUIFreeDebug}
+ FreePointerHashMap:=TpvHashMap<TpvGUIObject,boolean>.Create(false);
+ FreePointerHashMapLock:=TPasMPCriticalSection.Create;
+{$endif}
+finalization
+{$ifdef PasVulkanGUIFreeDebug}
+ FreeAndNil(FreePointerHashMap);
+ FreeAndNil(FreePointerHashMapLock);
+{$endif}
 end.

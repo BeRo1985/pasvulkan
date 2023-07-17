@@ -110,6 +110,12 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       TwoPI=PI*2.0;
 
+      OneOverPI=1.0/PI;
+
+      OneOverHalfPI=1.0/HalfPI;
+
+      OneOverTwoPI=1.0/TwoPI;
+
       SQRT_0_DOT_5=0.70710678118;
 
       SupraEngineFPUPrecisionMode:TFPUPrecisionMode={$ifdef cpu386}pmExtended{$else}{$ifdef cpux64}pmExtended{$else}pmDouble{$endif}{$endif};
@@ -207,27 +213,27 @@ type PpvScalar=^TpvScalar;
        class operator Explicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Add(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Subtract(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Subtract(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Divide(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator IntDivide(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a,b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvVector3;const b:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TpvVector3.Swizzle.Definitions.inc}
@@ -238,14 +244,14 @@ type PpvScalar=^TpvScalar;
        function Flip:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function OneUnitOrthogonalVector:TpvVector3;
-       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} aToVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} aToVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function AngleTo(const aToVector:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Lerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
@@ -280,27 +286,27 @@ type PpvScalar=^TpvScalar;
        class operator Explicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Add(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Subtract(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Subtract(const a:TpvScalar;const b:TpvVector4): TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Divide(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator IntDivide(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a,b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvVector4;const b:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvVector4):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TpvVector4.Swizzle.Definitions.inc}
@@ -310,14 +316,14 @@ type PpvScalar=^TpvScalar;
       public
        function Flip:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Abs:TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function AngleTo(const b:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Lerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4;
@@ -481,31 +487,31 @@ type PpvScalar=^TpvScalar;
        class operator Explicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Add(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Subtract(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Subtract(const a:TpvScalar;const b:TpvQuaternion): TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector3;const b:TpvQuaternion):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Multiply(const a:TpvVector4;const b:TpvQuaternion):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Divide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator IntDivide(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a,b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvQuaternion;const b:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
       private
        function GetComponent(const aIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -521,16 +527,16 @@ type PpvScalar=^TpvScalar;
        function Generator:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Conjugate:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Inverse:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Abs:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Exp:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Log:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Conjugate:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Inverse:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Abs:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Exp:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Log:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Lerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
@@ -805,39 +811,39 @@ type PpvScalar=^TpvScalar;
        constructor CreateConstructZ(const zAxis:TpvVector3);
        constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TpvPlane);
        constructor CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
-       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector2;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvPlane):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Inc({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Dec({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector2;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvPlane):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       class operator IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        class operator Positive(const a:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
       private
        function GetComponent(const pIndexA,pIndexB:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -847,10 +853,10 @@ type PpvScalar=^TpvScalar;
        function GetRow(const pIndex:TpvInt32):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetRow(const pIndex:TpvInt32;const pValue:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function Determinant:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Determinant:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function SimpleInverse:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Inverse:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        function OrthoNormalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -924,9 +930,9 @@ type PpvScalar=^TpvScalar;
        class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvDualQuaternion):TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Positive(const a:TpvDualQuaternion):TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvDualQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Conjugate:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Inverse:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Normalize:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Conjugate:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Inverse:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Normalize:TpvDualQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        case TpvUInt8 of
         0:(RawQuaternions:array[0..1] of TpvQuaternion);
         1:(QuaternionR,QuaternionD:TpvQuaternion);
@@ -1022,8 +1028,9 @@ type PpvScalar=^TpvScalar;
      TpvOBB=packed record
       public
        Center:TpvVector3;
-       Extents:TpvVector3;
+       HalfExtents:TpvVector3;
        procedure ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvScalar);
+       function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean; overload;
        function RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
        function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Penetration:TpvScalar):boolean; overload;
        function TriangleIntersection(const ppvTriangle:TpvTriangle;const MTV:PpvVector3=nil):boolean; overload;
@@ -1047,6 +1054,7 @@ type PpvScalar=^TpvScalar;
        function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Volume:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Center:TpvVector3;
        function Flip:TpvAABB;
        function SquareMagnitude:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Resize(const f:TpvScalar):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1055,16 +1063,24 @@ type PpvScalar=^TpvScalar;
        function DistanceTo(const ToAABB:TpvAABB):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar=EPSILON):boolean; overload;
        function Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Contains(const AABB:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const AABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean; overload; static; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const Vector:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean; overload; static;  {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aOBB:TpvOBB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;var HitPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TpvVector3;var Time:TpvScalar):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       class function FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean; overload; static;  {$ifdef CAN_INLINE}inline;{$endif}
+       function RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean;
+       function RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean;
+       function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload;
+       class function RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean; overload; static;
+       function LineIntersection(const StartPoint,EndPoint:TpvVector3):boolean; overload;
+       class function LineIntersection(const aAABBMin,aAABBMax:TpvVector3;const StartPoint,EndPoint:TpvVector3):boolean; overload; static;
        function TriangleIntersection(const Triangle:TpvTriangle):boolean;
        function Transform(const Transform:TpvMatrix3x3):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Transform(const Transform:TpvMatrix4x4):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1102,7 +1118,8 @@ type PpvScalar=^TpvScalar;
        function DistanceTo(const b:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const b:TpvSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const b:TpvAABB):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function RayIntersection(const Origin,Direction:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
+       function RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
        function Extends(const WithSphere:TpvSphere):TpvSphere; {$ifdef CAN_INLINE}inline;{$endif}
        function Transform(const Transform:TpvMatrix4x4):TpvSphere; {$ifdef CAN_INLINE}inline;{$endif}
        function TriangleIntersection(const Triangle:TpvTriangle;out Position,Normal:TpvVector3;out Depth:TpvScalar):boolean; overload;
@@ -1160,7 +1177,13 @@ type PpvScalar=^TpvScalar;
        class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
-       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cost:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Area:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Center:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithRect:TpvRect):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Combine(const aWithPoint:TpvVector2):TpvRect; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
+       function Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload;// {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -1199,6 +1222,9 @@ type PpvScalar=^TpvScalar;
         );
         7:(
          Components:array[0..3] of TpvFloat;
+        );
+        8:(
+         MinMax:array[0..1] of TpvVector2;
         );
      end;
 
@@ -1417,6 +1443,25 @@ type PpvScalar=^TpvScalar;
        property a:TpvScalar read GetA write SetA;
      end;
 
+     TpvPolynomial=record
+      public
+       Coefs:TpvDoubleDynamicArray;
+       constructor Create(const aCoefs:array of TpvDouble);
+       function GetDegree:TpvSizeInt;
+       function Eval(const aValue:TpvDouble):TpvDouble;
+       procedure SimplifyEquals(const aThreshold:TpvDouble=1e-12);
+       function GetDerivative:TpvPolynomial;
+       function GetLinearRoots:TpvDoubleDynamicArray;
+       function GetQuadraticRoots:TpvDoubleDynamicArray;
+       function GetCubicRoots:TpvDoubleDynamicArray;
+       function GetQuarticRoots:TpvDoubleDynamicArray;
+       function GetRoots:TpvDoubleDynamicArray;
+       function Bisection(aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+       function GetRootsInInterval(const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+     end;
+
+     PpvPolynomial=^TpvPolynomial;
+
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
@@ -1430,7 +1475,7 @@ function IEEERemainder(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$end
 function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
 function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
@@ -1592,6 +1637,8 @@ procedure RobustOrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3;const Tol
 
 function MaxOverlaps(const Min1,Max1,Min2,Max2:TpvScalar;var LowerLim,UpperLim:TpvScalar):boolean;
 
+function GetHaltonSequence(const aIndex,aPrimeBase:TpvUInt32):TpvDouble;
+
 function PackFP32FloatToM6E5Float(const pValue:TpvFloat):TpvUInt32;
 function PackFP32FloatToM5E5Float(const pValue:TpvFloat):TpvUInt32;
 function Float32ToFloat11(const pValue:TpvFloat):TpvUInt32;
@@ -1610,6 +1657,11 @@ function ConvertSRGBToLinear(const aColor:TpvVector4):TpvVector4; overload;
 
 function ConvertHSVToRGB(const aHSV:TpvVector3):TpvVector3;
 function ConvertRGBToHSV(const aRGB:TpvVector3):TpvVector3;
+
+function SolveQuadratic(const a,b,c:TpvDouble;out r0,r1:TpvDouble):TpvSizeInt;
+function SolveCubic(const a,b,c,d:TpvDouble;out r0,r1,r2:TpvDouble):TpvSizeInt;
+function SolveQuartic(const a,b,c,d,e:TpvDouble;out r0,r1,r2,r3:TpvDouble):TpvSizeInt;
+function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
 
 implementation
 
@@ -1810,22 +1862,34 @@ begin
          (v0.y*v1.x*v2.z*v3.w)+(v0.x*v1.y*v2.z*v3.w);
 end;
 
-function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-var d,InverseDenominator:TpvScalar;
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
+var a2,d,InverseDenominator:TpvScalar;
 begin
  result:=false;
  d:=sqr(b)-(4.0*(a*c));
- if d>=0.0 then begin
-  InverseDenominator:=1.0/(2.0*a);
-  if abs(d)<EPSILON then begin
-   t1:=(-b)*InverseDenominator;
-   t2:=t1;
+ if d<0.0 then begin
+  exit;
+ end else begin
+  a2:=a*2.0;
+  if abs(a2)<1e-7 then begin
+   exit;
   end else begin
-   d:=sqrt(d);
-   t1:=((-b)-d)*InverseDenominator;
-   t2:=((-b)+d)*InverseDenominator;
+   InverseDenominator:=1.0/a2;
+   if abs(d)<EPSILON then begin
+    t1:=(-b)*InverseDenominator;
+    t2:=t1;
+   end else begin
+    d:=sqrt(d);
+    t1:=((-b)+d)*InverseDenominator;
+    t2:=((-b)-d)*InverseDenominator;
+    if t1>t2 then begin
+     d:=t1;
+     t1:=t2;
+     t2:=d;
+    end;
+   end;
+   result:=true;
   end;
-  result:=true;
  end;
 end;
 
@@ -2760,15 +2824,15 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
- movss xmm0,dword ptr [rdi+0]
- movss xmm1,dword ptr [rdi+4]
- movss xmm2,dword ptr [rdi+8]
-{$endif}
+//{$else}
+// movss xmm0,dword ptr [rdi+0]
+// movss xmm1,dword ptr [rdi+4]
+// movss xmm2,dword ptr [rdi+8]
+//{$endif}
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  mulps xmm0,xmm0         // xmm0 = ?, z*z, y*y, x*x
@@ -2777,7 +2841,11 @@ asm
  shufps xmm0,xmm0,$55    // xmm0 = ?, ?, ?, y*y
  addss xmm1,xmm0         // xmm1 = ?, ?, ?, z*z + y*y + x*x
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -2804,15 +2872,15 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  mulps xmm0,xmm0         // xmm0 = ?, z*z, y*y, x*x
@@ -2820,7 +2888,11 @@ asm
  addss xmm1,xmm0         // xmm1 = ?, ?, ?, z*z + x*x
  shufps xmm0,xmm0,$55    // xmm0 = ?, ?, ?, y*y
  addss xmm0,xmm1         // xmm0 = ?, ?, ?, z*z + y*y + x*x
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -2861,15 +2933,15 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  movaps xmm2,xmm0
@@ -2933,21 +3005,21 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
  xorps xmm2,xmm2
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
  subss xmm0,dword ptr [rdx+0]
  subss xmm1,dword ptr [rdx+4]
  subss xmm2,dword ptr [rdx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
  subss xmm0,dword ptr [rsi+0]
  subss xmm1,dword ptr [rsi+4]
  subss xmm2,dword ptr [rsi+8]
-{$endif}
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  mulps xmm0,xmm0         // xmm0 = ?, z*z, y*y, x*x
@@ -2956,7 +3028,11 @@ asm
  shufps xmm0,xmm0,$55    // xmm0 = ?, ?, ?, y*y
  addss xmm1,xmm0         // xmm1 = ?, ?, ?, z*z + y*y + x*x
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -2985,15 +3061,15 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
- movss xmm0,dword ptr [ecx+0]
- movss xmm1,dword ptr [ecx+4]
- movss xmm2,dword ptr [ecx+8]
-{$else}
- movss xmm0,dword ptr [edi+0]
- movss xmm1,dword ptr [edi+4]
- movss xmm2,dword ptr [edi+8]
-{$endif}
+//{$ifdef Windows}
+ movss xmm0,dword ptr [rcx+0]
+ movss xmm1,dword ptr [rcx+4]
+ movss xmm2,dword ptr [rcx+8]
+(*{$else}
+ movss xmm0,dword ptr [rdi+0]
+ movss xmm1,dword ptr [rdi+4]
+ movss xmm2,dword ptr [rdi+8]
+{$endif}*)
  movlhps xmm0,xmm1
  shufps xmm0,xmm2,$88
  xorps xmm1,xmm1
@@ -3030,24 +3106,28 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movss xmm0,dword ptr [rcx+0]
  movss xmm1,dword ptr [rcx+4]
  movss xmm2,dword ptr [rcx+8]
  mulss xmm0,dword ptr [rdx+0]
  mulss xmm1,dword ptr [rdx+4]
  mulss xmm2,dword ptr [rdx+8]
-{$else}
+(*{$else}
  movss xmm0,dword ptr [rdi+0]
  movss xmm1,dword ptr [rdi+4]
  movss xmm2,dword ptr [rdi+8]
  mulss xmm0,dword ptr [rsi+0]
  mulss xmm1,dword ptr [rsi+4]
  mulss xmm2,dword ptr [rsi+8]
-{$endif}
+{$endif}*)
  addss xmm0,xmm1
  addss xmm0,xmm2
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3133,7 +3213,7 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
 {$ifdef SSEVector3CrossOtherVariant}
-{$ifdef Windows}
+//{$ifdef Windows}
  xorps xmm2,xmm2
  xorps xmm4,xmm4
  movss xmm0,dword ptr [rcx+0]
@@ -3146,7 +3226,7 @@ asm
  movss xmm4,dword ptr [r8+8]
  movlhps xmm2,xmm3
  shufps xmm2,xmm4,$88
-{$else}
+(*{$else}
  xorps xmm2,xmm2
  xorps xmm4,xmm4
  movss xmm0,dword ptr [rdi+0]
@@ -3159,7 +3239,7 @@ asm
  movss xmm4,dword ptr [rsi+8]
  movlhps xmm2,xmm3
  shufps xmm2,xmm4,$88
-{$endif}
+{$endif}*)
  movaps xmm1,xmm0
  movaps xmm3,xmm2
  shufps xmm0,xmm0,$c9
@@ -3173,17 +3253,17 @@ asm
  movaps xmm2,xmm0
  shufps xmm1,xmm1,$55
  shufps xmm2,xmm2,$aa
-{$ifdef Windows}
+//{$ifdef Windows}
  movss dword ptr [rdx+0],xmm0
  movss dword ptr [rdx+4],xmm1
  movss dword ptr [rdx+8],xmm2
-{$else}
+(*{$else}
  movss dword ptr [rax+0],xmm0
  movss dword ptr [rax+4],xmm1
  movss dword ptr [rax+8],xmm2
-{$endif}
+{$endif}*)
 {$else}
-{$ifdef Windows}
+//{$ifdef Windows}
  xorps xmm2,xmm2
  xorps xmm3,xmm3
  movss xmm0,dword ptr [rcx+0]
@@ -3196,7 +3276,7 @@ asm
  movss xmm3,dword ptr [r8+8]
  movlhps xmm1,xmm2
  shufps xmm1,xmm3,$88
-{$else}
+(*{$else}
  xorps xmm2,xmm2
  xorps xmm3,xmm3
  movss xmm0,dword ptr [rdi+0]
@@ -3209,7 +3289,7 @@ asm
  movss xmm3,dword ptr [rsi+8]
  movlhps xmm1,xmm2
  shufps xmm1,xmm3,$88
-{$endif}
+{$endif}*)
  movaps xmm2,xmm0
  movaps xmm3,xmm1
  shufps xmm0,xmm0,$12
@@ -3223,15 +3303,15 @@ asm
  movaps xmm1,xmm2
  shufps xmm1,xmm1,$55
  shufps xmm2,xmm2,$aa
-{$ifdef Windows}
+//{$ifdef Windows}
  movss dword ptr [rdx+0],xmm0
  movss dword ptr [rdx+4],xmm1
  movss dword ptr [rdx+8],xmm2
-{$else}
+(*{$else}
  movss dword ptr [rax+0],xmm0
  movss dword ptr [rax+4],xmm1
  movss dword ptr [rax+8],xmm2
-{$endif}
+{$endif}*)
 {$endif}
 end;
 {$else}
@@ -3782,11 +3862,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
  shufps xmm1,xmm1,$4e    // xmm1 = z*z, w*w, x*x, y*y
@@ -3795,7 +3875,11 @@ asm
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3818,11 +3902,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
  shufps xmm1,xmm1,$4e    // xmm1 = z*z, w*w, x*x, y*y
@@ -3830,7 +3914,11 @@ asm
  movaps xmm1,xmm0        // xmm1 = xmm0
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3861,11 +3949,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  movaps xmm2,xmm0
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
@@ -3881,11 +3969,11 @@ asm
  subps xmm1,xmm2
  cmpps xmm1,xmm2,7
  andps xmm2,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm2
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm2
-{$endif}
+{$endif}*)
 end;
 {$else}
 var Factor:TpvScalar;
@@ -3924,13 +4012,13 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  subps xmm0,xmm1
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
@@ -3940,7 +4028,11 @@ asm
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -3959,19 +4051,19 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  xorps xmm1,xmm1
  subps xmm1,xmm0
  maxps xmm0,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm0
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm0
-{$endif}
+{$endif}*)
 end;
 {$else}
 begin
@@ -3997,20 +4089,24 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm1
  movaps xmm1,xmm0
  shufps xmm1,xmm0,$b1
  addps xmm0,xmm1
  movhlps xmm1,xmm0
  addss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -4079,13 +4175,13 @@ const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000)
       OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
 asm
 {$ifdef SSEVector3CrossOtherVariant}
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm2,dqword ptr [r8]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm2,dqword ptr [rsi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm4,dqword ptr [rip+AndMask]
  movups xmm5,dqword ptr [rip+OrMask]
@@ -4106,19 +4202,19 @@ asm
  subps xmm0,xmm1
  andps xmm0,xmm4
  orps xmm0,xmm5
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm0
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm0
-{$endif}
+{$endif}*)
 {$else}
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [r8]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm4,dqword ptr [rip+AndMask]
  movups xmm5,dqword ptr [rip+OrMask]
@@ -4139,11 +4235,11 @@ asm
  subps xmm2,xmm0
  andps xmm2,xmm4
  orps xmm2,xmm5
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm2
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm2
-{$endif}
+{$endif}*)
 {$endif}
 end;
 {$else}
@@ -4753,14 +4849,14 @@ end;
 class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  // q = a
  // v = b
@@ -4833,10 +4929,10 @@ asm
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm1
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -4860,14 +4956,14 @@ class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  // q = a
  // v = b
@@ -4940,10 +5036,10 @@ asm
 
  movups dqword ptr [result],xmm1
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -5259,11 +5355,11 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm1,dqword ptr [rip+XORMask]
 {$else}
@@ -5302,11 +5398,11 @@ end;
 {$elseif defined(SIMD) and defined(cpux64)}
 const XORMask:array[0..3] of TpvUInt32=($80000000,$80000000,$80000000,$00000000);
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm2,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm2,dqword ptr [rdi]
-{$endif}
+{$endif}*)
 {$ifdef fpc}
  movups xmm3,dqword ptr [rip+XORMask]
 {$else}
@@ -5352,18 +5448,22 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0
  movhlps xmm1,xmm0
  addps xmm0,xmm1
  pshufd xmm1,xmm0,$01
  addss xmm1,xmm0
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5384,17 +5484,21 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm0
  movhlps xmm1,xmm0
  addps xmm0,xmm1
  pshufd xmm1,xmm0,$01
  addss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5422,11 +5526,11 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  movaps xmm2,xmm0
  mulps xmm0,xmm0
  movhlps xmm1,xmm0
@@ -5439,11 +5543,11 @@ asm
  subps xmm1,xmm2
  cmpps xmm1,xmm0,7
  andps xmm2,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm2
-{$else}
- movups dqword ptr [rax],xmm2
-{$endif}
+(*{$else}
+ movups dqword ptr [result],xmm2
+{$endif}*)
 end;
 {$else}
 var Factor:TpvScalar;
@@ -5482,13 +5586,13 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  subps xmm0,xmm1
  mulps xmm0,xmm0         // xmm0 = w*w, z*z, y*y, x*x
  movaps xmm1,xmm0        // xmm1 = xmm0
@@ -5498,7 +5602,11 @@ asm
  shufps xmm1,xmm1,$b1    // xmm0 = xy*xy, xy*xy, zw*zw, zw*zw
  addps xmm1,xmm0         // xmm1 = xmm1 + xmm0 = (xyzw, xyzw, xyzw, xyzw)
  sqrtss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -5517,19 +5625,19 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
-{$endif}
+{$endif}*)
  xorps xmm1,xmm1
  subps xmm1,xmm0
  maxps xmm0,xmm1
-{$ifdef Windows}
+//{$ifdef Windows}
  movups dqword ptr [rdx],xmm0
-{$else}
+(*{$else}
  movups dqword ptr [rax],xmm0
-{$endif}
+{$endif}*)
 end;
 {$else}
 begin
@@ -5592,20 +5700,24 @@ asm
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
 asm
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx]
  movups xmm1,dqword ptr [rdx]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi]
  movups xmm1,dqword ptr [rsi]
-{$endif}
+{$endif}*)
  mulps xmm0,xmm1
  movaps xmm1,xmm0
  shufps xmm1,xmm0,$b1
  addps xmm0,xmm1
  movhlps xmm1,xmm0
  addss xmm0,xmm1
+{$ifdef fpc}
  movss dword ptr [result],xmm0
+{$else}
+//movaps xmm0,xmm0
+{$endif}
 end;
 {$else}
 begin
@@ -9231,14 +9343,14 @@ end;
 
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
@@ -9257,10 +9369,10 @@ asm
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -9325,14 +9437,14 @@ end;
 
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9350,10 +9462,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9378,14 +9490,14 @@ end;
 
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
@@ -9402,10 +9514,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9469,14 +9581,14 @@ end;
 
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9494,10 +9606,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9522,14 +9634,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
 
  movups xmm0,dqword ptr [b+0]
  movups xmm1,dqword ptr [b+16]
@@ -9592,10 +9704,10 @@ asm
  addps xmm4,xmm6
  movups dqword ptr [result+48],xmm4
 
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 
 end;
 {$else}
@@ -9660,14 +9772,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9685,10 +9797,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9727,14 +9839,14 @@ class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  xorps xmm2,xmm2
  movss xmm0,dword ptr [b+0]
  movss xmm1,dword ptr [b+4]
@@ -9782,10 +9894,10 @@ asm
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9799,14 +9911,14 @@ class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  xorps xmm2,xmm2
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
@@ -9850,10 +9962,10 @@ asm
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9865,14 +9977,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movups xmm0,dqword ptr [b]     // d c b a
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
@@ -9893,10 +10005,10 @@ asm
  addps xmm2,xmm3
  addps xmm0,xmm2
  movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -9909,14 +10021,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movups xmm0,dqword ptr [a]     // d c b a
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
@@ -9933,10 +10045,10 @@ asm
  addps xmm2,xmm3
  addps xmm0,xmm2
  movups dqword ptr [result],xmm0
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10004,14 +10116,14 @@ end;
 
 class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -10029,10 +10141,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10101,14 +10213,14 @@ end;
 
 class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -10126,10 +10238,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10214,14 +10326,14 @@ end;
 
 class operator TpvMatrix4x4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  xorps xmm0,xmm0
  xorps xmm1,xmm1
  xorps xmm2,xmm2
@@ -10238,10 +10350,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -10354,23 +10466,23 @@ asm
  movss dword ptr [result],xmm5
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
-{$ifdef Windows}
+{-$endif}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx+32]
  movups xmm1,dqword ptr [rcx+48]
  movups xmm2,dqword ptr [rcx+16]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi+32]
  movups xmm1,dqword ptr [rdi+48]
  movups xmm2,dqword ptr [rdi+16]
-{$endif}
+{$endif}*)
  movaps xmm3,xmm0
  movaps xmm4,xmm0
  movaps xmm6,xmm1
@@ -10398,22 +10510,26 @@ asm
  mulps xmm0,xmm7
  addps xmm5,xmm3
  subps xmm5,xmm0
-{$ifdef Windows}
+//{$ifdef Windows}
  movups xmm6,dqword ptr [rcx+0]
-{$else}
+(*{$else}
  movups xmm6,dqword ptr [rdi+0]
-{$endif}
+{$endif}*)
  mulps xmm5,xmm6
  movhlps xmm7,xmm5
  addps xmm5,xmm7
  movaps xmm6,xmm5
  shufps xmm6,xmm6,$01
  addss xmm5,xmm6
+{$ifdef fpc}
  movss dword ptr [result],xmm5
-{$ifdef Windows}
+{$else}
+ movaps xmm0,xmm5
+{$endif}
+//{$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+//{$endif}
 end;
 {$else}
 begin
@@ -10616,19 +10732,19 @@ asm
  mov esp,ecx
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave0,StackSave1:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave0],xmm6
  movups dqword ptr [StackSave1],xmm7
-{$endif}
+{-$endif}
  mov r9,rsp
  mov r8,$fffffffffffffff0
  and rsp,r8
  sub rsp,$b0
-{$ifdef Windows}
+//{$ifdef Windows}
  movlps xmm2,qword ptr [rcx+8]
  movlps xmm4,qword ptr [rcx+40]
  movhps xmm2,qword ptr [rcx+24]
@@ -10637,7 +10753,7 @@ asm
  movlps xmm1,qword ptr [rcx]
  movhps xmm3,qword ptr [rcx+48]
  movhps xmm1,qword ptr [rcx+16]
-{$else}
+(*{$else}
  movlps xmm2,qword ptr [rdi+8]
  movlps xmm4,qword ptr [rdi+40]
  movhps xmm2,qword ptr [rdi+24]
@@ -10646,7 +10762,7 @@ asm
  movlps xmm1,qword ptr [rdi]
  movhps xmm3,qword ptr [rdi+48]
  movhps xmm1,qword ptr [rdi+16]
-{$endif}
+{$endif}*)
  movaps xmm5,xmm2
  shufps xmm5,xmm4,$88
  shufps xmm4,xmm2,$dd
@@ -10767,7 +10883,7 @@ asm
  movaps xmm6,dqword ptr [rsp+32]
  subps xmm5,xmm6
  shufps xmm5,xmm5,$4e
- movaps xmm6,[esp+128]
+ movaps xmm6,[rsp+128]
  mulps xmm6,xmm7
  subps xmm6,xmm5
  movaps xmm5,dqword ptr [rsp+112]
@@ -10803,10 +10919,10 @@ asm
  movups dqword ptr [result+32],xmm6
  movups dqword ptr [result+48],xmm5
  mov rsp,r9
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave0]
  movups xmm7,dqword ptr [StackSave1]
-{$endif}
+{-$endif}
 end;
 {$else}
 var t0,t4,t8,t12,d:TpvScalar;
@@ -10863,24 +10979,24 @@ asm
  movups dqword ptr [result+48],xmm6
 end;
 {$elseif defined(SIMD) and defined(cpux64)}
-{$ifdef Windows}
+{-$ifdef Windows}
 var StackSave:array[0..3] of single;
-{$endif}
+{-$endif}
 asm
-{$ifdef Windows}
+{-$ifdef Windows}
  movups dqword ptr [StackSave],xmm6
-{$endif}
-{$ifdef Windows}
+{-$endif}
+//{$ifdef Windows}
  movups xmm0,dqword ptr [rcx+0]
  movups xmm4,dqword ptr [rcx+16]
  movups xmm2,dqword ptr [rcx+32]
  movups xmm5,dqword ptr [rcx+48]
-{$else}
+(*{$else}
  movups xmm0,dqword ptr [rdi+0]
  movups xmm4,dqword ptr [rdi+16]
  movups xmm2,dqword ptr [rdi+32]
  movups xmm5,dqword ptr [rdi+48]
-{$endif}
+{$endif}*)
  movaps xmm1,xmm0
  movaps xmm3,xmm2
  unpcklps xmm0,xmm4
@@ -10897,9 +11013,9 @@ asm
  movups dqword ptr [result+16],xmm4
  movups dqword ptr [result+32],xmm1
  movups dqword ptr [result+48],xmm6
-{$ifdef Windows}
+{-$ifdef Windows}
  movups xmm6,dqword ptr [StackSave]
-{$endif}
+{-$endif}
 end;
 {$else}
 begin
@@ -13117,11 +13233,43 @@ procedure TpvOBB.ProjectToVector(const Vector:TpvVector3;out OBBMin,OBBMax:TpvSc
 var ProjectionCenter,ProjectionRadius:TpvScalar;
 begin
  ProjectionCenter:=Center.Dot(Vector);
- ProjectionRadius:=abs(Vector.Dot(Axis[0])*Extents.x)+
-                   abs(Vector.Dot(Axis[1])*Extents.y)+
-                   abs(Vector.Dot(Axis[2])*Extents.z);
+ ProjectionRadius:=abs(Vector.Dot(Axis[0])*HalfExtents.x)+
+                   abs(Vector.Dot(Axis[1])*HalfExtents.y)+
+                   abs(Vector.Dot(Axis[2])*HalfExtents.z);
  OBBMin:=ProjectionCenter-ProjectionRadius;
  OBBMax:=ProjectionCenter+ProjectionRadius;
+end;
+
+function TpvOBB.Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar):boolean;
+ function Check(const aRelativePosition,aAxis:TpvVector3):boolean; {$ifdef fpc}inline;{$endif}
+ begin
+   result:=abs(aRelativePosition.Dot(aAxis))<=
+           ((abs((Axis[0]*HalfExtents.x).Dot(aAxis))+
+             abs((Axis[1]*HalfExtents.y).Dot(aAxis))+
+             abs((Axis[2]*HalfExtents.z).Dot(aAxis))+
+             abs((aWith.Axis[0]*aWith.HalfExtents.x).Dot(aAxis))+
+             abs((aWith.Axis[1]*aWith.HalfExtents.y).Dot(aAxis))+
+             abs((aWith.Axis[2]*aWith.HalfExtents.z).Dot(aAxis)))+
+             aThreshold);
+ end;
+var RelativePosition:TpvVector3;
+begin
+ RelativePosition:=aWith.Center-Center;
+ result:=Check(RelativePosition,Axis[0]) and
+         Check(RelativePosition,Axis[1]) and
+         Check(RelativePosition,Axis[2]) and
+         Check(RelativePosition,aWith.Axis[0]) and
+         Check(RelativePosition,aWith.Axis[1]) and
+         Check(RelativePosition,aWith.Axis[2]) and
+         Check(RelativePosition,Axis[0].Cross(aWith.Axis[0])) and
+         Check(RelativePosition,Axis[0].Cross(aWith.Axis[1])) and
+         Check(RelativePosition,Axis[0].Cross(aWith.Axis[2])) and
+         Check(RelativePosition,Axis[1].Cross(aWith.Axis[0])) and
+         Check(RelativePosition,Axis[1].Cross(aWith.Axis[1])) and
+         Check(RelativePosition,Axis[1].Cross(aWith.Axis[2])) and
+         Check(RelativePosition,Axis[2].Cross(aWith.Axis[0])) and
+         Check(RelativePosition,Axis[2].Cross(aWith.Axis[1])) and
+         Check(RelativePosition,Axis[2].Cross(aWith.Axis[2]));
 end;
 
 function TpvOBB.RelativeSegmentIntersection(const ppvRelativeSegment:TpvRelativeSegment;out fracOut:TpvScalar;out posOut,NormalOut:TpvVector3):boolean;
@@ -13139,7 +13287,7 @@ begin
  max_:=1e+34;
 
  p:=Center-ppvRelativeSegment.Origin;
-//h:=Extents;
+//h:=HalfExtents;
 
  dirMax:=0;
  dirMin:=0;
@@ -13148,8 +13296,8 @@ begin
   e:=Axis[Dir].Dot(p);
   f:=Axis[Dir].Dot(ppvRelativeSegment.Delta);
   if abs(f)>EPSILON then begin
-   t1:=(e+Extents.RawComponents[dir])/f;
-   t2:=(e-Extents.RawComponents[dir])/f;
+   t1:=(e+HalfExtents.RawComponents[dir])/f;
+   t2:=(e-HalfExtents.RawComponents[dir])/f;
    if t1>t2 then begin
     t:=t1;
     t1:=t2;
@@ -13166,7 +13314,7 @@ begin
    if (min_>max_) or (max_<0.0) then begin
     exit;
    end;
-  end else if (((-e)-Extents.RawComponents[dir])>0.0) or (((-e)+Extents.RawComponents[dir])<0.0) then begin
+  end else if (((-e)-HalfExtents.RawComponents[dir])>0.0) or (((-e)+HalfExtents.RawComponents[dir])<0.0) then begin
    exit;
   end;
  end;
@@ -13218,21 +13366,21 @@ begin
  result:=false;
 
  // ---
- OBBVertices[0]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[0]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*(-self.HalfExtents.z));
  // +--
- OBBVertices[1]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[1]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*(-self.HalfExtents.z));
  // ++-
- OBBVertices[2]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*self.Extents.y)+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[2]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*self.HalfExtents.y)+(self.Axis[2]*(-self.HalfExtents.z));
  // -+-
- OBBVertices[3]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*self.Extents.y)+(self.Axis[2]*(-self.Extents.z));
+ OBBVertices[3]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*self.HalfExtents.y)+(self.Axis[2]*(-self.HalfExtents.z));
  // --+
- OBBVertices[4]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*self.Extents.z);
+ OBBVertices[4]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*self.HalfExtents.z);
  // +-+
- OBBVertices[5]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*self.Extents.z);
+ OBBVertices[5]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*self.HalfExtents.z);
  // +++
- OBBVertices[6]:=self.Center+(self.Axis[0]*self.Extents.x)+(self.Axis[1]*self.Extents.y)+(self.Axis[2]*self.Extents.z);
+ OBBVertices[6]:=self.Center+(self.Axis[0]*self.HalfExtents.x)+(self.Axis[1]*self.HalfExtents.y)+(self.Axis[2]*self.HalfExtents.z);
  // -++
- OBBVertices[7]:=self.Center+(self.Axis[0]*(-self.Extents.x))+(self.Axis[1]*(-self.Extents.y))+(self.Axis[2]*self.Extents.z);
+ OBBVertices[7]:=self.Center+(self.Axis[0]*(-self.HalfExtents.x))+(self.Axis[1]*(-self.HalfExtents.y))+(self.Axis[2]*self.HalfExtents.z);
 
  TriangleVertices[0]:=Triangle.Points[0];
  TriangleVertices[1]:=Triangle.Points[1];
@@ -13355,8 +13503,8 @@ begin
   TheAxis:=self.Axis[OBBAxisIndex];
   ppvTriangle.ProjectToVector(TheAxis,TriangleMin,TriangleMax);
   Projection:=TheAxis.Dot(Center);
-  OBBMin:=Projection-Extents.RawComponents[OBBAxisIndex];
-  OBBMax:=Projection+Extents.RawComponents[OBBAxisIndex];
+  OBBMin:=Projection-HalfExtents.RawComponents[OBBAxisIndex];
+  OBBMax:=Projection+HalfExtents.RawComponents[OBBAxisIndex];
   if (TriangleMin>OBBMax) or (TriangleMax<OBBMin) then begin
    exit;
   end;
@@ -13399,9 +13547,9 @@ end;
 constructor TpvAABB.CreateFromOBB(const OBB:TpvOBB);
 var t:TpvVector3;
 begin
- t.x:=abs((OBB.Matrix[0,0]*OBB.Extents.x)+(OBB.Matrix[1,0]*OBB.Extents.y)+(OBB.Matrix[2,0]*OBB.Extents.z));
- t.y:=abs((OBB.Matrix[0,1]*OBB.Extents.x)+(OBB.Matrix[1,1]*OBB.Extents.y)+(OBB.Matrix[2,1]*OBB.Extents.z));
- t.z:=abs((OBB.Matrix[0,2]*OBB.Extents.x)+(OBB.Matrix[1,2]*OBB.Extents.y)+(OBB.Matrix[2,2]*OBB.Extents.z));
+ t.x:=abs((OBB.Matrix[0,0]*OBB.HalfExtents.x)+(OBB.Matrix[1,0]*OBB.HalfExtents.y)+(OBB.Matrix[2,0]*OBB.HalfExtents.z));
+ t.y:=abs((OBB.Matrix[0,1]*OBB.HalfExtents.x)+(OBB.Matrix[1,1]*OBB.HalfExtents.y)+(OBB.Matrix[2,1]*OBB.HalfExtents.z));
+ t.z:=abs((OBB.Matrix[0,2]*OBB.HalfExtents.x)+(OBB.Matrix[1,2]*OBB.HalfExtents.y)+(OBB.Matrix[2,2]*OBB.HalfExtents.z));
  Min.x:=OBB.Center.x-t.x;
  Min.y:=OBB.Center.y-t.y;
  Min.z:=OBB.Center.z-t.z;
@@ -13425,6 +13573,11 @@ begin
  result:=2.0*((abs(Max.x-Min.x)*abs(Max.y-Min.y))+
               (abs(Max.y-Min.y)*abs(Max.z-Min.z))+
               (abs(Max.x-Min.x)*abs(Max.z-Min.z)));
+end;
+
+function TpvAABB.Center:TpvVector3;
+begin
+ result:=(Min+Max)*0.5;
 end;
 
 function TpvAABB.Flip:TpvAABB;
@@ -13506,19 +13659,60 @@ begin
  result:=(Min=WithAABB.Min) and (Max=WithAABB.Max);
 end;
 
-function TpvAABB.Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar=EPSILON):boolean;
+function TpvAABB.Intersect(const aWith:TpvOBB;const aThreshold:TpvScalar):boolean;
+var OBBCenterToAABBCenter,AABBHalfExtents:TpvVector3;
+begin
+ OBBCenterToAABBCenter:=aWith.Center-Min.Lerp(Max,0.5);
+ AABBHalfExtents:=(Max-Min)*0.5;
+ result:=((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[0]))-AABBHalfExtents.Dot(aWith.Axis[0]))<=(aWith.HalfExtents.Dot(aWith.Axis[0])+aThreshold)) and
+         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[1]))-AABBHalfExtents.Dot(aWith.Axis[1]))<=(aWith.HalfExtents.Dot(aWith.Axis[1])+aThreshold)) and
+         ((abs(OBBCenterToAABBCenter.Dot(aWith.Axis[2]))-AABBHalfExtents.Dot(aWith.Axis[2]))<=(aWith.HalfExtents.Dot(aWith.Axis[2])+aThreshold));
+end;
+
+function TpvAABB.Intersect(const WithAABB:TpvAABB;Threshold:TpvScalar):boolean;
 begin
  result:=(((Max.x+Threshold)>=(WithAABB.Min.x-Threshold)) and ((Min.x-Threshold)<=(WithAABB.Max.x+Threshold))) and
          (((Max.y+Threshold)>=(WithAABB.Min.y-Threshold)) and ((Min.y-Threshold)<=(WithAABB.Max.y+Threshold))) and
          (((Max.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((Min.z-Threshold)<=(WithAABB.Max.z+Threshold)));
 end;
 
-function TpvAABB.Contains(const AABB:TpvAABB):boolean;
+class function TpvAABB.Intersect(const aAABBMin,aAABBMax:TpvVector3;const WithAABB:TpvAABB;Threshold:TpvScalar):boolean;
 begin
- result:=((Min.x-EPSILON)<=(AABB.Min.x+EPSILON)) and ((Min.y-EPSILON)<=(AABB.Min.y+EPSILON)) and ((Min.z-EPSILON)<=(AABB.Min.z+EPSILON)) and
-         ((Max.x+EPSILON)>=(AABB.Min.x+EPSILON)) and ((Max.y+EPSILON)>=(AABB.Min.y+EPSILON)) and ((Max.z+EPSILON)>=(AABB.Min.z+EPSILON)) and
-         ((Min.x-EPSILON)<=(AABB.Max.x-EPSILON)) and ((Min.y-EPSILON)<=(AABB.Max.y-EPSILON)) and ((Min.z-EPSILON)<=(AABB.Max.z-EPSILON)) and
-         ((Max.x+EPSILON)>=(AABB.Max.x-EPSILON)) and ((Max.y+EPSILON)>=(AABB.Max.y-EPSILON)) and ((Max.z+EPSILON)>=(AABB.Max.z-EPSILON));
+ result:=(((aAABBMax.x+Threshold)>=(WithAABB.Min.x-Threshold)) and ((aAABBMin.x-Threshold)<=(WithAABB.Max.x+Threshold))) and
+         (((aAABBMax.y+Threshold)>=(WithAABB.Min.y-Threshold)) and ((aAABBMin.y-Threshold)<=(WithAABB.Max.y+Threshold))) and
+         (((aAABBMax.z+Threshold)>=(WithAABB.Min.z-Threshold)) and ((aAABBMin.z-Threshold)<=(WithAABB.Max.z+Threshold)));
+end;
+
+function TpvAABB.Contains(const AABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=((Min.x-aThreshold)<=(AABB.Min.x+aThreshold)) and
+         ((Min.y-aThreshold)<=(AABB.Min.y+aThreshold)) and
+         ((Min.z-aThreshold)<=(AABB.Min.z+aThreshold)) and
+         ((Max.x+aThreshold)>=(AABB.Min.x-aThreshold)) and
+         ((Max.y+aThreshold)>=(AABB.Min.y-aThreshold)) and
+         ((Max.z+aThreshold)>=(AABB.Min.z-aThreshold)) and
+         ((Min.x-aThreshold)<=(AABB.Max.x+aThreshold)) and
+         ((Min.y-aThreshold)<=(AABB.Max.y+aThreshold)) and
+         ((Min.z-aThreshold)<=(AABB.Max.z+aThreshold)) and
+         ((Max.x+aThreshold)>=(AABB.Max.x-aThreshold)) and
+         ((Max.y+aThreshold)>=(AABB.Max.y-aThreshold)) and
+         ((Max.z+aThreshold)>=(AABB.Max.z-aThreshold));
+end;
+
+class function TpvAABB.Contains(const aAABBMin,aAABBMax:TpvVector3;const aAABB:TpvAABB;const aThreshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=((aAABBMin.x-aThreshold)<=(aAABB.Min.x+aThreshold)) and
+         ((aAABBMin.y-aThreshold)<=(aAABB.Min.y+aThreshold)) and
+         ((aAABBMin.z-aThreshold)<=(aAABB.Min.z+aThreshold)) and
+         ((aAABBMax.x+aThreshold)>=(aAABB.Min.x-aThreshold)) and
+         ((aAABBMax.y+aThreshold)>=(aAABB.Min.y-aThreshold)) and
+         ((aAABBMax.z+aThreshold)>=(aAABB.Min.z-aThreshold)) and
+         ((aAABBMin.x-aThreshold)<=(aAABB.Max.x+aThreshold)) and
+         ((aAABBMin.y-aThreshold)<=(aAABB.Max.y+aThreshold)) and
+         ((aAABBMin.z-aThreshold)<=(aAABB.Max.z+aThreshold)) and
+         ((aAABBMax.x+aThreshold)>=(aAABB.Max.x-aThreshold)) and
+         ((aAABBMax.y+aThreshold)>=(aAABB.Max.y-aThreshold)) and
+         ((aAABBMax.z+aThreshold)>=(aAABB.Max.z-aThreshold));
 end;
 
 function TpvAABB.Contains(const Vector:TpvVector3):boolean;
@@ -13526,6 +13720,24 @@ begin
  result:=((Vector.x>=(Min.x-EPSILON)) and (Vector.x<=(Max.x+EPSILON))) and
          ((Vector.y>=(Min.y-EPSILON)) and (Vector.y<=(Max.y+EPSILON))) and
          ((Vector.z>=(Min.z-EPSILON)) and (Vector.z<=(Max.z+EPSILON)));
+end;
+
+class function TpvAABB.Contains(const aAABBMin,aAABBMax,aVector:TpvVector3):boolean;
+begin
+ result:=((aVector.x>=(aAABBMin.x-EPSILON)) and (aVector.x<=(aAABBMax.x+EPSILON))) and
+         ((aVector.y>=(aAABBMin.y-EPSILON)) and (aVector.y<=(aAABBMax.y+EPSILON))) and
+         ((aVector.z>=(aAABBMin.z-EPSILON)) and (aVector.z<=(aAABBMax.z+EPSILON)));
+end;
+
+function TpvAABB.Contains(const aOBB:TpvOBB):boolean;
+var Axes:array[0..3] of TpvVector3;
+begin
+ Axes[0]:=aOBB.Axis[0]*aOBB.HalfExtents.x;
+ Axes[1]:=aOBB.Axis[1]*aOBB.HalfExtents.y;
+ Axes[2]:=aOBB.Axis[2]*aOBB.HalfExtents.z;
+ Axes[3]:=Axes[0]+Axes[1]+Axes[2];
+ result:=Contains(aOBB.Center-Axes[0]) and Contains(aOBB.Center-Axes[1]) and Contains(aOBB.Center-Axes[2]) and Contains(aOBB.Center-Axes[3]) and
+         Contains(aOBB.Center+Axes[0]) and Contains(aOBB.Center+Axes[1]) and Contains(aOBB.Center+Axes[2]) and Contains(aOBB.Center+Axes[3]);
 end;
 
 function TpvAABB.Touched(const Vector:TpvVector3;const Threshold:TpvScalar=1e-5):boolean;
@@ -13546,7 +13758,25 @@ begin
 end;
 
 function TpvAABB.FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
-var Center,BoxExtents,Diff:TpvVector3;
+var t0,t1:TpvVector3;
+begin
+ // Although it might seem this doesn't address edge cases where
+ // Direction.{x,y,z} equals zero, it is indeed correct. This is
+ // because the comparisons still work as expected when infinities
+ // emerge from zero division. Rays that are parallel to an axis
+ // and positioned outside the box will lead to tmin being infinity
+ // or tmax turning into negative infinity, yet for rays located
+ // within the box, the values for tmin and tmax will remain unchanged.
+ t0:=(Min-Origin)/Direction;
+ t1:=(Max-Origin)/Direction;
+ result:=Math.Max(0.0,Math.Max(Math.Max(Math.Min(Math.Min(t0.x,t1.x),Infinity),
+                               Math.Min(Math.Min(t0.y,t1.y),Infinity)),
+                               Math.Min(Math.Min(t0.z,t1.z),Infinity)))<=
+         Math.Min(Math.Min(Math.Max(Math.Max(t0.x,t1.x),NegInfinity),
+                           Math.Max(Math.Max(t0.y,t1.y),NegInfinity)),
+                           Math.Max(Math.Max(t0.z,t1.z),NegInfinity));
+end;
+{var Center,BoxExtents,Diff:TpvVector3;
 begin
  Center:=(Min+Max)*0.5;
  BoxExtents:=Center-Min;
@@ -13557,7 +13787,39 @@ begin
               ((abs((Direction.y*Diff.z)-(Direction.z*Diff.y))>((BoxExtents.y*abs(Direction.z))+(BoxExtents.z*abs(Direction.y)))) or
                (abs((Direction.z*Diff.x)-(Direction.x*Diff.z))>((BoxExtents.x*abs(Direction.z))+(BoxExtents.z*abs(Direction.x)))) or
                (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
+end;}
+
+class function TpvAABB.FastRayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3):boolean;
+var t0,t1:TpvVector3;
+begin
+ // Although it might seem this doesn't address edge cases where
+ // Direction.{x,y,z} equals zero, it is indeed correct. This is
+ // because the comparisons still work as expected when infinities
+ // emerge from zero division. Rays that are parallel to an axis
+ // and positioned outside the box will lead to tmin being infinity
+ // or tmax turning into negative infinity, yet for rays located
+ // within the box, the values for tmin and tmax will remain unchanged.
+ t0:=(aAABBMin-Origin)/Direction;
+ t1:=(aAABBMax-Origin)/Direction;
+ result:=Math.Max(0.0,Math.Max(Math.Max(Math.Min(Math.Min(t0.x,t1.x),Infinity),
+                               Math.Min(Math.Min(t0.y,t1.y),Infinity)),
+                               Math.Min(Math.Min(t0.z,t1.z),Infinity)))<=
+         Math.Min(Math.Min(Math.Max(Math.Max(t0.x,t1.x),NegInfinity),
+                           Math.Max(Math.Max(t0.y,t1.y),NegInfinity)),
+                           Math.Max(Math.Max(t0.z,t1.z),NegInfinity));
 end;
+{var Center,BoxExtents,Diff:TpvVector3;
+begin
+ Center:=(aAABBMin+aAABBMax)*0.5;
+ BoxExtents:=Center-aAABBMin;
+ Diff:=Origin-Center;
+ result:=not ((((abs(Diff.x)>BoxExtents.x) and ((Diff.x*Direction.x)>=0)) or
+               ((abs(Diff.y)>BoxExtents.y) and ((Diff.y*Direction.y)>=0)) or
+               ((abs(Diff.z)>BoxExtents.z) and ((Diff.z*Direction.z)>=0))) or
+              ((abs((Direction.y*Diff.z)-(Direction.z*Diff.y))>((BoxExtents.y*abs(Direction.z))+(BoxExtents.z*abs(Direction.y)))) or
+               (abs((Direction.z*Diff.x)-(Direction.x*Diff.z))>((BoxExtents.x*abs(Direction.z))+(BoxExtents.z*abs(Direction.x)))) or
+               (abs((Direction.x*Diff.y)-(Direction.y*Diff.x))>((BoxExtents.x*abs(Direction.y))+(BoxExtents.y*abs(Direction.x))))));
+end;}
 
 function TpvAABB.RayIntersectionHitDistance(const Origin,Direction:TpvVector3;var HitDist:TpvScalar):boolean;
 var DirFrac:TpvVector3;
@@ -13584,7 +13846,7 @@ begin
  end;
 end;
 
-function TpvAABB.RayIntersectionHitPoint(const Origin,Direction:TpvVector3;var HitPoint:TpvVector3):boolean;
+function TpvAABB.RayIntersectionHitPoint(const Origin,Direction:TpvVector3;out HitPoint:TpvVector3):boolean;
 const RIGHT=0;
       LEFT=1;
       MIDDLE=2;
@@ -13643,83 +13905,46 @@ begin
  end;
 end;
 
-function TpvAABB.RayIntersection(const Origin,Direction:TpvVector3;var Time:TpvScalar):boolean;
-var InvDirection,a,b,AABBMin,AABBMax:TpvVector3;
+function TpvAABB.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
+var InvDirection,a,b:TpvVector3;
     TimeMin,TimeMax:TpvScalar;
 begin
- if Direction.x<>0.0 then begin
-  InvDirection.x:=1.0/Direction.x;
- end else begin
-  InvDirection.x:=0.0;
- end;
- if Direction.y<>0.0 then begin
-  InvDirection.y:=1.0/Direction.y;
- end else begin
-  InvDirection.y:=0.0;
- end;
- if Direction.z<>0.0 then begin
-  InvDirection.z:=1.0/Direction.z;
- end else begin
-  InvDirection.z:=0.0;
- end;
- a.x:=(Min.x-Origin.x)*InvDirection.x;
- a.y:=(Min.y-Origin.y)*InvDirection.y;
- a.z:=(Min.z-Origin.z)*InvDirection.z;
- b.x:=(Max.x-Origin.x)*InvDirection.x;
- b.y:=(Max.y-Origin.y)*InvDirection.y;
- b.z:=(Max.z-Origin.z)*InvDirection.z;
- if a.x<b.x then begin
-  AABBMin.x:=a.x;
-  AABBMax.x:=b.x;
- end else begin
-  AABBMin.x:=b.x;
-  AABBMax.x:=a.x;
- end;
- if a.y<b.y then begin
-  AABBMin.y:=a.y;
-  AABBMax.y:=b.y;
- end else begin
-  AABBMin.y:=b.y;
-  AABBMax.y:=a.y;
- end;
- if a.z<b.z then begin
-  AABBMin.z:=a.z;
-  AABBMax.z:=b.z;
- end else begin
-  AABBMin.z:=b.z;
-  AABBMax.z:=a.z;
- end;
- if AABBMin.x<AABBMin.y then begin
-  if AABBMin.x<AABBMin.z then begin
-   TimeMin:=AABBMin.x;
-  end else begin
-   TimeMin:=AABBMin.z;
-  end;
- end else begin
-  if AABBMin.y<AABBMin.z then begin
-   TimeMin:=AABBMin.y;
-  end else begin
-   TimeMin:=AABBMin.z;
-  end;
- end;
- if AABBMax.x>AABBMax.y then begin
-  if AABBMax.x>AABBMax.z then begin
-   TimeMax:=AABBMax.x;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end else begin
-  if AABBMax.y>AABBMax.z then begin
-   TimeMax:=AABBMax.y;
-  end else begin
-   TimeMax:=AABBMax.z;
-  end;
- end;
- if (TimeMax<0) or (TimeMin>TimeMax) then begin
+ InvDirection:=TpvVector3.AllAxis/Direction;
+ a:=(Min-Origin)*InvDirection;
+ b:=(Max-Origin)*InvDirection;
+ TimeMin:=Math.Max(Math.Max(Math.Min(a.x,b.x),Math.Min(a.y,b.y)),Math.Min(a.z,b.z));
+ TimeMax:=Math.Min(Math.Min(Math.Max(a.x,b.x),Math.Max(a.y,b.y)),Math.Max(a.z,b.z));
+ if (TimeMax<0.0) or (TimeMin>TimeMax) then begin
   Time:=TimeMax;
   result:=false;
  end else begin
-  Time:=TimeMin;
+  if TimeMin<0.0 then begin
+   Time:=TimeMax;
+  end else begin
+   Time:=TimeMin;
+  end;
+  result:=true;
+ end;
+end;
+
+class function TpvAABB.RayIntersection(const aAABBMin,aAABBMax:TpvVector3;const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
+var InvDirection,a,b:TpvVector3;
+    TimeMin,TimeMax:TpvScalar;
+begin
+ InvDirection:=TpvVector3.AllAxis/Direction;
+ a:=(aAABBMin-Origin)*InvDirection;
+ b:=(aAABBMax-Origin)*InvDirection;
+ TimeMin:=Math.Max(Math.Max(Math.Min(a.x,b.x),Math.Min(a.y,b.y)),Math.Min(a.z,b.z));
+ TimeMax:=Math.Min(Math.Min(Math.Max(a.x,b.x),Math.Max(a.y,b.y)),Math.Max(a.z,b.z));
+ if (TimeMax<0.0) or (TimeMin>TimeMax) then begin
+  Time:=TimeMax;
+  result:=false;
+ end else begin
+  if TimeMin<0.0 then begin
+   Time:=TimeMax;
+  end else begin
+   Time:=TimeMin;
+  end;
   result:=true;
  end;
 end;
@@ -13736,27 +13961,30 @@ begin
   if Len<>0.0 then begin
    Direction:=Direction/Len;
   end;
-  if Direction.x<>0.0 then begin
-   InvDirection.x:=1.0/Direction.x;
-  end else begin
-   InvDirection.x:=Infinity;
+  InvDirection:=TpvVector3.AllAxis/Direction;
+  a:=((Min-TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
+  b:=((Max+TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
+  TimeMin:=Math.Max(Math.Max(Math.Min(a.x,a.y),Math.Min(a.z,b.x)),Math.Min(b.y,b.z));
+  TimeMax:=Math.Min(Math.Min(Math.Max(a.x,a.y),Math.Max(a.z,b.x)),Math.Max(b.y,b.z));
+  result:=((TimeMin<=TimeMax) and (TimeMax>=0.0)) and (TimeMin<=(Len+EPSILON));
+ end;
+end;
+
+class function TpvAABB.LineIntersection(const aAABBMin,aAABBMax:TpvVector3;const StartPoint,EndPoint:TpvVector3):boolean;
+var Direction,InvDirection,a,b:TpvVector3;
+    Len,TimeMin,TimeMax:TpvScalar;
+begin
+ if TpvAABB.Contains(aAABBMin,aAABBMax,StartPoint) or TpvAABB.Contains(aAABBMin,aAABBMax,EndPoint) then begin
+  result:=true;
+ end else begin
+  Direction:=EndPoint-StartPoint;
+  Len:=Direction.Length;
+  if Len<>0.0 then begin
+   Direction:=Direction/Len;
   end;
-  if Direction.y<>0.0 then begin
-   InvDirection.y:=1.0/Direction.y;
-  end else begin
-   InvDirection.y:=Infinity;
-  end;
-  if Direction.z<>0.0 then begin
-   InvDirection.z:=1.0/Direction.z;
-  end else begin
-   InvDirection.z:=Infinity;
-  end;
-  a.x:=((Min.x-EPSILON)-StartPoint.x)*InvDirection.x;
-  a.y:=((Min.y-EPSILON)-StartPoint.y)*InvDirection.y;
-  a.z:=((Min.z-EPSILON)-StartPoint.z)*InvDirection.z;
-  b.x:=((Max.x+EPSILON)-StartPoint.x)*InvDirection.x;
-  b.y:=((Max.y+EPSILON)-StartPoint.y)*InvDirection.y;
-  b.z:=((Max.z+EPSILON)-StartPoint.z)*InvDirection.z;
+  InvDirection:=TpvVector3.AllAxis/Direction;
+  a:=((aAABBMin-TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
+  b:=((aAABBMax+TpvVector3.InlineableCreate(EPSILON,EPSILON,EPSILON))-StartPoint)*InvDirection;
   TimeMin:=Math.Max(Math.Max(Math.Min(a.x,a.y),Math.Min(a.z,b.x)),Math.Min(b.y,b.z));
   TimeMax:=Math.Min(Math.Min(Math.Max(a.x,a.y),Math.Max(a.z,b.x)),Math.Max(b.y,b.z));
   result:=((TimeMin<=TimeMax) and (TimeMax>=0.0)) and (TimeMin<=(Len+EPSILON));
@@ -13764,7 +13992,7 @@ begin
 end;
 
 function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
- function FindMin(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+ function FindMin(const a,b,c:TpvScalar):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result>b then begin
@@ -13774,7 +14002,7 @@ function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
    result:=c;
   end;
  end;
- function FindMax(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+ function FindMax(const a,b,c:TpvScalar):TpvScalar; //{$ifdef CAN_INLINE}inline;{$endif}
  begin
   result:=a;
   if result<b then begin
@@ -13784,7 +14012,7 @@ function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
    result:=c;
   end;
  end;
- function PlaneBoxOverlap(const Normal:TpvVector3;d:TpvFloat;MaxBox:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+ function PlaneBoxOverlap(const Normal:TpvVector3;d:TpvFloat;MaxBox:TpvVector3):boolean; //{$ifdef CAN_INLINE}inline;{$endif}
  var vmin,vmax:TpvVector3;
  begin
   if Normal.x>0 then begin
@@ -13817,7 +14045,7 @@ function TpvAABB.TriangleIntersection(const Triangle:TpvTriangle):boolean;
   end;
  end;
 var BoxCenter,BoxHalfSize,Normal,v0,v1,v2,e0,e1,e2:TpvVector3;
-    fex,fey,fez:TpvFloat;
+    fex,fey,fez,Distance,r:TpvFloat;
  function AxisTestX01(a,b,fa,fb:TpvFloat):boolean;
  var p0,p2,pmin,pmax,Radius:TpvFloat;
  begin
@@ -13962,7 +14190,9 @@ begin
   exit;
  end;
  Normal:=e0.Cross(e1);
- result:=PlaneBoxOverlap(Normal,-Normal.Dot(v0),BoxHalfSize);
+ Distance:=abs(Normal.Dot(v0));
+ r:=(BoxHalfSize.x*abs(Normal.x))+(BoxHalfSize.y*abs(Normal.y))+(BoxHalfSize.z*abs(Normal.z));
+ result:=Distance<=r;//PlaneBoxOverlap(Normal,-Normal.Dot(v0),BoxHalfSize);
 end;
 
 function TpvAABB.Transform(const Transform:TpvMatrix3x3):TpvAABB;
@@ -14455,7 +14685,7 @@ begin
  result:=(c-Center).SquaredLength<sqr(Radius);
 end;
 
-function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3):boolean;
+function TpvSphere.FastRayIntersection(const Origin,Direction:TpvVector3):boolean;
 var m:TpvVector3;
     p,d:TpvScalar;
 begin
@@ -14463,6 +14693,42 @@ begin
  p:=-m.Dot(Direction);
  d:=(sqr(p)-m.SquaredLength)+sqr(Radius);
  result:=(d>0.0) and ((p+sqrt(d))>0.0);
+end;
+
+function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
+var SphereCenterToRayOrigin:TpvVector3;
+    a,b,c,t1,t2:TpvScalar;
+begin
+ result:=false;
+ SphereCenterToRayOrigin:=Origin-Center;
+ a:=Direction.SquaredLength;
+ b:=2.0*SphereCenterToRayOrigin.Dot(Direction);
+ c:=SphereCenterToRayOrigin.SquaredLength-sqr(Radius);
+ if SolveQuadraticRoots(a,b,c,t1,t2) then begin
+  if t1<0.0 then begin
+   if t2<0.0 then begin
+    // sphere is behind, abort
+    exit;
+   end else begin
+    // inside sphere
+    Time:=t2;
+    result:=true;
+   end;
+  end else begin
+   if t2<0.0 then begin
+    // inside sphere
+    Time:=t1;
+   end else begin
+    // sphere is ahead, return the nearest value
+    if t1<t2 then begin
+     Time:=t1;
+    end else begin
+     Time:=t2;
+    end;
+   end;
+   result:=true;
+  end;
+ end;
 end;
 
 function TpvSphere.Extends(const WithSphere:TpvSphere):TpvSphere;
@@ -14662,10 +14928,50 @@ begin
  result:=a.Vector4<>b.Vector4;
 end;
 
+function TpvRect.Cost:TpvScalar;
+begin
+ result:=(Max.x-Min.x)+(Max.y-Min.y); // Manhattan distance
+end;
+
+function TpvRect.Area:TpvScalar;
+begin
+ result:=abs(Max.x-Min.x)*abs(Max.y-Min.y);
+end;
+
+function TpvRect.Center:TpvVector2;
+begin
+ result.x:=(Min.x*0.5)+(Max.x*0.5);
+ result.y:=(Min.y*0.5)+(Max.y*0.5);
+end;
+
+function TpvRect.Combine(const aWithRect:TpvRect):TpvRect;
+begin
+ result.Min.x:=Math.Min(Min.x,aWithRect.Min.x);
+ result.Min.y:=Math.Min(Min.y,aWithRect.Min.y);
+ result.Max.x:=Math.Max(Max.x,aWithRect.Max.x);
+ result.Max.y:=Math.Max(Max.y,aWithRect.Max.y);
+end;
+
+function TpvRect.Combine(const aWithPoint:TpvVector2):TpvRect;
+begin
+ result.Min.x:=Math.Min(Min.x,aWithPoint.x);
+ result.Min.y:=Math.Min(Min.y,aWithPoint.y);
+ result.Max.x:=Math.Max(Max.x,aWithPoint.x);
+ result.Max.y:=Math.Max(Max.y,aWithPoint.y);
+end;
+
 function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
 begin
  result:=(((Max.x+Threshold)>=(aWithRect.Min.x-Threshold)) and ((Min.x-Threshold)<=(aWithRect.Max.x+Threshold))) and
          (((Max.y+Threshold)>=(aWithRect.Min.y-Threshold)) and ((Min.y-Threshold)<=(aWithRect.Max.y+Threshold)));
+end;
+
+function TpvRect.Contains(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=((Min.x-Threshold)<=(aWithRect.Min.x+Threshold)) and ((Min.y-Threshold)<=(aWithRect.Min.y+Threshold)) and
+         ((Max.x+Threshold)>=(aWithRect.Min.x+Threshold)) and ((Max.y+Threshold)>=(aWithRect.Min.y+Threshold)) and
+         ((Min.x-Threshold)<=(aWithRect.Max.x-Threshold)) and ((Min.y-Threshold)<=(aWithRect.Max.y-Threshold)) and
+         ((Max.x+Threshold)>=(aWithRect.Max.x-Threshold)) and ((Max.y+Threshold)>=(aWithRect.Max.y-Threshold));
 end;
 
 function TpvRect.GetIntersection(const WithAABB:TpvRect):TpvRect;
@@ -16099,9 +16405,9 @@ var DistanceVector:TpvVector3;
 begin
  DistanceVector:=Point-OBB.Center;
  ClosestPoint:=OBB.Center+
-               (OBB.Axis[0]*Min(Max(DistanceVector.Dot(OBB.Axis[0]),-OBB.Extents.RawComponents[0]),OBB.Extents.RawComponents[0]))+
-               (OBB.Axis[1]*Min(Max(DistanceVector.Dot(OBB.Axis[1]),-OBB.Extents.RawComponents[1]),OBB.Extents.RawComponents[1]))+
-               (OBB.Axis[2]*Min(Max(DistanceVector.Dot(OBB.Axis[2]),-OBB.Extents.RawComponents[2]),OBB.Extents.RawComponents[2]));
+               (OBB.Axis[0]*Min(Max(DistanceVector.Dot(OBB.Axis[0]),-OBB.HalfExtents.RawComponents[0]),OBB.HalfExtents.RawComponents[0]))+
+               (OBB.Axis[1]*Min(Max(DistanceVector.Dot(OBB.Axis[1]),-OBB.HalfExtents.RawComponents[1]),OBB.HalfExtents.RawComponents[1]))+
+               (OBB.Axis[2]*Min(Max(DistanceVector.Dot(OBB.Axis[2]),-OBB.HalfExtents.RawComponents[2]),OBB.HalfExtents.RawComponents[2]));
  result:=ClosestPoint.DistanceTo(Point);
 end;
 
@@ -16613,6 +16919,22 @@ begin
  end;
 end;
 
+function GetHaltonSequence(const aIndex,aPrimeBase:TpvUInt32):TpvDouble;
+var f,OneOverPrimeBase:TpvDouble;
+    Current,CurrentDiv:TpvInt32;
+begin
+ result:=0.0;
+ OneOverPrimeBase:=1.0/aPrimeBase;
+ f:=OneOverPrimeBase;
+ Current:=aIndex;
+ while Current>0 do begin
+  CurrentDiv:=Current div aPrimeBase;
+  result:=result+(f*(Current-(CurrentDiv*aPrimeBase)));
+  Current:=CurrentDiv;
+  f:=f*OneOverPrimeBase;
+ end;
+end;
+
 function ConvertRGB32FToRGB9E5(r,g,b:TpvFloat):TpvUInt32;
 const RGB9E5_EXPONENT_BITS=5;
       RGB9E5_MANTISSA_BITS=9;
@@ -16909,7 +17231,7 @@ end;
 
 function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 begin
-//result:=(PackFP32FloatToM6E5Float(r) and $7ff) or ((PackFP32FloatToM6E5Float(g) and $7ff) shl 11) or ((PackFP32FloatToM6E5Float(b) and $3ff) shl 22);
+//result:=(PackFP32FloatToM6E5Float(r) and $7ff) or ((PackFP32FloatToM6E5Float(g) and $7ff) shl 11) or ((PackFP32FloatToM5E5Float(b) and $3ff) shl 22);
  result:=(Float32ToFloat11(r) and $7ff) or ((Float32ToFloat11(g) and $7ff) shl 11) or ((Float32ToFloat10(b) and $3ff) shl 22);
 end;
 
@@ -16972,7 +17294,7 @@ begin
   if aColor[ChannelIndex]<0.0031308 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*12.92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex],InverseGamma)-0.055;
+   result[ChannelIndex]:=(Power(aColor[ChannelIndex],InverseGamma)*1.055)-0.055;
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -16987,7 +17309,7 @@ begin
   if aColor[ChannelIndex]<0.0031308 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*12.92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex],InverseGamma)-0.055;
+   result[ChannelIndex]:=(Power(aColor[ChannelIndex],InverseGamma)*1.055)-0.055;
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -17003,7 +17325,7 @@ begin
   if aColor[ChannelIndex]<0.04045 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*Inverse12d92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex]+0.055,2.4);
+   result[ChannelIndex]:=Power((aColor[ChannelIndex]+0.055)/1.055,2.4);
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -17018,7 +17340,7 @@ begin
   if aColor[ChannelIndex]<0.04045 then begin
    result[ChannelIndex]:=aColor[ChannelIndex]*Inverse12d92;
   end else if aColor[ChannelIndex]<1.0 then begin
-   result[ChannelIndex]:=Power(aColor[ChannelIndex]+0.055,2.4);
+   result[ChannelIndex]:=Power((aColor[ChannelIndex]+0.055)/1.055,2.4);
   end else begin
    result[ChannelIndex]:=1.0;
   end;
@@ -17719,6 +18041,592 @@ begin
   fOnChange(self);
  end else begin
   fVector^:=aNewVector;
+ end;
+end;
+
+function SolveQuadratic(const a,b,c:TpvDouble;out r0,r1:TpvDouble):TpvSizeInt;
+var d:TpvDouble;
+begin
+ if IsZero(a) or (abs(b)>(abs(a)*1e+12)) then begin
+  if IsZero(b) then begin
+   if IsZero(c) then begin
+    result:=-1;
+   end else begin
+    result:=0;
+   end;
+  end else begin
+   r0:=(-c)/b;
+   result:=1;
+  end;
+ end else begin
+  d:=sqr(b)+((4.0*a)*c);
+  if IsZero(d) then begin
+   r0:=(-b)/(2.0*a);
+   result:=1;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   r0:=((-b)+d)/(2.0*a);
+   r1:=((-b)-d)/(2.0*a);
+   result:=2;
+  end else begin
+   result:=0;
+  end;
+ end;
+end;
+
+function SolveCubic(const a,b,c,d:TpvDouble;out r0,r1,r2:TpvDouble):TpvSizeInt;
+const ONE_OVER_3=1.0/3.0;
+      ONE_OVER_9=1.0/9.0;
+      ONE_OVER_54=1.0/9.0;
+var a0,a1,a2,o,q,r,d_,u,Theta,t:TpvDouble;
+begin
+ if IsZero(a) then begin
+  result:=SolveQuadratic(b,c,d,r0,r1);
+ end else begin
+  result:=0;
+  a2:=b/a;
+  a1:=c/a;
+  a0:=d/a;
+  q:=(a1*ONE_OVER_3)-(sqr(a2)*ONE_OVER_9);
+  r:=((27.0*a0)+(a2*((2.0*sqr(a2))-(9.0*a1))))*ONE_OVER_54;
+  d_:=(q*sqr(q))+sqr(r);
+  o:=(-ONE_OVER_3)*a2;
+  if IsZero(d_) then begin
+   if IsZero(r) then begin
+    r0:=0.0;
+    result:=1;
+   end else begin
+    u:=Power(-r,ONE_OVER_3);
+    r0:=(2.0*u)+o;
+    r1:=-u;
+    result:=2;
+   end;
+  end else if d>0 then begin
+   d_:=sqrt(d_);
+   r0:=(Power(d_-r,ONE_OVER_3)-Power(d_+r,ONE_OVER_3))+o;
+   result:=1;
+  end else begin
+   Theta:=ArcCos((-r)/sqrt(-(sqr(q)*q)))*ONE_OVER_3;
+   t:=2*sqrt(-q);
+   r0:=(t*cos(Theta))+o;
+   r1:=((-t)*cos(Theta+(PI*ONE_OVER_3)))+o;
+   r2:=((-t)*cos(Theta-(PI*ONE_OVER_3)))+o;
+   result:=3;
+  end;
+ end;
+end;
+
+function SolveQuartic(const a,b,c,d,e:TpvDouble;out r0,r1,r2,r3:TpvDouble):TpvSizeInt;
+var Index,OtherIndex,CubSols:TpvSizeInt;
+    a_,b_,c_,d_,y,rs,tmp,ds,es:TpvDouble;
+    SolValid:array[0..3] of boolean;
+    Results:array[0..3] of TpvDouble;
+    CubicSols:array[0..2] of TpvDouble;
+begin
+ if IsZero(a) then begin
+  result:=SolveCubic(b,c,d,e,r0,r1,r2);
+ end else begin
+  SolValid[0]:=false;
+  SolValid[1]:=false;
+  SolValid[2]:=false;
+  SolValid[3]:=false;
+  a_:=b/a;
+  b_:=c/a;
+  c_:=d/a;
+  d_:=e/a;
+  CubSols:=SolveCubic(1.0,
+                      -b,
+                      (a_*c_)-(4.0*d_),
+                      (((-sqr(a_))*d_)+((4.0*b_)*d_))-sqr(c_),
+                      CubicSols[0],
+                      CubicSols[1],
+                      CubicSols[2]);
+  if CubSols>0 then begin
+   result:=0;
+   y:=CubicSols[0];
+   rs:=((sqr(a_)*0.25)-b_)+y;
+   if IsZero(rs) then begin
+    tmp:=sqr(y)-(4.0*d_);
+    if tmp<0 then begin
+     exit;
+    end;
+    ds:=(((3.0*sqr(a_))*0.25)-(2*b))+(2.0*tmp);
+    es:=(((3.0*sqr(a_))*0.25)-(2*b))-(2.0*tmp);
+    if ds>=0.0 then begin
+     ds:=sqrt(ds);
+     SolValid[0]:=true;
+     SolValid[1]:=true;
+     inc(result,2);
+     Results[0]:=((-0.25)*a)-(ds*0.5);
+     Results[1]:=((-0.25)*a)+(ds*0.5);
+    end;
+    if es>=0.0 then begin
+     es:=sqrt(es);
+     SolValid[2]:=true;
+     SolValid[3]:=true;
+     inc(result,2);
+     Results[2]:=((-0.25)*a)-(es*0.5);
+     Results[3]:=((-0.25)*a)+(es*0.5);
+    end;
+   end else if rs>0.0 then begin
+    rs:=sqrt(rs);
+    ds:=(((0.75*sqr(a_))-rs)-(2.0*b_))+((((4.0*(a_*b_))-(8.0*c_))-(sqr(a_)*a_))/(4.0*rs));
+    es:=(((0.75*sqr(a_))-rs)-(2.0*b_))-((((4.0*(a_*b_))-(8.0*c_))-(sqr(a_)*a_))/(4.0*rs));
+    if ds>=0.0 then begin
+     ds:=sqrt(ds);
+     SolValid[0]:=true;
+     SolValid[1]:=true;
+     inc(result,2);
+     Results[0]:=(((-0.25)*a)+(rs*0.5))-(ds*0.5);
+     Results[1]:=(((-0.25)*a)+(rs*0.5))+(ds*0.5);
+    end;
+    if es>=0.0 then begin
+     es:=sqrt(es);
+     SolValid[2]:=true;
+     SolValid[3]:=true;
+     inc(result,2);
+     Results[2]:=(((-0.25)*a)-(rs*0.5))-(es*0.5);
+     Results[3]:=(((-0.25)*a)-(rs*0.5))+(es*0.5);
+    end;
+    OtherIndex:=0;
+    for Index:=0 to result-1 do begin
+     while (OtherIndex<4) and not SolValid[OtherIndex] do begin
+      inc(OtherIndex);
+     end;
+     Results[Index]:=Results[OtherIndex];
+     inc(OtherIndex);
+    end;
+    r0:=Results[0];
+    r1:=Results[1];
+    r2:=Results[2];
+    r3:=Results[3];
+   end else begin
+    result:=0;
+   end;
+  end else begin
+   result:=0;
+  end;
+ end;
+end;
+
+function GetRootsDerivative(const aCoefs:array of TpvDouble):TpvDoubleDynamicArray;
+var Index:TpvSizeInt;
+begin
+ result:=nil;
+ SetLength(result,length(aCoefs)-1);
+ for Index:=0 to length(aCoefs)-2 do begin
+  result[Index]:=aCoefs[Index+1]*(Index+1);
+ end;
+end;
+
+function PolyEval(const aCoefs:array of TpvDouble;const aValue:TpvDouble):TpvDouble;
+var Index:TpvSizeInt;
+begin
+ result:=0.0;
+ for Index:=0 to length(aCoefs)-1 do begin
+  result:=(result*aValue)+aCoefs[Index];
+ end;
+end;
+
+function GetRootBisection(const aCoefs:array of TpvDouble;aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+const TOLERANCE=1e-6;
+      ACCURACY=6;
+var MinValue,MaxValue,Value,t0,t1:TpvDouble;
+    Iterations,Index:TpvSizeInt;
+begin
+ MinValue:=PolyEval(aCoefs,aMin);
+ MaxValue:=PolyEval(aCoefs,aMax);
+ if abs(MinValue)<TOLERANCE then begin
+  aResult:=MinValue;
+  result:=true;
+ end else if abs(MaxValue)<TOLERANCE then begin
+  aResult:=MaxValue;
+  result:=true;
+ end else if (MinValue*MaxValue)<=0.0 then begin
+  t0:=ln(aMax-aMin);
+  t1:=ln(10.0)*ACCURACY;
+  Iterations:=Trunc(Ceil((t0+t1)/ln(2)));
+  for Index:=0 to Iterations-1 do begin
+   aResult:=(aMin+aMax)*0.5;
+   Value:=PolyEval(aCoefs,aResult);
+   if abs(Value)<TOLERANCE then begin
+    result:=true;
+    exit;
+   end;
+   if (Value*MinValue)<0.0 then begin
+    aMax:=aResult;
+    MaxValue:=Value;
+   end else begin
+    aMin:=aResult;
+    MinValue:=Value;
+   end;
+  end;
+  result:=false;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+var Derivative,DerivativeRoots:TpvDoubleDynamicArray;
+    Count,Index:TpvSizeInt;
+    Root:TpvDouble;
+begin
+ result:=nil;
+ case length(aCoefs) of
+  0:begin
+  end;
+  1..2:begin
+   if GetRootBisection(aCoefs,aMin,aMax,Root) then begin
+    SetLength(result,1);
+    result[0]:=Root;
+   end;
+  end;
+  else begin
+   Count:=0;
+   try
+    SetLength(result,length(aCoefs)+2);
+    Derivative:=GetRootsDerivative(aCoefs);
+    DerivativeRoots:=SolveRootsInInterval(Derivative,aMin,aMax);
+    if length(DerivativeRoots)>0 then begin
+     if GetRootBisection(aCoefs,aMin,DerivativeRoots[0],Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+     for Index:=0 to length(DerivativeRoots)-2 do begin
+      if GetRootBisection(aCoefs,DerivativeRoots[Index],DerivativeRoots[Index+1],Root) then begin
+       result[Count]:=Root;
+       inc(Count);
+      end;
+     end;
+     if GetRootBisection(aCoefs,DerivativeRoots[length(DerivativeRoots)-1],aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end else begin
+     if GetRootBisection(aCoefs,aMin,aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end;
+   finally
+    SetLength(result,Count);
+   end;
+  end;
+ end;
+end;
+
+constructor TpvPolynomial.Create(const aCoefs:array of TpvDouble);
+begin
+ SetLength(Coefs,length(aCoefs));
+ if length(aCoefs)>0 then begin
+  Move(aCoefs[0],Coefs[0],length(aCoefs)*SizeOf(TpvDouble));
+ end;
+end;
+
+function TpvPolynomial.GetDegree:TpvSizeInt;
+begin
+ result:=length(Coefs)-1;
+end;
+
+function TpvPolynomial.Eval(const aValue:TpvDouble):TpvDouble;
+var Index:TpvSizeInt;
+begin
+ result:=0.0;
+ for Index:=0 to length(Coefs)-1 do begin
+  result:=(result*aValue)+Coefs[Index];
+ end;
+end;
+
+procedure TpvPolynomial.SimplifyEquals(const aThreshold:TpvDouble=1e-12);
+var Index,NewLength:TpvSizeInt;
+begin
+ NewLength:=length(Coefs);
+ for Index:=length(Coefs)-1 downto 0 do begin
+  if Coefs[Index]<=aThreshold then begin
+   NewLength:=Index;
+  end else begin
+   break;
+  end;
+ end;
+ if length(Coefs)<>NewLength then begin
+  SetLength(Coefs,NewLength);
+ end;
+end;
+
+function TpvPolynomial.GetDerivative:TpvPolynomial;
+var Index:TpvSizeInt;
+begin
+ result.Coefs:=nil;
+ SetLength(result.Coefs,length(Coefs)-1);
+ for Index:=1 to length(Coefs)-1 do begin
+  result.Coefs[Index-1]:=Coefs[Index]*Index;
+ end;
+end;
+
+function TpvPolynomial.GetLinearRoots:TpvDoubleDynamicArray;
+begin
+ result:=nil;
+ if not IsZero(Coefs[1]) then begin
+  SetLength(result,1);
+  result[0]:=-(Coefs[0]/Coefs[1]);
+ end;
+end;
+
+function TpvPolynomial.GetQuadraticRoots:TpvDoubleDynamicArray;
+var a,b,c,d:TpvDouble;
+begin
+ result:=nil;
+ if GetDegree=2 then begin
+  a:=Coefs[2];
+  b:=Coefs[1];
+  c:=Coefs[0];
+  d:=sqr(b)-(4.0*c);
+  if IsZero(d) then begin
+   SetLength(result,1);
+   result[0]:=(-0.5)*b;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   SetLength(result,2);
+   result[0]:=((-b)+d)*0.5;
+   result[1]:=((-b)-d)*0.5;
+  end;
+ end;
+end;
+
+function TpvPolynomial.GetCubicRoots:TpvDoubleDynamicArray;
+var c3,c2,c1,c0,a,b,Offset,d,hb,t,r,Distance,Angle,Cosinus,Sinus,Sqrt3:TpvDouble;
+begin
+ result:=nil;
+ if GetDegree=3 then begin
+  c3:=Coefs[3];
+  c2:=Coefs[2]/c3;
+  c1:=Coefs[1]/c3;
+  c0:=Coefs[0]/c3;
+  a:=((3.0*c1)-sqr(c2))/3.0;
+  b:=((((2.0*sqr(c2))*c2)-((9.0*c1)*c2))+(27.0*c0))/27.0;
+  Offset:=c2/3.0;
+  d:=(sqr(b)*0.25)+((sqr(a)*a)/27.0);
+  hb:=b*0.5;
+  if IsZero(abs(d)) then begin
+   if hb>=0.0 then begin
+    t:=-Power(hb,1.0/3.0);
+   end else begin
+    t:=Power(-hb,1.0/3.0);
+   end;
+   SetLength(result,2);
+   result[0]:=(2.0*t)-Offset;
+   result[1]:=(-t)-Offset;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   t:=(-hb)+d;
+   if t>=0.0 then begin
+    r:=Power(t,1.0/3.0);
+   end else begin
+    r:=Power(-t,1.0/3.0);
+   end;
+   t:=(-hb)-d;
+   if t>=0.0 then begin
+    r:=r+Power(t,1.0/3.0);
+   end else begin
+    r:=r-Power(-t,1.0/3.0);
+   end;
+   SetLength(result,1);
+   result[0]:=r-Offset;
+  end else if d<0.0 then begin
+   Distance:=sqrt((-a)/3.0);
+   Angle:=ArcTan2(sqrt(-d),-hb)/3.0;
+   Cosinus:=cos(Angle);
+   Sinus:=sin(Angle);
+   Sqrt3:=sqrt(3.0);
+   SetLength(result,3);
+   result[0]:=((2.0*Distance)*Cosinus)-Offset;
+   result[1]:=((-Distance)*(Cosinus+(Sqrt3*Sinus)))-Offset;
+   result[2]:=((-Distance)*(Cosinus-(Sqrt3*Sinus)))-Offset;
+  end;
+ end;
+end;
+
+function TpvPolynomial.GetQuarticRoots:TpvDoubleDynamicArray;
+var c4,c3,c2,c1,c0,y,d,f,t2,t1,Plus,Minus:TpvDouble;
+    ResolveRoots:TpvDoubleDynamicArray;
+begin
+ result:=nil;
+ if GetDegree=4 then begin
+  c4:=Coefs[4];
+  c3:=Coefs[3]/c4;
+  c2:=Coefs[2]/c4;
+  c1:=Coefs[1]/c4;
+  c0:=Coefs[0]/c4;
+  ResolveRoots:=(TpvPolynomial.Create([1.0,-c2,(c3*c1)-(4.0*c0),((((-c3)*c3)*c0)+((4.0*c2)*c0))-sqr(c1)])).GetCubicRoots;
+  y:=ResolveRoots[0];
+  d:=((sqr(c3)*0.25)-c2)+y;
+  if IsZero(abs(d)) then begin
+   t2:=sqr(y)-(4.0*c0);
+   if (t2>=0.0) or IsZero(t2) then begin
+    if t2<0.0 then begin
+     t2:=0.0;
+    end;
+    t2:=2.0*sqrt(t2);
+    t1:=((3.0*c3)*c3)-(2.0*c2);
+    d:=t1+t2;
+    if (d>0.0) and not IsZero(d) then begin
+     d:=sqrt(d);
+     SetLength(result,2);
+     result[0]:=(c3*(-0.25))+(d*0.5);
+     result[1]:=(c3*(-0.25))-(d*0.5);
+    end;
+    d:=t1-t2;
+    if (d>0.0) and not IsZero(d) then begin
+     d:=sqrt(d);
+     SetLength(result,2);
+     result[0]:=(c3*(-0.25))+(d*0.5);
+     result[1]:=(c3*(-0.25))-(d*0.5);
+    end;
+   end;
+  end else if d>0.0 then begin
+   d:=sqrt(d);
+   t1:=((((3.0*c3)*c3)*0.25)-sqr(d))-(2.0*c2);
+   t2:=((((4.0*c3)*c2)-(8.0*c1))-((c3*c3)*c3))/(4.0*d);
+   Plus:=t1+t2;
+   Minus:=t1-t2;
+   if not IsZero(Plus) then begin
+    f:=sqrt(Plus);
+    if not IsZero(Minus) then begin
+     SetLength(result,4);
+     result[0]:=(c3*(-0.25))+((d+f)*0.5);
+     result[1]:=(c3*(-0.25))+((d-f)*0.5);
+     f:=sqrt(Minus);
+     result[2]:=(c3*(-0.25))+((f-d)*0.5);
+     result[3]:=(c3*(-0.25))-((f+d)*0.5);
+    end else begin
+     SetLength(result,2);
+     result[0]:=(c3*(-0.25))+((d+f)*0.5);
+     result[1]:=(c3*(-0.25))+((d-f)*0.5);
+    end;
+   end else if not IsZero(Minus) then begin
+    f:=sqrt(Minus);
+    SetLength(result,2);
+    result[0]:=(c3*(-0.25))+((f-d)*0.5);
+    result[1]:=(c3*(-0.25))-((f+d)*0.5);
+   end;
+  end else begin
+   // No roots
+  end;
+ end;
+end;
+
+function TpvPolynomial.GetRoots:TpvDoubleDynamicArray;
+begin
+ SimplifyEquals;
+ case GetDegree of
+  0:begin
+   result:=nil;
+  end;
+  1:begin
+   result:=GetLinearRoots;
+  end;
+  2:begin
+   result:=GetQuadraticRoots;
+  end;
+  3:begin
+   result:=GetCubicRoots;
+  end;
+  4:begin
+   result:=GetQuarticRoots;
+  end;
+  else begin
+   result:=nil;
+  end;
+ end;
+end;
+
+function TpvPolynomial.Bisection(aMin,aMax:TpvDouble;out aResult:TpvDouble):Boolean;
+const TOLERANCE=1e-6;
+      ACCURACY=6;
+var MinValue,MaxValue,Value,t0,t1:TpvDouble;
+    Iterations,Index:TpvSizeInt;
+begin
+ MinValue:=Eval(aMin);
+ MaxValue:=Eval(aMax);
+ if abs(MinValue)<TOLERANCE then begin
+  aResult:=MinValue;
+  result:=true;
+ end else if abs(MaxValue)<TOLERANCE then begin
+  aResult:=MaxValue;
+  result:=true;
+ end else if (MinValue*MaxValue)<=0.0 then begin
+  t0:=ln(aMax-aMin);
+  t1:=ln(10.0)*ACCURACY;
+  Iterations:=Trunc(Ceil((t0+t1)/ln(2)));
+  for Index:=0 to Iterations-1 do begin
+   aResult:=(aMin+aMax)*0.5;
+   Value:=Eval(aResult);
+   if abs(Value)<TOLERANCE then begin
+    result:=true;
+    exit;
+   end;
+   if (Value*MinValue)<0.0 then begin
+    aMax:=aResult;
+    MaxValue:=Value;
+   end else begin
+    aMin:=aResult;
+    MinValue:=Value;
+   end;
+  end;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;
+
+function TpvPolynomial.GetRootsInInterval(const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
+var Derivative:TpvPolynomial;
+    DerivativeRoots:TpvDoubleDynamicArray;
+    Count,Index:TpvSizeInt;
+    Root:TpvDouble;
+begin
+ result:=nil;
+ case length(Coefs) of
+  0:begin
+  end;
+  1..2:begin
+   if Bisection(aMin,aMax,Root) then begin
+    SetLength(result,1);
+    result[0]:=Root;
+   end;
+  end;
+  else begin
+   Count:=0;
+   try
+    SetLength(result,length(Coefs)+2);
+    Derivative:=GetDerivative;
+    DerivativeRoots:=Derivative.GetRootsInInterval(aMin,aMax);
+    if length(DerivativeRoots)>0 then begin
+     if Bisection(aMin,DerivativeRoots[0],Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+     for Index:=0 to length(DerivativeRoots)-2 do begin
+      if Bisection(DerivativeRoots[Index],DerivativeRoots[Index+1],Root) then begin
+       result[Count]:=Root;
+       inc(Count);
+      end;
+     end;
+     if Bisection(DerivativeRoots[length(DerivativeRoots)-1],aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end else begin
+     if Bisection(aMin,aMax,Root) then begin
+      result[Count]:=Root;
+      inc(Count);
+     end;
+    end;
+   finally
+    SetLength(result,Count);
+   end;
+  end;
  end;
 end;
 

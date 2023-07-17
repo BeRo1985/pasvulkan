@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2020, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2023, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -58,7 +58,6 @@ unit PasVulkan.Components.SortKey;
   {$ifend}
  {$endif}
 {$endif}
-{$m+}
 
 interface
 
@@ -68,48 +67,35 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type PpvComponentSortKey=^TpvComponentSortKey;
-     TpvComponentSortKey=record
+type TpvComponentSortKey=class(TpvComponent)
+      private
+       fSortKey:TpvInt32;
       public
-       SortKey:TpvUInt32;
+       class function ClassPath:string; override;
+       class function ClassUUID:TpvUUID; override;
+       class function ClassInstanceMemoryCopyable:boolean; override;
+      published
+       property SortKey:TpvInt32 read fSortKey write fSortKey;
      end;
-
-const pvComponentSortKeyDefault:TpvComponentSortKey=
-       (
-        SortKey:0;
-       );
-
-var pvComponentSortKey:TpvEntityComponentSystem.TRegisteredComponentType=nil;
-
-    pvComponentSortKeyID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
-procedure Register;
+class function TpvComponentSortKey.ClassPath:string;
 begin
+ result:='SortKey';
+end;
 
- pvComponentSortKey:=TpvEntityComponentSystem.TRegisteredComponentType.Create('sortkey',
-                                                                              'Sort key',
-                                                                              ['Base','Sort key'],
-                                                                              SizeOf(TpvComponentSortKey),
-                                                                              @pvComponentSortKeyDefault);
+class function TpvComponentSortKey.ClassUUID:TpvUUID;
+begin
+ result.UInt64s[0]:=TpvUInt64($a3a38321f6e44a43);
+ result.UInt64s[1]:=TpvUInt64($a1056acf7f7d2d84);
+end;
 
- pvComponentSortKeyID:=pvComponentSortKey.ID;
-
- pvComponentSortKey.Add('sortkey',
-                        'Sort key',
-                        TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.UnsignedInteger,
-                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
-                        1,
-                        TpvPtrUInt(@PpvComponentSortKey(nil)^.SortKey),
-                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
-                        []
-                       );
-
+class function TpvComponentSortKey.ClassInstanceMemoryCopyable:boolean;
+begin
+ result:=true;
 end;
 
 initialization
- Register;
 end.
-
 

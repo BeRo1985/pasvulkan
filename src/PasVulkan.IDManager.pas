@@ -119,6 +119,23 @@ begin
  inherited Create;
  fCriticalSection:=TPasMPCriticalSection.Create;
  FillChar(fIDCounter,SizeOf(T),#0);
+ case SizeOf(T) of
+  1:begin
+   inc(PpvUInt8(@fIDCounter)^);
+  end;
+  2:begin
+   inc(PpvUInt16(@fIDCounter)^);
+  end;
+  4:begin
+   inc(PpvUInt32(@fIDCounter)^);
+  end;
+  8:begin
+   inc(PpvUInt64(@fIDCounter)^);
+  end;
+  else begin
+   Assert(false);
+  end;
+ end;
  fIDFreeList:=TIDManagerIntegerList.Create;
 end;
 

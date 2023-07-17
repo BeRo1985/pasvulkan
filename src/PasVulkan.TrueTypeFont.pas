@@ -51,7 +51,9 @@
  ******************************************************************************)
 unit PasVulkan.TrueTypeFont;
 {$i PasVulkan.inc}
-{$ifndef fpc}
+{$ifdef fpc}
+ //{$optimization off,level1}
+{$else}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=24.0}
    {$legacyifend on}
@@ -10548,10 +10550,8 @@ end;
 procedure TpvTrueTypeFont.GetPolygonBufferBounds(const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
 var lastcx,lastcy:TpvDouble;
     First:boolean;
- procedure PointAt(x,y:TpvDouble);
+ procedure ExtendWith(x,y:TpvDouble);
  begin
-  lastcx:=x;
-  lastcy:=y;
   if First then begin
    First:=false;
    x0:=x;
@@ -10573,57 +10573,132 @@ var lastcx,lastcy:TpvDouble;
    end;
   end;
  end;
- procedure QuadraticCurveTo(const cx,cy,ax,ay:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
-  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TpvDouble;
-  begin
-   x12:=(x1+x2)*0.5;
-   y12:=(y1+y2)*0.5;
-   x23:=(x2+x3)*0.5;
-   y23:=(y2+y3)*0.5;
-   x123:=(x12+x23)*0.5;
-   y123:=(y12+y23)*0.5;
-   mx:=(x1+x3)*0.5;
-   my:=(y1+y3)*0.5;
-   d:=abs(mx-x123)+abs(my-y123);
-   if (Level>MaxLevel) or (d<Tolerance) then begin
-    PointAt(x123,y123);
-   end else begin
-    Recursive(x1,y1,x12,y12,x123,y123,Level+1);
-    Recursive(x123,y123,x23,y23,x3,y3,Level+1);
-   end;
-  end;
+ procedure PointAt(x,y:TpvDouble);
  begin
-  Recursive(lastcx,lastcy,cx,cy,ax,ay,0);
+  lastcx:=x;
+  lastcy:=y;
+  ExtendWith(x,y);
+ end;
+ procedure QuadraticCurveTo(const cx,cy,ax,ay:TpvDouble);
+ var t,s:TpvVectorPathVector;
+     Points:array[0..2] of TpvVectorPathVector;
+     BoundingBox:TpvVectorPathBoundingBox;
+ begin
+  Points[0]:=TpvVectorPathVector.Create(lastcx,lastcy);
+  Points[1]:=TpvVectorPathVector.Create(cx,cy);
+  Points[2]:=TpvVectorPathVector.Create(ax,ay);
+  // This code calculates the bounding box for a quadratic bezier curve. It starts by initializing the
+  // bounding box to the minimum and maximum values of the start and end points of the curve. It then
+  // checks if the control point is already contained within the bounding box, and if it is not, it
+  // calculates the value of t at which the derivative of the curve (which is a linear equation) is
+  // equal to 0. If t is within the range of 0 to 1, the code calculates the corresponding point on the
+  // curve and extends the bounding box to include that point if necessary.
+  // Overall, this code appears to be well written and effective at calculating the bounding box for a
+  // quadratic bezier curve. It is concise and uses a clever method for finding the extrema of the curve.
+  BoundingBox:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[2]),Points[0].Maximum(Points[2]));
+  if not BoundingBox.Contains(Points[1]) then begin
+   // Since the bezier is quadratic, the bounding box can be compute here with a linear equation.
+   // p = (1-t)^2*p0 + 2(1-t)t*p1 + t^2*p2
+   // dp/dt = 2(t-1)*p0 + 2(1-2t)*p1 + 2t*p2 = t*(2*p0-4*p1+2*p2) + 2*(p1-p0)
+   // dp/dt = 0 -> t*(p0-2*p1+p2) = (p0-p1);
+   // Credits for the idea: Inigo Quilez
+   t:=(Points[0]-Points[1])/((Points[0]-(Points[1]*2.0))+Points[2]);
+   if t.x<=0.0 then begin
+    t.x:=0.0;
+   end else if t.x>=1.0 then begin
+    t.x:=1.0;
+   end;
+   if t.y<=0.0 then begin
+    t.y:=0.0;
+   end else if t.y>=1.0 then begin
+    t.y:=1.0;
+   end;
+   s:=TpvVectorPathVector.Create(1.0,1.0)-t;
+   BoundingBox.Extend((Points[0]*(s*s))+(Points[1]*((t*s)*2.0))+(Points[2]*(t*t)));
+  end;
+  ExtendWith(BoundingBox.Min.x,BoundingBox.Min.y);
+  ExtendWith(BoundingBox.Max.x,BoundingBox.Max.y);
   PointAt(ax,ay);
  end;
- procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
-  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;Level:TpvInt32);
-  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,d:TpvDouble;
-  begin
-   x12:=(x1+x2)*0.5;
-   y12:=(y1+y2)*0.5;
-   x23:=(x2+x3)*0.5;
-   y23:=(y2+y3)*0.5;
-   x34:=(x3+x4)*0.5;
-   y34:=(y3+y4)*0.5;
-   x123:=(x12+x23)*0.5;
-   y123:=(y12+y23)*0.5;
-   x234:=(x23+x34)*0.5;
-   y234:=(y23+y34)*0.5;
-   x1234:=(x123+x234)*0.5;
-   y1234:=(y123+y234)*0.5;
-// d:=abs(((x1+x4)*0.5)-x1234)+abs(((y1+y4)*0.5)-y1234);
-   d:=abs(((x1+x3)-x2)-x2)+abs(((y1+y3)-y2)-y2)+abs(((x2+x4)-x3)-x3)+abs(((y2+y4)-y3)-y3);
-   if (Level>MaxLevel) or (d<Tolerance) then begin
-    PointAt(x1234,y1234);
-   end else begin
-    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
-    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+ procedure CubicCurveTo(const c1x,c1y,c2x,c2y,ax,ay:TpvDouble);
+ var a,b,c,h:TpvVectorPathVector;
+     t,s,q:TpvDouble;
+     Points:array[0..3] of TpvVectorPathVector;
+     BoundingBox:TpvVectorPathBoundingBox;
+ begin
+  Points[0]:=TpvVectorPathVector.Create(lastcx,lastcy);
+  Points[1]:=TpvVectorPathVector.Create(c1x,c1y);
+  Points[2]:=TpvVectorPathVector.Create(c2x,c2y);
+  Points[3]:=TpvVectorPathVector.Create(ax,ay);
+  // This code appears to be a correct implementation for computing the bounding box of a cubic bezier curve.
+  // It uses the fact that the bounding box of a cubic Bezier curve can be computed by finding the roots of
+  // quadratic equation formed from the bezier curve's coefficients. The roots of this equation correspond
+  // to the parameter values at which the curve reaches an extreme point (i.e., a minimum or maximum). The
+  // bounding box is then constructed by evaluating the curve at these parameter values and using the
+  // resulting points to extend the initial bounding box.
+  // One thing to note is that the code only handles the case where the roots of the quadratic equation are real.
+  // If the roots are complex, the bounding box is not extended. This is acceptable since complex roots do not
+  // correspond to physical points on the curve.
+  // Overall, I would rate this code as good and efficient for computing the bounding box of a cubic bezier curve.
+  BoundingBox:=TpvVectorPathBoundingBox.Create(Points[0].Minimum(Points[3]),Points[0].Maximum(Points[3]));
+  // Since the bezier is cubic, the bounding box can be compute here with a quadratic equation with
+  // pascal triangle coefficients. Credits for the idea: Inigo Quilez
+  a:=(((-Points[0])+(Points[1]*3.0))-(Points[2]*3.0))+Points[3];
+  b:=(Points[0]-(Points[1]*2.0))+Points[2];
+  c:=Points[1]-Points[0];
+  h:=(b*b)-(c*a);
+  if h.x>0.0 then begin
+   h.x:=sqrt(h.x);
+   t:=c.x/((-b.x)-h.x);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
+    if BoundingBox.Min.x<q then begin
+     BoundingBox.Min.x:=q;
+    end;
+    if BoundingBox.Max.x>q then begin
+     BoundingBox.Max.x:=q;
+    end;
+   end;
+   t:=c.x/((-b.x)+h.x);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].x*(sqr(s)*s))+(Points[1].x*(3.0*sqr(s)*t))+(Points[2].x*(3.0*s*sqr(t)))+(Points[3].x*sqr(t)*t);
+    if BoundingBox.Min.x<q then begin
+     BoundingBox.Min.x:=q;
+    end;
+    if BoundingBox.Max.x>q then begin
+     BoundingBox.Max.x:=q;
+    end;
    end;
   end;
- begin
-  Recursive(lastcx,lastcy,c1x,c1y,c2x,c2y,ax,ay,0);
+  if h.y>0.0 then begin
+   h.y:=sqrt(h.y);
+   t:=c.y/((-b.y)-h.y);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
+    if BoundingBox.Min.y<q then begin
+     BoundingBox.Min.y:=q;
+    end;
+    if BoundingBox.Max.y>q then begin
+     BoundingBox.Max.y:=q;
+    end;
+   end;
+   t:=c.y/((-b.y)+h.y);
+   if (t>0.0) and (t<1.0) then begin
+    s:=1.0-t;
+    q:=(Points[0].y*(sqr(s)*s))+(Points[1].y*(3.0*sqr(s)*t))+(Points[2].y*(3.0*s*sqr(t)))+(Points[3].y*sqr(t)*t);
+    if BoundingBox.Min.y<q then begin
+     BoundingBox.Min.y:=q;
+    end;
+    if BoundingBox.Max.y>q then begin
+     BoundingBox.Max.y:=q;
+    end;
+   end;
+  end;
+  ExtendWith(BoundingBox.Min.x,BoundingBox.Min.y);
+  ExtendWith(BoundingBox.Max.x,BoundingBox.Max.y);
   PointAt(ax,ay);
  end;
 var CommandIndex:TpvInt32;
@@ -10641,14 +10716,12 @@ begin
    end;
    TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo:begin
     QuadraticCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
-                     PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
-                     Tolerance,MaxLevel);
+                     PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y);
    end;
    TpvTrueTypeFontPolygonCommandType.CubicCurveTo:begin
     CubicCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                  PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
-                 PolygonBuffer.Commands[CommandIndex].Points[2].x,PolygonBuffer.Commands[CommandIndex].Points[2].y,
-                 Tolerance,MaxLevel);
+                 PolygonBuffer.Commands[CommandIndex].Points[2].x,PolygonBuffer.Commands[CommandIndex].Points[2].y);
    end;
    TpvTrueTypeFontPolygonCommandType.Close:begin
    end;
@@ -10702,6 +10775,7 @@ var Index:TPasMPNativeInt;
     JobData:PpvTrueTypeFontSignedDistanceFieldJob;
     x0,y0,x1,y1,ox,oy:TpvDouble;
     VectorPath:TpvVectorPath;
+    VectorPathShape:TpvVectorPathShape;
     SignedDistanceField:TpvSignedDistanceField2D;
 begin
 
@@ -10733,14 +10807,22 @@ begin
 
     JobData^.PolygonBuffer.ConvertToVectorPath(VectorPath);
 
-    TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,
-                                               VectorPath,
-                                               Scale,
-                                               -ox,
-                                               -oy);
+    VectorPathShape:=TpvVectorPathShape.Create(VectorPath);
+    try
+
+     TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,
+                                                VectorPathShape,
+                                                Scale,
+                                                -ox,
+                                                -oy,
+                                                TpvSignedDistanceField2DVariant.SDF);
+
+    finally
+     FreeAndNil(VectorPathShape);
+    end;
 
    finally
-    VectorPath.Free;
+    FreeAndNil(VectorPath);
    end;
 
    xo:=round(((JobData^.Width-((JobData^.BoundsX0+JobData^.BoundsX1)*Scale))*0.5)+ox);

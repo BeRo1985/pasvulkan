@@ -6,7 +6,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016-2020, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ * Copyright (C) 2016-2023, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -58,7 +58,6 @@ unit PasVulkan.Components.Name;
   {$ifend}
  {$endif}
 {$endif}
-{$m+}
 
 interface
 
@@ -68,47 +67,29 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type PpvComponentName=^TpvComponentName;
-     TpvComponentName=record
+type TpvComponentName=class(TpvComponent)
+      private
+       fName:UTF8String;
       public
-       Name:ShortString;
+       class function ClassPath:string; override;
+       class function ClassUUID:TpvUUID; override;
+      published
+       property Name:UTF8String read fName write fName;
      end;
-
-const pvComponentNameDefault:TpvComponentName=
-       (
-        Name:'';
-       );
-
-var pvComponentName:TpvEntityComponentSystem.TRegisteredComponentType=nil;
-
-    pvComponentNameID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
-procedure Register;
+class function TpvComponentName.ClassPath:string;
 begin
+ result:='Name';
+end;
 
- pvComponentName:=TpvEntityComponentSystem.TRegisteredComponentType.Create('name',
-                                                                           'Name',
-                                                                           ['Base','Name'],
-                                                                           SizeOf(TpvComponentName),
-                                                                           @pvComponentNameDefault);
-
- pvComponentNameID:=pvComponentName.ID;
-
- pvComponentName.Add('name',
-                     'Name',
-                     TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.LengthPrefixedString,
-                     SizeOf(PpvComponentName(nil)^.Name),
-                     1,
-                     TpvPtrUInt(@PpvComponentName(nil)^.Name),
-                     SizeOf(PpvComponentName(nil)^.Name),
-                     []
-                    );
-
+class function TpvComponentName.ClassUUID:TpvUUID;
+begin
+ result.UInt64s[0]:=TpvUInt64($0075b9def3584317);
+ result.UInt64s[1]:=TpvUInt64($b20035a20fcff367);
 end;
 
 initialization
- Register;
 end.
 
