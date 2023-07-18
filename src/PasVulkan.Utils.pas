@@ -1145,7 +1145,7 @@ begin
 end;
 
 function ExpandRelativePath(const aRelativePath:TpvRawByteString;const aBasePath:TpvRawByteString=''):TpvRawByteString;
-var InputIndex,OutputIndex:Int32;
+var InputIndex,OutputIndex:TpvInt32;
     InputPath:TpvRawByteString;
     PathSeparator:AnsiChar;
 begin
@@ -1238,7 +1238,7 @@ begin
 end;
 
 function ConvertPathToRelative(aAbsolutePath,aBasePath:TpvRawByteString):TpvRawByteString;
-var AbsolutePathIndex,BasePathIndex:Int32;
+var AbsolutePathIndex,BasePathIndex:TpvInt32;
     PathSeparator:AnsiChar;
 begin
  if length(aBasePath)=0 then begin
