@@ -160,6 +160,13 @@ type EpvTriangleBVH=class(Exception);
 
      TpvTriangleBVHNodeQueue=TPasMPUnboundedQueue<TpvInt32>;
 
+     TpvTriangleBVHBuildMode=
+      (
+       Bruteforce,
+       Steps,
+       Binned
+      );
+
      { TpvTriangleBVH }
 
      TpvTriangleBVH=class
@@ -182,7 +189,12 @@ type EpvTriangleBVH=class(Exception);
        fNodeQueue:TpvTriangleBVHNodeQueue;
        fCountActiveWorkers:TPasMPInt32;
        fTreeNodeStack:TTreeNodeStack;
-       function FindBestSplitPlane(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
+       fBVHBuildMode:TpvTriangleBVHBuildMode;
+       fBVHSubdivisionSteps:TpvInt32;
+       function EvaluateSAH(const aParentTreeNode:PpvTriangleBVHTreeNode;const aAxis:TpvInt32;const aSplitPosition:TpvFloat):TpvFloat;
+       function FindBestSplitPlaneBruteforce(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
+       function FindBestSplitPlaneSteps(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
+       function FindBestSplitPlaneBinned(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
        function CalculateNodeCost(const aParentTreeNode:PpvTriangleBVHTreeNode):TpvFloat;
        procedure UpdateNodeBounds(const aParentTreeNode:PpvTriangleBVHTreeNode);
        procedure ProcessNodeQueue;
@@ -210,6 +222,8 @@ type EpvTriangleBVH=class(Exception);
        property TreeNodeRoot:TpvInt32 read fTreeNodeRoot;
        property SkipListNodes:TpvTriangleBVHSkipListNodes read fSkipListNodes;
        property CountSkipListNodes:TpvInt32 read fCountSkipListNodes;
+       property BVHBuildMode:TpvTriangleBVHBuildMode read fBVHBuildMode write fBVHBuildMode;
+       property BVHSubdivisionSteps:TpvInt32 read fBVHSubdivisionSteps write fBVHSubdivisionSteps;
      end;
 
 implementation
@@ -313,6 +327,10 @@ begin
 
  fSkipListNodeMap:=nil;
 
+ fBVHBuildMode:=TpvTriangleBVHBuildMode.Steps;
+
+ fBVHSubdivisionSteps:=8;
+
 end;
 
 destructor TpvTriangleBVH.Destroy;
@@ -376,7 +394,108 @@ begin
  end;
 end;
 
-function TpvTriangleBVH.FindBestSplitPlane(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
+function TpvTriangleBVH.EvaluateSAH(const aParentTreeNode:PpvTriangleBVHTreeNode;const aAxis:TpvInt32;const aSplitPosition:TpvFloat):TpvFloat;
+var LeftAABB,RightAABB:TpvAABB;
+    LeftCount,RightCount,TriangleIndex:TpvInt32;
+    Triangle:PpvTriangleBVHTriangle;
+begin
+ LeftCount:=0;
+ RightCount:=0;
+ for TriangleIndex:=aParentTreeNode^.FirstTriangleIndex to aParentTreeNode^.FirstTriangleIndex+(aParentTreeNode^.CountTriangles-1) do begin
+  Triangle:=@fTriangles[TriangleIndex];
+  if Triangle^.Center.xyz[aAxis]<aSplitPosition then begin
+   if LeftCount=0 then begin
+    LeftAABB.Min.x:=Min(Min(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+    LeftAABB.Min.y:=Min(Min(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+    LeftAABB.Min.z:=Min(Min(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+    LeftAABB.Max.x:=Max(Max(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+    LeftAABB.Max.y:=Max(Max(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+    LeftAABB.Max.z:=Max(Max(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+   end else begin
+    LeftAABB.Min.x:=Min(LeftAABB.Min.x,Min(Min(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x));
+    LeftAABB.Min.y:=Min(LeftAABB.Min.y,Min(Min(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y));
+    LeftAABB.Min.z:=Min(LeftAABB.Min.z,Min(Min(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z));
+    LeftAABB.Max.x:=Max(LeftAABB.Max.x,Max(Max(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x));
+    LeftAABB.Max.y:=Max(LeftAABB.Max.y,Max(Max(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y));
+    LeftAABB.Max.z:=Max(LeftAABB.Max.z,Max(Max(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z));
+   end;
+   inc(LeftCount);
+  end else begin
+   if RightCount=0 then begin
+    RightAABB.Min.x:=Min(Min(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+    RightAABB.Min.y:=Min(Min(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+    RightAABB.Min.z:=Min(Min(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+    RightAABB.Max.x:=Max(Max(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+    RightAABB.Max.y:=Max(Max(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+    RightAABB.Max.z:=Max(Max(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+   end else begin
+    RightAABB.Min.x:=Min(RightAABB.Min.x,Min(Min(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x));
+    RightAABB.Min.y:=Min(RightAABB.Min.y,Min(Min(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y));
+    RightAABB.Min.z:=Min(RightAABB.Min.z,Min(Min(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z));
+    RightAABB.Max.x:=Max(RightAABB.Max.x,Max(Max(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x));
+    RightAABB.Max.y:=Max(RightAABB.Max.y,Max(Max(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y));
+    RightAABB.Max.z:=Max(RightAABB.Max.z,Max(Max(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z));
+   end;
+   inc(RightCount);
+  end;
+ end;
+ result:=0.0;
+ if LeftCount>0 then begin
+  result:=result+(LeftCount*LeftAABB.Area);
+ end;
+ if RightCount>0 then begin
+  result:=result+(RightCount*RightAABB.Area);
+ end;
+ if (result<=0.0) or IsZero(result) then begin
+  result:=Infinity;
+ end;
+end;
+
+function TpvTriangleBVH.FindBestSplitPlaneBruteforce(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
+var AxisIndex,TriangleIndex:TpvInt32;
+    Triangle:PpvTriangleBVHTriangle;
+    Cost,SplitPosition:TpvFloat;
+begin
+ aAxis:=-1;
+ aSplitPosition:=0.0;
+ result:=Infinity;
+ for AxisIndex:=0 to 2 do begin
+  for TriangleIndex:=aParentTreeNode^.FirstTriangleIndex to aParentTreeNode^.FirstTriangleIndex+(aParentTreeNode^.CountTriangles-1) do begin
+   Triangle:=@fTriangles[TriangleIndex];
+   SplitPosition:=Triangle^.Center.xyz[AxisIndex];
+   Cost:=EvaluateSAH(aParentTreeNode,AxisIndex,SplitPosition);
+   if result>Cost then begin
+    result:=Cost;
+    aAxis:=AxisIndex;
+    aSplitPosition:=SplitPosition;
+   end;
+  end;
+ end;
+end;
+
+function TpvTriangleBVH.FindBestSplitPlaneSteps(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
+var AxisIndex,StepIndex:TpvInt32;
+    Cost,SplitPosition,Time:TpvFloat;
+begin
+ aAxis:=-1;
+ aSplitPosition:=0.0;
+ result:=Infinity;
+ for AxisIndex:=0 to 2 do begin
+  for StepIndex:=0 to fBVHSubdivisionSteps-1 do begin
+   Time:=(StepIndex+1)/(fBVHSubdivisionSteps+1);
+   SplitPosition:=(aParentTreeNode^.Bounds.Min.xyz[AxisIndex]*(1.0-Time))+
+                  (aParentTreeNode^.Bounds.Max.xyz[AxisIndex]*Time);
+   Cost:=EvaluateSAH(aParentTreeNode,AxisIndex,SplitPosition);
+   if result>Cost then begin
+    result:=Cost;
+    aAxis:=AxisIndex;
+    aSplitPosition:=SplitPosition;
+   end;
+  end;
+ end;
+end;
+
+function TpvTriangleBVH.FindBestSplitPlaneBinned(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
 const CountBINs=8;
 type TBIN=record
       Count:Int32;
@@ -536,7 +655,18 @@ begin
    ParentTreeNode:=@fTreeNodes[ParentTreeNodeIndex];
    if ParentTreeNode^.CountTriangles>0 then begin
 
-    SplitCost:=FindBestSplitPlane(ParentTreeNode,AxisIndex,SplitPosition);
+    case fBVHBuildMode of
+     TpvTriangleBVHBuildMode.Steps:begin
+      SplitCost:=FindBestSplitPlaneSteps(ParentTreeNode,AxisIndex,SplitPosition);
+     end;
+     TpvTriangleBVHBuildMode.Binned:begin
+      SplitCost:=FindBestSplitPlaneBinned(ParentTreeNode,AxisIndex,SplitPosition);
+     end;
+     else begin
+      SplitCost:=FindBestSplitPlaneBruteforce(ParentTreeNode,AxisIndex,SplitPosition);
+     end;
+    end;
+
     if SplitCost<CalculateNodeCost(ParentTreeNode) then begin
 
      LeftIndex:=ParentTreeNode^.FirstTriangleIndex;
