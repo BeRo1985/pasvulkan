@@ -231,7 +231,7 @@ begin
   FreeAndNil(Instance);
  end;
 end;
-{$endif}
+{$ifend}
 
 constructor TpvHashXXHash64.Create(const aSeed:TpvUInt64=0);
 begin

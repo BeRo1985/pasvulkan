@@ -13350,7 +13350,7 @@ var BakedMesh:TpvScene3D.TBakedMesh;
          IndexIndex:=0;
          while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
           for SideIndex:=0 to ord(Primitive^.Material.fData.DoubleSided) and 1 do begin
-           BakedTriangle:=BakedMesh.fTriangles.AddNew;
+           BakedTriangle:=pointer(BakedMesh.fTriangles.AddNew);
            try
             if SideIndex>0 then begin
              BakedTriangle^.Positions[0]:=BakedVertices[TemporaryTriangleIndices[IndexIndex+2]].Position;
