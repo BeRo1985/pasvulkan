@@ -162,9 +162,9 @@ type EpvTriangleBVH=class(Exception);
 
      TpvTriangleBVHBuildMode=
       (
-       Bruteforce,
-       Steps,
-       Binned
+       SAHBruteforce,
+       SAHSteps,
+       SAHBinned
       );
 
      { TpvTriangleBVH }
@@ -327,7 +327,7 @@ begin
 
  fSkipListNodeMap:=nil;
 
- fBVHBuildMode:=TpvTriangleBVHBuildMode.Steps;
+ fBVHBuildMode:=TpvTriangleBVHBuildMode.SAHSteps;
 
  fBVHSubdivisionSteps:=8;
 
@@ -656,10 +656,10 @@ begin
    if ParentTreeNode^.CountTriangles>0 then begin
 
     case fBVHBuildMode of
-     TpvTriangleBVHBuildMode.Steps:begin
+     TpvTriangleBVHBuildMode.SAHSteps:begin
       SplitCost:=FindBestSplitPlaneSteps(ParentTreeNode,AxisIndex,SplitPosition);
      end;
-     TpvTriangleBVHBuildMode.Binned:begin
+     TpvTriangleBVHBuildMode.SAHBinned:begin
       SplitCost:=FindBestSplitPlaneBinned(ParentTreeNode,AxisIndex,SplitPosition);
      end;
      else begin
