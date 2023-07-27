@@ -897,6 +897,7 @@ begin
  result:=@Contours[Count];
  inc(Count);
  result^:=TContour.Create;
+ result^.CachedWinding:=Low(TpvSizeInt);
 end;
 
 function TpvSignedDistanceField2DMSDFGenerator.TShape.Validate:boolean;
@@ -1410,10 +1411,13 @@ begin
   Contour^.MultiSignedDistance.b:=b.MinDistance.Distance;
   Contour^.MultiSignedDistance.Median:=MedianMinDistance;
 
-  if (Contour^.Winding>0) and (MedianMinDistance>=0) and (abs(MedianMinDistance)<abs(PositiveDistance)) then begin
-   PositiveDistance:=MedianMinDistance;
-  end else if (Contour^.Winding<0) and (MedianMinDistance<=0) and (abs(MedianMinDistance)<abs(NegativeDistance)) then begin
-   NegativeDistance:=MedianMinDistance;
+  if abs(MedianMinDistance)<>1e240 then begin
+   if (Contour^.Winding>0) and (MedianMinDistance>=0) and (abs(MedianMinDistance)<abs(PositiveDistance)) then begin
+    PositiveDistance:=MedianMinDistance;
+   end;
+   if (Contour^.Winding<0) and (MedianMinDistance<=0) and (abs(MedianMinDistance)<abs(NegativeDistance)) then begin
+    NegativeDistance:=MedianMinDistance;
+   end;
   end;
  end;
 
@@ -1471,6 +1475,11 @@ begin
  Pixel^.g:=(MultiSignedDistance.g/aRange)+0.5;
  Pixel^.b:=(MultiSignedDistance.b/aRange)+0.5;
  Pixel^.a:=(MinDistance.Distance/aRange)+0.5;
+
+ if MultiSignedDistance.r<>0 then begin
+  if Pixel^.r>0 then begin
+  end;
+ end;
 end;
 
 type TpvSignedDistanceField2DMSDFGeneratorGenerateDistanceFieldData=record
@@ -2301,6 +2310,7 @@ begin
   DstContour^.Edges:=nil;
   SetLength(DstContour^.Edges,SrcContour^.CountPathSegments);
   DstContour^.Count:=SrcContour^.CountPathSegments;
+  DstContour^.CachedWinding:=Low(TpvSizeInt);
   for EdgeIndex:=0 to SrcContour^.CountPathSegments-1 do begin
    SrcPathSegment:=@SrcContour^.PathSegments[EdgeIndex];
    DstEdge:=@DstContour.Edges[EdgeIndex];
@@ -2313,6 +2323,7 @@ begin
     end;
    end;
   end;
+  DstContour^.Winding;
  end;
  result.Normalize;
 end;

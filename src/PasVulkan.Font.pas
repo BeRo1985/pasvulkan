@@ -721,6 +721,7 @@ begin
 
         if CountGlyphs>0 then begin
          PasMPInstance.Invoke(PasMPInstance.ParallelFor(@fSignedDistanceFieldJobs[0],0,CountGlyphs-1,GenerateSignedDistanceFieldParallelForJobFunction,1,10,nil,0));
+//       GenerateSignedDistanceFieldParallelForJobFunction(nil,0,nil,0,CountGlyphs-1);
         end;
 
        finally

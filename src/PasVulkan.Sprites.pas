@@ -2045,6 +2045,7 @@ var FileGUID:TGUID;
     ui8:TpvUInt8;
     NewImageData:TpvPointer;
     WidthValue,HeightValue,LayersValue,CountSprites,CountTrimmedHullVectors:TpvInt32;
+    IsQOI,SRGBQOI,OK:Boolean;
 begin
 
  Unload;
@@ -2181,22 +2182,45 @@ begin
    ArrayTexture:=fArrayTextures[Index];
    if assigned(ArrayTexture) then begin
     for SubIndex:=0 to ArrayTexture.fLayers-1 do begin
+     IsQOI:=false;
      Entry:=Archive.Entries.Find(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png'));
      if not assigned(Entry) then begin
-      raise EpvSpriteAtlas.Create('Missing '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+      Entry:=Archive.Entries.Find(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.qoi'));
+      if assigned(Entry) then begin
+       IsQOI:=true;
+      end else begin
+       raise EpvSpriteAtlas.Create('Missing '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.[png|qoi]');
+      end;
      end;
      Stream:=TMemoryStream.Create;
      try
       Entry.SaveToStream(Stream);
       ImageData:=nil;
       try
-       if LoadPNGImage(TMemoryStream(Stream).Memory,
-                       TMemoryStream(Stream).Size,
-                       ImageData,
-                       ImageWidth,
-                       ImageHeight,
-                       false,
-                       PNGPixelFormat) then begin
+       OK:=false;
+       if IsQOI then begin
+        if LoadQOIImage(TMemoryStream(Stream).Memory,
+                        TMemoryStream(Stream).Size,
+                        ImageData,
+                        ImageWidth,
+                        ImageHeight,
+                        false,
+                        SRGBQOI) then begin
+         OK:=true;
+         PNGPixelFormat:=TpvPNGPixelFormat.R8G8B8A8;
+        end;
+       end else begin
+        if LoadPNGImage(TMemoryStream(Stream).Memory,
+                        TMemoryStream(Stream).Size,
+                        ImageData,
+                        ImageWidth,
+                        ImageHeight,
+                        false,
+                        PNGPixelFormat) then begin
+         OK:=true;
+        end;
+       end;
+       if OK then begin
         if (ImageWidth=ArrayTexture.fWidth) and
            (ImageHeight=ArrayTexture.fHeight) then begin
          if fDepth16Bit then begin
@@ -2233,10 +2257,18 @@ begin
          ArrayTexture.fLayerRootNodes[SubIndex].ContentHeight:=ImageHeight;
          ArrayTexture.CopyIn(ImageData^,ImageWidth,ImageHeight,0,0,SubIndex);
         end else begin
-         raise EpvSpriteAtlas.Create(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png has wrong size');
+         if IsQOI then begin
+          raise EpvSpriteAtlas.Create(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.qoi has wrong size');
+         end else begin
+          raise EpvSpriteAtlas.Create(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png has wrong size');
+         end;
         end;
        end else begin
-        raise EpvSpriteAtlas.Create('Corrupt '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+        if IsQOI then begin
+         raise EpvSpriteAtlas.Create('Corrupt '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.qoi');
+        end else begin
+         raise EpvSpriteAtlas.Create('Corrupt '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+        end;
        end;
       finally
        if assigned(ImageData) then begin
@@ -2428,7 +2460,11 @@ begin
    ArrayTexture:=fArrayTextures[Index];
    if assigned(ArrayTexture) then begin
     for SubIndex:=0 to ArrayTexture.fLayers-1 do begin
-     Entry:=Archive.Entries.Add(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png'));
+     if fDepth16Bit then begin
+      Entry:=Archive.Entries.Add(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png'));
+     end else begin
+      Entry:=Archive.Entries.Add(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png'));
+     end;
      try
       Entry.Stream:=TMemoryStream.Create;
       if fDepth16Bit then begin
@@ -2445,6 +2481,11 @@ begin
                             Entry.Stream,
                             TpvPNGPixelFormat.R8G8B8A8,
                             aFast);
+{      SaveQOIImageAsStream(ArrayTexture.GetTexelPointer(0,0,SubIndex),
+                            ArrayTexture.fWidth,
+                            ArrayTexture.fHeight,
+                            Entry.Stream,
+                            true);}
       end;
      finally
       Entry.CompressionLevel:=0;
