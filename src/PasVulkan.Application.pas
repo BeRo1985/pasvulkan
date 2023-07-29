@@ -414,6 +414,8 @@ const MaxSwapChainImages=3;
       KEYCODE_BUTTON_MODE=478;
       KEYCODE_TILDE=479;
 
+      KEYCODE_COUNT=1024;
+
       ORIENTATION_LANDSCAPE=0;
       ORIENTATION_PORTRAIT=1;
 
@@ -961,10 +963,13 @@ type EpvApplication=class(Exception)
 
      PpvApplicationEvent=^TpvApplicationEvent;
 
+     TpvApplicationInputKeycodeStringHashMap=TpvStringHashMap<TpvInt32>;
+
      TpvApplicationInput=class
       private
        fVulkanApplication:TpvApplication;
-       fKeyCodeNames:array[-1..1023] of TpvApplicationRawByteString;
+       fKeyCodeNames:array[-1..KEYCODE_COUNT-1] of TpvApplicationRawByteString;
+       fKeyCodeLowerCaseNames:array[-1..KEYCODE_COUNT-1] of TpvApplicationRawByteString;
        fCriticalSection:TPasMPCriticalSection;
        fProcessor:TpvApplicationInputProcessor;
        fEvents:array of TpvApplicationEvent;
@@ -995,6 +1000,7 @@ type EpvApplication=class(Exception)
        fMainJoystick:TpvApplicationJoystick;
        fTextInput:longbool;
        fLastTextInput:longbool;
+       fKeyCodeNameHashmap:TpvApplicationInputKeycodeStringHashMap;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
@@ -1005,6 +1011,8 @@ type EpvApplication=class(Exception)
       public
        constructor Create(const aVulkanApplication:TpvApplication); reintroduce;
        destructor Destroy; override;
+       function KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
+       function StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
        function GetAccelerometerX:TpvFloat;
        function GetAccelerometerY:TpvFloat;
        function GetAccelerometerZ:TpvFloat;
@@ -4057,10 +4065,13 @@ begin
 end;
 
 constructor TpvApplicationInput.Create(const aVulkanApplication:TpvApplication);
+var Index:TpvInt32;
 begin
  inherited Create;
  fVulkanApplication:=aVulkanApplication;
+ fKeyCodeNameHashmap:=TpvApplicationInputKeycodeStringHashMap.Create(KEYCODE_UNKNOWN);
  FillChar(fKeyCodeNames,SizeOf(fKeyCodeNames),AnsiChar(#0));
+ FillChar(fKeyCodeLowerCaseNames,SizeOf(fKeyCodeLowerCaseNames),AnsiChar(#0));
  fKeyCodeNames[KEYCODE_ANYKEY]:='ANYKEY';
  fKeyCodeNames[KEYCODE_UNKNOWN]:='UNKNOWN';
  fKeyCodeNames[KEYCODE_FIRST]:='FIRST';
@@ -4356,6 +4367,12 @@ begin
  fKeyCodeNames[KEYCODE_BUTTON_START]:='BUTTON_START';
  fKeyCodeNames[KEYCODE_BUTTON_SELECT]:='BUTTON_SELECT';
  fKeyCodeNames[KEYCODE_BUTTON_MODE]:='BUTTON_MODE';
+ for Index:=Low(fKeyCodeNames) to High(fKeyCodeNames) do begin
+  fKeyCodeLowerCaseNames[Index]:=PUCUUTF8LowerCase(fKeyCodeNames[Index]);
+  if length(fKeyCodeLowerCaseNames[Index])>0 then begin
+   fKeyCodeNameHashmap.Add(fKeyCodeLowerCaseNames[Index],Index);
+  end;
+ end;
  fCriticalSection:=TPasMPCriticalSection.Create;
  fProcessor:=nil;
  fEvents:=nil;
@@ -4395,9 +4412,24 @@ destructor TpvApplicationInput.Destroy;
 begin
  FreeAndNil(fJoysticks);
  FreeAndNil(fJoystickIDHashMap);
+ FreeAndNil(fKeyCodeNameHashmap);
  fEvents:=nil;
  fCriticalSection.Free;
  inherited Destroy;
+end;
+
+function TpvApplicationInput.KeyCodeToString(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
+begin
+ if (aKeyCode>=0) and (aKeyCode<KEYCODE_COUNT) then begin
+  result:=fKeyCodeLowerCaseNames[aKeyCode];
+ end else begin
+  result:='';
+ end;
+end;
+
+function TpvApplicationInput.StringToKeyCode(const aString:TpvApplicationRawByteString):TpvInt32;
+begin
+ result:=fKeyCodeNameHashmap[PUCUUTF8LowerCase(aString)];
 end;
 
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
