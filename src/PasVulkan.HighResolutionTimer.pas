@@ -441,6 +441,37 @@ begin
   NowTime:=GetTime;
  until NowTime>=EndTime;
 end;
+{$elseif defined(Linux)}
+var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
+    EndTime,NowTime,Start:TpvHighResolutionTime;
+    req,rem:timespec;
+begin
+ NowTime:=GetTime;
+ EndTime:=NowTime+aDelay;
+ Seconds:=ToFloatSeconds(aDelay);
+ while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
+  Start:=GetTime;
+  Sleep(1);
+  NowTime:=GetTime;
+  Observed:=ToFloatSeconds(NowTime-Start);
+  Seconds:=Seconds-Observed;
+  inc(fSleepCount);
+  if fSleepCount>=16777216 then begin
+   fSleepEstimate:=5e-3;
+   fSleepMean:=5e-3;
+   fSleepM2:=0.0;
+   fSleepCount:=1;
+  end else begin
+   Delta:=Observed-fSleepMean;
+   fSleepMean:=fSleepMean+(Delta/fSleepCount);
+   fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
+   fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+  end;
+ end;
+ repeat
+  NowTime:=GetTime;
+ until NowTime>=EndTime;
+end;
 {$else}
 var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
 {$ifdef unix}
