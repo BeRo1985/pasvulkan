@@ -9840,7 +9840,7 @@ begin
 end;
 
 procedure TpvApplication.FrameRateLimiter;
-var NowTime:TpvHighResolutionTime;
+var NowTime,Interval:TpvHighResolutionTime;
 begin
  NowTime:=fHighResolutionTimer.GetTime;
  if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
@@ -9848,10 +9848,11 @@ begin
      (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
    fHighResolutionTimer.Sleep(fNextTime-NowTime);
   end;
-  if (fNextTime=0) or (fNextTime>=NowTime) then begin
-   fNextTime:=NowTime+fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
+  Interval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
+  if (fNextTime=0) or (fNextTime>=(NowTime+Interval)) then begin
+   fNextTime:=NowTime+Interval;
   end else begin
-   fNextTime:=fNextTime+fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
+   fNextTime:=fNextTime+Interval;
   end;
  end else begin
   if NowTime>0 then begin
