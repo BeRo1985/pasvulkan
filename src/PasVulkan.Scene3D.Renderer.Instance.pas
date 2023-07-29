@@ -1492,6 +1492,7 @@ begin
 
  case Renderer.ShadowMode of
 
+  TpvScene3DRendererShadowMode.None,
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass:=TpvScene3DRendererPassesCascadedShadowMapRenderPass.Create(fFrameGraph,self);
