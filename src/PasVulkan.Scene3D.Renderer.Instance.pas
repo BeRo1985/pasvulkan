@@ -919,9 +919,19 @@ begin
 
  fHUDRenderPassParent:=nil;
 
- fCascadedShadowMapWidth:=Renderer.ShadowMapSize;
+ if Renderer.ShadowMode=TpvScene3DRendererShadowMode.None then begin
 
- fCascadedShadowMapHeight:=Renderer.ShadowMapSize;
+  fCascadedShadowMapWidth:=64;
+
+  fCascadedShadowMapHeight:=64;
+
+ end else begin
+
+  fCascadedShadowMapWidth:=Renderer.ShadowMapSize;
+
+  fCascadedShadowMapHeight:=Renderer.ShadowMapSize;
+
+ end;
 
  fCameraViewMatrix:=TpvMatrix4x4.Identity;
 
