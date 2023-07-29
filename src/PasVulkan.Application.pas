@@ -9848,7 +9848,7 @@ begin
      (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
    fHighResolutionTimer.Sleep(fNextTime-NowTime);
   end;
-  if fNextTime>=NowTime then begin
+  if (fNextTime=0) or (fNextTime>=NowTime) then begin
    fNextTime:=NowTime+fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
   end else begin
    fNextTime:=fNextTime+fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
