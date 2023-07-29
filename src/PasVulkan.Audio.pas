@@ -180,7 +180,7 @@ const SampleFixUp=1024;
       PitchShifterBufferSize=1 shl PitchShifterBufferShift;
       PitchShifterBufferMask=PitchShifterBufferSize-1;
 
-      SPATIALIZATION_FAST=0;
+      SPATIALIZATION_NONE=0;
       SPATIALIZATION_PSEUDO=1;
       SPATIALIZATION_HRTF=2;
 
