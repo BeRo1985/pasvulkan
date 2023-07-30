@@ -1,6 +1,8 @@
 
 // Check for valid section define combination
-#if defined(TRANSPARENCY_DECLARATION) && defined(TRANSPARENCY_IMPLEMENTATION)
+#if (defined(TRANSPARENCY_DECLARATION) && defined(TRANSPARENCY_IMPLEMENTATION)) || \
+    (defined(TRANSPARENCY_DECLARATION) && defined(TRANSPARENCY_GLOBALS)) || \
+    (defined(TRANSPARENCY_GLOBALS) && defined(TRANSPARENCY_IMPLEMENTATION))
   #error "Only one of TRANSPARENCY_DECLARATION and TRANSPARENCY_IMPLEMENTATION can be defined at once"
 #endif
 
@@ -13,9 +15,6 @@
     #if defined(MBOIT) && defined(MBOITPASS1)
       layout(location = 0) out vec4 outFragMBOITMoments0;
       layout(location = 1) out vec4 outFragMBOITMoments1;
-    #elif defined(VELOCITY)
-      layout(location = 0) out vec2 outFragVelocity;
-      layout(location = 1) out vec3 outFragNormal;
     #endif
   #else
     #if defined(WBOIT)
@@ -30,13 +29,10 @@
       #endif
     #else
       layout(location = 0) out vec4 outFragColor;
-      #ifdef EXTRAEMISSIONOUTPUT
-        layout(location = 1) out vec4 outFragEmission;
-      #endif
     #endif
   #endif
 
-  #if defined(MESH_FRAGMENT) || defined(PARTICLE_FRAGMENT)
+  #if defined(MESH_FRAGMENT_SHADER) || defined(PARTICLE_FRAGMENT_SHADER)
 
     #if defined(WBOIT)
 
@@ -232,6 +228,16 @@
 
   #endif
 
+#endif
+
+// -------------------------------------------------------------------------------------------------
+// Global section
+// -------------------------------------------------------------------------------------------------
+#if defined(TRANSPARENCY_GLOBALS)
+  #if defined(WBOIT)
+  #elif defined(MBOIT)
+    #include "mboit.glsl"
+  #endif
 #endif
 
 // -------------------------------------------------------------------------------------------------
