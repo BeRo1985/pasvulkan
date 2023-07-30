@@ -3,7 +3,7 @@
 #if (defined(TRANSPARENCY_DECLARATION) && defined(TRANSPARENCY_IMPLEMENTATION)) || \
     (defined(TRANSPARENCY_DECLARATION) && defined(TRANSPARENCY_GLOBALS)) || \
     (defined(TRANSPARENCY_GLOBALS) && defined(TRANSPARENCY_IMPLEMENTATION))
-  #error "Only one of TRANSPARENCY_DECLARATION and TRANSPARENCY_IMPLEMENTATION can be defined at once"
+  #error "Only one of TRANSPARENCY_DECLARATION, TRANSPARENCY_GLOBALS and TRANSPARENCY_IMPLEMENTATION can be defined at once"
 #endif
 
 // -------------------------------------------------------------------------------------------------
