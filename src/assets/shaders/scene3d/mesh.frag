@@ -1363,10 +1363,10 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 
 void main() {
   {
-	float frontFacingSign = gl_FrontFacing ? 1.0 : -1.0;   
-	workTangent = inTangent * frontFacingSign;
-	workBitangent = inBitangent * frontFacingSign;
-	workNormal = inNormal * frontFacingSign;
+    float frontFacingSign = gl_FrontFacing ? 1.0 : -1.0;   
+    workTangent = inTangent * frontFacingSign;
+    workBitangent = inBitangent * frontFacingSign;
+    workNormal = inNormal * frontFacingSign;
   }
 #if !(defined(NOBUFFERREFERENCE) || defined(USEINT64))
   material = uMaterials.materials;
