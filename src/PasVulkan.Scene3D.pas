@@ -2362,7 +2362,7 @@ type EpvScene3D=class(Exception);
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                      const aOnSetRenderPassResources:TOnSetRenderPassResources);
-       procedure UpdateGPUParticles(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UpdateParticles(const aInFlightFrameIndex:TpvSizeInt);
        procedure DrawParticles(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                const aPreviousInFlightFrameIndex:TpvSizeInt;
                                const aInFlightFrameIndex:TpvSizeInt;
@@ -2391,9 +2391,9 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
        procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
-       procedure StoreParticles;
-       procedure UpdateParticles(const aDeltaTime:TpvDouble);
-       procedure InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
+       procedure StoreParticleStates;
+       procedure UpdateParticleStates(const aDeltaTime:TpvDouble);
+       procedure InterpolateParticleStates(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
        procedure DeleteAllParticles;
        function AddParticle(const aPosition:TpvVector3;
                             const aVelocity:TpvVector3;
@@ -16232,7 +16232,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UpdateGPUParticles(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.UpdateParticles(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
@@ -16488,7 +16488,7 @@ begin
 
 end;
 
-procedure TpvScene3D.StoreParticles;
+procedure TpvScene3D.StoreParticleStates;
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
     Particle:PParticle;
@@ -16510,7 +16510,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UpdateParticles(const aDeltaTime:TpvDouble);
+procedure TpvScene3D.UpdateParticleStates(const aDeltaTime:TpvDouble);
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
     Particle:PParticle;
@@ -16537,7 +16537,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
+procedure TpvScene3D.InterpolateParticleStates(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
     CountVertices,TextureID:TpvUInt32;
