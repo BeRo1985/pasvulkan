@@ -249,7 +249,9 @@
 
   float depth = fma((log(clamp(-inViewSpacePosition.z, uWBOIT.wboitZNearZFar.x, uWBOIT.wboitZNearZFar.y)) - uWBOIT.wboitZNearZFar.z) / (uWBOIT.wboitZNearZFar.w - uWBOIT.wboitZNearZFar.z), 2.0, -1.0); 
   float transmittance = clamp(1.0 - alpha, 1e-4, 1.0);
-  finalColor.xyz *= finalColor.w;
+  if(!additiveBlending){
+    finalColor.xyz *= finalColor.w;
+  }
   float weight = min(1.0, fma(max(max(finalColor.x, finalColor.y), max(finalColor.z, finalColor.w)), 40.0, 0.01)) * clamp(depth, 1e-2, 3e3); //clamp(0.03 / (1e-5 + pow(abs(inViewSpacePosition.z) / 200.0, 4.0)), 1e-2, 3e3);
   outFragWBOITAccumulation = finalColor * weight; 
   outFragWBOITRevealage = vec4(finalColor.w);
@@ -292,7 +294,9 @@
     if(isinf(transmittance_at_depth) || isnan(transmittance_at_depth)){
       transmittance_at_depth = 1.0;
     }
-    outFragColor = vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth);
+    outFragColor = additiveBlending ? 
+                     (vec4(finalColor.xyz, finalColor.w) * transmittance_at_depth) :         // Additive blending
+                     (vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth));  // Premultiplied alpha blending
   } 
 #endif
 
@@ -331,6 +335,10 @@
      (min(alpha, finalColor.w) > 0.0)
     ){
 
+     if(!additiveBlending){
+       finalColor.xyz *= finalColor.w;
+     }
+
 #ifdef SPINLOCK
     bool oitDone = /*gl_HelperInvocation ||*/ (oitStoreMask == 0);
     while(!oitDone){
@@ -346,9 +354,9 @@
 
         // Average color
         imageStore(uOITImgAverage, oitCoord SAMPLE_ID , vec4(imageLoad(uOITImgAverage, oitCoord SAMPLE_ID ) + finalColor));
-
+        
         // Accumulated color
-        imageStore(uOITImgAccumulation, oitCoord SAMPLE_ID , vec4((imageLoad(uOITImgAccumulation, oitCoord SAMPLE_ID ) + vec4(finalColor.xyz * finalColor.w, 0.0)) * vec2(1.0, 1.0 - finalColor.w).xxxy));
+        imageStore(uOITImgAccumulation, oitCoord SAMPLE_ID , vec4((imageLoad(uOITImgAccumulation, oitCoord SAMPLE_ID ) + vec4(finalColor.xyz, 0.0)) * vec2(1.0, 1.0 - finalColor.w).xxxy));
 
         // Load the first and second fragments
         vec4 fragments[2];
@@ -443,6 +451,10 @@
 #endif
      (min(alpha, finalColor.w) > 0.0)
     ){
+
+    if(!additiveBlending){
+      finalColor.xyz *= finalColor.w;
+    }
 
 #ifndef IGNORELOCKOIT
     const int oitViewSize = int(uOIT.oitViewPort.z);
@@ -541,7 +553,7 @@
   endInvocationInterlock();
 #endif
 
-  outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
+  outFragColor = finalColor;
 
 #elif defined(LOOPOIT)
 
@@ -633,6 +645,10 @@
 
     #elif defined(LOOPOIT_PASS2)
 
+      if(!additiveBlending){
+        finalColor.xyz *= finalColor.w;
+      }
+
 #ifdef USE_SPECIALIZATION_CONSTANTS
       float oitTempDepth = imageLoad(uOITImgZBuffer, oitBufferBaseIndex + (oitCountLayers - 1)).x;
 #endif      
@@ -651,7 +667,7 @@
 #endif
         ){
 #ifndef DEPTHONLY    
-        outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
+        outFragColor = finalColor;
 #endif
       }else{
         int oitStart = 0;
@@ -699,7 +715,7 @@
 
 #elif defined(BLEND)
 
-  outFragColor = vec4(finalColor.xyz * finalColor.w, finalColor.w);
+  outFragColor = vec4(finalColor.xyz * (additiveBlending ? 1.0 : finalColor.w), finalColor.w);
 
 #endif
 

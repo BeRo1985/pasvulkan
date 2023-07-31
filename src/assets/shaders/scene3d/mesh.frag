@@ -1908,6 +1908,8 @@ void main() {
   #endif
 #endif
 
+  const bool additiveBlending = false; // Mesh does never use additive blending currently, so static compile time constant folding is possible here.
+   
 #define TRANSPARENCY_IMPLEMENTATION
 #include "transparency.glsl"
 #undef TRANSPARENCY_IMPLEMENTATION

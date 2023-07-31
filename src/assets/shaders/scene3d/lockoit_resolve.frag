@@ -30,8 +30,8 @@ layout(std140, set = 0, binding = 4) uniform uboOIT {
 #include "premultiplied_alpha.glsl"
 #endif
 
-void blend(inout vec4 target, const in vec4 source) {                  //
-  target += (1.0 - target.a) * vec4(source.xyz * source.a, source.a);  //
+void blend(inout vec4 target, const in vec4 source) {       
+  target += (1.0 - target.a) * source;  // Source is already premultiplied
 }
 
 #define MAX_MSAA 16
@@ -77,6 +77,7 @@ void sort(inout uvec4 array[MAX_OIT_LAYERS], int count) {
 }
 
 void main() {
+
   vec4 color = vec4(0.0);
 
 #if 1
@@ -171,7 +172,9 @@ void main() {
   blend(color, subpassLoad(uSubpassInputTransparent));
 #endif
 
-  blend(color, subpassLoad(uSubpassInputOpaque));
+  vec4 temporary = subpassLoad(uSubpassInputOpaque);
+  temporary.xyz *= temporary.w; // Premultiply alpha for opaque fragments
+  blend(color, temporary);
 
   outColor = vec4(color.xyz, (oitCountFragments == 0) ? 1.0 : 0.0);
   

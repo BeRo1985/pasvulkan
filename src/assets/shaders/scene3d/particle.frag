@@ -71,6 +71,8 @@ layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 
 void main() {
 
+  bool additiveBlending = false;
+
 #ifdef DEPTHONLY
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   float alpha = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? 0.0 : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord).w * inColor.w);  
