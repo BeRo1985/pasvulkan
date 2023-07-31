@@ -376,16 +376,18 @@ type EpvScene3D=class(Exception);
             TParticleAliveBitmap=array[0..((MaxParticles+31) shr 5)-1] of TpvUInt32;
             PParticleAliveBitmap=^TParticleAliveBitmap;
             TParticleVertex=packed record
-             Position:TpvVector3;       //   12
-             TextureID:TpvUInt32;       //    4
-             Size:TpvVector2;           //    8
-             Color:TpvHalfFloatVector4; //    8
-            end;                        // = 32 bytes per particle vertex
+             Position:TpvVector3;           //   12
+             Rotation:TpvFloat;             //    4
+             QuadCoord:TpvHalfFloatVector2; //    4
+             TextureID:TpvUInt32;           //    4
+             Size:TpvVector2;               //    8
+             Color:TpvHalfFloatVector4;     //    8
+            end;                            // = 40 bytes per particle vertex
             PParticleVertex=^TParticleVertex;
             TParticleVertices=array[0..(MaxParticles*3)-1] of TParticleVertex;
             PParticleVertices=^TParticleVertices;
-            TInFlightFramesParticleVertices=array[0..MaxInFlightFrames-1] of TParticleVertices; // 18MB in total at the moment
-            PInFlightFramesParticleVertices=^TInFlightFramesParticleVertices;
+            TInFlightFrameParticleVertices=array[0..MaxInFlightFrames-1] of TParticleVertices; // 18MB in total at the moment
+            PInFlightFrameParticleVertices=^TInFlightFrameParticleVertices;
             TJointBlock=packed record
              case boolean of
               false:(
@@ -2285,6 +2287,8 @@ type EpvScene3D=class(Exception);
        fPointerToParticles:PParticles;
        fParticleAliveBitmap:TParticleAliveBitmap;
        fParticleIndexCounter:TpvUInt32;
+       fInFlightFrameParticleVertices:TInFlightFrameParticleVertices;
+       fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -14076,6 +14080,8 @@ begin
 
  fParticleIndexCounter:=0;
 
+ FillChar(fCountInFlightFrameParticleVertices,SizeOf(fCountInFlightFrameParticleVertices),#0);
+
  fTechniques:=TpvTechniques.Create;
 
  fImageListLock:=TPasMPCriticalSection.Create;
@@ -16426,22 +16432,36 @@ end;
 procedure TpvScene3D.InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
-    Count:TpvUInt32;
+    CountVertices:TpvUInt32;
     Particle:PParticle;
     Time,Rotation:TpvFloat;
     Position:TpvVector3;
     Size:TpvVector2;
     Color:TpvVector4;
+    ParticleVertices:TpvScene3D.PParticleVertices;
+    ParticleVertex:PParticleVertex;
 begin
- Count:=0;
+
+ CountVertices:=0;
+
+ ParticleVertices:=@fInFlightFrameParticleVertices[aInFlightFrameIndex];
+
  for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
+ 
   ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
+ 
   if ParticleAliveBitmapValue<>0 then begin
+ 
    ParticleBaseIndex:=ParticleAliveBitmapIndex shl 5;
+ 
    repeat
+ 
     ParticleBitIndex:=TPasMPMath.BitScanForward32(ParticleAliveBitmapValue);
+ 
     ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
+ 
     Particle:=@fParticles[ParticleIndex];
+ 
     if Particle^.LastGeneration=Particle^.Generation then begin
      // Same generation, so interpolate for an already existing particle
      Position:=Particle^.LastPosition.Lerp(Particle^.Position,aAlpha);
@@ -16451,14 +16471,58 @@ begin
      Position:=Particle^.Position;
      Time:=0.0;
     end;
+ 
     Rotation:=FloatLerp(Particle^.RotationStart,Particle^.RotationEnd,Time);
     Size:=Particle^.SizeStart.Lerp(Particle^.SizeEnd,Time);
     Color:=Particle^.ColorStart.Lerp(Particle^.ColorEnd,Time);
-    inc(Count);
+
+    ParticleVertex:=@ParticleVertices^[CountVertices+0];
+    ParticleVertex^.Position:=Position;
+    ParticleVertex^.Rotation:=Rotation;
+    ParticleVertex^.QuadCoord.x:=0.0;
+    ParticleVertex^.QuadCoord.y:=0.0;
+    ParticleVertex^.TextureID:=0;
+    ParticleVertex^.Size:=Size;
+    ParticleVertex^.Color.x:=Color.x;
+    ParticleVertex^.Color.y:=Color.y;
+    ParticleVertex^.Color.z:=Color.z;
+    ParticleVertex^.Color.w:=Color.w;
+
+    ParticleVertex:=@ParticleVertices^[CountVertices+1];
+    ParticleVertex^.Position:=Position;
+    ParticleVertex^.Rotation:=Rotation;
+    ParticleVertex^.QuadCoord.x:=2.0;
+    ParticleVertex^.QuadCoord.y:=0.0;
+    ParticleVertex^.TextureID:=0;
+    ParticleVertex^.Size:=Size;
+    ParticleVertex^.Color.x:=Color.x;
+    ParticleVertex^.Color.y:=Color.y;
+    ParticleVertex^.Color.z:=Color.z;
+    ParticleVertex^.Color.w:=Color.w;
+
+    ParticleVertex:=@ParticleVertices^[CountVertices+2];
+    ParticleVertex^.Position:=Position;
+    ParticleVertex^.Rotation:=Rotation;
+    ParticleVertex^.QuadCoord.x:=0.0;
+    ParticleVertex^.QuadCoord.y:=2.0;
+    ParticleVertex^.TextureID:=0;
+    ParticleVertex^.Size:=Size;
+    ParticleVertex^.Color.x:=Color.x;
+    ParticleVertex^.Color.y:=Color.y;
+    ParticleVertex^.Color.z:=Color.z;
+    ParticleVertex^.Color.w:=Color.w;
+
+    inc(CountVertices,3);
+
     ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
    until ParticleAliveBitmapValue=0;
+
   end;
+
  end;
+
+ fCountInFlightFrameParticleVertices[aInFlightFrameIndex]:=CountVertices;
+
 end;
 
 initialization
