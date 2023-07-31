@@ -16445,7 +16445,7 @@ end;
 procedure TpvScene3D.InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
 var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
-    CountVertices:TpvUInt32;
+    CountVertices,TextureID:TpvUInt32;
     Particle:PParticle;
     Time,Rotation:TpvFloat;
     Position:TpvVector3;
@@ -16494,6 +16494,8 @@ begin
     HalfFloatColor.z:=FloatLerp(Particle^.ColorStart.z,Particle^.ColorEnd.z,Time);
     HalfFloatColor.w:=FloatLerp(Particle^.ColorStart.w,Particle^.ColorEnd.w,Time);
 
+    TextureID:=Particle^.TextureID;
+
     // Each particle has an oversized triangle that contains the actual particle quad.
     // This might increase overdraw, but it reduces the number of vertices used.
 
@@ -16502,7 +16504,7 @@ begin
     ParticleVertex^.Rotation:=Rotation;
     ParticleVertex^.QuadCoord.x:=0.0;
     ParticleVertex^.QuadCoord.y:=0.0;
-    ParticleVertex^.TextureID:=0;
+    ParticleVertex^.TextureID:=TextureID;
     ParticleVertex^.Size:=Size;
     ParticleVertex^.Color:=HalfFloatColor;
 
@@ -16511,7 +16513,7 @@ begin
     ParticleVertex^.Rotation:=Rotation;
     ParticleVertex^.QuadCoord.x:=2.0;
     ParticleVertex^.QuadCoord.y:=0.0;
-    ParticleVertex^.TextureID:=0;
+    ParticleVertex^.TextureID:=TextureID;
     ParticleVertex^.Size:=Size;
     ParticleVertex^.Color:=HalfFloatColor;
 
@@ -16520,7 +16522,7 @@ begin
     ParticleVertex^.Rotation:=Rotation;
     ParticleVertex^.QuadCoord.x:=0.0;
     ParticleVertex^.QuadCoord.y:=2.0;
-    ParticleVertex^.TextureID:=0;
+    ParticleVertex^.TextureID:=TextureID;
     ParticleVertex^.Size:=Size;
     ParticleVertex^.Color:=HalfFloatColor;
 
