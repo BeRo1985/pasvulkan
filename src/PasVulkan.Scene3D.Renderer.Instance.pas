@@ -2561,6 +2561,8 @@ begin
 
  Renderer.Scene3D.UpdateDebugPrimitives(aInFlightFrameIndex);
 
+ Renderer.Scene3D.UpdateParticles(aInFlightFrameIndex);
+
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
 end;
