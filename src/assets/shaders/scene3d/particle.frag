@@ -71,7 +71,7 @@ layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 
 void main() {
 
-  bool additiveBlending = false;
+  bool additiveBlending = (inTextureID & 0x80000000u) != 0; // Reuse the MSB of the texture ID to indicate additive blending
 
 #ifdef DEPTHONLY
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
