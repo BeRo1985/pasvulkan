@@ -30,9 +30,10 @@
   layout(early_fragment_tests) in;
 #endif
 
-layout(location = 0) in vec2 inTexCoord;
-layout(location = 1) in vec4 inColor;
-layout(location = 2) flat in uint inTextureID;
+layout(location = 0) in vec3 inViewSpacePosition;
+layout(location = 1) in vec2 inTexCoord;
+layout(location = 2) in vec4 inColor;
+layout(location = 3) flat in uint inTextureID;
 
 // Specialization constants are sadly unusable due to dead slow shader stage compilation times with several minutes "per" pipeline, 
 // when the validation layers and a debugger (GDB, LLDB, etc.) are active at the same time!
@@ -76,6 +77,7 @@ void main() {
 #endif
 #else
   vec4 finalColor = texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor;
+  float alpha = finalColor.w;
 #if !(defined(WBOIT) || defined(MBOIT))
 #ifndef BLEND 
   outFragColor = finalColor;

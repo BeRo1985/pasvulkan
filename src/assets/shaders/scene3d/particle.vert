@@ -16,9 +16,10 @@ layout(location = 3) in vec2 inSize;
 layout(location = 4) in uint inTextureID;
 layout(location = 5) in vec4 inColor;
 
-layout(location = 0) out vec2 outTexCoord;
-layout(location = 1) out vec4 outColor;
-layout(location = 2) flat out uint outTextureID;
+layout(location = 0) out vec3 outViewSpacePosition;
+layout(location = 1) out vec2 outTexCoord;
+layout(location = 2) out vec4 outColor;
+layout(location = 3) flat out uint outTextureID;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
@@ -59,6 +60,9 @@ void main() {
 /*coord = vec2((coord.x * sinCos.y) + (coord.y * sinCos.x), (coord.y * sinCos.y) - (coord.x * sinCos.x));
   vec3 position = inPosition + ((worldSpaceRight * coord.x) + (worldSpaceUp * coord.y));*/
   vec3 position = inPosition + ((worldSpaceRight * (coord.x * sinCos.y) + (coord.y * sinCos.x)) + (worldSpaceUp * (coord.y * sinCos.y) - (coord.x * sinCos.x)));
+  vec4 viewSpacePosition = view.viewMatrix * vec4(position, 1.0);
+  viewSpacePosition /= viewSpacePosition.w;
+  outViewSpacePosition = viewSpacePosition.xyz;
   outTexCoord = inQuadCoord;
   outColor = inColor;
   outTextureID = inTextureID;
