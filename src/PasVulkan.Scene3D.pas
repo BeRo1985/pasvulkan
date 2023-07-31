@@ -376,7 +376,7 @@ type EpvScene3D=class(Exception);
             PParticleVertex=^TParticleVertex;
             TParticleVertices=array[0..(MaxParticles*3)-1] of TParticleVertex;
             PParticleVertices=^TParticleVertices;
-            TInFlightFramesParticleVertices=array[0..MaxInFlightFrames-1] of TParticleVertices;
+            TInFlightFramesParticleVertices=array[0..MaxInFlightFrames-1] of TParticleVertices; // 18MB in total at the moment
             PInFlightFramesParticleVertices=^TInFlightFramesParticleVertices;
             TJointBlock=packed record
              case boolean of
