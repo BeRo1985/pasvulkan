@@ -16438,6 +16438,7 @@ var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     Position:TpvVector3;
     Size:TpvVector2;
     Color:TpvVector4;
+    HalfFloatColor:TpvHalfFloatVector4;
     ParticleVertices:TpvScene3D.PParticleVertices;
     ParticleVertex:PParticleVertex;
 begin
@@ -16476,6 +16477,11 @@ begin
     Size:=Particle^.SizeStart.Lerp(Particle^.SizeEnd,Time);
     Color:=Particle^.ColorStart.Lerp(Particle^.ColorEnd,Time);
 
+    HalfFloatColor.x:=Color.x;
+    HalfFloatColor.y:=Color.y;
+    HalfFloatColor.z:=Color.z;
+    HalfFloatColor.w:=Color.w;
+
     ParticleVertex:=@ParticleVertices^[CountVertices+0];
     ParticleVertex^.Position:=Position;
     ParticleVertex^.Rotation:=Rotation;
@@ -16483,10 +16489,7 @@ begin
     ParticleVertex^.QuadCoord.y:=0.0;
     ParticleVertex^.TextureID:=0;
     ParticleVertex^.Size:=Size;
-    ParticleVertex^.Color.x:=Color.x;
-    ParticleVertex^.Color.y:=Color.y;
-    ParticleVertex^.Color.z:=Color.z;
-    ParticleVertex^.Color.w:=Color.w;
+    ParticleVertex^.Color:=HalfFloatColor;
 
     ParticleVertex:=@ParticleVertices^[CountVertices+1];
     ParticleVertex^.Position:=Position;
@@ -16495,10 +16498,7 @@ begin
     ParticleVertex^.QuadCoord.y:=0.0;
     ParticleVertex^.TextureID:=0;
     ParticleVertex^.Size:=Size;
-    ParticleVertex^.Color.x:=Color.x;
-    ParticleVertex^.Color.y:=Color.y;
-    ParticleVertex^.Color.z:=Color.z;
-    ParticleVertex^.Color.w:=Color.w;
+    ParticleVertex^.Color:=HalfFloatColor;
 
     ParticleVertex:=@ParticleVertices^[CountVertices+2];
     ParticleVertex^.Position:=Position;
@@ -16507,10 +16507,7 @@ begin
     ParticleVertex^.QuadCoord.y:=2.0;
     ParticleVertex^.TextureID:=0;
     ParticleVertex^.Size:=Size;
-    ParticleVertex^.Color.x:=Color.x;
-    ParticleVertex^.Color.y:=Color.y;
-    ParticleVertex^.Color.z:=Color.z;
-    ParticleVertex^.Color.w:=Color.w;
+    ParticleVertex^.Color:=HalfFloatColor;
 
     inc(CountVertices,3);
 
