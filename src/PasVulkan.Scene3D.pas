@@ -98,6 +98,9 @@ type EpvScene3D=class(Exception);
        const MaxRenderPassIndices=32;
              MaxVisibleLights=65536;
              MaxDebugPrimitiveVertices=1 shl 20;
+             MaxParticles=65536; // <= Must be power of two
+             ParticleIndexMask=MaxParticles-1;
+             MaxParticleVertices=MaxParticles*3;
              LightClusterSizeX=16;
              LightClusterSizeY=8;
              LightClusterSizeZ=32;
@@ -115,8 +118,6 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashBits=16;
              LightClusterGridHashSize=1 shl LightClusterGridHashBits;
              LightClusterGridHashMask=LightClusterGridHashSize-1;
-             MaxParticles=65536; // <= Must be power of two
-             ParticleMask=MaxParticles-1;
        type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             TDoubleSided=boolean;
             TFrontFacesInversed=boolean;
@@ -2290,6 +2291,7 @@ type EpvScene3D=class(Exception);
        fParticleIndexCounter:TpvUInt32;
        fInFlightFrameParticleVertices:TInFlightFrameParticleVertices;
        fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
+       fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -14634,6 +14636,20 @@ begin
                                                                              0,
                                                                              0,
                                                                              [TpvVulkanBufferFlag.PersistentMapped]);
+           fVulkanParticleVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                       SizeOf(TpvScene3D.TParticleVertex)*MaxParticleVertices,
+                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                       [],
+                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                       0,
+                                                                       0,
+                                                                       0,
+                                                                       0,
+                                                                       0,
+                                                                       0,
+                                                                       [TpvVulkanBufferFlag.PersistentMapped]);
           end;
 
          end;
@@ -14739,6 +14755,20 @@ begin
                                                                              0,
                                                                              0,
                                                                              []);
+           fVulkanParticleVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                       SizeOf(TpvScene3D.TParticleVertex)*MaxParticleVertices,
+                                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                       [],
+                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                       0,
+                                                                       0,
+                                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                       0,
+                                                                       0,
+                                                                       0,
+                                                                       0,
+                                                                       []);
           end;
 
          end;
@@ -15141,6 +15171,7 @@ begin
      for Index:=0 to fCountInFlightFrames-1 do begin
       FreeAndNil(fGlobalVulkanViewUniformBuffers[Index]);
       FreeAndNil(fVulkanDebugPrimitiveVertexBuffers[Index]);
+      FreeAndNil(fVulkanParticleVertexBuffers[Index]);
      end;
 
 {    for Index:=0 to fCountInFlightFrames-1 do begin
@@ -16561,8 +16592,8 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
 var Particle:PParticle;
 begin
  // No free list, because of simple wraparound-based ring buffer style allocation, so we don't also check for the agest particle as performance optimization
- result:=fParticleIndexCounter and ParticleMask;
- fParticleIndexCounter:=(fParticleIndexCounter+1) and ParticleMask;
+ result:=fParticleIndexCounter and ParticleIndexMask;
+ fParticleIndexCounter:=(fParticleIndexCounter+1) and ParticleIndexMask;
  fParticleAliveBitmap[result shr 5]:=fParticleAliveBitmap[result shr 5] or (TpvUInt32(1) shl (result and 31));
  Particle:=@fParticles[result];
  Particle^.Generation:=Particle^.Generation+1;
