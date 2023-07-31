@@ -356,6 +356,8 @@ type EpvScene3D=class(Exception);
              Generation:TpvUInt64;
              LastPosition:TpvVector3;
              Position:TpvVector3;
+             RotationStart:TpvFloat;
+             RotationEnd:TpvFloat;
              SizeStart:TpvVector2;
              SizeEnd:TpvVector2;
              ColorStart:TpvVector4;
@@ -16426,7 +16428,7 @@ var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
     Count:TpvUInt32;
     Particle:PParticle;
-    Time:TpvFloat;
+    Time,Rotation:TpvFloat;
     Position:TpvVector3;
     Size:TpvVector2;
     Color:TpvVector4;
@@ -16447,6 +16449,7 @@ begin
      Position:=Particle^.Position;
      Time:=0.0;
     end;
+    Rotation:=FloatLerp(Particle^.RotationStart,Particle^.RotationEnd,Time);
     Size:=Particle^.SizeStart.Lerp(Particle^.SizeEnd,Time);
     Color:=Particle^.ColorStart.Lerp(Particle^.ColorEnd,Time);
     inc(Count);
