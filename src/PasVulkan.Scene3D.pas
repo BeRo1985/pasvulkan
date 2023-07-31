@@ -2391,7 +2391,7 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
        procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
-       procedure InitializePraticlePipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure InitializeParticlePipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure StoreParticleStates;
        procedure UpdateParticleStates(const aDeltaTime:TpvDouble);
        procedure InterpolateParticleStates(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
@@ -16410,7 +16410,7 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Color)));
 end;
 
-procedure TpvScene3D.InitializePraticlePipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+procedure TpvScene3D.InitializeParticlePipeline(const aPipeline:TpvVulkanGraphicsPipeline);
 begin
  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TParticleVertex),VK_VERTEX_INPUT_RATE_VERTEX);
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PParticleVertex(nil)^.Position)));
