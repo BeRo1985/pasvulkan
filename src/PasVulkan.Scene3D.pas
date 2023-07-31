@@ -115,6 +115,7 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashBits=16;
              LightClusterGridHashSize=1 shl LightClusterGridHashBits;
              LightClusterGridHashMask=LightClusterGridHashSize-1;
+             MaxParticles=65536; // <= Must be power of two
        type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             TDoubleSided=boolean;
             TFrontFacesInversed=boolean;
@@ -350,6 +351,33 @@ type EpvScene3D=class(Exception);
             TDebugPrimitiveVertexDynamicArray=class(TpvDynamicArrayList<TDebugPrimitiveVertex>)
             end;
             TDebugPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TDebugPrimitiveVertexDynamicArray;
+            TParticle=record
+             Position:TpvVector3;
+             SizeStart:TpvVector2;
+             SizeEnd:TpvVector2;
+             ColorStart:TpvVector4;
+             ColorEnd:TpvVector4;
+             Velocity:TpvVector3;
+             Age:TpvDouble;
+             LifeTime:TpvDouble;
+             Texture:Pointer;
+            end;
+            PParticle=^TParticle;
+            TParticles=array[0..MaxParticles-1] of TParticle;
+            PParticles=^TParticles;
+            TParticleAliveBitmap=array[0..((MaxParticles+31) shr 5)-1] of TpvUInt32;
+            PParticleAliveBitmap=^TParticleAliveBitmap;
+            TParticleVertex=packed record
+             Position:TpvVector3;       //   12
+             TextureID:TpvUInt32;       //    4
+             Size:TpvVector2;           //    8
+             Color:TpvHalfFloatVector4; //    8
+            end;                        // = 32 bytes per particle vertex
+            PParticleVertex=^TParticleVertex;
+            TParticleVertices=array[0..(MaxParticles*3)-1] of TParticleVertex;
+            PParticleVertices=^TParticleVertices;
+            TInFlightFramesParticleVertices=array[0..MaxInFlightFrames-1] of TParticleVertices;
+            PInFlightFramesParticleVertices=^TInFlightFramesParticleVertices;
             TJointBlock=packed record
              case boolean of
               false:(
