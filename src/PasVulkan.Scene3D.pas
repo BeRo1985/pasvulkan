@@ -2273,6 +2273,9 @@ type EpvScene3D=class(Exception);
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
+       fParticles:TParticles;
+       fPointerToParticles:PParticles;
+       fParticleAliveBitmap:TParticleAliveBitmap;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -2371,6 +2374,7 @@ type EpvScene3D=class(Exception);
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
+       property Particles:PParticles read fPointerToParticles;
       published
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -14053,6 +14057,10 @@ begin
   fVulkanBufferCopyBatchItemArrays[Index].Initialize;
   fDebugPrimitiveVertexDynamicArrays[Index]:=TpvScene3D.TDebugPrimitiveVertexDynamicArray.Create;
  end;
+
+ fPointerToParticles:=@fParticles;
+
+ FillChar(fParticleAliveBitmap,SizeOf(TParticleAliveBitmap),#0);
 
  fTechniques:=TpvTechniques.Create;
 
