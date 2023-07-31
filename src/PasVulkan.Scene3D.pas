@@ -16482,7 +16482,8 @@ begin
     HalfFloatColor.z:=Color.z;
     HalfFloatColor.w:=Color.w;
 
-    // One oversized triangle per particle which contains the actual particle quad
+    // One oversized triangle per particle which contains the actual particle quad. 
+    // Indeed it can raise the overdraw amount, but it saves the amount of vertices in turn.  
 
     ParticleVertex:=@ParticleVertices^[CountVertices+0];
     ParticleVertex^.Position:=Position;
