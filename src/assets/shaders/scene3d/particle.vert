@@ -12,8 +12,8 @@
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in float inRotation;
 layout(location = 2) in vec2 inQuadCoord;
-layout(location = 3) in vec2 inSize;
-layout(location = 4) in uint inTextureID;
+layout(location = 3) in uint inTextureID;
+layout(location = 4) in vec2 inSize;
 layout(location = 5) in vec4 inColor;
 
 layout(location = 0) out vec3 outViewSpacePosition;
