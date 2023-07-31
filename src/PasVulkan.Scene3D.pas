@@ -16482,6 +16482,8 @@ begin
     HalfFloatColor.z:=Color.z;
     HalfFloatColor.w:=Color.w;
 
+    // One oversized triangle per particle which contains the actual particle quad
+
     ParticleVertex:=@ParticleVertices^[CountVertices+0];
     ParticleVertex^.Position:=Position;
     ParticleVertex^.Rotation:=Rotation;
