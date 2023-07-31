@@ -14622,6 +14622,9 @@ begin
                                                                           0,
                                                                           0,
                                                                           [TpvVulkanBufferFlag.PersistentMapped]);
+          end;
+
+          for Index:=0 to fCountInFlightFrames-1 do begin
            fVulkanDebugPrimitiveVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                              SizeOf(TpvScene3D.TDebugPrimitiveVertex)*MaxDebugPrimitiveVertices,
                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -14636,6 +14639,9 @@ begin
                                                                              0,
                                                                              0,
                                                                              [TpvVulkanBufferFlag.PersistentMapped]);
+          end;
+
+          for Index:=0 to fCountInFlightFrames-1 do begin
            fVulkanParticleVertexBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                        SizeOf(TpvScene3D.TParticleVertex)*MaxParticleVertices,
                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
