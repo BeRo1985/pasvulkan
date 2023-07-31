@@ -13,12 +13,12 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in float inRotation;
 layout(location = 2) in vec2 inQuadCoord;
 layout(location = 3) in vec2 inSize;
-layout(location = 4) in uint inTextureIndex;
+layout(location = 4) in uint inTextureID;
 layout(location = 5) in vec4 inColor;
 
 layout(location = 0) out vec2 outTexCoord;
 layout(location = 1) out vec4 outColor;
-layout(location = 2) flat out uint outTextureIndex;
+layout(location = 2) flat out uint outTextureID;
 
 /* clang-format off */
 layout (push_constant) uniform PushConstants {
@@ -61,7 +61,7 @@ void main() {
   vec3 position = inPosition + ((worldSpaceRight * (coord.x * sinCos.y) + (coord.y * sinCos.x)) + (worldSpaceUp * (coord.y * sinCos.y) - (coord.x * sinCos.x)));
   outTexCoord = inQuadCoord;
   outColor = inColor;
-  outTextureIndex = inTextureIndex;
+  outTextureID = inTextureID;
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
   gl_PointSize = 1.0;
 }

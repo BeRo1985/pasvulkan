@@ -508,6 +508,7 @@ compileshaderarguments=(
   '-V debug_primitive.frag -o debug_primitive_frag.spv'
 
   '-V particle.vert -o particle_vert.spv'
+  '-V particle.frag -o particle_frag.spv'
 
 )
 
