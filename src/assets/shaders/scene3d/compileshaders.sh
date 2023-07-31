@@ -507,6 +507,8 @@ compileshaderarguments=(
   '-V debug_primitive.vert -o debug_primitive_vert.spv'
   '-V debug_primitive.frag -o debug_primitive_frag.spv'
 
+  '-V particle.vert -o particle_vert.spv'
+
 )
 
 glslangValidatorPath=$(which glslangValidator)
