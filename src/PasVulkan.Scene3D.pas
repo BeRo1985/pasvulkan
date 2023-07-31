@@ -2392,7 +2392,8 @@ type EpvScene3D=class(Exception);
                             const aColorStart:TpvVector4;
                             const aColorEnd:TpvVector4;
                             const aLifeTime:TpvScalar;
-                            const aTextureID:TpvUInt32):TpvSizeInt;
+                            const aTextureID:TpvUInt32;
+                            const aAdditiveBlending:boolean):TpvSizeInt;
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -16555,7 +16556,8 @@ function TpvScene3D.AddParticle(const aPosition:TpvVector3;
                                 const aColorStart:TpvVector4;
                                 const aColorEnd:TpvVector4;
                                 const aLifeTime:TpvScalar;
-                                const aTextureID:TpvUInt32):TpvSizeInt;
+                                const aTextureID:TpvUInt32;
+                                const aAdditiveBlending:boolean):TpvSizeInt;
 var Particle:PParticle;
 begin
  // No free list, because of simple wraparound-based ring buffer style allocation, so we don't also check for the agest particle as performance optimization
@@ -16577,7 +16579,11 @@ begin
  Particle^.Time:=0.0;
  Particle^.Age:=0.0;
  Particle^.LifeTime:=aLifeTime;
- Particle^.TextureID:=aTextureID;
+ if aAdditiveBlending then begin
+  Particle^.TextureID:=aTextureID or TpvUInt32($80000000);
+ end else begin
+  Particle^.TextureID:=aTextureID;
+ end;
 end;
 
 initialization
