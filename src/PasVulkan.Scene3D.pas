@@ -16447,7 +16447,7 @@ begin
      Position:=Particle^.LastPosition.Lerp(Particle^.Position,aAlpha);
      Time:=FloatLerp(Particle^.LastTime,Particle^.Time,aAlpha);
     end else begin
-     // Different generation, so it is a fresh new particle, so consider it as a particle without previous state
+     // Different generation, so it is a fresh new particle => consider it as a particle without previous state
      Position:=Particle^.Position;
      Time:=0.0;
     end;
