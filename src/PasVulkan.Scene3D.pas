@@ -16437,7 +16437,6 @@ var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
     Time,Rotation:TpvFloat;
     Position:TpvVector3;
     Size:TpvVector2;
-    Color:TpvVector4;
     HalfFloatColor:TpvHalfFloatVector4;
     ParticleVertices:TpvScene3D.PParticleVertices;
     ParticleVertex:PParticleVertex;
@@ -16474,13 +16473,13 @@ begin
     end;
  
     Rotation:=FloatLerp(Particle^.RotationStart,Particle^.RotationEnd,Time);
+    
     Size:=Particle^.SizeStart.Lerp(Particle^.SizeEnd,Time);
-    Color:=Particle^.ColorStart.Lerp(Particle^.ColorEnd,Time);
-
-    HalfFloatColor.x:=Color.x;
-    HalfFloatColor.y:=Color.y;
-    HalfFloatColor.z:=Color.z;
-    HalfFloatColor.w:=Color.w;
+    
+    HalfFloatColor.x:=FloatLerp(Particle^.ColorStart.x,Particle^.ColorEnd.x,Time);
+    HalfFloatColor.y:=FloatLerp(Particle^.ColorStart.y,Particle^.ColorEnd.y,Time);
+    HalfFloatColor.z:=FloatLerp(Particle^.ColorStart.z,Particle^.ColorEnd.z,Time);
+    HalfFloatColor.w:=FloatLerp(Particle^.ColorStart.w,Particle^.ColorEnd.w,Time);
 
     // Each particle has an oversized triangle that contains the actual particle quad.
     // This might increase overdraw, but it reduces the number of vertices used.  
