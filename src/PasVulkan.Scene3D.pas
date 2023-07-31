@@ -2362,6 +2362,17 @@ type EpvScene3D=class(Exception);
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                      const aOnSetRenderPassResources:TOnSetRenderPassResources);
+       procedure UpdateGPUParticles(const aInFlightFrameIndex:TpvSizeInt);
+       procedure DrawParticles(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                               const aPreviousInFlightFrameIndex:TpvSizeInt;
+                               const aInFlightFrameIndex:TpvSizeInt;
+                               const aRenderPassIndex:TpvSizeInt;
+                               const aViewBaseIndex:TpvSizeInt;
+                               const aCountViews:TpvSizeInt;
+                               const aFrameIndex:TpvSizeInt;
+                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                               const aPipelineLayout:TpvVulkanPipelineLayout;
+                               const aOnSetRenderPassResources:TOnSetRenderPassResources);
        procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                       const aPreviousInFlightFrameIndex:TpvSizeInt;
                       const aInFlightFrameIndex:TpvSizeInt;
@@ -16219,6 +16230,52 @@ begin
   aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);
 
  end;
+end;
+
+procedure TpvScene3D.UpdateGPUParticles(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ if fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+  fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                     fVulkanStagingCommandBuffer,
+                                     fVulkanStagingFence,
+                                     fInFlightFrameParticleVertices[aInFlightFrameIndex][0],
+                                     fVulkanParticleVertexBuffers[aInFlightFrameIndex],
+                                     0,
+                                     SizeOf(TpvScene3D.TParticleVertex)*Min(fCountInFlightFrameParticleVertices[aInFlightFrameIndex],TpvScene3D.MaxParticleVertices));
+ end;
+end;
+
+procedure TpvScene3D.DrawParticles(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
+                                   const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                   const aInFlightFrameIndex:TpvSizeInt;
+                                   const aRenderPassIndex:TpvSizeInt;
+                                   const aViewBaseIndex:TpvSizeInt;
+                                   const aCountViews:TpvSizeInt;
+                                   const aFrameIndex:TpvSizeInt;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aPipelineLayout:TpvVulkanPipelineLayout;
+                                   const aOnSetRenderPassResources:TOnSetRenderPassResources);
+const Offsets:TVkDeviceSize=0;
+//var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+begin
+{if (aViewBaseIndex>=0) and (aCountViews>0) and (fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) then begin
+
+  VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+  VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
+  VertexStagePushConstants^.CountViews:=aCountViews;
+  VertexStagePushConstants^.CountAllViews:=fViews.Count;
+  VertexStagePushConstants^.FrameIndex:=aFrameIndex;
+  VertexStagePushConstants^.Jitter:=TpvVector4.Null;
+
+  fSetGlobalResourcesDone[aRenderPassIndex]:=false;
+  SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);
+
+ end;}
+
 end;
 
 procedure TpvScene3D.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
