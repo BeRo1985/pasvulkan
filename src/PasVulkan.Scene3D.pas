@@ -352,14 +352,20 @@ type EpvScene3D=class(Exception);
             end;
             TDebugPrimitiveVertexDynamicArrays=array[0..MaxInFlightFrames-1] of TDebugPrimitiveVertexDynamicArray;
             TParticle=record
+             LastGeneration:TpvUInt64;
+             Generation:TpvUInt64;
+             LastPosition:TpvVector3;
              Position:TpvVector3;
              SizeStart:TpvVector2;
              SizeEnd:TpvVector2;
              ColorStart:TpvVector4;
              ColorEnd:TpvVector4;
              Velocity:TpvVector3;
+             Gravity:TpvVector3;
              Age:TpvDouble;
              LifeTime:TpvDouble;
+             LastTime:TpvFloat;
+             Time:TpvFloat;
              Texture:Pointer;
             end;
             PParticle=^TParticle;
@@ -2276,6 +2282,7 @@ type EpvScene3D=class(Exception);
        fParticles:TParticles;
        fPointerToParticles:PParticles;
        fParticleAliveBitmap:TParticleAliveBitmap;
+       fParticleIndexCounter:TpvUInt32;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -2364,6 +2371,9 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
        procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure StoreParticles;
+       procedure UpdateParticles(const aDeltaTime:TpvDouble);
+       procedure InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -14062,6 +14072,8 @@ begin
 
  FillChar(fParticleAliveBitmap,SizeOf(TParticleAliveBitmap),#0);
 
+ fParticleIndexCounter:=0;
+
  fTechniques:=TpvTechniques.Create;
 
  fImageListLock:=TPasMPCriticalSection.Create;
@@ -16358,6 +16370,90 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.StoreParticles;
+var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
+    ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
+    Particle:PParticle;
+begin
+ for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
+  ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
+  if ParticleAliveBitmapValue<>0 then begin
+   ParticleBaseIndex:=ParticleAliveBitmapIndex shl 5;
+   repeat
+    ParticleBitIndex:=TPasMPMath.BitScanForward32(ParticleAliveBitmapValue);
+    ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
+    Particle:=@fParticles[ParticleIndex];
+    Particle^.LastGeneration:=Particle^.Generation;
+    Particle^.LastPosition:=Particle^.Position;
+    Particle^.LastTime:=Particle^.Age/Particle^.LifeTime;
+    ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
+   until ParticleAliveBitmapValue=0;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.UpdateParticles(const aDeltaTime:TpvDouble);
+var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
+    ParticleBaseIndex,ParticleBitIndex,ParticleIndex:TpvUInt32;
+    Particle:PParticle;
+begin
+ for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
+  ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
+  if ParticleAliveBitmapValue<>0 then begin
+   ParticleBaseIndex:=ParticleAliveBitmapIndex shl 5;
+   repeat
+    ParticleBitIndex:=TPasMPMath.BitScanForward32(ParticleAliveBitmapValue);
+    ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
+    Particle:=@fParticles[ParticleIndex];
+    if (Particle^.Age>=Particle^.LifeTime) or IsZero(Particle^.LifeTime) then begin
+     fParticleAliveBitmap[ParticleAliveBitmapIndex]:=fParticleAliveBitmap[ParticleAliveBitmapIndex] and not (TpvUInt32(1) shl ParticleBitIndex);
+    end else begin
+     Particle^.Position:=Particle^.Position+(Particle^.Velocity*aDeltaTime);
+     Particle^.Velocity:=Particle^.Velocity+(Particle^.Gravity*aDeltaTime);
+     Particle^.Time:=Particle^.Age/Particle^.LifeTime;
+     Particle^.Age:=Particle^.Age+aDeltaTime;
+    end;
+    ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
+   until ParticleAliveBitmapValue=0;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
+var ParticleAliveBitmapIndex,ParticleAliveBitmapValue,
+    ParticleBaseIndex,ParticleBitIndex,ParticleIndex,
+    Count:TpvUInt32;
+    Particle:PParticle;
+    Time:TpvFloat;
+    Position:TpvVector3;
+    Size:TpvVector2;
+    Color:TpvVector4;
+begin
+ Count:=0;
+ for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
+  ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
+  if ParticleAliveBitmapValue<>0 then begin
+   ParticleBaseIndex:=ParticleAliveBitmapIndex shl 5;
+   repeat
+    ParticleBitIndex:=TPasMPMath.BitScanForward32(ParticleAliveBitmapValue);
+    ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
+    Particle:=@fParticles[ParticleIndex];
+    if Particle^.LastGeneration=Particle^.Generation then begin
+     Position:=Particle^.LastPosition.Lerp(Particle^.Position,aAlpha);
+     Time:=FloatLerp(Particle^.LastTime,Particle^.Time,aAlpha);
+    end else begin
+     Position:=Particle^.Position;
+     Time:=0.0;
+    end;
+    Size:=Particle^.SizeStart.Lerp(Particle^.SizeEnd,Time);
+    Color:=Particle^.ColorStart.Lerp(Particle^.ColorEnd,Time);
+    inc(Count);
+    ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
+   until ParticleAliveBitmapValue=0;
+  end;
+ end;
 end;
 
 initialization
