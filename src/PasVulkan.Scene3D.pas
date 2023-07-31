@@ -16443,9 +16443,11 @@ begin
     ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
     Particle:=@fParticles[ParticleIndex];
     if Particle^.LastGeneration=Particle^.Generation then begin
+     // Same generation, so interpolate for an already existing particle
      Position:=Particle^.LastPosition.Lerp(Particle^.Position,aAlpha);
      Time:=FloatLerp(Particle^.LastTime,Particle^.Time,aAlpha);
     end else begin
+     // Different generation, so it is a fresh new particle, so consider it as a particle without previous state
      Position:=Particle^.Position;
      Time:=0.0;
     end;
