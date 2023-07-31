@@ -16529,6 +16529,7 @@ begin
     inc(CountVertices,3);
 
     ParticleAliveBitmapValue:=ParticleAliveBitmapValue and (ParticleAliveBitmapValue-1);
+
    until ParticleAliveBitmapValue=0;
 
   end;
