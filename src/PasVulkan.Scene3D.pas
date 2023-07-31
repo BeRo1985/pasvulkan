@@ -116,6 +116,7 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashSize=1 shl LightClusterGridHashBits;
              LightClusterGridHashMask=LightClusterGridHashSize-1;
              MaxParticles=65536; // <= Must be power of two
+             ParticleMask=MaxParticles-1;
        type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             TDoubleSided=boolean;
             TFrontFacesInversed=boolean;
@@ -368,7 +369,7 @@ type EpvScene3D=class(Exception);
              LifeTime:TpvDouble;
              LastTime:TpvFloat;
              Time:TpvFloat;
-             Texture:Pointer;
+             TextureID:TpvUInt32;
             end;
             PParticle=^TParticle;
             TParticles=array[0..MaxParticles-1] of TParticle;
@@ -2380,6 +2381,18 @@ type EpvScene3D=class(Exception);
        procedure StoreParticles;
        procedure UpdateParticles(const aDeltaTime:TpvDouble);
        procedure InterpolateParticles(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
+       procedure DeleteAllParticles;
+       function AddParticle(const aPosition:TpvVector3;
+                            const aVelocity:TpvVector3;
+                            const aGravity:TpvVector3;
+                            const aRotationStart:TpvFloat;
+                            const aRotationEnd:TpvFloat;
+                            const aSizeStart:TpvVector2;
+                            const aSizeEnd:TpvVector2;
+                            const aColorStart:TpvVector4;
+                            const aColorEnd:TpvVector4;
+                            const aLifeTime:TpvScalar;
+                            const aTextureID:TpvUInt32):TpvSizeInt;
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -16447,21 +16460,21 @@ begin
  ParticleVertices:=@fInFlightFrameParticleVertices[aInFlightFrameIndex];
 
  for ParticleAliveBitmapIndex:=0 to length(fParticleAliveBitmap)-1 do begin
- 
+
   ParticleAliveBitmapValue:=fParticleAliveBitmap[ParticleAliveBitmapIndex];
- 
+
   if ParticleAliveBitmapValue<>0 then begin
- 
+
    ParticleBaseIndex:=ParticleAliveBitmapIndex shl 5;
- 
+
    repeat
- 
+
     ParticleBitIndex:=TPasMPMath.BitScanForward32(ParticleAliveBitmapValue);
- 
+
     ParticleIndex:=ParticleBaseIndex+ParticleBitIndex;
- 
+
     Particle:=@fParticles[ParticleIndex];
- 
+
     if Particle^.LastGeneration=Particle^.Generation then begin
      // Same generation, so interpolate for an already existing particle
      Position:=Particle^.LastPosition.Lerp(Particle^.Position,aAlpha);
@@ -16471,18 +16484,18 @@ begin
      Position:=Particle^.Position;
      Time:=0.0;
     end;
- 
+
     Rotation:=FloatLerp(Particle^.RotationStart,Particle^.RotationEnd,Time);
-    
+
     Size:=Particle^.SizeStart.Lerp(Particle^.SizeEnd,Time);
-    
+
     HalfFloatColor.x:=FloatLerp(Particle^.ColorStart.x,Particle^.ColorEnd.x,Time);
     HalfFloatColor.y:=FloatLerp(Particle^.ColorStart.y,Particle^.ColorEnd.y,Time);
     HalfFloatColor.z:=FloatLerp(Particle^.ColorStart.z,Particle^.ColorEnd.z,Time);
     HalfFloatColor.w:=FloatLerp(Particle^.ColorStart.w,Particle^.ColorEnd.w,Time);
 
     // Each particle has an oversized triangle that contains the actual particle quad.
-    // This might increase overdraw, but it reduces the number of vertices used.  
+    // This might increase overdraw, but it reduces the number of vertices used.
 
     ParticleVertex:=@ParticleVertices^[CountVertices+0];
     ParticleVertex^.Position:=Position;
@@ -16524,7 +16537,48 @@ begin
 
 end;
 
+procedure TpvScene3D.DeleteAllParticles;
+begin
+ FillChar(fParticleAliveBitmap,SizeOf(TParticleAliveBitmap),#0); // really so simple as that 
+end;
+
+function TpvScene3D.AddParticle(const aPosition:TpvVector3;
+                                const aVelocity:TpvVector3;
+                                const aGravity:TpvVector3;
+                                const aRotationStart:TpvFloat;
+                                const aRotationEnd:TpvFloat;
+                                const aSizeStart:TpvVector2;
+                                const aSizeEnd:TpvVector2;
+                                const aColorStart:TpvVector4;
+                                const aColorEnd:TpvVector4;
+                                const aLifeTime:TpvScalar;
+                                const aTextureID:TpvUInt32):TpvSizeInt;
+var Particle:PParticle;
+begin
+ // No free list, because of simple wraparound-based ring buffer style allocation, so we don't also check for the agest particle as performance optimization
+ result:=fParticleIndexCounter and ParticleMask;
+ fParticleIndexCounter:=(fParticleIndexCounter+1) and ParticleMask;
+ fParticleAliveBitmap[result shr 5]:=fParticleAliveBitmap[result shr 5] or (TpvUInt32(1) shl (result and 31));
+ Particle:=@fParticles[result];
+ Particle^.Generation:=Particle^.Generation+1;
+ Particle^.Position:=aPosition;
+ Particle^.Velocity:=aVelocity;
+ Particle^.Gravity:=aGravity;
+ Particle^.RotationStart:=aRotationStart;
+ Particle^.RotationEnd:=aRotationEnd;
+ Particle^.SizeStart:=aSizeStart;
+ Particle^.SizeEnd:=aSizeEnd;
+ Particle^.ColorStart:=aColorStart;
+ Particle^.ColorEnd:=aColorEnd;
+ Particle^.LastTime:=0.0;
+ Particle^.Time:=0.0;
+ Particle^.Age:=0.0;
+ Particle^.LifeTime:=aLifeTime;
+ Particle^.TextureID:=aTextureID;
+end;
+
 initialization
  InitializeAnimationChannelTargetOverwriteGroupMap;
 end.
+
 
