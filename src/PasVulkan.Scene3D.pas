@@ -3686,14 +3686,8 @@ const WhiteTexturePixels:array[0..63] of TpvUInt32=(TpvUInt32($ffffffff),TpvUInt
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
                                                               TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
-     DefaultParticlePixels:array[0..63] of TpvUInt32=(TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),
-                                                      TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080),TpvUInt32($80808080));
+var TemporaryPixels:array of TpvUInt32;
+    x,y,w,h:TpvInt32;
 begin
  if (not fDataLoaded) and not fInLoadData then begin
   fInLoadData:=true;
@@ -3751,25 +3745,52 @@ begin
                                   false);
          end;
          TpvScene3D.TImage.TKind.DefaultParticleTexture:begin
-          fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
-                                  VK_SAMPLE_COUNT_1_BIT,
-                                  8,
-                                  8,
-                                  0,
-                                  0,
-                                  1,
-                                  0,
-                                  [TpvVulkanTextureUsageFlag.General,
-                                   TpvVulkanTextureUsageFlag.TransferDst,
-                                   TpvVulkanTextureUsageFlag.TransferSrc,
-                                   TpvVulkanTextureUsageFlag.Sampled],
-                                  @DefaultParticlePixels,
-                                  SizeOf(TpvUInt32)*64,
-                                  false,
-                                  false,
-                                  0,
-                                  true,
-                                  false);
+          w:=64;
+          h:=64;
+          TemporaryPixels:=nil;
+          SetLength(TemporaryPixels,w*h);
+          try
+           for y:=0 to h-1 do begin
+            for x:=0 to w-1 do begin
+             TemporaryPixels[(y*w)+x]:=$00ffffff or
+                            (TpvUInt32(
+                             Min(
+                              Max(
+                               round(
+                                SmoothStep(1.0,
+                                           0.25,
+                                           TpvVector2.InlineableCreate(
+                                            ((x/w)-0.5)*2.0,
+                                            ((y/h)-0.5)*2.0
+                                           ).Length)*255.0
+                                          ),
+                                0),
+                               255
+                              )) shl 24);
+            end;
+           end;
+           fTexture.LoadFromMemory(VK_FORMAT_R8G8B8A8_UNORM,
+                                   VK_SAMPLE_COUNT_1_BIT,
+                                   w,
+                                   h,
+                                   0,
+                                   0,
+                                   1,
+                                   0,
+                                   [TpvVulkanTextureUsageFlag.General,
+                                    TpvVulkanTextureUsageFlag.TransferDst,
+                                    TpvVulkanTextureUsageFlag.TransferSrc,
+                                    TpvVulkanTextureUsageFlag.Sampled],
+                                   @TemporaryPixels[0],
+                                   SizeOf(TpvUInt32)*length(TemporaryPixels),
+                                   false,
+                                   false,
+                                   0,
+                                   true,
+                                   false);
+          finally
+           TemporaryPixels:=nil;
+          end;
          end;
          else begin
           fTexture.LoadFromImage(fResourceDataStream,
