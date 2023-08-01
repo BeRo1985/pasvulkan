@@ -24,7 +24,7 @@ struct AABB {
   // vec4 worldSpaceSphere; // x = minViewSpaceBounds.w, y = maxViewSpaceBounds.w, z = minWorldSpaceBounds.w, radius = maxWorldSpaceBounds.w  
 };
 
-struct LightMetaInfo {
+struct LightDecalMetaInfo {
   vec4 minBounds; // xyz = min. pos, w = light type (0 = none, 1 and 4 = directional light (4=primary), 2 = point light, 3 = spot light)
   vec4 maxBounds; // xyz = max. pos, w = radius
 };
@@ -40,29 +40,29 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(std430, set = 0, binding = 1) buffer LightGridClusterAABBs {
-  AABB lightGridClusterAABBs[];
+layout(std430, set = 0, binding = 1) buffer FrustumClusterGridAABBs {
+  AABB frustumClusterGridAABBs[];
 };
 
 layout(std430, set = 0, binding = 2) buffer LightMetaInfos {
-  LightMetaInfo lightMetaInfos[];
+  LightDecalMetaInfo lightMetaInfos[];
 };
 
-layout (std430, set = 0, binding = 3) buffer LightGridIndexList {
-  uint lightGridIndexList[];
+layout (std430, set = 0, binding = 3) buffer FrustumClusterGridIndexList {
+  uint frustumClusterGridIndexList[];
 };
 
-layout (std430, set = 0, binding = 4) buffer LightGridClusters {
-  uvec2 lightGridClusters[];
+layout (std430, set = 0, binding = 4) buffer FrustumClusterGridData {
+  uvec4 frustumClusterGridData[];
 };
 
-layout (std430, set = 0, binding = 5) buffer LightGridIndexListCounter {
-  uint lightGridIndexListCounter;
+layout (std430, set = 0, binding = 5) buffer FrustumClusterGridIndexListCounters {
+  uint frustumClusterGridIndexListCounter;
 };
 
 /* clang-format on */
 
-shared LightMetaInfo sharedLightMetaInfos[8 * 8 * 8];
+shared LightDecalMetaInfo sharedLightDecalMetaInfos[8 * 8 * 8];
 
 void main() {
   //
@@ -81,22 +81,27 @@ void main() {
   uint countLights = pushConstants.countLightsViewIndexSizeOffsetedViewIndex.x;
   uint countBatches = (countLights + (countThreads - 1u)) / countThreads;
 
-  uint countVisibleLights = 0u;
-  uint visibleLightIndices[128];
-
   mat4 worldSpaceToViewSpaceMatrix = view.viewMatrix;
+
+  uint visibleLightDecalIndices[128]; // Shared for light and decal indices, as it is used not at the same time, but in different passes 
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+  // Lights
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+  uint countVisibleLights = 0u;
 
   for (uint batchIndex = 0; batchIndex < countBatches; batchIndex++) {
     uint linuxTransferIndex = (batchIndex * countThreads) + localInvocationIndex;
     if(linuxTransferIndex < countLights){
-      sharedLightMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
+      sharedLightDecalMetaInfos[localInvocationIndex] = lightMetaInfos[linuxTransferIndex];
     }else{ 
-      sharedLightMetaInfos[localInvocationIndex].minBounds = vec4(0.0);
-      sharedLightMetaInfos[localInvocationIndex].maxBounds = vec4(0.0);
+      sharedLightDecalMetaInfos[localInvocationIndex].minBounds = vec4(0.0);
+      sharedLightDecalMetaInfos[localInvocationIndex].maxBounds = vec4(0.0);
     }
     barrier();
     for (uint lightProcessIndex = 0u; (lightProcessIndex < countThreads) && (countVisibleLights < 128u); lightProcessIndex++) {
-      LightMetaInfo lightMetaInfo = sharedLightMetaInfos[lightProcessIndex];
+      LightDecalMetaInfo lightMetaInfo = sharedLightDecalMetaInfos[lightProcessIndex];
       if (lightMetaInfo.minBounds.w > 0.5) {
         switch(int(lightMetaInfo.minBounds.w + 0.5)){
           case 1:
@@ -104,7 +109,7 @@ void main() {
             // Directional light
             // Primary directional light
             // => always add without further checks, since directional lights are actually always scene global
-            visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+            visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
             countVisibleLights++;     
             break;
           }      
@@ -112,8 +117,8 @@ void main() {
           case 2:
           case 3:{
             // Check in view space
-            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
-            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds.xyz;
+            vec3 clusterAABBMin = frustumClusterGridAABBs[clusterIndex].minViewSpaceBounds.xyz;
+            vec3 clusterAABBMax = frustumClusterGridAABBs[clusterIndex].maxViewSpaceBounds.xyz;
             // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
             // without scaling the radius in the worst case
             vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
@@ -122,7 +127,7 @@ void main() {
             lightAABBMax /= lightAABBMax.w;
             vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));
             if(distance(clamp(lightSphere.xyz, clusterAABBMin, clusterAABBMax), lightSphere.xyz) <= lightSphere.w){
-              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
               countVisibleLights++;     
             }
             break;
@@ -130,8 +135,8 @@ void main() {
 #else
           case 2:{
             // Point light => check in view space
-            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minViewSpaceBounds.xyz;
-            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds.xyz;
+            vec3 clusterAABBMin = frustumClusterGridAABBs[clusterIndex].minViewSpaceBounds.xyz;
+            vec3 clusterAABBMax = frustumClusterGridAABBs[clusterIndex].maxViewSpaceBounds.xyz;
             // For also considering skewed etc. transforms, so that we don't just transform the sphere center 
             // without scaling the radius in the worst case
             vec4 lightAABBMin = worldSpaceToViewSpaceMatrix * vec4(lightMetaInfo.minBounds.xyz, 1.0);
@@ -140,19 +145,19 @@ void main() {
             lightAABBMax /= lightAABBMax.w;
             vec4 lightSphere = vec4((lightAABBMin.xyz + lightAABBMax.xyz) * 0.5, length((lightAABBMax.xyz - lightAABBMin.xyz) * 0.5));
             if(distance(clamp(lightSphere.xyz, clusterAABBMin, clusterAABBMax), lightSphere.xyz) <= lightSphere.w){
-              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
               countVisibleLights++;     
             }
             break;
           }
           case 3:{
             // Spot light => check in world space
-            vec3 clusterAABBMin = lightGridClusterAABBs[clusterIndex].minWorldSpaceBounds.xyz;
-            vec3 clusterAABBMax = lightGridClusterAABBs[clusterIndex].maxWorldSpaceBounds.xyz;
+            vec3 clusterAABBMin = frustumClusterGridAABBs[clusterIndex].minWorldSpaceBounds.xyz;
+            vec3 clusterAABBMax = frustumClusterGridAABBs[clusterIndex].maxWorldSpaceBounds.xyz;
             vec3 lightAABBMin = lightMetaInfo.minBounds.xyz;
             vec3 lightAABBMax = lightMetaInfo.maxBounds.xyz;
             if (all(lessThanEqual(clusterAABBMin, lightAABBMax)) && all(lessThanEqual(lightAABBMin, clusterAABBMax))) {
-              visibleLightIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
+              visibleLightDecalIndices[int(countVisibleLights)] = (batchIndex * countThreads) + lightProcessIndex;
               countVisibleLights++;     
             }
             break;
@@ -168,11 +173,29 @@ void main() {
 
   barrier();
 
-  uint offset = atomicAdd(lightGridIndexListCounter, countVisibleLights);
-
+  uint lightIndexOffset = atomicAdd(frustumClusterGridIndexListCounter, countVisibleLights);
   for (uint lightIndex = 0u; lightIndex < countVisibleLights; lightIndex++) {
-    lightGridIndexList[offset + lightIndex] = visibleLightIndices[lightIndex];
+    frustumClusterGridIndexList[lightIndexOffset + lightIndex] = visibleLightDecalIndices[lightIndex];
   }
+  
+  // ----------------------------------------------------------------------------------------------------------------------------
+  // Decals
+  // ----------------------------------------------------------------------------------------------------------------------------
+  
+  uint countVisibleDecals = 0u;
 
-  lightGridClusters[clusterIndex] = uvec2(offset, countVisibleLights);
+  // TODO: Implement decal culling
+
+  barrier();
+
+  uint decalIndexOffset = atomicAdd(frustumClusterGridIndexListCounter, countVisibleDecals);
+  for (uint decalIndex = 0u; decalIndex < countVisibleDecals; decalIndex++) {
+    frustumClusterGridIndexList[decalIndexOffset + decalIndex] = visibleLightDecalIndices[decalIndex];
+  }
+  
+  // ----------------------------------------------------------------------------------------------------------------------------
+  // Write data
+  // ----------------------------------------------------------------------------------------------------------------------------
+  frustumClusterGridData[clusterIndex] = uvec4(lightIndexOffset, countVisibleLights, decalIndexOffset, countVisibleDecals);
+
 }

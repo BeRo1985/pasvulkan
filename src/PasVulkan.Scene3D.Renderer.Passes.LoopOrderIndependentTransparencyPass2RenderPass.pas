@@ -477,7 +477,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                        [],
-                                                                       [fInstance.LightGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                       [fInstance.FrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
@@ -485,7 +485,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                        [],
-                                                                       [fInstance.LightGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                       [fInstance.FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
@@ -493,7 +493,7 @@ begin
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                        [],
-                                                                       [fInstance.LightGridClustersVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                       [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,

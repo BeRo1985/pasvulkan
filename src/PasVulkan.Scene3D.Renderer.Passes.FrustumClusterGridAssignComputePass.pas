@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.LightClusterGridAssignComputePass;
+unit PasVulkan.Scene3D.Renderer.Passes.FrustumClusterGridAssignComputePass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererPassesLightClusterGridAssignComputePass }
-     TpvScene3DRendererPassesLightClusterGridAssignComputePass=class(TpvFrameGraph.TComputePass)
+type { TpvScene3DRendererPassesFrustumClusterGridAssignComputePass }
+     TpvScene3DRendererPassesFrustumClusterGridAssignComputePass=class(TpvFrameGraph.TComputePass)
       private
        fInstance:TpvScene3DRendererInstance;
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -100,30 +100,30 @@ type { TpvScene3DRendererPassesLightClusterGridAssignComputePass }
 
 implementation
 
-{ TpvScene3DRendererPassesLightClusterGridAssignComputePass  }
+{ TpvScene3DRendererPassesFrustumClusterGridAssignComputePass  }
 
-constructor TpvScene3DRendererPassesLightClusterGridAssignComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='LightGridAssignComputePass';
+ Name:='FrustumClusterGridAssignComputePass';
 
 end;
 
-destructor TpvScene3DRendererPassesLightClusterGridAssignComputePass.Destroy;
+destructor TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesLightClusterGridAssignComputePass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('lightclusterassign_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('frustumclustergridassign_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -134,14 +134,14 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesLightClusterGridAssignComputePass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesLightClusterGridAssignComputePass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvInt32;
 begin
 
@@ -188,7 +188,7 @@ begin
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants));
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -217,7 +217,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.LightGridClusterAABBVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [fInstance.FrustumClusterGridAABBVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -235,7 +235,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.LightGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [fInstance.FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -244,7 +244,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.LightGridClustersVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -253,7 +253,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fInstance.LightGridIndexListCounterVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [fInstance.FrustumClusterGridIndexListCounterVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false
                                                                 );
@@ -262,7 +262,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesLightClusterGridAssignComputePass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvInt32;
 begin
  FreeAndNil(fPipeline);
@@ -275,14 +275,14 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesLightClusterGridAssignComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesLightClusterGridAssignComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesFrustumClusterGridAssignComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,ViewIndex:TpvInt32;
-    LightGridPushConstants:TpvScene3DRendererInstance.TLightGridPushConstants;
+    FrustumClusterGridPushConstants:TpvScene3DRendererInstance.TFrustumClusterGridPushConstants;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     MemoryBarrier:TVkMemoryBarrier;
 begin
@@ -293,7 +293,7 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[InFlightFrameIndex];
 
- LightGridPushConstants:=fInstance.LightGridPushConstants;
+ FrustumClusterGridPushConstants:=fInstance.FrustumClusterGridPushConstants;
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
@@ -307,19 +307,19 @@ begin
 
  for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
 
-  LightGridPushConstants.ViewIndex:=ViewIndex;
+  FrustumClusterGridPushConstants.ViewIndex:=ViewIndex;
 
-  LightGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
+  FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,
-                                  SizeOf(TpvScene3DRendererInstance.TLightGridPushConstants),
-                                  @LightGridPushConstants);
+                                  SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),
+                                  @FrustumClusterGridPushConstants);
 
-  aCommandBuffer.CmdDispatch((fInstance.LightGridSizeX+7) shr 3,
-                             (fInstance.LightGridSizeY+7) shr 3,
-                             (fInstance.LightGridSizeZ+7) shr 3);
+  aCommandBuffer.CmdDispatch((fInstance.FrustumClusterGridSizeX+7) shr 3,
+                             (fInstance.FrustumClusterGridSizeY+7) shr 3,
+                             (fInstance.FrustumClusterGridSizeZ+7) shr 3);
 
   FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;

@@ -223,21 +223,21 @@ layout(set = 1, binding = 4) uniform sampler2DArray uPassTextures[]; // 0 = SSAO
 
 #endif
 
-#ifdef LIGHTS
-layout (std140, set = 1, binding = 5) readonly uniform LightGlobals {
+#ifdef FRUSTUMCLUSTERGRID
+layout (std140, set = 1, binding = 5) readonly uniform FrustumClusterGridGlobals {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;
   uvec4 clusterSize;
   vec4 scaleBiasMax;
-} uLightGlobals;
+} uFrustumClusterGridGlobals;
 
-layout (std430, set = 1, binding = 6) readonly buffer LightGridIndexList {
-   uint lightGridIndexList[];
+layout (std430, set = 1, binding = 6) readonly buffer FrustumClusterGridIndexList {
+   uint frustumClusterGridIndexList[];
 };
 
-layout (std430, set = 1, binding = 7) readonly buffer LightGridClusters {
-  uvec2 lightGridClusters[];
+layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
+  uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
 };
 #endif
 
@@ -1509,15 +1509,15 @@ void main() {
 #define LIGHTCLUSTERS
 #ifdef LIGHTCLUSTERS
       // Light cluster grid
-      uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uLightGlobals.tileSizeZNearZFar.xy), 
-                               uint(clamp(fma(log2(-inViewSpacePosition.z), uLightGlobals.scaleBiasMax.x, uLightGlobals.scaleBiasMax.y), 0.0, uLightGlobals.scaleBiasMax.z)));
-      uint clusterIndex = clamp((((clusterXYZ.z * uLightGlobals.clusterSize.y) + clusterXYZ.y) * uLightGlobals.clusterSize.x) + clusterXYZ.x, 0u, uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
-                          (uint(gl_ViewIndex + uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uLightGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
-      uvec2 clusterData = lightGridClusters[clusterIndex];
+      uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy), 
+                               uint(clamp(fma(log2(-inViewSpacePosition.z), uFrustumClusterGridGlobals.scaleBiasMax.x, uFrustumClusterGridGlobals.scaleBiasMax.y), 0.0, uFrustumClusterGridGlobals.scaleBiasMax.z)));
+      uint clusterIndex = clamp((((clusterXYZ.z * uFrustumClusterGridGlobals.clusterSize.y) + clusterXYZ.y) * uFrustumClusterGridGlobals.clusterSize.x) + clusterXYZ.x, 0u, uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
+                          (uint(gl_ViewIndex + uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
+      uvec2 clusterData = frustumClusterGridData[clusterIndex].xy; // x = index, y = count and ignore decal data for now  
       for(uint clusterLightIndex = clusterData.x, clusterCountLights = clusterData.y; clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
         {
           {
-            Light light = lights[lightGridIndexList[clusterLightIndex]];
+            Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
 #else
       // Light BVH
       uint lightTreeNodeIndex = 0;

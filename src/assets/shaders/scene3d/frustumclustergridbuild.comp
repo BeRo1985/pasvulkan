@@ -34,23 +34,25 @@ struct AABB {
   vec4 maxWorldSpaceBounds;
 };
 
-layout(std430, set = 0, binding = 1) buffer LightGridClusterAABBs {
-  AABB lightGridClusterAABBs[];
+layout(std430, set = 0, binding = 1) buffer FrustumClusterGridAABBs {
+  AABB frustumClusterGridAABBs[];
 };
 
-layout (std430, set = 0, binding = 2) buffer LightGridIndexListCounter {
-  uint lightGridIndexListCounter;
+layout (std430, set = 0, binding = 2) buffer FrustumClusterGridIndexListCounters {
+  uint frustumClusterGridIndexListCounter; 
 };
 /* clang-format on */
 
 mat4 invMat;
 
-vec4 screen2Eye(vec4 coord) {
+// Convert the screen space coordinates to view space coordinates
+vec4 screenSpaceToViewSpace(vec4 coord) {
   vec2 ndc = fma((coord.xy - pushConstants.viewRect.xy) / pushConstants.viewRect.zw, vec2(2.0), vec2(-1.0));
-  vec4 eye = invMat * vec4(ndc, coord.z, 1.0);
-  return (eye / eye.w);
+  vec4 view = invMat * vec4(ndc, coord.z, 1.0);
+  return view / view.w;
 }
 
+// Calculate the line intersection with the z plane
 vec3 lineIntersectionToZPlane(vec3 firstPoint, vec3 secondPoint, float zValueViewSpace){
   vec3 lineDirection = secondPoint - firstPoint;
   return fma(lineDirection, vec3((zValueViewSpace - firstPoint.z) / lineDirection.z), firstPoint);
@@ -63,14 +65,18 @@ void main() {
 
   invMat = view.inverseProjectionMatrix;
 
+  // Define the infinity value with the bit pattern of the corresponding IEEE float value for infinity
   const float infinity = uintBitsToFloat(0x7f800000u);
 
+  // Calculate the global invocation index
   uvec3 globalInvocationID = uvec3(gl_GlobalInvocationID.xyz); //(gl_WorkGroupID.xyz * gl_WorkGroupSize.xyz) + gl_LocalInvocationID.xyz; 
   uvec3 globalSize = uvec3(gl_NumWorkGroups.xyz * gl_WorkGroupSize.xyz); 
   uint globalInvocationIndex = (((globalInvocationID.z * globalSize.y) + globalInvocationID.y) * globalSize.x) + globalInvocationID.x;
  
+  // Calculate the cluster index
   uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
 
+  // Calculate the min and max screen space wnd points
 #ifdef REVERSEDZ
   vec4 minScreen = vec4(vec2(uvec2(globalInvocationID.xy) * pushConstants.tileSizeZNearZFar.xy), 1.0, 1.0);
   vec4 maxScreen = vec4(vec2((uvec2(globalInvocationID.xy) + uvec2(1)) * pushConstants.tileSizeZNearZFar.xy), 1.0, 1.0);
@@ -79,33 +85,38 @@ void main() {
   vec4 maxScreen = vec4(vec2((uvec2(globalInvocationID.xy) + uvec2(1)) * pushConstants.tileSizeZNearZFar.xy), 0.0, 1.0);
 #endif
 
-  vec3 minEye = screen2Eye(minScreen).xyz;
-  vec3 maxEye = screen2Eye(maxScreen).xyz;
+  // Calculate the min and max end points of the line segment in view space
+  vec3 minView = screenSpaceToViewSpace(minScreen).xyz;
+  vec3 maxView = screenSpaceToViewSpace(maxScreen).xyz;
 
+  // Get the near and far plane values from the push constants
   vec2 ZNearZFar = uintBitsToFloat(pushConstants.tileSizeZNearZFar.zw);
 
+  // Calculate the near and far plane for the cluster 
   float clusterNear = (globalInvocationID.z == 0u) ? 0.0 : (ZNearZFar.x * pow(ZNearZFar.y / ZNearZFar.x, globalInvocationID.z / float(globalSize.z)));
   float clusterFar = ((globalInvocationID.z + 1u) == globalSize.z)  //
                          ? 3.4e+32  // infinity                     // the last cluster depth row is going into the infinity for a reserved z projection matrix with an actually infinite z far plane
                          : (ZNearZFar.x * pow(ZNearZFar.y / ZNearZFar.x, (globalInvocationID.z + 1) / float(globalSize.z)));
 
+  // Calculate the min and max bounds for the AABB in view space per line intersections with the near and far plane
 #if 0
-  vec3 minNear = (minEye * clusterNear) / minEye.z;
-  vec3 minFar = (minEye * clusterFar) / minEye.z;
-  vec3 maxNear = (maxEye * clusterNear) / maxEye.z;
-  vec3 maxFar = (maxEye * clusterFar) / maxEye.z;
+  vec3 minNear = (minView * clusterNear) / minView.z;
+  vec3 minFar = (minView * clusterFar) / minView.z;
+  vec3 maxNear = (maxView * clusterNear) / maxView.z;
+  vec3 maxFar = (maxView * clusterFar) / maxView.z;
 #else
-  vec3 minNear = lineIntersectionToZPlane(vec3(0.0), minEye, -clusterNear);
-  vec3 minFar = lineIntersectionToZPlane(vec3(0.0), minEye, -clusterFar); 
-  vec3 maxNear = lineIntersectionToZPlane(vec3(0.0), maxEye, -clusterNear);
-  vec3 maxFar = lineIntersectionToZPlane(vec3(0.0), maxEye, -clusterFar); 
+  vec3 minNear = lineIntersectionToZPlane(vec3(0.0), minView, -clusterNear);
+  vec3 minFar = lineIntersectionToZPlane(vec3(0.0), minView, -clusterFar); 
+  vec3 maxNear = lineIntersectionToZPlane(vec3(0.0), maxView, -clusterNear);
+  vec3 maxFar = lineIntersectionToZPlane(vec3(0.0), maxView, -clusterFar); 
 #endif
 
+  // Calculate the min and max bounds for the AABB in view space
   vec3 aabbViewSpaceMin = min(min(minNear, minFar), min(maxNear, maxFar));
   vec3 aabbViewSpaceMax = max(max(minNear, minFar), max(maxNear, maxFar));
   
+  // Calculate the world space min and max bounds for the AABB
   mat4 viewSpaceToWorldSpaceMatrix = view.inverseViewMatrix;
-
   vec4 aabbCorners[8] = {
     viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMin.z, 1.0),  //
     viewSpaceToWorldSpaceMatrix * vec4(aabbViewSpaceMin.x, aabbViewSpaceMin.y, aabbViewSpaceMax.z, 1.0),  //
@@ -127,17 +138,22 @@ void main() {
   vec3 aabbWorldSpaceMin = min(min(min(min(min(min(min(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
   vec3 aabbWorldSpaceMax = max(max(max(max(max(max(max(aabbCorners[0], aabbCorners[1]), aabbCorners[2]), aabbCorners[3]), aabbCorners[4]), aabbCorners[5]), aabbCorners[6]), aabbCorners[7]).xyz;
 
+  // Calculate the center and extents for the bounding sphere with center and radius in the end 
   vec3 center = (aabbViewSpaceMin + aabbViewSpaceMax) * 0.5;
   vec3 extents = (aabbViewSpaceMax - aabbViewSpaceMin) * 0.5;
   float radius = length(extents);
 
-  lightGridClusterAABBs[clusterIndex].minViewSpaceBounds = vec4(aabbViewSpaceMin, center.x);
-  lightGridClusterAABBs[clusterIndex].maxViewSpaceBounds = vec4(aabbViewSpaceMax, center.y);
-  lightGridClusterAABBs[clusterIndex].minWorldSpaceBounds = vec4(aabbWorldSpaceMin, center.z);
-  lightGridClusterAABBs[clusterIndex].maxWorldSpaceBounds = vec4(aabbWorldSpaceMax, radius);
+  // Write the final data
+  frustumClusterGridAABBs[clusterIndex].minViewSpaceBounds = vec4(aabbViewSpaceMin, center.x);
+  frustumClusterGridAABBs[clusterIndex].maxViewSpaceBounds = vec4(aabbViewSpaceMax, center.y);
+  frustumClusterGridAABBs[clusterIndex].minWorldSpaceBounds = vec4(aabbWorldSpaceMin, center.z);
+  frustumClusterGridAABBs[clusterIndex].maxWorldSpaceBounds = vec4(aabbWorldSpaceMax, radius);
 
   if(clusterIndex == 0u){
-    lightGridIndexListCounter = 0u; 
+    // Reset the atomic index counter for the sorted light and decal index lists, for the next compute shader pass, which assigns the lights and decals to 
+    // the clusters. So we do need to reset the counter only once at the beginning of the first compute shader invocation in this compute shader pass, since
+    // it is just for later use in the next compute shader pass. 
+    frustumClusterGridIndexListCounter = 0u; 
   }
 
 }
