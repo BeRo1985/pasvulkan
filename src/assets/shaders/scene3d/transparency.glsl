@@ -704,13 +704,17 @@
                    uvec3(packHalf2x16(finalColor.xy), packHalf2x16(finalColor.zw), 0u).xyzz
                   );
 
-     #ifndef DEPTHONLY    
+#ifndef DEPTHONLY    
         outFragColor = vec4(0.0);
 #endif
 
       }  
 
     #endif
+  }else{
+#ifndef DEPTHONLY    
+    outFragColor = vec4(0.0);
+#endif
   }
 
 #elif defined(BLEND)
