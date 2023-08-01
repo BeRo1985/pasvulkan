@@ -16212,18 +16212,18 @@ procedure TpvScene3D.DrawDebugPrimitives(const aGraphicsPipeline:TpvVulkanGraphi
                                          const aPipelineLayout:TpvVulkanPipelineLayout;
                                          const aOnSetRenderPassResources:TOnSetRenderPassResources);
 const Offsets:TVkDeviceSize=0;
-var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+//var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
 begin
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) then begin
 
-  VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.CountAllViews:=fViews.Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
 
-  fSetGlobalResourcesDone[aRenderPassIndex]:=false;
+  fSetGlobalResourcesDone[aRenderPassIndex]:=false;}
   SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
@@ -16257,19 +16257,19 @@ procedure TpvScene3D.DrawParticles(const aGraphicsPipeline:TpvVulkanGraphicsPipe
                                    const aPipelineLayout:TpvVulkanPipelineLayout;
                                    const aOnSetRenderPassResources:TOnSetRenderPassResources);
 const Offsets:TVkDeviceSize=0;
-var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+//var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0) then begin
 
-  VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+{ VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.CountAllViews:=fViews.Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
   VertexStagePushConstants^.Jitter:=TpvVector4.Null;
 
-  fSetGlobalResourcesDone[aRenderPassIndex]:=false;
+  fSetGlobalResourcesDone[aRenderPassIndex]:=false;}
   SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);

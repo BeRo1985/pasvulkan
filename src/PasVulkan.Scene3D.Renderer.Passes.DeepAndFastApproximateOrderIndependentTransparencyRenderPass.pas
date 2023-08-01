@@ -293,10 +293,10 @@ begin
  end;
 
  case fInstance.Renderer.TransparencyMode of
-  TpvScene3DRendererTransparencyMode.SPINLOCKOIT:begin
+  TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT:begin
    OITVariant:='spinlock';
   end;
-  TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
+  TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
    OITVariant:='interlock';
   end;
   else begin
@@ -315,7 +315,7 @@ begin
   if fInstance.ZFar<0.0 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_dfaoit_'+OITVariant+'_reversedz_msaa_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_lockoit_'+OITVariant+'_msaa_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_dfaoit_'+OITVariant+'_msaa_frag.spv');
   end;
  end;
  try
