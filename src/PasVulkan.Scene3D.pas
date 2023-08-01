@@ -132,7 +132,7 @@ type EpvScene3D=class(Exception);
               Direct,
               Staging
              );
-            TGraphicsPipelines=array[TPrimitiveTopology,TFaceCullingMode] of TpvVulkanPipeline;
+           TGraphicsPipelines=array[TPrimitiveTopology,TFaceCullingMode] of TpvVulkanPipeline;
             TTextureRawIndex=
              (
               None=-1,
@@ -2391,7 +2391,7 @@ type EpvScene3D=class(Exception);
                               out aZFar:TpvScalar);
        procedure InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
        procedure InitializeDebugPrimitiveGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
-       procedure InitializeParticlePipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+       procedure InitializeParticleGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
        procedure StoreParticleStates;
        procedure UpdateParticleStates(const aDeltaTime:TpvDouble);
        procedure InterpolateParticleStates(const aInFlightFrameIndex:TpvSizeInt;const aAlpha:TpvDouble);
@@ -16257,9 +16257,10 @@ procedure TpvScene3D.DrawParticles(const aGraphicsPipeline:TpvVulkanGraphicsPipe
                                    const aPipelineLayout:TpvVulkanPipelineLayout;
                                    const aOnSetRenderPassResources:TOnSetRenderPassResources);
 const Offsets:TVkDeviceSize=0;
-//var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
 begin
-{if (aViewBaseIndex>=0) and (aCountViews>0) and (fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) then begin
+
+ if (aViewBaseIndex>=0) and (aCountViews>0) and (fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0) then begin
 
   VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
@@ -16272,10 +16273,10 @@ begin
   SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
-  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
-  aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);
+  aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanParticleVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
+  aCommandBuffer.CmdDraw(Min(fCountInFlightFrameParticleVertices[aInFlightFrameIndex],TpvScene3D.MaxParticleVertices),1,0,0);
 
- end;}
+ end;
 
 end;
 
@@ -16410,7 +16411,7 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PDebugPrimitiveVertex(nil)^.Color)));
 end;
 
-procedure TpvScene3D.InitializeParticlePipeline(const aPipeline:TpvVulkanGraphicsPipeline);
+procedure TpvScene3D.InitializeParticleGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline);
 begin
  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TParticleVertex),VK_VERTEX_INPUT_RATE_VERTEX);
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PParticleVertex(nil)^.Position)));
