@@ -16239,7 +16239,7 @@ end;
 
 procedure TpvScene3D.UpdateParticles(const aInFlightFrameIndex:TpvSizeInt);
 begin
- if fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+ if fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0 then begin
   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
                                      fVulkanStagingCommandBuffer,
                                      fVulkanStagingFence,
