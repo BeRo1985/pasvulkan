@@ -639,7 +639,7 @@ begin
   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageParticleVertex);
   VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageParticleFragment);
 
-  VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(PrimitiveTopology);
+  VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
   fInstance.Renderer.Scene3D.InitializeParticleGraphicsPipeline(VulkanGraphicsPipeline);
