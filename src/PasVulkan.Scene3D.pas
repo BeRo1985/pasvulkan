@@ -16226,6 +16226,10 @@ begin
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;}
   SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
 
+  if assigned(aOnSetRenderPassResources) then begin
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  end;
+
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanDebugPrimitiveVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
   aCommandBuffer.CmdDraw(Min(fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count,TpvScene3D.MaxDebugPrimitiveVertices),1,0,0);
@@ -16271,6 +16275,10 @@ begin
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;}
   SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aInFlightFrameIndex);
+
+  if assigned(aOnSetRenderPassResources) then begin
+   aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+  end;
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,aGraphicsPipeline.Handle);
   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanParticleVertexBuffers[aInFlightFrameIndex].Handle,@Offsets);
