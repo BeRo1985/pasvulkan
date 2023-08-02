@@ -76,7 +76,7 @@ void main() {
   // Calculate the cluster index
   uint clusterIndex = globalInvocationIndex + (pushConstants.countLightsViewIndexSizeOffsetedViewIndex.y * pushConstants.countLightsViewIndexSizeOffsetedViewIndex.z);
 
-  // Calculate the min and max screen space wnd points
+  // Calculate the min and max screen space end points
 #ifdef REVERSEDZ
   vec4 minScreen = vec4(vec2(uvec2(globalInvocationID.xy) * pushConstants.tileSizeZNearZFar.xy), 1.0, 1.0);
   vec4 maxScreen = vec4(vec2((uvec2(globalInvocationID.xy) + uvec2(1)) * pushConstants.tileSizeZNearZFar.xy), 1.0, 1.0);
