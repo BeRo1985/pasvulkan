@@ -118,6 +118,7 @@ type EpvTriangleBVH=class(Exception);
        Center:TpvVector3;
        Data:TpvPtrInt;
        Flags:TpvUInt32;
+       function Area:TpvScalar;
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aTime,aU,aV,aW:TpvScalar):boolean; overload;
        function RayIntersection(const aRay:TpvTriangleBVHRay;out aTime,aU,aV,aW:TpvScalar):boolean; overload;
      end;
@@ -196,6 +197,7 @@ type EpvTriangleBVH=class(Exception);
        fBVHIntersectionCost:TpvScalar;
        fMaximumTrianglesPerNode:TpvInt32;
        fTriangleAreaSplitThreshold:TpvScalar;
+       procedure SplitTooLargeTriangles;
        function EvaluateSAH(const aParentTreeNode:PpvTriangleBVHTreeNode;const aAxis:TpvInt32;const aSplitPosition:TpvFloat):TpvFloat;
        function FindBestSplitPlaneMeanVariance(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):Boolean;
        function FindBestSplitPlaneSAHBruteforce(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):TpvFloat;
@@ -209,7 +211,7 @@ type EpvTriangleBVH=class(Exception);
        constructor Create(const aPasMPInstance:TPasMP);
        destructor Destroy; override;
        procedure Clear;
-       procedure AddTriangle(const aPoint0,aPoint1,aPoint2:TpvVector3;const aNormal:PpvVector3=nil;const aData:TpvPtrInt=0;const aFlags:TpvUInt32=TpvUInt32($ffffffff));
+       function AddTriangle(const aPoint0,aPoint1,aPoint2:TpvVector3;const aNormal:PpvVector3=nil;const aData:TpvPtrInt=0;const aFlags:TpvUInt32=TpvUInt32($ffffffff)):TpvInt32;
        procedure Build;
        procedure LoadFromStream(const aStream:TStream);
        procedure SaveToStream(const aStream:TStream);
@@ -253,6 +255,11 @@ begin
 end;
 
 { TpvTriangleBVHTriangle }
+
+function TpvTriangleBVHTriangle.Area:TpvScalar;
+begin
+ result:=((Points[1]-Points[0]).Cross(Points[2]-Points[0])).Length;
+end;
 
 function TpvTriangleBVHTriangle.RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aTime,aU,aV,aW:TpvScalar):boolean;
 const EPSILON=1e-7;
@@ -377,16 +384,15 @@ begin
 
 end;
 
-procedure TpvTriangleBVH.AddTriangle(const aPoint0,aPoint1,aPoint2:TpvVector3;const aNormal:PpvVector3;const aData:TpvPtrInt;const aFlags:TpvUInt32);
-var Index:TpvInt32;
-    Triangle:PpvTriangleBVHTriangle;
+function TpvTriangleBVH.AddTriangle(const aPoint0,aPoint1,aPoint2:TpvVector3;const aNormal:PpvVector3;const aData:TpvPtrInt;const aFlags:TpvUInt32):TpvInt32;
+var Triangle:PpvTriangleBVHTriangle;
 begin
- Index:=fCountTriangles;
+ result:=fCountTriangles;
  inc(fCountTriangles);
  if length(fTriangles)<=fCountTriangles then begin
   SetLength(fTriangles,fCountTriangles+((fCountTriangles+1) shr 1));
  end;
- Triangle:=@fTriangles[Index];
+ Triangle:=@fTriangles[result];
  Triangle^.Points[0]:=aPoint0;
  Triangle^.Points[1]:=aPoint1;
  Triangle^.Points[2]:=aPoint2;
@@ -398,7 +404,7 @@ begin
  Triangle^.Center:=(aPoint0+aPoint1+aPoint2)/3.0;
  Triangle^.Data:=aData;
  Triangle^.Flags:=aFlags;
- if Index=0 then begin
+ if result=0 then begin
   fBounds.Min.x:=Min(Min(aPoint0.x,aPoint1.x),aPoint2.x);
   fBounds.Min.y:=Min(Min(aPoint0.y,aPoint1.y),aPoint2.y);
   fBounds.Min.z:=Min(Min(aPoint0.z,aPoint1.z),aPoint2.z);
@@ -413,6 +419,120 @@ begin
   fBounds.Max.y:=Max(fBounds.Max.y,Max(Max(aPoint0.y,aPoint1.y),aPoint2.y));
   fBounds.Max.z:=Max(fBounds.Max.z,Max(Max(aPoint0.z,aPoint1.z),aPoint2.z));
  end;
+end;
+
+procedure TpvTriangleBVH.SplitTooLargeTriangles;
+type TTriangleQueue=TpvDynamicQueue<TpvInt32>;
+var TriangleIndex:TpvInt32;
+    Triangle:PpvTriangleBVHTriangle;
+    TriangleQueue:TTriangleQueue;
+    Vertices:array[0..2] of PpvVector3;
+    NewVertices:array[0..2] of TpvVector3;
+    Normal:TpvVector3;
+    Data:TpvPtrInt;
+    Flags:TpvUInt32;
+begin
+ if fTriangleAreaSplitThreshold>EPSILON then begin
+
+  TriangleQueue.Initialize;
+  try
+
+   // Find seed too large triangles and enqueue them
+   for TriangleIndex:=0 to fCountTriangles-1 do begin
+    Triangle:=@fTriangles[TriangleIndex];
+    if Triangle^.Area>fTriangleAreaSplitThreshold then begin
+     TriangleQueue.Enqueue(TriangleIndex);
+    end;
+   end;
+
+   // Split too large triangles into each four sub triangles until there are no more too large triangles
+
+   //          p0
+   //          /\
+   //         /  \
+   //        / t3 \
+   //     m2/______\m0
+   //      / \    / \
+   //     / t2\t0/ t1\
+   //  p2/_____\/_____\p1
+   //          m1
+
+   // t0: m0,m1,m2
+   // t1: m0,p1,m1
+   // t2: m2,m1,p2
+   // t3: p0,m0,m2
+
+   while TriangleQueue.Dequeue(TriangleIndex) do begin
+
+    Triangle:=@fTriangles[TriangleIndex];
+
+    Vertices[0]:=@Triangle^.Points[0]; // p0
+    Vertices[1]:=@Triangle^.Points[1]; // p1
+    Vertices[2]:=@Triangle^.Points[2]; // p2
+
+    NewVertices[0]:=(Vertices[0]^+Vertices[1]^)*0.5; // m0
+    NewVertices[1]:=(Vertices[1]^+Vertices[2]^)*0.5;  // m1
+    NewVertices[2]:=(Vertices[2]^+Vertices[0]^)*0.5;  // m2
+
+    // Create new four triangles, where the current triangle will overwritten by the first one
+
+    // The first triangle: m0,m1,m2
+    Triangle^.Points[0]:=NewVertices[0]; // m0
+    Triangle^.Points[1]:=NewVertices[1]; // m1
+    Triangle^.Points[2]:=NewVertices[2]; // m2
+//  Triangle^.Normal:=((Triangle^.Points[1]-Triangle^.Points[0]).Cross(Triangle^.Points[2]-Triangle^.Points[0])).Normalize;
+    Triangle^.Center:=(Triangle^.Points[0]+Triangle^.Points[1]+Triangle^.Points[2])/3.0;
+    Normal:=Triangle^.Normal;
+    Data:=Triangle^.Data;
+    Flags:=Triangle^.Flags;
+    if Triangle^.Area>fTriangleAreaSplitThreshold then begin
+     TriangleQueue.Enqueue(TriangleIndex); // Enqueue the first triangle again, when it is still too large
+    end;
+
+    // The second triangle: m0,p1,m1
+    TriangleIndex:=AddTriangle(NewVertices[0],
+                               Vertices[1]^,
+                               NewVertices[1],
+                               @Normal,
+                               Data,
+                               Flags);
+    Triangle:=@fTriangles[TriangleIndex];
+    if Triangle^.Area>fTriangleAreaSplitThreshold then begin
+     TriangleQueue.Enqueue(TriangleIndex); // Enqueue the second triangle again, when it is still too large
+    end;
+
+    // The third triangle: m2,m1,p2
+    TriangleIndex:=AddTriangle(NewVertices[2],
+                               NewVertices[1],
+                               Vertices[2]^,
+                               @Normal,
+                               Data,
+                               Flags);
+    Triangle:=@fTriangles[TriangleIndex];
+    if Triangle^.Area>fTriangleAreaSplitThreshold then begin
+     TriangleQueue.Enqueue(TriangleIndex); // Enqueue the third triangle again, when it is still too large
+    end;
+
+    // The fourth triangle: p0,m0,m2
+    TriangleIndex:=AddTriangle(Vertices[0]^,
+                               NewVertices[0],
+                               NewVertices[2],
+                               @Normal,
+                               Data,
+                               Flags);
+    Triangle:=@fTriangles[TriangleIndex];
+    if Triangle^.Area>fTriangleAreaSplitThreshold then begin
+     TriangleQueue.Enqueue(TriangleIndex); // Enqueue the fourth triangle again, when it is still too large
+    end;
+
+   end;
+
+  finally
+   TriangleQueue.Finalize;
+  end;
+
+ end;
+
 end;
 
 function TpvTriangleBVH.EvaluateSAH(const aParentTreeNode:PpvTriangleBVHTreeNode;const aAxis:TpvInt32;const aSplitPosition:TpvFloat):TpvFloat;
@@ -850,6 +970,8 @@ var JobIndex,TreeNodeIndex,SkipListNodeIndex:TPasMPInt32;
     StackItem:TpvUInt64;
     SkipListNode:PpvTriangleBVHSkipListNode;
 begin
+
+ SplitTooLargeTriangles;
 
  if length(fTreeNodes)<=Max(1,length(fTriangles)) then begin
   SetLength(fTreeNodes,Max(1,length(fTriangles)*2));
