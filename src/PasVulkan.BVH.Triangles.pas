@@ -240,6 +240,8 @@ type EpvTriangleBVH=class(Exception);
 
 implementation
 
+uses PasVulkan.BVH.DynamicAABBTree;
+
 type TTriangleBVHFileSignature=array[0..7] of AnsiChar;
 
 const TriangleBVHFileSignature:TTriangleBVHFileSignature=('T','B','V','H','F','i','l','e'); // Triangle BVH File
@@ -964,11 +966,44 @@ begin
 end;
 
 procedure TpvTriangleBVH.Build;
-var JobIndex,TreeNodeIndex,SkipListNodeIndex:TPasMPInt32;
+type TDynamicAABBTreeNode=record
+      AABB:TpvAABB;
+      Parent:TpvSizeInt;
+      Children:array[0..1] of TpvSizeInt;
+      Triangles:array of TpvPtrUInt;
+      CountChildTriangles:TpvSizeInt;
+     end;
+     PDynamicAABBTreeNode=^TDynamicAABBTreeNode;
+     TDynamicAABBTreeNodes=array of TDynamicAABBTreeNode;
+     TDynamicAABBTreeNodeStackItem=record
+      DynamicAABBTreeNodeIndex:TpvSizeInt;
+      case boolean of
+       false:(
+        NodeIndex:TpvSizeInt;
+       );
+       true:(
+        Pass:TpvSizeInt;
+       );
+     end;
+     TDynamicAABBTreeNodeStack=TpvDynamicStack<TDynamicAABBTreeNodeStackItem>;
+var JobIndex,TreeNodeIndex,SkipListNodeIndex,Index,TargetIndex,TemporaryIndex,
+    NextTargetIndex,TriangleIndex,CountNewTriangles:TPasMPInt32;
     TreeNode:PpvTriangleBVHTreeNode;
     Jobs:array of PPasMPJob;
     StackItem:TpvUInt64;
     SkipListNode:PpvTriangleBVHSkipListNode;
+    DynamicAABBTree:TpvBVHDynamicAABBTree;
+    DynamicAABBTreeOriginalNode:TpvBVHDynamicAABBTree.PTreeNode;
+    DynamicAABBTreeNode,OtherDynamicAABBTreeNode:PDynamicAABBTreeNode;
+    DynamicAABBTreeNodes:TDynamicAABBTreeNodes;
+    DynamicAABBTreeNodeStack:TDynamicAABBTreeNodeStack;
+    NewDynamicAABBTreeNodeStackItem:TDynamicAABBTreeNodeStackItem;
+    CurrentDynamicAABBTreeNodeStackItem:TDynamicAABBTreeNodeStackItem;
+    TriangleIndices:TpvInt32DynamicArray;
+    Triangle:PpvTriangleBVHTriangle;
+    TemporaryTriangle:TpvTriangleBVHTriangle;
+    Seed:TpvUInt32;
+    AABB:TpvAABB;
 begin
 
  SplitTooLargeTriangles;
@@ -977,36 +1012,369 @@ begin
   SetLength(fTreeNodes,Max(1,length(fTriangles)*2));
  end;
 
- fCountTreeNodes:=1;
- fTreeNodeRoot:=0;
- TreeNode:=@fTreeNodes[fTreeNodeRoot];
- TreeNode^.Bounds:=fBounds;
- TreeNode^.FirstLeftChild:=-1;
- if fCountTriangles>0 then begin
-  TreeNode^.FirstTriangleIndex:=0;
-  TreeNode^.CountTriangles:=fCountTriangles;
-  if fCountTriangles>=MaximumTrianglesPerNode then begin
-   fNodeQueue.Clear;
-   fNodeQueue.Enqueue(0);
-   fCountActiveWorkers:=0;
-   if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>0) then begin
-    Jobs:=nil;
+ if fBVHBuildMode=TpvTriangleBVHBuildMode.SAHRandomInsert then begin
+
+  if fCountTriangles>0 then begin
+
+   DynamicAABBTree:=TpvBVHDynamicAABBTree.Create;
+   try
+
+    // Insert triangles in a random order for better tree balance of the dynamic AABB tree
+    TriangleIndices:=nil;
     try
-     SetLength(Jobs,fPasMPInstance.CountJobWorkerThreads);
-     for JobIndex:=0 to length(Jobs)-1 do begin
-      Jobs[JobIndex]:=fPasMPInstance.Acquire(BuildJob,self,nil,0,0);
+     SetLength(TriangleIndices,fCountTriangles);
+     for Index:=0 to fCountTriangles-1 do begin
+      TriangleIndices[Index]:=Index;
      end;
-     fPasMPInstance.Invoke(Jobs);
+     Seed:=TpvUInt32($8b0634d1);
+     for Index:=0 to fCountTriangles-1 do begin
+      TargetIndex:=TpvUInt32(TpvUInt64(TpvUInt64(TpvUInt64(Seed)*fCountTriangles) shr 32));
+      Seed:=Seed xor (Seed shl 13);
+      Seed:=Seed xor (Seed shr 17);
+      Seed:=Seed xor (Seed shl 5);
+      TemporaryIndex:=TriangleIndices[Index];
+      TriangleIndices[Index]:=TriangleIndices[TargetIndex];
+      TriangleIndices[TargetIndex]:=TemporaryIndex;
+     end;
+     for Index:=0 to fCountTriangles-1 do begin
+      TriangleIndex:=TriangleIndices[Index];
+      Triangle:=@fTriangles[TriangleIndex];
+      AABB.Min.x:=Min(Min(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+      AABB.Min.y:=Min(Min(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+      AABB.Min.z:=Min(Min(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+      AABB.Max.x:=Max(Max(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+      AABB.Max.y:=Max(Max(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+      AABB.Max.z:=Max(Max(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+      DynamicAABBTree.CreateProxy(AABB,TriangleIndex+1);
+     end;
     finally
-     Jobs:=nil;
+     TriangleIndices:=nil;
     end;
-   end else begin
-    ProcessNodeQueue;
+
+//  DynamicAABBTree.Rebalance(65536);
+
+    DynamicAABBTreeNodes:=nil;
+    try
+
+     SetLength(DynamicAABBTreeNodes,DynamicAABBTree.NodeCount);
+
+     for Index:=0 to DynamicAABBTree.NodeCount-1 do begin
+
+      DynamicAABBTreeOriginalNode:=@DynamicAABBTree.Nodes[Index];
+      DynamicAABBTreeNode:=@DynamicAABBTreeNodes[Index];
+
+      DynamicAABBTreeNode^.AABB:=DynamicAABBTreeOriginalNode^.AABB;
+      DynamicAABBTreeNode^.Parent:=DynamicAABBTreeOriginalNode^.Parent;
+      DynamicAABBTreeNode^.Children[0]:=DynamicAABBTreeOriginalNode^.Children[0];
+      DynamicAABBTreeNode^.Children[1]:=DynamicAABBTreeOriginalNode^.Children[1];
+      if TpvPtrUInt(DynamicAABBTreeOriginalNode^.UserData)>0 then begin
+       DynamicAABBTreeNode^.Triangles:=[TpvPtrUInt(DynamicAABBTreeOriginalNode^.UserData)-1];
+      end else begin
+       DynamicAABBTreeNode^.Triangles:=nil;
+      end;
+      DynamicAABBTreeNode^.CountChildTriangles:=0;
+
+     end;
+
+     DynamicAABBTreeNodeStack.Initialize;
+     try
+
+      // Counting child triangles
+      begin
+       NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTree.Root;
+       NewDynamicAABBTreeNodeStackItem.Pass:=0;
+       DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+       while DynamicAABBTreeNodeStack.Pop(CurrentDynamicAABBTreeNodeStackItem) do begin
+        DynamicAABBTreeNode:=@DynamicAABBTreeNodes[CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex];
+        case CurrentDynamicAABBTreeNodeStackItem.Pass of
+         0:begin
+          if DynamicAABBTreeNode^.Parent>=0 then begin
+           inc(DynamicAABBTreeNodes[DynamicAABBTreeNode^.Parent].CountChildTriangles,length(DynamicAABBTreeNode^.Triangles));
+          end;
+          NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex;
+          NewDynamicAABBTreeNodeStackItem.Pass:=1;
+          DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+          if DynamicAABBTreeNode^.Children[1]>=0 then begin
+           NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[1];
+           NewDynamicAABBTreeNodeStackItem.Pass:=0;
+           DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+          end;
+          if DynamicAABBTreeNode^.Children[0]>=0 then begin
+           NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[0];
+           NewDynamicAABBTreeNodeStackItem.Pass:=0;
+           DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+          end;
+         end;
+         1:begin
+          if DynamicAABBTreeNode^.Parent>=0 then begin
+           inc(DynamicAABBTreeNodes[DynamicAABBTreeNode^.Parent].CountChildTriangles,DynamicAABBTreeNode^.CountChildTriangles);
+          end;
+         end;
+        end;
+       end;
+      end;
+
+      // Merge leafs
+      begin
+       NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTree.Root;
+       NewDynamicAABBTreeNodeStackItem.Pass:=0;
+       DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+       while DynamicAABBTreeNodeStack.Pop(CurrentDynamicAABBTreeNodeStackItem) do begin
+        DynamicAABBTreeNode:=@DynamicAABBTreeNodes[CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex];
+        if DynamicAABBTreeNode^.CountChildTriangles<=fMaximumTrianglesPerNode then begin
+         NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex;
+         NewDynamicAABBTreeNodeStackItem.Pass:=1;
+         DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+         if DynamicAABBTreeNode^.Children[1]>=0 then begin
+          NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[1];
+          NewDynamicAABBTreeNodeStackItem.Pass:=2;
+          DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+         end;
+         if DynamicAABBTreeNode^.Children[0]>=0 then begin
+          NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[0];
+          NewDynamicAABBTreeNodeStackItem.Pass:=2;
+          DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+         end;
+         DynamicAABBTreeNode^.Children[0]:=-1;
+         DynamicAABBTreeNode^.Children[1]:=-1;
+         DynamicAABBTreeNode^.CountChildTriangles:=0;
+         while DynamicAABBTreeNodeStack.Pop(CurrentDynamicAABBTreeNodeStackItem) do begin
+          case CurrentDynamicAABBTreeNodeStackItem.Pass of
+           0:begin
+            Assert(false);
+           end;
+           1:begin
+            break;
+           end;
+           else {2:}begin
+            OtherDynamicAABBTreeNode:=@DynamicAABBTreeNodes[CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex];
+            if length(OtherDynamicAABBTreeNode^.Triangles)>0 then begin
+             DynamicAABBTreeNode^.Triangles:=DynamicAABBTreeNode^.Triangles+OtherDynamicAABBTreeNode^.Triangles;
+            end;
+            if OtherDynamicAABBTreeNode^.Children[1]>=0 then begin
+             NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=OtherDynamicAABBTreeNode^.Children[1];
+             NewDynamicAABBTreeNodeStackItem.Pass:=2;
+             DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+            end;
+            if OtherDynamicAABBTreeNode^.Children[0]>=0 then begin
+             NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=OtherDynamicAABBTreeNode^.Children[0];
+             NewDynamicAABBTreeNodeStackItem.Pass:=2;
+             DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+            end;
+            OtherDynamicAABBTreeNode^.Parent:=-1;
+            OtherDynamicAABBTreeNode^.Children[0]:=-1;
+            OtherDynamicAABBTreeNode^.Children[0]:=-1;
+            OtherDynamicAABBTreeNode^.CountChildTriangles:=0;
+            OtherDynamicAABBTreeNode^.Triangles:=nil;
+           end;
+          end;
+         end;
+        end else begin
+         if DynamicAABBTreeNode^.Children[1]>=0 then begin
+          NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[1];
+          NewDynamicAABBTreeNodeStackItem.Pass:=0;
+          DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+         end;
+         if DynamicAABBTreeNode^.Children[0]>=0 then begin
+          NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[0];
+          NewDynamicAABBTreeNodeStackItem.Pass:=0;
+          DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+         end;
+        end;
+       end;
+      end;
+
+      // Convert to optimized tree node structure
+      begin
+
+       TriangleIndices:=nil;
+       try
+
+        SetLength(TriangleIndices,fCountTriangles);
+
+        CountNewTriangles:=0;
+
+        fCountTreeNodes:=0;
+        fTreeNodeRoot:=0;
+
+        SetLength(fTreeNodes,length(DynamicAABBTreeNodes));
+
+        NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTree.Root;
+        NewDynamicAABBTreeNodeStackItem.NodeIndex:=fCountTreeNodes;
+        inc(fCountTreeNodes);
+
+        DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+
+        while DynamicAABBTreeNodeStack.Pop(CurrentDynamicAABBTreeNodeStackItem) do begin
+
+         if CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex>=0 then begin
+          DynamicAABBTreeNode:=@DynamicAABBTreeNodes[CurrentDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex];
+         end else begin
+          DynamicAABBTreeNode:=nil;
+         end;
+
+         TreeNode:=@fTreeNodes[CurrentDynamicAABBTreeNodeStackItem.NodeIndex];
+         if assigned(DynamicAABBTreeNode) then begin
+
+          TreeNode^.Bounds:=DynamicAABBTreeNode^.AABB;
+          if (DynamicAABBTreeNode^.Children[0]>=0) or (DynamicAABBTreeNode^.Children[1]>=0) then begin
+
+           TreeNode^.FirstLeftChild:=fCountTreeNodes;
+           inc(fCountTreeNodes,2);
+
+           if length(fTreeNodes)<fCountTreeNodes then begin
+            SetLength(fTreeNodes,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
+           end;
+
+           NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[1];
+           NewDynamicAABBTreeNodeStackItem.NodeIndex:=TreeNode^.FirstLeftChild+1;
+           DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+
+           NewDynamicAABBTreeNodeStackItem.DynamicAABBTreeNodeIndex:=DynamicAABBTreeNode^.Children[0];
+           NewDynamicAABBTreeNodeStackItem.NodeIndex:=TreeNode^.FirstLeftChild;
+           DynamicAABBTreeNodeStack.Push(NewDynamicAABBTreeNodeStackItem);
+
+          end else begin
+
+           TreeNode^.FirstLeftChild:=-1;
+
+          end;
+
+          TreeNode^.CountTriangles:=length(DynamicAABBTreeNode^.Triangles);
+          if TreeNode^.CountTriangles>0 then begin
+
+           TreeNode^.FirstTriangleIndex:=CountNewTriangles;
+
+           for Index:=0 to length(DynamicAABBTreeNode^.Triangles)-1 do begin
+
+            TriangleIndex:=DynamicAABBTreeNode^.Triangles[Index];
+
+            TriangleIndices[TriangleIndex]:=CountNewTriangles;
+            inc(CountNewTriangles);
+
+            Triangle:=@fTriangles[TriangleIndex];
+
+            AABB.Min.x:=Min(Min(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+            AABB.Min.y:=Min(Min(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+            AABB.Min.z:=Min(Min(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+            AABB.Max.x:=Max(Max(Triangle^.Points[0].x,Triangle^.Points[1].x),Triangle^.Points[2].x);
+            AABB.Max.y:=Max(Max(Triangle^.Points[0].y,Triangle^.Points[1].y),Triangle^.Points[2].y);
+            AABB.Max.z:=Max(Max(Triangle^.Points[0].z,Triangle^.Points[1].z),Triangle^.Points[2].z);
+
+            if Index=0 then begin
+             TreeNode^.Bounds:=AABB;
+            end else begin
+             TreeNode^.Bounds:=TreeNode^.Bounds.Combine(AABB);
+            end;
+
+           end;
+
+          end else begin
+
+           TreeNode^.FirstTriangleIndex:=-1;
+
+          end;
+
+         end else begin
+
+          TreeNode^.Bounds.Min:=TpvVector3.InlineableCreate(1e30,1e30,1e30);
+          TreeNode^.Bounds.Max:=TpvVector3.InlineableCreate(-1e30,-1e30,-1e30);
+          TreeNode^.FirstTriangleIndex:=0;
+          TreeNode^.CountTriangles:=0;
+          TreeNode^.FirstLeftChild:=-1;
+
+         end;
+
+        end;
+
+        if CountNewTriangles<fCountTriangles then begin
+         for Index:=CountNewTriangles to fCountTriangles-1 do begin
+          TriangleIndices[Index]:=CountNewTriangles;
+          inc(CountNewTriangles);
+         end;
+        end;
+
+        // In-place array reindexing
+        begin
+         for Index:=0 to fCountTriangles-1 do begin
+          TargetIndex:=TriangleIndices[Index];
+          while Index<>TargetIndex do begin
+           TemporaryTriangle:=fTriangles[Index];
+           fTriangles[Index]:=fTriangles[TargetIndex];
+           fTriangles[TargetIndex]:=TemporaryTriangle;
+           NextTargetIndex:=TriangleIndices[TargetIndex];
+           TemporaryIndex:=TriangleIndices[Index];
+           TriangleIndices[Index]:=NextTargetIndex;
+           TriangleIndices[TargetIndex]:=TemporaryIndex;
+           TargetIndex:=NextTargetIndex;
+          end;
+         end;
+        end;
+
+       finally
+        TriangleIndices:=nil;
+       end;
+
+      end;
+
+     finally
+      DynamicAABBTreeNodeStack.Finalize;
+     end;
+
+    finally
+     DynamicAABBTreeNodes:=nil;
+    end;
+
+   finally
+    FreeAndNil(DynamicAABBTree);
    end;
+
+  end else begin
+
+   fCountTreeNodes:=1;
+   fTreeNodeRoot:=0;
+   TreeNode:=@fTreeNodes[fTreeNodeRoot];
+   TreeNode^.Bounds:=fBounds;
+   TreeNode^.FirstLeftChild:=-1;
+   TreeNode^.FirstTriangleIndex:=-1;
+   TreeNode^.CountTriangles:=0;
+
   end;
+
  end else begin
-  TreeNode^.FirstTriangleIndex:=-1;
-  TreeNode^.CountTriangles:=0;
+
+  fCountTreeNodes:=1;
+  fTreeNodeRoot:=0;
+  TreeNode:=@fTreeNodes[fTreeNodeRoot];
+  TreeNode^.Bounds:=fBounds;
+  TreeNode^.FirstLeftChild:=-1;
+  if fCountTriangles>0 then begin
+   TreeNode^.FirstTriangleIndex:=0;
+   TreeNode^.CountTriangles:=fCountTriangles;
+   if fCountTriangles>=MaximumTrianglesPerNode then begin
+    fNodeQueue.Clear;
+    fNodeQueue.Enqueue(0);
+    fCountActiveWorkers:=0;
+    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>0) then begin
+     Jobs:=nil;
+     try
+      SetLength(Jobs,fPasMPInstance.CountJobWorkerThreads);
+      for JobIndex:=0 to length(Jobs)-1 do begin
+       Jobs[JobIndex]:=fPasMPInstance.Acquire(BuildJob,self,nil,0,0);
+      end;
+      fPasMPInstance.Invoke(Jobs);
+     finally
+      Jobs:=nil;
+     end;
+    end else begin
+     ProcessNodeQueue;
+    end;
+   end;
+  end else begin
+   TreeNode^.FirstTriangleIndex:=-1;
+   TreeNode^.CountTriangles:=0;
+  end;
+
  end;
 
  if length(fSkipListNodeMap)<=fCountTreeNodes then begin
