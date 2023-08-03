@@ -101,7 +101,9 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections;
 
-type { TpvBVHDynamicAABBTree }
+type EpvBVHDynamicAABBTree=class(Exception);
+
+     { TpvBVHDynamicAABBTree }
      TpvBVHDynamicAABBTree=class
       public
        const NULLNODE=-1;
@@ -155,15 +157,29 @@ type { TpvBVHDynamicAABBTree }
             { TSkipList }
             TSkipList=class
              private
+              type TFileSignature=array[0..3] of ansichar;
+                   TFileHeader=packed record
+                    Signature:TFileSignature;
+                    Version:TpvUInt32;
+                    NodeCount:TpvUInt32;
+                   end;
+                   PFileHeader=^TFileHeader;
+              const FileSignature:TFileSignature=('B','V','H','L');
+                    FileFormatVersion:TpvUInt32=0; 
+             private
               fNodeArray:TSkipListNodeArray;
              public
-              constructor Create(const aFrom:TpvBVHDynamicAABBTree;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex); reintroduce;
+              constructor Create(const aFrom:TpvBVHDynamicAABBTree=nil;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex=nil); reintroduce;
               destructor Destroy; override;
               function IntersectionQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray;
               function ContainQuery(const aAABB:TpvAABB):TpvBVHDynamicAABBTree.TUserDataArray; overload;
               function ContainQuery(const aPoint:TpvVector3):TpvBVHDynamicAABBTree.TUserDataArray; overload;
               function RayCast(const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
               function RayCastLine(const aFrom,aTo:TpvVector3;out aTime:TpvFloat;out aUserData:TpvUInt32;const aStopAtFirstHit:boolean;const aRayCastUserData:TpvBVHDynamicAABBTree.TRayCastUserData):boolean;
+              procedure LoadFromStream(const aStream:TStream);
+              procedure LoadFromFile(const aFileName:string);
+              procedure SaveToStream(const aStream:TStream);
+              procedure SaveToFile(const aFileName:string);
              public
               property NodeArray:TSkipListNodeArray read fNodeArray;
             end;
@@ -215,7 +231,9 @@ implementation
 constructor TpvBVHDynamicAABBTree.TSkipList.Create(const aFrom:TpvBVHDynamicAABBTree;const aGetUserDataIndex:TpvBVHDynamicAABBTree.TGetUserDataIndex);
 begin
  fNodeArray.Initialize;
- aFrom.GetSkipListNodes(fNodeArray,aGetUserDataIndex);
+ if assigned(aFrom) then begin
+  aFrom.GetSkipListNodes(fNodeArray,aGetUserDataIndex);
+ end; 
 end;
 
 destructor TpvBVHDynamicAABBTree.TSkipList.Destroy;
@@ -388,6 +406,63 @@ begin
   end;
  end;
 end;
+
+procedure TpvBVHDynamicAABBTree.TSkipList.LoadFromStream(const aStream:TStream);
+var FileHeader:TFileHeader;
+begin
+
+ aStream.ReadBuffer(FileHeader,SizeOf(TFileHeader));
+ if (FileHeader.Signature<>FileSignature) or (FileHeader.Version<>FileFormatVersion) then begin
+  raise EpvBVHDynamicAABBTree.Create('Invalid file format');
+ end;
+
+ fNodeArray.Clear;
+ fNodeArray.Resize(FileHeader.NodeCount);
+ if FileHeader.NodeCount>0 then begin
+  aStream.ReadBuffer(fNodeArray.Items[0],FileHeader.NodeCount*SizeOf(TSkipListNode));
+ end;
+ 
+end;
+
+procedure TpvBVHDynamicAABBTree.TSkipList.LoadFromFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead); // or fmShareDenyWrite);
+ try
+  LoadFromStream(FileStream);
+ finally
+  FreeAndNil(FileStream);
+ end;
+end;
+
+procedure TpvBVHDynamicAABBTree.TSkipList.SaveToStream(const aStream:TStream);
+var FileHeader:TFileHeader;
+begin
+ 
+ FileHeader.Signature:=FileSignature;
+ FileHeader.Version:=FileFormatVersion;
+ FileHeader.NodeCount:=fNodeArray.Count;
+ aStream.WriteBuffer(FileHeader,SizeOf(TFileHeader));
+ 
+ if FileHeader.NodeCount>0 then begin
+  aStream.WriteBuffer(fNodeArray.Items[0],FileHeader.NodeCount*SizeOf(TSkipListNode));
+ end;
+
+end;
+
+procedure TpvBVHDynamicAABBTree.TSkipList.SaveToFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(FileStream);
+ finally
+  FreeAndNil(FileStream);
+ end;
+end;
+
+{ TpvBVHDynamicAABBTree }
+
 
 { TpvBVHDynamicAABBTree }
 
