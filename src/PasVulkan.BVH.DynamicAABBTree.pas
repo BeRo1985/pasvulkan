@@ -197,6 +197,7 @@ type EpvBVHDynamicAABBTree=class(Exception);
        InsertionCount:TpvSizeInt;
        constructor Create;
        destructor Destroy; override;
+       procedure Clear;
        function AllocateNode:TpvSizeInt;
        procedure FreeNode(const aNodeID:TpvSizeInt);
        function Balance(const aNodeID:TpvSizeInt):TpvSizeInt;
@@ -497,6 +498,28 @@ begin
  FreeAndNil(fSkipListNodeLock);
  Nodes:=nil;
  inherited Destroy;
+end;
+
+procedure TpvBVHDynamicAABBTree.Clear;
+var i:TpvSizeInt;
+begin
+ fSkipListNodeStack.Count:=0;
+ fSkipListNodeMap:=nil;
+ Root:=NULLNODE;
+ Nodes:=nil;
+ NodeCount:=0;
+ NodeCapacity:=16;
+ SetLength(Nodes,NodeCapacity);
+ FillChar(Nodes[0],NodeCapacity*SizeOf(TTreeNode),#0);
+ for i:=0 to NodeCapacity-2 do begin
+  Nodes[i].Next:=i+1;
+  Nodes[i].Height:=-1;
+ end;
+ Nodes[NodeCapacity-1].Next:=NULLNODE;
+ Nodes[NodeCapacity-1].Height:=-1;
+ FreeList:=0;
+ Path:=0;
+ InsertionCount:=0;
 end;
 
 function TpvBVHDynamicAABBTree.AllocateNode:TpvSizeInt;
