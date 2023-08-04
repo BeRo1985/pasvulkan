@@ -221,9 +221,10 @@ type TpvDynamicArray<T>=record
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
        function GetPointerToItems:pointer;
       public
-       constructor Create;
+       constructor Create(const aOwnsObjects:boolean=true); reintroduce;
        destructor Destroy; override;
        procedure Clear;
+       function Contains(const pItem:T):Boolean;
        function IndexOf(const pItem:T):TpvSizeInt;
        function Add(const pItem:T):TpvSizeInt;
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
@@ -270,6 +271,7 @@ type TpvDynamicArray<T>=record
        destructor Destroy; override;
        procedure Clear; virtual;
        procedure Assign(const pFrom:TpvGenericList<T>);
+       function Contains(const pItem:T):Boolean;
        function IndexOf(const pItem:T):TpvSizeInt;
        function Add(const pItem:T):TpvSizeInt;
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
@@ -1644,13 +1646,13 @@ begin
  result:=fObjectList.fItems[fIndex];
 end;
 
-constructor TpvObjectGenericList<T>.Create;
+constructor TpvObjectGenericList<T>.Create(const aOwnsObjects:boolean);
 begin
  inherited Create;
  fItems:=nil;
  fCount:=0;
  fAllocated:=0;
- fOwnsObjects:=true;
+ fOwnsObjects:=aOwnsObjects;
 end;
 
 destructor TpvObjectGenericList<T>.Destroy;
@@ -1724,6 +1726,18 @@ end;
 function TpvObjectGenericList<T>.GetPointerToItems:pointer;
 begin
  result:=@fItems[0];
+end;
+
+function TpvObjectGenericList<T>.Contains(const pItem:T):Boolean;
+var Index:TpvInt32;
+begin
+ for Index:=0 to fCount-1 do begin
+  if fItems[Index]=pItem then begin
+   result:=true;
+   exit;
+  end;
+ end;
+ result:=false;
 end;
 
 function TpvObjectGenericList<T>.IndexOf(const pItem:T):TpvSizeInt;
@@ -1955,6 +1969,37 @@ begin
  fCount:=pFrom.Count;
  fAllocated:=pFrom.fAllocated;
  fSorted:=pFrom.fSorted;
+end;
+
+function TpvGenericList<T>.Contains(const pItem:T):Boolean;
+var Index,LowerIndexBound,UpperIndexBound,Difference:TpvInt32;
+    Comparer:IComparer<T>;
+begin
+ Comparer:=TComparer<T>.Default;
+ result:=false;
+ if fSorted then begin
+  LowerIndexBound:=0;
+  UpperIndexBound:=fCount-1;
+  while LowerIndexBound<=UpperIndexBound do begin
+   Index:=LowerIndexBound+((UpperIndexBound-LowerIndexBound) shr 1);
+   Difference:=Comparer.Compare(fItems[Index],pItem);
+   if Difference=0 then begin
+    result:=true;
+    exit;
+   end else if Difference<0 then begin
+    LowerIndexBound:=Index+1;
+   end else begin
+    UpperIndexBound:=Index-1;
+   end;
+  end;
+ end else begin
+  for Index:=0 to fCount-1 do begin
+   if Comparer.Compare(fItems[Index],pItem)=0 then begin
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
 end;
 
 function TpvGenericList<T>.IndexOf(const pItem:T):TpvSizeInt;
