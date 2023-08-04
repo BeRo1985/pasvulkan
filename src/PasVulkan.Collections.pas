@@ -230,6 +230,7 @@ type TpvDynamicArray<T>=record
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
        procedure Delete(const pIndex:TpvSizeInt);
        function Extract(const pIndex:TpvSizeInt):T;
+       function ExtractIndex(const pIndex:TpvSizeInt):T;
        procedure Remove(const pItem:T);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
@@ -1811,6 +1812,26 @@ begin
 end;
 
 function TpvObjectGenericList<T>.Extract(const pIndex:TpvSizeInt):T;
+var Old:T;
+begin
+ if (pIndex<0) or (pIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ Old:=fItems[pIndex];
+ dec(fCount);
+ FillChar(fItems[pIndex],SizeOf(T),#0);
+ if pIndex<>fCount then begin
+  System.Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
+  FillChar(fItems[fCount],SizeOf(T),#0);
+ end;
+ if fCount<(fAllocated shr 1) then begin
+  fAllocated:=fAllocated shr 1;
+  SetLength(fItems,fAllocated);
+ end;
+ result:=Old;
+end;
+
+function TpvObjectGenericList<T>.ExtractIndex(const pIndex:TpvSizeInt):T;
 var Old:T;
 begin
  if (pIndex<0) or (pIndex>=fCount) then begin
