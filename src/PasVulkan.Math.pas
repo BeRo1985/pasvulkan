@@ -484,6 +484,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromEuler(const aAngles:TpvVector3); overload;
        constructor CreateFromNormalizedSphericalCoordinates(const aNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
        constructor CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3);
+       constructor CreateFromCols(const aC0,aC1,aC2:TpvVector3);
        class operator Implicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4655,6 +4656,23 @@ begin
  Vector.w:=sqrt((sqr(aFromDirection.x)+sqr(aFromDirection.y)+sqr(aFromDirection.z))*
                 (sqr(aToDirection.x)+sqr(aToDirection.y)+sqr(aToDirection.z)))+
                 ((aFromDirection.x*aToDirection.x)+(aFromDirection.y*aToDirection.y)+(aFromDirection.z*aToDirection.z));
+end;
+
+constructor TpvQuaternion.CreateFromCols(const aC0,aC1,aC2:TpvVector3);
+begin
+ if aC2.z<0.0 then begin
+  if aC0.x>aC1.y then begin
+   self:=TpvQuaternion.Create(((1.0+aC0.x)-aC1.y)-aC2.z,aC0.y+aC1.x,aC2.x+aC0.Z,aC1.z-aC2.y).Normalize;
+  end else begin
+   self:=TpvQuaternion.Create(aC0.y+aC1.x,((1.0-aC0.x)+aC1.y)-aC2.z,aC1.z+aC2.y,aC2.x-aC0.z).Normalize;
+  end;
+ end else begin
+  if aC0.x<-aC1.y then begin
+   self:=TpvQuaternion.Create(aC2.x+aC0.z,aC1.z+aC2.y,((1.0-aC0.x)-aC1.y)+aC2.z,aC0.y-aC1.x).Normalize;
+  end else begin
+   self:=TpvQuaternion.Create(aC1.z-aC2.y,aC2.x-aC0.z,aC0.y-aC1.x,((1.0+aC0.x)+aC1.y)+aC2.z).Normalize;
+  end;
+ end;
 end;
 
 class operator TpvQuaternion.Implicit(const a:TpvScalar):TpvQuaternion;
