@@ -1612,6 +1612,7 @@ function GetOverlap(const MinA,MaxA,MinB,MaxB:TpvScalar):TpvScalar; {$ifdef CAN_
 function OldTriangleTriangleIntersection(const a0,a1,a2,b0,b1,b2:TpvVector3):boolean;
 function TriangleTriangleIntersection(const v0,v1,v2,u0,u1,u2:TpvVector3):boolean;
 
+function UnclampedClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
 function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
 function ClosestPointToAABB(const AABB:TpvAABB;const Point:TpvVector3;const ClosestPointOnAABB:PpvVector3=nil):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ClosestPointToOBB(const OBB:TpvOBB;const Point:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -16488,6 +16489,28 @@ begin
  SORT(isect2[0],isect2[1]);
 
  result:=not ((isect1[1]<isect2[0]) or (isect2[1]<isect1[0]));
+end;
+
+function UnclampedClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
+var LineSegmentPointsDifference,ClosestPoint:TpvVector3;
+    LineSegmentLengthSquared,PointOnLineSegmentTime:TpvScalar;
+begin
+ LineSegmentPointsDifference:=LineEndPoint-LineStartPoint;
+ LineSegmentLengthSquared:=LineSegmentPointsDifference.SquaredLength;
+ if LineSegmentLengthSquared<EPSILON then begin
+  PointOnLineSegmentTime:=0.0;
+  ClosestPoint:=LineStartPoint;
+ end else begin
+  PointOnLineSegmentTime:=(Point-LineStartPoint).Dot(LineSegmentPointsDifference)/LineSegmentLengthSquared;
+  ClosestPoint:=LineStartPoint+(LineSegmentPointsDifference*PointOnLineSegmentTime);
+ end;
+ if assigned(ClosestPointOnLine) then begin
+  ClosestPointOnLine^:=ClosestPoint;
+ end;
+ if assigned(Time) then begin
+  Time^:=PointOnLineSegmentTime;
+ end;
+ result:=Point.DistanceTo(ClosestPoint);
 end;
 
 function ClosestPointToLine(const LineStartPoint,LineEndPoint,Point:TpvVector3;const ClosestPointOnLine:PpvVector3=nil;const Time:PpvScalar=nil):TpvScalar;
