@@ -544,9 +544,11 @@ type PpvScalar=^TpvScalar;
        function Lerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       function ApproximatedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function Elerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function Sqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       function UnflippedApproximatedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function AngleBetween(const aP:TpvQuaternion):TpvScalar;
        function Between(const aP:TpvQuaternion):TpvQuaternion;
@@ -5828,6 +5830,23 @@ begin
  result:=(s0*self)+(aToQuaternion*(s1*s2));
 end;
 
+function TpvQuaternion.ApproximatedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+var ca,d,a,b,k,o:TpvScalar;
+begin
+ // Idea from https://zeux.io/2015/07/23/approximating-slerp/
+ ca:=Dot(aToQuaternion);
+ d:=System.abs(ca);
+ a:=1.0904+(d*(-3.2452+(d*(3.55645-(d*1.43519)))));
+ b:=0.848013+(d*(-1.06021+(d*0.215638)));
+ k:=(a*sqr(aTime-0.5))+b;
+ o:=aTime+(((aTime*(aTime-0.5))*(aTime-1.0))*k);
+ if ca<0.0 then begin
+  result:=Nlerp(-aToQuaternion,o);
+ end else begin
+  result:=Nlerp(aToQuaternion,o);
+ end;
+end;
+
 function TpvQuaternion.Elerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 var SignFactor:TpvScalar;
 begin
@@ -5864,6 +5883,18 @@ begin
   s1:=aTime;
  end;
  result:=(s0*self)+(aToQuaternion*s1);
+end;
+
+function TpvQuaternion.UnflippedApproximatedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+var ca,d,a,b,k,o:TpvScalar;
+begin
+ // Idea from https://zeux.io/2015/07/23/approximating-slerp/
+ d:=System.abs(Dot(aToQuaternion));
+ a:=1.0904+(d*(-3.2452+(d*(3.55645-(d*1.43519)))));
+ b:=0.848013+(d*(-1.06021+(d*0.215638)));
+ k:=(a*sqr(aTime-0.5))+b;
+ o:=aTime+(((aTime*(aTime-0.5))*(aTime-1.0))*k);
+ result:=Nlerp(aToQuaternion,o);
 end;
 
 function TpvQuaternion.UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
