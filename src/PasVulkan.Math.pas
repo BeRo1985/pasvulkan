@@ -5886,7 +5886,7 @@ begin
 end;
 
 function TpvQuaternion.UnflippedApproximatedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
-var ca,d,a,b,k,o:TpvScalar;
+var d,a,b,k,o:TpvScalar;
 begin
  // Idea from https://zeux.io/2015/07/23/approximating-slerp/
  d:=System.abs(Dot(aToQuaternion));
