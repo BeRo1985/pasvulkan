@@ -4620,10 +4620,10 @@ begin
  cy:=cos(aYaw*0.5);
  cr:=cos(aRoll*0.5);}
  Vector:=TpvVector4.Create((sp*cy*cr)+(cp*sy*sr),
-                              (cp*sy*cr)-(sp*cy*sr),
-                              (cp*cy*sr)-(sp*sy*cr),
-                              (cp*cy*cr)+(sp*sy*sr)
-                             ).Normalize;
+                           (cp*sy*cr)-(sp*cy*sr),
+                           (cp*cy*sr)-(sp*sy*cr),
+                           (cp*cy*cr)+(sp*sy*sr)
+                          ).Normalize;
 end;
 
 constructor TpvQuaternion.CreateFromEuler(const aAngles:TpvVector3);
@@ -4640,10 +4640,10 @@ begin
  cy:=cos(aAngles.Yaw*0.5);
  cr:=cos(aAngles.Roll*0.5);//}
  Vector:=TpvVector4.Create((sp*cy*cr)+(cp*sy*sr),
-                              (cp*sy*cr)-(sp*cy*sr),
-                              (cp*cy*sr)-(sp*sy*cr),
-                              (cp*cy*cr)+(sp*sy*sr)
-                             ).Normalize;
+                           (cp*sy*cr)-(sp*cy*sr),
+                           (cp*cy*sr)-(sp*sy*cr),
+                           (cp*cy*cr)+(sp*sy*sr)
+                          ).Normalize;
 end;
 
 constructor TpvQuaternion.CreateFromNormalizedSphericalCoordinates(const aNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
