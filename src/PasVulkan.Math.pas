@@ -477,6 +477,7 @@ type PpvScalar=^TpvScalar;
        constructor Create(const aX:TpvScalar); overload;
        constructor Create(const aX,aY,aZ,aW:TpvScalar); overload;
        constructor Create(const aVector:TpvVector4); overload;
+       constructor CreateFromScaledAngleAxis(const aScaledAngleAxis:TpvVector3);
        constructor CreateFromAngularVelocity(const aAngularVelocity:TpvVector3);
        constructor CreateFromAngleAxis(const aAngle:TpvScalar;const aAxis:TpvVector3);
        constructor CreateFromEuler(const aPitch,aYaw,aRoll:TpvScalar); overload;
@@ -524,6 +525,7 @@ type PpvScalar=^TpvScalar;
        function ToRoll:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function ToAngularVelocity:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        procedure ToAngleAxis(out aAngle:TpvScalar;out aAxis:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       function ToScaledAngleAxis:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Generator:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -544,6 +546,8 @@ type PpvScalar=^TpvScalar;
        function Sqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       class procedure Hermite(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1:TpvQuaternion;const aV0,aV1:TpvVector3); static;
+       class procedure CatmullRom(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1,aR2,aR3:TpvQuaternion); static;
        function RotateAroundAxis(const aVector:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Integrate(const aOmega:TpvVector3;const aDeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Spin(const aOmega:TpvVector3;const aDeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4544,6 +4548,26 @@ begin
  Vector:=aVector;
 end;
 
+constructor TpvQuaternion.CreateFromScaledAngleAxis(const aScaledAngleAxis:TpvVector3);
+var Angle,Sinus,Coefficent:TpvScalar;
+    t:TpvVector3;
+begin
+ t:=aScaledAngleAxis*0.5;
+ Angle:=sqrt(sqr(t.x)+sqr(t.y)+sqr(t.z));
+ Sinus:=sin(Angle);
+ w:=cos(Angle);
+ if System.Abs(Sinus)>1e-6 then begin
+  Coefficent:=Sinus/Angle;
+  x:=t.x*Coefficent;
+  y:=t.y*Coefficent;
+  z:=t.z*Coefficent;
+ end else begin
+  x:=t.x;
+  y:=t.y;
+  z:=t.z;
+ end;
+end;
+
 constructor TpvQuaternion.CreateFromAngularVelocity(const aAngularVelocity:TpvVector3);
 var Magnitude,Sinus,Cosinus,SinusGain:TpvScalar;
 begin
@@ -5290,6 +5314,11 @@ begin
  aAxis.z:=Quaternion.z/SinAngle;
 end;
 
+function TpvQuaternion.ToScaledAngleAxis:TpvVector3;
+begin
+ result:=Log.Vector.xyz*2.0;
+end;
+
 function TpvQuaternion.Generator:TpvVector3;
 var s:TpvScalar;
 begin
@@ -5810,6 +5839,34 @@ end;
 function TpvQuaternion.UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 begin
  result:=UnflippedSlerp(aD,aTime).UnflippedSlerp(aB.UnflippedSlerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
+end;
+
+class procedure TpvQuaternion.Hermite(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1:TpvQuaternion;const aV0,aV1:TpvVector3);
+var t2,t3,w1,w2,w3,q1,q2,q3:TpvScalar;
+    r1r0:TpvVector3;
+begin
+ t2:=sqr(aTime);
+ t3:=t2*aTime;
+ w1:=(3.0*t2)-(2.0*t3);
+ w2:=(t3-(2.0*t2))+aTime;
+ w3:=t3-t2;
+ q1:=(6.0*aTime)-(6.0*t2);
+ q2:=((3.0*t2)-(4.0*aTime))+1.0;
+ q3:=(3.0*t2)-(2.0*aTime);
+ r1r0:=((aR1*aR0.Inverse).Abs).ToScaledAngleAxis;
+ aRotation:=TpvQuaternion.CreateFromScaledAngleAxis((r1r0*w1)+(aV0*w2)+(aV1*w3))*aR0;
+ aVelocity:=(q1*r1r0)+(aV0*q2)+(aV1*q3);
+end;
+
+class procedure TpvQuaternion.CatmullRom(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1,aR2,aR3:TpvQuaternion); static;
+var r1r0,r2r1,r3r2,v1,v2:TpvVector3;
+begin
+ r1r0:=((aR1*aR0.Inverse).Abs).ToScaledAngleAxis;
+ r2r1:=((aR2*aR1.Inverse).Abs).ToScaledAngleAxis;
+ r3r2:=((aR3*aR2.Inverse).Abs).ToScaledAngleAxis;
+ v1:=(r1r0+r2r1)*0.5;
+ v2:=(r2r1+r3r2)*0.5;
+ TpvQuaternion.Hermite(aRotation,aVelocity,aTime,aR1,aR2,v1,v2);
 end;
 
 function TpvQuaternion.RotateAroundAxis(const aVector:TpvQuaternion):TpvQuaternion;
