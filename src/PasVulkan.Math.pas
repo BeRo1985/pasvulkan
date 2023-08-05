@@ -546,6 +546,8 @@ type PpvScalar=^TpvScalar;
        function Sqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
        function UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       function AngleBetween(const aP:TpvQuaternion):TpvScalar;
+       function Between(const aP:TpvQuaternion):TpvQuaternion;
        class procedure Hermite(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1:TpvQuaternion;const aV0,aV1:TpvVector3); static;
        class procedure CatmullRom(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1,aR2,aR3:TpvQuaternion); static;
        function RotateAroundAxis(const aVector:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -5839,6 +5841,20 @@ end;
 function TpvQuaternion.UnflippedSqlerp(const aB,aC,aD:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 begin
  result:=UnflippedSlerp(aD,aTime).UnflippedSlerp(aB.UnflippedSlerp(aC,aTime),(2.0*aTime)*(1.0-aTime));
+end;
+
+function TpvQuaternion.AngleBetween(const aP:TpvQuaternion):TpvScalar;
+var Difference:TpvQuaternion;
+begin
+ Difference:=(self*aP.Inverse).Abs;
+ result:=ArcCos(Clamp(Difference.w,-1.0,1.0))*2.0;
+end;
+
+function TpvQuaternion.Between(const aP:TpvQuaternion):TpvQuaternion;
+var c:TpvVector3;
+begin
+ c:=aP.Vector.xyz.Cross(self.Vector.xyz);
+ result:=TpvQuaternion.Create(c.x,c.y,c.z,sqrt(aP.Vector.xyz.SquaredLength*self.Vector.xyz.SquaredLength)+aP.Vector.xyz.Dot(self.Vector.xyz)).Normalize;
 end;
 
 class procedure TpvQuaternion.Hermite(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1:TpvQuaternion;const aV0,aV1:TpvVector3);
