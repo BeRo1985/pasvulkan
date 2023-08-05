@@ -485,6 +485,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromNormalizedSphericalCoordinates(const aNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
        constructor CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3);
        constructor CreateFromCols(const aC0,aC1,aC2:TpvVector3);
+       constructor CreateFromXY(const aX,aY:TpvVector3);
        class operator Implicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4673,6 +4674,15 @@ begin
    self:=TpvQuaternion.Create(aC1.z-aC2.y,aC2.x-aC0.z,aC0.y-aC1.x,((1.0+aC0.x)+aC1.y)+aC2.z).Normalize;
   end;
  end;
+end;
+
+constructor TpvQuaternion.CreateFromXY(const aX,aY:TpvVector3);
+var c0,c1,c2:TpvVector3;
+begin
+ c2:=(aX.Cross(aY)).Normalize;
+ c1:=(c2.Cross(aX)).Normalize;
+ c0:=aX.Normalize;
+ self:=TpvQuaternion.CreateFromCols(c0,c1,c2);
 end;
 
 class operator TpvQuaternion.Implicit(const a:TpvScalar):TpvQuaternion;
