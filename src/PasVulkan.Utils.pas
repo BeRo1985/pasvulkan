@@ -1199,7 +1199,7 @@ begin
     inc(OutputIndex,3);
    end else if OutputIndex>1 then begin
     dec(OutputIndex,2);
-    while (OutputIndex>1) and not IsPathSeparator(result[OutputIndex]) do begin
+    while (OutputIndex>0) and not IsPathSeparator(result[OutputIndex]) do begin
      dec(OutputIndex);
     end;
     inc(OutputIndex);
