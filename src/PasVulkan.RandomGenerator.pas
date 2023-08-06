@@ -119,10 +119,10 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
      TpvRandomGenerator=class
       private
        fState:TpvRandomGeneratorState;
-       fGuassianFloatUseLast:boolean;
-       fGuassianFloatLast:single;
-       fGuassianDoubleUseLast:boolean;
-       fGuassianDoubleLast:double;
+       fGaussianFloatUseLast:boolean;
+       fGaussianFloatLast:single;
+       fGaussianDoubleUseLast:boolean;
+       fGaussianDoubleLast:double;
        fCriticalSection:TCriticalSection;
       public
        constructor Create;
@@ -135,14 +135,14 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        function GetFloatAbs:single; // 0.0 .. 1.0
        function GetDouble:double; // -1.0.0 .. 1.0
        function GetDoubleAbs:Double; // 0.0 .. 1.0
-       function GetGuassianFloat:single; // -1.0 .. 1.0
-       function GetGuassianFloatAbs:single; // 0.0 .. 1.0
-       function GetGuassianDouble:double; // -1.0 .. 1.0
-       function GetGuassianDoubleAbs:double; // 0.0 .. 1.0
-       function GetGuassian(Limit:TpvUInt32):TpvUInt32;
+       function GetGaussianFloat:single; // -1.0 .. 1.0
+       function GetGaussianFloatAbs:single; // 0.0 .. 1.0
+       function GetGaussianDouble:double; // -1.0 .. 1.0
+       function GetGaussianDoubleAbs:double; // 0.0 .. 1.0
+       function GetGaussian(Limit:TpvUInt32):TpvUInt32;
      end;
 
-     TRandomUnique32BitSequence=class
+     TpvRandomUnique32BitSequence=class
       private
        fIndex:TpvUInt32;
        fIntermediateOffset:TpvUInt32;
@@ -151,6 +151,24 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        constructor Create(const Seed1:TpvUInt32=$b46f23c7;const Seed2:TpvUInt32=$a54c2364);
        destructor Destroy; override;
        function Next:TpvUInt32;
+     end;
+
+     { TpvPCG32 }
+
+     TpvPCG32=record
+      private
+       const DefaultState=TpvUInt64($853c49e6748fea9b);
+             DefaultStream=TpvUInt64($da3e39cb94b95bdb);
+             Mult=TpvUInt64($5851f42d4c957f2d);
+      private
+       fState:TpvUInt64;
+       fIncrement:TpvUInt64;
+      public
+       procedure Init(const aSeed:TpvUInt32=0);
+       function Get32:TpvUInt32; {$ifdef caninline}inline;{$endif}
+       function Get64:TpvUInt64; {$ifdef caninline}inline;{$endif}
+       function GetBiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32; {$ifdef caninline}inline;{$endif}
+       function GetUnbiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32;
      end;
 
 function PCG32Next(var State:TpvRandomGeneratorPCG32):TpvUInt64; {$ifdef caninline}inline;{$endif}
@@ -170,6 +188,70 @@ procedure XorShift1024Jump(var State:TpvRandomGeneratorXorShift1024);
 function CMWC4096Next(var State:TpvRandomGeneratorCMWC4096):TpvUInt64; {$ifdef caninline}inline;{$endif}
 
 implementation
+
+{$if defined(fpc) and declared(BSRDWord)}
+function CLZDWord(Value:TpvUInt32):TpvUInt32;
+begin
+ if Value=0 then begin
+  result:=0;
+ end else begin
+  result:=31-BSRDWord(Value);
+ end;
+end;
+{$elseif defined(cpu386)}
+function CLZDWord(Value:TpvUInt32):TpvUInt32; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+ bsr edx,eax
+ jnz @Done
+ xor edx,edx
+ not edx
+@Done:
+ mov eax,31
+ sub eax,edx
+end;
+{$elseif defined(cpux64) or defined(cpuamd64)}
+function CLZDWord(Value:TpvUInt32):TpvUInt32; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .NOFRAME
+{$endif}
+{$ifdef Windows}
+ bsr ecx,ecx
+ jnz @Done
+ xor ecx,ecx
+ not ecx
+@Done:
+ mov eax,31
+ sub eax,ecx
+{$else}
+ bsr edi,edi
+ jnz @Done
+ xor edi,edi
+ not edi
+@Done:
+ mov eax,31
+ sub eax,edi
+{$endif}
+end;
+{$else}
+function CLZDWord(Value:TpvUInt32):TPasMPInt32;
+const CLZDebruijn32Multiplicator=TpvUInt32($07c4acdd);
+      CLZDebruijn32Shift=27;
+      CLZDebruijn32Mask=31;
+      CLZDebruijn32Table:array[0..31] of TpvInt32=(31,22,30,21,18,10,29,2,20,17,15,13,9,6,28,1,23,19,11,3,16,14,7,24,12,4,8,25,5,26,27,0);
+begin
+ if Value=0 then begin
+  result:=32;
+ end else begin
+  Value:=Value or (Value shr 1);
+  Value:=Value or (Value shr 2);
+  Value:=Value or (Value shr 4);
+  Value:=Value or (Value shr 8);
+  Value:=Value or (Value shr 16);
+  result:=CLZDebruijn32Table[((TpvUInt32(Value)*CLZDebruijn32Multiplicator) shr CLZDebruijn32Shift) and CLZDebruijn32Mask];
+ end;
+end;
+{$ifend}
 
 function PCG32Next(var State:TpvRandomGeneratorPCG32):TpvUInt64; {$ifdef caninline}inline;{$endif}
 var OldState:TpvUInt64;
@@ -506,10 +588,10 @@ begin
    end;
   end;
   XorShift1024Jump(fState.XorShift1024);
-  fGuassianFloatUseLast:=false;
-  fGuassianFloatLast:=0.0;
-  fGuassianDoubleUseLast:=false;
-  fGuassianDoubleLast:=0.0;
+  fGaussianFloatUseLast:=false;
+  fGaussianFloatLast:=0.0;
+  fGaussianDoubleUseLast:=false;
+  fGaussianDoubleLast:=0.0;
  finally
   fCriticalSection.Leave;
  end;
@@ -576,13 +658,13 @@ begin
  result:=double(pointer(@t)^)-2.0;
 end;
 
-function TpvRandomGenerator.GetGuassianFloat:single; // -1.0 .. 1.0
+function TpvRandomGenerator.GetGaussianFloat:single; // -1.0 .. 1.0
 var x1,x2,w:single;
     i:TpvUInt32;
 begin
- if fGuassianFloatUseLast then begin
-  fGuassianFloatUseLast:=false;
-  result:=fGuassianFloatLast;
+ if fGaussianFloatUseLast then begin
+  fGaussianFloatUseLast:=false;
+  result:=fGaussianFloatLast;
  end else begin
   i:=0;
   repeat
@@ -593,15 +675,15 @@ begin
   until ((i and $80000000)<>0) or (w<1.0);
   if (i and $80000000)<>0 then begin
    result:=x1;
-   fGuassianFloatLast:=x2;
-   fGuassianFloatUseLast:=true;
+   fGaussianFloatLast:=x2;
+   fGaussianFloatUseLast:=true;
   end else if abs(w)<1e-18 then begin
    result:=0.0;
   end else begin
    w:=sqrt(((-2.0)*ln(w))/w);
    result:=x1*w;
-   fGuassianFloatLast:=x2*w;
-   fGuassianFloatUseLast:=true;
+   fGaussianFloatLast:=x2*w;
+   fGaussianFloatUseLast:=true;
   end;
  end;
  if result<-1.0 then begin
@@ -611,9 +693,9 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGuassianFloatAbs:single; // 0.0 .. 1.0
+function TpvRandomGenerator.GetGaussianFloatAbs:single; // 0.0 .. 1.0
 begin
- result:=(GetGuassianFloat+1.0)*0.5;
+ result:=(GetGaussianFloat+1.0)*0.5;
  if result<0.0 then begin
   result:=0.0;
  end else if result>1.0 then begin
@@ -621,13 +703,13 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGuassianDouble:double; // -1.0 .. 1.0
+function TpvRandomGenerator.GetGaussianDouble:double; // -1.0 .. 1.0
 var x1,x2,w:double;
     i:TpvUInt32;
 begin
- if fGuassianDoubleUseLast then begin
-  fGuassianDoubleUseLast:=false;
-  result:=fGuassianDoubleLast;
+ if fGaussianDoubleUseLast then begin
+  fGaussianDoubleUseLast:=false;
+  result:=fGaussianDoubleLast;
  end else begin
   i:=0;
   repeat
@@ -638,15 +720,15 @@ begin
   until ((i and $80000000)<>0) or (w<1.0);
   if (i and $80000000)<>0 then begin
    result:=x1;
-   fGuassianDoubleLast:=x2;
-   fGuassianDoubleUseLast:=true;
+   fGaussianDoubleLast:=x2;
+   fGaussianDoubleUseLast:=true;
   end else if abs(w)<1e-18 then begin
    result:=0.0;
   end else begin
    w:=sqrt(((-2.0)*ln(w))/w);
    result:=x1*w;
-   fGuassianDoubleLast:=x2*w;
-   fGuassianDoubleUseLast:=true;
+   fGaussianDoubleLast:=x2*w;
+   fGaussianDoubleUseLast:=true;
   end;
  end;
  if result<-1.0 then begin
@@ -656,9 +738,9 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGuassianDoubleAbs:double; // 0.0 .. 1.0
+function TpvRandomGenerator.GetGaussianDoubleAbs:double; // 0.0 .. 1.0
 begin
- result:=(GetGuassianDouble+1.0)*0.5;
+ result:=(GetGaussianDouble+1.0)*0.5;
  if result<0.0 then begin
   result:=0.0;
  end else if result>1.0 then begin
@@ -666,24 +748,24 @@ begin
  end;
 end;
 
-function TpvRandomGenerator.GetGuassian(Limit:TpvUInt32):TpvUInt32;
+function TpvRandomGenerator.GetGaussian(Limit:TpvUInt32):TpvUInt32;
 begin
- result:=round(GetGuassianDoubleAbs*((Limit-1)+0.25));
+ result:=round(GetGaussianDoubleAbs*((Limit-1)+0.25));
 end;
 
-constructor TRandomUnique32BitSequence.Create(const Seed1:TpvUInt32=$b46f23c7;const Seed2:TpvUInt32=$a54c2364);
+constructor TpvRandomUnique32BitSequence.Create(const Seed1:TpvUInt32=$b46f23c7;const Seed2:TpvUInt32=$a54c2364);
 begin
  inherited Create;
  fIndex:=PermuteQPR(PermuteQPR(Seed1)+$682f0161);
  fIntermediateOffset:=PermuteQPR(PermuteQPR(Seed2)+$46790905);
 end;
 
-destructor TRandomUnique32BitSequence.Destroy;
+destructor TpvRandomUnique32BitSequence.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TRandomUnique32BitSequence.PermuteQPR(x:TpvUInt32):TpvUInt32;
+function TpvRandomUnique32BitSequence.PermuteQPR(x:TpvUInt32):TpvUInt32;
 const Prime=TpvUInt32(4294967291);
 begin
  if x>=Prime then begin
@@ -696,10 +778,103 @@ begin
  end;
 end;
 
-function TRandomUnique32BitSequence.Next:TpvUInt32;
+function TpvRandomUnique32BitSequence.Next:TpvUInt32;
 begin
  result:=PermuteQPR((PermuteQPR(fIndex)+fIntermediateOffset) xor $5bf03635);
  inc(fIndex);
+end;
+
+{ TpvPCG32 }
+
+procedure TpvPCG32.Init(const aSeed:TpvUInt32);
+begin
+ if aSeed=0 then begin
+  fState:=DefaultState;
+  fIncrement:=DefaultStream;
+ end else begin
+  fState:=DefaultState xor (aSeed*362436069);
+  fIncrement:=DefaultStream xor (aSeed*1566083941);
+  inc(fIncrement,1-(fIncrement and 1));
+ end;
+end;
+
+function TpvPCG32.Get32:TpvUInt32;
+var OldState:TpvUInt64;
+{$ifndef fpc}
+    XorShifted,Rotation:TpvUInt32;
+{$endif}
+begin
+ OldState:=fState;
+ fState:=(OldState*TpvPCG32.Mult)+fIncrement;
+{$ifdef fpc}
+ result:=RORDWord(((OldState shr 18) xor OldState) shr 27,OldState shr 59);
+{$else}
+ XorShifted:=((OldState shr 18) xor OldState) shr 27;
+ Rotation:=OldState shr 59;
+ result:=(XorShifted shr Rotation) or (XorShifted shl ((-Rotation) and 31));
+{$endif}
+end;
+
+function TpvPCG32.Get64:TpvUInt64;
+begin
+ result:=Get32;
+ result:=(result shl 32) or Get32;
+end;
+
+function TpvPCG32.GetBiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32;
+var Temporary:TpvUInt64;
+begin
+ // For avoid compiler code generation bugs, when a compiler is optimizing the 64-bit casting away wrongly, thus,
+ // we use a temporary 64-bit variable for the multiplication and shift operations, so it is sure that the multiplication
+ // and shift operations are done on 64-bit values and not on 32-bit values.
+ Temporary:=TpvUInt64(Get32);
+ Temporary:=Temporary*aRange;
+ result:=Temporary shr 32;
+end;
+
+function TpvPCG32.GetUnbiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32;
+var x,l,t:TpvUInt32;
+    m:TpvUInt64;
+begin
+ if aRange<=1 then begin
+  // For ranges of 0 or 1, just output always zero, but do a dummy Get32 call with discarding its result
+  Get32;
+  result:=0;
+ end else if (aRange and (aRange-1))<>0 then begin
+  // For non-power-of-two ranges: Debiased Integer Multiplication — Lemire's Method
+  x:=Get32;
+  m:=TpvUInt64(x);
+  m:=m*TpvUInt64(aRange);
+  l:=TpvUInt32(m and $ffffffff);
+  if l<aRange then begin
+   t:=-aRange;
+   if t>=aRange then begin
+    dec(t,aRange);
+    if t>=aRange then begin
+     t:=t mod aRange;
+    end;
+   end;
+   while l<t do begin
+    x:=Get32;
+    m:=TpvUInt64(x);
+    m:=m*TpvUInt64(aRange);
+    l:=TpvUInt32(m and $ffffffff);
+   end;
+  end;
+  result:=m shr 32;
+ end else begin
+  // For power-of-two ranges: Bitmask with Rejection (Unbiased) — Apple's Method
+  m:=TpvUInt32($ffffffff);
+  t:=aRange-1;
+{$if defined(fpc) and declared(BSRDWord)}
+  m:=m shr (31-BSRDWord(t or 1));
+{$else}
+  m:=m shr CLZDWord(t or 1);
+{$ifend}
+  repeat
+   result:=Get32 and m;
+  until result<=t;
+ end;
 end;
 
 end.
