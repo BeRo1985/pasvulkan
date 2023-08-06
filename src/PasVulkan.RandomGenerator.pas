@@ -169,6 +169,10 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        function Get64:TpvUInt64; {$ifdef caninline}inline;{$endif}
        function GetBiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32; {$ifdef caninline}inline;{$endif}
        function GetUnbiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32;
+       function GetFloat:single; // -1.0.0 .. 1.0
+       function GetFloatAbs:single; // 0.0 .. 1.0
+       function GetDouble:double; // -1.0.0 .. 1.0
+       function GetDoubleAbs:Double; // 0.0 .. 1.0
      end;
 
 function PCG32Next(var State:TpvRandomGeneratorPCG32):TpvUInt64; {$ifdef caninline}inline;{$endif}
@@ -875,6 +879,38 @@ begin
    result:=Get32 and m;
   until result<=t;
  end;
+end;
+
+function TpvPCG32.GetFloat:single; // -1.0 .. 1.0
+var t:TpvUInt32;
+begin
+ t:=Get32;
+ t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $40000000;
+ result:=single(pointer(@t)^)-3.0;
+end;
+
+function TpvPCG32.GetFloatAbs:single; // 0.0 .. 1.0
+var t:TpvUInt32;
+begin
+ t:=Get32;
+ t:=(((t shr 10) and $3fffff)+((t shr 9) and 1)) or $40000000;
+ result:=single(pointer(@t)^)-2.0;
+end;
+
+function TpvPCG32.GetDouble:double; // -1.0 .. 1.0
+var t:TpvUInt64;
+begin
+ t:=Get64;
+ t:=(((t shr 12) and $fffffffffffff)+((t shr 11) and 1)) or $4000000000000000;
+ result:=double(pointer(@t)^)-3.0;
+end;
+
+function TpvPCG32.GetDoubleAbs:double; // 0.0 .. 1.0
+var t:TpvInt64;
+begin
+ t:=Get64;
+ t:=(((t shr 13) and $7ffffffffffff)+((t shr 12) and 1)) or $4000000000000000;
+ result:=double(pointer(@t)^)-2.0;
 end;
 
 end.
