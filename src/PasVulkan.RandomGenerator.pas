@@ -164,7 +164,7 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        fState:TpvUInt64;
        fIncrement:TpvUInt64;
       public
-       procedure Init(const aSeed:TpvUInt32=0);
+       procedure Init(const aSeed:TpvUInt64=0);
        function Get32:TpvUInt32; {$ifdef caninline}inline;{$endif}
        function Get64:TpvUInt64; {$ifdef caninline}inline;{$endif}
        function GetBiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32; {$ifdef caninline}inline;{$endif}
@@ -790,13 +790,16 @@ end;
 
 { TpvPCG32 }
 
-procedure TpvPCG32.Init(const aSeed:TpvUInt32);
+procedure TpvPCG32.Init(const aSeed:TpvUInt64);
 begin
  if aSeed=0 then begin
   fState:=DefaultState;
   fIncrement:=DefaultStream;
  end else begin
   fState:=DefaultState xor (aSeed*362436069);
+  if fState=0 then begin
+   fState:=DefaultState;
+  end;
   fIncrement:=DefaultStream xor (aSeed*1566083941);
   inc(fIncrement,1-(fIncrement and 1));
  end;
