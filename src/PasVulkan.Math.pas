@@ -1491,6 +1491,7 @@ function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_I
 function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
 
 function FloatLerp(const aV1,aV2,aTime:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function DoubleLerp(const aV1,aV2,aTime:TpvDouble):TpvDouble; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function Cross(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -2061,7 +2062,18 @@ begin
  end;
 end;
 
-function FloatLerp(const aV1,aV2,aTime:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function FloatLerp(const aV1,aV2,aTime:TpvScalar):TpvScalar;
+begin
+ if aTime<0.0 then begin
+  result:=aV1;
+ end else if aTime>1.0 then begin
+  result:=aV2;
+ end else begin
+  result:=(aV1*(1.0-aTime))+(aV2*aTime);
+ end;
+end;
+
+function DoubleLerp(const aV1,aV2,aTime:TpvDouble):TpvDouble;
 begin
  if aTime<0.0 then begin
   result:=aV1;
