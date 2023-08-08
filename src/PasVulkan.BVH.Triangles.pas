@@ -1595,7 +1595,7 @@ begin
     if ((Triangle^.Flags and aFlags)<>0) and ((Triangle^.Flags and aAvoidFlags)=0) then begin
      OK:=Triangle^.RayIntersection(aRay,Time,u,v,w);
      if OK then begin
-      if IsInfinite(aIntersection.Time) or (Time<aIntersection.Time) then begin
+      if (Time>=0.0) and (IsInfinite(aIntersection.Time) or (Time<aIntersection.Time)) then begin
        result:=true;
        aIntersection.Time:=Time;
        aIntersection.Triangle:=Triangle;
