@@ -439,8 +439,8 @@ begin
        t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
        t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
        fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
-       fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+pvApplication.DeltaTime,t1-t0);
-       fGroupInstance.Automations[Index].Complete:=true;
+       fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+(pvApplication.DeltaTime*4.0),t1-t0);
+       fGroupInstance.Automations[Index].Complete:=false;
       end else begin
        fGroupInstance.Automations[Index].Time:=0.0;
        fGroupInstance.Automations[Index].Complete:=false;
@@ -450,7 +450,20 @@ begin
      end;
      fGroupInstance.Automations[Index].Factor:=Factor;
     end;
-   end;
+   end;//}
+
+{  fGroupInstance.Automations[-1].Time:=0;
+   fGroupInstance.Automations[-1].ShadowTime:=-0;
+   fGroupInstance.Automations[-1].Complete:=false;
+   fGroupInstance.Automations[-1].Factor:=0.0;
+   for Index:=0 to fGroupInstance.Group.Animations.Count-1 do begin
+    t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
+    t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
+    fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
+    fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+(pvApplication.DeltaTime*1.0),t1-t0);
+    fGroupInstance.Automations[Index].Complete:=false;
+    fGroupInstance.Automations[Index].Factor:=1.0;
+   end;//}
 
   end;
 
