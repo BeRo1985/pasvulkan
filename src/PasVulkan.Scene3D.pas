@@ -11782,6 +11782,7 @@ var CullFace,Blend:TPasGLTFInt32;
                 (aAnimationChannel^.OutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*((CubeFactor-(2.0*SqrFactor))+aFactor))))+
                  (aAnimationChannel^.OutputVector4Array[(aTimeIndex1*3)+1]*((3.0*SqrFactor)-(2.0*CubeFactor))))+
                   (aAnimationChannel^.OutputVector4Array[(aTimeIndex1*3)+0]*(aKeyDelta*(CubeFactor-SqrFactor)));
+     aVector4:=TpvQuaternion.Create(aVector4).Normalize.Vector;
     end;
     else begin
      Assert(false);
