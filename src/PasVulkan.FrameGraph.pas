@@ -7100,10 +7100,12 @@ begin
     (fDrawToWaitOnSemaphoreHandles[fDrawInFlightFrameIndex].Count>0) then begin
   fUniversalQueue.fSubmitInfos[0]:=fDrawToWaitSubmitInfos[fDrawInFlightFrameIndex];
  end;
- if fCanDoParallelProcessing and assigned(pvApplication) then begin
-  pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fCommandBuffers.Count-1,ExecuteQueueCommandBufferParallelForJobMethod,1,16,aJob,0));
- end else begin
-  ExecuteQueueCommandBufferParallelForJobMethod(nil,0,aQueue,0,aQueue.fCommandBuffers.Count-1);
+ if aQueue.fCommandBuffers.Count>0 then begin
+  if fCanDoParallelProcessing and assigned(pvApplication) and (aQueue.fCommandBuffers.Count>1) then begin
+   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fCommandBuffers.Count-1,ExecuteQueueCommandBufferParallelForJobMethod,1,16,aJob,0));
+  end else begin
+   ExecuteQueueCommandBufferParallelForJobMethod(nil,0,aQueue,0,aQueue.fCommandBuffers.Count-1);
+  end;
  end;
  if (aQueue=fUniversalQueue) and
     (fDrawToSignalSemaphoreHandles[fDrawInFlightFrameIndex].Count>0) then begin
