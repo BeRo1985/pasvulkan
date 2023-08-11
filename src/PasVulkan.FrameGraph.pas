@@ -74,6 +74,7 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Utils,
+     PasVulkan.HighResolutionTimer,
      PasVulkan.TimerQuery,
      PasVulkan.NVIDIA.AfterMath;
 
@@ -996,6 +997,7 @@ type EpvFrameGraph=class(Exception);
                      property VulkanBuffers[const aSwapChainBufferIndex:TpvSizeInt]:TpvVulkanBuffer read GetVulkanBuffer;
                    end;
                    TTimerQueryIndices=array[0..MaxInFlightFrames-1] of TpvSizeInt;
+                   TCPUTimeValues=array[0..MaxInFlightFrames-1] of TpvHighResolutionTime;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -1013,6 +1015,7 @@ type EpvFrameGraph=class(Exception);
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
               fTimerQueryIndices:TTimerQueryIndices;
+              fCPUTimeValues:TCPUTimeValues;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
               function GetSeparatePhysicalPass:boolean; inline;
               procedure SetSeparatePhysicalPass(const aSeparatePhysicalPass:boolean);
@@ -1123,6 +1126,7 @@ type EpvFrameGraph=class(Exception);
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt); virtual;
              public
               property TimerQueryIndices:TTimerQueryIndices read fTimerQueryIndices;
+              property CPUTimeValues:TCPUTimeValues read fCPUTimeValues;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
@@ -2786,6 +2790,10 @@ begin
   fTimerQueryIndices[Index]:=-1;
  end;
 
+ for Index:=0 to length(fCPUTimeValues)-1 do begin
+  fCPUTimeValues[Index]:=0;
+ end;
+
 end;
 
 destructor TpvFrameGraph.TPass.Destroy;
@@ -3076,6 +3084,7 @@ const LabelInfoColors:array[0..15,0..3] of TVkFloat=
        );
 var LabelInfo:TVkDebugUtilsLabelEXT;
 begin
+ fCPUTimeValues[fFrameGraph.fDrawInFlightFrameIndex]:=pvApplication.HighResolutionTimer.GetTime;
  if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
     assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   FillChar(LabelInfo,SizeOf(TVkDebugUtilsLabelEXT),#0);
@@ -3104,6 +3113,7 @@ begin
     assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   aCommandBuffer.Device.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
  end;
+ fCPUTimeValues[fFrameGraph.fDrawInFlightFrameIndex]:=pvApplication.HighResolutionTimer.GetTime-fCPUTimeValues[fFrameGraph.fDrawInFlightFrameIndex];
 end;
 
 function TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
