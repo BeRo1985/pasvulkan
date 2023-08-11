@@ -159,7 +159,7 @@ begin
 
  fFPSTimeAccumulator:=0;
 
- fAnimationIndex:=0;
+ fAnimationIndex:=-2;
 
  fCameraMode:=TCameraMode.Orbit;
 
@@ -418,8 +418,42 @@ begin
 
    fGroupInstance.ModelMatrix:=ModelMatrix;
 
-   begin
-    BlendFactor:=1.0-exp(-(pvApplication.DeltaTime*4.0));
+   BlendFactor:=1.0-exp(-(pvApplication.DeltaTime*4.0));
+
+   if fAnimationIndex=-2 then begin
+    if fGroupInstance.Group.Animations.Count>0 then begin
+     fGroupInstance.Automations[-1].Time:=0;
+     fGroupInstance.Automations[-1].ShadowTime:=-0;
+     fGroupInstance.Automations[-1].Complete:=false;
+     Factor:=fGroupInstance.Automations[-1].Factor;
+     if Factor>0.0 then begin
+      Factor:=Factor*(1.0-BlendFactor);
+      if Factor<1e-5 then begin
+       Factor:=-1.0;
+      end;
+     end;
+     fGroupInstance.Automations[-1].Factor:=0.0;
+     for Index:=0 to fGroupInstance.Group.Animations.Count-1 do begin
+      t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
+      t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
+      fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
+      fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+(pvApplication.DeltaTime*1.0),t1-t0);
+      fGroupInstance.Automations[Index].Complete:=false;
+      Factor:=fGroupInstance.Automations[Index].Factor;
+      if Factor<0.0 then begin
+       Factor:=0.0;
+       fGroupInstance.Automations[Index].ShadowTime:=0.0;
+      end;
+      Factor:=(Factor*(1.0-BlendFactor))+(1.0*BlendFactor);
+      fGroupInstance.Automations[Index].Factor:=Factor;
+     end;
+    end else begin
+     fGroupInstance.Automations[-1].Time:=0;
+     fGroupInstance.Automations[-1].ShadowTime:=-0;
+     fGroupInstance.Automations[-1].Complete:=true;
+     fGroupInstance.Automations[-1].Factor:=0.0;
+    end;
+   end else begin
     for Index:=-1 to fGroupInstance.Group.Animations.Count-1 do begin
      Factor:=fGroupInstance.Automations[Index].Factor;
      if Index=fAnimationIndex then begin
@@ -450,19 +484,6 @@ begin
      end;
      fGroupInstance.Automations[Index].Factor:=Factor;
     end;
-   end;//}
-
-{  fGroupInstance.Automations[-1].Time:=0;
-   fGroupInstance.Automations[-1].ShadowTime:=-0;
-   fGroupInstance.Automations[-1].Complete:=false;
-   fGroupInstance.Automations[-1].Factor:=0.0;
-   for Index:=0 to fGroupInstance.Group.Animations.Count-1 do begin
-    t0:=fGroupInstance.Group.Animations[Index].GetAnimationBeginTime;
-    t1:=fGroupInstance.Group.Animations[Index].GetAnimationEndTime;
-    fGroupInstance.Automations[Index].Time:=fGroupInstance.Automations[Index].ShadowTime+t0;
-    fGroupInstance.Automations[Index].ShadowTime:=ModuloPos(fGroupInstance.Automations[Index].ShadowTime+(pvApplication.DeltaTime*1.0),t1-t0);
-    fGroupInstance.Automations[Index].Complete:=false;
-    fGroupInstance.Automations[Index].Factor:=1.0;
    end;//}
 
   end;
@@ -625,20 +646,20 @@ begin
     pvApplication.VisibleMouseCursor:=not pvApplication.CatchMouse;
     pvApplication.RelativeMouse:=pvApplication.CatchMouse;
    end;
-   KEYCODE_V,KEYCODE_B:begin
+   KEYCODE_B:begin
     if assigned(fGroupInstance) then begin
-     if fAnimationIndex<0 then begin
+     if fAnimationIndex<-1 then begin
       fAnimationIndex:=fGroupInstance.Group.Animations.Count-1;
      end else begin
       dec(fAnimationIndex);
      end;
     end;
    end;
-   KEYCODE_N,KEYCODE_M:begin
+   KEYCODE_N:begin
     if assigned(fGroupInstance) then begin
      inc(fAnimationIndex);
      if fAnimationIndex>=fGroupInstance.Group.Animations.Count then begin
-      fAnimationIndex:=-1;
+      fAnimationIndex:=-2;
      end;
     end;
    end;
@@ -647,6 +668,11 @@ begin
      if ((aKeyEvent.KeyCode-(KEYCODE_0+1))>=-1) and ((aKeyEvent.KeyCode-(KEYCODE_0+1))<fGroupInstance.Group.Animations.Count) then begin
       fAnimationIndex:=aKeyEvent.KeyCode-(KEYCODE_0+1);
      end;
+    end;
+   end;
+   KEYCODE_M:begin
+    if assigned(fGroupInstance) then begin
+     fAnimationIndex:=-2;
     end;
    end;
    KEYCODE_BACKSPACE:begin
