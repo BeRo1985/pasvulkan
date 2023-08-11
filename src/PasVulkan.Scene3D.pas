@@ -1355,6 +1355,7 @@ type EpvScene3D=class(Exception);
                             OutputVector3Array:TpvVector3Array;
                             OutputVector4Array:TpvVector4Array;
                             procedure SetTarget(const aTargetPath:TpvUTF8String;const aTargetNode:TpvSizeInt);
+                            procedure SetInterpolation(const aInterpolation:TpvUTF8String);
                           end;
                           PChannel=^TChannel;
                           TChannels=array of TChannel;
@@ -6580,6 +6581,17 @@ begin
   raise EpvScene3D.Create('Non-supported animation channel target path "'+String(aTargetPath)+'"');
  end;
 
+end;
+
+procedure TpvScene3D.TGroup.TAnimation.TChannel.SetInterpolation(const aInterpolation:TpvUTF8String);
+begin
+ if aInterpolation='cubicspline' then begin
+  Interpolation:=TAnimation.TChannel.TInterpolation.CubicSpline;
+ end else if aInterpolation='step' then begin
+  Interpolation:=TAnimation.TChannel.TInterpolation.Step;
+ end else{if aInterpolation='linear' then}begin
+  Interpolation:=TAnimation.TChannel.TInterpolation.Linear;
+ end;
 end;
 
 { TpvScene3D.TGroup.TAnimation }
