@@ -6612,7 +6612,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TAnimation.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
-var Index,ChannelIndex,ValueIndex:TPasGLTFSizeInt;
+var ChannelIndex,ValueIndex:TPasGLTFSizeInt;
     SourceAnimationChannel:TPasGLTF.TAnimation.TChannel;
     SourceAnimationSampler:TPasGLTF.TAnimation.TSampler;
     DestinationAnimationChannel:TAnimation.PChannel;

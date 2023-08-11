@@ -7,4 +7,6 @@ if not exist externals\kraft mklink /J externals\kraft ..\..\KRAFT.github\trunk
 if not exist externals\pasjson mklink /J externals\pasjson ..\..\PASJSON.github\trunk
 if not exist externals\pasgltf mklink /J externals\pasgltf ..\..\PASGLTF.github\trunk
 if not exist externals\rnl mklink /J externals\rnl ..\..\RNL.github\trunk
+if not exist externals\flre mklink /J externals\flre ..\..\FLRE.github\trunk
+if not exist externals\poca mklink /J externals\poca ..\..\POCA.github\trunk
 

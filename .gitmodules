@@ -19,3 +19,9 @@
 [submodule "externals/pasgltf"]
 	path = externals/pasgltf
 	url = https://github.com/BeRo1985/pasgltf.git
+[submodule "externals/poca"]
+	path = externals/poca
+	url = https://github.com/BeRo1985/poca.git
+[submodule "externals/flre"]
+	path = externals/flre
+	url = https://github.com/BeRo1985/flre.git

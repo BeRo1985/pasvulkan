@@ -7,4 +7,6 @@ if [ ! -d "./externals/kraft" ]; then ln -s ../../KRAFT.github/trunk ./externals
 if [ ! -d "./externals/pasjson" ]; then ln -s ../../PASJSON.github/trunk ./externals/pasjson; fi
 if [ ! -d "./externals/pasgltf" ]; then ln -s ../../PASGLTF.github/trunk ./externals/pasgltf; fi
 if [ ! -d "./externals/rnl" ]; then ln -s ../../RNL.github/trunk ./externals/rnl; fi
+if [ ! -d "./externals/flre" ]; then ln -s ../../FLRE.github/trunk ./externals/flre; fi
+if [ ! -d "./externals/poca" ]; then ln -s ../../POCA.github/trunk ./externals/poca; fi
 
