@@ -43,7 +43,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);.;..\..\..\src"/>
-      <OtherUnitFiles Value="..\..\..\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasmp\src;..\..\..\externals\pasjson\src;..\..\..\externals\kraft\src;..\..\..\externals\rnl\src;..\..\..\externals\pasgltf\src"/>
+      <OtherUnitFiles Value="..\..\..\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasmp\src;..\..\..\externals\pasjson\src;..\..\..\externals\kraft\src;..\..\..\externals\rnl\src;..\..\..\externals\pasgltf\src;..\..\..\externals\flre\src;..\..\..\externals\poca\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Conditionals Value="if ((TargetOS=&apos;linux&apos;) or (TargetOS=&apos;freebsd&apos;) or (TargetOS=&apos;unix&apos;)) and not (TargetOS=&apos;android&apos;) then begin
