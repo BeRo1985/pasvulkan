@@ -1174,6 +1174,7 @@ type EpvFrameGraph=class(Exception);
               property VulkanRenderPassSubpassIndex:TpvSizeInt read GetVulkanRenderPassSubpassIndex;
             end;
             TRenderPassClass=class of TRenderPass;
+            TPassCPUTimeValues=array of TpvHighResolutionTime;
       private
        fVulkanDevice:TpvVulkanDevice;
        fMultiviewEnabled:boolean;
@@ -1231,6 +1232,8 @@ type EpvFrameGraph=class(Exception);
        fDrawWaitFence:TpvVulkanFence;
        fTimerQueries:TpvTimerQueries;
        fLastTimerQueryResults:TpvTimerQuery.TResults;
+       fCPUTimeValues:TPassCPUTimeValues;
+       fLastCPUTimeValues:TPassCPUTimeValues;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames);
        destructor Destroy; override;
@@ -1331,6 +1334,8 @@ type EpvFrameGraph=class(Exception);
        property DrawFrameIndex:TpvSizeInt read fDrawFrameIndex;
        property TimerQueries:TpvTimerQueries read fTimerQueries;
        property LastTimerQueryResults:TpvTimerQuery.TResults read fLastTimerQueryResults;
+       property CPUTimeValues:TPassCPUTimeValues read fCPUTimeValues;
+       property LastCPUTimeValues:TPassCPUTimeValues read fLastCPUTimeValues;
      end;
 
 implementation
@@ -4395,11 +4400,19 @@ begin
 
  fTimerQueries:=nil;
 
+ fCPUTimeValues:=nil;
+
+ fLastCPUTimeValues:=nil;
+
 end;
 
 destructor TpvFrameGraph.Destroy;
 var InFlightFrameIndex,Index:TpvSizeInt;
 begin
+
+ fCPUTimeValues:=nil;
+
+ fLastCPUTimeValues:=nil;
 
  FreeAndNil(fTimerQueries);
 
@@ -6709,6 +6722,10 @@ type TEventBeforeAfter=(Event,Before,After);
    fTimerQueries.Add(TpvTimerQuery.Create(fVulkanDevice,Passes.Count));
   end;
  end;
+ procedure CreateCPUTimeValues;
+ begin
+  SetLength(fCPUTimeValues,Passes.Count);
+ end;
 begin
 
  fQueueFamilyIndices.Finish;
@@ -6762,6 +6779,8 @@ begin
  FinishPassUsedResources;
 
  CreateTimerQuery;
+
+ CreateCPUTimeValues;
 
 end;
 
@@ -7147,6 +7166,13 @@ begin
    fLastTimerQueryResults:=fTimerQueries[fDrawInFlightFrameIndex].Results;
   end;
   fTimerQueries[fDrawInFlightFrameIndex].Reset;
+ end;
+ if length(fLastCPUTimeValues)=length(fCPUTimeValues) then begin
+  if length(fCPUTimeValues)>0 then begin
+   Move(fCPUTimeValues[0],fLastCPUTimeValues[0],length(fCPUTimeValues)*SizeOf(TpvHighResolutionTime));
+  end;
+ end else begin
+  fLastCPUTimeValues:=copy(fCPUTimeValues);
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));
