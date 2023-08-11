@@ -941,8 +941,7 @@ begin
 
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
 
- fFrameGraph.CanDoParallelProcessing:=fals
-e;
+ fFrameGraph.CanDoParallelProcessing:=false;
 
  fFrameGraph.SurfaceIsSwapchain:=(fExternalImageFormat=VK_FORMAT_UNDEFINED) and not assigned(fVirtualReality);
 
