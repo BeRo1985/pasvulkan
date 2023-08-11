@@ -87,7 +87,8 @@ uses {$ifdef Windows}
      PasVulkan.BVH.DynamicAABBTree,
      PasVulkan.BVH.Triangles,
      PasVulkan.PooledObject,
-     PasVulkan.Frustum;
+     PasVulkan.Frustum,
+     POCA;
 
 type EpvScene3D=class(Exception);
 
