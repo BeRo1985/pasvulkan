@@ -7183,7 +7183,7 @@ begin
  if length(fCPUTimeValues)>=2 then begin
   fCPUTimeValues[length(fCPUTimeValues)-1]:=pvApplication.HighResolutionTimer.GetTime;
  end;
- if fCanDoParallelProcessing and assigned(pvApplication) then begin
+ if fCanDoParallelProcessing and assigned(pvApplication) and (fQueues.Count>1) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));
  end else begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
