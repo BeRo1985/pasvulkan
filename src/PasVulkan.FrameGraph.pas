@@ -6725,8 +6725,8 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure CreateCPUTimeValues;
  var Index:TpvSizeInt;
  begin
-  SetLength(fCPUTimeValues,fPasses.Count);
-  SetLength(fLastCPUTimeValues,fPasses.Count);
+  SetLength(fCPUTimeValues,fPasses.Count+2);
+  SetLength(fLastCPUTimeValues,fPasses.Count+2);
   for Index:=0 to fPasses.Count-1 do begin
    fCPUTimeValues[Index]:=0;
    fLastCPUTimeValues[Index]:=0;
@@ -7180,13 +7180,21 @@ begin
  end else begin
   fLastCPUTimeValues:=copy(fCPUTimeValues);
  end;
+ if length(fCPUTimeValues)>=2 then begin
+  fCPUTimeValues[length(fCPUTimeValues)-1]:=pvApplication.HighResolutionTimer.GetTime;
+ end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));
  end else begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
  end;
- for PassIndex:=0 to Min(fPasses.Count,length(fCPUTimeValues))-1 do begin
-  fCPUTimeValues[PassIndex]:=fPasses[PassIndex].fCPUTimeValues[aDrawInFlightFrameIndex];
+ if length(fCPUTimeValues)>=2 then begin
+  fCPUTimeValues[length(fCPUTimeValues)-1]:=pvApplication.HighResolutionTimer.GetTime-fCPUTimeValues[length(fCPUTimeValues)-1];
+  fCPUTimeValues[length(fCPUTimeValues)-2]:=0;
+  for PassIndex:=0 to Min(fPasses.Count,length(fCPUTimeValues)-2)-1 do begin
+   fCPUTimeValues[PassIndex]:=fPasses[PassIndex].fCPUTimeValues[aDrawInFlightFrameIndex];
+   fCPUTimeValues[length(fCPUTimeValues)-2]:=fCPUTimeValues[length(fCPUTimeValues)-2]+fCPUTimeValues[PassIndex];
+  end;
  end;
 end;
 
