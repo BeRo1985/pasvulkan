@@ -6723,8 +6723,14 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
  end;
  procedure CreateCPUTimeValues;
+ var Index:TpvSizeInt;
  begin
-  SetLength(fCPUTimeValues,Passes.Count);
+  SetLength(fCPUTimeValues,fPasses.Count);
+  SetLength(fLastCPUTimeValues,fPasses.Count);
+  for Index:=0 to fPasses.Count-1 do begin
+   fCPUTimeValues[Index]:=0;
+   fLastCPUTimeValues[Index]:=0;
+  end;
  end;
 begin
 
@@ -7126,7 +7132,7 @@ procedure TpvFrameGraph.Draw(const aDrawSwapChainImageIndex:TpvSizeInt;
                              const aToWaitOnSemaphore:TpvVulkanSemaphore=nil;
                              const aToSignalSemaphore:TpvVulkanSemaphore=nil;
                              const aWaitFence:TpvVulkanFence=nil);
-var SemaphoreIndex:TpvSizeInt;
+var SemaphoreIndex,PassIndex:TpvSizeInt;
     SubmitInfo:TVkSubmitInfo;
 begin
  fDrawSwapChainImageIndex:=aDrawSwapChainImageIndex;
@@ -7178,6 +7184,9 @@ begin
   pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));
  end else begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
+ end;
+ for PassIndex:=0 to Min(fPasses.Count,length(fCPUTimeValues))-1 do begin
+  fCPUTimeValues[PassIndex]:=fPasses[PassIndex].fCPUTimeValues[aDrawInFlightFrameIndex];
  end;
 end;
 
