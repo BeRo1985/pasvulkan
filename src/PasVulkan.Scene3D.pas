@@ -2554,6 +2554,28 @@ begin
 
 end;
 
+type { TPOCAScene3DGroupAnimation }
+     TPOCAScene3DGroupAnimation=class(TPOCANativeObject)
+      private
+       fAnimation:TpvScene3D.TGroup.TAnimation;
+      public
+       constructor Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean); override;
+       destructor Destroy; override;
+      published
+     end;
+
+{ TPOCAScene3DGroupAnimation }
+
+constructor TPOCAScene3DGroupAnimation.Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean);
+begin
+ inherited Create(aInstance,aContext,aPrototype,aConstructor,aExpandable);
+end;
+
+destructor TPOCAScene3DGroupAnimation.Destroy;
+begin
+ inherited Destroy;
+end;
+
 type { TPOCAScene3DGroup }
      TPOCAScene3DGroup=class(TPOCANativeObject)
       private
@@ -2618,7 +2640,16 @@ begin
 end;
 
 function TPOCAScene3DGroup.createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+var Animation:TpvScene3D.TGroup.TAnimation;
 begin
+ Animation:=TpvScene3D.TGroup.TAnimation.Create(fGroup,fGroup.fAnimations.Count);
+ try
+  if aCountArguments>0 then begin
+   Animation.fName:=POCAGetStringValue(aContext,aArguments^[0]);
+  end;
+ finally
+  fGroup.fAnimations.Add(Animation);
+ end;
  result:=POCAValueNull;
 end;
 
@@ -9432,6 +9463,21 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
 
  end;
+ procedure ProcessAnimations;
+ var Index:TpvSizeInt;
+     SourceAnimation:TPasGLTF.TAnimation;
+     Animation:TpvScene3D.TGroup.TAnimation;
+ begin
+  for Index:=0 to aSourceDocument.Animations.Count-1 do begin
+   SourceAnimation:=aSourceDocument.Animations[Index];
+   Animation:=TAnimation.Create(self,Index);
+   try
+    Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
+   finally
+    fAnimations.Add(Animation);
+   end;
+  end;
+ end;
  procedure ExecuteCode;
  var POCAInstance:PPOCAInstance;
      POCAContext:PPOCAContext;
@@ -9476,7 +9522,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
    end;
   end;
  end;
- procedure ProcessAnimations;
+ procedure PostProcessAnimations;
  type TMaterialHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
       TMaterialArrayList=TpvDynamicArrayList<TpvSizeInt>;
       TTargetHashMap=TpvHashMap<TpvUInt64,TpvSizeInt>;
@@ -9511,15 +9557,6 @@ var LightMap:TpvScene3D.TGroup.TLights;
      try
       TargetArrayList:=TTargetArrayList.Create;
       try
-       for Index:=0 to aSourceDocument.Animations.Count-1 do begin
-        SourceAnimation:=aSourceDocument.Animations[Index];
-        Animation:=TAnimation.Create(self,Index);
-        try
-         Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
-        finally
-         fAnimations.Add(Animation);
-        end;
-       end;
        for Index:=0 to fAnimations.Count-1 do begin
         Animation:=fAnimations[Index];
         for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
@@ -9995,9 +10032,11 @@ begin
 
          ProcessScenes;
 
+         ProcessAnimations;
+
          ExecuteCode;
 
-         ProcessAnimations;
+         PostProcessAnimations;
 
          if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
           fScene:=fScenes[aSourceDocument.Scene];
