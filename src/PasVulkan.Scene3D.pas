@@ -2132,6 +2132,7 @@ type EpvScene3D=class(Exception);
                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
+              function AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
@@ -9468,6 +9469,17 @@ begin
 
 end;
 
+function TpvScene3D.TGroup.AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
+var FileName:TPasGLTFUTF8String;
+begin
+ FileName:=ExpandRelativePath(aURI,AssetBasePath);
+ if pvApplication.Assets.ExistAsset(FileName) then begin
+  result:=pvApplication.Assets.GetAssetStream(FileName);
+ end else begin
+  result:=nil;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var LightMap:TpvScene3D.TGroup.TLights;
     ImageMap:TpvScene3D.TImages;
@@ -10375,6 +10387,9 @@ begin
    try
     if (length(FileName)>0) and (FileExists(FileName)) then begin
      GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+    end;
+    if IsAsset then begin
+     GLTF.GetURI:=AssetGetURI;
     end;
     GLTF.LoadFromStream(aStream);
     AssignFromGLTF(GLTF);
