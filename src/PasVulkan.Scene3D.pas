@@ -2560,11 +2560,13 @@ type { TPOCAScene3DGroupAnimationChannel }
        fAnimation:TpvScene3D.TGroup.TAnimation;
        fChannelIndex:TpvSizeInt;
        fElementSize:TpvSizeInt;
+       fCount:TpvSizeInt;
       public
        constructor Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean); override;
        destructor Destroy; override;
       published
        function createKeyFrame(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function finish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroupAnimation }
@@ -2600,20 +2602,61 @@ begin
    end;
   end;
   Channel:=@fAnimation.fChannels[fChannelIndex];
-  Channel^.InputTimeArray:=Channel^.InputTimeArray+[Time];
+  Index:=fCount;
+  inc(fCount);
+  if length(Channel^.InputTimeArray)>fCount then begin
+   SetLength(Channel^.InputTimeArray,fCount*2);
+   case fElementSize of
+    2:begin
+     SetLength(Channel^.OutputVector2Array,fCount*2);
+    end;
+    3:begin
+     SetLength(Channel^.OutputVector3Array,fCount*2);
+    end;
+    4:begin
+     SetLength(Channel^.OutputVector4Array,fCount*2);
+    end;
+    else begin
+     SetLength(Channel^.OutputScalarArray,fCount*2);
+    end;
+   end;
+  end;
+  Channel^.InputTimeArray[Index]:=Time;
   case fElementSize of
    2:begin
-    Channel^.OutputVector2Array:=Channel^.OutputVector2Array+[Element.xy];
+    Channel^.OutputVector2Array[Index]:=Element.xy;
    end;
    3:begin
-    Channel^.OutputVector3Array:=Channel^.OutputVector3Array+[Element.xyz];
+    Channel^.OutputVector3Array[Index]:=Element.xyz;
    end;
    4:begin
-    Channel^.OutputVector4Array:=Channel^.OutputVector4Array+[Element.xyzw];
+    Channel^.OutputVector4Array[Index]:=Element.xyzw;
    end;
    else begin
-    Channel^.OutputScalarArray:=Channel^.OutputScalarArray+[Element.x];
+    Channel^.OutputScalarArray[Index]:=Element.x;
    end;
+  end;
+ end;
+ result:=POCAValueNull;
+end;
+
+function TPOCAScene3DGroupAnimationChannel.finish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+var Channel:TpvScene3D.TGroup.TAnimation.PChannel;
+begin
+ Channel:=@fAnimation.fChannels[fChannelIndex];
+ SetLength(Channel^.InputTimeArray,fCount);
+ case fElementSize of
+  2:begin
+   SetLength(Channel^.OutputVector2Array,fCount);
+  end;
+  3:begin
+   SetLength(Channel^.OutputVector3Array,fCount);
+  end;
+  4:begin
+   SetLength(Channel^.OutputVector4Array,fCount);
+  end;
+  else begin
+   SetLength(Channel^.OutputScalarArray,fCount);
   end;
  end;
  result:=POCAValueNull;
@@ -2663,6 +2706,7 @@ begin
    POCAScene3DGroupAnimationChannel.fAnimation:=fAnimation;
    POCAScene3DGroupAnimationChannel.fChannelIndex:=Index;
    POCAScene3DGroupAnimationChannel.fElementSize:=ElementSize;
+   POCAScene3DGroupAnimationChannel.fCount:=0;
    result:=POCANewNativeObject(aContext,POCAScene3DGroupAnimationChannel);
   end else begin
    result:=POCAValueNull;
