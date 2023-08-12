@@ -2593,6 +2593,7 @@ var Index,SubIndex:TpvSizeInt;
 begin
  OK:=false;
  if (aCountArguments>=1) and ((fElementSize>=0) and (fElementSize<=4)) then begin
+  Channel:=@fAnimation.fChannels[fChannelIndex];
   FillChar(Elements,SizeOf(Elements),#0);
   Time:=POCAGetNumberValue(aContext,aArguments^[0]);
   if (aCountArguments>=2) and (POCAGetValueType(aArguments^[1])=pvtARRAY) then begin
@@ -2630,7 +2631,6 @@ begin
    end;
   end;
   if OK then begin
-   Channel:=@fAnimation.fChannels[fChannelIndex];
    Index:=fCount;
    inc(fCount);
    if length(Channel^.InputTimeArray)<=fCount then begin
