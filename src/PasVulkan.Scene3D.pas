@@ -9842,8 +9842,6 @@ begin
 
          ProcessMaterials;
 
-         ProcessAnimations;
-
          ProcessCameras;
 
          ProcessMeshes;
@@ -9853,6 +9851,8 @@ begin
          ProcessNodes;
 
          ProcessScenes;
+
+         ProcessAnimations;
 
          if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
           fScene:=fScenes[aSourceDocument.Scene];
