@@ -2566,6 +2566,7 @@ type { TPOCAScene3DGroup }
        function getCameraID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getMeshID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getNodeID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroup }
@@ -2614,6 +2615,11 @@ begin
  end else begin
   result.Num:=-1;
  end;
+end;
+
+function TPOCAScene3DGroup.createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ result:=POCAValueNull;
 end;
 
 { TpvScene3D.TScalarSum }
@@ -9426,7 +9432,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
 
  end;
- procedure GetProceduralGeneratedAnimations;
+ procedure ExecuteCode;
  var POCAInstance:PPOCAInstance;
      POCAContext:PPOCAContext;
      POCACode:TPOCAValue;
@@ -9514,7 +9520,6 @@ var LightMap:TpvScene3D.TGroup.TLights;
          fAnimations.Add(Animation);
         end;
        end;
-       GetProceduralGeneratedAnimations;
        for Index:=0 to fAnimations.Count-1 do begin
         Animation:=fAnimations[Index];
         for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
@@ -9989,6 +9994,8 @@ begin
          ProcessNodes;
 
          ProcessScenes;
+
+         ExecuteCode;
 
          ProcessAnimations;
 
