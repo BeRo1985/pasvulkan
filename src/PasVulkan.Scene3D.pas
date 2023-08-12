@@ -9431,6 +9431,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      POCAContext:PPOCAContext;
      POCACode:TPOCAValue;
      Code:TpvUTF8String;
+     POCAScene3DGroup:TPOCAScene3DGroup;
  begin
   Code:='';
   if length(Code)>0 then begin
@@ -9439,10 +9440,12 @@ var LightMap:TpvScene3D.TGroup.TLights;
     POCAContext:=POCAContextCreate(POCAInstance);
     try
      try
+      POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
+      POCAScene3DGroup.fGroup:=self;
       POCAHashSet(POCAContext,
                   POCAInstance.Globals.Namespace,
                   POCANewUniqueString(POCAContext,'Group'),
-                  POCANewNativeObject(POCAContext,TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false)));
+                  POCANewNativeObject(POCAContext,POCAScene3DGroup));
       POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
       POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
      except
