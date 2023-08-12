@@ -70,6 +70,7 @@ uses {$ifdef Windows}
      Math,
      Vulkan,
      Kraft,
+     PUCU,
      PasMP,
      PasJSON,
      PasGLTF,
@@ -9477,6 +9478,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
     NewTextures:TpvScene3D.TTextures;
     //MaterialMap:TpvScene3D.TMaterials;
     HasLights:boolean;
+    POCACodeString:TpvUTF8String;
  procedure ProcessImages;
  var Index:TpvSizeInt;
      SourceImage:TPasGLTF.TImage;
@@ -9685,40 +9687,42 @@ var LightMap:TpvScene3D.TGroup.TLights;
      Code:TpvUTF8String;
      POCAScene3DGroup:TPOCAScene3DGroup;
  begin
-  Code:='';
-  if length(Code)>0 then begin
-   POCAInstance:=POCAInstanceCreate;
-   try
-    POCAContext:=POCAContextCreate(POCAInstance);
+  if length(POCACodeString)>0 then begin
+   Code:=PUCUUTF8Trim(PUCUUTF8Correct(POCACodeString));
+   if length(Code)>0 then begin
+    POCAInstance:=POCAInstanceCreate;
     try
+     POCAContext:=POCAContextCreate(POCAInstance);
      try
-      POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
-      POCAScene3DGroup.fGroup:=self;
-      POCAHashSet(POCAContext,
-                  POCAInstance.Globals.Namespace,
-                  POCANewUniqueString(POCAContext,'Group'),
-                  POCANewNativeObject(POCAContext,POCAScene3DGroup));
-      POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
-      POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
-     except
-      on e:EPOCASyntaxError do begin
-       // Ignore
+      try
+       POCAScene3DGroup:=TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false);
+       POCAScene3DGroup.fGroup:=self;
+       POCAHashSet(POCAContext,
+                   POCAInstance.Globals.Namespace,
+                   POCANewUniqueString(POCAContext,'Group'),
+                   POCANewNativeObject(POCAContext,POCAScene3DGroup));
+       POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
+       POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
+      except
+       on e:EPOCASyntaxError do begin
+        // Ignore
+       end;
+       on e:EPOCARuntimeError do begin
+        // Ignore
+       end;
+       on e:EPOCAScriptError do begin
+        // Ignore
+       end;
+       on e:Exception do begin
+        raise;
+       end;
       end;
-      on e:EPOCARuntimeError do begin
-       // Ignore
-      end;
-      on e:EPOCAScriptError do begin
-       // Ignore
-      end;
-      on e:Exception do begin
-       raise;
-      end;
+     finally
+      POCAContextDestroy(POCAContext);
      end;
     finally
-     POCAContextDestroy(POCAContext);
+     POCAInstanceDestroy(POCAInstance);
     end;
-   finally
-    POCAInstanceDestroy(POCAInstance);
    end;
   end;
  end;
@@ -10177,6 +10181,8 @@ var Image:TpvScene3D.TImage;
     Sampler:TpvScene3D.TSampler;
     Texture:TpvScene3D.TTexture;
 begin
+
+ POCACodeString:='';
 
  HasLights:=aSourceDocument.ExtensionsUsed.IndexOf('KHR_lights_punctual')>=0;
 
