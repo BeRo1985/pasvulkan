@@ -2603,8 +2603,8 @@ begin
      OK:=true;
      for Index:=0 to 2 do begin
       SubArrayValue:=POCAArrayGet(ArrayValue,Index);
-      if (POCAGetValueType(SubArrayValue)=pvtARRAY) and (POCAArraySize(SubArrayValue)<>fElementSize) then begin
-       for SubIndex:=0 to fElementSize-1 do begin
+      if (POCAGetValueType(SubArrayValue)=pvtARRAY) and (POCAArraySize(SubArrayValue)>0) then begin
+       for SubIndex:=0 to Min(Min(POCAArraySize(SubArrayValue),fElementSize),4)-1 do begin
         Elements[Index].Components[SubIndex]:=POCAGetNumberValue(aContext,POCAArrayGet(SubArrayValue,SubIndex));
        end;
       end else begin
@@ -2614,17 +2614,16 @@ begin
      end;
     end;
    end else begin
-    if POCAArraySize(ArrayValue)=fElementSize then begin
-     for Index:=0 to fElementSize-1 do begin
+    if POCAArraySize(ArrayValue)>0 then begin
+     for Index:=0 to Min(Min(POCAArraySize(ArrayValue),fElementSize),4)-1 do begin
       Elements[0].Components[Index]:=POCAGetNumberValue(aContext,POCAArrayGet(ArrayValue,Index));
      end;
      OK:=true;
     end;
    end;
   end else begin
-   if (Channel^.Interpolation<>TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline) and
-      ((aCountArguments-1)>=fElementSize) then begin
-    for Index:=0 to fElementSize-1 do begin
+   if Channel^.Interpolation<>TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    for Index:=0 to Min(Min(aCountArguments-1,fElementSize),4)-1 do begin
      Elements[0].Components[Index]:=POCAGetNumberValue(aContext,aArguments^[1+Index]);
     end;
     OK:=true;
