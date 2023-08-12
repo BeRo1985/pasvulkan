@@ -2564,7 +2564,7 @@ type { TPOCAScene3DGroupAnimationChannel }
        constructor Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean); override;
        destructor Destroy; override;
       published
-       function create_(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function createKeyFrame(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroupAnimation }
@@ -2579,7 +2579,7 @@ begin
  inherited Destroy;
 end;
 
-function TPOCAScene3DGroupAnimationChannel.create_(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+function TPOCAScene3DGroupAnimationChannel.createKeyFrame(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 var Index:TpvSizeInt;
     Time:TpvDouble;
     ArrayValue:TPOCAValue;
