@@ -40,7 +40,7 @@
   // Create a new animation channel
   let animationChannel = animation.createChannel(
                           "/nodes/" ~ Group.getNodeID("Cube") ~ "/translation", // the target, for more information see the KHR_animation_pointer draft extension in the glTF 2.0 specification
-                          "linear", // linear, step, cubicspline (for more information see the glTF 2.0 specification)
+                          "linear", // linear, step, cubicspline (for more information see the glTF 2.0 specification, but avoid cubicspline for now, since the interpolation tangent stuff is broken here yet at createKeyFrame)
                           3 // 1 (float), 2 (vec2), 3 (vec3), 4 (vec4) (the number of components in the data,
                         );  // morph weights with bigger number of components are not supported yet with this API)
 
@@ -60,7 +60,7 @@
 
     }finally{
 
-      // Finish the animation, this will finalize the internal arrays and do some necessary post processing, for example sorting the keyframes,
+      // Finish the animation channel, this will finalize the internal arrays and do some necessary post processing, for example sorting the keyframes,
       // when they are not in order.
       animationChannel.finish();
 
@@ -76,7 +76,7 @@
   // Create a new animation channel
   let animationChannel = animation.createChannel(
                           "/materials/" ~ Group.getMaterialID("TestAnimatedMaterial") ~ "/pbrMetallicRoughness/baseColorFactor", // the target, for more information see the KHR_animation_pointer draft extension in the glTF 2.0 specification
-                          "linear", // linear, step, cubicspline (for more information see the glTF 2.0 specification)
+                          "linear", // linear, step, cubicspline (for more information see the glTF 2.0 specification, but avoid cubicspline for now, since the interpolation tangent stuff is broken here yet at createKeyFrame)
                           4 // 1 (float), 2 (vec2), 3 (vec3), 4 (vec4) (the number of components in the data,
                         );  // morph weights with bigger number of components are not supported yet with this API)
 
@@ -98,7 +98,7 @@
 
     }finally{
 
-      // Finish the animation, this will finalize the internal arrays and do some necessary post processing, for example sorting the keyframes,
+      // Finish the animation channel, this will finalize the internal arrays and do some necessary post processing, for example sorting the keyframes,
       // when they are not in order.
       animationChannel.finish();
 
