@@ -9342,6 +9342,43 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
 
  end;
+ procedure GetProceduralGeneratedAnimations;
+ var POCAInstance:PPOCAInstance;
+     POCAContext:PPOCAContext;
+     POCACode:TPOCAValue;
+     Code:TpvUTF8String;
+ begin
+  Code:='';
+  if length(Code)>0 then begin
+   POCAInstance:=POCAInstanceCreate;
+   try
+    POCAContext:=POCAContextCreate(POCAInstance);
+    try
+     try
+      POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
+      POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
+     except
+      on e:EPOCASyntaxError do begin
+       // Ignore
+      end;
+      on e:EPOCARuntimeError do begin
+       // Ignore
+      end;
+      on e:EPOCAScriptError do begin
+       // Ignore
+      end;
+      on e:Exception do begin
+       raise;
+      end;
+     end;
+    finally
+     POCAContextDestroy(POCAContext);
+    end;
+   finally
+    POCAInstanceDestroy(POCAInstance);
+   end;
+  end;
+ end;
  procedure ProcessAnimations;
  type TMaterialHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
       TMaterialArrayList=TpvDynamicArrayList<TpvSizeInt>;
@@ -9386,6 +9423,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
          fAnimations.Add(Animation);
         end;
        end;
+       GetProceduralGeneratedAnimations;
        for Index:=0 to fAnimations.Count-1 do begin
         Animation:=fAnimations[Index];
         for ChannelIndex:=0 to length(Animation.fChannels)-1 do begin
