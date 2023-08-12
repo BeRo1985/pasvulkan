@@ -182,6 +182,8 @@ type EpvResource=class(Exception);
        fInstanceInterface:IpvResource;
        fOnFinish:TpvResourceOnFinish;
        fReleaseFrameDelay:TPasMPInt32; // for resources with frame-wise in-flight data stuff
+       fIsAsset:boolean;
+       fAssetBasePath:TpvUTF8String;
        procedure SetFileName(const aFileName:TpvUTF8String);
       protected
        function _AddRef:TpvInt32; override; {$ifdef Windows}stdcall{$else}cdecl{$endif};
@@ -224,6 +226,8 @@ type EpvResource=class(Exception);
        property MetaResource:TpvMetaResource read fMetaResource write fMetaResource;
        property OnFinish:TpvResourceOnFinish read fOnFinish write fOnFinish;
        property ReleaseFrameDelay:TPasMPInt32 read fReleaseFrameDelay write fReleaseFrameDelay;
+       property IsAsset:boolean read fIsAsset;
+       property AssetBasePath:TpvUTF8String read fAssetBasePath;
      end;
 
      TpvResourceBackgroundLoader=class(TPasMPThread)
@@ -592,6 +596,10 @@ begin
   end;
  end;
 
+ fIsAsset:=false;
+
+ fAssetBasePath:='';
+
 end;
 
 destructor TpvResource.Destroy;
@@ -778,6 +786,7 @@ end;
 function TpvResource.CreateNewFileStreamFromFileName(const aFileName:TpvUTF8String):TStream;
 begin
  result:=TFileStream.Create(IncludeTrailingPathDelimiter(String(fResourceManager.fBaseDataPath))+String(TpvResourceManager.SanitizeFileName(aFileName)),fmCreate);
+ fIsAsset:=false;
 end;
 
 function TpvResource.GetStreamFromFileName(const aFileName:TpvUTF8String):TStream;
@@ -786,9 +795,12 @@ begin
  SanitizedFileName:=TpvResourceManager.SanitizeFileName(aFileName);
  if pvApplication.Assets.ExistAsset(String(SanitizedFileName)) then begin
   result:=pvApplication.Assets.GetAssetStream(String(SanitizedFileName));
+  fIsAsset:=true;
+  fAssetBasePath:=ExtractFilePath(SanitizedFileName);
  end else begin
   if FileExists(String(SanitizedFileName)) then begin
    result:=TFileStream.Create(String(SanitizedFileName),fmOpenRead);
+   fIsAsset:=false;
   end else begin
    result:=nil;
   end;
