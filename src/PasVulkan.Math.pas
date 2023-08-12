@@ -5946,7 +5946,7 @@ begin
  aVelocity:=(q1*r1r0)+(aV0*q2)+(aV1*q3);
 end;
 
-class procedure TpvQuaternion.CatmullRom(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1,aR2,aR3:TpvQuaternion); static;
+class procedure TpvQuaternion.CatmullRom(out aRotation:TpvQuaternion;out aVelocity:TpvVector3;const aTime:TpvScalar;const aR0,aR1,aR2,aR3:TpvQuaternion);
 var r1r0,r2r1,r3r2,v1,v2:TpvVector3;
 begin
  r1r0:=((aR1*aR0.Inverse).Abs).ToScaledAngleAxis;
