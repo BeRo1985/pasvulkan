@@ -5,6 +5,7 @@
 *.dproj -text linguist-language=XML
 *.lpr -text linguist-language=Pascal
 *.lpi -text linguist-language=XML
+*.poca -text linguist-language=js
 *.glsl -text
 *.meta -text
 *.txt -text
