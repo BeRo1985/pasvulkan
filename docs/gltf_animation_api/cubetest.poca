@@ -96,7 +96,8 @@
           i / FPS, // The time in seconds
           [(Math.sin((i / FPS) * Math.PI * 2.0) * 0.5) + 0.5,
            (Math.cos((i / FPS) * Math.PI * 1.5) * 0.5) + 0.5,
-           (Math.sin((i / FPS) * Math.PI * 2.5) * 0.5) + 0.5] // The actual data
+           (Math.sin((i / FPS) * Math.PI * 2.5) * 0.5) + 0.5,
+           1.0] // The actual data
         );
       }
 
