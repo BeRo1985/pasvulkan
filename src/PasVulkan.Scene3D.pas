@@ -2641,6 +2641,7 @@ end;
 
 function TPOCAScene3DGroup.createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 var Animation:TpvScene3D.TGroup.TAnimation;
+    POCAScene3DGroupAnimation:TPOCAScene3DGroupAnimation;
 begin
  Animation:=TpvScene3D.TGroup.TAnimation.Create(fGroup,fGroup.fAnimations.Count);
  try
@@ -2650,7 +2651,9 @@ begin
  finally
   fGroup.fAnimations.Add(Animation);
  end;
- result:=POCAValueNull;
+ POCAScene3DGroupAnimation:=TPOCAScene3DGroupAnimation.Create(aContext^.Instance,aContext,nil,nil,false);
+ POCAScene3DGroupAnimation.fAnimation:=Animation;
+ result:=POCANewNativeObject(aContext,POCAScene3DGroupAnimation);
 end;
 
 { TpvScene3D.TScalarSum }
