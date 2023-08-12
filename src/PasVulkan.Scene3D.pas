@@ -9402,7 +9402,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      fMaterialMap[Index+1]:=Material.fID;
 
      if length(trim(Material.fName))>0 then begin
-      fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Material.fID);
+      fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Index);
      end;
 
      MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
