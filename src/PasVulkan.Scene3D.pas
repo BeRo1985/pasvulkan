@@ -2642,21 +2642,78 @@ end;
 
 function TPOCAScene3DGroupAnimationChannel.finish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 var Channel:TpvScene3D.TGroup.TAnimation.PChannel;
+    Index:TpvSizeInt;
 begin
  Channel:=@fAnimation.fChannels[fChannelIndex];
  SetLength(Channel^.InputTimeArray,fCount);
  case fElementSize of
   2:begin
    SetLength(Channel^.OutputVector2Array,fCount);
+   Index:=0;
+   while Index<(fCount-1) do begin
+    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+     TpvSwap<TpvVector2>.Swap(Channel^.OutputVector2Array[Index],Channel^.OutputVector2Array[Index+1]);
+     if Index>0 then begin
+      dec(Index);
+     end else begin
+      inc(Index);
+     end;
+    end else begin
+     inc(Index);
+    end;
+   end;
   end;
   3:begin
    SetLength(Channel^.OutputVector3Array,fCount);
+   Index:=0;
+   while Index<(fCount-1) do begin
+    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+     TpvSwap<TpvVector3>.Swap(Channel^.OutputVector3Array[Index],Channel^.OutputVector3Array[Index+1]);
+     if Index>0 then begin
+      dec(Index);
+     end else begin
+      inc(Index);
+     end;
+    end else begin
+     inc(Index);
+    end;
+   end;
   end;
   4:begin
    SetLength(Channel^.OutputVector4Array,fCount);
+   Index:=0;
+   while Index<(fCount-1) do begin
+    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+     TpvSwap<TpvVector4>.Swap(Channel^.OutputVector4Array[Index],Channel^.OutputVector4Array[Index+1]);
+     if Index>0 then begin
+      dec(Index);
+     end else begin
+      inc(Index);
+     end;
+    end else begin
+     inc(Index);
+    end;
+   end;
   end;
   else begin
    SetLength(Channel^.OutputScalarArray,fCount);
+   Index:=0;
+   while Index<(fCount-1) do begin
+    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+     TpvSwap<TpvFloat>.Swap(Channel^.OutputScalarArray[Index],Channel^.OutputScalarArray[Index+1]);
+     if Index>0 then begin
+      dec(Index);
+     end else begin
+      inc(Index);
+     end;
+    end else begin
+     inc(Index);
+    end;
+   end;
   end;
  end;
  result:=POCAValueNull;
