@@ -2606,7 +2606,7 @@ begin
   Channel:=@fAnimation.fChannels[fChannelIndex];
   Index:=fCount;
   inc(fCount);
-  if length(Channel^.InputTimeArray)>fCount then begin
+  if length(Channel^.InputTimeArray)<=fCount then begin
    SetLength(Channel^.InputTimeArray,fCount*2);
    case fElementSize of
     2:begin
