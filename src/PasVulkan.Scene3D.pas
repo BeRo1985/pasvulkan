@@ -2584,62 +2584,136 @@ begin
 end;
 
 function TPOCAScene3DGroupAnimationChannel.createKeyFrame(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
-var Index:TpvSizeInt;
+var Index,SubIndex:TpvSizeInt;
     Time:TpvDouble;
-    ArrayValue:TPOCAValue;
-    Element:TpvVector4;
+    ArrayValue,SubArrayValue:TPOCAValue;
+    Elements:array[0..2] of TpvVector4;
     Channel:TpvScene3D.TGroup.TAnimation.PChannel;
+    OK:boolean;
 begin
- if aCountArguments>=1 then begin
-  Element:=TpvVector4.Null;
+ OK:=false;
+ if (aCountArguments>=1) and ((fElementSize>=0) and (fElementSize<=4)) then begin
+  FillChar(Elements,SizeOf(Elements),#0);
   Time:=POCAGetNumberValue(aContext,aArguments^[0]);
   if (aCountArguments>=2) and (POCAGetValueType(aArguments^[1])=pvtARRAY) then begin
    ArrayValue:=aArguments^[1];
-   for Index:=0 to Min(Min(POCAArraySize(ArrayValue),fElementSize),4)-1 do begin
-    Element.Components[Index]:=POCAGetNumberValue(aContext,POCAArrayGet(ArrayValue,Index));
+   if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    if POCAArraySize(ArrayValue)=3 then begin
+     OK:=true;
+     for Index:=0 to 2 do begin
+      SubArrayValue:=POCAArrayGet(ArrayValue,Index);
+      if (POCAGetValueType(SubArrayValue)=pvtARRAY) and (POCAArraySize(SubArrayValue)<>fElementSize) then begin
+       for SubIndex:=0 to fElementSize-1 do begin
+        Elements[Index].Components[SubIndex]:=POCAGetNumberValue(aContext,POCAArrayGet(SubArrayValue,SubIndex));
+       end;
+      end else begin
+       OK:=false;
+       break;
+      end;
+     end;
+    end;
+   end else begin
+    if POCAArraySize(ArrayValue)=fElementSize then begin
+     for Index:=0 to fElementSize-1 do begin
+      Elements[0].Components[Index]:=POCAGetNumberValue(aContext,POCAArrayGet(ArrayValue,Index));
+     end;
+     OK:=true;
+    end;
    end;
   end else begin
-   for Index:=0 to Min(Min(aCountArguments-1,fElementSize),4)-1 do begin
-    Element.Components[Index]:=POCAGetNumberValue(aContext,aArguments^[1+Index]);
+   if (Channel^.Interpolation<>TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline) and
+      ((aCountArguments-1)>=fElementSize) then begin
+    for Index:=0 to fElementSize-1 do begin
+     Elements[0].Components[Index]:=POCAGetNumberValue(aContext,aArguments^[1+Index]);
+    end;
+    OK:=true;
    end;
   end;
-  Channel:=@fAnimation.fChannels[fChannelIndex];
-  Index:=fCount;
-  inc(fCount);
-  if length(Channel^.InputTimeArray)<=fCount then begin
-   SetLength(Channel^.InputTimeArray,fCount*2);
-   case fElementSize of
-    2:begin
-     SetLength(Channel^.OutputVector2Array,fCount*2);
-    end;
-    3:begin
-     SetLength(Channel^.OutputVector3Array,fCount*2);
-    end;
-    4:begin
-     SetLength(Channel^.OutputVector4Array,fCount*2);
-    end;
-    else begin
-     SetLength(Channel^.OutputScalarArray,fCount*2);
+  if OK then begin
+   Channel:=@fAnimation.fChannels[fChannelIndex];
+   Index:=fCount;
+   inc(fCount);
+   if length(Channel^.InputTimeArray)<=fCount then begin
+    SetLength(Channel^.InputTimeArray,fCount*2);
+    if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+     case fElementSize of
+      2:begin
+       SetLength(Channel^.OutputVector2Array,fCount*6);
+      end;
+      3:begin
+       SetLength(Channel^.OutputVector3Array,fCount*6);
+      end;
+      4:begin
+       SetLength(Channel^.OutputVector4Array,fCount*6);
+      end;
+      else begin
+       SetLength(Channel^.OutputScalarArray,fCount*6);
+      end;
+     end;
+    end else begin
+     case fElementSize of
+      2:begin
+       SetLength(Channel^.OutputVector2Array,fCount*2);
+      end;
+      3:begin
+       SetLength(Channel^.OutputVector3Array,fCount*2);
+      end;
+      4:begin
+       SetLength(Channel^.OutputVector4Array,fCount*2);
+      end;
+      else begin
+       SetLength(Channel^.OutputScalarArray,fCount*2);
+      end;
+     end;
     end;
    end;
-  end;
-  Channel^.InputTimeArray[Index]:=Time;
-  case fElementSize of
-   2:begin
-    Channel^.OutputVector2Array[Index]:=Element.xy;
-   end;
-   3:begin
-    Channel^.OutputVector3Array[Index]:=Element.xyz;
-   end;
-   4:begin
-    Channel^.OutputVector4Array[Index]:=Element.xyzw;
-   end;
-   else begin
-    Channel^.OutputScalarArray[Index]:=Element.x;
+   Channel^.InputTimeArray[Index]:=Time;
+   if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    case fElementSize of
+     2:begin
+      Channel^.OutputVector2Array[(Index*3)+0]:=Elements[0].xy;
+      Channel^.OutputVector2Array[(Index*3)+1]:=Elements[1].xy;
+      Channel^.OutputVector2Array[(Index*3)+2]:=Elements[2].xy;
+     end;
+     3:begin
+      Channel^.OutputVector3Array[(Index*3)+0]:=Elements[0].xyz;
+      Channel^.OutputVector3Array[(Index*3)+1]:=Elements[1].xyz;
+      Channel^.OutputVector3Array[(Index*3)+2]:=Elements[2].xyz;
+     end;
+     4:begin
+      Channel^.OutputVector4Array[(Index*3)+0]:=Elements[0].xyzw;
+      Channel^.OutputVector4Array[(Index*3)+1]:=Elements[1].xyzw;
+      Channel^.OutputVector4Array[(Index*3)+2]:=Elements[2].xyzw;
+     end;
+     else begin
+      Channel^.OutputScalarArray[(Index*3)+0]:=Elements[0].x;
+      Channel^.OutputScalarArray[(Index*3)+1]:=Elements[1].x;
+      Channel^.OutputScalarArray[(Index*3)+2]:=Elements[2].x;
+     end;
+    end;
+   end else begin
+    case fElementSize of
+     2:begin
+      Channel^.OutputVector2Array[Index]:=Elements[0].xy;
+     end;
+     3:begin
+      Channel^.OutputVector3Array[Index]:=Elements[0].xyz;
+     end;
+     4:begin
+      Channel^.OutputVector4Array[Index]:=Elements[0].xyzw;
+     end;
+     else begin
+      Channel^.OutputScalarArray[Index]:=Elements[0].x;
+     end;
+    end;
    end;
   end;
  end;
- result:=POCAValueNull;
+ if OK then begin
+  result.Num:=1;
+ end else begin
+  result.Num:=0;
+ end;
 end;
 
 function TPOCAScene3DGroupAnimationChannel.finish(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
@@ -2650,70 +2724,150 @@ begin
  SetLength(Channel^.InputTimeArray,fCount);
  case fElementSize of
   2:begin
-   SetLength(Channel^.OutputVector2Array,fCount);
-   Index:=0;
-   while Index<(fCount-1) do begin
-    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
-     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
-     TpvSwap<TpvVector2>.Swap(Channel^.OutputVector2Array[Index],Channel^.OutputVector2Array[Index+1]);
-     if Index>0 then begin
-      dec(Index);
+   if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    SetLength(Channel^.OutputVector2Array,fCount*3);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvVector2>.Swap(Channel^.OutputVector2Array[(Index*3)+0],Channel^.OutputVector2Array[((Index+1)*3)+0]);
+      TpvSwap<TpvVector2>.Swap(Channel^.OutputVector2Array[(Index*3)+1],Channel^.OutputVector2Array[((Index+1)*3)+1]);
+      TpvSwap<TpvVector2>.Swap(Channel^.OutputVector2Array[(Index*3)+2],Channel^.OutputVector2Array[((Index+1)*3)+2]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
      end else begin
       inc(Index);
      end;
-    end else begin
-     inc(Index);
+    end;
+   end else begin
+    SetLength(Channel^.OutputVector2Array,fCount);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvVector2>.Swap(Channel^.OutputVector2Array[Index],Channel^.OutputVector2Array[Index+1]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
+     end else begin
+      inc(Index);
+     end;
     end;
    end;
   end;
   3:begin
-   SetLength(Channel^.OutputVector3Array,fCount);
-   Index:=0;
-   while Index<(fCount-1) do begin
-    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
-     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
-     TpvSwap<TpvVector3>.Swap(Channel^.OutputVector3Array[Index],Channel^.OutputVector3Array[Index+1]);
-     if Index>0 then begin
-      dec(Index);
+   if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    SetLength(Channel^.OutputVector3Array,fCount*3);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvVector3>.Swap(Channel^.OutputVector3Array[(Index*3)+0],Channel^.OutputVector3Array[((Index+1)*3)+0]);
+      TpvSwap<TpvVector3>.Swap(Channel^.OutputVector3Array[(Index*3)+1],Channel^.OutputVector3Array[((Index+1)*3)+1]);
+      TpvSwap<TpvVector3>.Swap(Channel^.OutputVector3Array[(Index*3)+2],Channel^.OutputVector3Array[((Index+1)*3)+2]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
      end else begin
       inc(Index);
      end;
-    end else begin
-     inc(Index);
+    end;
+   end else begin
+    SetLength(Channel^.OutputVector3Array,fCount);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvVector3>.Swap(Channel^.OutputVector3Array[Index],Channel^.OutputVector3Array[Index+1]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
+     end else begin
+      inc(Index);
+     end;
     end;
    end;
   end;
   4:begin
-   SetLength(Channel^.OutputVector4Array,fCount);
-   Index:=0;
-   while Index<(fCount-1) do begin
-    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
-     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
-     TpvSwap<TpvVector4>.Swap(Channel^.OutputVector4Array[Index],Channel^.OutputVector4Array[Index+1]);
-     if Index>0 then begin
-      dec(Index);
+   if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    SetLength(Channel^.OutputVector4Array,fCount*3);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvVector4>.Swap(Channel^.OutputVector4Array[(Index*3)+0],Channel^.OutputVector4Array[((Index+1)*3)+0]);
+      TpvSwap<TpvVector4>.Swap(Channel^.OutputVector4Array[(Index*3)+1],Channel^.OutputVector4Array[((Index+1)*3)+1]);
+      TpvSwap<TpvVector4>.Swap(Channel^.OutputVector4Array[(Index*3)+2],Channel^.OutputVector4Array[((Index+1)*3)+2]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
      end else begin
       inc(Index);
      end;
-    end else begin
-     inc(Index);
+    end;
+   end else begin
+    SetLength(Channel^.OutputVector4Array,fCount);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvVector4>.Swap(Channel^.OutputVector4Array[Index],Channel^.OutputVector4Array[Index+1]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
+     end else begin
+      inc(Index);
+     end;
     end;
    end;
   end;
   else begin
-   SetLength(Channel^.OutputScalarArray,fCount);
-   Index:=0;
-   while Index<(fCount-1) do begin
-    if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
-     TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
-     TpvSwap<TpvFloat>.Swap(Channel^.OutputScalarArray[Index],Channel^.OutputScalarArray[Index+1]);
-     if Index>0 then begin
-      dec(Index);
+   if Channel^.Interpolation=TpvScene3D.TGroup.TAnimation.TChannel.TInterpolation.CubicSpline then begin
+    SetLength(Channel^.OutputScalarArray,fCount*3);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvFloat>.Swap(Channel^.OutputScalarArray[(Index*3)+0],Channel^.OutputScalarArray[((Index+1)*3)+0]);
+      TpvSwap<TpvFloat>.Swap(Channel^.OutputScalarArray[(Index*3)+1],Channel^.OutputScalarArray[((Index+1)*3)+1]);
+      TpvSwap<TpvFloat>.Swap(Channel^.OutputScalarArray[(Index*3)+2],Channel^.OutputScalarArray[((Index+1)*3)+2]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
      end else begin
       inc(Index);
      end;
-    end else begin
-     inc(Index);
+    end;
+   end else begin
+    SetLength(Channel^.OutputScalarArray,fCount);
+    Index:=0;
+    while Index<(fCount-1) do begin
+     if Channel^.InputTimeArray[Index]>Channel^.InputTimeArray[Index+1] then begin
+      TpvSwap<TpvDouble>.Swap(Channel^.InputTimeArray[Index],Channel^.InputTimeArray[Index+1]);
+      TpvSwap<TpvFloat>.Swap(Channel^.OutputScalarArray[Index],Channel^.OutputScalarArray[Index+1]);
+      if Index>0 then begin
+       dec(Index);
+      end else begin
+       inc(Index);
+      end;
+     end else begin
+      inc(Index);
+     end;
     end;
    end;
   end;
