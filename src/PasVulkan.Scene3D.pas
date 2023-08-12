@@ -2562,6 +2562,7 @@ type { TPOCAScene3DGroupAnimation }
        constructor Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean); override;
        destructor Destroy; override;
       published
+       function createChannel(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
 { TPOCAScene3DGroupAnimation }
@@ -2574,6 +2575,30 @@ end;
 destructor TPOCAScene3DGroupAnimation.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TPOCAScene3DGroupAnimation.createChannel(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+var Index,ElementSize:TpvSizeInt;
+    Path:TpvUTF8String;
+    Interpolation:TpvUTF8String;
+    Channel:TpvScene3D.TGroup.TAnimation.PChannel;
+begin
+ if aCountArguments=3 then begin
+  Path:=POCAGetStringValue(aContext,aArguments^[0]);
+  Interpolation:=POCAGetStringValue(aContext,aArguments^[1]);
+  ElementSize:=trunc(POCAGetNumberValue(aContext,aArguments^[2]));
+  if ElementSize>0 then begin
+   Index:=length(fAnimation.fChannels);
+   SetLength(fAnimation.fChannels,Index+1);
+   Channel:=@fAnimation.fChannels[Index];
+   Channel^.SetTarget('pointer/'+Path,-1);
+   Channel^.SetInterpolation(Interpolation);
+  end else begin
+   result:=POCAValueNull;
+  end;
+ end else begin
+  result:=POCAValueNull;
+ end;
 end;
 
 type { TPOCAScene3DGroup }
