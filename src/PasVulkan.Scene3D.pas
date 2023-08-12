@@ -1228,6 +1228,7 @@ type EpvScene3D=class(Exception);
                    PNodeMeshPrimitiveShaderStorageBufferObject=^TNodeShaderStorageBufferObject;
                    TMaterialMap=array of TpvUInt32;
                    TMaterialIDMapArrayIndexHashMap=TpvHashMap<TID,TpvSizeInt>;
+                   TMaterialNameMapArrayIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TMaterialIDMapArray=TpvGenericList<TpvSizeInt>;
                    TMaterialIDMapArrays=TpvObjectGenericList<TMaterialIDMapArray>;
                    TGroupObject=class
@@ -2043,6 +2044,8 @@ type EpvScene3D=class(Exception);
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
                    TNodeNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TCameraNodeIndices=TpvGenericList<TpvSizeInt>;
+                   TCameraNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fCulling:boolean;
               fObjects:TBaseObjects;
@@ -2050,11 +2053,14 @@ type EpvScene3D=class(Exception);
               fMaterials:TpvScene3D.TMaterials;
               fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
               fMaterialIDMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap;
+              fMaterialNameMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap;
               fMaterialIDMapArrays:TpvScene3D.TGroup.TMaterialIDMapArrays;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCountInstanceAnimationChannels:TpvSizeInt;
               fCameras:TpvScene3D.TGroup.TCameras;
+              fCameraNameIndexHashMap:TCameraNameIndexHashMap;
               fMeshes:TpvScene3D.TGroup.TMeshes;
+              fMeshNameIndexHashMap:TMeshNameIndexHashMap;
               fSkins:TpvScene3D.TGroup.TSkins;
               fLights:TpvScene3D.TGroup.TLights;
               fNodes:TpvScene3D.TGroup.TNodes;
@@ -2546,6 +2552,68 @@ begin
   BestDot:=Dot;
  end;
 
+end;
+
+type { TPOCAScene3DGroup }
+     TPOCAScene3DGroup=class(TPOCANativeObject)
+      private
+       fGroup:TpvScene3D.TGroup;
+      public
+       constructor Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean); override;
+       destructor Destroy; override;
+      published
+       function getMaterialID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function getCameraID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function getMeshID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function getNodeID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+     end;
+
+{ TPOCAScene3DGroup }
+
+constructor TPOCAScene3DGroup.Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean);
+begin
+ inherited Create(aInstance,aContext,aPrototype,aConstructor,aExpandable);
+end;
+
+destructor TPOCAScene3DGroup.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TPOCAScene3DGroup.getMaterialID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fMaterialNameMapArrayIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
+end;
+
+function TPOCAScene3DGroup.getCameraID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fCameraNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
+end;
+
+function TPOCAScene3DGroup.getMeshID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fMeshNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
+end;
+
+function TPOCAScene3DGroup.getNodeID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fNodeNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
 end;
 
 { TpvScene3D.TScalarSum }
@@ -8337,6 +8405,8 @@ begin
 
  fMaterialIDMapArrayIndexHashMap:=TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap.Create(-1);
 
+ fMaterialNameMapArrayIndexHashMap:=TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap.Create(-1);
+
  fMaterialIDMapArrays:=TpvScene3D.TGroup.TMaterialIDMapArrays.Create;
  fMaterialIDMapArrays.OwnsObjects:=true;
 
@@ -8346,8 +8416,12 @@ begin
  fCameras:=TCameras.Create;
  fCameras.OwnsObjects:=true;
 
+ fCameraNameIndexHashMap:=TCameraNameIndexHashMap.Create(-1);
+
  fMeshes:=TMeshes.Create;
  fMeshes.OwnsObjects:=true;
+
+ fMeshNameIndexHashMap:=TMeshNameIndexHashMap.Create(-1);
 
  fSkins:=TSkins.Create;
  fSkins.OwnsObjects:=true;
@@ -8439,6 +8513,10 @@ begin
 
  FreeAndNil(fObjects);
 
+ FreeAndNil(fCameraNameIndexHashMap);
+
+ FreeAndNil(fMeshNameIndexHashMap);
+
  if not (assigned(fSceneInstance) and ((not assigned(fSceneInstance.fMaterials)) or (fSceneInstance.fMaterials.Count=0))) then begin
   if assigned(fSceneInstance) then begin
    fSceneInstance.fMaterialListLock.Acquire;
@@ -8456,6 +8534,8 @@ begin
  FreeAndNil(fMaterials);
 
  FreeAndNil(fMaterialsToDuplicate);
+
+ FreeAndNil(fMaterialNameMapArrayIndexHashMap);
 
  FreeAndNil(fMaterialIDMapArrayIndexHashMap);
 
@@ -9321,6 +9401,10 @@ var LightMap:TpvScene3D.TGroup.TLights;
 
      fMaterialMap[Index+1]:=Material.fID;
 
+     if length(trim(Material.fName))>0 then begin
+      fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Material.fID);
+     end;
+
      MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
      if MaterialIDMapArrayIndex<0 then begin
       MaterialIDMapArray:=TMaterialIDMapArray.Create;
@@ -9355,6 +9439,10 @@ var LightMap:TpvScene3D.TGroup.TLights;
     POCAContext:=POCAContextCreate(POCAInstance);
     try
      try
+      POCAHashSet(POCAContext,
+                  POCAInstance.Globals.Namespace,
+                  POCANewUniqueString(POCAContext,'Group'),
+                  POCANewNativeObject(POCAContext,TPOCAScene3DGroup.Create(POCAInstance,POCAContext,nil,nil,false)));
       POCACode:=POCACompile(POCAInstance,POCAContext,Code,'<CODE>');
       POCACall(POCAContext,POCACode,nil,0,POCAValueNull,POCAInstance^.Globals.Namespace);
      except
@@ -9627,6 +9715,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
    SourceCamera:=aSourceDocument.Cameras[Index];
    Camera:=TCamera.Create(self,Index);
    try
+    if length(trim(Camera.fName))>0 then begin
+     fCameraNameIndexHashMap.Add(Camera.fName,Index);
+    end;
     Camera.AssignFromGLTF(aSourceDocument,SourceCamera);
    finally
     fCameras.Add(Camera);
@@ -9644,6 +9735,9 @@ var LightMap:TpvScene3D.TGroup.TLights;
    SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self,Index);
    try
+    if length(trim(Mesh.fName))>0 then begin
+     fMeshNameIndexHashMap.Add(Mesh.fName,Index);
+    end;
     Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,fMaterials);
    finally
     fMeshes.Add(Mesh);
