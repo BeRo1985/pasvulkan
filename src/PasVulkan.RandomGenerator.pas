@@ -169,9 +169,9 @@ type PpvRandomGeneratorPCG32=^TpvRandomGeneratorPCG32;
        function Get64:TpvUInt64; {$ifdef caninline}inline;{$endif}
        function GetBiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32; {$ifdef caninline}inline;{$endif}
        function GetUnbiasedBounded32Bit(const aRange:TpvUInt32):TpvUInt32;
-       function GetFloat:single; // -1.0.0 .. 1.0
+       function GetFloat:single; // -1.0 .. 1.0
        function GetFloatAbs:single; // 0.0 .. 1.0
-       function GetDouble:double; // -1.0.0 .. 1.0
+       function GetDouble:double; // -1.0 .. 1.0
        function GetDoubleAbs:Double; // 0.0 .. 1.0
      end;
 
