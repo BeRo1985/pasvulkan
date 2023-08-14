@@ -2369,12 +2369,40 @@ type TGetPointerType=function(pointerId:TpvUInt32;pointerType:PpvApplicationPOIN
      TGetPointerPenInfo=function(pointerId:TpvUInt32;penInfo:PpvApplicationPOINTER_PEN_INFO):BOOL; stdcall;
      TEnableMouseInPointer=function(fEnable:BOOL):BOOL; stdcall;
 
+     TDPI_AWARENESS_CONTEXT=THandle;
+
+     TPROCESS_DPI_AWARENESS=DWORD;
+
+     TRtlGetNtVersionNumbers=procedure(out aMajor,aMinor,aBuild:DWORD); stdcall;
+     TSetProcessDPIAware=function:bool; stdcall;
+     TSetProcessDpiAwareness=function(const aValue:TPROCESS_DPI_AWARENESS):bool; stdcall;
+     TSetProcessDpiAwarenessContext=function(const aValue:TDPI_AWARENESS_CONTEXT):bool; stdcall;
+     TEnableNonClientDpiScaling=function(const aHWND:HWND):bool; stdcall;
+
 var GetPointerType:TGetPointerType=nil;
     GetPointerTouchInfo:TGetPointerTouchInfo=nil;
     GetPointerPenInfo:TGetPointerPenInfo=nil;
     EnableMouseInPointer:TEnableMouseInPointer=nil;
+    RtlGetNtVersionNumbers:TRtlGetNtVersionNumbers=nil;
+    SetProcessDPIAware:TSetProcessDPIAware=nil;
+    SetProcessDpiAwareness:TSetProcessDpiAwareness=nil;
+    SetProcessDpiAwarenessContext:TSetProcessDpiAwarenessContext=nil;
+    EnableNonClientDpiScaling:TEnableNonClientDpiScaling=nil;
 
     Win32HasGetPointer:boolean=false;
+
+    WindowsVersionMajor:DWORD=0;
+    WindowsVersionMinor:DWORD=0;
+    WindowsVersionBuildNumber:DWORD=0;
+
+const DPI_AWARENESS_CONTEXT_UNAWARE=TDPI_AWARENESS_CONTEXT(-1);
+      DPI_AWARENESS_CONTEXT_SYSTEM_AWARE=TDPI_AWARENESS_CONTEXT(-2);
+      DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE=TDPI_AWARENESS_CONTEXT(-3);
+      DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2=TDPI_AWARENESS_CONTEXT(-4);
+
+      PROCESS_DPI_UNAWARE=0;
+      PROCESS_SYSTEM_DPI_AWARE=1;
+      PROCESS_PER_MONITOR_DPI_AWARE=2;
 
 {$ifend}
 {$ifend}
@@ -11314,6 +11342,11 @@ begin
   result:=0;
  end else begin
   case uMsg of
+   WM_NCCREATE:begin
+    if assigned(EnableNonClientDpiScaling) and not assigned(SetProcessDpiAwarenessContext) then begin
+     EnableNonClientDpiScaling(aHWND);
+    end;
+   end;
    WM_NCMOUSEMOVE:begin
     if Application.fWin32NCMouseButton<>0 then begin
      if Application.fWin32NCMousePos<>lParam then begin
@@ -12549,6 +12582,14 @@ begin
   until false;
 {$ifend}
 {$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+
+  if (WindowsVersionMajor>=10) and assigned(SetProcessDpiAwarenessContext) then begin // >= Windows 10
+   SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+  end else if (WindowsVersionMajor>=6) and (WindowsVersionMinor>=3) and assigned(SetProcessDpiAwareness) then begin // >= Windows 8.1
+   SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+  end else if (WindowsVersionMajor>=6) and (WindowsVersionMinor>=0) and assigned(SetProcessDPIAware) then begin // >= Windows Vista
+   SetProcessDPIAware;
+  end;
 
   fWin32HInstance:=GetModuleHandleW(nil);
 
@@ -14355,6 +14396,14 @@ initialization
                      assigned(GetPointerTouchInfo) and
                      assigned(GetPointerPenInfo) and
                      assigned(EnableMouseInPointer);
+ @RtlGetNtVersionNumbers:=GetProcAddress(LoadLibrary('ntdll.dll'),'RtlGetNtVersionNumbers');
+ if assigned(RtlGetNtVersionNumbers) then begin
+  RtlGetNtVersionNumbers(WindowsVersionMajor,WindowsVersionMinor,WindowsVersionBuildNumber);
+ end;
+ @SetProcessDPIAware:=GetProcAddress(LoadLibrary('user32.dll'),'SetProcessDPIAware');
+ @SetProcessDpiAwareness:=GetProcAddress(LoadLibrary('shcore.dll'),'SetProcessDpiAwareness');
+ @SetProcessDpiAwarenessContext:=GetProcAddress(LoadLibrary('user32.dll'),'SetProcessDpiAwarenessContext');
+ @EnableNonClientDpiScaling:=GetProcAddress(LoadLibrary('user32.dll'),'EnableNonClientDpiScaling');
 {$endif}
 finalization
  timeEndPeriod(1);
