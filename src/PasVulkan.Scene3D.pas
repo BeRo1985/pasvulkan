@@ -9913,6 +9913,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      CompactCode:TpvUInt64;
      Material,DuplicatedMaterial:TpvScene3D.TMaterial;
      MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
+     TextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
      OK:boolean;
  begin
   fCountInstanceAnimationChannels:=0;
@@ -10003,9 +10004,13 @@ var LightMap:TpvScene3D.TGroup.TLights;
               TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
               TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
                Material.fData.AnimatedTextureMask:=Material.fData.AnimatedTextureMask or (TpvUInt64(1) shl TpvSizeInt(Channel^.TargetSubIndex));
+               TextureTransform:=Material.fData.GetTextureTransform(TpvScene3D.TTextureIndex(Channel^.TargetSubIndex));
+               if assigned(TextureTransform) then begin
+                TextureTransform^.Active:=true;
+               end;
               end;
              end;
-{             if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.TextureTargets) and
+{            if (Channel^.Target in TpvScene3D.TGroup.TAnimation.TChannel.TextureTargets) and
                 (Channel^.TargetSubIndex>=0) then begin
               Material.fData.AnimatedTextureMask:=Material.fData.AnimatedTextureMask or (TpvUInt64(1) shl TpvSizeInt(Channel^.TargetSubIndex));
              end;}

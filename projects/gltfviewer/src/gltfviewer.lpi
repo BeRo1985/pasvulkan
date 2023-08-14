@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\models\a1\cubetest.glb&quot;"/>
+        <CommandLineParams Value="&quot;\home\bero\Downloads\a4\cubetest.glb&quot;"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\models\a1\cubetest.glb&quot;"/>
+            <CommandLineParams Value="&quot;\home\bero\Downloads\a4\cubetest.glb&quot;"/>
           </local>
         </Mode0>
       </Modes>
