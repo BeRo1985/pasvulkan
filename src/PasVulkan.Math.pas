@@ -11241,7 +11241,6 @@ end;
 function TpvMatrix4x4.RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4;
 var Bisector,Axis:TpvVector3;
 begin
- result:=self;
  begin
   if Normal.xyz.Length<Tolerance then begin
    // Degenerate case, compute new Normal.xyz
