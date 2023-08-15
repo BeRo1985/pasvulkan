@@ -139,6 +139,8 @@ type TpvSwap<T>=class
 
 procedure DebugBreakPoint;
 
+function DumpExceptionCallStack(e:Exception):string;
+
 function CombineTwoUInt32IntoOneUInt64(const a,b:TpvUInt32):TpvUInt64; {$ifdef caninline}inline;{$endif}
 
 // Sorts data direct inplace
@@ -177,6 +179,29 @@ end;
 begin
 end;
 {$ifend}
+
+function DumpExceptionCallStack(e:Exception):string;
+const LineEnding={$if defined(Windows) or defined(Win32) or defined(Win64)}#13#10{$else}#10{$ifend};
+{$if defined(fpc)}
+var Index:TpvInt32;
+    Frames:PPointer;
+{$else}
+{$ifend}
+begin
+ result:='Program exception! '+LineEnding+'Stack trace:'+LineEnding+LineEnding;
+ if assigned(e) then begin
+  result:=result+'Exception class: '+e.ClassName+LineEnding+'Message: '+e.Message+LineEnding;
+ end;
+{$if defined(fpc)}
+ result:=result+BackTraceStrFunc(ExceptAddr);
+ Frames:=ExceptFrames;
+ for Index:=0 to ExceptFrameCount-1 do begin
+  result:=result+LineEnding+BackTraceStrFunc(Frames);
+  inc(Frames);
+ end;
+{$else}
+{$ifend}
+end;
 
 class procedure TpvSwap<T>.Swap(var aValue,aOtherValue:T);
 var Temporary:T;

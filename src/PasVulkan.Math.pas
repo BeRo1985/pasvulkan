@@ -757,6 +757,8 @@ type PpvScalar=^TpvScalar;
 //     constructor Create; overload;
        constructor Create(const pX:TpvScalar); overload;
        constructor Create(const pXX,pXY,pXZ,pXW,pYX,pYY,pYZ,pYW,pZX,pZY,pZZ,pZW,pWX,pWY,pWZ,pWW:TpvScalar); overload;
+       constructor Create(const pX,pY,pZ:TpvVector3); overload;
+       constructor Create(const pX,pY,pZ,pW:TpvVector3); overload;
        constructor Create(const pX,pY,pZ,pW:TpvVector4); overload;
        constructor Create(const pMatrix:TpvMatrix3x3); overload;
        constructor CreateRotateX(const Angle:TpvScalar);
@@ -7834,6 +7836,46 @@ begin
  RawComponents[3,3]:=pWW;
 end;
 
+constructor TpvMatrix4x4.Create(const pX,pY,pZ:TpvVector3);
+begin
+ RawComponents[0,0]:=pX.x;
+ RawComponents[0,1]:=pX.y;
+ RawComponents[0,2]:=pX.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=pY.x;
+ RawComponents[1,1]:=pY.y;
+ RawComponents[1,2]:=pY.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=pZ.x;
+ RawComponents[2,1]:=pZ.y;
+ RawComponents[2,2]:=pZ.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=0.0;
+ RawComponents[3,3]:=1.0;
+end;
+
+constructor TpvMatrix4x4.Create(const pX,pY,pZ,pW:TpvVector3);
+begin
+ RawComponents[0,0]:=pX.x;
+ RawComponents[0,1]:=pX.y;
+ RawComponents[0,2]:=pX.z;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=pY.x;
+ RawComponents[1,1]:=pY.y;
+ RawComponents[1,2]:=pY.z;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=pZ.x;
+ RawComponents[2,1]:=pZ.y;
+ RawComponents[2,2]:=pZ.z;
+ RawComponents[2,3]:=0.0;
+ RawComponents[3,0]:=pW.x;
+ RawComponents[3,1]:=pW.y;
+ RawComponents[3,2]:=pW.z;
+ RawComponents[3,3]:=1.0;
+end;
+
 constructor TpvMatrix4x4.Create(const pX,pY,pZ,pW:TpvVector4);
 begin
  RawComponents[0,0]:=pX.x;
@@ -7853,7 +7895,6 @@ begin
  RawComponents[3,2]:=pW.z;
  RawComponents[3,3]:=pW.w;
 end;
-
 
 constructor TpvMatrix4x4.Create(const pMatrix:TpvMatrix3x3);
 begin
