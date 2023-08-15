@@ -11221,11 +11221,7 @@ begin
 end;
 
 function TpvMatrix4x4.OrthoNormalize:TpvMatrix4x4;
-var Backup:TpvVector3;
 begin
- Backup.x:=RawComponents[0,3];
- Backup.y:=RawComponents[1,3];
- Backup.z:=RawComponents[2,3];
  result.Normal.xyz:=Normal.xyz.Normalize;
  result.Tangent.xyz:=(Tangent.xyz-(result.Normal.xyz*Tangent.xyz.Dot(result.Normal.xyz))).Normalize;
  result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
@@ -11233,17 +11229,19 @@ begin
  result.Bitangent.xyz:=(result.Bitangent.xyz-(result.Tangent.xyz*result.Bitangent.xyz.Dot(result.Tangent.xyz))).Normalize;
  result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
  result.Normal.xyz:=result.Tangent.xyz.Cross(result.Bitangent.xyz).Normalize;
- result.RawComponents[0,3]:=Backup.x;
- result.RawComponents[1,3]:=Backup.y;
- result.RawComponents[2,3]:=Backup.z;
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.RawComponents[3,3]:=RawComponents[3,3];
+ result.RawComponents[3,0]:=RawComponents[3,0];
+ result.RawComponents[3,1]:=RawComponents[3,1];
+ result.RawComponents[3,2]:=RawComponents[3,2];
 end;
 
 function TpvMatrix4x4.RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4;
-var Backup,Bisector,Axis:TpvVector3;
+var Bisector,Axis:TpvVector3;
 begin
- Backup.x:=RawComponents[0,3];
- Backup.y:=RawComponents[1,3];
- Backup.z:=RawComponents[2,3];
+ result:=self;
  begin
   if Normal.xyz.Length<Tolerance then begin
    // Degenerate case, compute new Normal.xyz
@@ -11252,9 +11250,13 @@ begin
     result.Tangent.xyz:=TpvVector3.XAxis;
     result.Bitangent.xyz:=TpvVector3.YAxis;
     result.Normal.xyz:=TpvVector3.ZAxis;
-    result.RawComponents[0,3]:=Backup.x;
-    result.RawComponents[1,3]:=Backup.y;
-    result.RawComponents[2,3]:=Backup.z;
+    result.RawComponents[0,3]:=RawComponents[0,3];
+    result.RawComponents[1,3]:=RawComponents[1,3];
+    result.RawComponents[2,3]:=RawComponents[2,3];
+    result.RawComponents[3,3]:=RawComponents[3,3];
+    result.RawComponents[3,0]:=RawComponents[3,0];
+    result.RawComponents[3,1]:=RawComponents[3,1];
+    result.RawComponents[3,2]:=RawComponents[3,2];
     exit;
    end;
   end;
@@ -11308,9 +11310,13 @@ begin
  result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
  result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
  result.Normal.xyz:=result.Tangent.xyz.Cross(result.Bitangent.xyz).Normalize;
- result.RawComponents[0,3]:=Backup.x;
- result.RawComponents[1,3]:=Backup.y;
- result.RawComponents[2,3]:=Backup.z;
+ result.RawComponents[0,3]:=RawComponents[0,3];
+ result.RawComponents[1,3]:=RawComponents[1,3];
+ result.RawComponents[2,3]:=RawComponents[2,3];
+ result.RawComponents[3,3]:=RawComponents[3,3];
+ result.RawComponents[3,0]:=RawComponents[3,0];
+ result.RawComponents[3,1]:=RawComponents[3,1];
+ result.RawComponents[3,2]:=RawComponents[3,2];
 end;
 
 function TpvMatrix4x4.ToQuaternion:TpvQuaternion;
