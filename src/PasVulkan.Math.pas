@@ -869,8 +869,8 @@ type PpvScalar=^TpvScalar;
        function Transpose:TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function EulerAngles:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function OrthoNormalize:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
-       function RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       function OrthoNormalize:TpvMatrix4x4; //{$ifdef CAN_INLINE}inline;{$endif}
+       function RobustOrthoNormalize(const Tolerance:TpvScalar=1e-3):TpvMatrix4x4; //{$ifdef CAN_INLINE}inline;{$endif}
        function ToQuaternion:TpvQuaternion;
        function ToQTangent:TpvQuaternion;
        function ToMatrix3x3:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
