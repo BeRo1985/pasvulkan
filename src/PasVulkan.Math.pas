@@ -11226,14 +11226,13 @@ begin
  Backup.x:=RawComponents[0,3];
  Backup.y:=RawComponents[1,3];
  Backup.z:=RawComponents[2,3];
- Normal.xyz:=Normal.xyz.Normalize;
- Tangent.xyz:=(Tangent.xyz-(Normal.xyz*Tangent.xyz.Dot(Normal.xyz))).Normalize;
- Bitangent.xyz:=Normal.xyz.Cross(Tangent.xyz).Normalize;
- Bitangent.xyz:=Bitangent.xyz-(Normal.xyz*Bitangent.xyz.Dot(Normal.xyz));
- Bitangent.xyz:=(Bitangent.xyz-(Tangent.xyz*Bitangent.xyz.Dot(Tangent.xyz))).Normalize;
- Tangent.xyz:=Bitangent.xyz.Cross(Normal.xyz).Normalize;
- Normal.xyz:=Tangent.xyz.Cross(Bitangent.xyz).Normalize;
- result.RawComponents:=RawComponents;
+ result.Normal.xyz:=Normal.xyz.Normalize;
+ result.Tangent.xyz:=(Tangent.xyz-(result.Normal.xyz*Tangent.xyz.Dot(result.Normal.xyz))).Normalize;
+ result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
+ result.Bitangent.xyz:=result.Bitangent.xyz-(result.Normal.xyz*result.Bitangent.xyz.Dot(result.Normal.xyz));
+ result.Bitangent.xyz:=(result.Bitangent.xyz-(result.Tangent.xyz*result.Bitangent.xyz.Dot(result.Tangent.xyz))).Normalize;
+ result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
+ result.Normal.xyz:=result.Tangent.xyz.Cross(result.Bitangent.xyz).Normalize;
  result.RawComponents[0,3]:=Backup.x;
  result.RawComponents[1,3]:=Backup.y;
  result.RawComponents[2,3]:=Backup.z;
@@ -11247,69 +11246,68 @@ begin
  Backup.z:=RawComponents[2,3];
  begin
   if Normal.xyz.Length<Tolerance then begin
-   // Degenerate case, compute new normal
+   // Degenerate case, compute new Normal.xyz
    Normal.xyz:=Tangent.xyz.Cross(Bitangent.xyz);
    if Normal.xyz.Length<Tolerance then begin
-    Tangent.xyz:=TpvVector3.XAxis;
-    Bitangent.xyz:=TpvVector3.YAxis;
-    Normal.xyz:=TpvVector3.ZAxis;
-    RawComponents[0,3]:=Backup.x;
-    RawComponents[1,3]:=Backup.y;
-    RawComponents[2,3]:=Backup.z;
+    result.Tangent.xyz:=TpvVector3.XAxis;
+    result.Bitangent.xyz:=TpvVector3.YAxis;
+    result.Normal.xyz:=TpvVector3.ZAxis;
+    result.RawComponents[0,3]:=Backup.x;
+    result.RawComponents[1,3]:=Backup.y;
+    result.RawComponents[2,3]:=Backup.z;
     exit;
    end;
   end;
-  Normal.xyz:=Normal.xyz.Normalize;
+  result.Normal.xyz:=Normal.xyz.Normalize;
  end;
  begin
-  // Project tangent and bitangent onto the normal orthogonal plane
-  Tangent.xyz:=Tangent.xyz-(Normal.xyz*Tangent.xyz.Dot(Normal.xyz));
-  Bitangent.xyz:=Bitangent.xyz-(Normal.xyz*Bitangent.xyz.Dot(Normal.xyz));
+  // Project Tangent.xyz and Bitangent.xyz onto the Normal.xyz orthogonal plane
+  result.Tangent.xyz:=Tangent.xyz-(result.Normal.xyz*Tangent.xyz.Dot(result.Normal.xyz));
+  result.Bitangent.xyz:=Bitangent.xyz-(result.Normal.xyz*Bitangent.xyz.Dot(result.Normal.xyz));
  end;
  begin
   // Check for several degenerate cases
-  if Tangent.xyz.Length<Tolerance then begin
-   if Bitangent.xyz.Length<Tolerance then begin
-    Tangent.xyz:=Normal.xyz.Normalize;
-    if (Tangent.x<=Tangent.y) and (Tangent.x<=Tangent.z) then begin
-     Tangent.xyz:=TpvVector3.XAxis;
-    end else if (Tangent.y<=Tangent.x) and (Tangent.y<=Tangent.z) then begin
-     Tangent.xyz:=TpvVector3.YAxis;
+  if result.Tangent.xyz.Length<Tolerance then begin
+   if result.Bitangent.xyz.Length<Tolerance then begin
+    result.Tangent.xyz:=result.Normal.xyz.Normalize;
+    if (result.Tangent.xyz.x<=result.Tangent.xyz.y) and (result.Tangent.xyz.x<=result.Tangent.xyz.z) then begin
+     result.Tangent.xyz:=TpvVector3.XAxis;
+    end else if (result.Tangent.xyz.y<=result.Tangent.xyz.x) and (result.Tangent.xyz.y<=result.Tangent.xyz.z) then begin
+     result.Tangent.xyz:=TpvVector3.YAxis;
     end else begin
-     Tangent.xyz:=TpvVector3.ZAxis;
+     result.Tangent.xyz:=TpvVector3.ZAxis;
     end;
-    Tangent.xyz:=Tangent.xyz-(Normal.xyz*Tangent.xyz.Dot(Normal.xyz));
-    Bitangent.xyz:=Normal.xyz.Cross(Tangent.xyz).Normalize;
+    result.Tangent.xyz:=result.Tangent.xyz-(result.Normal.xyz*result.Tangent.xyz.Dot(result.Normal.xyz));
+    result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
    end else begin
-    Tangent.xyz:=Bitangent.xyz.Cross(Normal.xyz).Normalize;
+    result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
    end;
   end else begin
-   Tangent.xyz:=Tangent.xyz.Normalize;
-   if Bitangent.xyz.Length<Tolerance then begin
-    Bitangent.xyz:=Normal.xyz.Cross(Tangent.xyz).Normalize;
+   result.Tangent.xyz:=result.Tangent.xyz.Normalize;
+   if result.Bitangent.xyz.Length<Tolerance then begin
+    result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
    end else begin
-    Bitangent.xyz:=Bitangent.xyz.Normalize;
-    Bisector:=Tangent.xyz+Bitangent.xyz;
+    result.Bitangent.xyz:=result.Bitangent.xyz.Normalize;
+    Bisector:=result.Tangent.xyz+result.Bitangent.xyz;
     if Bisector.Length<Tolerance then begin
-     Bisector:=Tangent.xyz;
+     Bisector:=result.Tangent.xyz;
     end else begin
      Bisector:=Bisector.Normalize;
     end;
-    Axis:=Bisector.Cross(Normal.xyz).Normalize;
+    Axis:=Bisector.Cross(result.Normal.xyz).Normalize;
     if Axis.Dot(Tangent.xyz)>0.0 then begin
-     Tangent.xyz:=(Bisector+Axis).Normalize;
-     Bitangent.xyz:=(Bisector-Axis).Normalize;
+     result.Tangent.xyz:=(Bisector+Axis).Normalize;
+     result.Bitangent.xyz:=(Bisector-Axis).Normalize;
     end else begin
-     Tangent.xyz:=(Bisector-Axis).Normalize;
-     Bitangent.xyz:=(Bisector+Axis).Normalize;
+     result.Tangent.xyz:=(Bisector-Axis).Normalize;
+     result.Bitangent.xyz:=(Bisector+Axis).Normalize;
     end;
    end;
   end;
  end;
- Bitangent.xyz:=Normal.xyz.Cross(Tangent.xyz).Normalize;
- Tangent.xyz:=Bitangent.xyz.Cross(Normal.xyz).Normalize;
- Normal.xyz:=Tangent.xyz.Cross(Bitangent.xyz).Normalize;
- result.RawComponents:=RawComponents;
+ result.Bitangent.xyz:=result.Normal.xyz.Cross(result.Tangent.xyz).Normalize;
+ result.Tangent.xyz:=result.Bitangent.xyz.Cross(result.Normal.xyz).Normalize;
+ result.Normal.xyz:=result.Tangent.xyz.Cross(result.Bitangent.xyz).Normalize;
  result.RawComponents[0,3]:=Backup.x;
  result.RawComponents[1,3]:=Backup.y;
  result.RawComponents[2,3]:=Backup.z;
