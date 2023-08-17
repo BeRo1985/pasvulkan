@@ -72,3 +72,4 @@
 - **In Orbit mode**, the camera orbits around the center of the 3D scene.
 - The viewer supports **multiple animations**. Use the B and N keys to cycle through them or numbers 0-9 to select a specific one.
 - The viewer also supports **multiple cameras** defined in the GLTF file. Use the Home and End keys to switch between them.
+- GLTF files can be **dragged and dropped** into the viewer or provided via **command-line parameter**.
