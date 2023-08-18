@@ -2194,6 +2194,7 @@ type EpvScene3D=class(Exception);
               );
       private
        fLock:TPasMPSpinLock;
+       fLoadLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
@@ -10539,36 +10540,53 @@ function TpvScene3D.TGroup.BeginLoad(const aStream:TStream):boolean;
 var GLTF:TPasGLTF.TDocument;
 begin
  result:=false;
- if assigned(aStream) then begin
+ fSceneInstance.fLoadLock.Acquire;
+ try
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Entering...');
   try
-   GLTF:=TPasGLTF.TDocument.Create;
-   try
-    if (length(FileName)>0) and (FileExists(FileName)) then begin
-     GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+   if assigned(aStream) then begin
+    GLTF:=TPasGLTF.TDocument.Create;
+    try
+     if (length(FileName)>0) and (FileExists(FileName)) then begin
+      GLTF.RootPath:=ExtractFilePath(ExpandFileName(FileName));
+     end;
+     if IsAsset then begin
+      GLTF.GetURI:=AssetGetURI;
+     end;
+     GLTF.LoadFromStream(aStream);
+     AssignFromGLTF(GLTF);
+    finally
+     FreeAndNil(GLTF);
     end;
-    if IsAsset then begin
-     GLTF.GetURI:=AssetGetURI;
-    end;
-    GLTF.LoadFromStream(aStream);
-    AssignFromGLTF(GLTF);
-   finally
-    FreeAndNil(GLTF);
+    result:=true;
    end;
-   result:=true;
-  except
+  finally
+   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.BeginLoad','Leaving...');
   end;
+ finally
+  fSceneInstance.fLoadLock.Release;
  end;
 end;
 
 function TpvScene3D.TGroup.EndLoad:boolean;
 begin
- result:=inherited EndLoad;
- if result then begin
-  if SceneInstance.fUploaded then begin
-   Upload;
-   fSceneInstance.NewImageDescriptorGeneration;
-   fSceneInstance.NewMaterialDataGeneration;
+ fSceneInstance.fLoadLock.Acquire;
+ try
+  pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.EndLoad','Entering...');
+  try
+   result:=inherited EndLoad;
+   if result then begin
+    if SceneInstance.fUploaded then begin
+     Upload;
+     fSceneInstance.NewImageDescriptorGeneration;
+     fSceneInstance.NewMaterialDataGeneration;
+    end;
+   end;
+  finally
+   pvApplication.Log(LOG_DEBUG,'TpvScene3D.TGroup.EndLoad','Leaving...');
   end;
+ finally
+  fSceneInstance.fLoadLock.Release;
  end;
 end;
 
@@ -14802,6 +14820,8 @@ begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
 
+ fLoadLock:=TPasMPSpinLock.Create;
+
  if assigned(aVulkanDevice) then begin
   fVulkanDevice:=aVulkanDevice;
  end else if assigned(pvApplication) then begin
@@ -15247,6 +15267,8 @@ begin
  FreeAndNil(fObjectListLock);
 
  FreeAndNil(fLock);
+
+ FreeAndNil(fLoadLock);
 
  inherited Destroy;
 end;
