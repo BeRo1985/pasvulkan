@@ -309,7 +309,7 @@ type EpvResource=class(Exception);
        fLock:TPasMPMultipleReaderSingleWriterSpinLock;
        fLocked:TPasMPBool32;
        fActive:TPasMPBool32;
-       fLoadLock:TPasMPSpinLock;
+       fLoadLock:TPasMPCriticalSection;
        fResourceClassTypeList:TResourceClassTypeList;
        fResourceClassTypeListLock:TPasMPMultipleReaderSingleWriterSpinLock;
        fResourceClassTypeMap:TResourceClassTypeMap;
@@ -1508,7 +1508,7 @@ begin
 
  fLocked:=false;
 
- fLoadLock:=TPasMPSpinLock.Create;
+ fLoadLock:=TPasMPCriticalSection.Create;
 
  fResourceClassTypeList:=TResourceClassTypeList.Create;
  fResourceClassTypeList.OwnsObjects:=true;
