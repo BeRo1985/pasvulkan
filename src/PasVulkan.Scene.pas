@@ -223,6 +223,8 @@ type TpvScene=class;
 
 implementation
 
+uses PasVulkan.Application;
+
 { TpvSceneNode }
 
 constructor TpvSceneNode.Create(const aParent:TpvSceneNode;const aData:TObject);
@@ -418,22 +420,32 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.FinishLoad;
  end;
- while TPasMPInterlocked.Read(fLoadState)<2 do begin
-  Sleep(1);
+ pvApplication.Log(LOG_DEBUG,ClassName+'.FinishLoad.WaitForLoaded','Entering...');
+ try
+  while TPasMPInterlocked.Read(fLoadState)<2 do begin
+   Sleep(1);
+  end;
+  TPasMPInterlocked.Write(fLoadState,3);
+ finally
+  pvApplication.Log(LOG_DEBUG,ClassName+'.FinishLoad.WaitForLoaded','Leaving...');
  end;
- TPasMPInterlocked.Write(fLoadState,3);
 end;
 
 procedure TpvSceneNode.WaitForLoaded;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.WaitForLoaded;
- end;
- while TPasMPInterlocked.Read(fLoadState)<3 do begin
-  Sleep(1);
+ pvApplication.Log(LOG_DEBUG,ClassName+'.WaitForLoaded','Entering...');
+ try
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   ChildNode.WaitForLoaded;
+  end;
+  while TPasMPInterlocked.Read(fLoadState)<3 do begin
+   Sleep(1);
+  end;
+ finally
+  pvApplication.Log(LOG_DEBUG,ClassName+'.WaitForLoaded','Leaving...');
  end;
 end;
 
