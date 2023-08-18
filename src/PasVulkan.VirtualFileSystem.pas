@@ -66,18 +66,23 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     PasJSON,
      PasVulkan.Types,
      PasVulkan.Assets,
      PasVulkan.Streams,
      PasVulkan.Math,
+     PasVulkan.Collections,
      PasVulkan.Archive.ZIP;
 
 type { TpvVirtualFileSystem }
 
      TpvVirtualFileSystem=class
+      public
+       type TVirtualSymLinkHashMap=TpvStringHashMap<string>; // string <=> string
       private
        fArchiveZIP:TpvArchiveZIP;
        fStream:TStream;
+       fVirtualSymLinkHashMap:TVirtualSymLinkHashMap;
       public
        constructor Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string=''); reintroduce; virtual;
        destructor Destroy; override;
@@ -92,11 +97,19 @@ implementation
 { TpvVirtualFileSystem }
 
 constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string);
-var Stream:TStream;
+var Index:TpvSizeInt;
+    Stream:TStream;
+    ZIPEntry:TpvArchiveZIPEntry;
+    VirtualSymLinksJSONStream:TMemoryStream;
+    VirtualSymLinksJSON:TPasJSONItem;
+    VirtualSymLinksJSONObject:TPasJSONItemObject;
 begin
  inherited Create;
+ 
  fStream:=TMemoryStream.Create;
+ 
  fArchiveZIP:=TpvArchiveZIP.Create;
+ 
  if (length(aFileName)>0) and FileExists(aFileName) then begin
   Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
  end else begin
@@ -113,29 +126,66 @@ begin
  finally
   FreeAndNil(Stream);
  end;
+
+ // Load virtual symlinks and add them to the hashmap for further use
+ fVirtualSymLinkHashMap:=TVirtualSymLinkHashMap.Create('');
+ ZIPEntry:=fArchiveZIP.Entries.Find('virtualsymlinks.json');
+ if assigned(ZIPEntry) then begin
+  VirtualSymLinksJSONStream:=TMemoryStream.Create;
+  try
+   VirtualSymLinksJSONStream.CopyFrom(ZIPEntry.Stream,ZIPEntry.Stream.Size);
+   VirtualSymLinksJSONStream.Seek(0,soBeginning);
+   VirtualSymLinksJSON:=TPasJSON.Parse(VirtualSymLinksJSONStream);
+   try
+    if assigned(VirtualSymLinksJSON) and (VirtualSymLinksJSON is TPasJSONItemObject) then begin
+     VirtualSymLinksJSONObject:=TPasJSONItemObject(VirtualSymLinksJSON);
+     for Index:=0 to VirtualSymLinksJSONObject.Count-1 do begin
+      fVirtualSymLinkHashMap.Add(VirtualSymLinksJSONObject.Keys[Index],TPasJSON.GetString(VirtualSymLinksJSONObject.Values[Index],''));
+     end;
+    end;
+   finally
+    FreeAndNil(VirtualSymLinksJSON);
+   end;
+  finally
+   FreeAndNil(VirtualSymLinksJSONStream);
+  end;
+ end;
+
 end;
 
 destructor TpvVirtualFileSystem.Destroy;
 begin
+ FreeAndNil(fVirtualSymLinkHashMap);
  FreeAndNil(fArchiveZIP);
  FreeAndNil(fStream);
  inherited Destroy;
 end;
 
 function TpvVirtualFileSystem.ExistFile(const aFileName:string):boolean;
+var FileName:string;
 begin
- result:=assigned(fArchiveZIP.Entries.Find(aFileName));
+ if fVirtualSymLinkHashMap.TryGet(aFileName,FileName) then begin
+  result:=assigned(fArchiveZIP.Entries.Find(FileName));
+ end else begin
+  result:=assigned(fArchiveZIP.Entries.Find(aFileName));
+ end; 
 end;
 
 function TpvVirtualFileSystem.GetFile(const aFileName:string):TStream;
 var ZIPEntry:TpvArchiveZIPEntry;
+    FileName:string;
 begin
- result:=nil;
- ZIPEntry:=fArchiveZIP.Entries.Find(aFileName);
+ if fVirtualSymLinkHashMap.TryGet(aFileName,FileName) then begin
+  ZIPEntry:=fArchiveZIP.Entries.Find(FileName);
+ end else begin
+  ZIPEntry:=fArchiveZIP.Entries.Find(aFileName);
+ end;
  if assigned(ZIPEntry) then begin
   result:=TMemoryStream.Create;
   ZIPEntry.SaveToStream(result);
   result.Seek(0,soBeginning);
+ end else begin
+  result:=nil;
  end;
 end;
 
