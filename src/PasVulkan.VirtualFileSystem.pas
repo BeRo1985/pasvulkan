@@ -133,7 +133,7 @@ begin
  if assigned(ZIPEntry) then begin
   VirtualSymLinksJSONStream:=TMemoryStream.Create;
   try
-   VirtualSymLinksJSONStream.CopyFrom(ZIPEntry.Stream,ZIPEntry.Stream.Size);
+   ZIPEntry.SaveToStream(VirtualSymLinksJSONStream);
    VirtualSymLinksJSONStream.Seek(0,soBeginning);
    VirtualSymLinksJSON:=TPasJSON.Parse(VirtualSymLinksJSONStream);
    try
