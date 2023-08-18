@@ -250,7 +250,7 @@ type EpvResource=class(Exception);
       private
        fResourceManager:TpvResourceManager;
        fEvent:TPasMPEvent;
-       fLock:TPasMPSlimReaderWriterLock;
+       fLock:TPasMPSpinLock;
        fQueueItems:TQueueItems;
        fQueueItemResourceMap:TQueueItemResourceMap;
        function QueueResource(const aResource:TpvResource;const aParent:TpvResource):boolean;
@@ -974,7 +974,7 @@ constructor TpvResourceBackgroundLoader.Create(const aResourceManager:TpvResourc
 begin
  fResourceManager:=aResourceManager;
  fEvent:=TPasMPEvent.Create(nil,false,false,'');
- fLock:=TPasMPSlimReaderWriterLock.Create;
+ fLock:=TPasMPSpinLock.Create;
  fQueueItems.Initialize;
  fQueueItemResourceMap:=TQueueItemResourceMap.Create(nil);
  inherited Create(false);
