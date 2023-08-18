@@ -309,6 +309,7 @@ type EpvResource=class(Exception);
        fLock:TPasMPMultipleReaderSingleWriterSpinLock;
        fLocked:TPasMPBool32;
        fActive:TPasMPBool32;
+       fLoadLock:TPasMPSpinLock;
        fResourceClassTypeList:TResourceClassTypeList;
        fResourceClassTypeListLock:TPasMPMultipleReaderSingleWriterSpinLock;
        fResourceClassTypeMap:TResourceClassTypeMap;
@@ -890,13 +891,18 @@ begin
    fAsyncLoadState:=TAsyncLoadState.Loading;
   end;
   LoadMetaData;
-  result:=BeginLoad(aStream);
-  if result then begin
-   result:=EndLoad;
-   fAsyncLoadState:=TAsyncLoadState.Done;
+  fResourceManager.fLoadLock.Acquire;
+  try
+   result:=BeginLoad(aStream);
    if result then begin
-    fLoaded:=true;
+    result:=EndLoad;
+    fAsyncLoadState:=TAsyncLoadState.Done;
+    if result then begin
+     fLoaded:=true;
+    end;
    end;
+  finally
+   fResourceManager.fLoadLock.Release;
   end;
  end;
 end;
@@ -1085,7 +1091,12 @@ begin
         try
          Resource.LoadMetaData;
         finally
-         Success:=Resource.BeginLoad(Stream);
+         fResourceManager.fLoadLock.Acquire;
+         try
+          Success:=Resource.BeginLoad(Stream);
+         finally
+          fResourceManager.fLoadLock.Release;
+         end;
         end;
        finally
         FreeAndNil(Stream);
@@ -1232,7 +1243,12 @@ begin
   if Success then begin
    fLock.Release;
    try
-    Success:=Resource.EndLoad;
+    fResourceManager.fLoadLock.Acquire;
+    try
+     Success:=Resource.EndLoad;
+    finally
+     fResourceManager.fLoadLock.Release;
+    end;
    finally
     fLock.Acquire;
    end;
@@ -1492,6 +1508,8 @@ begin
 
  fLocked:=false;
 
+ fLoadLock:=TPasMPSpinLock.Create;
+
  fResourceClassTypeList:=TResourceClassTypeList.Create;
  fResourceClassTypeList.OwnsObjects:=true;
 
@@ -1558,6 +1576,8 @@ begin
  FreeAndNil(fMetaResourceAssetNameMap);
 
  FreeAndNil(fMetaResourceLock);
+
+ FreeAndNil(fLoadLock);
 
  FreeAndNil(fLock);
 
