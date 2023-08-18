@@ -221,15 +221,15 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_reversedz_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_frag.spv');
   end;
  end else begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_msaa_reversedz_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_msaa_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_frag.spv');
   end;
  end;
  try
@@ -241,15 +241,15 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_masked_reversedz_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_alphatest_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_masked_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_alphatest_frag.spv');
   end;
  end else begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_msaa_masked_reversedz_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_alphatest_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_msaa_masked_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_loopoit_pass2_alphatest_frag.spv');
   end;
  end;
  try
@@ -279,15 +279,15 @@ begin
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_loopoit_reversedz_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_reversedz_loopoit_pass2_frag.spv');
   end else begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_loopoit_pass2_frag.spv');
   end;
  end else begin
   if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_loopoit_reversedz_msaa_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_reversedz_msaa_loopoit_pass2_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_loopoit_msaa_pass2_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_msaa_loopoit_pass2_frag.spv');
   end;
  end;
  try

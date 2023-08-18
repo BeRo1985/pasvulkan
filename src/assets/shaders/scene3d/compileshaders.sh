@@ -199,7 +199,7 @@ addParticleFragmentShadingTransparencyVariants(){
 
   # MBOIT (Moment-Based order independent transparency)
   addParticleFragmentShader "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
-  addParticleFragmentShader "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS1"
+  addParticleFragmentShader "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2"
 
   # LoopOIT (Multi-pass order independent transparency)
   addParticleFragmentShader "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
@@ -250,7 +250,7 @@ addMeshFragmentShader(){
 addMeshFragmentShadingAlphaTestVariants(){
   addMeshFragmentShader "$1" "$2"
   addMeshFragmentShader "${1}_alphatest" "$2 -DALPHATEST"
-  addMeshFragmentShader "${1}_alphatest_usedemote" "$2 -DALPHATEST -DUSEDEMOTE"
+  addMeshFragmentShader "${1}_alphatest_demote" "$2 -DALPHATEST -DUSEDEMOTE"
   addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
 }
 
@@ -263,8 +263,8 @@ addMeshFragmentShadingOITAlphaTestVariants(){
 # Add mesh fragment shader variants with different transparency techniques (if any)
 addMeshFragmentShadingTransparencyVariants(){
 
-  # No transparency   
-  addMeshFragmentShader "$1" "$2"
+  # No blending   
+  addMeshFragmentShadingAlphaTestVariants "$1" "$2"
 
   # Standard alpha blending
   addMeshFragmentShadingAlphaTestVariants "${1}_blend" "$2 -DBLEND"
@@ -274,7 +274,7 @@ addMeshFragmentShadingTransparencyVariants(){
 
   # MBOIT (Moment-Based order independent transparency)
   addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS1" 
+  addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2" 
 
   # LoopOIT (Multi-pass order independent transparency)
   addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
@@ -317,6 +317,9 @@ addMeshFragmentShadingAntialiasingVariants(){
 # Add mesh fragment shader depth only with different alphatest variants 
 addMeshFragmentDepthOnlyAlphaTestVariants(){
   
+  # No alpha test
+  addMeshFragmentShader "${1}" "$2"
+
   # Alpha test
   addMeshFragmentShader "${1}_alphatest" "$2 -DALPHATEST"
   

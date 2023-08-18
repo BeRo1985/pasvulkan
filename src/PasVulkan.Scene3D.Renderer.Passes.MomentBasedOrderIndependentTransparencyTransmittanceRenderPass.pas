@@ -224,9 +224,9 @@ begin
  end;
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass2_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass2_frag.spv');
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_msaa_pass2_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass2_frag.spv');
  end;
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -235,9 +235,9 @@ begin
  end;
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_masked_pass2_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass2_alphatest_frag.spv');
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_masked_msaa_pass2_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass2_alphatest_frag.spv');
  end;
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -266,7 +266,7 @@ begin
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_mboit_pass2_frag.spv');
  end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_mboit_msaa_pass2_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_msaa_mboit_pass2_frag.spv');
  end;
  try
   fParticleFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);

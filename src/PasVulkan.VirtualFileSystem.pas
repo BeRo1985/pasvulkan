@@ -103,6 +103,7 @@ var Index:TpvSizeInt;
     VirtualSymLinksJSONStream:TMemoryStream;
     VirtualSymLinksJSON:TPasJSONItem;
     VirtualSymLinksJSONObject:TPasJSONItemObject;
+    Key,Value:string;
 begin
  inherited Create;
  
@@ -140,7 +141,13 @@ begin
     if assigned(VirtualSymLinksJSON) and (VirtualSymLinksJSON is TPasJSONItemObject) then begin
      VirtualSymLinksJSONObject:=TPasJSONItemObject(VirtualSymLinksJSON);
      for Index:=0 to VirtualSymLinksJSONObject.Count-1 do begin
-      fVirtualSymLinkHashMap.Add(VirtualSymLinksJSONObject.Keys[Index],TPasJSON.GetString(VirtualSymLinksJSONObject.Values[Index],''));
+      Key:=VirtualSymLinksJSONObject.Keys[Index];
+      Value:=TPasJSON.GetString(VirtualSymLinksJSONObject.Values[Index],'');
+      if Key='mesh_matbufref_shading_pcfpcss_alphatest_demote_frag.spv' then begin
+       if Key='mesh_matbufref_shading_pcfpcss_alphatest_demote_frag.spv' then begin
+       end;
+      end;
+      fVirtualSymLinkHashMap.Add(Key,Value);
      end;
     end;
    finally
