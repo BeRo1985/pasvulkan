@@ -99,6 +99,7 @@ type { TpvScene3DRendererInstance }
              FinalViewIndex:TpvSizeInt;
              HUDViewIndex:TpvSizeInt;
              CountViews:TpvSizeInt;
+             ReflectionProbeViewIndex:TpvSizeInt;
              CascadedShadowMapViewIndex:TpvSizeInt;
              CountCascadedShadowMapViews:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
@@ -280,6 +281,7 @@ type { TpvScene3DRendererInstance }
        fFrustumClusterGridSizeZ:TpvInt32;
        fFrustumClusterGridTileSizeX:TpvInt32;
        fFrustumClusterGridTileSizeY:TpvInt32;
+       fFrustumClusterGridCountTotalViews:TpvInt32;
        fFOV:TpvFloat;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
@@ -392,6 +394,7 @@ type { TpvScene3DRendererInstance }
        property FrustumClusterGridSizeZ:TpvInt32 read fFrustumClusterGridSizeZ;
        property FrustumClusterGridTileSizeX:TpvInt32 read fFrustumClusterGridTileSizeX;
        property FrustumClusterGridTileSizeY:TpvInt32 read fFrustumClusterGridTileSizeY;
+       property FrustumClusterGridCountTotalViews:TpvInt32 read fFrustumClusterGridCountTotalViews;
        property FrustumClusterGridPushConstants:TpvScene3DRendererInstance.TFrustumClusterGridPushConstants read fFrustumClusterGridPushConstants;
        property FrustumClusterGridGlobalsVulkanBuffers:TVulkanBuffers read fFrustumClusterGridGlobalsVulkanBuffers;
        property FrustumClusterGridAABBVulkanBuffers:TVulkanBuffers read fFrustumClusterGridAABBVulkanBuffers;
@@ -2002,6 +2005,12 @@ begin
      fFrustumClusterGridTileSizeX:=(fWidth+(fFrustumClusterGridSizeX-1)) div fFrustumClusterGridSizeX;
      fFrustumClusterGridTileSizeY:=(fHeight+(fFrustumClusterGridSizeY-1)) div fFrustumClusterGridSizeY;
 
+     fFrustumClusterGridCountTotalViews:=fCountSurfaceViews; // +6 for local light and reflection probe cubemap
+
+     if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+      inc(fCountSurfaceViews,6); // +6 for local light and reflection probe cubemap
+     end;
+
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
       fFrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                                                           SizeOf(TFrustumClusterGridPushConstants),
@@ -2018,7 +2027,7 @@ begin
                                                                                           0,
                                                                                           [TpvVulkanBufferFlag.PersistentMapped]);
       fFrustumClusterGridAABBVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                                       fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvVector4)*4*fCountSurfaceViews,
+                                                                                       fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvVector4)*4*fFrustumClusterGridCountTotalViews,
                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                        [],
@@ -2046,7 +2055,7 @@ begin
                                                                                                    0,
                                                                                                    []);
       fFrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                                            fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*128*fCountSurfaceViews,
+                                                                                            fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*128*fFrustumClusterGridCountTotalViews,
                                                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                             [],
@@ -2060,7 +2069,7 @@ begin
                                                                                             0,
                                                                                             []);
       fFrustumClusterGridDataVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
-                                                                                       fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*4*fCountSurfaceViews,
+                                                                                       fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ*SizeOf(TpvUInt32)*4*fFrustumClusterGridCountTotalViews,
                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                        [],
@@ -2443,6 +2452,58 @@ var Index,HUDOffset:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
     ViewMatrix:TpvMatrix4x4;
+ procedure AddCameraReflectionProbeViews;
+ const CubeMapMatrices:array[0..5] of TpvMatrix4x4=
+       ((RawComponents:((0.0,0.0,-1.0,0.0),(0.0,-1.0,0.0,0.0),(-1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos x
+        (RawComponents:((0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg x
+        (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // pos y
+        (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg y
+        (RawComponents:((1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0))),   // pos z
+        (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))));  // neg z
+ var Index:TpvSizeInt;
+     CameraPositon:TpvVector3;
+     View:TpvScene3D.TView;
+ begin
+
+  CameraPositon:=ViewLeft.InverseViewMatrix.Translation.xyz;
+
+  if fZFar>0.0 then begin
+   View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(90.0,
+                                                                             1.0,
+                                                                             abs(fZNear),
+                                                                             IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+  end else begin
+   View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
+                                                                             1.0,
+                                                                             abs(fZNear),
+                                                                             IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+  end;
+  if fZFar<0.0 then begin
+   if IsInfinite(fZFar) then begin
+    // Convert to reversed infinite Z
+    ViewLeft.ProjectionMatrix.RawComponents[2,2]:=0.0;
+    ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+    ViewLeft.ProjectionMatrix.RawComponents[3,2]:=abs(fZNear);
+   end else begin
+    // Convert to reversed non-infinite Z
+    ViewLeft.ProjectionMatrix.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
+    ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+    ViewLeft.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+   end;
+  end;
+  View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
+
+  for Index:=0 to 5 do begin
+   View.ViewMatrix:=CubeMapMatrices[Index]*TpvMatrix4x4.CreateTranslation(CameraPositon);
+   View.InverseViewMatrix:=View.ViewMatrix.Inverse;
+   if Index=0 then begin
+    InFlightFrameState^.ReflectionProbeViewIndex:=Renderer.Scene3D.AddView(View);
+   end else begin
+    Renderer.Scene3D.AddView(View);
+   end;
+  end;
+
+ end;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
@@ -2467,7 +2528,13 @@ begin
 
    fCountRealViews:=fViews.Count;
 
-   HUDOffset:=2;
+   if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+    AddCameraReflectionProbeViews;
+    HUDOffset:=8;
+   end else begin
+    InFlightFrameState^.ReflectionProbeViewIndex:=-1;
+    HUDOffset:=2;
+   end;
 
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
    ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(0),aFrameCounter);
@@ -2517,7 +2584,13 @@ begin
 
    fCountRealViews:=fViews.Count;
 
-   HUDOffset:=1;
+   if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+    AddCameraReflectionProbeViews;
+    HUDOffset:=7;
+   end else begin
+    InFlightFrameState^.ReflectionProbeViewIndex:=-1;
+    HUDOffset:=1;
+   end;
 
    ViewLeft.ViewMatrix:=TpvMatrix4x4.Identity;
    ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace,aFrameCounter);
