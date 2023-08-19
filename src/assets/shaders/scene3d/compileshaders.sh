@@ -266,27 +266,31 @@ addMeshFragmentShadingTransparencyVariants(){
   # No blending   
   addMeshFragmentShadingAlphaTestVariants "$1" "$2"
 
-  # Standard alpha blending
-  addMeshFragmentShadingAlphaTestVariants "${1}_blend" "$2 -DBLEND"
+  if [[ $2 != *"ENVMAP"* ]]; then
 
-  # WBOIT (Weighted-Blended Order Independent Transparency)
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_wboit" "$2 -DWBOIT"
+    # Standard alpha blending
+    addMeshFragmentShadingAlphaTestVariants "${1}_blend" "$2 -DBLEND"
 
-  # MBOIT (Moment-Based order independent transparency)
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2" 
+    # WBOIT (Weighted-Blended Order Independent Transparency)
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_wboit" "$2 -DWBOIT"
 
-  # LoopOIT (Multi-pass order independent transparency)
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
+    # MBOIT (Moment-Based order independent transparency)
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2" 
 
-  # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)  
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_spinlock_lockoit" "$2 -DLOCKOIT -DSPINLOCK"
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_interlock_lockoit" "$2 -DLOCKOIT -DINTERLOCK"
+    # LoopOIT (Multi-pass order independent transparency)
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
 
-  # DFAOIT (Neural network based order independent transparency)
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_spinlock_dfaoit" "$2 -DDFAOIT -DSPINLOCK"
-  addMeshFragmentShadingOITAlphaTestVariants "${1}_interlock_dfaoit" "$2 -DDFAOIT -DINTERLOCK"
+    # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)  
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_spinlock_lockoit" "$2 -DLOCKOIT -DSPINLOCK"
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_interlock_lockoit" "$2 -DLOCKOIT -DINTERLOCK"
+
+    # DFAOIT (Neural network based order independent transparency)
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_spinlock_dfaoit" "$2 -DDFAOIT -DSPINLOCK"
+    addMeshFragmentShadingOITAlphaTestVariants "${1}_interlock_dfaoit" "$2 -DDFAOIT -DINTERLOCK"
+
+  fi  
 
 }
 
@@ -309,9 +313,13 @@ addMeshFragmentShadingAntialiasingVariants(){
   # No antialiasing or temporal antialiasing
   addMeshFragmentShadingShadowVariants "${1}" "$2"
 
-  # MSAA (Multi-sample anti-aliasing)
-  addMeshFragmentShadingShadowVariants "${1}_msaa" "$2 -DMSAA"  
+  if [[ $2 != *"ENVMAP"* ]]; then
 
+    # MSAA (Multi-sample anti-aliasing)
+    addMeshFragmentShadingShadowVariants "${1}_msaa" "$2 -DMSAA"  
+
+  fi
+  
 }
 
 # Add mesh fragment shader depth only with different alphatest variants 
@@ -350,6 +358,9 @@ addMeshFragmentPassTargetVariants(){
 
   # The actual shading stuff
   addMeshFragmentShadingAntialiasingVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS"  
+
+  # The environment map stuff
+  #addMeshFragmentShadingAntialiasingVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DENVMAP"
 
 }
 
