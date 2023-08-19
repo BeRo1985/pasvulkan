@@ -2481,14 +2481,14 @@ var Index,HUDOffset:TpvSizeInt;
   if fZFar<0.0 then begin
    if IsInfinite(fZFar) then begin
     // Convert to reversed infinite Z
-    ViewLeft.ProjectionMatrix.RawComponents[2,2]:=0.0;
-    ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
-    ViewLeft.ProjectionMatrix.RawComponents[3,2]:=abs(fZNear);
+    View.ProjectionMatrix.RawComponents[2,2]:=0.0;
+    View.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+    View.ProjectionMatrix.RawComponents[3,2]:=abs(fZNear);
    end else begin
     // Convert to reversed non-infinite Z
-    ViewLeft.ProjectionMatrix.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
-    ViewLeft.ProjectionMatrix.RawComponents[2,3]:=-1.0;
-    ViewLeft.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
+    View.ProjectionMatrix.RawComponents[2,2]:=abs(fZNear)/(abs(fZFar)-abs(fZNear));
+    View.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+    View.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
    end;
   end;
   View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
