@@ -75,8 +75,6 @@ uses SysUtils,
 type { TpvScene3DRendererSkyCubeMap }
      TpvScene3DRendererSkyCubeMap=class
       public
-       const Width=512;
-             Height=512;
       private
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -86,6 +84,8 @@ type { TpvScene3DRendererSkyCubeMap }
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
        fLightDirection:TpvVector3;
+       fWidth:TpvInt32;
+       fHeight:TpvInt32;
       public
 
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT));
@@ -148,15 +148,17 @@ begin
 
  LocalLightDirection:=TpvVector4.InlineableCreate(fLightDirection,0.0);
 
- MipMaps:=IntLog2(Max(Width,Height))+1;
-
  case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
   TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
-// Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+//  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+   fWidth:=2048;
+   fHeight:=2048;
   end;
   else begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+   fWidth:=512;
+   fHeight:=512;
   end;
  end;
  try
@@ -165,14 +167,16 @@ begin
   Stream.Free;
  end;
 
+ MipMaps:=IntLog2(Max(fWidth,fHeight))+1;
+
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
                                      aImageFormat,
-                                     Width,
-                                     Height,
+                                     fWidth,
+                                     fHeight,
                                      1,
                                      MipMaps,
                                      6,
@@ -409,8 +413,8 @@ begin
                                                     SizeOf(TpvVector4),
                                                     @LocalLightDirection);
 
-              ComputeCommandBuffer.CmdDispatch(Max(1,(Width+((1 shl 4)-1)) shr 4),
-                                               Max(1,(Height+((1 shl 4)-1)) shr 4),
+              ComputeCommandBuffer.CmdDispatch(Max(1,(fWidth+((1 shl 4)-1)) shr 4),
+                                               Max(1,(fHeight+((1 shl 4)-1)) shr 4),
                                                6);
 
  {            FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -527,8 +531,8 @@ begin
                                       [TVkOffset3D.Create(0,
                                                           0,
                                                           0),
-                                       TVkOffset3D.Create(Width shr (Index-1),
-                                                          Height shr (Index-1),
+                                       TVkOffset3D.Create(fWidth shr (Index-1),
+                                                          fHeight shr (Index-1),
                                                           1)],
                                       TVkImageSubresourceLayers.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                        Index,
@@ -537,8 +541,8 @@ begin
                                       [TVkOffset3D.Create(0,
                                                           0,
                                                           0),
-                                       TVkOffset3D.Create(Width shr Index,
-                                                          Height shr Index,
+                                       TVkOffset3D.Create(fWidth shr Index,
+                                                          fHeight shr Index,
                                                           1)]
                                      );
 

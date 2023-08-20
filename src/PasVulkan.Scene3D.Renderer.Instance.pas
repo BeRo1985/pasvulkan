@@ -742,7 +742,8 @@ begin
   fInverseViewProjectionMatrices[ViewIndex]:=(fInstance.fViews.Items[ViewIndex].ViewMatrix*fProjectionMatrix).Inverse;
  end;
 
- fLightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
+ fLightForwardVector:=-Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+//fLightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
  fLightSideVector:=fLightForwardVector.Perpendicular;
 {fLightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
                                                -fViews.Items[0].ViewMatrix.RawComponents[1,2],

@@ -2186,6 +2186,8 @@ type EpvScene3D=class(Exception);
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
             TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TVertexStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
+            TInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
+            TCountInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvSizeInt;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -2268,8 +2270,8 @@ type EpvScene3D=class(Exception);
        fMaterialDataGeneration:TpvUInt64;
        fMaterialDataProcessedGeneration:TpvUInt64;
        fMaterialDataGenerationLock:TPasMPSpinLock;
-       fLights:array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
-       fCountLights:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+       fLights:TInFlightFrameLights;
+       fCountLights:TCountInFlightFrameLights;
        fIndirectLights:array[0..MaxInFlightFrames-1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
        fCountIndirectLights:array[0..MaxInFlightFrames-1] of TpvSizeInt;
        fGroupListLock:TPasMPSlimReaderWriterLock;
@@ -2300,6 +2302,7 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fRenderPassIndexCounter:TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
+       fPrimaryShadowMapLightDirection:TpvVector3;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
        fVulkanDebugPrimitiveVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
@@ -2434,12 +2437,15 @@ type EpvScene3D=class(Exception);
        property VertexStagePushConstants:TVertexStagePushConstantArray read fVertexStagePushConstants;
        property Views:TViews read fViews;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
+       property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
       public
        property DefaultParticleImage:TImage read fDefaultParticleImage;
        property DefaultParticleTexture:TTexture read fDefaultParticleTexture;
+       property Lights:TInFlightFrameLights read fLights;
+       property CountLights:TCountInFlightFrameLights read fCountLights;
       published
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -6399,6 +6405,9 @@ begin
    else begin
     Radius:=Infinity;
    end;
+  end;
+  if Data^.Type_=TpvScene3D.TLightData.TLightType.PrimaryDirectional then begin
+   fSceneInstance.fPrimaryShadowMapLightDirection:=Direction;
   end;
   case Data^.Type_ of
    TpvScene3D.TLightData.TLightType.Directional,
@@ -14963,6 +14972,8 @@ begin
  fEmptyMaterial.IncRef;
 
  fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.5,-1.0,-1.0).Normalize;
+
+ fPrimaryShadowMapLightDirection:=TpvVector3.InlineableCreate(0.5,-1.0,-1.0).Normalize;
 
 //fPrimaryLightDirection:=TpvVector3.InlineableCreate(0.333333333333,-0.666666666666,-0.666666666666).Normalize;
 
