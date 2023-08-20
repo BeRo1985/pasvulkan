@@ -222,8 +222,8 @@ type { TpvScene3DRendererInstance }
             { TCascadedShadowMapBuilder }
             TCascadedShadowMapBuilder=class
              public
-              const CascadeNearPlaneOffset=-50.0;
-                    CascadeFarPlaneOffset=50.0;
+              const CascadeNearPlaneOffset=-512.0;
+                    CascadeFarPlaneOffset=512.0;
                     FrustumCorners:array[0..7] of TpvVector3=
                      (
                       (x:-1.0;y:-1.0;z:0.0),
