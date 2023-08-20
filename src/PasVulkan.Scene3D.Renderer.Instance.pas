@@ -2553,13 +2553,6 @@ begin
    fCountRealViews:=fViews.Count;
    InFlightFrameState^.CountFinalViews:=2;
 
-   if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
-    AddCameraReflectionProbeViews;
-   end else begin
-    InFlightFrameState^.ReflectionProbeViewIndex:=-1;
-    InFlightFrameState^.CountReflectionProbeViews:=0;
-   end;
-
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
    ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(fVirtualReality.GetProjectionMatrix(0),aFrameCounter);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
@@ -2610,13 +2603,6 @@ begin
    fCountRealViews:=fViews.Count;
    InFlightFrameState^.CountFinalViews:=1;
 
-   if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
-    AddCameraReflectionProbeViews;
-   end else begin
-    InFlightFrameState^.ReflectionProbeViewIndex:=-1;
-    InFlightFrameState^.CountReflectionProbeViews:=0;
-   end;
-
    ViewLeft.ViewMatrix:=TpvMatrix4x4.Identity;
    ViewLeft.ProjectionMatrix:=AddTemporalAntialiasingJitter(ViewLeft.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace,aFrameCounter);
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
@@ -2635,9 +2621,13 @@ begin
   InFlightFrameState^.HUDViewIndex:=0;
   InFlightFrameState^.CountHUDViews:=1;
 
+ end;
+
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+  AddCameraReflectionProbeViews;
+ end else begin
   InFlightFrameState^.ReflectionProbeViewIndex:=-1;
   InFlightFrameState^.CountReflectionProbeViews:=0;
-
  end;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
