@@ -305,11 +305,15 @@ begin
                                       0,
                                       nil);
 
- for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+ for ViewIndex:=0 to (InFlightFrameState^.CountFinalViews+InFlightFrameState^.CountReflectionProbeViews)-1 do begin
 
   FrustumClusterGridPushConstants.ViewIndex:=ViewIndex;
 
-  FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
+  if ViewIndex<InFlightFrameState^.CountFinalViews then begin
+   FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
+  end else begin
+   FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.ReflectionProbeViewIndex+(ViewIndex-InFlightFrameState^.CountFinalViews);
+  end;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
@@ -327,7 +331,7 @@ begin
   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    IfThen(ViewIndex=(InFlightFrameState^.CountViews-1),TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)),
+                                    IfThen(ViewIndex=((InFlightFrameState^.CountViews+InFlightFrameState^.CountReflectionProbeViews)-1),TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)),
                                     0,
                                     1,@MemoryBarrier,
                                     0,nil,

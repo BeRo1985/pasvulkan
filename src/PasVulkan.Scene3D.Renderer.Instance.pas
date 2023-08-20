@@ -95,18 +95,32 @@ type { TpvScene3DRendererInstance }
              CountOrderIndependentTransparencyLayers=8;
        type { TInFlightFrameState }
             TInFlightFrameState=record
+
              Ready:TPasMPBool32;
-             FinalViewIndex:TpvSizeInt;
-             HUDViewIndex:TpvSizeInt;
+
              CountViews:TpvSizeInt;
+
+             FinalViewIndex:TpvSizeInt;
+             CountFinalViews:TpvSizeInt;
+
+             HUDViewIndex:TpvSizeInt;
+             CountHUDViews:TpvSizeInt;
+
              ReflectionProbeViewIndex:TpvSizeInt;
+             CountReflectionProbeViews:TpvSizeInt;
+
              CascadedShadowMapViewIndex:TpvSizeInt;
              CountCascadedShadowMapViews:TpvSizeInt;
+
+             ReflectionProbeRenderPassIndex:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
+
              ZNear:TpvFloat;
              ZFar:TpvFloat;
+
              Jitter:TpvVector4;
+
             end;
             PInFlightFrameState=^TInFlightFrameState;
             TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
@@ -266,6 +280,8 @@ type { TpvScene3DRendererInstance }
        fExternalImageFormat:TVkFormat;
        fExternalOutputImageData:TpvFrameGraph.TExternalImageData;
        fHasExternalOutputImage:boolean;
+       fReflectionProbeWidth:TpvInt32;
+       fReflectionProbeHeight:TpvInt32;
        fCascadedShadowMapWidth:TpvInt32;
        fCascadedShadowMapHeight:TpvInt32;
        fCountSurfaceViews:TpvInt32;
@@ -370,8 +386,8 @@ type { TpvScene3DRendererInstance }
        procedure ReleaseVolatileResources;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure Reset;
-       procedure AddView(const aView:TpvScene3D.TView);
-       procedure AddViews(const aViews:array of TpvScene3D.TView);
+       function AddView(const aView:TpvScene3D.TView):TpvInt32;
+       function AddViews(const aViews:array of TpvScene3D.TView):TpvInt32;
        function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
        procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
@@ -448,6 +464,8 @@ type { TpvScene3DRendererInstance }
        property ExternalImageFormat:TVkFormat read fExternalImageFormat write fExternalImageFormat;
        property ExternalOutputImageData:TpvFrameGraph.TExternalImageData read fExternalOutputImageData;
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
+       property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
+       property ReflectionProbeHeight:TpvInt32 read fReflectionProbeHeight write fReflectionProbeHeight;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapHeight write fCascadedShadowMapHeight;
        property Left:TpvInt32 read fLeft write fLeft;
@@ -853,9 +871,9 @@ begin
  fInstance.fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[2]:=0;
  fInstance.fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[3]:=0;
 
- InFlightFrameState^.CascadedShadowMapViewIndex:=Renderer.Scene3D.AddView(CascadedShadowMaps^[0].View);
+ InFlightFrameState^.CascadedShadowMapViewIndex:={Renderer.Scene3D}fInstance.AddView(CascadedShadowMaps^[0].View);
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
-  Renderer.Scene3D.AddView(CascadedShadowMaps^[CascadedShadowMapIndex].View);
+  {Renderer.Scene3D}fInstance.AddView(CascadedShadowMaps^[CascadedShadowMapIndex].View);
  end;
 
  InFlightFrameState^.CountCascadedShadowMapViews:=CountCascadedShadowMapCascades;
@@ -921,6 +939,10 @@ begin
  fHUDRenderPassClass:=nil;
 
  fHUDRenderPassParent:=nil;
+
+ fReflectionProbeWidth:=256;
+
+ fReflectionProbeHeight:=256;
 
  if Renderer.ShadowMode=TpvScene3DRendererShadowMode.None then begin
 
@@ -2413,14 +2435,14 @@ begin
  fCountRealViews:=0;
 end;
 
-procedure TpvScene3DRendererInstance.AddView(const aView:TpvScene3D.TView);
+function TpvScene3DRendererInstance.AddView(const aView:TpvScene3D.TView):TpvInt32;
 begin
- fViews.Add(aView);
+ result:=fViews.Add(aView);
 end;
 
-procedure TpvScene3DRendererInstance.AddViews(const aViews:array of TpvScene3D.TView);
+function TpvScene3DRendererInstance.AddViews(const aViews:array of TpvScene3D.TView):TpvInt32;
 begin
- fViews.Add(aViews);
+ result:=fViews.Add(aViews);
 end;
 
 procedure TpvScene3DRendererInstance.CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
@@ -2448,7 +2470,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-var Index,HUDOffset:TpvSizeInt;
+var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
     ViewMatrix:TpvMatrix4x4;
@@ -2497,11 +2519,13 @@ var Index,HUDOffset:TpvSizeInt;
    View.ViewMatrix:=CubeMapMatrices[Index]*TpvMatrix4x4.CreateTranslation(CameraPositon);
    View.InverseViewMatrix:=View.ViewMatrix.Inverse;
    if Index=0 then begin
-    InFlightFrameState^.ReflectionProbeViewIndex:=Renderer.Scene3D.AddView(View);
+    InFlightFrameState^.ReflectionProbeViewIndex:=fViews.Add(View);
    end else begin
-    Renderer.Scene3D.AddView(View);
+    fViews.Add(View);
    end;
   end;
+
+  InFlightFrameState^.CountReflectionProbeViews:=6;
 
  end;
 begin
@@ -2524,16 +2548,16 @@ begin
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
-   fViews.Add([ViewLeft,ViewRight]);
+   InFlightFrameState^.FinalViewIndex:=fViews.Add([ViewLeft,ViewRight]);
 
    fCountRealViews:=fViews.Count;
+   InFlightFrameState^.CountFinalViews:=2;
 
    if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
     AddCameraReflectionProbeViews;
-    HUDOffset:=8;
    end else begin
     InFlightFrameState^.ReflectionProbeViewIndex:=-1;
-    HUDOffset:=2;
+    InFlightFrameState^.CountReflectionProbeViews:=0;
    end;
 
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
@@ -2546,7 +2570,8 @@ begin
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
-   fViews.Add([ViewLeft,ViewRight]);
+   InFlightFrameState^.HUDViewIndex:=fViews.Add([ViewLeft,ViewRight]);
+   InFlightFrameState^.CountHUDViews:=2;
 
   end else begin
 
@@ -2580,16 +2605,16 @@ begin
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
-   fViews.Add(ViewLeft);
+   InFlightFrameState^.FinalViewIndex:=fViews.Add(ViewLeft);
 
    fCountRealViews:=fViews.Count;
+   InFlightFrameState^.CountFinalViews:=1;
 
    if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
     AddCameraReflectionProbeViews;
-    HUDOffset:=7;
    end else begin
     InFlightFrameState^.ReflectionProbeViewIndex:=-1;
-    HUDOffset:=1;
+    InFlightFrameState^.CountReflectionProbeViews:=0;
    end;
 
    ViewLeft.ViewMatrix:=TpvMatrix4x4.Identity;
@@ -2597,22 +2622,30 @@ begin
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
-   fViews.Add(ViewLeft);
+   InFlightFrameState^.HUDViewIndex:=fViews.Add(ViewLeft);
+   InFlightFrameState^.CountHUDViews:=1;
 
   end;
 
- end;
+ end else begin
 
- if fViews.Count>0 then begin
-  InFlightFrameState^.FinalViewIndex:=Renderer.Scene3D.AddView(fViews.Items[0]);
-  InFlightFrameState^.HUDViewIndex:=InFlightFrameState^.FinalViewIndex+HUDOffset;
-  for Index:=1 to fViews.Count-1 do begin
-   Renderer.Scene3D.AddView(fViews.Items[Index]);
-  end;
+  InFlightFrameState^.FinalViewIndex:=0;
+  InFlightFrameState^.CountFinalViews:=1;
+
+  InFlightFrameState^.HUDViewIndex:=0;
+  InFlightFrameState^.CountHUDViews:=1;
+
+  InFlightFrameState^.ReflectionProbeViewIndex:=-1;
+  InFlightFrameState^.CountReflectionProbeViews:=0;
+
  end;
- InFlightFrameState^.CountViews:=fViews.Count;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
+
+ for Index:=0 to fViews.Count-1 do begin
+  Renderer.Scene3D.AddView(fViews.Items[Index]);
+ end;
+ InFlightFrameState^.CountViews:=fViews.Count;
 
  fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex].UpdateData(fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
                                                                         0,
@@ -2620,29 +2653,56 @@ begin
 
  InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
 
- InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ if InFlightFrameState^.CountCascadedShadowMapViews>0 then begin
+  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ end else begin
+  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=-1;
+ end;
+
+ if InFlightFrameState^.CountReflectionProbeViews>0 then begin
+  InFlightFrameState^.ReflectionProbeRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ end else begin
+  InFlightFrameState^.ReflectionProbeRenderPassIndex:=-1;
+ end;
 
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
 
- // Main viewport(s)
- Renderer.Scene3D.Prepare(aInFlightFrameIndex,
-                          InFlightFrameState^.ViewRenderPassIndex,
-                          InFlightFrameState^.FinalViewIndex,
-                          InFlightFrameState^.CountViews,
-                          fWidth,
-                          fHeight,
-                          true,
-                          true);
+ // Final viewport(s)
+ if InFlightFrameState^.CountFinalViews>0 then begin
+  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                           InFlightFrameState^.ViewRenderPassIndex,
+                           InFlightFrameState^.FinalViewIndex,
+                           InFlightFrameState^.CountFinalViews,
+                           fWidth,
+                           fHeight,
+                           true,
+                           true,
+                           true);
+ end;
+
+ // Reflection probe viewport(s)
+ if InFlightFrameState^.CountReflectionProbeViews>0 then begin
+  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                           InFlightFrameState^.ReflectionProbeRenderPassIndex,
+                           InFlightFrameState^.ReflectionProbeViewIndex,
+                           InFlightFrameState^.CountReflectionProbeViews,
+                           fReflectionProbeWidth,
+                           fReflectionProbeHeight,
+                           true,
+                           true,
+                           true);
+ end;
 
  // Cascaded shadow map viewport(s)
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                           InFlightFrameState^.CascadedShadowMapRenderPassIndex,
                           InFlightFrameState^.CascadedShadowMapViewIndex,
                           InFlightFrameState^.CountCascadedShadowMapViews,
-                          CascadedShadowMapWidth,
-                          CascadedShadowMapHeight,
+                          fCascadedShadowMapWidth,
+                          fCascadedShadowMapHeight,
                           false,
+                          true,
                           true);
 
  Renderer.Scene3D.UpdateDebugPrimitives(aInFlightFrameIndex);

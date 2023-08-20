@@ -279,11 +279,16 @@ begin
                                       0,
                                       nil);
 
- for ViewIndex:=0 to InFlightFrameState^.CountViews-1 do begin
+ for ViewIndex:=0 to (InFlightFrameState^.CountFinalViews+InFlightFrameState^.CountReflectionProbeViews)-1 do begin
 
   FrustumClusterGridPushConstants.ViewIndex:=ViewIndex;
 
-  FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
+  if ViewIndex<InFlightFrameState^.CountFinalViews then begin
+   FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.FinalViewIndex+ViewIndex;
+  end else begin
+   FrustumClusterGridPushConstants.OffsetedViewIndex:=InFlightFrameState^.ReflectionProbeViewIndex+(ViewIndex-InFlightFrameState^.CountFinalViews);
+  end;
+
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

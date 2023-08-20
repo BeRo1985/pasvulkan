@@ -398,7 +398,7 @@ begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
  SSAOPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
- SSAOPushConstants.CountViews:=InFlightFrameState^.CountViews;
+ SSAOPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
  SSAOPushConstants.FrameIndex:=FrameGraph.DrawFrameIndex;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,

@@ -410,6 +410,7 @@ begin
  VertexStagePushConstants:=fInstance.Renderer.Scene3D.VertexStagePushConstants[RenderPassIndex];
  if assigned(fInstance.VirtualReality) then begin
   VertexStagePushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].HUDViewIndex;
+  VertexStagePushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
  end else begin
   VertexStagePushConstants.CountViews:=0;
  end;
