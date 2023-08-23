@@ -143,10 +143,6 @@ begin
      for Index:=0 to VirtualSymLinksJSONObject.Count-1 do begin
       Key:=VirtualSymLinksJSONObject.Keys[Index];
       Value:=TPasJSON.GetString(VirtualSymLinksJSONObject.Values[Index],'');
-      if Key='mesh_matbufref_shading_pcfpcss_alphatest_demote_frag.spv' then begin
-       if Key='mesh_matbufref_shading_pcfpcss_alphatest_demote_frag.spv' then begin
-       end;
-      end;
       fVirtualSymLinkHashMap.Add(Key,Value);
      end;
     end;
