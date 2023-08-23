@@ -1486,6 +1486,11 @@ function ModuloPos(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function IEEERemainder(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
+function CastFloatToUInt32(const v:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
+function CastUInt32ToFloat(const v:TpvUInt32):TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+
+function SignNonZero(const v:TpvFloat):TpvInt32; {$ifdef CAN_INLINE}inline;{$endif}
+
 function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
 function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1850,17 +1855,32 @@ begin
  end;
 end;
 
-function IEEERemainder(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function IEEERemainder(x,y:TpvScalar):TpvScalar;
 begin
  result:=x-(round(x/y)*y);
 end;
 
-function Modulus(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function Modulus(x,y:TpvScalar):TpvScalar;
 begin
  result:=(abs(x)-(abs(y)*(floor(abs(x)/abs(y)))))*Sign(x);
 end;
 
-function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function CastFloatToUInt32(const v:TpvFloat):TpvUInt32;
+begin
+ result:=PpvUInt32(Pointer(@v))^;
+end;
+
+function CastUInt32ToFloat(const v:TpvUInt32):TpvFloat;
+begin
+ result:=PpvFloat(Pointer(@v))^;
+end;
+
+function SignNonZero(const v:TpvFloat):TpvInt32;
+begin
+ result:=1-(TpvInt32(TpvUInt32(TpvUInt32(PpvUInt32(Pointer(@v))^) shr 31)) shl 1);
+end;
+
+function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar;
 begin
  result:=(v0.w*v1.z*v2.y*v3.x)-(v0.z*v1.w*v2.y*v3.x)-
          (v0.w*v1.y*v2.z*v3.x)+(v0.y*v1.w*v2.z*v3.x)+
@@ -18839,6 +18859,47 @@ begin
    end;
   end;
  end;
+end;
+
+// 32-bit normal encoding from Journal of Computer Graphics Techniques Vol. 3, No. 2, 2014
+function EncodeNormalAsUInt32(const aNormal:TpvVector3):TpvUInt32;
+var Projected0,Projected1:TpvUInt32;
+    InversedL1Norm,Encoded0,Encoded1:TpvScalar;
+begin
+ InversedL1Norm:=1.0/(abs(aNormal.x)+abs(aNormal.y)+abs(aNormal.z));
+ if aNormal.z<0.0 then begin
+  Encoded0:=1.0-abs(aNormal.y*InversedL1Norm)*SignNonZero(aNormal.x);
+  Encoded1:=1.0-abs(aNormal.x*InversedL1Norm)*SignNonZero(aNormal.y);
+ end else begin
+  Encoded0:=aNormal.x*InversedL1Norm;
+  Encoded1:=aNormal.y*InversedL1Norm;
+ end;
+ Projected0:=((CastFloatToUInt32(Encoded0) and TpvUInt32($80000000)) shr 16) or ((CastFloatToUInt32((abs(Encoded0)+2.0)*0.5) and TpvUInt32($7fffff)) shr 8);
+ Projected1:=((CastFloatToUInt32(Encoded1) and TpvUInt32($80000000)) shr 16) or ((CastFloatToUInt32((abs(Encoded1)+2.0)*0.5) and TpvUInt32($7fffff)) shr 8);
+ if (Projected0 and $7fff)=0 then begin
+  Projected0:=0;
+ end;
+ if (Projected1 and $7fff)=0 then begin
+  Projected1:=0;
+ end;
+ result:=(Projected1 shl 16) or Projected0;
+end;
+
+function DecodeNormalFromUInt32(const aNormal:TpvUInt32):TpvVector3;
+var Projected0,Projected1:TpvUInt32;
+    t:TpvScalar;
+begin
+ Projected0:=aNormal and TpvUInt32($ffff);
+ Projected1:=aNormal shr 16;
+ result.x:=CastUInt32ToFloat(CastFloatToUInt32((CastUInt32ToFloat(TpvUInt32($3f800000) or ((Projected0 and TpvUInt32($7fff)) shl 8))*2.0)-2.0) or ((Projected0 and TpvUInt32($8000)) shl 16));
+ result.y:=CastUInt32ToFloat(CastFloatToUInt32((CastUInt32ToFloat(TpvUInt32($3f800000) or ((Projected1 and TpvUInt32($7fff)) shl 8))*2.0)-2.0) or ((Projected1 and TpvUInt32($8000)) shl 16));
+ result.z:=1.0-(abs(result.x)+abs(result.y));
+ if result.z<0.0 then begin
+  t:=result.x;
+  result.x:=(1.0-abs(result.y))*SignNonZero(t);
+  result.y:=(1.0-abs(t))*SignNonZero(result.y);
+ end;
+ result:=result.Normalize;
 end;
 
 initialization
