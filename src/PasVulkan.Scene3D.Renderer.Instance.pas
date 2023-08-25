@@ -2541,7 +2541,7 @@ var Index:TpvSizeInt;
      View:TpvScene3D.TView;
  begin
 
-  CameraPositon:=ViewLeft.InverseViewMatrix.Translation.xyz;
+  CameraPositon:=fViews.Items[InFlightFrameState^.FinalViewIndex].InverseViewMatrix.Translation.xyz;
 
   if fZFar>0.0 then begin
    View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(90.0,
