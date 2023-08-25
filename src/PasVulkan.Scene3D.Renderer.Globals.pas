@@ -140,7 +140,7 @@ type TpvScene3DRendererAntialiasingMode=
        
        // No global illumination. Here in this case, it is just StaticEnvironmentMap but with a empty black environment map, for to minimize the count 
        // of the shader variants, and a cubemap lookup costs almost nothing these days.
-       None, 
+       //None,
        
        // The simplest and fastest way to add global illumination to a scene is to use a static IBL environment map, for example from the sky. 
        StaticEnvironmentMap, 

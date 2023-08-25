@@ -786,7 +786,7 @@ begin
  end;
 
  if fGlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.Auto then begin
-  fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.StaticEnvironmentMap;
+  fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe;//}StaticEnvironmentMap;
  end;
 
 

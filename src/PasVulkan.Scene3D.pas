@@ -2442,6 +2442,8 @@ type EpvScene3D=class(Exception);
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
       public
+       property WhiteImage:TImage read fWhiteImage;
+       property WhiteTexture:TTexture read fWhiteTexture;
        property DefaultParticleImage:TImage read fDefaultParticleImage;
        property DefaultParticleTexture:TTexture read fDefaultParticleTexture;
        property Lights:TInFlightFrameLights read fLights;

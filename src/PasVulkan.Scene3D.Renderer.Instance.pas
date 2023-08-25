@@ -495,6 +495,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
@@ -563,6 +564,7 @@ type TpvScene3DRendererInstancePasses=class
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesCascadedShadowMapBlurRenderPass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
+       fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
@@ -1228,6 +1230,36 @@ begin
                                   1
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_color',
+                                  false,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_cubemap_reflectionprobe_optimized_non_alpha',
+                                  false,
+                                  Renderer.OptimizedNonAlphaFormat,
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_depth',
+                                  false,
+                                  VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
+                                  Renderer.SurfaceSampleCountFlagBits,
+                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_mboit_data',
                                   false,
                                   VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -1570,7 +1602,28 @@ begin
 
  TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[1]:=TpvScene3DRendererPassesSSAOBlurRenderPass.Create(fFrameGraph,self,false);
 
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=TpvScene3DRendererPassesReflectionProbeRenderPass.Create(fFrameGraph,self);
+  case Renderer.ShadowMode of
+   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
+    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
+   end;
+   TpvScene3DRendererShadowMode.MSM:begin
+    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapBlurRenderPasses[1]);
+   end;
+   else begin
+   end;
+  end;
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridAssignComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
+ end else begin
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=nil;
+ end;
+
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+ end;
  case Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
@@ -2031,7 +2084,7 @@ begin
      fFrustumClusterGridCountTotalViews:=fCountSurfaceViews; // +6 for local light and reflection probe cubemap
 
      if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
-      inc(fCountSurfaceViews,6); // +6 for local light and reflection probe cubemap
+      inc(fFrustumClusterGridCountTotalViews,6); // +6 for local light and reflection probe cubemap
      end;
 
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
