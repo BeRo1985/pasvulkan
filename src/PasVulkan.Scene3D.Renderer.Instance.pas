@@ -2531,20 +2531,22 @@ var Index:TpvSizeInt;
     ViewMatrix:TpvMatrix4x4;
  procedure AddCameraReflectionProbeViews;
  const CubeMapMatrices:array[0..5] of TpvMatrix4x4=
-{       ((RawComponents:((0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos x
+        (
+         (RawComponents:((0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // pos x
          (RawComponents:((0.0,0.0,1.0,0.0),(0.0,1.0,0.0,0.0),(-1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg x
          (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos y
          (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg y
          (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0))),   // pos z
-         (RawComponents:((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))));  // neg z}
-        (
+         (RawComponents:((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)))      // neg z
+        );//}
+{       (
          (RawComponents:((0.0,0.0,-1.0,0.0),(0.0,-1.0,0.0,0.0),(-1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos x
          (RawComponents:((0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg x
          (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // pos y
          (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg y
          (RawComponents:((1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0))),   // pos z
          (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)))    // neg z
-        );
+        );//}
        CubeMapDirections:array[0..5,0..1] of TpvVector3=
         (
          ((x:1.0;y:0.0;z:0.0),(x:0.0;y:1.0;z:0.0)),  // pos x
@@ -2557,22 +2559,57 @@ var Index:TpvSizeInt;
  var Index:TpvSizeInt;
      CameraPositon:TpvVector3;
      View:TpvScene3D.TView;
+     zNeaz,zFar:TpvScalar;
  begin
 
 //CameraPositon:=-fViews.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.Translation.xyz;
 
   CameraPositon:=-fCameraViewMatrix.MulHomogen(TpvVector3.Origin);
 
+  zNear:=abs(fZNear);
+  zFar:=IfThen(IsInfinite(fZFar),1024.0,abs(fZFar));
+
+  View.ProjectionMatrix.RawComponents[0,0]:=1.0;
+  View.ProjectionMatrix.RawComponents[0,1]:=0.0;
+  View.ProjectionMatrix.RawComponents[0,2]:=0.0;
+  View.ProjectionMatrix.RawComponents[0,3]:=0.0;
+
+  View.ProjectionMatrix.RawComponents[1,0]:=0.0;
+  View.ProjectionMatrix.RawComponents[1,1]:=-1.0; // Flipped Y
+  View.ProjectionMatrix.RawComponents[1,2]:=0.0;
+  View.ProjectionMatrix.RawComponents[1,3]:=0.0;
+
   if fZFar>0.0 then begin
-   View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(90.0,
+
+   View.ProjectionMatrix.RawComponents[2,0]:=0.0;
+   View.ProjectionMatrix.RawComponents[2,1]:=0.0;
+   View.ProjectionMatrix.RawComponents[2,2]:=zFar/(zNear-zFar);
+   View.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+
+   View.ProjectionMatrix.RawComponents[3,0]:=0.0;
+   View.ProjectionMatrix.RawComponents[3,1]:=0.0;
+   View.ProjectionMatrix.RawComponents[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+   View.ProjectionMatrix.RawComponents[3,3]:=0.0;
+{  View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(90.0,
                                                                              1.0,
                                                                              abs(fZNear),
-                                                                             IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+                                                                             IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));//}
   end else begin
-   View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
+
+   View.ProjectionMatrix.RawComponents[2,0]:=0.0;
+   View.ProjectionMatrix.RawComponents[2,1]:=0.0;
+   View.ProjectionMatrix.RawComponents[2,2]:=zNear/(zFar-zNear);
+   View.ProjectionMatrix.RawComponents[2,3]:=-1.0;
+
+   View.ProjectionMatrix.RawComponents[3,0]:=0.0;
+   View.ProjectionMatrix.RawComponents[3,1]:=0.0;
+   View.ProjectionMatrix.RawComponents[3,2]:=(zNear*zFar)/(zFar-zNear);
+   View.ProjectionMatrix.RawComponents[3,3]:=0.0;
+
+{  View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(90.0,
                                                                              1.0,
                                                                              abs(fZNear),
-                                                                             IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
+                                                                             IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));//}
   end;
   if fZFar<0.0 then begin
    if IsInfinite(fZFar) then begin
@@ -2587,15 +2624,15 @@ var Index:TpvSizeInt;
     View.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
    end;
   end;
-  View.ProjectionMatrix:=View.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
+//View.ProjectionMatrix:=View.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
   View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
 
   for Index:=0 to 5 do begin
-{  View.ViewMatrix:=TpvMatrix4x4.Create(CubeMapMatrices[Index].Right,
-                                        CubeMapMatrices[Index].Up,
-                                        CubeMapMatrices[Index].Forwards,
-                                        fCameraViewMatrix.Translation);//}
-   View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
+   View.ViewMatrix:=CubeMapMatrices[Index];
+   View.ViewMatrix.RawComponents[3,0]:=-CubeMapMatrices[Index].Right.xyz.Dot(CameraPositon);
+   View.ViewMatrix.RawComponents[3,1]:=-CubeMapMatrices[Index].Up.xyz.Dot(CameraPositon);
+   View.ViewMatrix.RawComponents[3,2]:=-CubeMapMatrices[Index].Forwards.xyz.Dot(CameraPositon);
+{  View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
                                               CameraPositon+CubeMapDirections[Index,0],
                                               CubeMapDirections[Index,1]);//}
    View.InverseViewMatrix:=View.ViewMatrix.Inverse;
