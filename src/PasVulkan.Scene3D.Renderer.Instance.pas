@@ -1975,8 +1975,8 @@ begin
  fFrameGraph.AcquirePersistentResources;
  if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
   fImageBasedLightingReflectionProbeCubeMaps:=TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Create(Renderer.VulkanDevice,
-                                                                                                                 fReflectionProbeWidth,
-                                                                                                                 fReflectionProbeHeight,
+                                                                                                                 Max(16,fReflectionProbeWidth),
+                                                                                                                 Max(16,fReflectionProbeHeight),
                                                                                                                  Renderer.CountInFlightFrames);
  end else begin
   fImageBasedLightingReflectionProbeCubeMaps:=nil;
