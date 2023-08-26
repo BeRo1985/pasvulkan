@@ -785,7 +785,7 @@ begin
 
    fOnSetRenderPassResourcesDone:=false;
 
-(* if fInstance.Renderer.UseDepthPrepass then begin
+   if fInstance.Renderer.UseDepthPrepass then begin
 
     fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
@@ -800,7 +800,7 @@ begin
                                     [TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     nil);
 
- {  if fInstance.Renderer.SurfaceSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
+    if fInstance.Renderer.SurfaceSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
      fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                      -1,
                                      aInFlightFrameIndex,
@@ -813,9 +813,9 @@ begin
                                      OnSetRenderPassResources,
                                      [TpvScene3D.TMaterial.TAlphaMode.Mask],
                                      nil);
-    end;}
+    end; //}
 
-   end;   *)
+   end;  // *)
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
