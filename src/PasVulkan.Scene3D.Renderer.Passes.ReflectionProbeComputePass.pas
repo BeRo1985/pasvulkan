@@ -437,8 +437,8 @@ begin
                                   SizeOf(TpvScene3DRendererPassesReflectionProbeComputePass.TPushConstants),
                                   @PushConstants);
 
-  aCommandBuffer.CmdDispatch(Max(1,(fInstance.Width+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
-                             Max(1,(fInstance.Height+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
+  aCommandBuffer.CmdDispatch(Max(1,(fInstance.ImageBasedLightingReflectionProbeCubeMaps.Width+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
+                             Max(1,(fInstance.ImageBasedLightingReflectionProbeCubeMaps.Height+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
                              6);
 
 { FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
