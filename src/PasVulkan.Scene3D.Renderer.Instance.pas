@@ -86,7 +86,8 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyBuffer,
-     PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage;
+     PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage,
+     PasVulkan.Scene3D.Renderer.ImageBasedLighting.ReflectionProbeCubeMaps;
 
 type { TpvScene3DRendererInstance }
      TpvScene3DRendererInstance=class(TpvScene3DRendererBaseObject)
@@ -369,6 +370,8 @@ type { TpvScene3DRendererInstance }
        fTAAEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fTAAEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
+       fImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps;
+      private
        fPasses:TObject;
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
@@ -458,6 +461,8 @@ type { TpvScene3DRendererInstance }
        property HUDSize:TpvFrameGraph.TImageSize read fHUDSize;
        property HUDRenderPassClass:THUDRenderPassClass read fHUDRenderPassClass write fHUDRenderPassClass;
        property HUDRenderPassParent:TObject read fHUDRenderPassParent write fHUDRenderPassParent;
+      public
+       property ImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps read fImageBasedLightingReflectionProbeCubeMaps;
       published
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
@@ -1076,6 +1081,8 @@ begin
 
  fCascadedShadowMapBuilder:=TCascadedShadowMapBuilder.Create(self);
 
+ fImageBasedLightingReflectionProbeCubeMaps:=nil;
+
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
@@ -1093,6 +1100,8 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
  end;
+
+ FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
  case Renderer.TransparencyMode of
   TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
