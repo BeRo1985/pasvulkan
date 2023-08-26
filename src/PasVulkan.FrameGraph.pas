@@ -2096,7 +2096,8 @@ begin
    end else begin
 
     fVulkanImages[InFlightFrameIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
-                                                             TVkImageCreateFlags(TpvInt32(IfThen((fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat),TpvInt32(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),TpvInt32(0)))),
+                                                             TVkImageCreateFlags(TpvInt32(IfThen((fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat),TpvInt32(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT),TpvInt32(0)))) or
+                                                             TVkImageCreateFlags(TpvInt32(IfThen((fExtent.depth<=1) and (fCountArrayLayers=6),TpvInt32(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),TpvInt32(0)))),
                                                              fImageType,
                                                              fFormat,
                                                              fExtent.width,
