@@ -459,16 +459,29 @@ begin
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   fGlobalVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
                                                                                  fGlobalVulkanDescriptorSetLayout);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                       0,
-                                                                       3,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [fInstance.Renderer.GGXBRDF.DescriptorImageInfo,
-                                                                        fInstance.Renderer.CharlieBRDF.DescriptorImageInfo,
-                                                                        fInstance.Renderer.SheenEBRDF.DescriptorImageInfo],
-                                                                       [],
-                                                                       [],
-                                                                       false);
+  if assigned(fInstance.ImageBasedLightingReflectionProbeCubeMaps) then begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                        0,
+                                                                        3,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [fInstance.ImageBasedLightingReflectionProbeCubeMaps.GGXDescriptorImageInfos[InFlightFrameIndex],
+                                                                         fInstance.ImageBasedLightingReflectionProbeCubeMaps.CharlieDescriptorImageInfos[InFlightFrameIndex],
+                                                                         fInstance.ImageBasedLightingReflectionProbeCubeMaps.LambertianDescriptorImageInfos[InFlightFrameIndex]],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  end else begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                        0,
+                                                                        3,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [fInstance.Renderer.GGXBRDF.DescriptorImageInfo,
+                                                                         fInstance.Renderer.CharlieBRDF.DescriptorImageInfo,
+                                                                         fInstance.Renderer.SheenEBRDF.DescriptorImageInfo],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  end;
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                        0,
                                                                        3,
