@@ -1241,7 +1241,7 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_cubemap_reflectionprobe_optimized_non_alpha',
+ fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_optimized_non_alpha',
                                   false,
                                   Renderer.OptimizedNonAlphaFormat,
                                   VK_SAMPLE_COUNT_1_BIT,

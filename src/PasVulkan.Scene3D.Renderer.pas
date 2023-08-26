@@ -162,7 +162,7 @@ type TpvScene3DRenderer=class;
        fSSAOSampler:TpvVulkanSampler;
        fSMAAAreaTexture:TpvVulkanTexture;
        fSMAASearchTexture:TpvVulkanTexture;
-       fEmptySSAOCubeMapTexture:TpvVulkanTexture;
+       fEmptySSAOReflectionProbeTexture:TpvVulkanTexture;
 {      fLensColorTexture:TpvVulkanTexture;
        fLensDirtTexture:TpvVulkanTexture;
        fLensStarTexture:TpvVulkanTexture;}
@@ -224,7 +224,7 @@ type TpvScene3DRenderer=class;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
        property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
        property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
-       property EmptySSAOCubeMapTexture:TpvVulkanTexture read fEmptySSAOCubeMapTexture;
+       property EmptySSAOReflectionProbeTexture:TpvVulkanTexture read fEmptySSAOReflectionProbeTexture;
 {      property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
        property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
        property LensStarTexture:TpvVulkanTexture read fLensStarTexture;}
@@ -914,9 +914,9 @@ begin
                                        TVkFilter.VK_FILTER_LINEAR,
                                        TVkFilter.VK_FILTER_LINEAR,
                                        TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                        0.0,
                                        false,
                                        0.0,
@@ -1006,32 +1006,32 @@ begin
       end;
      end;
 
-     fEmptySSAOCubeMapTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
-                                                                 UniversalQueue,
-                                                                 UniversalCommandBuffer,
-                                                                 UniversalFence,
-                                                                 UniversalQueue,
-                                                                 UniversalCommandBuffer,
-                                                                 UniversalFence,
-                                                                 VK_FORMAT_R8_UNORM,
-                                                                 VK_SAMPLE_COUNT_1_BIT,
-                                                                 4,
-                                                                 4,
-                                                                 0,
-                                                                 6,
-                                                                 1,
-                                                                 0,
-                                                                 [TpvVulkanTextureUsageFlag.General,
-                                                                  TpvVulkanTextureUsageFlag.TransferDst,
-                                                                  TpvVulkanTextureUsageFlag.TransferSrc,
-                                                                  TpvVulkanTextureUsageFlag.Sampled],
-                                                                 @EmptySSAOCubeMapTextureData,
-                                                                 SizeOf(EmptySSAOCubeMapTextureData),
-                                                                 false,
-                                                                 false,
-                                                                 0,
-                                                                 true,
-                                                                 false);
+     fEmptySSAOReflectionProbeTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                                         UniversalQueue,
+                                                                         UniversalCommandBuffer,
+                                                                         UniversalFence,
+                                                                         UniversalQueue,
+                                                                         UniversalCommandBuffer,
+                                                                         UniversalFence,
+                                                                         VK_FORMAT_R8_UNORM,
+                                                                         VK_SAMPLE_COUNT_1_BIT,
+                                                                         4,
+                                                                         4,
+                                                                         0,
+                                                                         6,
+                                                                         1,
+                                                                         0,
+                                                                         [TpvVulkanTextureUsageFlag.General,
+                                                                          TpvVulkanTextureUsageFlag.TransferDst,
+                                                                          TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                          TpvVulkanTextureUsageFlag.Sampled],
+                                                                         @EmptySSAOCubeMapTextureData,
+                                                                         SizeOf(EmptySSAOCubeMapTextureData),
+                                                                         false,
+                                                                         false,
+                                                                         0,
+                                                                         true,
+                                                                         false);
 
 {    case fLensMode of
 
@@ -1143,7 +1143,7 @@ begin
  FreeAndNil(fSMAAAreaTexture);
  FreeAndNil(fSMAASearchTexture);
 
- FreeAndNil(fEmptySSAOCubeMapTexture);
+ FreeAndNil(fEmptySSAOReflectionProbeTexture);
 
 {FreeAndNil(fLensColorTexture);
  FreeAndNil(fLensDirtTexture);
