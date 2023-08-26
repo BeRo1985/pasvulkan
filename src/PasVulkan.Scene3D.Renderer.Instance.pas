@@ -2628,11 +2628,11 @@ var Index:TpvSizeInt;
   View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
 
   for Index:=0 to 5 do begin
-   View.ViewMatrix:=CubeMapMatrices[Index];
+{  View.ViewMatrix:=CubeMapMatrices[Index];
    View.ViewMatrix.RawComponents[3,0]:=-CubeMapMatrices[Index].Right.xyz.Dot(CameraPositon);
    View.ViewMatrix.RawComponents[3,1]:=-CubeMapMatrices[Index].Up.xyz.Dot(CameraPositon);
-   View.ViewMatrix.RawComponents[3,2]:=-CubeMapMatrices[Index].Forwards.xyz.Dot(CameraPositon);
-{  View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
+   View.ViewMatrix.RawComponents[3,2]:=-CubeMapMatrices[Index].Forwards.xyz.Dot(CameraPositon);}
+   View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
                                               CameraPositon+CubeMapDirections[Index,0],
                                               CubeMapDirections[Index,1]);//}
    View.InverseViewMatrix:=View.ViewMatrix.Inverse;
