@@ -151,8 +151,8 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceColor:=AddImageOutput('resourcetype_cubemap_reflectionprobe_optimized_non_alpha',
-                                'resource_reflectionprobe_color_optimized_non_alpha',
+ fResourceColor:=AddImageOutput('resourcetype_reflectionprobe_color',
+                                'resource_reflectionprobe_color', //_optimized_non_alpha
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                              TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
@@ -530,8 +530,8 @@ begin
 
       fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline);
 
-      VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.Width,fInstance.Height,0.0,1.0);
-      VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.Width,fInstance.Height);
+      VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.ReflectionProbeWidth,fInstance.ReflectionProbeHeight,0.0,1.0);
+      VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.ReflectionProbeWidth,fInstance.ReflectionProbeHeight);
 
       VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
       VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
@@ -652,8 +652,8 @@ begin
 
   fInstance.Renderer.Scene3D.InitializeDebugPrimitiveGraphicsPipeline(VulkanGraphicsPipeline);
 
-  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.Width,fInstance.Height,0.0,1.0);
-  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.Width,fInstance.Height);
+  VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.ReflectionProbeWidth,fInstance.ReflectionProbeHeight,0.0,1.0);
+  VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.ReflectionProbeWidth,fInstance.ReflectionProbeHeight);
 
   VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
   VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;

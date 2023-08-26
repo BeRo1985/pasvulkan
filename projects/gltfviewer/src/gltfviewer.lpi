@@ -93,7 +93,7 @@ end;
     </Other>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="7">
+    <Exceptions Count="9">
       <Item1>
         <Name Value="EAbort"/>
       </Item1>
@@ -115,6 +115,12 @@ end;
       <Item7>
         <Name Value="EpvVulkanResultException"/>
       </Item7>
+      <Item8>
+        <Name Value="RunError(101)"/>
+      </Item8>
+      <Item9>
+        <Name Value="EInOutError"/>
+      </Item9>
     </Exceptions>
   </Debugging>
 </CONFIG>

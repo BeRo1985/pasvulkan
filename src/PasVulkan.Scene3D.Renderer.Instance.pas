@@ -1232,8 +1232,9 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_color',
                                   false,
-                                  VK_FORMAT_R16G16B16A16_SFLOAT,
-                                  Renderer.SurfaceSampleCountFlagBits,
+                                  VK_FORMAT_R8G8B8A8_SRGB,
+//                                VK_FORMAT_R16G16B16A16_SFLOAT,
+                                  VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
@@ -1243,7 +1244,7 @@ begin
  fFrameGraph.AddImageResourceType('resourcetype_cubemap_reflectionprobe_optimized_non_alpha',
                                   false,
                                   Renderer.OptimizedNonAlphaFormat,
-                                  Renderer.SurfaceSampleCountFlagBits,
+                                  VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
@@ -1253,7 +1254,7 @@ begin
  fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_depth',
                                   false,
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
-                                  Renderer.SurfaceSampleCountFlagBits,
+                                  VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
@@ -2530,18 +2531,37 @@ var Index:TpvSizeInt;
     ViewMatrix:TpvMatrix4x4;
  procedure AddCameraReflectionProbeViews;
  const CubeMapMatrices:array[0..5] of TpvMatrix4x4=
-       ((RawComponents:((0.0,0.0,-1.0,0.0),(0.0,-1.0,0.0,0.0),(-1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos x
-        (RawComponents:((0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg x
-        (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // pos y
-        (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg y
-        (RawComponents:((1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0))),   // pos z
-        (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))));  // neg z
+{       ((RawComponents:((0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos x
+         (RawComponents:((0.0,0.0,1.0,0.0),(0.0,1.0,0.0,0.0),(-1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg x
+         (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos y
+         (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg y
+         (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0))),   // pos z
+         (RawComponents:((1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0))));  // neg z}
+        (
+         (RawComponents:((0.0,0.0,-1.0,0.0),(0.0,-1.0,0.0,0.0),(-1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),  // pos x
+         (RawComponents:((0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(1.0,0.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg x
+         (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // pos y
+         (RawComponents:((1.0,0.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0.0,1.0))),    // neg y
+         (RawComponents:((1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0.0,1.0))),   // pos z
+         (RawComponents:((-1.0,0.0,0.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0)))    // neg z
+        );
+       CubeMapDirections:array[0..5,0..1] of TpvVector3=
+        (
+         ((x:1.0;y:0.0;z:0.0),(x:0.0;y:1.0;z:0.0)),  // pos x
+         ((x:-1.0;y:0.0;z:0.0),(x:0.0;y:1.0;z:0.0)), // neg x
+         ((x:0.0;y:1.0;z:0.0),(x:0.0;y:0.0;z:-1.0)), // pos y
+         ((x:0.0;y:-1.0;z:0.0),(x:0.0;y:0.0;z:1.0)), // neg y
+         ((x:0.0;y:0.0;z:1.0),(x:0.0;y:1.0;z:0.0)),  // pos z
+         ((x:0.0;y:0.0;z:-1.0),(x:0.0;y:1.0;z:0.0))  // neg z
+        );
  var Index:TpvSizeInt;
      CameraPositon:TpvVector3;
      View:TpvScene3D.TView;
  begin
 
-  CameraPositon:=fViews.Items[InFlightFrameState^.FinalViewIndex].InverseViewMatrix.Translation.xyz;
+//CameraPositon:=-fViews.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.Translation.xyz;
+
+  CameraPositon:=-fCameraViewMatrix.MulHomogen(TpvVector3.Origin);
 
   if fZFar>0.0 then begin
    View.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(90.0,
@@ -2567,10 +2587,17 @@ var Index:TpvSizeInt;
     View.ProjectionMatrix.RawComponents[3,2]:=(abs(fZNear)*abs(fZFar))/(abs(fZFar)-abs(fZNear));
    end;
   end;
+  View.ProjectionMatrix:=View.ProjectionMatrix*TpvMatrix4x4.FlipYClipSpace;
   View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
 
   for Index:=0 to 5 do begin
-   View.ViewMatrix:=CubeMapMatrices[Index]*TpvMatrix4x4.CreateTranslation(CameraPositon);
+{  View.ViewMatrix:=TpvMatrix4x4.Create(CubeMapMatrices[Index].Right,
+                                        CubeMapMatrices[Index].Up,
+                                        CubeMapMatrices[Index].Forwards,
+                                        fCameraViewMatrix.Translation);//}
+   View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
+                                              CameraPositon+CubeMapDirections[Index,0],
+                                              CubeMapDirections[Index,1]);//}
    View.InverseViewMatrix:=View.ViewMatrix.Inverse;
    if Index=0 then begin
     InFlightFrameState^.ReflectionProbeViewIndex:=fViews.Add(View);
