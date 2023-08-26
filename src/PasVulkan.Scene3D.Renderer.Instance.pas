@@ -1232,8 +1232,8 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_color',
                                   false,
-                                  VK_FORMAT_R8G8B8A8_SRGB,
-//                                VK_FORMAT_R16G16B16A16_SFLOAT,
+//                                VK_FORMAT_R8G8B8A8_SRGB,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectionProbeWidth,ReflectionProbeHeight,1.0,6),
