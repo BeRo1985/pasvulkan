@@ -1953,11 +1953,20 @@ end;
 procedure TpvScene3DRendererInstance.AcquirePersistentResources;
 begin
  fFrameGraph.AcquirePersistentResources;
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+  fImageBasedLightingReflectionProbeCubeMaps:=TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Create(Renderer.VulkanDevice,
+                                                                                                                 fReflectionProbeWidth,
+                                                                                                                 fReflectionProbeHeight,
+                                                                                                                 Renderer.CountInFlightFrames);
+ end else begin
+  fImageBasedLightingReflectionProbeCubeMaps:=nil;
+ end;
 end;
 
 procedure TpvScene3DRendererInstance.ReleasePersistentResources;
 begin
  fFrameGraph.ReleasePersistentResources;
+ FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 end;
 
 procedure TpvScene3DRendererInstance.AcquireVolatileResources;
