@@ -2569,13 +2569,13 @@ var Index:TpvSizeInt;
   zNear:=abs(fZNear);
   zFar:=IfThen(IsInfinite(fZFar),1024.0,abs(fZFar));
 
-  View.ProjectionMatrix.RawComponents[0,0]:=1.0;
+  View.ProjectionMatrix.RawComponents[0,0]:=-1.0;
   View.ProjectionMatrix.RawComponents[0,1]:=0.0;
   View.ProjectionMatrix.RawComponents[0,2]:=0.0;
   View.ProjectionMatrix.RawComponents[0,3]:=0.0;
 
   View.ProjectionMatrix.RawComponents[1,0]:=0.0;
-  View.ProjectionMatrix.RawComponents[1,1]:=1.0; // Flipped Y
+  View.ProjectionMatrix.RawComponents[1,1]:=-1.0; // Flipped Y
   View.ProjectionMatrix.RawComponents[1,2]:=0.0;
   View.ProjectionMatrix.RawComponents[1,3]:=0.0;
 
@@ -2628,11 +2628,8 @@ var Index:TpvSizeInt;
   View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
 
   for Index:=0 to 5 do begin
-{  View.ViewMatrix:=CubeMapMatrices[Index];
-   View.ViewMatrix.RawComponents[3,0]:=-CubeMapMatrices[Index].Right.xyz.Dot(CameraPositon);
-   View.ViewMatrix.RawComponents[3,1]:=-CubeMapMatrices[Index].Up.xyz.Dot(CameraPositon);
-   View.ViewMatrix.RawComponents[3,2]:=-CubeMapMatrices[Index].Forwards.xyz.Dot(CameraPositon);}
-   View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
+   View.ViewMatrix:=TpvMatrix4x4.CreateTranslated(CubeMapMatrices[Index],-CameraPositon);
+{  View.ViewMatrix:=TpvMatrix4x4.CreateLookAt(CameraPositon,
                                               CameraPositon+CubeMapDirections[Index,0],
                                               CubeMapDirections[Index,1]);//}
    View.InverseViewMatrix:=View.ViewMatrix.Inverse;
