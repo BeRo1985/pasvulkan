@@ -76,15 +76,16 @@ uses SysUtils,
 type { TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps }
      TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps=class
       public
-       type TDescriptorImageInfos=array[0..MaxInFlightFrames-1] of TVkDescriptorImageInfo;
+       type TImages=array[0..MaxInFlightFrames-1] of TpvVulkanImage;
+            TDescriptorImageInfos=array[0..MaxInFlightFrames-1] of TVkDescriptorImageInfo;
       private
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fMipMaps:TpvInt32;
        fCountInFlightFrames:TpvInt32;
-       fVulkanGGXImages:array[0..MaxInFlightFrames-1] of TpvVulkanImage;
-       fVulkanCharlieImages:array[0..MaxInFlightFrames-1] of TpvVulkanImage;
-       fVulkanLambertianImages:array[0..MaxInFlightFrames-1] of TpvVulkanImage;
+       fVulkanGGXImages:TImages;
+       fVulkanCharlieImages:TImages;
+       fVulkanLambertianImages:TImages;
        fVulkanSampler:TpvVulkanSampler;
        fVulkanGGXImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanCharlieImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
@@ -114,6 +115,12 @@ type { TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps }
        property MipMaps:TpvInt32 read fMipMaps;
 
       public
+
+       property GGXImages:TImages read fVulkanGGXImages;
+
+       property CharlieImages:TImages read fVulkanCharlieImages;
+
+       property LambertianImages:TImages read fVulkanLambertianImages;
 
        property GGXDescriptorImageInfos:TDescriptorImageInfos read fGGXDescriptorImageInfos;
 

@@ -501,6 +501,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderMipMapComputePass,
@@ -570,6 +571,7 @@ type TpvScene3DRendererInstancePasses=class
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
+       fReflectionProbeComputePass:TpvScene3DRendererPassesReflectionProbeComputePass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
