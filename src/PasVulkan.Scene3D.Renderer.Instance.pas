@@ -2564,7 +2564,7 @@ var Index:TpvSizeInt;
 
 //CameraPositon:=-fViews.Items[InFlightFrameState^.FinalViewIndex].ViewMatrix.Translation.xyz;
 
-  CameraPositon:=-fCameraViewMatrix.MulHomogen(TpvVector3.Origin);
+  CameraPositon:=fCameraViewMatrix.SimpleInverse.Translation.xyz;
 
   zNear:=abs(fZNear);
   zFar:=IfThen(IsInfinite(fZFar),1024.0,abs(fZFar));
