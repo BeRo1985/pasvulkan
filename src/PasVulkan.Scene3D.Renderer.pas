@@ -795,20 +795,12 @@ begin
 end;
 
 procedure TpvScene3DRenderer.AcquirePersistentResources;
-const EmptySSAOCubeMapTextureData:array[0..(4*4*6)-1] of TpvUInt8=
-       (
-        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
-        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
-        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
-        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
-        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
-        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff
-       );
 var Stream:TStream;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
+    EmptySSAOCubeMapTextureData:TpvUInt8DynamicArray;
 begin
 
  fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat);
@@ -1006,32 +998,39 @@ begin
       end;
      end;
 
-     fEmptySSAOReflectionProbeTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
-                                                                         UniversalQueue,
-                                                                         UniversalCommandBuffer,
-                                                                         UniversalFence,
-                                                                         UniversalQueue,
-                                                                         UniversalCommandBuffer,
-                                                                         UniversalFence,
-                                                                         VK_FORMAT_R8_UNORM,
-                                                                         VK_SAMPLE_COUNT_1_BIT,
-                                                                         4,
-                                                                         4,
-                                                                         0,
-                                                                         6,
-                                                                         1,
-                                                                         0,
-                                                                         [TpvVulkanTextureUsageFlag.General,
-                                                                          TpvVulkanTextureUsageFlag.TransferDst,
-                                                                          TpvVulkanTextureUsageFlag.TransferSrc,
-                                                                          TpvVulkanTextureUsageFlag.Sampled],
-                                                                         @EmptySSAOCubeMapTextureData,
-                                                                         SizeOf(EmptySSAOCubeMapTextureData),
-                                                                         false,
-                                                                         false,
-                                                                         0,
-                                                                         true,
-                                                                         false);
+     EmptySSAOCubeMapTextureData:=nil;
+     try
+      SetLength(EmptySSAOCubeMapTextureData,2048*2048*6);
+      FillChar(EmptySSAOCubeMapTextureData[0],length(EmptySSAOCubeMapTextureData)*SizeOf(TpvUInt8),#$ff);
+      fEmptySSAOReflectionProbeTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                                          UniversalQueue,
+                                                                          UniversalCommandBuffer,
+                                                                          UniversalFence,
+                                                                          UniversalQueue,
+                                                                          UniversalCommandBuffer,
+                                                                          UniversalFence,
+                                                                          VK_FORMAT_R8_UNORM,
+                                                                          VK_SAMPLE_COUNT_1_BIT,
+                                                                          2048,
+                                                                          2048,
+                                                                          0,
+                                                                          6,
+                                                                          1,
+                                                                          0,
+                                                                          [TpvVulkanTextureUsageFlag.General,
+                                                                           TpvVulkanTextureUsageFlag.TransferDst,
+                                                                           TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                           TpvVulkanTextureUsageFlag.Sampled],
+                                                                          @EmptySSAOCubeMapTextureData[0],
+                                                                          length(EmptySSAOCubeMapTextureData)*SizeOf(TpvUInt8),
+                                                                          false,
+                                                                          false,
+                                                                          0,
+                                                                          true,
+                                                                          false);
+     finally
+      EmptySSAOCubeMapTextureData:=nil;
+     end;
 
 {    case fLensMode of
 
