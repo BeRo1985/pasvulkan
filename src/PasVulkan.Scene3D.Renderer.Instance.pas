@@ -571,7 +571,9 @@ type TpvScene3DRendererInstancePasses=class
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
-       fReflectionProbeComputePass:TpvScene3DRendererPassesReflectionProbeComputePass;
+       fReflectionProbeComputePassGGX:TpvScene3DRendererPassesReflectionProbeComputePass;
+       fReflectionProbeComputePassCharlie:TpvScene3DRendererPassesReflectionProbeComputePass;
+       fReflectionProbeComputePassLambertian:TpvScene3DRendererPassesReflectionProbeComputePass;
        fForwardRenderPass:TpvScene3DRendererPassesForwardRenderPass;
        fForwardResolveRenderPass:TpvScene3DRendererPassesForwardResolveRenderPass;
        fForwardRenderMipMapComputePass:TpvScene3DRendererPassesForwardRenderMipMapComputePass;
@@ -1615,6 +1617,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[1]:=TpvScene3DRendererPassesSSAOBlurRenderPass.Create(fFrameGraph,self,false);
 
  if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=TpvScene3DRendererPassesReflectionProbeRenderPass.Create(fFrameGraph,self);
   case Renderer.ShadowMode of
    TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
@@ -1628,13 +1631,28 @@ begin
   end;
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridAssignComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
+
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX:=TpvScene3DRendererPassesReflectionProbeComputePass.Create(fFrameGraph,self,0);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie:=TpvScene3DRendererPassesReflectionProbeComputePass.Create(fFrameGraph,self,1);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian:=TpvScene3DRendererPassesReflectionProbeComputePass.Create(fFrameGraph,self,2);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+
  end else begin
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie:=nil;
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian:=nil;
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass:=TpvScene3DRendererPassesForwardRenderPass.Create(fFrameGraph,self);
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass) then begin
-  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX);
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie);
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian);
  end;
  case Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
