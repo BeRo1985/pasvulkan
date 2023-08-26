@@ -162,6 +162,7 @@ type TpvScene3DRenderer=class;
        fSSAOSampler:TpvVulkanSampler;
        fSMAAAreaTexture:TpvVulkanTexture;
        fSMAASearchTexture:TpvVulkanTexture;
+       fEmptySSAOCubeMapTexture:TpvVulkanTexture;
 {      fLensColorTexture:TpvVulkanTexture;
        fLensDirtTexture:TpvVulkanTexture;
        fLensStarTexture:TpvVulkanTexture;}
@@ -223,6 +224,7 @@ type TpvScene3DRenderer=class;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
        property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
        property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
+       property EmptySSAOCubeMapTexture:TpvVulkanTexture read fEmptySSAOCubeMapTexture;
 {      property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
        property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
        property LensStarTexture:TpvVulkanTexture read fLensStarTexture;}
@@ -793,6 +795,15 @@ begin
 end;
 
 procedure TpvScene3DRenderer.AcquirePersistentResources;
+const EmptySSAOCubeMapTextureData:array[0..(4*4*6)-1] of TpvUInt8=
+       (
+        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
+        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
+        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
+        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
+        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,
+        $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff
+       );
 var Stream:TStream;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -995,6 +1006,33 @@ begin
       end;
      end;
 
+     fEmptySSAOCubeMapTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+                                                                 UniversalQueue,
+                                                                 UniversalCommandBuffer,
+                                                                 UniversalFence,
+                                                                 UniversalQueue,
+                                                                 UniversalCommandBuffer,
+                                                                 UniversalFence,
+                                                                 VK_FORMAT_R8_UNORM,
+                                                                 VK_SAMPLE_COUNT_1_BIT,
+                                                                 4,
+                                                                 4,
+                                                                 0,
+                                                                 6,
+                                                                 1,
+                                                                 0,
+                                                                 [TpvVulkanTextureUsageFlag.General,
+                                                                  TpvVulkanTextureUsageFlag.TransferDst,
+                                                                  TpvVulkanTextureUsageFlag.TransferSrc,
+                                                                  TpvVulkanTextureUsageFlag.Sampled],
+                                                                 @EmptySSAOCubeMapTextureData,
+                                                                 SizeOf(EmptySSAOCubeMapTextureData),
+                                                                 false,
+                                                                 false,
+                                                                 0,
+                                                                 true,
+                                                                 false);
+
 {    case fLensMode of
 
       TpvScene3DRendererLensMode.DownUpsample:begin
@@ -1104,6 +1142,8 @@ begin
 
  FreeAndNil(fSMAAAreaTexture);
  FreeAndNil(fSMAASearchTexture);
+
+ FreeAndNil(fEmptySSAOCubeMapTexture);
 
 {FreeAndNil(fLensColorTexture);
  FreeAndNil(fLensDirtTexture);
