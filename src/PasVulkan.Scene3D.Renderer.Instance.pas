@@ -2575,7 +2575,7 @@ var Index:TpvSizeInt;
   View.ProjectionMatrix.RawComponents[0,3]:=0.0;
 
   View.ProjectionMatrix.RawComponents[1,0]:=0.0;
-  View.ProjectionMatrix.RawComponents[1,1]:=-1.0; // Flipped Y
+  View.ProjectionMatrix.RawComponents[1,1]:=1.0; // Flipped Y
   View.ProjectionMatrix.RawComponents[1,2]:=0.0;
   View.ProjectionMatrix.RawComponents[1,3]:=0.0;
 
