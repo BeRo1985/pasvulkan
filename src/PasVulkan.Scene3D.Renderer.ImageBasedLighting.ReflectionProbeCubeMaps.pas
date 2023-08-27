@@ -84,19 +84,24 @@ type { TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps }
        fHeight:TpvInt32;
        fMipMaps:TpvInt32;
        fCountInFlightFrames:TpvInt32;
+       fVulkanRawImages:TImages;
        fVulkanGGXImages:TImages;
        fVulkanCharlieImages:TImages;
        fVulkanLambertianImages:TImages;
+       fRawImageViews:TImageViews;
        fGGXImageViews:TImageViews;
        fCharlieImageViews:TImageViews;
        fLambertianImageViews:TImageViews;
        fVulkanSampler:TpvVulkanSampler;
+       fVulkanRawImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanGGXImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanCharlieImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanLambertianImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
+       fRawMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
        fGGXMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
        fCharlieMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
        fLambertianMemoryBlocks:array[0..MaxInFlightFrames-1] of TpvVulkanDeviceMemoryBlock;
+       fRawDescriptorImageInfos:TDescriptorImageInfos;
        fGGXDescriptorImageInfos:TDescriptorImageInfos;
        fCharlieDescriptorImageInfos:TDescriptorImageInfos;
        fLambertianDescriptorImageInfos:TDescriptorImageInfos;
@@ -120,17 +125,23 @@ type { TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps }
 
       public
 
+       property RawImages:TImages read fVulkanRawImages;
+
        property GGXImages:TImages read fVulkanGGXImages;
 
        property CharlieImages:TImages read fVulkanCharlieImages;
 
        property LambertianImages:TImages read fVulkanLambertianImages;
 
+       property RawImageViews:TImageViews read fRawImageViews;
+
        property GGXImageViews:TImageViews read fGGXImageViews;
 
        property CharlieImageViews:TImageViews read fCharlieImageViews;
 
        property LambertianImageViews:TImageViews read fLambertianImageViews;
+
+       property RawDescriptorImageInfos:TDescriptorImageInfos read fRawDescriptorImageInfos;
 
        property GGXDescriptorImageInfos:TDescriptorImageInfos read fGGXDescriptorImageInfos;
 
@@ -162,8 +173,8 @@ var ImageIndex,InFlightFrameIndex,Index:TpvSizeInt;
     GraphicsCommandBuffer:TpvVulkanCommandBuffer;
     GraphicsFence:TpvVulkanFence;
 //ImageMemoryBarrier:TVkImageMemoryBarrier;
-    Images:array[0..MaxInFlightFrames-1,0..2] of PpvVulkanImage;
-    MemoryBlocks:array[0..MaxInFlightFrames-1,0..2] of PpvVulkanDeviceMemoryBlock;
+    Images:array[0..MaxInFlightFrames-1,0..3] of PpvVulkanImage;
+    MemoryBlocks:array[0..MaxInFlightFrames-1,0..3] of PpvVulkanDeviceMemoryBlock;
 //  ImportanceSamples:TImportanceSamples;
 begin
  inherited Create;
@@ -178,15 +189,17 @@ begin
 
  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
 
-  Images[InFlightFrameIndex,0]:=@fVulkanGGXImages[InFlightFrameIndex];
-  Images[InFlightFrameIndex,1]:=@fVulkanCharlieImages[InFlightFrameIndex];
-  Images[InFlightFrameIndex,2]:=@fVulkanLambertianImages[InFlightFrameIndex];
+  Images[InFlightFrameIndex,0]:=@fVulkanRawImages[InFlightFrameIndex];
+  Images[InFlightFrameIndex,1]:=@fVulkanGGXImages[InFlightFrameIndex];
+  Images[InFlightFrameIndex,2]:=@fVulkanCharlieImages[InFlightFrameIndex];
+  Images[InFlightFrameIndex,3]:=@fVulkanLambertianImages[InFlightFrameIndex];
 
-  MemoryBlocks[InFlightFrameIndex,0]:=@fGGXMemoryBlocks[InFlightFrameIndex];
-  MemoryBlocks[InFlightFrameIndex,1]:=@fCharlieMemoryBlocks[InFlightFrameIndex];
-  MemoryBlocks[InFlightFrameIndex,2]:=@fLambertianMemoryBlocks[InFlightFrameIndex];
+  MemoryBlocks[InFlightFrameIndex,0]:=@fRawMemoryBlocks[InFlightFrameIndex];
+  MemoryBlocks[InFlightFrameIndex,1]:=@fGGXMemoryBlocks[InFlightFrameIndex];
+  MemoryBlocks[InFlightFrameIndex,2]:=@fCharlieMemoryBlocks[InFlightFrameIndex];
+  MemoryBlocks[InFlightFrameIndex,3]:=@fLambertianMemoryBlocks[InFlightFrameIndex];
 
-  for ImageIndex:=0 to 2 do begin
+  for ImageIndex:=0 to 3 do begin
 
    Images[InFlightFrameIndex,ImageIndex]^:=TpvVulkanImage.Create(aVulkanDevice,
                                                                  TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
@@ -298,6 +311,21 @@ begin
                                             false);
 
     for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
+
+     fVulkanRawImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(aVulkanDevice,
+                                                                         fVulkanRawImages[InFlightFrameIndex],
+                                                                         TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
+                                                                         aImageFormat,
+                                                                         TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                         TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                         TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                         TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                         TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                         0,
+                                                                         MipMaps,
+                                                                         0,
+                                                                         6);
+
      fVulkanGGXImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                          fVulkanGGXImages[InFlightFrameIndex],
                                                                          TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
@@ -340,6 +368,10 @@ begin
                                                                                 0,
                                                                                 6);
 
+     fRawDescriptorImageInfos[InFlightFrameIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                                 fVulkanRawImageViews[InFlightFrameIndex].Handle,
+                                                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
      fGGXDescriptorImageInfos[InFlightFrameIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                                                  fVulkanGGXImageViews[InFlightFrameIndex].Handle,
                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -353,6 +385,20 @@ begin
                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
      for Index:=0 to fMipMaps-1 do begin
+
+      fRawImageViews[InFlightFrameIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
+                                                                          fVulkanRawImages[InFlightFrameIndex],
+                                                                          TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
+                                                                          aImageFormat,
+                                                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                          TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                          TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                          Index,
+                                                                          1,
+                                                                          0,
+                                                                          6);
 
       fGGXImageViews[InFlightFrameIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                           fVulkanGGXImages[InFlightFrameIndex],
@@ -419,16 +465,20 @@ var InFlightFrameIndex,Index:TpvSizeInt;
 begin
  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
   for Index:=0 to fMipMaps-1 do begin
+   FreeAndNil(fRawImageViews[InFlightFrameIndex,Index]);
    FreeAndNil(fGGXImageViews[InFlightFrameIndex,Index]);
    FreeAndNil(fCharlieImageViews[InFlightFrameIndex,Index]);
    FreeAndNil(fLambertianImageViews[InFlightFrameIndex,Index]);
   end;
+  FreeAndNil(fRawMemoryBlocks[InFlightFrameIndex]);
   FreeAndNil(fGGXMemoryBlocks[InFlightFrameIndex]);
   FreeAndNil(fCharlieMemoryBlocks[InFlightFrameIndex]);
   FreeAndNil(fLambertianMemoryBlocks[InFlightFrameIndex]);
+  FreeAndNil(fVulkanRawImageViews[InFlightFrameIndex]);
   FreeAndNil(fVulkanGGXImageViews[InFlightFrameIndex]);
   FreeAndNil(fVulkanCharlieImageViews[InFlightFrameIndex]);
   FreeAndNil(fVulkanLambertianImageViews[InFlightFrameIndex]);
+  FreeAndNil(fVulkanRawImages[InFlightFrameIndex]);
   FreeAndNil(fVulkanGGXImages[InFlightFrameIndex]);
   FreeAndNil(fVulkanCharlieImages[InFlightFrameIndex]);
   FreeAndNil(fVulkanLambertianImages[InFlightFrameIndex]);
