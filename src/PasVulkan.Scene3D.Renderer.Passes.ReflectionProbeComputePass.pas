@@ -343,7 +343,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesReflectionProbeComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-const Samples=1024;
+const Samples=128;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     Pipeline:TpvVulkanComputePipeline;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
