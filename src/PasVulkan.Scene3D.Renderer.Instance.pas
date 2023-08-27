@@ -501,6 +501,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ForwardResolveRenderPass,
@@ -571,6 +572,7 @@ type TpvScene3DRendererInstancePasses=class
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
+       fReflectionProbeMipMapComputePass:TpvScene3DRendererPassesReflectionProbeMipMapComputePass;
        fReflectionProbeComputePassGGX:TpvScene3DRendererPassesReflectionProbeComputePass;
        fReflectionProbeComputePassCharlie:TpvScene3DRendererPassesReflectionProbeComputePass;
        fReflectionProbeComputePassLambertian:TpvScene3DRendererPassesReflectionProbeComputePass;
@@ -1632,14 +1634,17 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fFrustumClusterGridAssignComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
 
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMipMapComputePass:=TpvScene3DRendererPassesReflectionProbeMipMapComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX:=TpvScene3DRendererPassesReflectionProbeComputePass.Create(fFrameGraph,self,0);
-  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassGGX.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMipMapComputePass);
 
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie:=TpvScene3DRendererPassesReflectionProbeComputePass.Create(fFrameGraph,self,1);
-  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassCharlie.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMipMapComputePass);
 
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian:=TpvScene3DRendererPassesReflectionProbeComputePass.Create(fFrameGraph,self,2);
-  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass);
+  TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeComputePassLambertian.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeMipMapComputePass);
 
  end else begin
   TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=nil;

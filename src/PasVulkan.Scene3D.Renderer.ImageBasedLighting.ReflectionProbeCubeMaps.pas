@@ -388,7 +388,7 @@ begin
 
       fRawImageViews[InFlightFrameIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                           fVulkanRawImages[InFlightFrameIndex],
-                                                                          TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
+                                                                          TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
                                                                           aImageFormat,
                                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),

@@ -246,7 +246,7 @@ begin
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
-                                                                   fResourceInput.VulkanImages[InFlightFrameIndex],
+                                                                   fInstance.ImageBasedLightingReflectionProbeCubeMaps.RawImages[InFlightFrameIndex], //fResourceInput.VulkanImages[InFlightFrameIndex],
                                                                    ImageViewType,
                                                                    TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -255,7 +255,7 @@ begin
                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                    0,
-                                                                   1,
+                                                                   fInstance.ImageBasedLightingReflectionProbeCubeMaps.MipMaps,
                                                                    0,
                                                                    6
                                                                   );
