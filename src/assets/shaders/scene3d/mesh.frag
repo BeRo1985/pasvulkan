@@ -348,7 +348,7 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
   vec3 correctionVector = cross(perpendicularVector, normalizedReflectionDirection);
   
   // Use the magnitude of the view direction to apply the parallax correction.
-  float parallaxMagnitude = length(viewDirection) * 0.005;  // The scale factor (0.005) can be adjusted.
+  float parallaxMagnitude = length(viewDirection) * 0.5;  // The scale factor (0.5) can be adjusted.
   
   // Apply the parallax correction to the reflection direction.
   // The reflection direction is shifted by a fraction of the parallax-reflected direction.
