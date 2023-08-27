@@ -427,7 +427,7 @@ begin
   if (fWhich=0) and (MipMapLevelIndex=0) then begin
    PushConstants.NumSamples:=1;
   end else begin
-   PushConstants.NumSamples:=Min(128 shl MipMapLevelIndex,Samples);
+   PushConstants.NumSamples:=128;//Min(32 shl MipMapLevelIndex,Samples);
   end;
   PushConstants.Which:=fWhich;
 
