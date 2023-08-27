@@ -791,7 +791,6 @@ begin
   fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.StaticEnvironmentMap;//CameraReflectionProbe;//
  end;
 
-
 end;
 
 procedure TpvScene3DRenderer.AcquirePersistentResources;
