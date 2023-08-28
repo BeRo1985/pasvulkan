@@ -1,7 +1,29 @@
 #ifndef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS_GLSL
 #define GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS_GLSL
 
-// How it works, see https://rootserver.rosseaux.net/demoscene/prods/SupraleiterAndItsRenderingTechnologies.pdf
+/*
+**
+** How my "Blended Cascaded Cached Radiance Hints" global illumination technique works, see
+**   => https://rootserver.rosseaux.net/demoscene/prods/SupraleiterAndItsRenderingTechnologies.pdf <= 
+**
+** At least, it is based on the ideas of:
+**
+** - Real-Time Diffuse Global Illumination Using Radiance Hints 
+**    - G. Papaioannou, Proc. High Performance Graphics 2011, pp. 15-24, 2011. 
+**    - http://graphics.cs.aueb.gr/graphics/docs/papers/RadianceHintsPreprint.pdf
+**    - http://graphics.cs.aueb.gr/graphics/research_illumination.html
+** - Real-time Radiance Caching using Chrominance Compression
+**    - Kostas Vardis, Georgios Papaioannou, and Anastasios Gkaravelis, Journal of Computer Graphics Techniques (JCGT), 3(4), pp. 111-131, 2014 
+**    - http://jcgt.org/published/0003/04/06/ 
+**    - and again http://graphics.cs.aueb.gr/graphics/research_illumination.html
+**
+** extended by me with:
+**
+** - Cascades with blending between the cascades
+** - Approximate specular lookup with multiple taps
+** - and more what I've forgotten for now
+**
+*/
 
 //#define GI_SPECULAR_FAST
 #define GI_SPECULAR_MULTIPLE_TAPS
