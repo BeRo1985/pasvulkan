@@ -445,4 +445,187 @@ void  globalIlluminationSphericalHarmonicsMultiply(inout vec3 y[9], const in vec
   // multiply count=120
 }
 
+#ifdef MESH_FRAGMENT
+void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset){
+  vec3 lWorldSpacePosition = pWorldPosition + (pOffset * ((globalIlluminationVolumeAABBMax[0].xyz - globalIlluminationVolumeAABBMin[0].xyz) * uGlobalIlluminationVolumeSizeInvVector));
+  int lCascadeIndex = 0;
+  while(lCascadeIndex < GI_CASCADES){
+    if(all(greaterThanEqual(lWorldSpacePosition, globalIlluminationVolumeAABBMin[lCascadeIndex].xyz)) && all(lessThanEqual(lWorldSpacePosition, globalIlluminationVolumeAABBMax[lCascadeIndex].xyz))){
+       break;
+    }
+    lCascadeIndex++;
+  }
+  if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
+    vec4 lAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex];
+    vec4 lAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex];
+#if 1
+    vec3 lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), float(lCascadeIndex)));
+    vec4 lTSH0 = textureLod(uTexGlobalIlluminationSH0, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec4 lTSH1 = textureLod(uTexGlobalIlluminationSH1, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec4 lTSH2 = textureLod(uTexGlobalIlluminationSH2, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+#if GI_COMPRESSION < 2
+    vec4 lTSH3 = textureLod(uTexGlobalIlluminationSH3, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec4 lTSH4 = textureLod(uTexGlobalIlluminationSH4, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+#endif
+#if GI_COMPRESSION < 1
+    vec4 lTSH5 = textureLod(uTexGlobalIlluminationSH5, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec4 lTSH6 = textureLod(uTexGlobalIlluminationSH6, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+#endif
+    if((lCascadeIndex + 1) < GI_CASCADES){
+      vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(vWorldSpacePosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
+      float lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
+      if(lAABBFadeFactor > 1e-4){
+        lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), float(lCascadeIndex + 1)));
+        lTSH0 = mix(lTSH0, textureLod(uTexGlobalIlluminationSH0, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTSH1 = mix(lTSH1, textureLod(uTexGlobalIlluminationSH1, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTSH2 = mix(lTSH2, textureLod(uTexGlobalIlluminationSH2, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+#if GI_COMPRESSION < 2
+        lTSH3 = mix(lTSH3, textureLod(uTexGlobalIlluminationSH3, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTSH4 = mix(lTSH4, textureLod(uTexGlobalIlluminationSH4, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+#endif
+#if GI_COMPRESSION < 1
+        lTSH5 = mix(lTSH5, textureLod(uTexGlobalIlluminationSH5, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTSH6 = mix(lTSH6, textureLod(uTexGlobalIlluminationSH6, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);        
+#endif
+      }   
+    }
+#else
+    vec3 lRandom = vec3(0.5);
+    vec3 lTangent = normalize(cross(gNormal, lRandom));
+    vec3 lBitangent = normalize(cross(gNormal, lTangent));
+    vec3 lD[4];
+    for(int lIndex = 0; lIndex < 4; lIndex++){
+      float lTheta = ((lRandom.x * 1.5) + float(lIndex)) * (6.2831853072 / 3.0);
+      lD[lIndex] = normalize(vec3(0.1, vec2(vec2(cos(lTheta), sin(lTheta)) * 0.8)));
+    }
+    vec4 lTSH0 = vec4(0.0);
+    vec4 lTSH1 = vec4(0.0);
+    vec4 lTSH2 = vec4(0.0);
+#if GI_COMPRESSION < 2
+    vec4 lTSH3 = vec4(0.0);
+    vec4 lTSH4 = vec4(0.0);
+#endif
+#if GI_COMPRESSION < 1
+    vec4 lTSH5 = vec4(0.0);
+    vec4 lTSH6 = vec4(0.0);
+#endif
+    float lAABBFadeFactor = 0.0;
+    if((lCascadeIndex + 1) < GI_CASCADES){
+      vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(vWorldSpacePosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
+      lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
+    }
+    for(int lIndex = 0; lIndex < 4; lIndex++){
+      vec3 lSampleDirection = (gNormal * lD[lIndex].x) + (lTangent * lD[lIndex].y) + (lBitangent * lD[lIndex].z);
+      vec3 lSampleOffset = (lSampleDirection + (gNormal * 0.5)) * uGlobalIlluminationVolumeSizeInvVector;
+      vec3 lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz) + lSampleOffset, float(lCascadeIndex)));
+      vec4 lTTSH0 = textureLod(uTexGlobalIlluminationSH0, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec4 lTTSH1 = textureLod(uTexGlobalIlluminationSH1, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec4 lTTSH2 = textureLod(uTexGlobalIlluminationSH2, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+#if GI_COMPRESSION < 2
+      vec4 lTTSH3 = textureLod(uTexGlobalIlluminationSH3, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec4 lTTSH4 = textureLod(uTexGlobalIlluminationSH4, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+#endif
+#if GI_COMPRESSION < 1
+      vec4 lTTSH5 = textureLod(uTexGlobalIlluminationSH5, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec4 lTTSH6 = textureLod(uTexGlobalIlluminationSH6, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+#endif
+      if(lAABBFadeFactor > 1e-4){
+        lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz) + lSampleOffset, float(lCascadeIndex + 1)));
+        lTTSH0 = mix(lTTSH0, textureLod(uTexGlobalIlluminationSH0, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTTSH1 = mix(lTTSH1, textureLod(uTexGlobalIlluminationSH1, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTTSH2 = mix(lTTSH2, textureLod(uTexGlobalIlluminationSH2, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+#if GI_COMPRESSION < 2
+        lTTSH3 = mix(lTTSH3, textureLod(uTexGlobalIlluminationSH3, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTTSH4 = mix(lTTSH4, textureLod(uTexGlobalIlluminationSH4, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+#endif
+#if GI_COMPRESSION < 1
+        lTTSH5 = mix(lTTSH5, textureLod(uTexGlobalIlluminationSH5, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTTSH6 = mix(lTTSH6, textureLod(uTexGlobalIlluminationSH6, lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);        
+#endif
+      }
+      lTSH0 += lTTSH0 * 0.25;               
+      lTSH1 += lTTSH1 * 0.25;               
+      lTSH2 += lTTSH2 * 0.25;               
+#if GI_COMPRESSION < 2
+      lTSH3 += lTTSH3 * 0.25;               
+      lTSH4 += lTTSH4 * 0.25;               
+#endif
+#if GI_COMPRESSION < 1
+      lTSH5 += lTTSH5 * 0.25;               
+      lTSH6 += lTTSH6 * 0.25;               
+#endif
+    }      
+#endif      
+    const float lScale = 1.0;
+#if GI_COMPRESSION == 0
+    pSphericalHarmonics[0] = vec3(lTSH0.xyz) * lScale;
+    pSphericalHarmonics[1] = vec3(lTSH0.w, lTSH1.xy) * lScale;
+    pSphericalHarmonics[2] = vec3(lTSH1.zw, lTSH2.x) * lScale;
+    pSphericalHarmonics[3] = vec3(lTSH2.yzw) * lScale;
+    pSphericalHarmonics[4] = vec3(lTSH3.xyz) * lScale;
+    pSphericalHarmonics[5] = vec3(lTSH3.w, lTSH4.xy) * lScale;
+    pSphericalHarmonics[6] = vec3(lTSH4.zw, lTSH5.x) * lScale;
+    pSphericalHarmonics[7] = vec3(lTSH5.yzw) * lScale;
+    pSphericalHarmonics[8] = vec3(lTSH6.xyz) * lScale;
+#elif GI_COMPRESSION == 1
+    pSphericalHarmonics[0] = vec3(lTSH0.xyz) * lScale;
+    pSphericalHarmonics[1] = vec3(lTSH0.w, lTSH1.xy) * lScale;
+    pSphericalHarmonics[2] = vec3(lTSH1.zw, lTSH2.x) * lScale;
+    pSphericalHarmonics[3] = vec3(lTSH2.yzw) * lScale;
+    pSphericalHarmonics[4] = vec3(lTSH3.x, vec2(0.0)) * lScale;
+    pSphericalHarmonics[5] = vec3(lTSH3.y, vec2(0.0)) * lScale;
+    pSphericalHarmonics[6] = vec3(lTSH3.z, vec2(0.0)) * lScale;
+    pSphericalHarmonics[7] = vec3(lTSH3.w, vec2(0.0)) * lScale;
+    pSphericalHarmonics[8] = vec3(lTSH4.x, vec2(0.0)) * lScale;
+#elif GI_COMPRESSION == 2
+    pSphericalHarmonics[0] = vec3(lTSH0.xyz) * lScale;
+    pSphericalHarmonics[1] = vec3(lTSH0.w, vec2(0.0)) * lScale;
+    pSphericalHarmonics[2] = vec3(lTSH1.x, vec2(0.0)) * lScale;
+    pSphericalHarmonics[3] = vec3(lTSH1.y, vec2(0.0)) * lScale;
+    pSphericalHarmonics[4] = vec3(lTSH1.z, vec2(0.0)) * lScale;
+    pSphericalHarmonics[5] = vec3(lTSH1.w, vec2(0.0)) * lScale;
+    pSphericalHarmonics[6] = vec3(lTSH2.x, vec2(0.0)) * lScale;
+    pSphericalHarmonics[7] = vec3(lTSH2.y, vec2(0.0)) * lScale;
+    pSphericalHarmonics[8] = vec3(lTSH2.z, vec2(0.0)) * lScale;
+#endif
+  }
+}
+
+#if defined(GI_SPECULAR_FAST) && (GI_COMPRESSION == 0)
+// The fast cheap variant 
+vec3 globalIlluminationGetSpecularColor(in const vec3 pSphericalHarmonics[9], const in vec3 pViewDirection, const in vec3 pNormal, const in float pMaterialRoughness){
+  vec3 lDominantLightColor = vec3(0.0);
+  vec3 lDominantLightDirection = vec3(0.0);
+  globalIlluminationSphericalHarmonicsExtractDominantLight(pSphericalHarmonics, lDominantLightColor, lDominantLightDirection);
+  return max(vec3(0.0), lDominantLightColor * max(0.0, dot(lDominantLightDirection, -normalize(reflect(-pViewDirection, pNormal)))));
+}  
+#else
+// The better but also more costly variant 
+vec3 globalIlluminationGetSpecularColor(const in vec3 pWorldSpacePosition, const in vec3 pViewDirection, const in vec3 pNormal, const in float pMaterialRoughness){
+  vec3 lReflectionVector = normalize(reflect(-pViewDirection, pNormal));
+  float lReflectionOffset = pow(clamp(1.0 - pMaterialRoughness, 0.0, 1.0), 4.0) * 8.0;
+  vec3 lSpecularSphericalHarmonics[9];
+  globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition.xyz, lReflectionVector * lReflectionOffset);
+  vec3 lGlobalIlluminationSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
+#ifdef GI_SPECULAR_MULTIPLE_TAPS
+  if(lReflectionOffset > 1.0){
+    if(lReflectionOffset > 5.0){
+      globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition.xyz, lReflectionVector * (lReflectionOffset * 0.5));
+      vec3 lGlobalIlluminationOtherSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
+      vec2 lGlobalIlluminationSpecularFactors = vec2(dot(lGlobalIlluminationOtherSpecularColor, vec3(0.07475, 0.14675, 0.0285)), dot(lGlobalIlluminationSpecularColor, vec3(0.22425, 0.44025, 0.0855)));
+      lGlobalIlluminationSpecularColor = mix(lGlobalIlluminationOtherSpecularColor, lGlobalIlluminationSpecularColor, clamp(lGlobalIlluminationSpecularFactors.y / max(1e-4, lGlobalIlluminationSpecularFactors.x + lGlobalIlluminationSpecularFactors.y), 0.0, 1.0));
+    }
+    vec3 lGlobalIlluminationOtherSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
+    vec2 lGlobalIlluminationSpecularFactors = vec2(dot(lGlobalIlluminationOtherSpecularColor, vec3(0.07475, 0.14675, 0.0285)), dot(lGlobalIlluminationSpecularColor, vec3(0.22425, 0.44025, 0.0855)));
+    lGlobalIlluminationSpecularColor = mix(lGlobalIlluminationOtherSpecularColor, lGlobalIlluminationSpecularColor, clamp(lGlobalIlluminationSpecularFactors.y / max(1e-4, lGlobalIlluminationSpecularFactors.x + lGlobalIlluminationSpecularFactors.y), 0.0, 1.0));
+  }
+#endif    
+  return max(vec3(0.0), lGlobalIlluminationSpecularColor);
+//lightAccumulator += ((max(vec3(0.0), lGlobalIlluminationSpecularColor) * ao * gMaterialCavity * uGlobalIlluminationSpecularFactor) * ((specularColor * lENVIBLBRDF.x) + (lENVIBLBRDF.yyy * clamp(specularColor.y * 50.0, 0.0, 1.0)))) * clamp(1.0 - gMaterialReflectivity, 0.0, 1.0);
+}
+#endif
+
+#endif
+
+
 #endif
