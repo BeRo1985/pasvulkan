@@ -110,10 +110,14 @@ type { TpvScene3DRendererInstance }
              ReflectionProbeViewIndex:TpvSizeInt;
              CountReflectionProbeViews:TpvSizeInt;
 
+             ReflectiveShadowMapViewIndex:TpvSizeInt;
+             CountReflectiveShadowMapProbeViews:TpvSizeInt;
+
              CascadedShadowMapViewIndex:TpvSizeInt;
              CountCascadedShadowMapViews:TpvSizeInt;
 
              ReflectionProbeRenderPassIndex:TpvSizeInt;
+             ReflectiveShadowMapRenderPassIndex:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
 
@@ -283,6 +287,8 @@ type { TpvScene3DRendererInstance }
        fHasExternalOutputImage:boolean;
        fReflectionProbeWidth:TpvInt32;
        fReflectionProbeHeight:TpvInt32;
+       fReflectiveShadowMapWidth:TpvInt32;
+       fReflectiveShadowMapHeight:TpvInt32;
        fCascadedShadowMapWidth:TpvInt32;
        fCascadedShadowMapHeight:TpvInt32;
        fCountSurfaceViews:TpvInt32;
@@ -471,6 +477,8 @@ type { TpvScene3DRendererInstance }
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
        property ReflectionProbeHeight:TpvInt32 read fReflectionProbeHeight write fReflectionProbeHeight;
+       property ReflectiveShadowMapWidth:TpvInt32 read fReflectionProbeWidth write fReflectiveShadowMapWidth;
+       property ReflectiveShadowMapHeight:TpvInt32 read fReflectionProbeHeight write fReflectiveShadowMapHeight;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapHeight write fCascadedShadowMapHeight;
        property Left:TpvInt32 read fLeft write fLeft;
@@ -957,6 +965,10 @@ begin
  fReflectionProbeWidth:=256;
 
  fReflectionProbeHeight:=256;
+
+ fReflectiveShadowMapWidth:=2048;
+
+ fReflectiveShadowMapHeight:=2048;
 
  if Renderer.ShadowMode=TpvScene3DRendererShadowMode.None then begin
 
@@ -2788,6 +2800,9 @@ begin
   InFlightFrameState^.CountReflectionProbeViews:=0;
  end;
 
+ InFlightFrameState^.ReflectiveShadowMapViewIndex:=-1;
+ InFlightFrameState^.CountReflectiveShadowMapProbeViews:=0;
+
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
 
  for Index:=0 to fViews.Count-1 do begin
@@ -2811,6 +2826,12 @@ begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
  end else begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=-1;
+ end;
+
+ if InFlightFrameState^.CountReflectiveShadowMapProbeViews>0 then begin
+  InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ end else begin
+  InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=-1;
  end;
 
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
