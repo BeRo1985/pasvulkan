@@ -350,15 +350,26 @@ addMeshFragmentDepthOnlyVariants(){
 
 }
 
+# Add mesh fragment shader variants with different alpha test techniques (if any)
+addMeshFragmentReflectiveShadowMapVariants(){
+  addMeshFragmentShader "$1" "$2"
+  addMeshFragmentShader "${1}_alphatest" "$2 -DALPHATEST"
+  addMeshFragmentShader "${1}_alphatest_demote" "$2 -DALPHATEST -DUSEDEMOTE"
+  addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
+}
+
 # Add mesh fragment shader variants with different pass targets
 addMeshFragmentPassTargetVariants(){
   
   # Depth only stuff
   addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"  
 
+  # The reflectfive shadow map stuff
+  addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
+
   # The actual shading stuff
   addMeshFragmentShadingAntialiasingVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS"  
-
+  
   # The environment map stuff
   #addMeshFragmentShadingAntialiasingVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DENVMAP"
 

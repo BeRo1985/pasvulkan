@@ -79,6 +79,9 @@ layout(location = 13) flat in vec2 inJitter;
 #else
   #if defined(EXTRAEMISSIONOUTPUT) && !(defined(WBOIT) || defined(MBOIT))
     layout(location = 1) out vec4 outFragEmission;
+  #elif defined(REFLECTIVESHADOWMAPOUTPUT)
+    layout(location = 1) out vec3 outFragNormal;
+    layout(location = 2) out vec3 outFragPosition;
   #endif
 #endif
 
@@ -1601,7 +1604,12 @@ void main() {
 
 #ifdef LIGHTS
 #define LIGHTCLUSTERS
-#ifdef LIGHTCLUSTERS
+#if defined(REFLECTIVESHADOWMAPOUTPUT)
+      if(lights[0].metaData.x == 4u){ // Only the first light is supported for RSMs, and only when it is the primary directional light 
+        for(int lightIndex = 0; lightIndex < 1; lightIndex++){
+          {
+            Light light = lights[lightIndex];
+#elif defined(LIGHTCLUSTERS)
       // Light cluster grid
       uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy), 
                                uint(clamp(fma(log2(-inViewSpacePosition.z), uFrustumClusterGridGlobals.scaleBiasMax.x, uFrustumClusterGridGlobals.scaleBiasMax.y), 0.0, uFrustumClusterGridGlobals.scaleBiasMax.z)));
@@ -1632,6 +1640,7 @@ void main() {
 #ifdef SHADOWS
             if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
               switch (light.metaData.x) {
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if 0
                 case 1u: { // Directional 
                   // imageLightBasedLightDirection = light.directionZFar.xyz;
@@ -1654,6 +1663,7 @@ void main() {
                   lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
                   break;
                 }
+#endif
 #endif
                 case 4u: {  // Primary directional
                   imageLightBasedLightDirection = light.directionZFar.xyz;
@@ -1706,6 +1716,7 @@ void main() {
             float lightAttenuationEx = lightAttenuation;
 #endif
             switch (light.metaData.x) {
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 1u: {  // Directional
                 lightDirection = -light.directionZFar.xyz;
                 break;
@@ -1728,6 +1739,7 @@ void main() {
                 lightDirection = normalizedLightVector;
                 break;
               }
+#endif
               case 4u: {  // Primary directional
                 imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;
                 break;
@@ -1736,6 +1748,7 @@ void main() {
                 continue;
               }
             }
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
             switch (light.metaData.x) {
               case 2u:    // Point
               case 3u: {  // Spot
@@ -1752,6 +1765,7 @@ void main() {
                 break;
               }
             }
+#endif
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
@@ -1819,7 +1833,11 @@ void main() {
               }
 #endif
             }
-#ifdef LIGHTCLUSTERS
+#if defined(REFLECTIVESHADOWMAPOUTPUT)
+          }
+        }
+      }
+#elif defined(LIGHTCLUSTERS)
           }
         }
       }
@@ -1871,6 +1889,7 @@ void main() {
                     clearcoatRoughness,                 //
                     specularWeight);                    //
 #endif
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight);
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
       if ((flags & (1u << 7u)) != 0u) {
@@ -1891,6 +1910,7 @@ void main() {
                                                      volumeAttenuationColor, 
                                                      volumeAttenuationDistance);        
       }
+#endif
 #endif
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
       color = vec2(0.0, diffuseColorAlpha.w).xxxy;
@@ -2008,12 +2028,21 @@ void main() {
 #include "transparency.glsl"
 #undef TRANSPARENCY_IMPLEMENTATION
 
-#ifdef VELOCITY
+#if defined(VELOCITY)
   outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - inJitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - inJitter.zw)) * 0.5;
 
   vec3 normal = normalize(workNormal);
   normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
   outFragNormal = normalize(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)));  
+
+#elif defined(REFLECTIVESHADOWMAPOUTPUT)
+
+  vec3 normal = normalize(workNormal);
+  normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+  outFragNormal = normalize(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)));  
+
+  outFragPosition = inWorldSpacePosition.xyz;
+
 #endif
 
 }
