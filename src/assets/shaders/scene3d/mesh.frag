@@ -80,8 +80,8 @@ layout(location = 13) flat in vec2 inJitter;
   #if defined(EXTRAEMISSIONOUTPUT) && !(defined(WBOIT) || defined(MBOIT))
     layout(location = 1) out vec4 outFragEmission;
   #elif defined(REFLECTIVESHADOWMAPOUTPUT)
-    layout(location = 1) out vec3 outFragNormal;
-    layout(location = 2) out vec3 outFragPosition;
+    layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
+    //layout(location = 2) out vec3 outFragPosition; // Can be reconstructed from depth and inversed model view projection matrix 
   #endif
 #endif
 
@@ -2039,9 +2039,9 @@ void main() {
 
   vec3 normal = normalize(workNormal);
   normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
-  outFragNormal = normalize(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)));  
+  outFragNormalUsed = vec4(normalize(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0))), 1.0);  
 
-  outFragPosition = inWorldSpacePosition.xyz;
+  //outFragPosition = inWorldSpacePosition.xyz;
 
 #endif
 
