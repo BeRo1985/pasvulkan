@@ -593,8 +593,8 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
 
 #if defined(GI_SPECULAR_FAST) && (GI_COMPRESSION == 0)
 // The fast cheap variant 
-vec3 globalIlluminationGetSpecularColor(in const vec3 pSphericalHarmonics[9], const in vec3 pViewDirection, const in vec3 pNormal, const in float pMaterialRoughness){
-  vec3 lDominantLightColor = vec3(0.0);
+vec3 globalIlluminationGetSpecularColor(const in vec3 pSphericalHarmonics[9], const in vec3 pViewDirection, const in vec3 pNormal, const in float pMaterialRoughness){
+  vec3 lDominantLightColor = vec3(0.03, 0.02, 0.02);
   vec3 lDominantLightDirection = vec3(0.0);
   globalIlluminationSphericalHarmonicsExtractDominantLight(pSphericalHarmonics, lDominantLightColor, lDominantLightDirection);
   return max(vec3(0.0), lDominantLightColor * max(0.0, dot(lDominantLightDirection, -normalize(reflect(-pViewDirection, pNormal)))));
