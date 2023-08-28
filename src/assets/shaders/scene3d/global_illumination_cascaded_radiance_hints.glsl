@@ -1,6 +1,8 @@
 #ifndef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS_GLSL
 #define GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS_GLSL
 
+// How it works, see https://rootserver.rosseaux.net/demoscene/prods/SupraleiterAndItsRenderingTechnologies.pdf
+
 //#define GI_SPECULAR_FAST
 #define GI_SPECULAR_MULTIPLE_TAPS
 
@@ -9,13 +11,13 @@
 #define GI_COMPRESSION 0
 
 #if GI_COMPRESSION == 0  
-  // Full RGB spherical harmonics
+  // Full RGB spherical harmonics for best quality but with the most memory usage
   #define GI_COUNT_COMPRESSED_SPHERICAL_HARMONICS_COEFS 14
 #elif GI_COMPRESSION == 1
-  // Y3Co2Cg2 spherical harmonics
+  // Y3Co2Cg2 spherical harmonics for still good quality and less memory
   #define GI_COUNT_COMPRESSED_SPHERICAL_HARMONICS_COEFS 9
 #elif GI_COMPRESSION == 2
-  // Y3Co1Cg1 spherical harmonics
+  // Y3Co1Cg1 spherical harmonics for acceptable quality and even more less memory
   #define GI_COUNT_COMPRESSED_SPHERICAL_HARMONICS_COEFS 6
 #endif
 
