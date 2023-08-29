@@ -10238,56 +10238,66 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure ProcessNodes;
+ type TPOCAFileHashMap=TpvStringHashMap<Boolean>;
  var Index,Offset:TpvSizeInt;
      SourceNode:TPasGLTF.TNode;
      Node:TNode;
      TemporaryString:TPasJSONUTF8String;
      TemporaryStream:TStream;
+     POCAFileHashMap:TPOCAFileHashMap;
  begin
-  fCountNodeWeights:=0;
-  fNodes.Clear;
-  for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
-   SourceNode:=aSourceDocument.Nodes[Index];
-   Node:=TNode.Create(self,Index);
-   try
-    Node.AssignFromGLTF(aSourceDocument,SourceNode,LightMap);
-    if assigned(SourceNode.Extras) then begin
-     begin
-      TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocacode'],'');
-      if length(TemporaryString)>0 then begin
-       TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
-       POCACodeString:=POCACodeString+TemporaryString;
-      end else begin
-       TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocafile'],'');
+  POCAFileHashMap:=TPOCAFileHashMap.Create(false);
+  try
+   fCountNodeWeights:=0;
+   fNodes.Clear;
+   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
+    SourceNode:=aSourceDocument.Nodes[Index];
+    Node:=TNode.Create(self,Index);
+    try
+     Node.AssignFromGLTF(aSourceDocument,SourceNode,LightMap);
+     if assigned(SourceNode.Extras) then begin
+      begin
+       TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocacode'],'');
        if length(TemporaryString)>0 then begin
-        if pvApplication.Assets.ExistAsset(TemporaryString) then begin
-         TemporaryStream:=pvApplication.Assets.GetAssetStream(TemporaryString);
-        end else begin
-         TemporaryStream:=nil;
-        end;
-        if not assigned(TemporaryStream) then begin
-         TemporaryStream:=aSourceDocument.GetURI(TemporaryString);
-        end;
-        if assigned(TemporaryStream) then begin
-         try
-          TemporaryString:='';
-          if TemporaryStream.Size>0 then begin
-           SetLength(TemporaryString,TemporaryStream.Size);
-           TemporaryStream.ReadBuffer(TemporaryString[1],TemporaryStream.Size);
-           TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
-           POCACodeString:=POCACodeString+TemporaryString;
+        TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
+        POCACodeString:=POCACodeString+TemporaryString;
+       end else begin
+        TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocafile'],'');
+        if length(TemporaryString)>0 then begin
+         if not POCAFileHashMap.ExistKey(TemporaryString) then begin
+          POCAFileHashMap.Add(TemporaryString,true);
+          if pvApplication.Assets.ExistAsset(TemporaryString) then begin
+           TemporaryStream:=pvApplication.Assets.GetAssetStream(TemporaryString);
+          end else begin
+           TemporaryStream:=nil;
           end;
-         finally
-          FreeAndNil(TemporaryStream);
+          if not assigned(TemporaryStream) then begin
+           TemporaryStream:=aSourceDocument.GetURI(TemporaryString);
+          end;
+          if assigned(TemporaryStream) then begin
+           try
+            TemporaryString:='';
+            if TemporaryStream.Size>0 then begin
+             SetLength(TemporaryString,TemporaryStream.Size);
+             TemporaryStream.ReadBuffer(TemporaryString[1],TemporaryStream.Size);
+             TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
+             POCACodeString:=POCACodeString+TemporaryString;
+            end;
+           finally
+            FreeAndNil(TemporaryStream);
+           end;
+          end;
          end;
         end;
        end;
       end;
      end;
+    finally
+     fNodes.Add(Node);
     end;
-   finally
-    fNodes.Add(Node);
    end;
+  finally
+   FreeAndNil(POCAFileHashMap);
   end;
   fNodeNameIndexHashMap.Clear;
   fCameraNodeIndices.Clear;
