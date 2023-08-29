@@ -13375,36 +13375,50 @@ var CullFace,Blend:TPasGLTFInt32;
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
-           InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
-           inc(Light.fCountOverwrites);
-           LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
-           LightOverwrite^.Flags:=[];
-           LightOverwrite^.Factor:=Max(aFactor,0.0);
+           if Light.fCountOverwrites<length(Light.fOverwrites) then begin
+            InstanceAnimationChannelOverwrite^:=Light.fCountOverwrites;
+            inc(Light.fCountOverwrites);
+            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
+             LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+             LightOverwrite^.Flags:=[];
+             LightOverwrite^.Factor:=Max(aFactor,0.0);
+            end else begin
+             LightOverwrite:=nil;
+            end;
+           end else begin
+            LightOverwrite:=nil;
+           end;
           end else begin
-           LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
+            LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
+           end else begin
+            LightOverwrite:=nil;
+           end;
           end;
-          case AnimationDefaultChannel^.Target of
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
-            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultColor,
-                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
-            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultIntensity,
-                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
-            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultRange,
-                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
-            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotInnerConeAngle,
-                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-            LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotOuterConeAngle,
-                                                          TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle];
-           end;
-           else begin
+          if assigned(LightOverwrite) then begin
+           case AnimationDefaultChannel^.Target of
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
+             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultColor,
+                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightIntensity:begin
+             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultIntensity,
+                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange:begin
+             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultRange,
+                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle:begin
+             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotInnerConeAngle,
+                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
+             LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotOuterConeAngle,
+                                                           TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle];
+            end;
+            else begin
+            end;
            end;
           end;
          end;
@@ -13428,48 +13442,60 @@ var CullFace,Blend:TPasGLTFInt32;
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
-           InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
-           inc(Camera.fCountOverwrites);
-           CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
-           CameraOverwrite^.Flags:=[];
-           CameraOverwrite^.Factor:=Max(aFactor,0.0);
+           if Camera.fCountOverwrites<length(Camera.fOverwrites) then begin
+            InstanceAnimationChannelOverwrite^:=Camera.fCountOverwrites;
+            inc(Camera.fCountOverwrites);
+            if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
+             CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+             CameraOverwrite^.Flags:=[];
+             CameraOverwrite^.Factor:=Max(aFactor,0.0);
+            end else begin
+             CameraOverwrite:=nil;
+            end;
+           end;
           end else begin
-           CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+           if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
+            CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
+           end else begin
+            CameraOverwrite:=nil;
+           end;
           end;
-          case AnimationDefaultChannel^.Target of
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicXMag,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicYMag,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZFar,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZNear,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveAspectRatio,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveYFov,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZFar,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar];
-           end;
-           TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
-            CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZNear,
-                                                            TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear];
-           end;
-           else begin
+          if assigned(CameraOverwrite) then begin
+           case AnimationDefaultChannel^.Target of
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicXMag,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicYMag:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicYMag,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZFar:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZFar,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicZNear:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZNear,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveAspectRatio:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveAspectRatio,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveYFov,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZFar,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
+             CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZNear,
+                                                             TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear];
+            end;
+            else begin
+            end;
            end;
           end;
          end;
