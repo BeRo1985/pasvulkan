@@ -12253,7 +12253,9 @@ var CullFace,Blend:TPasGLTFInt32;
  begin
   for Index:=0 to fLights.Count-1 do begin
    InstanceLight:=fLights[Index];
-   InstanceLight.fCountOverwrites:=0;
+   if assigned(InstanceLight) then begin
+    InstanceLight.fCountOverwrites:=0;
+   end;
   end;
  end;
  procedure ResetCameras;
@@ -12262,7 +12264,9 @@ var CullFace,Blend:TPasGLTFInt32;
  begin
   for Index:=0 to fCameras.Count-1 do begin
    InstanceCamera:=fCameras[Index];
-   InstanceCamera.fCountOverwrites:=0;
+   if assigned(InstanceCamera) then begin
+    InstanceCamera.fCountOverwrites:=0;
+   end;
   end;
  end;
  procedure ResetMaterials;
@@ -12276,16 +12280,14 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
   end;
  end;
- procedure ResetNode(const aNodeIndex:TPasGLTFSizeInt);
+ procedure ResetNodes;
  var Index:TPasGLTFSizeInt;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-     Node:TpvScene3D.TGroup.TNode;
  begin
-  InstanceNode:=@fNodes[aNodeIndex];
-  Node:=fGroup.fNodes[aNodeIndex];
-  InstanceNode^.CountOverwrites:=0;
-  for Index:=0 to Node.Children.Count-1 do begin
-   ResetNode(Node.Children[Index].Index);
+  for Index:=0 to length(fNodes)-1 do begin
+   InstanceNode:=@fNodes[Index];
+   InstanceNode^.Processed:=false;
+   InstanceNode^.CountOverwrites:=0;
   end;
  end;
  procedure ProcessBaseOverwrite(const aFactor:TPasGLTFFloat);
@@ -14038,13 +14040,7 @@ begin
 
    ResetMaterials;
 
-   for Index:=0 to Scene.Nodes.Count-1 do begin
-    ResetNode(Scene.Nodes[Index].Index);
-   end;
-
-   for Index:=0 to length(fNodes)-1 do begin
-    fNodes[Index].Processed:=false;
-   end;
+   ResetNodes;
 
    for Index:=0 to length(fSkins)-1 do begin
     fSkins[Index].Used:=false;
