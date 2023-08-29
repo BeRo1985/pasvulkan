@@ -310,6 +310,7 @@ type PpvAudioInt32=^TpvInt32;
        HRTFLength:TpvInt32;
        HRTFMask:TpvInt32;
        Spatialization:LongBool;
+       SpatializationLocal:LongBool;
        SpatializationOrigin:TpvVector3;
        SpatializationVelocity:TpvVector3;
        SpatializationVolumeLast:TpvFloat;
@@ -402,7 +403,7 @@ type PpvAudioInt32=^TpvInt32;
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
        function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
        function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
-       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool=false):TpvInt32;
        function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
        function IsPlaying:boolean;
        function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
@@ -497,7 +498,7 @@ type PpvAudioInt32=^TpvInt32;
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
        function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
        function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
-       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool=false):TpvInt32;
        function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
        function IsPlaying:boolean;
        function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
@@ -518,7 +519,7 @@ type PpvAudioInt32=^TpvInt32;
        function SetVolume(VoiceNumber:TpvInt32;Volume:TpvFloat):TpvInt32;
        function SetPanning(VoiceNumber:TpvInt32;Panning:TpvFloat):TpvInt32;
        function SetRate(VoiceNumber:TpvInt32;Rate:TpvFloat):TpvInt32;
-       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+       function SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool=false):TpvInt32;
        function SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
        function IsPlaying:boolean;
        function IsVoicePlaying(VoiceNumber:TpvInt32):boolean;
@@ -1079,6 +1080,7 @@ begin
  RampingSamples:=AudioEngine.RampingSamples;
  VoiceIndexPointer:=nil;
  Spatialization:=false;
+ SpatializationLocal:=false;
  SpatializationOrigin:=TpvVector3.Null;
  SpatializationVelocity:=TpvVector3.Null;
  if AudioEngine.HRTF then begin
@@ -1251,7 +1253,7 @@ begin
 
  NormalizedRelativeVector:=RelativeVector.Normalize;
 
- IsLocal:=SpatializationOrigin=ListenerOrigin;
+ IsLocal:=SpatializationLocal or (SpatializationOrigin=ListenerOrigin);
 
  Distance:=RelativeVector.Length;
 
@@ -1294,6 +1296,7 @@ begin
   DirectionGain:=1.0;
  end else begin
   DirectionGain:=sqrt(sqr(NormalizedRelativeVector.x)+sqr(NormalizedRelativeVector.z));
+  DirectionGain:=FloatLerp(DirectionGain,1.0,abs(NormalizedRelativeVector.Dot(TpvVector3.YAxis)));
  end;
 
  DoIt:=false;
@@ -2565,7 +2568,7 @@ begin
  end;
 end;
 
-function TpvAudioSoundSample.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+function TpvAudioSoundSample.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool):TpvInt32;
 var Voice:TpvAudioSoundSampleVoice;
 begin
  result:=VoiceNumber;
@@ -2574,6 +2577,7 @@ begin
   Voice.Spatialization:=Spatialization;
   Voice.SpatializationOrigin:=Origin;
   Voice.SpatializationVelocity:=Velocity;
+  Voice.SpatializationLocal:=Local;
  end;
 end;
 
@@ -3100,9 +3104,9 @@ begin
  result:=fSample.SetRate(VoiceNumber,Rate);
 end;
 
-function TpvAudioSoundSampleResource.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3):TpvInt32;
+function TpvAudioSoundSampleResource.SetPosition(VoiceNumber:TpvInt32;Spatialization:LongBool;const Origin,Velocity:TpvVector3;const Local:LongBool):TpvInt32;
 begin
- result:=fSample.SetPosition(VoiceNumber,Spatialization,Origin,Velocity);
+ result:=fSample.SetPosition(VoiceNumber,Spatialization,Origin,Velocity,Local);
 end;
 
 function TpvAudioSoundSampleResource.SetEffectMix(VoiceNumber:TpvInt32;Active:LongBool):TpvInt32;
