@@ -387,8 +387,8 @@ procedure TpvScene3DRendererPassesTonemappingRenderPass.Execute(const aCommandBu
 var PushConstants:TpvScene3DRendererPassesTonemappingRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.MinMaxLuminance.x:=0.0;
- PushConstants.MinMaxLuminance.y:=16777216.0;
+ PushConstants.MinMaxLuminance.x:=fInstance.MinimumLuminance;
+ PushConstants.MinMaxLuminance.y:=fInstance.MaximumLuminance;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
