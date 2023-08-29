@@ -18,6 +18,10 @@ layout (std430, set = 0, binding = 1) buffer HistogramLuminance {
   float histogramLuminance;
 };
 
+layout (push_constant) uniform PushConstants {
+  vec2 minMaxLuminance;
+} pushConstants;
+
 #define HDRToneMappingOperator 8
 
 #if HDRToneMappingOperator == 1
@@ -239,9 +243,8 @@ void main() {
      debugPrintfEXT("Lmax: %f\n", Lmax);
    }
  #endif
-  c.xyz = convertYxy2RGB(convertRGB2Yxy(c.xyz) * vec2(1.0 / max(1e-4, Lmax), 1.0).xyy);
-  c.xyz = max(c.xyz, vec3(0.0));  // since the current RGB <=> Yxy routines can produce also negative values
-  outColor = vec4(doToneMapping(c.xyz), c.w);
+  c.xyz = max(convertYxy2RGB(convertRGB2Yxy(max(c.xyz, vec3(0.0))) * vec2(clamp(1.0 / max(1e-4, Lmax), pushConstants.minMaxLuminance.x, pushConstants.minMaxLuminance.y), 1.0).xyy), vec3(0.0));
+  outColor = vec4(max(vec3(0.0), doToneMapping(c.xyz)), c.w);
 #else
   outColor = vec4(1.0);
 #endif

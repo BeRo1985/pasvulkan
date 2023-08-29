@@ -347,7 +347,7 @@ const Samples=128;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     Pipeline:TpvVulkanComputePipeline;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
-    PushConstants:TPushConstants;
+    PushConstants:TpvScene3DRendererPassesReflectionProbeComputePass.TPushConstants;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
