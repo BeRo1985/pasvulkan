@@ -76,6 +76,12 @@ uses SysUtils,
 
 type { TpvScene3DRendererSkyBox }
      TpvScene3DRendererSkyBox=class
+      public
+       type TPushConstants=record
+             ViewBaseIndex:TpvUInt32;
+             CountViews:TpvUInt32;
+             SkyBoxBrightnessFactor:TpvFloat;
+            end;
       private
        fRenderer:TpvScene3DRenderer;
        fScene3D:TpvScene3D;
@@ -178,7 +184,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fRenderer.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3DRendererSkyBox.TPushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -279,16 +285,17 @@ begin
 end;
 
 procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
-var VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
+var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
 begin
- VertexStagePushConstants.ViewBaseIndex:=aViewBaseIndex;
- VertexStagePushConstants.CountViews:=aCountViews;
+ PushConstants.ViewBaseIndex:=aViewBaseIndex;
+ PushConstants.CountViews:=aCountViews;
+ PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                  0,
-                                 SizeOf(TpvScene3D.TVertexStagePushConstants),
-                                 @VertexStagePushConstants);
+                                 SizeOf(TpvScene3DRendererSkyBox.TPushConstants),
+                                 @PushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

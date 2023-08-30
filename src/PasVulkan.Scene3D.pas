@@ -2313,6 +2313,7 @@ type EpvScene3D=class(Exception);
        fInFlightFrameParticleVertices:TInFlightFrameParticleVertices;
        fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fSkyBoxBrightnessFactor:TpvScalar;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -2441,6 +2442,7 @@ type EpvScene3D=class(Exception);
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
+       property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
       public
        property WhiteImage:TImage read fWhiteImage;
        property WhiteTexture:TTexture read fWhiteTexture;
@@ -15048,6 +15050,8 @@ begin
  fParticleIndexCounter:=0;
 
  FillChar(fCountInFlightFrameParticleVertices,SizeOf(fCountInFlightFrameParticleVertices),#0);
+
+ fSkyBoxBrightnessFactor:=1.0;
 
  fTechniques:=TpvTechniques.Create;
 

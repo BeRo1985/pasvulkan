@@ -6,14 +6,16 @@
 
 layout(location = 0) in vec3 inPosition;
 
+layout(location = 1) flat in float inSkyBoxBrightnessFactor;
+
 layout(location = 0) out vec4 outFragColor;
 
 layout (set = 0, binding = 1) uniform samplerCube uTexture;
 
 void main(){
 #if 0
-   outFragColor = vec4(0.25, 0.25, 1.0, 1.0);
+   outFragColor = vec4(0.25, 0.25, 1.0, 1.0) * vec2(inSkyBoxBrightnessFactor, 1.0).xxxy;
 #else   
-   outFragColor = texture(uTexture, normalize(inPosition));
+   outFragColor = texture(uTexture, normalize(inPosition)) * vec2(inSkyBoxBrightnessFactor, 1.0).xxxy;
 #endif
 }
