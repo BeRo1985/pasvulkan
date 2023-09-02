@@ -1499,7 +1499,8 @@ type EpvScene3D=class(Exception);
                      type TNodeFlag=
                            (
                             TransformAnimated,
-                            SkinnedOrMorphAnimated
+                            SkinAnimated,
+                            MorphAnimated
                            );
                           PNodeFlag=^TNodeFlag;
                           TNodeFlags=set of TNodeFlag;
@@ -1584,7 +1585,7 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fNodes:TNodes;
                      fAnimatedNodes:TpvScene3D.TGroup.TNodes;
-                     fSkinnedOrMorphedAnimatedNodes:TpvScene3D.TGroup.TNodes;
+                     fSkinOrMorphAnimatedNodes:TpvScene3D.TGroup.TNodes;
                      fStaticNodes:TpvScene3D.TGroup.TNodes;
                      fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
                      fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
@@ -8603,8 +8604,11 @@ begin
  end;
 
  fFlags:=[];
- if assigned(fSkin) or (length(fWeights)>0) then begin
-  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinnedOrMorphAnimated);
+ if assigned(fSkin) then begin
+  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated);
+ end;
+ if length(fWeights)>0 then begin
+  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.MorphAnimated);
  end;
 
 end;
@@ -8794,8 +8798,8 @@ begin
  fAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
  fAnimatedNodes.OwnsObjects:=false;
 
- fSkinnedOrMorphedAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
- fSkinnedOrMorphedAnimatedNodes.OwnsObjects:=false;
+ fSkinOrMorphAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
+ fSkinOrMorphAnimatedNodes.OwnsObjects:=false;
 
  fStaticNodes:=TpvScene3D.TGroup.TNodes.Create;
  fStaticNodes.OwnsObjects:=false;
@@ -8813,7 +8817,7 @@ begin
  FreeAndNil(fDrawChoreographyBatchItems);
  FreeAndNil(fDrawChoreographyBatchUniqueItems);
  FreeAndNil(fAnimatedNodes);
- FreeAndNil(fSkinnedOrMorphedAnimatedNodes);
+ FreeAndNil(fSkinOrMorphAnimatedNodes);
  FreeAndNil(fStaticNodes);
  FreeAndNil(fNodes);
  inherited Destroy;
@@ -9498,7 +9502,7 @@ begin
 
     Scene.fAnimatedNodes.Clear;
 
-    Scene.fSkinnedOrMorphedAnimatedNodes.Clear;
+    Scene.fSkinOrMorphAnimatedNodes.Clear;
 
     Scene.fStaticNodes.Clear;
 
@@ -9526,8 +9530,9 @@ begin
 
       NewStackItem.WithinAnimatedPath:=StackItem.WithinAnimatedPath;
 
-      if TpvScene3D.TGroup.TNode.TNodeFlag.SkinnedOrMorphAnimated in StackItem.Node.fFlags then begin
-       Scene.fSkinnedOrMorphedAnimatedNodes.Add(StackItem.Node);
+      if (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in StackItem.Node.fFlags) or
+         (TpvScene3D.TGroup.TNode.TNodeFlag.MorphAnimated in StackItem.Node.fFlags) then begin
+       Scene.fSkinOrMorphAnimatedNodes.Add(StackItem.Node);
        NewStackItem.WithinAnimatedPath:=true;
       end else if TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in StackItem.Node.fFlags then begin
        Scene.fAnimatedNodes.Add(StackItem.Node);
