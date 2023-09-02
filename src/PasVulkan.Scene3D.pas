@@ -8602,6 +8602,11 @@ begin
   end;
  end;
 
+ fFlags:=[];
+ if assigned(fSkin) or (length(fWeights)>0) then begin
+  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinnedOrMorphAnimated);
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.TNode.Finish;
@@ -9518,14 +9523,6 @@ begin
      if not NodeHashMap.ExistKey(StackItem.Node) then begin
 
       NodeHashMap.Add(StackItem.Node,true);
-
-      StackItem.Node.fFlags:=[];
-
-      if assigned(StackItem.Node.Skin) or (length(StackItem.Node.fWeights)>0) then begin
-       Include(StackItem.Node.fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinnedOrMorphAnimated);
-      end;
-
-      //TODO: Transform animation check
 
       NewStackItem.WithinAnimatedPath:=StackItem.WithinAnimatedPath;
 
