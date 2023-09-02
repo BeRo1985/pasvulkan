@@ -1496,13 +1496,23 @@ type EpvScene3D=class(Exception);
                    TLights=TpvObjectGenericList<TpvScene3D.TGroup.TLight>;
                    TNode=class(TGroupObject)
                     public
-                     type TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
+                     type TNodeFlag=
+                           (
+                            TransformAnimated,
+                            SkinnedOrMorphAnimated
+                           );
+                          PNodeFlag=^TNodeFlag;
+                          TNodeFlags=set of TNodeFlag;
+                          PNodeFlags=^TNodeFlags;
+                          TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
                           TUsedByScenesList=TpvObjectGenericList<TpvScene3D.TGroup.TScene>;
                     private
                      fIndex:TpvSizeInt;
+                     fFlags:TNodeFlags;
                      fUsedByScenesList:TUsedByScenesList;
                      fChildNodeIndices:TChildNodeIndices;
                      fChildren:TNodes;
+                     fSplittedChildren:TNodes;
                      fMesh:TMesh;
                      fNodeMeshInstanceIndex:TPasGLTFSizeInt;
                      fCamera:TCamera;
@@ -1524,6 +1534,7 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
                      property Index:TpvSizeInt read fIndex;
+                     property Flags:TNodeFlags read fFlags write fFlags;
                      property Children:TNodes read fChildren;
                      property Camera:TCamera read fCamera;
                      property Mesh:TMesh read fMesh;
@@ -1637,15 +1648,15 @@ type EpvScene3D=class(Exception);
                                  end;
                                  PNodeOverwrite=^TNodeOverwrite;
                                  TNodeOverwrites=array of TNodeOverwrite;
-                                 TNodeFlag=
+                                 TInstanceNodeFlag=
                                   (
                                    InverseFrontFaces
                                   );
-                                 PNodeFlag=^TNodeFlag;
-                                 TNodeFlags=set of TNodeFlag;
+                                 PInstanceNodeFlag=^TInstanceNodeFlag;
+                                 TInstanceNodeFlags=set of TInstanceNodeFlag;
                            public
                             Processed:LongBool;
-                            Flags:TNodeFlags;
+                            Flags:TInstanceNodeFlags;
                             Overwrites:TNodeOverwrites;
                             CountOverwrites:TpvSizeInt;
                             OverwriteWeightsSum:TpvDoubleDynamicArray;
@@ -8452,8 +8463,13 @@ begin
 
  fChildNodeIndices.Initialize;
 
+ fFlags:=[];
+
  fChildren:=TNodes.Create;
  fChildren.OwnsObjects:=false;
+
+ fSplittedChildren:=TNodes.Create;
+ fSplittedChildren.OwnsObjects:=false;
 
  fUsedByScenesList:=TUsedByScenesList.Create;
  fUsedByScenesList.OwnsObjects:=false;
@@ -8482,6 +8498,8 @@ begin
  fLight:=nil;
 
  FreeAndNil(fUsedByScenesList);
+
+ FreeAndNil(fSplittedChildren);
 
  FreeAndNil(fChildren);
 
@@ -10774,7 +10792,7 @@ end;
 
 function TpvScene3D.TGroup.TInstance.TNode.InverseFrontFaces:boolean;
 begin
- result:=TpvScene3D.TGroup.TInstance.TNode.TNodeFlag.InverseFrontFaces in Flags;
+ result:=TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces in Flags;
 end;
 
 { TpvScene3D.TGroup.TInstance.TLight }
@@ -13866,9 +13884,9 @@ var CullFace,Blend:TPasGLTFInt32;
   InstanceNode^.WorkMatrix:=Matrix;
   if assigned(Node.fMesh) then begin
    if Matrix.Determinant<0.0 then begin
-    Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeFlag.InverseFrontFaces);
+    Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
    end else begin
-    Exclude(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeFlag.InverseFrontFaces);
+    Exclude(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
    end;
    if {SkinUsed and} assigned(Node.fSkin) then begin
     fSkins[Node.fSkin.Index].Used:=true;
