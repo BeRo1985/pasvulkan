@@ -2031,6 +2031,10 @@ type EpvScene3D=class(Exception);
                                                            const aRelative:boolean=false;
                                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
                                                            const aNodeFilter:TOnNodeFilter=nil):TpvScene3D.TBakedMesh;
+                     function GetBakedMeshFromSplittedNodeList(const aNodes:TpvScene3D.TGroup.TNodes;
+                                                               const aRelative:boolean=false;
+                                                               const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                               const aNodeFilter:TOnNodeFilter=nil):TpvScene3D.TBakedMesh;
                      function GetBakedMesh(const aRelative:boolean=false;
                                            const aWithDynamicMeshs:boolean=false;
                                            const aRootNodeIndex:TpvSizeInt=-1;
@@ -14580,6 +14584,37 @@ begin
   NodeStack.Initialize;
   try
    NodeStack.Push(aNode);
+   while not NodeStack.Pop(Node) do begin
+    GetBakedMeshProcessMorphSkinNode(result,
+                                     Node,
+                                     @fNodes[Node.Index],
+                                     aRelative,
+                                     aMaterialAlphaModes);
+    for ChildNode in Node.fSplittedChildren do begin
+     NodeStack.Push(ChildNode);
+    end;
+   end;
+  finally
+   NodeStack.Finalize;
+  end;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.GetBakedMeshFromSplittedNodeList(const aNodes:TpvScene3D.TGroup.TNodes;
+                                                                      const aRelative:boolean=false;
+                                                                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
+                                                                      const aNodeFilter:TOnNodeFilter=nil):TpvScene3D.TBakedMesh;
+type TNodeStack=TpvDynamicStack<TpvScene3D.TGroup.TNode>;
+var NodeStack:TNodeStack;
+    Node,ChildNode:TpvScene3D.TGroup.TNode;
+begin
+ result:=TpvScene3D.TBakedMesh.Create;
+ if assigned(Node) then begin
+  NodeStack.Initialize;
+  try
+   for Node in aNodes do begin
+    NodeStack.Push(Node);
+   end;
    while not NodeStack.Pop(Node) do begin
     GetBakedMeshProcessMorphSkinNode(result,
                                      Node,
