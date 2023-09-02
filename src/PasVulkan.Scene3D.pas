@@ -1500,7 +1500,7 @@ type EpvScene3D=class(Exception);
                            (
                             TransformAnimated,
                             SkinAnimated,
-                            MorphAnimated
+                            WeightsAnimated
                            );
                           PNodeFlag=^TNodeFlag;
                           TNodeFlags=set of TNodeFlag;
@@ -1585,7 +1585,7 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fNodes:TNodes;
                      fAnimatedNodes:TpvScene3D.TGroup.TNodes;
-                     fSkinOrMorphAnimatedNodes:TpvScene3D.TGroup.TNodes;
+                     fSkinOrWeightsAnimatedNodes:TpvScene3D.TGroup.TNodes;
                      fStaticNodes:TpvScene3D.TGroup.TNodes;
                      fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
                      fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
@@ -2118,6 +2118,7 @@ type EpvScene3D=class(Exception);
               fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
               fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
               procedure ConstructBuffers;
+              procedure MarkAnimatedElements;
               procedure SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
@@ -8608,7 +8609,7 @@ begin
   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated);
  end;
  if length(fWeights)>0 then begin
-  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.MorphAnimated);
+  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
  end;
 
 end;
@@ -8798,8 +8799,8 @@ begin
  fAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
  fAnimatedNodes.OwnsObjects:=false;
 
- fSkinOrMorphAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
- fSkinOrMorphAnimatedNodes.OwnsObjects:=false;
+ fSkinOrWeightsAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
+ fSkinOrWeightsAnimatedNodes.OwnsObjects:=false;
 
  fStaticNodes:=TpvScene3D.TGroup.TNodes.Create;
  fStaticNodes.OwnsObjects:=false;
@@ -8817,7 +8818,7 @@ begin
  FreeAndNil(fDrawChoreographyBatchItems);
  FreeAndNil(fDrawChoreographyBatchUniqueItems);
  FreeAndNil(fAnimatedNodes);
- FreeAndNil(fSkinOrMorphAnimatedNodes);
+ FreeAndNil(fSkinOrWeightsAnimatedNodes);
  FreeAndNil(fStaticNodes);
  FreeAndNil(fNodes);
  inherited Destroy;
@@ -9476,6 +9477,38 @@ begin
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
 end;
 
+procedure TpvScene3D.TGroup.MarkAnimatedElements;
+var Animation:TpvScene3D.TGroup.TAnimation;
+    AnimationChannelIndex:TpvSizeInt;
+    AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
+begin
+ for Animation in Animations do begin
+  for AnimationChannelIndex:=0 to length(Animation.fChannels)-1 do begin
+   AnimationChannel:=@Animation.fChannels[AnimationChannelIndex];
+   case AnimationChannel^.Target of
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Scale,
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation,
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale:begin
+     if (AnimationChannel^.TargetIndex>=0) and (AnimationChannel^.TargetIndex<fNodes.Count) then begin
+      Include(fNodes[AnimationChannel^.TargetIndex].fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated);
+     end;
+    end;
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Weights,
+    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
+     if (AnimationChannel^.TargetIndex>=0) and (AnimationChannel^.TargetIndex<fNodes.Count) then begin
+      Include(fNodes[AnimationChannel^.TargetIndex].fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
+     end;
+    end;
+    else begin
+    end;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 type TStackItem=record
       Node:TpvScene3D.TGroup.TNode;
@@ -9502,7 +9535,7 @@ begin
 
     Scene.fAnimatedNodes.Clear;
 
-    Scene.fSkinOrMorphAnimatedNodes.Clear;
+    Scene.fSkinOrWeightsAnimatedNodes.Clear;
 
     Scene.fStaticNodes.Clear;
 
@@ -9531,8 +9564,8 @@ begin
       NewStackItem.WithinAnimatedPath:=StackItem.WithinAnimatedPath;
 
       if (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in StackItem.Node.fFlags) or
-         (TpvScene3D.TGroup.TNode.TNodeFlag.MorphAnimated in StackItem.Node.fFlags) then begin
-       Scene.fSkinOrMorphAnimatedNodes.Add(StackItem.Node);
+         (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in StackItem.Node.fFlags) then begin
+       Scene.fSkinOrWeightsAnimatedNodes.Add(StackItem.Node);
        NewStackItem.WithinAnimatedPath:=true;
       end else if TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in StackItem.Node.fFlags then begin
        Scene.fAnimatedNodes.Add(StackItem.Node);
@@ -10613,6 +10646,8 @@ begin
          ExecuteCode;
 
          PostProcessAnimations;
+
+         MarkAnimatedElements;
 
          SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 
