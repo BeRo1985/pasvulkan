@@ -1583,6 +1583,9 @@ type EpvScene3D=class(Exception);
                     private
                      fIndex:TpvSizeInt;
                      fNodes:TNodes;
+                     fAnimatedNodes:TpvScene3D.TGroup.TNodes;
+                     fSkinnedOrMorphedAnimatedNodes:TpvScene3D.TGroup.TNodes;
+                     fStaticNodes:TpvScene3D.TGroup.TNodes;
                      fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
                      fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
                     public
@@ -2114,6 +2117,7 @@ type EpvScene3D=class(Exception);
               fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
               fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
               procedure ConstructBuffers;
+              procedure SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
               procedure ConstructDrawChoreographyBatchItems;
@@ -8776,19 +8780,36 @@ end;
 constructor TpvScene3D.TGroup.TScene.Create(const aGroup:TGroup;const aIndex:TpvSizeInt);
 begin
  inherited Create(aGroup);
+
  fIndex:=aIndex;
+
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
+
+ fAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
+ fAnimatedNodes.OwnsObjects:=false;
+
+ fSkinnedOrMorphedAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
+ fSkinnedOrMorphedAnimatedNodes.OwnsObjects:=false;
+
+ fStaticNodes:=TpvScene3D.TGroup.TNodes.Create;
+ fStaticNodes.OwnsObjects:=false;
+
  fDrawChoreographyBatchItems:=TDrawChoreographyBatchItems.Create;
  fDrawChoreographyBatchItems.OwnsObjects:=false;
+
  fDrawChoreographyBatchUniqueItems:=TDrawChoreographyBatchItems.Create;
  fDrawChoreographyBatchUniqueItems.OwnsObjects:=false;
+
 end;
 
 destructor TpvScene3D.TGroup.TScene.Destroy;
 begin
  FreeAndNil(fDrawChoreographyBatchItems);
  FreeAndNil(fDrawChoreographyBatchUniqueItems);
+ FreeAndNil(fAnimatedNodes);
+ FreeAndNil(fSkinnedOrMorphedAnimatedNodes);
+ FreeAndNil(fStaticNodes);
  FreeAndNil(fNodes);
  inherited Destroy;
 end;
@@ -9444,6 +9465,105 @@ procedure TpvScene3D.TGroup.ConstructBuffers;
  end;
 begin
  InitializeNodeMeshPrimitiveShaderStorageBufferObject;
+end;
+
+procedure TpvScene3D.TGroup.SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
+type TStackItem=record
+      Node:TpvScene3D.TGroup.TNode;
+      Parent:TpvScene3D.TGroup.TNode;
+      WithinAnimatedPath:Boolean;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicStack<TStackItem>;
+     TNodeHashMap=TpvHashMap<TpvScene3D.TGroup.TNode,boolean>;
+var Stack:TStack;
+    Scene:TpvScene3D.TGroup.TScene;
+    Node:TpvScene3D.TGroup.TNode;
+    NodeHashMap:TNodeHashMap;
+    StackItem,NewStackItem:TStackItem;
+begin
+
+ Stack.Initialize;
+ try
+
+  NodeHashMap:=TNodeHashMap.Create(false);
+  try
+
+   for Scene in fScenes do begin
+
+    Scene.fAnimatedNodes.Clear;
+
+    Scene.fSkinnedOrMorphedAnimatedNodes.Clear;
+
+    Scene.fStaticNodes.Clear;
+
+    NodeHashMap.Clear;
+
+    for Node in Scene.Nodes do begin
+
+     if not NodeHashMap.ExistKey(Node) then begin
+      NodeHashMap.Add(Node,true);
+      NewStackItem.Node:=Node;
+      NewStackItem.Parent:=nil;
+      NewStackItem.WithinAnimatedPath:=false;
+      Stack.Push(NewStackItem);
+     end;
+
+    end;
+
+    NodeHashMap.Clear;
+
+    while Stack.Pop(StackItem) do begin
+
+     if not NodeHashMap.ExistKey(StackItem.Node) then begin
+
+      NodeHashMap.Add(StackItem.Node,true);
+
+      StackItem.Node.fFlags:=[];
+
+      if assigned(StackItem.Node.Skin) or (length(StackItem.Node.fWeights)>0) then begin
+       Include(StackItem.Node.fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinnedOrMorphAnimated);
+      end;
+
+      //TODO: Transform animation check
+
+      NewStackItem.WithinAnimatedPath:=StackItem.WithinAnimatedPath;
+
+      if TpvScene3D.TGroup.TNode.TNodeFlag.SkinnedOrMorphAnimated in StackItem.Node.fFlags then begin
+       Scene.fSkinnedOrMorphedAnimatedNodes.Add(StackItem.Node);
+       NewStackItem.WithinAnimatedPath:=true;
+      end else if TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in StackItem.Node.fFlags then begin
+       Scene.fAnimatedNodes.Add(StackItem.Node);
+       NewStackItem.WithinAnimatedPath:=true;
+      end else if not (StackItem.WithinAnimatedPath or assigned(StackItem.Parent)) then begin
+       Scene.fStaticNodes.Add(StackItem.Node);
+       NewStackItem.WithinAnimatedPath:=false;
+      end else if assigned(StackItem.Parent) then begin
+       StackItem.Parent.fSplittedChildren.Add(StackItem.Node);
+      end;
+
+      NewStackItem.Parent:=StackItem.Node;
+
+      for Node in StackItem.Node.Children do begin
+       NewStackItem.Node:=Node;
+       Stack.Push(NewStackItem);
+      end;
+
+     end;
+
+    end;
+
+
+   end;
+
+  finally
+   FreeAndNil(NodeHashMap);
+  end;
+
+ finally
+  Stack.Finalize;
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.CollectUsedVisibleDrawNodes;
@@ -10491,6 +10611,8 @@ begin
          ExecuteCode;
 
          PostProcessAnimations;
+
+         SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 
          if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
           fScene:=fScenes[aSourceDocument.Scene];
