@@ -9534,15 +9534,12 @@ begin
    for Scene in fScenes do begin
 
     Scene.fAnimatedNodes.Clear;
-
     Scene.fSkinOrWeightsAnimatedNodes.Clear;
-
     Scene.fStaticNodes.Clear;
 
     NodeHashMap.Clear;
 
     for Node in Scene.Nodes do begin
-
      if not NodeHashMap.ExistKey(Node) then begin
       NodeHashMap.Add(Node,true);
       NewStackItem.Node:=Node;
@@ -9550,17 +9547,13 @@ begin
       NewStackItem.WithinAnimatedPath:=false;
       Stack.Push(NewStackItem);
      end;
-
     end;
 
     NodeHashMap.Clear;
 
     while Stack.Pop(StackItem) do begin
-
      if not NodeHashMap.ExistKey(StackItem.Node) then begin
-
       NodeHashMap.Add(StackItem.Node,true);
-
       if (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in StackItem.Node.fFlags) or
          (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in StackItem.Node.fFlags) then begin
        Scene.fSkinOrWeightsAnimatedNodes.Add(StackItem.Node);
@@ -9577,19 +9570,13 @@ begin
         StackItem.Parent.fSplittedChildren.Add(StackItem.Node);
        end;
       end;
-
       NewStackItem.Parent:=StackItem.Node;
-
       for Node in StackItem.Node.Children do begin
        NewStackItem.Node:=Node;
        Stack.Push(NewStackItem);
       end;
-
      end;
-
     end;
-
-
    end;
 
   finally
