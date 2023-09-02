@@ -9561,8 +9561,6 @@ begin
 
       NodeHashMap.Add(StackItem.Node,true);
 
-      NewStackItem.WithinAnimatedPath:=StackItem.WithinAnimatedPath;
-
       if (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in StackItem.Node.fFlags) or
          (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in StackItem.Node.fFlags) then begin
        Scene.fSkinOrWeightsAnimatedNodes.Add(StackItem.Node);
@@ -9573,8 +9571,11 @@ begin
       end else if not (StackItem.WithinAnimatedPath or assigned(StackItem.Parent)) then begin
        Scene.fStaticNodes.Add(StackItem.Node);
        NewStackItem.WithinAnimatedPath:=false;
-      end else if assigned(StackItem.Parent) then begin
-       StackItem.Parent.fSplittedChildren.Add(StackItem.Node);
+      end else begin
+       NewStackItem.WithinAnimatedPath:=StackItem.WithinAnimatedPath;
+       if assigned(StackItem.Parent) then begin
+        StackItem.Parent.fSplittedChildren.Add(StackItem.Node);
+       end;
       end;
 
       NewStackItem.Parent:=StackItem.Node;
