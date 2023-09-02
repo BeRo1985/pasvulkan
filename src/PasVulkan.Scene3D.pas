@@ -1987,6 +1987,16 @@ type EpvScene3D=class(Exception);
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fAABBTreeProxy:TpvSizeInt;
                      fVisibleBitmap:TPasMPUInt32;
+                     fVulkanVertexBufferOffset:TpvInt64;
+                     fVulkanDrawIndexBufferOffset:TpvInt64;
+                     fVulkanDrawUniqueIndexBufferOffset:TpvInt64;
+                     fVulkanMorphTargetVertexBufferIndex:TpvInt64;
+                     fVulkanJointBlockBufferIndex:TpvInt64;
+                     fVulkanVertexBufferOffsets:array[0..MaxInFlightFrames-1] of TpvInt64;
+                     fVulkanDrawIndexBufferOffsets:array[0..MaxInFlightFrames-1] of TpvInt64;
+                     fVulkanDrawUniqueIndexBufferOffsets:array[0..MaxInFlightFrames-1] of TpvInt64;
+                     fVulkanMorphTargetVertexBufferIndexs:array[0..MaxInFlightFrames-1] of TpvInt64;
+                     fVulkanJointBlockBufferIndexs:array[0..MaxInFlightFrames-1] of TpvInt64;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
                      fCachedVerticesUpdated:boolean;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
@@ -2128,7 +2138,7 @@ type EpvScene3D=class(Exception);
               fVulkanMorphTargetVertexWeightsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;}
               fInstanceListLock:TPasMPSlimReaderWriterLock;
               fInstances:TInstances;
-              fCountMaximumInstances:TpvSizeint;
+              fMaximumCountInstances:TpvSizeint;
               fBoundingBox:TpvAABB;
               fSetGroupResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
               fCachedVerticesUpdated:boolean;
@@ -2205,7 +2215,7 @@ type EpvScene3D=class(Exception);
               property Nodes:TNodes read fNodes;
               property Scenes:TScenes read fScenes;
               property Scene:TScene read fScene;
-              property CountMaximumInstances:TpvSizeint read fCountMaximumInstances write fCountMaximumInstances;
+              property MaximumCountInstances:TpvSizeint read fMaximumCountInstances write fMaximumCountInstances;
               property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
             end;
             TGroups=TpvObjectGenericList<TGroup>;
@@ -8870,7 +8880,7 @@ constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;c
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
- fCountMaximumInstances:=0;
+ fMaximumCountInstances:=-1;
 
  fLock:=TPasMPSpinLock.Create;
 
@@ -10975,7 +10985,11 @@ end;
 
 function TpvScene3D.TGroup.CreateInstance:TpvScene3D.TGroup.TInstance;
 begin
- result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
+ if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
+  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
+ end else begin
+  result:=nil;
+ end;
 end;
 
 function TpvScene3D.TGroup.GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
