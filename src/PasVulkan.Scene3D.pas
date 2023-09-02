@@ -1584,7 +1584,7 @@ type EpvScene3D=class(Exception);
                     private
                      fIndex:TpvSizeInt;
                      fNodes:TNodes;
-                     fAnimatedNodes:TpvScene3D.TGroup.TNodes;
+                     fTransformAnimatedNodes:TpvScene3D.TGroup.TNodes;
                      fSkinOrWeightsAnimatedNodes:TpvScene3D.TGroup.TNodes;
                      fStaticNodes:TpvScene3D.TGroup.TNodes;
                      fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
@@ -1595,7 +1595,10 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceScene:TPasGLTF.TScene);
                     published
                      property Index:TpvSizeInt read fIndex;
-                     property Nodes:TNodes read fNodes;
+                     property Nodes:TpvScene3D.TGroup.TNodes read fNodes;
+                     property TransformAnimatedNodes:TpvScene3D.TGroup.TNodes read fTransformAnimatedNodes;
+                     property SkinOrWeightsAnimatedNodes:TpvScene3D.TGroup.TNodes read fSkinOrWeightsAnimatedNodes;
+                     property StaticNodes:TpvScene3D.TGroup.TNodes read fStaticNodes;
                    end;
                    TScenes=TpvObjectGenericList<TScene>;
                    { TInstance }
@@ -8809,8 +8812,8 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
 
- fAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
- fAnimatedNodes.OwnsObjects:=false;
+ fTransformAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
+ fTransformAnimatedNodes.OwnsObjects:=false;
 
  fSkinOrWeightsAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
  fSkinOrWeightsAnimatedNodes.OwnsObjects:=false;
@@ -8830,7 +8833,7 @@ destructor TpvScene3D.TGroup.TScene.Destroy;
 begin
  FreeAndNil(fDrawChoreographyBatchItems);
  FreeAndNil(fDrawChoreographyBatchUniqueItems);
- FreeAndNil(fAnimatedNodes);
+ FreeAndNil(fTransformAnimatedNodes);
  FreeAndNil(fSkinOrWeightsAnimatedNodes);
  FreeAndNil(fStaticNodes);
  FreeAndNil(fNodes);
@@ -9546,7 +9549,7 @@ begin
 
    for Scene in fScenes do begin
 
-    Scene.fAnimatedNodes.Clear;
+    Scene.fTransformAnimatedNodes.Clear;
     Scene.fSkinOrWeightsAnimatedNodes.Clear;
     Scene.fStaticNodes.Clear;
 
@@ -9572,7 +9575,7 @@ begin
        Scene.fSkinOrWeightsAnimatedNodes.Add(StackItem.Node);
        NewStackItem.WithinAnimatedPath:=true;
       end else if TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in StackItem.Node.fFlags then begin
-       Scene.fAnimatedNodes.Add(StackItem.Node);
+       Scene.fTransformAnimatedNodes.Add(StackItem.Node);
        NewStackItem.WithinAnimatedPath:=true;
       end else if not (StackItem.WithinAnimatedPath or assigned(StackItem.Parent)) then begin
        Scene.fStaticNodes.Add(StackItem.Node);
