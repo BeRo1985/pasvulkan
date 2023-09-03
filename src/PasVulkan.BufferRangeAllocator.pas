@@ -103,6 +103,9 @@ type { TpvBufferRangeAllocator }
        destructor Destroy; override;
        function Allocate(const aSize:TpvSizeInt):TpvSizeInt;
        procedure Release(const aStart:TpvSizeInt;aSize:TpvSizeInt=-1);
+      published
+       property Capacity:TpvSizeInt read fCapacity;
+       property OnResize:TOnResize read fOnResize write fOnResize; 
      end;
 
 
