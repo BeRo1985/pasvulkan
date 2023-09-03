@@ -67,11 +67,8 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types;
 
-type
-
-{ TpvBufferRangeAllocator }
-
- TpvBufferRangeAllocator=class
+type { TpvBufferRangeAllocator }
+     TpvBufferRangeAllocator=class
       public
        type TOnResize=procedure(const aSender:TpvBufferRangeAllocator;const aNewCapacity:TpvSizeInt) of object;
             PBufferRangeAllocatorRange=^TBufferRangeAllocatorRange;
