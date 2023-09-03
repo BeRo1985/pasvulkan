@@ -1218,6 +1218,7 @@ type EpvScene3D=class(Exception);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
+              function Check:Boolean;
               procedure Update;
               procedure UpdateReleaseFrameCounter;
             end;
@@ -6847,6 +6848,20 @@ begin
  FreeAndNil(fVulkanMorphTargetVertexBuffer);
  FreeAndNil(fVulkanJointBlockBuffer);
  inherited Destroy;
+end;
+
+function TpvScene3D.TVulkanPersistentBufferData.Check:Boolean;
+begin
+ result:=((not assigned(fVulkanVertexBuffer)) and
+          (not assigned(fVulkanDrawIndexBuffer)) and
+          (not assigned(fVulkanDrawUniqueIndexBuffer)) and
+          (not assigned(fVulkanMorphTargetVertexBuffer)) and
+          (not assigned(fVulkanJointBlockBuffer))) or
+         ((assigned(fVulkanVertexBuffer) and ((Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))<=fVulkanVertexBuffer.Size)) and
+          (assigned(fVulkanDrawIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawIndexBuffer.Size)) and
+          (assigned(fVulkanDrawUniqueIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawUniqueIndexBuffer.Size)) and
+          (assigned(fVulkanMorphTargetVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))<=fVulkanMorphTargetVertexBuffer.Size)) and
+          (assigned(fVulkanJointBlockBuffer) and ((Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))<=fVulkanJointBlockBuffer.Size)));
 end;
 
 procedure TpvScene3D.TVulkanPersistentBufferData.Update;
