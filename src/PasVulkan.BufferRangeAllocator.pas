@@ -79,7 +79,7 @@ type { TpvBufferRangeAllocator }
               Len:TpvSizeInt;
               Previous:PBufferRangeAllocatorRange;
               Next:PBufferRangeAllocatorRange;
-              function CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PBufferRangeAllocatorRange;            
+              class function CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PBufferRangeAllocatorRange; static;
             end;
             { TBufferRangeAllocatorRangeList }
             TBufferRangeAllocatorRangeList=record
@@ -113,7 +113,7 @@ implementation
 
 { TpvBufferRangeAllocator.TBufferRangeAllocatorRange }
 
-function TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PBufferRangeAllocatorRange;
+class function TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PBufferRangeAllocatorRange;
 begin
  GetMem(result,SizeOf(TpvBufferRangeAllocator.TBufferRangeAllocatorRange));
  result^.Start:=aStart;
@@ -235,6 +235,7 @@ end;
 { TpvBufferRangeAllocator }
 
 constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvSizeInt=0);
+var Range:TpvBufferRangeAllocator.PBufferRangeAllocatorRange;
 begin
  inherited Create;
  fAllocatedRanges.Initialize;
@@ -242,7 +243,8 @@ begin
  fOnResize:=nil;
  fCapacity:=aCapacity;
  if fCapacity>0 then begin
-  fFreeRanges.Insert(TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(0,fCapacity));
+  Range:=TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(0,fCapacity);
+  fFreeRanges.Insert(Range);
  end;
 end;
 

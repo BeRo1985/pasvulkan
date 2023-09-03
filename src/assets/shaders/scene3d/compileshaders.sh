@@ -70,6 +70,7 @@ compileshaderarguments=(
   '-V lens_star.frag -o lens_star_frag.spv'
   
   '-V mesh.comp -o mesh_comp.spv'
+  '-V mesh.comp -DUSE_MATERIAL_ID_MAP -o mesh_materialidmap_comp.spv'
 
   '-V mesh.vert -o mesh_vert.spv'
 

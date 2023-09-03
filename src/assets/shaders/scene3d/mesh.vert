@@ -19,6 +19,8 @@ layout(location = 6) in vec4 inColor0;
 layout(location = 7) in vec3 inModelScale;
 #ifdef VELOCITY
 layout(location = 8) in vec3 inPreviousPosition;
+layout(location = 9) in uint inGeneration;
+layout(location = 10) in uint inPreviousGeneration;
 #endif
 
 layout(location = 0) out vec3 outWorldSpacePosition;
@@ -149,7 +151,11 @@ void main() {
 #ifdef VELOCITY
   View previousView = uView.views[viewIndex + pushConstants.countAllViews];
   outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inPosition, 1.0);
-  outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
+  if(uint(inGeneration) != uint(inPreviousGeneration)){
+    outPreviousClipSpace = outCurrentClipSpace;
+  }else{  
+    outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
+  }
   gl_Position = outCurrentClipSpace;
   outJitter = pushConstants.jitter;
 #else

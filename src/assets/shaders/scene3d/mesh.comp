@@ -22,7 +22,7 @@ struct InPackedVertex {
 
 struct OutPackedVertex {
   uvec4 positionMaterialID;
-  uvec4 normalSignTangent;
+  uvec4 normalSignTangentGeneration;
   uvec4 texCoord0TexCoord1;
   uvec4 color0ModelScale;
 };
@@ -69,9 +69,11 @@ layout(std430, set = 0, binding = 6) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
+#ifdef USE_MATERIAL_ID_MAP  
 layout(std430, set = 0, binding = 7) buffer MaterialIDMap {
   uint materialIDMap[];
 };
+#endif
 
 /* clang-format on */
 
@@ -100,7 +102,7 @@ void main() {
       uint inMorphTargetVertexBaseIndex = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.x;
       uint inJointBlockBaseIndex = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.y;
       uint inCountJointBlocks = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.z & 0xffffu;
-      uint inFlags = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.z >> 16u;
+      uint inFlagsGeneration = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.z >> 16u;
       uint inMaterialID = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.w;
 
       mat4 nodeMatrix = nodeMatrices[inNodeIndex];
@@ -113,7 +115,7 @@ void main() {
       {
         vec3 tangent = octDecode(inTangent);
         vec3 normal = octDecode(inNormal);
-        tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * (((inFlags & (1u << 0)) != 0) ? -1.0 : 1.0), normal);
+        tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * (((inFlagsGeneration & (1u << 0)) != 0) ? -1.0 : 1.0), normal);
       }
       // mat3 tangentSpace = mat3(inTangent.xyz, cross(inTangent.xyz, inNormal) * inTangent.w, inNormal);
 
@@ -167,14 +169,22 @@ void main() {
 
         vec3 modelScale = vec3(length(modelNodeMatrix[0].xyz), length(modelNodeMatrix[1].xyz), length(modelNodeMatrix[2].xyz));
 
+        uint generation = inFlagsGeneration >> 4u;
+
         OutPackedVertex outPackedVertex;
-        outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), materialIDMap[inMaterialID]);
-        outPackedVertex.normalSignTangent = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)),  //
-                                                  packSnorm2x16(tangent.xy), packSnorm2x16(vec2(tangent.z, 0.0)));
+        outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), 
+#ifdef USE_MATERIAL_ID_MAP  
+                                                   materialIDMap[inMaterialID]
+#else
+                                                   inMaterialID
+#endif                                                   
+                                                  );
+        outPackedVertex.normalSignTangentGeneration = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)),  //
+                                                            packSnorm2x16(tangent.xy), (packSnorm2x16(vec2(tangent.z, 0.0)) & 0xffffu) | (uint(generation & 0xffffu) << 16u));
         outPackedVertex.texCoord0TexCoord1 = uvec4(inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/,  //
                                                    inPackedVertex.texCoord1Color0.xy /* uvec2(floatBitsToUint(texCoord1.xy)) */);
         outPackedVertex.color0ModelScale = uvec4(inPackedVertex.texCoord1Color0.zw /*uvec2(packHalf2x16(color.xy), packHalf2x16(color.zw))*/,  //
-                                                 vec2(packHalf2x16(modelScale.xy), packHalf2x16(vec2(modelScale.z, 0.0))));                    //
+                                                     vec2(packHalf2x16(modelScale.xy), packHalf2x16(vec2(modelScale.z, 0.0))));                    //
         outVertices[vertexIndex] = outPackedVertex;
       }
     }

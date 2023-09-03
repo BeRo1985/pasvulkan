@@ -120,7 +120,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_materialidmap_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally

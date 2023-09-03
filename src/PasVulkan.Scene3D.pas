@@ -315,8 +315,8 @@ type EpvScene3D=class(Exception);
                MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
                JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
                CountJointBlocks:TpvUInt16;           // + 2 = 58 (unsigned 16-bit count of joint blocks)
-               Flags:TpvUInt16;                      // + 2 = 60 (unsigned 16-bit flags)
-               MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 32-bit material ID)
+               FlagsGeneration:TpvUInt16;            // + 2 = 60 (unsigned 4-bit flags + 12-bit generation)
+               MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 24-bit material ID)
               );                                     //  ==   ==
               true:(                                 //  64   64 per vertex
                Padding:array[0..63] of TpvUInt8;
@@ -330,7 +330,7 @@ type EpvScene3D=class(Exception);
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                MaterialID:TpvUInt32;                 // + 4 = 16 (unsigned 32-bit material ID)
                NormalSign:TInt16Vector4;             // + 8 = 24 (signed 16-bit Normal + TBN sign)
-               Tangent:TInt16Vector4;                // + 8 = 32 (signed 16-bit Tangent + Placeholder)
+               TangentGeneration:TInt16Vector4;      // + 8 = 32 (signed 16-bit Tangent + Generation)
                TexCoord0:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                TexCoord1:TpvVector2;                 // + 8 = 48 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                Color0:TpvHalfFloatVector4;           // + 8 = 56 (must be at least half-float for HDR)
@@ -2371,6 +2371,7 @@ type EpvScene3D=class(Exception);
        fVulkanJointBlockBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
+       fMeshGenerationCounter:TpvUInt32;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -7459,11 +7460,16 @@ var PrimitiveIndex,
     OldVertex:TVertex;
     MorphTargetVertex:PMorphTargetVertex;
     MorphTargetVertexIndex,
-    MaterialID:TpvUInt32;
+    MaterialID,
+    Generation:TpvUInt32;
 begin
 
  result:=fNodeMeshInstances;
  inc(fNodeMeshInstances);
+
+ repeat
+  Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
+ until (Generation and $fff)<>0;
 
  fReferencedByNodes.Add(aNodeIndex);
 
@@ -7486,6 +7492,7 @@ begin
     Vertex:=@fGroup.fVertices.Items[VertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     Vertex^.MaterialID:=MaterialID;
+    Vertex^.FlagsGeneration:=(Vertex^.FlagsGeneration and $f) or ((Generation and $fff) shl 4);
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -7544,6 +7551,7 @@ begin
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     Vertex^.MaterialID:=MaterialID;
+    Vertex^.FlagsGeneration:=(Vertex^.FlagsGeneration and $f) or ((Generation and $fff) shl 4);
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -7645,7 +7653,12 @@ var Index,
     DestinationMeshPrimitiveIndices:TpvUInt32DynamicArray;
     MaxJointBlocks:PMaxJointBlocks;
     MaxJointBlocksHashMap:TMaxJointBlocksHashMap;
+    Generation:TpvUInt32;
 begin
+
+ repeat
+  Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
+ until (Generation and $fff)<>0;
 
  GetMem(MaxJointBlocks,SizeOf(TMaxJointBlocks));
  try
@@ -7981,7 +7994,7 @@ begin
         FillChar(Vertex^,SizeOf(TVertex),#0);
         Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
         Vertex^.NodeIndex:=TpvUInt32($ffffffff);
-        Vertex^.Flags:=0;
+        Vertex^.FlagsGeneration:=(Generation and $fff) shl 4;
         if VertexIndex<length(TemporaryNormals) then begin
          TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
         end else begin
@@ -8001,11 +8014,11 @@ begin
         Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
 {$if true}
         if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
-         Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
+         Vertex^.FlagsGeneration:=Vertex^.FlagsGeneration or (1 shl 0);
         end;
 {$else}
         if (VertexIndex<length(TemporaryTangents)) and (TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w<0) then begin
-         Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
+         Vertex^.FlagsGeneration:=Vertex^.FlagsGeneration or (1 shl 0);
         end;
 {$ifend}
         if VertexIndex<length(TemporaryTexCoord0) then begin
@@ -15471,6 +15484,8 @@ begin
 
  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
+ fMeshGenerationCounter:=1;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  fVulkanVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
@@ -17839,13 +17854,15 @@ begin
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.MaterialID)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Tangent)));
+ aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentGeneration)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord0)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord1)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Color0)));
  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.ModelScaleDummy)));
  if aWithPreviousPosition then begin
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,1,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentGeneration[3])));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,1,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentGeneration[3])));
  end;
 end;
 
