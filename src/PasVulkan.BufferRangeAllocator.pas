@@ -144,7 +144,10 @@ procedure TpvBufferRangeAllocator.TBufferRangeAllocatorRangeList.Insert(const aR
 var Current,Previous:PBufferRangeAllocatorRange;
 begin
  if assigned(aRange) then begin
-  if assigned(First) then begin
+  if assigned(Last) and (aRange^.Start>=(Last^.Start+Last^.Len)) then begin
+   Previous:=Last;
+   Current:=nil;
+  end else if assigned(First) then begin
    Current:=First;
    while assigned(Current) and (Current^.Start<aRange^.Start) do begin
     Previous:=Current;
