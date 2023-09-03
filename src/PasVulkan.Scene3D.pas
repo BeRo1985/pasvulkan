@@ -1223,6 +1223,20 @@ type EpvScene3D=class(Exception);
               procedure UpdateReleaseFrameCounter;
             end;
             TVulkanPersistentBufferDataArray=array[0..MaxInFlightFrames-1] of TVulkanPersistentBufferData;
+            { TVulkanPersistentBuffers }
+            TVulkanPersistentBuffers=class
+             private
+              fSceneInstance:TpvScene3D;
+              fBufferDataArray:TVulkanPersistentBufferDataArray;
+              fBufferData:TVulkanPersistentBufferData;
+              fCurrentIndex:TpvSizeInt;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+              procedure Update;
+             published
+              property BufferData:TVulkanPersistentBufferData read fBufferData;
+            end;
             { TGroup }
             TGroup=class(TBaseObject) // A group is a GLTF scene in a uber-scene
              public
@@ -7103,6 +7117,47 @@ begin
    FreeAndNil(fVulkanMorphTargetVertexBuffer);
    FreeAndNil(fVulkanJointBlockBuffer);
   end; 
+ end;
+end;
+
+{ TpvScene3D.TVulkanPersistentBuffers }
+
+constructor TpvScene3D.TVulkanPersistentBuffers.Create(const aSceneInstance:TpvScene3D);
+var Index:TpvSizeInt;
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fBufferDataArray[Index]:=TpvScene3D.TVulkanPersistentBufferData.Create(fSceneInstance);
+ end;
+ fCurrentIndex:=0;
+ fBufferData:=fBufferDataArray[fCurrentIndex];
+end;
+
+destructor TpvScene3D.TVulkanPersistentBuffers.Destroy;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fBufferDataArray[Index]);
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TVulkanPersistentBuffers.Update;
+var Index:TpvSizeInt;
+begin
+ if not fBufferDataArray[fCurrentIndex].Check then begin
+  inc(fCurrentIndex);
+  if fCurrentIndex>=MaxInFlightFrames then begin
+   fCurrentIndex:=0;
+  end;
+ end;
+ fBufferData:=fBufferDataArray[fCurrentIndex];
+ fBufferData.Update;
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  if Index<>fCurrentIndex then begin
+   fBufferDataArray[Index].UpdateReleaseFrameCounter;
+  end;
  end;
 end;
 
