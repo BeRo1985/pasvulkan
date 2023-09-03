@@ -253,79 +253,75 @@ end;
 
 function TpvBufferRangeAllocator.Allocate(const aSize:TpvSizeInt):TpvSizeInt;
 var Current,Next:PBufferRangeAllocatorRange;
-begin 
- repeat
-  Current:=fFreeRanges.First;
-  while assigned(Current) do begin
-   if Current^.Len=aSize then begin
-    result:=Current^.Start;
-    fFreeRanges.Remove(Current);
-    Current^.Previous:=nil;
-    Current^.Next:=nil;
-    fAllocatedRanges.Insert(Current);
-    exit;
-   end else if Current^.Len>aSize then begin
-    result:=Current^.Start;
-    if Current^.Len>aSize then begin
-     Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
-     fFreeRanges.Insert(Next);
+begin
+ if aSize>0 then begin
+  repeat
+   Current:=fFreeRanges.First;
+   while assigned(Current) do begin
+    if Current^.Len=aSize then begin
+     result:=Current^.Start;
+     fFreeRanges.Remove(Current);
+     Current^.Previous:=nil;
+     Current^.Next:=nil;
+     fAllocatedRanges.Insert(Current);
+     exit;
+    end else if Current^.Len>aSize then begin
+     result:=Current^.Start;
+     if Current^.Len>aSize then begin
+      Next:=Current^.CreateRange(Current^.Start+aSize,Current^.Len-aSize);
+      fFreeRanges.Insert(Next);
+     end;
+     fFreeRanges.Remove(Current);
+     Current^.Previous:=nil;
+     Current^.Next:=nil;
+     fAllocatedRanges.Insert(Current);
+     exit;
     end;
-    fFreeRanges.Remove(Current);
-    Current^.Previous:=nil;
-    Current^.Next:=nil;
-    fAllocatedRanges.Insert(Current);
-    exit;
+    Current:=Current^.Next;
    end;
-   Current:=Current^.Next;
-  end;
-  inc(fCapacity,(fCapacity+1) shr 1); // 1.5x
-  if assigned(fOnResize) then begin
-   fOnResize(self,fCapacity);
-  end;
-  Current:=fFreeRanges.Last;
-  Next:=Current^.CreateRange(result,aSize);
-  fFreeRanges.Insert(Next);
- until true;
+   inc(fCapacity,(fCapacity+1) shr 1); // 1.5x
+   if assigned(fOnResize) then begin
+    fOnResize(self,fCapacity);
+   end;
+   Current:=fFreeRanges.Last;
+   Next:=Current^.CreateRange(result,aSize);
+   fFreeRanges.Insert(Next);
+  until true;
+ end else begin
+  result:=-1;
+ end;
 end;
 
 procedure TpvBufferRangeAllocator.Release(const aStart:TpvSizeInt;aSize:TpvSizeInt);
 var Current,Next:PBufferRangeAllocatorRange;
 begin
 
- if aSize<0 then begin
-  Current:=fAllocatedRanges.First;
-  while assigned(Current) do begin
-   if Current^.Start=aStart then begin
-    aSize:=Current^.Len;
-    break;
-   end;
-   Current:=Current^.Next;
-  end;
- end;
+ if (aStart>=0) and (aSize<>0) then begin
 
- if aSize>0 then begin
-   
-  Current:=fAllocatedRanges.First;
-  while assigned(Current) do begin
-   if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
-    fAllocatedRanges.Remove(Current);
-    Current^.Previous:=nil;
-    Current^.Next:=nil;
-    fFreeRanges.Insert(Current);
-    MergeFreeRanges;
-    exit;
-   end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
-    Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
-    fAllocatedRanges.Remove(Current);
-    Current^.Previous:=nil;
-    Current^.Next:=nil;
-    fAllocatedRanges.Insert(Current);
-    fFreeRanges.Insert(Next);
-    MergeFreeRanges;
-    exit;
-   end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
-    if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
-     Next:=Current^.CreateRange(aStart+aSize,(Current^.Start+Current^.Len)-(aStart+aSize));
+  if aSize<0 then begin
+   Current:=fAllocatedRanges.First;
+   while assigned(Current) do begin
+    if Current^.Start=aStart then begin
+     aSize:=Current^.Len;
+     break;
+    end;
+    Current:=Current^.Next;
+   end;
+  end;
+
+  if aSize>0 then begin
+
+   Current:=fAllocatedRanges.First;
+   while assigned(Current) do begin
+    if (Current^.Start=aStart) and (Current^.Len=aSize) then begin
+     fAllocatedRanges.Remove(Current);
+     Current^.Previous:=nil;
+     Current^.Next:=nil;
+     fFreeRanges.Insert(Current);
+     MergeFreeRanges;
+     exit;
+    end else if (Current^.Start=aStart) and (aSize<Current^.Len) then begin
+     Next:=Current^.CreateRange(aStart+aSize,Current^.Len-aSize);
      fAllocatedRanges.Remove(Current);
      Current^.Previous:=nil;
      Current^.Next:=nil;
@@ -333,16 +329,28 @@ begin
      fFreeRanges.Insert(Next);
      MergeFreeRanges;
      exit;
-    end else begin
-     fAllocatedRanges.Remove(Current);
-     Current^.Previous:=nil;
-     Current^.Next:=nil;
-     fFreeRanges.Insert(Current);
-     MergeFreeRanges;
-     exit;
+    end else if (Current^.Start<aStart) and ((Current^.Start+Current^.Len)>aStart) then begin
+     if (Current^.Start+Current^.Len)>(aStart+aSize) then begin
+      Next:=Current^.CreateRange(aStart+aSize,(Current^.Start+Current^.Len)-(aStart+aSize));
+      fAllocatedRanges.Remove(Current);
+      Current^.Previous:=nil;
+      Current^.Next:=nil;
+      fAllocatedRanges.Insert(Current);
+      fFreeRanges.Insert(Next);
+      MergeFreeRanges;
+      exit;
+     end else begin
+      fAllocatedRanges.Remove(Current);
+      Current^.Previous:=nil;
+      Current^.Next:=nil;
+      fFreeRanges.Insert(Current);
+      MergeFreeRanges;
+      exit;
+     end;
     end;
+    Current:=Current^.Next;
    end;
-   Current:=Current^.Next;
+
   end;
 
  end;
