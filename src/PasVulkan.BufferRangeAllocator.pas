@@ -235,7 +235,6 @@ end;
 { TpvBufferRangeAllocator }
 
 constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvSizeInt=0);
-var Range:TpvBufferRangeAllocator.PBufferRangeAllocatorRange;
 begin
  inherited Create;
  fAllocatedRanges.Initialize;
@@ -243,8 +242,7 @@ begin
  fOnResize:=nil;
  fCapacity:=aCapacity;
  if fCapacity>0 then begin
-  Range:=TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(0,fCapacity); 
-  fFreeRanges.Insert(Range);
+  fFreeRanges.Insert(TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(0,fCapacity));
  end;
 end;
 
