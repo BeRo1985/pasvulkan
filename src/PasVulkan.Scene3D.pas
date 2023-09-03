@@ -89,6 +89,7 @@ uses {$ifdef Windows}
      PasVulkan.BVH.Triangles,
      PasVulkan.PooledObject,
      PasVulkan.Frustum,
+     PasVulkan.BufferRangeAllocator,
      POCA;
 
 type EpvScene3D=class(Exception);
