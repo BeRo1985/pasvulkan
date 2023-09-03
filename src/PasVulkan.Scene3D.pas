@@ -1991,13 +1991,8 @@ type EpvScene3D=class(Exception);
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanDrawIndexBufferOffset:TpvInt64;
                      fVulkanDrawUniqueIndexBufferOffset:TpvInt64;
-                     fVulkanMorphTargetVertexBufferIndex:TpvInt64;
-                     fVulkanJointBlockBufferIndex:TpvInt64;
-                     fVulkanVertexBufferOffsets:array[0..MaxInFlightFrames-1] of TpvInt64;
-                     fVulkanDrawIndexBufferOffsets:array[0..MaxInFlightFrames-1] of TpvInt64;
-                     fVulkanDrawUniqueIndexBufferOffsets:array[0..MaxInFlightFrames-1] of TpvInt64;
-                     fVulkanMorphTargetVertexBufferIndexs:array[0..MaxInFlightFrames-1] of TpvInt64;
-                     fVulkanJointBlockBufferIndexs:array[0..MaxInFlightFrames-1] of TpvInt64;
+                     fVulkanMorphTargetVertexBufferOffset:TpvInt64;
+                     fVulkanJointBlockBufferOffset:TpvInt64;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
                      fCachedVerticesUpdated:boolean;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
@@ -2366,6 +2361,7 @@ type EpvScene3D=class(Exception);
        fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
+       fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanVertexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawIndexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawUniqueIndexBufferRangeAllocator:TpvBufferRangeAllocator;
@@ -9391,7 +9387,7 @@ var Index:TpvSizeInt;
     end;
 
     else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-     // TODO
+
     end;
    end;
 
@@ -12088,6 +12084,39 @@ begin
 
  fOnNodeFilter:=nil;
 
+ if fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+
+  fSceneInstance.fBufferRangeAllocatorLock.Acquire;
+  try
+
+   fVulkanVertexBufferOffset:=fSceneInstance.fVulkanVertexBufferRangeAllocator.Allocate(fGroup.fVertices.Count);
+
+   fVulkanDrawIndexBufferOffset:=fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Allocate(fGroup.fDrawChoreographyBatchCondensedIndices.Count);
+
+   fVulkanDrawUniqueIndexBufferOffset:=fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.Allocate(fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Count);
+
+   fVulkanMorphTargetVertexBufferOffset:=fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.Allocate(fGroup.fMorphTargetVertices.Count);
+
+   fVulkanJointBlockBufferOffset:=fSceneInstance.fVulkanJointBlockBufferRangeAllocator.Allocate(fGroup.fJointBlocks.Count);
+
+  finally
+   fSceneInstance.fBufferRangeAllocatorLock.Release;
+  end;
+
+ end else begin
+
+  fVulkanVertexBufferOffset:=-1;
+
+  fVulkanDrawIndexBufferOffset:=-1;
+
+  fVulkanDrawUniqueIndexBufferOffset:=-1;
+
+  fVulkanMorphTargetVertexBufferOffset:=-1;
+
+  fVulkanJointBlockBufferOffset:=-1;
+
+ end;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
@@ -12127,6 +12156,23 @@ begin
    fDuplicatedMaterials[Index].DecRef;
   end;
   FreeAndNil(fDuplicatedMaterials);
+ end;
+ if fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+  fSceneInstance.fBufferRangeAllocatorLock.Acquire;
+  try
+   fSceneInstance.fVulkanVertexBufferRangeAllocator.Release(fVulkanVertexBufferOffset,fGroup.fVertices.Count);
+   fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Release(fVulkanDrawIndexBufferOffset,fGroup.fDrawChoreographyBatchCondensedIndices.Count);
+   fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.Release(fVulkanDrawUniqueIndexBufferOffset,fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Count);
+   fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.Release(fVulkanMorphTargetVertexBufferOffset,fGroup.fMorphTargetVertices.Count);
+   fSceneInstance.fVulkanJointBlockBufferRangeAllocator.Release(fVulkanJointBlockBufferOffset,fGroup.fJointBlocks.Count);
+  finally
+   fSceneInstance.fBufferRangeAllocatorLock.Release;
+  end;
+  fVulkanVertexBufferOffset:=-1;
+  fVulkanDrawIndexBufferOffset:=-1;
+  fVulkanDrawUniqueIndexBufferOffset:=-1;
+  fVulkanMorphTargetVertexBufferOffset:=-1;
+  fVulkanJointBlockBufferOffset:=-1;
  end;
  fNodes:=nil;
  fSkins:=nil;
@@ -15409,6 +15455,8 @@ begin
 
  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
+ fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
+
  fVulkanVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
  fVulkanDrawIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
@@ -15850,6 +15898,8 @@ begin
  FreeAndNil(fVulkanMorphTargetVertexBufferRangeAllocator);
 
  FreeAndNil(fVulkanJointBlockBufferRangeAllocator);
+
+ FreeAndNil(fBufferRangeAllocatorLock);
 
  inherited Destroy;
 end;
