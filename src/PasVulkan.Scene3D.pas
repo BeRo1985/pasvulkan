@@ -2366,6 +2366,11 @@ type EpvScene3D=class(Exception);
        fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
+       fVulkanVertexBufferRangeAllocator:TpvBufferRangeAllocator;
+       fVulkanDrawIndexBufferRangeAllocator:TpvBufferRangeAllocator;
+       fVulkanDrawUniqueIndexBufferRangeAllocator:TpvBufferRangeAllocator;
+       fVulkanMorphTargetVertexBufferRangeAllocator:TpvBufferRangeAllocator;
+       fVulkanJointBlockBufferRangeAllocator:TpvBufferRangeAllocator;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -15404,6 +15409,16 @@ begin
 
  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
+ fVulkanVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+
+ fVulkanDrawIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+
+ fVulkanDrawUniqueIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+
+ fVulkanMorphTargetVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+
+ fVulkanJointBlockBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
  fUploaded:=false;
@@ -15825,6 +15840,16 @@ begin
  FreeAndNil(fLock);
 
  FreeAndNil(fLoadLock);
+
+ FreeAndNil(fVulkanVertexBufferRangeAllocator);
+
+ FreeAndNil(fVulkanDrawIndexBufferRangeAllocator);
+
+ FreeAndNil(fVulkanDrawUniqueIndexBufferRangeAllocator);
+
+ FreeAndNil(fVulkanMorphTargetVertexBufferRangeAllocator);
+
+ FreeAndNil(fVulkanJointBlockBufferRangeAllocator);
 
  inherited Destroy;
 end;
