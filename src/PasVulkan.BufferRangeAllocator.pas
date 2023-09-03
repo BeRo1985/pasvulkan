@@ -99,7 +99,7 @@ type { TpvBufferRangeAllocator }
        fOnResize:TOnResize;
        procedure MergeFreeRanges;
       public
-       constructor Create; reintroduce;
+       constructor Create(const aCapacity:TpvSizeInt=0); reintroduce;
        destructor Destroy; override;
        function Allocate(const aSize:TpvSizeInt):TpvSizeInt;
        procedure Release(const aStart:TpvSizeInt;aSize:TpvSizeInt=-1);
@@ -234,12 +234,18 @@ end;
 
 { TpvBufferRangeAllocator }
 
-constructor TpvBufferRangeAllocator.Create;
+constructor TpvBufferRangeAllocator.Create(const aCapacity:TpvSizeInt=0);
+var Range:TpvBufferRangeAllocator.PBufferRangeAllocatorRange;
 begin
  inherited Create;
  fAllocatedRanges.Initialize;
  fFreeRanges.Initialize;
  fOnResize:=nil;
+ fCapacity:=aCapacity;
+ if fCapacity>0 then begin
+  Range:=TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(0,fCapacity); 
+  fFreeRanges.Insert(Range);
+ end;
 end;
 
 destructor TpvBufferRangeAllocator.Destroy;
