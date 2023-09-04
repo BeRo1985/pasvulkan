@@ -1462,8 +1462,7 @@ void main() {
         const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
         vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
         kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
-        float roughness = perceptualRoughness * perceptualRoughness;
-        perceptualRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
+        perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
       }
 #endif
 
@@ -1562,8 +1561,7 @@ void main() {
           const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
           vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
           kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
-          float roughness = sheenRoughness * sheenRoughness;
-          sheenRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
+          sheenRoughness = sqrt(clamp((sheenRoughness * sheenRoughness) + kernelRoughness, 0.0, 1.0));
         }
 #endif
         sheenRoughness = max(sheenRoughness, 1e-7);
@@ -1594,8 +1592,7 @@ void main() {
         clearcoatRoughness = min(max(clearcoatRoughness, minimumRoughness) + geometryRoughness, 1.0);
 #else
         {
-          float roughness = clearcoatRoughness * clearcoatRoughness;
-          clearcoatRoughness = sqrt(sqrt(clamp((roughness * roughness) + kernelRoughness, 0.0, 1.0)));
+          clearcoatRoughness = sqrt(clamp((clearcoatRoughness * clearcoatRoughness) + kernelRoughness, 0.0, 1.0));
         }
 #endif
       }
