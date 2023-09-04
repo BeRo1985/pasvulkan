@@ -76,13 +76,13 @@ type PpvLZBRSFMode=^TpvLZBRSFMode;
        Slow
       );
 
-function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvSizeUInt;out aDestData:TpvPointer;out aDestLen:TpvSizeUInt;const aMode:TpvLZBRSFMode):boolean;
+function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aMode:TpvLZBRSFMode):boolean;
 
-function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvSizeUInt;out aDestData:TpvPointer;out aDestLen:TpvSizeUInt):boolean;
+function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
 
 implementation
 
-function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvSizeUInt;out aDestData:TpvPointer;out aDestLen:TpvSizeUInt;const aMode:TpvLZBRSFMode):boolean;
+function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aMode:TpvLZBRSFMode):boolean;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -412,7 +412,7 @@ begin
  end;
 end;
 
-function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvSizeUInt;out aDestData:TpvPointer;out aDestLen:TpvSizeUInt):boolean;
+function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
 var InputPointer,InputEnd,OutputPointer,OutputEnd,CopyFromPointer:PpvUInt8;
     Len,Offset,Tag:TpvUInt32;
     OutputSize:TpvUInt64;
