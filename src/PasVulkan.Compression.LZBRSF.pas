@@ -104,6 +104,17 @@ type PHashTable=^THashTable;
 var LiteralStart:PpvUInt8;
     LiteralLength:TpvUInt64;
     AllocatedDestSize:TpvUInt64;
+ procedure DoOutputBlock(const aData:Pointer;const aSize:TpvUInt64);
+ begin
+  if aSize>0 then begin
+   if AllocatedDestSize<(aDestLen+aSize) then begin
+    AllocatedDestSize:=(aDestLen+aSize) shl 1;
+    ReallocMem(aDestData,AllocatedDestSize);
+   end;
+   Move(aData^,PBytes(aDestData)^[aDestLen],aSize);
+   inc(aDestLen,aSize);
+  end;
+ end;
  procedure DoOutputUInt8(const aValue:TpvUInt8);
  begin
   if AllocatedDestSize<(aDestLen+SizeOf(TpvUInt8)) then begin
@@ -200,11 +211,8 @@ var LiteralStart:PpvUInt8;
      DoOutputUInt32(LiteralLength-1);
     end;
    end;
-   while LiteralLength>0 do begin
-    dec(LiteralLength);
-    DoOutputUInt8(LiteralStart^);
-    inc(LiteralStart);
-   end;
+   DoOutputBlock(LiteralStart,LiteralLength);
+   LiteralStart:=nil;
    LiteralLength:=0;
   end;
  end;
