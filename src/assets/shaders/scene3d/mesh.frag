@@ -1385,8 +1385,8 @@ void main() {
   }  
 #endif
 #ifndef DEPTHONLY
-  envMapMaxLevelGGX = textureQueryLevels(uImageBasedLightingEnvMaps[0]);
-  envMapMaxLevelCharlie = textureQueryLevels(uImageBasedLightingEnvMaps[1]);
+  envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
+  envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
   flags = material.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
