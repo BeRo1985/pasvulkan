@@ -187,7 +187,7 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
     {$ifndef CPU64}Code,{$endif}Range,Cache,CountFFBytes,LastMatchDistance:TpvUInt32;
     {$ifdef CPU64}Code:TpvUInt64;{$endif}
     Model:array[0..SizeModels-1] of TpvUInt32;
-    LastWasMatch,FirstByte{$ifndef CPU64},Carry{$endif},OK:boolean;
+    LastWasMatch,FirstByte,First{$ifndef CPU64},Carry{$endif},OK:boolean;
     MinDestLen:TpvUInt32;
  procedure EncoderShift;
 {$ifdef CPU64}
@@ -338,6 +338,7 @@ begin
   Greedy:=aLevel>=TpvLZBRRCLevel(1);
   LastWasMatch:=false;
   FirstByte:=true;
+  First:=true;
   OK:=true;
   CountFFBytes:=0;
   Range:=$ffffffff;
@@ -365,88 +366,93 @@ begin
      CurrentPossibleMatch:=Head;
      BestMatchDistance:=0;
      BestMatchLength:=1;
-     Step:=0;
-     while assigned(CurrentPossibleMatch) and
-           ({%H-}TpvPtrUInt(CurrentPointer)>{%H-}TpvPtrUInt(CurrentPossibleMatch)) and
-           (TpvPtrInt({%H-}TpvPtrUInt({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(CurrentPossibleMatch)))<TpvPtrInt(MaxOffset)) do begin
-      Difference:=PpvUInt32(TpvPointer(@PBytes(CurrentPointer)^[0]))^ xor PpvUInt32(TpvPointer(@PBytes(CurrentPossibleMatch)^[0]))^;
-      if (Difference and TpvUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}))=0 then begin
-       if (BestMatchLength<=({%H-}TpvPtrUInt(EndPointer)-{%H-}TpvPtrUInt(CurrentPointer))) and
-          (PBytes(CurrentPointer)^[BestMatchLength-1]=PBytes(CurrentPossibleMatch)^[BestMatchLength-1]) then begin
-        MatchLength:=MinMatch;
-        while ({%H-}TpvPtrUInt(@PBytes(CurrentPointer)^[MatchLength+(SizeOf(TpvUInt32)-1)])<{%H-}TpvPtrUInt(EndPointer)) do begin
-         Difference:=PpvUInt32(TpvPointer(@PBytes(CurrentPointer)^[MatchLength]))^ xor PpvUInt32(TpvPointer(@PBytes(CurrentPossibleMatch)^[MatchLength]))^;
-         if Difference=0 then begin
-          inc(MatchLength,SizeOf(TpvUInt32));
-         end else begin
-{$if defined(FPC_BIG_ENDIAN)}
-          if (Difference shr 16)<>0 then begin
-           inc(MatchLength,not (Difference shr 24));
+     if First then begin
+      First:=false;
+      EncodeTree(LiteralModel,8,4,PpvUInt8(CurrentPointer)^);
+     end else begin
+      Step:=0;
+      while assigned(CurrentPossibleMatch) and
+            ({%H-}TpvPtrUInt(CurrentPointer)>{%H-}TpvPtrUInt(CurrentPossibleMatch)) and
+            (TpvPtrInt({%H-}TpvPtrUInt({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(CurrentPossibleMatch)))<TpvPtrInt(MaxOffset)) do begin
+       Difference:=PpvUInt32(TpvPointer(@PBytes(CurrentPointer)^[0]))^ xor PpvUInt32(TpvPointer(@PBytes(CurrentPossibleMatch)^[0]))^;
+       if (Difference and TpvUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}))=0 then begin
+        if (BestMatchLength<=({%H-}TpvPtrUInt(EndPointer)-{%H-}TpvPtrUInt(CurrentPointer))) and
+           (PBytes(CurrentPointer)^[BestMatchLength-1]=PBytes(CurrentPossibleMatch)^[BestMatchLength-1]) then begin
+         MatchLength:=MinMatch;
+         while ({%H-}TpvPtrUInt(@PBytes(CurrentPointer)^[MatchLength+(SizeOf(TpvUInt32)-1)])<{%H-}TpvPtrUInt(EndPointer)) do begin
+          Difference:=PpvUInt32(TpvPointer(@PBytes(CurrentPointer)^[MatchLength]))^ xor PpvUInt32(TpvPointer(@PBytes(CurrentPossibleMatch)^[MatchLength]))^;
+          if Difference=0 then begin
+           inc(MatchLength,SizeOf(TpvUInt32));
           end else begin
-           inc(MatchLength,2+(not (Difference shr 8)));
+ {$if defined(FPC_BIG_ENDIAN)}
+           if (Difference shr 16)<>0 then begin
+            inc(MatchLength,not (Difference shr 24));
+           end else begin
+            inc(MatchLength,2+(not (Difference shr 8)));
+           end;
+ {$else}
+           inc(MatchLength,MultiplyDeBruijnBytePosition[TpvUInt32(TpvUInt32(Difference and (-Difference))*TpvUInt32($077cb531)) shr 27]);
+ {$ifend}
+           break;
           end;
-{$else}
-          inc(MatchLength,MultiplyDeBruijnBytePosition[TpvUInt32(TpvUInt32(Difference and (-Difference))*TpvUInt32($077cb531)) shr 27]);
-{$ifend}
-          break;
+         end;
+         if BestMatchLength<MatchLength then begin
+          BestMatchDistance:={%H-}TpvPtrUInt({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(CurrentPossibleMatch));
+          BestMatchLength:=MatchLength;
          end;
         end;
-        if BestMatchLength<MatchLength then begin
-         BestMatchDistance:={%H-}TpvPtrUInt({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(CurrentPossibleMatch));
-         BestMatchLength:=MatchLength;
-        end;
        end;
-      end;
-      inc(Step);
-      if Step<MaxSteps then begin
-       CurrentPossibleMatch:=ChainTable^[({%H-}TpvPtrUInt(CurrentPossibleMatch)-{%H-}TpvPtrUInt(aInData)) and WindowMask];
-      end else begin
-       break;
-      end;
-     end;
-     if (BestMatchDistance>0) and
-        (((BestMatchDistance<96) and (BestMatchLength>1)) or
-         ((BestMatchDistance>=96) and (BestMatchLength>3)) or
-         ((BestMatchDistance>=2048) and (BestMatchLength>4))) then begin
-  //  writeln('C: ',BestMatchLength,' ',{%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(aInData),' ',({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(aInData))+BestMatchLength);
-      MatchLength:=BestMatchLength;
-      EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,1);
-      if (not LastWasMatch) and (BestMatchDistance=LastMatchDistance) then begin
-       EncodeBit(PreviousMatchModel,5,1);
-      end else begin
-       if not LastWasMatch then begin
-        EncodeBit(PreviousMatchModel,5,0);
-       end;
-       Offset:=BestMatchDistance-1;
-       EncodeGamma(Gamma0Model,(Offset shr 4)+2);
-       EncodeTree(MatchLowModel+((ord((Offset shr 4)<>0) and 1) shl 4),4,5,Offset and $f);
-       dec(MatchLength,(ord(BestMatchDistance>=96) and 1)+(ord(BestMatchDistance>=2048) and 1));
-      end;
-      EncodeGamma(Gamma1Model,MatchLength);
-      LastWasMatch:=true;
-      LastMatchDistance:=BestMatchDistance;
-      UnsuccessfulFindMatchAttempts:=TpvUInt32(1) shl SkipStrength;
-     end else begin
-      if (SkipStrength>31) and (BestMatchLength=1) then begin
-       EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,0);
-       EncodeTree(LiteralModel,8,4,CurrentPointer^);
-       LastWasMatch:=false;
-      end else begin
-       if BestMatchLength=1 then begin
-        Step:=UnsuccessfulFindMatchAttempts shr SkipStrength;
+       inc(Step);
+       if Step<MaxSteps then begin
+        CurrentPossibleMatch:=ChainTable^[({%H-}TpvPtrUInt(CurrentPossibleMatch)-{%H-}TpvPtrUInt(aInData)) and WindowMask];
        end else begin
-        Step:=BestMatchLength;
+        break;
        end;
-       Offset:=0;
-       while (Offset<Step) and (({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer)) do begin
+      end;
+      if (BestMatchDistance>0) and
+         (((BestMatchDistance<96) and (BestMatchLength>1)) or
+          ((BestMatchDistance>=96) and (BestMatchLength>3)) or
+          ((BestMatchDistance>=2048) and (BestMatchLength>4))) then begin
+   //  writeln('C: ',BestMatchLength,' ',{%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(aInData),' ',({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(aInData))+BestMatchLength);
+       MatchLength:=BestMatchLength;
+       EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,1);
+       if (not LastWasMatch) and (BestMatchDistance=LastMatchDistance) then begin
+        EncodeBit(PreviousMatchModel,5,1);
+       end else begin
+        if not LastWasMatch then begin
+         EncodeBit(PreviousMatchModel,5,0);
+        end;
+        Offset:=BestMatchDistance-1;
+        EncodeGamma(Gamma0Model,(Offset shr 4)+2);
+        EncodeTree(MatchLowModel+((ord((Offset shr 4)<>0) and 1) shl 4),4,5,Offset and $f);
+        dec(MatchLength,(ord(BestMatchDistance>=96) and 1)+(ord(BestMatchDistance>=2048) and 1));
+       end;
+       EncodeGamma(Gamma1Model,MatchLength);
+       LastWasMatch:=true;
+       LastMatchDistance:=BestMatchDistance;
+       UnsuccessfulFindMatchAttempts:=TpvUInt32(1) shl SkipStrength;
+      end else begin
+       if (SkipStrength>31) and (BestMatchLength=1) then begin
         EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,0);
-        EncodeTree(LiteralModel,8,4,PpvUInt8Array(CurrentPointer)^[Offset]);
+        EncodeTree(LiteralModel,8,4,CurrentPointer^);
         LastWasMatch:=false;
-        inc(Offset);
-       end;
-       if BestMatchLength=1 then begin
-        BestMatchLength:=Offset;
-        inc(UnsuccessfulFindMatchAttempts,ord(UnsuccessfulFindMatchAttempts<TpvUInt32($ffffffff)) and 1);
+       end else begin
+        if BestMatchLength=1 then begin
+         Step:=UnsuccessfulFindMatchAttempts shr SkipStrength;
+        end else begin
+         Step:=BestMatchLength;
+        end;
+        Offset:=0;
+        while (Offset<Step) and (({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer)) do begin
+         EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,0);
+         EncodeTree(LiteralModel,8,4,PpvUInt8Array(CurrentPointer)^[Offset]);
+         LastWasMatch:=false;
+         inc(Offset);
+        end;
+        if BestMatchLength=1 then begin
+         BestMatchLength:=Offset;
+         inc(UnsuccessfulFindMatchAttempts,ord(UnsuccessfulFindMatchAttempts<TpvUInt32($ffffffff)) and 1);
+        end;
        end;
       end;
      end;
@@ -602,7 +608,7 @@ begin
      end else begin
       FreeMem(aDestData);
       aDestLen:=0;
-      result:=False;
+      result:=false;
       exit;
      end;
     end else begin
@@ -618,7 +624,7 @@ begin
      end else begin
       FreeMem(aDestData);
       aDestLen:=0;
-      result:=False;
+      result:=false;
       exit;
      end;
     end;
@@ -635,25 +641,31 @@ begin
     end else begin
      FreeMem(aDestData);
      aDestLen:=0;
-     result:=False;
+     result:=false;
      exit;
     end;
    end else begin
     Value:=DecodeTree(LiteralModel,256,4);
     if OK and (TpvSizeUInt(DestLen)<TpvSizeUInt(OutputSize)) then begin
-     PpvUInt8Array(OutputSize)^[DestLen]:=Value;
+     PpvUInt8Array(aDestData)^[DestLen]:=Value;
      inc(DestLen);
      LastWasMatch:=false;
     end else begin
      FreeMem(aDestData);
      aDestLen:=0;
-     result:=False;
+     result:=false;
      exit;
     end;
    end;
    Flag:=boolean(byte(DecodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5)));
   until false;
-  result:=true;
+  if DestLen=aDestLen then begin
+   result:=true;
+  end else begin
+   FreeMem(aDestData);
+   aDestLen:=0;
+   result:=false;
+  end;
  end;
 end;
 
