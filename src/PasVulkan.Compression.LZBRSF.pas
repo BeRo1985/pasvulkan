@@ -101,7 +101,14 @@ type PHashTable=^THashTable;
      TThreeBytes=array[0..2] of TpvUInt8;
      PBytes=^TBytes;
      TBytes=array[0..$7ffffffe] of TpvUInt8;
-var LiteralStart:PpvUInt8;
+var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt8;
+    BestMatchDistance,BestMatchLength,MatchLength,Step,MaxSteps,
+    Difference,Offset,SkipStrength,UnsuccessfulFindMatchAttempts:TpvUInt32;
+    HashTable:PHashTable;
+    ChainTable:PChainTable;
+    HashTableItem:PPpvUInt8;
+    Greedy:boolean;
+    LiteralStart:PpvUInt8;
     LiteralLength:TpvUInt64;
     AllocatedDestSize:TpvUInt64;
  procedure DoOutputBlock(const aData:Pointer;const aSize:TpvUInt64);
@@ -229,27 +236,28 @@ var LiteralStart:PpvUInt8;
  end;
  procedure DoOutputCopy(const aDistance,aLength:TpvUInt32);
  begin
-  FlushLiterals;
-  if ((aLength>3) and (aLength<12)) and (aDistance<2048) then begin
-   // Short match
-   DoOutputUInt16({b01} 1 or (((aLength-4) shl 2) or (aDistance shl 5)));
-  end
-  else if (aLength<=64) and (aDistance<65536) then begin
-   // Medium match
-   DoOutputUInt8({b10}2 or ((aLength-1) shl 2));
-   DoOutputUInt16(aDistance);
-  end else begin
-   case aLength of
-    0..8191:begin
-     // Long match
-     DoOutputUInt32(({b011}3 or ((aLength-1) shl 3)) or (((aDistance+1) and TpvUInt32($0000ffff)) shl 16));
-     DoOutputUInt16(((aDistance+1) and TpvUInt32($ffff0000)) shr 16);
-    end;
-    else begin
-     // Huge match
-     DoOutputUInt8({b111}7);
-     DoOutputUInt32(aLength);
-     DoOutputUInt32(aDistance+1);
+  if (aDistance>0) and (aLength>1) then begin
+   FlushLiterals;
+   if ((aLength>3) and (aLength<12)) and (aDistance<2048) then begin
+    // Short match
+    DoOutputUInt16({b01} 1 or (((aLength-4) shl 2) or ((aDistance-1) shl 5)));
+   end else if (aLength<=64) and (aDistance<65536) then begin
+    // Medium match
+    DoOutputUInt8({b10}2 or ((aLength-1) shl 2));
+    DoOutputUInt16(aDistance-1);
+   end else begin
+    case aLength of
+     0..8191:begin
+      // Long match
+      DoOutputUInt32(({b011}3 or ((aLength-1) shl 3)) or (((aDistance-1) and TpvUInt32($0000ffff)) shl 16));
+      DoOutputUInt16(((aDistance-1) and TpvUInt32($ffff0000)) shr 16);
+     end;
+     else begin
+      // Huge match
+      DoOutputUInt8({b111}7);
+      DoOutputUInt32(aLength);
+      DoOutputUInt32(aDistance-1);
+     end;
     end;
    end;
   end;
@@ -263,13 +271,6 @@ var LiteralStart:PpvUInt8;
   DoOutputUInt8({b111}7);
   DoOutputUInt32(0);
  end;
-var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt8;
-    BestMatchDistance,BestMatchLength,MatchLength,MaximumMatchLength,CheckSum,Step,MaxSteps,
-    Difference,Offset,SkipStrength,UnsuccessfulFindMatchAttempts:TpvUInt32;
-    HashTable:PHashTable;
-    ChainTable:PChainTable;
-    HashTableItem:PPpvUInt8;
-    Greedy:boolean;
 begin
  result:=false;
  AllocatedDestSize:=SizeOf(TpvUInt32);
@@ -432,7 +433,7 @@ begin
  InputEnd:=@PpvUInt8Array(InputPointer)^[aInLen];
 
  OutputSize:=PpvUInt64(InputPointer)^;
-{$ifndef litte_endian}
+{$ifndef little_endian}
  OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
              ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
              ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
@@ -467,14 +468,22 @@ begin
    {b00}0:begin
     // Literal(s)
     case Tag shr 2 of
-     00..59:begin
+     0..59:begin
       Len:=(Tag shr 2)+1;
      end;
      60:begin
+      if TpvPtrUInt(InputPointer)>=TpvPtrUInt(InputEnd) then begin
+       result:=false;
+       break;
+      end;
       Len:=TpvUInt8(Pointer(InputPointer)^)+1;
       inc(InputPointer);
      end;
      61:begin
+      if (TpvPtrUInt(InputPointer)+SizeOf(TpvUInt16))>TpvPtrUInt(InputEnd) then begin
+       result:=false;
+       break;
+      end;
 {$ifdef little_endian}
       Len:=TpvUInt16(Pointer(InputPointer)^)+1;
       inc(InputPointer,SizeOf(TpvUInt16));
@@ -485,6 +494,10 @@ begin
 {$endif}
      end;
      62:begin
+      if (TpvPtrUInt(InputPointer)+(SizeOf(TpvUInt16)+SizeOf(TpvUInt8)))>TpvPtrUInt(InputEnd) then begin
+       result:=false;
+       break;
+      end;
 {$ifdef little_endian}
       Len:=TpvUInt16(Pointer(InputPointer)^);
       inc(InputPointer,SizeOf(TpvUInt16));
@@ -500,6 +513,10 @@ begin
 {$endif}
      end;
      else {63:}begin
+      if (TpvPtrUInt(InputPointer)+SizeOf(TpvUInt32))>TpvPtrUInt(InputEnd) then begin
+       result:=false;
+       break;
+      end;
 {$ifdef little_endian}
       Len:=TpvUInt32(pointer(InputPointer)^)+1;
       inc(InputPointer,SizeOf(TpvUInt32));
@@ -525,7 +542,7 @@ begin
     Len:=((Tag shr 2) and 7)+4;
     Offset:=((Tag shr 5) or (TpvUInt8(pointer(InputPointer)^) shl 3))+1;
     inc(InputPointer);
-    CopyFromPointer:=pointer(@PpvUInt8Array(OutputPointer)^[-Offset]);
+    CopyFromPointer:=pointer(TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(Offset)));
     if TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(aDestData) then begin
      result:=false;
      break;
@@ -546,7 +563,7 @@ begin
     inc(InputPointer,SizeOf(TpvUInt16));
     Offset:=((((Offset and $ff00) shr 8) or ((Offset and $ff) shl 8))+1;
 {$endif}
-    CopyFromPointer:=pointer(@PpvUInt8Array(OutputPointer)^[-Offset]);
+    CopyFromPointer:=pointer(TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(Offset)));
     if TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(aDestData) then begin
      result:=false;
      break;
@@ -555,7 +572,7 @@ begin
    else {b11}{3:}begin
     if (Tag and 4)<>0 then begin
      // {b111}7 - Huge match
-     if (TpvPtrUInt(InputPointer)+(SizeOf(TpvUInt32)*2))>TpvPtrUInt(InputEnd) then begin
+     if (TpvPtrUInt(InputPointer)+SizeOf(TpvUInt32))>TpvPtrUInt(InputEnd) then begin
       result:=false;
       break;
      end;
@@ -569,6 +586,9 @@ begin
 {$endif}
      if Len=0 then begin
       // End code
+      break;
+     end else if (TpvPtrUInt(InputPointer)+SizeOf(TpvUInt32))>TpvPtrUInt(InputEnd) then begin
+      result:=false;
       break;
      end;
      Offset:=TpvUInt32(pointer(InputPointer)^);
@@ -596,7 +616,7 @@ begin
              ((Offset and TpvUInt32($000000ff)) shl 24);
 {$endif}
     end;
-    CopyFromPointer:=pointer(@PpvUInt8Array(OutputPointer)^[-Offset]);
+    CopyFromPointer:=pointer(TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(Offset)));
     if TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(aDestData) then begin
      result:=false;
      break;
@@ -619,7 +639,7 @@ begin
    until Len=0;
   end else begin
    // Non-overlapping
-   case Len and 7 of
+   case Len of
     1:begin
      OutputPointer^:=CopyFromPointer^;
      inc(OutputPointer);
@@ -631,6 +651,7 @@ begin
     3:begin
      TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
      inc(OutputPointer,SizeOf(TpvUInt16));
+     inc(CopyFromPointer,SizeOf(TpvUInt16));
      OutputPointer^:=CopyFromPointer^;
      inc(OutputPointer);
     end;
@@ -642,20 +663,24 @@ begin
     5:begin
      TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
      inc(OutputPointer,SizeOf(TpvUInt32));
+     inc(CopyFromPointer,SizeOf(TpvUInt32));
      OutputPointer^:=CopyFromPointer^;
      inc(OutputPointer);
     end;
     6:begin
      TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
      inc(OutputPointer,SizeOf(TpvUInt32));
+     inc(CopyFromPointer,SizeOf(TpvUInt32));
      TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
      inc(OutputPointer,SizeOf(TpvUInt16));
     end;
     7:begin
      TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
      inc(OutputPointer,SizeOf(TpvUInt32));
+     inc(CopyFromPointer,SizeOf(TpvUInt32));
      TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
      inc(OutputPointer,SizeOf(TpvUInt16));
+     inc(CopyFromPointer,SizeOf(TpvUInt16));
      OutputPointer^:=CopyFromPointer^;
      inc(OutputPointer);
     end;
@@ -697,7 +722,8 @@ begin
 
  end;
 
- if not (result and (aDestLen=TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(aDestData)))) then begin
+ OutputSize:=TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(aDestData));
+ if not (result and (aDestLen=OutputSize)) then begin
   result:=false;
   aDestLen:=0;
   FreeMem(aDestData);
