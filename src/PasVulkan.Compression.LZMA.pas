@@ -234,8 +234,8 @@ type TLZMAProgressAction=(LPAMax,LPAPos);
 
      TLZMADecoder=class
       private
-       FOnProgress:TLZMAProgress;
-       procedure DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt32);
+       fOnProgress:TLZMAProgress;
+       procedure DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt64);
       public
        m_OutWindow:TLZOutWindow;
        m_RangeDecoder:TRangeDecoder;
@@ -261,7 +261,7 @@ type TLZMAProgressAction=(LPAMax,LPAPos);
        procedure Init;
        function Code(const inStream,outStream:TStream;outSize:TpvInt64):boolean;
        function SetDecoderProperties(const properties:array of TpvUInt8):boolean;
-       property OnProgress:TLZMAProgress read FOnProgress write FOnProgress;
+       property OnProgress:TLZMAProgress read fOnProgress write fOnProgress;
      end;
 
      TLZMALenDecoder=class
@@ -306,8 +306,8 @@ type TLZMAProgressAction=(LPAMax,LPAPos);
 
      TLZMAEncoder=class
       private
-       FOnProgress:TLZMAProgress;
-       procedure DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt32);
+       fOnProgress:TLZMAProgress;
+       procedure DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt64);
       public
        g_FastPos:array[0..(1 shl 11)-1] of TpvUInt8;
        _state:TpvInt32;
@@ -398,7 +398,7 @@ type TLZMAProgressAction=(LPAMax,LPAPos);
        function SetMatchFinder(const matchFinderIndex:TpvInt32):boolean;
        function SetLcLpPb(const lc,lp,pb:TpvInt32):boolean;
        procedure SetEndMarkerMode(const endMarkerMode:boolean);
-       property OnProgress:TLZMAProgress read FOnProgress write FOnProgress;
+       property OnProgress:TLZMAProgress read fOnProgress write fOnProgress;
      end;
 
      TLZMALiteralEncoder=class
@@ -1652,7 +1652,7 @@ constructor TLZMADecoder.Create;
 var i:TpvInt32;
 begin
  inherited Create;
- FOnProgress:=nil;
+ fOnProgress:=nil;
  m_OutWindow:=TLZOutWindow.Create;
  m_RangeDecoder:=TRangeDecoder.Create;
  m_PosAlignDecoder:=TBitTreeDecoder.Create(kNumAlignBits);
@@ -1869,10 +1869,10 @@ begin
  result:=SetDictionarySize(dictionarySize);
 end;
 
-procedure TLZMADecoder.DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt32);
+procedure TLZMADecoder.DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt64);
 begin
- if assigned(fonprogress) then begin
-  fonprogress(action,value);
+ if assigned(fOnProgress) then begin
+  fOnProgress(action,value);
  end;
 end;
 
@@ -2775,8 +2775,7 @@ begin
   SetStreams(inStream,outStream,inSize,outSize);
   while true do begin
    CodeOneBlock(processedInSize,processedOutSize,finished);
-   if finished then
-   begin
+   if finished then begin
     DoProgress(TLZMAProgressAction.LPAPos,inputsize);
     exit;
    end;
@@ -3138,10 +3137,10 @@ begin
  result:=BackPrev=0;
 end;
 
-procedure TLZMAEncoder.DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt32);
+procedure TLZMAEncoder.DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt64);
 begin
- if assigned(fonprogress) then begin
-  fonprogress(action,value);
+ if assigned(fOnProgress) then begin
+  fOnProgress(action,value);
  end;
 end;
 
