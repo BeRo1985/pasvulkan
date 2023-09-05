@@ -3536,11 +3536,6 @@ begin
  result:=LZMA_RESULT_OK;
 end;
 
-const LZMAAlgorithm:array[0..3] of TpvUInt32=(0,1,2,2);
-      LZMADicSize:array[0..3] of TpvUInt32=(32 shl 10,2 shl 20,8 shl 20,32 shl 20);
-      LZMANumFastBytes:array[0..3] of TpvUInt32=(32,32,64,64);
-//    LZMAMatchFinder:array[0..3] of pwidechar=('HC3','BT4','BT4','BT4b');
-
 function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZMALevel):boolean;
 var Encoder:TLZMAEncoder;
     InStream,OutStream:TMemoryStream;
@@ -3552,9 +3547,33 @@ begin
   try
    Encoder:=TLZMAEncoder.Create;
    try
-    Encoder.SetAlgorithm(LZMAAlgorithm[aLevel]);
-    Encoder.SetDictionarySize(LZMADicSize[aLevel]);
-    Encoder.SetNumFastBytes(LZMANumFastBytes[aLevel]);
+    case aLevel of
+     TpvLZMALevel(0)..TpvLZMALevel(3):begin
+      Encoder.SetAlgorithm(0);
+      Encoder.SetDictionarySize(TpvUInt32(1) shl ((TpvInt32(aLevel)*2)+16));
+      Encoder.SetNumFastBytes(32);
+     end;
+     TpvLZMALevel(4)..TpvLZMALevel(6):begin
+      Encoder.SetAlgorithm(1);
+      Encoder.SetDictionarySize(TpvUInt32(1) shl (TpvInt32(aLevel)+19));
+      Encoder.SetNumFastBytes(32);
+     end;
+     TpvLZMALevel(7):begin
+      Encoder.SetAlgorithm(2);
+      Encoder.SetDictionarySize(TpvUInt32(1) shl 25);
+      Encoder.SetNumFastBytes(64);
+     end;
+     TpvLZMALevel(8):begin
+      Encoder.SetAlgorithm(2);
+      Encoder.SetDictionarySize(TpvUInt32(1) shl 26);
+      Encoder.SetNumFastBytes(64);
+     end;
+     else begin
+      Encoder.SetAlgorithm(2);
+      Encoder.SetDictionarySize(TpvUInt32(1) shl 27);
+      Encoder.SetNumFastBytes(64);
+     end;
+    end;
     Encoder.SetMatchFinder(EMatchFinderTypeBT4);
     Encoder.SetWriteEndMarkerMode(false);
     Encoder.WriteCoderProperties(OutStream);
