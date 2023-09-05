@@ -72,6 +72,10 @@ type TpvLZBRRCLevel=0..9;
 
 function LZBRRCCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRRCLevel=5):boolean;
 
+{$if defined(fpc) and defined(cpuamd64)}
+function LZBRRCFastDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+{$ifend}
+
 function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
 
 implementation
@@ -509,6 +513,331 @@ begin
   end;
  end;
 end;
+
+{$if defined(fpc) and defined(cpuamd64)}
+{$if defined(cpuamd64)}
+{$warnings off}
+function LZBRRCDecompressASM(aSrc,aDst:Pointer):TpvUInt64; {$ifdef fpc}{$ifdef Windows}ms_abi_cdecl;{$else}sysv_abi_cdecl{$ifend}{$endif} assembler; {$ifdef fpc}nostackframe;{$endif}
+const FlagModel=0;
+      PrevMatchModel=2;
+      MatchLowModel=3;
+      LiteralModel=35;
+      Gamma0Model=291;
+      Gamma1Model=547;
+      SizeModels=803;
+      LocalSize=(SizeModels+2)*4;
+      Models=-LocalSize;
+asm
+{$ifndef fpc}
+ .noframe
+{$endif}
+ push rbp
+ mov rbp,rsp
+ sub rsp,LocalSize
+
+ push rbx
+ push rsi
+ push rdi
+
+ cld
+{$ifdef Windows}
+ mov rsi,rcx
+{$else}
+ xchg rsi,rdi
+ mov rdx,rdi
+{$endif}
+
+ lodsd
+ bswap eax
+ mov r8d,eax // Code
+
+ xor eax,eax
+ not eax
+ mov r9d,eax // Range
+
+ not eax
+ mov ah,$08 // mov eax,2048
+ mov ecx,SizeModels
+ lea rdi,dword ptr [rbp+Models]
+ repe stosd
+
+ mov rdi,rdx
+ push rdi
+
+ jmp @Main
+
+  @DecodeBit: // result = eax, Move = ecx, ModelIndex = eax
+   push rbx
+   push rdx
+
+    // Bound:=(Range shr 12)*Model[ModelIndex];
+    mov eax,eax
+    lea rdx,qword ptr [rbp+Models+rax*4]
+    mov eax,dword ptr [rdx]
+    mov ebx,r9d
+    shr ebx,12
+    push rdx
+    imul eax,ebx
+    pop rdx
+
+    // if Code<Bound then begin
+    cmp eax,r8d
+    jbe @DecodeBitYes
+
+     // Range:=Bound;
+     mov r9d,eax
+
+     // inc(Model[ModelIndex],(4096-Model[ModelIndex]) shr Move);
+     xor rax,rax // mov eax,4096
+     mov ah,$10
+     sub eax,dword ptr [rdx]
+     shr eax,cl
+     add dword ptr [rdx],eax
+
+     // result:=0;
+     xor rax,rax
+
+     jmp @CheckRenormalization
+
+    @DecodeBitYes:
+
+     // dec(Code,Bound);
+     sub r8d,eax
+
+     // dec(Range,Bound);
+     sub r9d,eax
+
+     // dec(Model[ModelIndex],Model[ModelIndex] shr Move);
+     mov eax,dword ptr [rdx]
+     shr eax,cl
+     sub dword ptr [rdx],eax
+
+     // result:=1;
+     xor eax,eax
+     inc eax
+     jmp @CheckRenormalization
+
+    @DoRenormalization:
+     shl r8d,8
+     movzx edx,byte ptr [rsi]
+     inc rsi
+     or r8d,edx
+     shl r9d,8
+    @CheckRenormalization:
+     cmp r9d,$1000000
+     jb @DoRenormalization
+
+   pop rdx
+   pop rbx
+
+   bt eax,0 // Carry flay = first LSB bit of eax
+  ret
+
+  @DecodeTree: // result = eax, MaxValue = eax, Move = ecx, ModelIndex = edx
+   push rdi
+   mov edi,eax
+   // result:=1;
+   xor eax,eax
+   inc eax
+   @DecodeTreeLoop:
+    // while result<MaxValue do begin
+    cmp eax,edi
+    jge @DecodeTreeLoopDone
+     // result:=(result shl 1) or DecodeBit(ModelIndex+result,Move);
+     push rax
+     add eax,edx
+     call @DecodeBit
+     pop rax
+     adc eax,eax
+     jmp @DecodeTreeLoop
+   @DecodeTreeLoopDone:
+   sub eax,edi
+   pop rdi
+   ret
+
+  @DecodeGamma0: // result = eax, ModelIndex = edx
+   push rbx
+   push rdx
+   mov rdx,Gamma0Model
+   jmp @DecodeGamma
+  @DecodeGamma1: // result = eax, ModelIndex = edx
+   push rbx
+   push rdx
+   mov rdx,Gamma1Model
+  @DecodeGamma: // result = eax, ModelIndex = edx
+   xor eax,eax // result:=1;
+   inc eax
+   mov ebx,eax // Conext:=1;
+   @DecodeGammaLoop:
+    push rax
+     mov cl,5 // Move:=5;
+     lea eax,[edx+ebx] // ModelIndex+Context
+     call @DecodeBit
+     adc bl,bl         // Context:=(Context shl 1) or NewBit;
+     lea eax,[edx+ebx] // ModelIndex+Context
+     call @DecodeBit
+     mov cl,al
+    pop rax
+    add eax,eax       // Value:=(Value shl 1) or NewBit;
+    or al,cl
+    add bl,bl
+    or bl,cl
+    test bl,2
+   jnz @DecodeGammaLoop
+   pop rdx
+   pop rbx
+   ret
+
+ @Main:
+  xor rbx,rbx // Last offset
+  xor rdx,rdx // bit 1=LastWasMatch, bit 0=Flag
+
+ @Loop:
+
+  // if Flag then begin
+  test dl,1
+  jz @Literal
+
+  @Match:
+    // if (not LastWasMatch) and (DecodeBit(PrevMatchModel,5)<>0) then begin
+    test dl,2
+    jnz @NormalMatch
+     xor eax,eax // PrevMatchModel
+     mov al,PrevMatchModel
+     mov cl,5
+     call @DecodeBit
+     jnc @NormalMatch
+      xor ecx,ecx // Len=0
+      jmp @DoMatch
+     @NormalMatch:
+
+      // Offset:=DecodeGamma(Gamma0Model);
+      call @DecodeGamma0
+
+      // if Offset=0 then exit;
+      test eax,eax
+      jz @WeAreDone
+
+      // dec(Offset,2);
+      lea ebx,[eax-2]
+
+      // Offset:=((Offset shl 4)+DecodeTree(MatchLowModel+(ord(Offset<>0) shl 4),16,5))+1;
+      push rdx
+      test ebx,ebx
+      setnz dl
+      movzx edx,dl
+      shl edx,4
+      add edx,MatchLowModel
+      mov cl,5
+      xor eax,eax
+      mov al,16
+      call @DecodeTree
+      pop rdx
+      shl ebx,4
+      lea ebx,[eax+ebx+1]
+
+      // Len:=ord(Offset>=96)+ord(Offset>=2048);
+      xor ecx,ecx
+      xor eax,eax
+      cmp ebx,2048
+      setge al
+      add ecx,eax
+      cmp ebx,96
+      setge al
+      add ecx,eax
+
+     @DoMatch:
+
+     or dl,2 // LastWasMatch = true
+
+     // inc(Len,DecodeGamma(Gamma1Model));
+     push rcx
+     call @DecodeGamma1
+     pop rcx
+     add ecx,eax
+
+     push rsi
+      mov rsi,rdi
+      mov ebx,ebx
+      sub rsi,rbx
+      repe movsb
+     pop rsi
+
+   jmp @NextFlag
+
+  @Literal:
+   // byte(pointer(Destination)^):=DecodeTree(LiteralModel,256,4);
+   push rdx
+   xor eax,eax // mov eax,256
+   inc ah
+   mov cl,4
+   mov edx,LiteralModel
+   call @DecodeTree
+   pop rdx
+   // inc(Destination);
+   stosb
+   // LastWasMatch:=false;
+   and dl,$fd
+
+  @NextFlag:
+   // Flag:=boolean(byte(DecodeBit(FlagModel+byte(boolean(LastWasMatch)),5)));
+   movzx eax,dl
+   and al,1
+   mov cl,5
+   call @DecodeBit
+   and dl,$fe
+   or dl,al
+
+  jmp @Loop
+
+ @WeAreDone:
+
+ mov rax,rdi
+ pop rdi
+ sub rax,rdi
+
+ pop rdi
+ pop rsi
+ pop rbx
+
+ mov rsp,rbp
+ pop rbp
+end;
+{$warnings on}
+{$ifend}
+
+function LZBRRCFastDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+var OutputSize:TpvUInt64;
+begin
+ result:=false;
+ if aInLen>=12 then begin
+  OutputSize:=PpvUInt64(aInData)^;
+{$ifdef BIG_ENDIAN}
+  OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
+              ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
+              ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
+              ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
+              ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
+              ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
+              ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
+              ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
+{$endif}
+  if OutputSize=0 then begin
+   result:=true;
+   exit;
+  end;
+  aDestLen:=OutputSize;
+  GetMem(aDestData,OutputSize);
+  if LZBRRCDecompressASM(@PpvUInt8Array(aInData)^[8],aDestData)=aDestLen then begin
+   result:=true;
+  end else begin
+   FreeMem(aDestData);
+   aDestLen:=0;
+   result:=false;
+  end;
+ end;
+end;
+{$ifend}
 
 function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
 var Code,Range,Position:TpvUInt32;

@@ -1,6 +1,8 @@
 program testlzbrrc;
 {$ifdef fpc}
  {$mode delphi}
+{$else}
+ {$legacyifend on}
 {$endif}
 {$if defined(Win32) or defined(Win64)}
  {$define Windows}
@@ -78,7 +80,13 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
- if LZBRRCDecompress(CompressedData,CompressedSize,UncompressedData,UncompressedSize) then begin
+ if
+{$if declared(LZBRRCFastDecompress)}
+    LZBRRCFastDecompress(CompressedData,CompressedSize,UncompressedData,UncompressedSize)
+{$else}
+    LZBRRCDecompress(CompressedData,CompressedSize,UncompressedData,UncompressedSize)
+{$ifend}
+    then begin
  
   OutputFileStream:=TFileStream.Create('output2.dat',fmCreate);
   try
