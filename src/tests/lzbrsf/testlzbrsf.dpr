@@ -37,7 +37,7 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
- if LZBRSFCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRSFMode.Medium) then begin
+ if LZBRSFCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRSFLevel(9)) then begin
  
   OutputFileStream:=TFileStream.Create('output.dat',fmCreate);
   try

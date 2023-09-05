@@ -67,22 +67,16 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Types;
 
-type PpvLZBRSFMode=^TpvLZBRSFMode;
-     TpvLZBRSFMode=
-      (
-       VeryFast,
-       Fast,
-       Medium,
-       Slow
-      );
+type TpvLZBRSFLevel=0..9;
+     PpvLZBRSFLevel=^TpvLZBRSFLevel;
 
-function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aMode:TpvLZBRSFMode):boolean;
+function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRSFLevel=5):boolean;
 
 function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
 
 implementation
 
-function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aMode:TpvLZBRSFMode):boolean;
+function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRSFLevel):boolean;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -91,7 +85,7 @@ const HashBits=16;
       WindowMask=WindowSize-1;
       MinMatch=3;
       MaxMatch=258;
-      MaxOffset=16777216;
+      MaxOffset=TpvUInt32($7fffffff);
       MultiplyDeBruijnBytePosition:array[0..31] of TpvUInt8=(0,0,3,0,3,1,3,0,3,2,2,1,3,2,0,1,3,3,1,2,2,2,2,0,3,1,2,0,1,0,1,1);
 type PHashTable=^THashTable;
      THashTable=array[0..HashSize-1] of PpvUInt8;
@@ -279,29 +273,9 @@ begin
  GetMem(aDestData,AllocatedDestSize);
  aDestLen:=0;
  try
-  Greedy:=aMode in [TpvLZBRSFMode.Medium,TpvLZBRSFMode.Slow];
-  case aMode of
-   TpvLZBRSFMode.VeryFast:begin
-    MaxSteps:=1;
-    SkipStrength:=7;
-   end;
-   TpvLZBRSFMode.Fast:begin
-    MaxSteps:=128;
-    SkipStrength:=7;
-   end;
-   TpvLZBRSFMode.Medium:begin
-    MaxSteps:=128;
-    SkipStrength:=32;
-   end;
-   TpvLZBRSFMode.Slow:begin
-    MaxSteps:=MaxOffset;
-    SkipStrength:=32;
-   end;
-   else begin
-    MaxSteps:=128;
-    SkipStrength:=32;
-   end;
-  end;
+  MaxSteps:=1 shl TpvInt32(aLevel);
+  SkipStrength:=(32-9)+TpvInt32(aLevel);
+  Greedy:=aLevel>=TpvLZBRSFLevel(1);
   LiteralStart:=nil;
   LiteralLength:=0;
   DoOutputUInt64(aInLen);
