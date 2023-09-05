@@ -73,11 +73,16 @@ uses SysUtils,
 type PpvDeflateMode=^TpvDeflateMode;
      TpvDeflateMode=
       (
-       None,
-       VeryFast,
-       Fast,
-       Medium,
-       Slow
+       None=0,
+       VeryFast=1,
+       Faster=2,
+       Fast=3,
+       FasterThanMedium=4,
+       Medium=5,
+       SlowerThanMedium=6,
+       MoreSlowerThanMedium=7,
+       YetMoreSlowerThanMedium=8,
+       Slow=9
       );
 
 function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
@@ -188,23 +193,7 @@ begin
  Allocated:=0;
  aDestData:=nil;
  FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
- case aMode of
-  TpvDeflateMode.VeryFast:begin
-   Level:=1;
-  end;
-  TpvDeflateMode.Fast:begin
-   Level:=5;
-  end;
-  TpvDeflateMode.Medium:begin
-   Level:=-1;
-  end;
-  TpvDeflateMode.Slow:begin
-   Level:=9;
-  end;
-  else begin
-   Level:=9;
-  end;
- end;
+ Level:=Min(Max(TpvInt32(aMode),0),9);
  if aWithHeader then begin
   r:=deflateInit(d_stream,Level);
  end else begin
@@ -262,23 +251,7 @@ begin
  Allocated:=0;
  aDestData:=nil;
  FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
- case aMode of
-  TpvDeflateMode.VeryFast:begin
-   Level:=1;
-  end;
-  TpvDeflateMode.Fast:begin
-   Level:=5;
-  end;
-  TpvDeflateMode.Medium:begin
-   Level:=-1;
-  end;
-  TpvDeflateMode.Slow:begin
-   Level:=9;
-  end;
-  else begin
-   Level:=9;
-  end;
- end;
+ Level:=Min(Max(TpvInt32(aMode),0),9);
  if aWithHeader then begin
   r:=deflateInit(d_stream,Level);
  end else begin
@@ -494,29 +467,9 @@ begin
  InitializeLookUpTables;
  try
   DoCompression:=aMode<>TpvDeflateMode.None;
-  Greedy:=aMode in [TpvDeflateMode.Medium,TpvDeflateMode.Slow];
-  case aMode of
-   TpvDeflateMode.VeryFast:begin
-    MaxSteps:=1;
-    SkipStrength:=7;
-   end;
-   TpvDeflateMode.Fast:begin
-    MaxSteps:=128;
-    SkipStrength:=7;
-   end;
-   TpvDeflateMode.Medium:begin
-    MaxSteps:=128;
-    SkipStrength:=32;
-   end;
-   TpvDeflateMode.Slow:begin
-    MaxSteps:=MaxOffset;
-    SkipStrength:=32;
-   end;
-   else begin
-    MaxSteps:=128;
-    SkipStrength:=32;
-   end;
-  end;
+  MaxSteps:=1 shl TpvInt32(aMode);
+  SkipStrength:=(32-9)+TpvInt32(aMode);
+  Greedy:=TpvInt32(aMode)>=1;
   OutputBits:=0;
   CountOutputBits:=0;
   if DoCompression then begin
