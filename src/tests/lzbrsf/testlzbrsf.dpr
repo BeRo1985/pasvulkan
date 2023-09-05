@@ -26,6 +26,8 @@ var InputFileStream:TFileStream;
     UncompressedData:Pointer;
 begin
 
+ Write('Compressing... ');
+
  InputFileStream:=TFileStream.Create('input.dat',fmOpenRead {or fmShareDenyNone});
  try
   UncompressedSize:=InputFileStream.Size;
@@ -52,6 +54,8 @@ begin
  FreeMem(UncompressedData);
  UncompressedData:=nil;
 
+ WriteLn('done!');
+
 end;
 
 procedure TestLZBRSFDecompress;
@@ -63,6 +67,8 @@ var InputFileStream:TFileStream;
     UncompressedData:Pointer;
 begin
 
+ Write('Decompressing... ');
+ 
  InputFileStream:=TFileStream.Create('output.dat',fmOpenRead {or fmShareDenyNone});
  try
   CompressedSize:=InputFileStream.Size;
@@ -89,6 +95,8 @@ begin
  FreeMem(CompressedData);
  CompressedData:=nil;
 
+ WriteLn('done!');
+
 end;
 
 procedure TestCompare;
@@ -99,6 +107,8 @@ var OriginalFileStream:TFileStream;
     OriginalData:Pointer;
     UncompressedData:Pointer;
 begin
+
+ Write('Comparing... ');
 
  OriginalFileStream:=TFileStream.Create('input.dat',fmOpenRead {or fmShareDenyNone});
  try
@@ -120,12 +130,12 @@ begin
 
  if OriginalSize=UncompressedSize then begin
   if CompareMem(OriginalData,UncompressedData,OriginalSize) then begin
-   WriteLn('Compare OK');
+   WriteLn('OK!');
   end else begin
-   WriteLn('Compare failed');
+   WriteLn('Failed because of different data!');
   end;
  end else begin
-  WriteLn('Compare failed');
+  WriteLn('Failed because of different sizes!');
  end;
 
  FreeMem(UncompressedData);
