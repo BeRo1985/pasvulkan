@@ -70,13 +70,13 @@ uses SysUtils,
 type TpvLZBRSFLevel=0..9;
      PpvLZBRSFLevel=^TpvLZBRSFLevel;
 
-function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRSFLevel=5):boolean;
+function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRSFLevel=5;const aWithSize:boolean=true):boolean;
 
-function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64=-1;const aWithSize:boolean=true):boolean;
 
 implementation
 
-function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRSFLevel):boolean;
+function LZBRSFCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRSFLevel;const aWithSize:boolean):boolean;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -281,7 +281,9 @@ begin
   Greedy:=aLevel>=TpvLZBRSFLevel(1);
   LiteralStart:=nil;
   LiteralLength:=0;
-  DoOutputUInt64(aInLen);
+  if aWithSize then begin
+   DoOutputUInt64(aInLen);
+  end;
   OutputStartBlock;
   GetMem(HashTable,SizeOf(THashTable));
   try
@@ -392,17 +394,31 @@ begin
  end;
 end;
 
-function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZBRSFDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64;const aWithSize:boolean):boolean;
+type TBlock1=TpvUInt8;
+     TBlock2=TpvUInt16;
+     TBlock3=array[0..2] of TpvUInt8;
+     TBlock4=TpvUInt32;
+     TBlock5=array[0..4] of TpvUInt8;
+     TBlock6=array[0..5] of TpvUInt8;
+     TBlock7=array[0..6] of TpvUInt8;
+     TBlock8=TpvUInt64;
+     PBlock1=^TBlock1;
+     PBlock2=^TBlock2;
+     PBlock3=^TBlock3;
+     PBlock4=^TBlock4;
+     PBlock5=^TBlock5;
+     PBlock6=^TBlock6;
+     PBlock7=^TBlock7;
+     PBlock8=^TBlock8;
 var InputPointer,InputEnd,OutputPointer,OutputEnd,CopyFromPointer:PpvUInt8;
     Len,Offset,Tag:TpvUInt32;
     OutputSize:TpvUInt64;
+    Allocated:boolean;
 begin
 
- aDestData:=nil;
- aDestLen:=0;
-
- // If the input OutputSize is too small, then exit early
- if aInLen<SizeOf(TpvUInt64) then begin
+ // If the input size is too small, then exit early
+ if (aWithSize and (aInLen<SizeOf(TpvUInt64))) or ((not aWithSize) and (aInLen=0)) then begin
   result:=false;
   exit;
  end;
@@ -411,18 +427,26 @@ begin
  InputPointer:=aInData;
  InputEnd:=@PpvUInt8Array(InputPointer)^[aInLen];
 
- OutputSize:=PpvUInt64(InputPointer)^;
+ if aWithSize then begin
+  OutputSize:=PpvUInt64(InputPointer)^;
 {$ifdef BIG_ENDIAN}
- OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
-             ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
-             ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
-             ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
-             ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
-             ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
-             ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
-             ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
+  OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
+              ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
+              ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
+              ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
+              ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
+              ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
+              ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
+              ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
 {$endif}
- inc(PpvUInt64(InputPointer));
+  inc(PpvUInt64(InputPointer));
+ end else begin
+  if aOutputSize>=0 then begin
+   OutputSize:=aOutputSize;
+  end else begin
+   OutputSize:=0;
+  end;
+ end;
 
  if OutputSize=0 then begin
   result:=true;
@@ -431,7 +455,21 @@ begin
 
  aDestLen:=OutputSize;
 
- GetMem(aDestData,OutputSize);
+ if (aOutputSize>=0) and (aDestLen<>TpvUInt64(aOutputSize)) then begin
+  result:=false;
+  aDestLen:=0;
+  exit;
+ end;
+
+ Allocated:=not assigned(aDestData);
+ if Allocated then begin
+  if ((not aWithSize) and (aOutputSize<=0)) or (OutputSize=0) then begin
+   result:=false;
+   aDestLen:=0;
+   exit;
+  end;
+  GetMem(aDestData,OutputSize);
+ end;
 
  OutputPointer:=aDestData;
  OutputEnd:=@PpvUInt8Array(OutputPointer)^[OutputSize];
@@ -618,62 +656,74 @@ begin
     dec(Len);
    end;
   end else begin
+
    // Non-overlapping
-   if Len>0 then begin
-    Move(CopyFromPointer^,OutputPointer^,Len);
-    inc(OutputPointer,Len);
-   end;
-(* case Len of
+
+   case Len of
+
+    0:begin
+    end;
+
     1:begin
-     OutputPointer^:=CopyFromPointer^;
-     inc(OutputPointer);
+
+     PBlock1(pointer(OutputPointer))^:=PBlock1(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock1));
+
     end;
+
     2:begin
-     TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt16));
+
+     PBlock2(pointer(OutputPointer))^:=PBlock2(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock2));
+
     end;
+
     3:begin
-     TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt16));
-     inc(CopyFromPointer,SizeOf(TpvUInt16));
-     OutputPointer^:=CopyFromPointer^;
-     inc(OutputPointer);
+
+     PBlock3(pointer(OutputPointer))^:=PBlock3(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock3));
+
     end;
+
     4:begin
-     TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt32));
+
+     PBlock4(pointer(OutputPointer))^:=PBlock4(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock4));
+
     end;
+
 {$ifdef cpu64}
     5:begin
-     TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt32));
-     inc(CopyFromPointer,SizeOf(TpvUInt32));
-     OutputPointer^:=CopyFromPointer^;
-     inc(OutputPointer);
+
+     PBlock5(pointer(OutputPointer))^:=PBlock5(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock5));
+
     end;
+
     6:begin
-     TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt32));
-     inc(CopyFromPointer,SizeOf(TpvUInt32));
-     TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt16));
+
+     PBlock6(pointer(OutputPointer))^:=PBlock6(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock6));
+
     end;
+
     7:begin
-     TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt32));
-     inc(CopyFromPointer,SizeOf(TpvUInt32));
-     TpvUInt16(pointer(OutputPointer)^):=TpvUInt16(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt16));
-     inc(CopyFromPointer,SizeOf(TpvUInt16));
-     OutputPointer^:=CopyFromPointer^;
-     inc(OutputPointer);
+
+     PBlock7(pointer(OutputPointer))^:=PBlock7(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock7));
+
     end;
+
     8:begin
-     TpvUInt64(pointer(OutputPointer)^):=TpvUInt64(pointer(CopyFromPointer)^);
-     inc(OutputPointer,SizeOf(TpvUInt64));
+
+     PBlock8(pointer(OutputPointer))^:=PBlock8(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock8));
+
     end;
 {$endif}
+
     else begin
+
 {$ifdef fpc}
      Move(CopyFromPointer^,OutputPointer^,Len);
      inc(OutputPointer,Len);
@@ -700,18 +750,28 @@ begin
       dec(Len);
      end;
 {$endif}
+
     end;
-   end;*)
+
+   end;
+
   end;
 
  end;
 
  OutputSize:=TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(aDestData));
+
+ if (not aWithSize) and (aOutputSize<0) then begin
+  aDestLen:=OutputSize;
+ end;
+
  if not (result and (aDestLen=OutputSize)) then begin
   result:=false;
   aDestLen:=0;
-  FreeMem(aDestData);
-  aDestData:=nil;
+  if Allocated then begin
+   FreeMem(aDestData);
+   aDestData:=nil;
+  end;
  end;
 
 end;

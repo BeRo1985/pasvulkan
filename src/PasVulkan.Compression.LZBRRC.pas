@@ -70,13 +70,13 @@ uses SysUtils,
 type TpvLZBRRCLevel=0..9;
      PpvLZBRRCLevel=^TpvLZBRRCLevel;
 
-function LZBRRCCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRRCLevel=5):boolean;
+function LZBRRCCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRRCLevel=5;const aWithSize:boolean=true):boolean;
 
 {$if defined(fpc) and defined(cpuamd64)}
-function LZBRRCFastDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZBRRCFastDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64=-1;const aWithSize:boolean=true):boolean;
 {$ifend}
 
-function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64=-1;const aWithSize:boolean=true):boolean;
 
 implementation
 
@@ -159,7 +159,7 @@ begin
  end;
 end;
 
-function LZBRRCCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRRCLevel):boolean;
+function LZBRRCCompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZBRRCLevel;const aWithSize:boolean):boolean;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -353,7 +353,9 @@ begin
   end;
   LiteralStart:=nil;
   LiteralLength:=0;
-  DoOutputUInt64(aInLen);
+  if aWithSize then begin
+   DoOutputUInt64(aInLen);
+  end;
   GetMem(HashTable,SizeOf(THashTable));
   try
    FillChar(HashTable^,SizeOf(THashTable),#0);
@@ -806,32 +808,61 @@ end;
 {$warnings on}
 {$ifend}
 
-function LZBRRCFastDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
-var OutputSize:TpvUInt64;
+ function LZBRRCFastDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64;const aWithSize:boolean):boolean;
+var OutputSize,DestLen:TpvUInt64;
+    Allocated:boolean;
 begin
  result:=false;
  if aInLen>=12 then begin
-  OutputSize:=PpvUInt64(aInData)^;
+  if aWithSize then begin
+   OutputSize:=PpvUInt64(aInData)^;
 {$ifdef BIG_ENDIAN}
-  OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
-              ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
-              ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
-              ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
-              ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
-              ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
-              ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
-              ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
+   OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
+               ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
+               ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
+               ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
+               ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
+               ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
+               ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
+               ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
 {$endif}
+  end else begin
+   if aOutputSize>=0 then begin
+    OutputSize:=aOutputSize;
+   end else begin
+    OutputSize:=0;
+   end;
+  end;
   if OutputSize=0 then begin
    result:=true;
    exit;
   end;
   aDestLen:=OutputSize;
-  GetMem(aDestData,OutputSize);
-  if LZBRRCDecompressASM(@PpvUInt8Array(aInData)^[8],aDestData)=aDestLen then begin
+  if (aOutputSize>=0) and (aDestLen<>TpvUInt64(aOutputSize)) then begin
+   result:=false;
+   aDestLen:=0;
+   exit;
+  end;
+  Allocated:=not assigned(aDestData);
+  if Allocated then begin
+   if ((not aWithSize) and (aOutputSize<=0)) or (OutputSize=0) then begin
+    result:=false;
+    aDestLen:=0;
+    exit;
+   end;
+   GetMem(aDestData,OutputSize);
+  end;
+  DestLen:=LZBRRCDecompressASM(@PpvUInt8Array(aInData)^[8],aDestData);
+  if (not aWithSize) and (aOutputSize<0) then begin
+   aDestLen:=DestLen;
+  end;
+  if DestLen=aDestLen then begin
    result:=true;
   end else begin
-   FreeMem(aDestData);
+   if Allocated then begin
+    FreeMem(aDestData);
+    aDestData:=nil;
+   end;
    aDestLen:=0;
    result:=false;
   end;
@@ -839,7 +870,7 @@ begin
 end;
 {$ifend}
 
-function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64;const aWithSize:boolean):boolean;
 var Code,Range,Position:TpvUInt32;
     Model:array[0..SizeModels-1] of TpvUInt32;
     OK:boolean;
@@ -892,29 +923,50 @@ var Code,Range,Position:TpvUInt32;
   until (not OK) or ((Context and 2)=0);
  end;
 var Len,Offset,LastOffset,DestLen,Value:TpvInt32;
-    Flag,LastWasMatch:boolean;
+    Flag,LastWasMatch,Allocated:boolean;
     OutputSize:TpvUInt64;
 begin
  result:=false;
  if aInLen>=12 then begin
   OK:=true;
-  OutputSize:=PpvUInt64(aInData)^;
+  if aWithSize then begin
+   OutputSize:=PpvUInt64(aInData)^;
 {$ifdef BIG_ENDIAN}
-  OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
-              ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
-              ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
-              ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
-              ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
-              ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
-              ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
-              ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
+   OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
+               ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
+               ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
+               ((OutputSize and TpvUInt64($000000ff00000000)) shr 8) or
+               ((OutputSize and TpvUInt64($00000000ff000000)) shl 8) or
+               ((OutputSize and TpvUInt64($0000000000ff0000)) shl 24) or
+               ((OutputSize and TpvUInt64($000000000000ff00)) shl 40) or
+               ((OutputSize and TpvUInt64($00000000000000ff)) shl 56);
 {$endif}
+  end else begin
+   if aOutputSize>=0 then begin
+    OutputSize:=aOutputSize;
+   end else begin
+    OutputSize:=0;
+   end;
+  end;
   if OutputSize=0 then begin
    result:=true;
    exit;
   end;
   aDestLen:=OutputSize;
-  GetMem(aDestData,OutputSize);
+  if (aOutputSize>=0) and (aDestLen<>TpvUInt64(aOutputSize)) then begin
+   result:=false;
+   aDestLen:=0;
+   exit;
+  end;
+  Allocated:=not assigned(aDestData);
+  if Allocated then begin
+   if ((not aWithSize) and (aOutputSize<=0)) or (OutputSize=0) then begin
+    result:=false;
+    aDestLen:=0;
+    exit;
+   end;
+   GetMem(aDestData,OutputSize);
+  end;
   Code:=(PpvUInt8Array(aInData)^[8] shl 24) or
         (PpvUInt8Array(aInData)^[9] shl 16) or
         (PpvUInt8Array(aInData)^[10] shl 8) or
@@ -935,7 +987,10 @@ begin
       Offset:=LastOffset;
       Len:=0;
      end else begin
-      FreeMem(aDestData);
+      if Allocated then begin
+       FreeMem(aDestData);
+       aDestData:=nil;
+      end;
       aDestLen:=0;
       result:=false;
       exit;
@@ -951,7 +1006,10 @@ begin
        Len:=(ord(Offset>=96) and 1)+(ord(Offset>=2048) and 1);
       end;
      end else begin
-      FreeMem(aDestData);
+      if Allocated then begin
+       FreeMem(aDestData);
+       aDestData:=nil;
+      end;
       aDestLen:=0;
       result:=false;
       exit;
@@ -968,7 +1026,10 @@ begin
                                       Len);
      inc(DestLen,Len);
     end else begin
-     FreeMem(aDestData);
+     if Allocated then begin
+      FreeMem(aDestData);
+      aDestData:=nil;
+     end;
      aDestLen:=0;
      result:=false;
      exit;
@@ -980,7 +1041,10 @@ begin
      inc(DestLen);
      LastWasMatch:=false;
     end else begin
-     FreeMem(aDestData);
+     if Allocated then begin
+      FreeMem(aDestData);
+      aDestData:=nil;
+     end;
      aDestLen:=0;
      result:=false;
      exit;
@@ -988,10 +1052,16 @@ begin
    end;
    Flag:=boolean(byte(DecodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5)));
   until false;
+  if (not aWithSize) and (aOutputSize<0) then begin
+   aDestLen:=DestLen;
+  end;
   if DestLen=aDestLen then begin
    result:=true;
   end else begin
-   FreeMem(aDestData);
+   if Allocated then begin
+    FreeMem(aDestData);
+    aDestData:=nil;
+   end;
    aDestLen:=0;
    result:=false;
   end;

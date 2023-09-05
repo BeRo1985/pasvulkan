@@ -486,9 +486,9 @@ function ReverseGetPrice(var Models:array of TpvInt16;const startIndex,NumBitLev
 type TpvLZMALevel=0..9;
      PpvLZMALevel=^TpvLZMALevel;
 
-function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZMALevel=0):boolean;
+function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZMALevel=0;const aWithSize:boolean=true):boolean;
 
-function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64=-1;const aWithSize:boolean=true):boolean;
 
 implementation
 
@@ -3536,7 +3536,7 @@ begin
  result:=LZMA_RESULT_OK;
 end;
 
-function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZMALevel):boolean;
+function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64;const aLevel:TpvLZMALevel;const aWithSize:boolean):boolean;
 var Encoder:TLZMAEncoder;
     InStream,OutStream:TMemoryStream;
     i:TpvInt32;
@@ -3581,10 +3581,12 @@ begin
     Encoder.WriteCoderProperties(OutStream);
     InStream.Write(aInData^,aInLen);
     InStream.Seek(0,soBeginning);
-    u:=InStream.Size;
-    for i:=0 to 7 do begin
-     b:=(u shr (i shl 3)) and $ff;
-     OutStream.WriteBuffer(b,SizeOf(TpvUInt8));
+    if aWithSize then begin
+     u:=InStream.Size;
+     for i:=0 to 7 do begin
+      b:=(u shr (i shl 3)) and $ff;
+      OutStream.WriteBuffer(b,SizeOf(TpvUInt8));
+     end;
     end;
     Encoder.Code(InStream,OutStream,-1,-1);
    finally
@@ -3603,14 +3605,16 @@ begin
  end;
 end;
 
-function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;out aDestData:TpvPointer;out aDestLen:TpvUInt64):boolean;
+function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64;const aWithSize:boolean):boolean;
 var LZMAProperties:TLZMAProperties;
     LZMADecoderState:TLZMADecoderState;
     LZMAProbs:pointer;
     LZMAProbsSize:TpvUInt32;
-    CompressedDataBytesProcessed:TpvUInt64;
-    UncompressedDataBytesProcessed:TpvUInt64;
+    CompressedDataBytesProcessed,
+    UncompressedDataBytesProcessed,
+    LZMASizeArrayOffset:TpvUInt64;
     LZMASizeArray:PLZMASizeArray;
+    Allocated:boolean;
 begin
  if aInLen>=(SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray)) then begin
   LZMADecodeProperties(LZMAProperties,aInData,0);
@@ -3619,34 +3623,48 @@ begin
   try
    LZMADecoderState.Properties:=LZMAProperties;
    LZMADecoderState.Probs:=LZMAProbs;
-   LZMASizeArray:=pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)));
-   aDestLen:=(TpvUInt64(LZMASizeArray^[0]) shl 0) or
-             (TpvUInt64(LZMASizeArray^[1]) shl 8) or
-             (TpvUInt64(LZMASizeArray^[2]) shl 16) or
-             (TpvUInt64(LZMASizeArray^[3]) shl 24) or
-             (TpvUInt64(LZMASizeArray^[4]) shl 32) or
-             (TpvUInt64(LZMASizeArray^[5]) shl 40) or
-             (TpvUInt64(LZMASizeArray^[6]) shl 48) or
-             (TpvUInt64(LZMASizeArray^[7]) shl 56);
+   if aWithSize then begin
+    LZMASizeArray:=pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)));
+    LZMASizeArrayOffset:=SizeOf(TLZMASizeArray);
+    aDestLen:=(TpvUInt64(LZMASizeArray^[0]) shl 0) or
+              (TpvUInt64(LZMASizeArray^[1]) shl 8) or
+              (TpvUInt64(LZMASizeArray^[2]) shl 16) or
+              (TpvUInt64(LZMASizeArray^[3]) shl 24) or
+              (TpvUInt64(LZMASizeArray^[4]) shl 32) or
+              (TpvUInt64(LZMASizeArray^[5]) shl 40) or
+              (TpvUInt64(LZMASizeArray^[6]) shl 48) or
+              (TpvUInt64(LZMASizeArray^[7]) shl 56);
+   end else begin
+    LZMASizeArrayOffset:=0;
+    if aOutputSize>=0 then begin
+     aDestLen:=aOutputSize;
+    end else begin
+     aDestLen:=0;
+    end;
+   end;
    CompressedDataBytesProcessed:=0;
    UncompressedDataBytesProcessed:=0;
    if aDestLen>0 then begin
-    GetMem(aDestData,aDestLen);
+    Allocated:=not assigned(aDestData);
+    if Allocated then begin
+     GetMem(aDestData,aDestLen);
+    end;
     result:=LZMADecode(LZMADecoderState,
-                       pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray))),
-                       aInLen-(SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray)),
+                       pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset)),
+                       aInLen-(SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset),
                        CompressedDataBytesProcessed,
                        aDestData,
                        aDestLen,
                        UncompressedDataBytesProcessed);
     result:=result and (aDestLen=UncompressedDataBytesProcessed);
     if not result then begin
-     FreeMem(aDestData);
-     aDestData:=nil;
+     if Allocated then begin
+      FreeMem(aDestData);
+      aDestData:=nil;
+     end;
      aDestLen:=0;
     end;
    end else begin
-    aDestData:=nil;
     aDestLen:=0;
     result:=true;
    end;
@@ -3655,7 +3673,6 @@ begin
    LZMAProbs:=nil;
   end;
  end else begin
-  aDestData:=nil;
   aDestLen:=0;
   result:=false;
  end;
