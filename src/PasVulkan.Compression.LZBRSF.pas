@@ -147,7 +147,7 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  end;
  procedure DoOutputUInt24(const aValue:TpvUInt32);
  begin
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
   if AllocatedDestSize<(aDestLen+SizeOf(TpvUInt16)) then begin
    AllocatedDestSize:=(aDestLen+SizeOf(TpvUInt16)) shl 1;
    ReallocMem(aDestData,AllocatedDestSize);
@@ -162,12 +162,12 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  end;
  procedure DoOutputUInt32(const aValue:TpvUInt32);
  begin
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
   if AllocatedDestSize<(aDestLen+SizeOf(TpvUInt32)) then begin
    AllocatedDestSize:=(aDestLen+SizeOf(TpvUInt32)) shl 1;
    ReallocMem(aDestData,AllocatedDestSize);
   end;
-  PpvUInt32(Pointer(@PBytes(aDestData)^[aDestLen]))^:=aValue and $ffff;
+  PpvUInt32(Pointer(@PBytes(aDestData)^[aDestLen]))^:=aValue;
   inc(aDestLen,SizeOf(TpvUInt32));
 {$else}
   DoOutputUInt8((aValue shr 0) and $ff);
@@ -178,7 +178,7 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  end;
  procedure DoOutputUInt64(const aValue:TpvUInt64);
  begin
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
   if AllocatedDestSize<(aDestLen+SizeOf(TpvUInt64)) then begin
    AllocatedDestSize:=(aDestLen+SizeOf(TpvUInt64)) shl 1;
    ReallocMem(aDestData,AllocatedDestSize);
@@ -236,6 +236,9 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  end;
  procedure DoOutputCopy(const aDistance,aLength:TpvUInt32);
  begin
+  if (TpvPtrUInt(TpvPtrUInt(CurrentPointer)-TpvPtrUInt(aInData)))=66141 then begin
+   FlushLiterals;
+  end;
   if (aDistance>0) and (aLength>1) then begin
    FlushLiterals;
    if ((aLength>3) and (aLength<12)) and (aDistance<2048) then begin
@@ -249,13 +252,13 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
     case aLength of
      0..8191:begin
       // Long match
-      DoOutputUInt32(({b011}3 or ((aLength-1) shl 3)) or (((aDistance-1) and TpvUInt32($0000ffff)) shl 16));
-      DoOutputUInt16(((aDistance-1) and TpvUInt32($ffff0000)) shr 16);
+      DoOutputUInt16({b011}3 or ((aLength-1) shl 3));
+      DoOutputUInt32(aDistance-1);
      end;
      else begin
       // Huge match
       DoOutputUInt8({b111}7);
-      DoOutputUInt32(aLength);
+      DoOutputUInt32(aLength-1);
       DoOutputUInt32(aDistance-1);
      end;
     end;
@@ -268,8 +271,7 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  procedure OutputEndBlock;
  begin
   FlushLiterals;
-  DoOutputUInt8({b111}7);
-  DoOutputUInt32(0);
+  DoOutputUInt8({b11111111}$ff);
  end;
 begin
  result:=false;
@@ -433,7 +435,7 @@ begin
  InputEnd:=@PpvUInt8Array(InputPointer)^[aInLen];
 
  OutputSize:=PpvUInt64(InputPointer)^;
-{$ifndef little_endian}
+{$ifdef BIG_ENDIAN}
  OutputSize:=((OutputSize and TpvUInt64($ff00000000000000)) shr 56) or
              ((OutputSize and TpvUInt64($00ff000000000000)) shr 40) or
              ((OutputSize and TpvUInt64($0000ff0000000000)) shr 24) or
@@ -464,6 +466,10 @@ begin
   Tag:=TpvUInt8(pointer(InputPointer)^);
   inc(InputPointer);
 
+  if (TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(aDestData)))=66141 then begin
+   InputEnd:=@PpvUInt8Array(InputPointer)^[aInLen];
+  end;
+
   case Tag and 3 of
    {b00}0:begin
     // Literal(s)
@@ -484,7 +490,7 @@ begin
        result:=false;
        break;
       end;
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
       Len:=TpvUInt16(Pointer(InputPointer)^)+1;
       inc(InputPointer,SizeOf(TpvUInt16));
 {$else}
@@ -498,7 +504,7 @@ begin
        result:=false;
        break;
       end;
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
       Len:=TpvUInt16(Pointer(InputPointer)^);
       inc(InputPointer,SizeOf(TpvUInt16));
       Len:=(Len or (TpvUInt8(pointer(InputPointer)^) shl 16))+1;
@@ -517,7 +523,7 @@ begin
        result:=false;
        break;
       end;
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
       Len:=TpvUInt32(pointer(InputPointer)^)+1;
       inc(InputPointer,SizeOf(TpvUInt32));
 {$else}
@@ -555,7 +561,7 @@ begin
      break;
     end;
     Len:=(Tag shr 2)+1;
-{$ifdef little_endian}
+{$ifdef LITTLE_ENDIAN}
     Offset:=TpvUInt16(pointer(InputPointer)^)+1;
     inc(InputPointer,SizeOf(TpvUInt16));
 {$else}
@@ -570,51 +576,48 @@ begin
     end;
    end;
    else {b11}{3:}begin
-    if (Tag and 4)<>0 then begin
+    if Tag=$ff then begin
+     // End code
+     break;
+    end else if (Tag and 4)<>0 then begin
      // {b111}7 - Huge match
-     if (TpvPtrUInt(InputPointer)+SizeOf(TpvUInt32))>TpvPtrUInt(InputEnd) then begin
+     if (TpvPtrUInt(InputPointer)+(SizeOf(TpvUInt32)+SizeOf(TpvUInt32)))>TpvPtrUInt(InputEnd) then begin
       result:=false;
       break;
      end;
      Len:=TpvUInt32(pointer(InputPointer)^);
      inc(InputPointer,SizeOf(TpvUInt32));
-{$ifndef little_endian}
+     Offset:=TpvUInt32(pointer(InputPointer)^);
+     inc(InputPointer,SizeOf(TpvUInt32));
+{$ifdef BIG_ENDIAN}
      Len:=((Len and TpvUInt32($ff000000)) shr 24) or
           ((Len and TpvUInt32($00ff0000)) shr 8) or
           ((Len and TpvUInt32($0000ff00)) shl 8) or
           ((Len and TpvUInt32($000000ff)) shl 24);
-{$endif}
-     if Len=0 then begin
-      // End code
-      break;
-     end else if (TpvPtrUInt(InputPointer)+SizeOf(TpvUInt32))>TpvPtrUInt(InputEnd) then begin
-      result:=false;
-      break;
-     end;
-     Offset:=TpvUInt32(pointer(InputPointer)^);
-     inc(InputPointer,SizeOf(TpvUInt32));
-{$ifndef little_endian}
      Offset:=((Offset and TpvUInt32($ff000000)) shr 24) or
              ((Offset and TpvUInt32($00ff0000)) shr 8) or
              ((Offset and TpvUInt32($0000ff00)) shl 8) or
              ((Offset and TpvUInt32($000000ff)) shl 24);
 {$endif}
+     inc(Len);
+     inc(Offset);
     end else begin
      // {b011}3 - Long match
      if (TpvPtrUInt(InputPointer)+(SizeOf(TpvUInt8)+SizeOf(TpvUInt32)))>TpvPtrUInt(InputEnd) then begin
       result:=false;
       break;
      end;
-     Len:=((Tag shr 3) or (TpvUInt8(pointer(InputPointer)^) shl 5))+1;
+     Len:=((Tag shr 3) or (TpvUInt8(pointer(InputPointer)^) shl (8-3)))+1;
      inc(InputPointer,SizeOf(TpvUInt8));
      Offset:=TpvUInt32(pointer(InputPointer)^);
      inc(InputPointer,SizeOf(TpvUInt32));
-{$ifndef little_endian}
+{$ifdef BIG_ENDIAN}
      Offset:=((Offset and TpvUInt32($ff000000)) shr 24) or
              ((Offset and TpvUInt32($00ff0000)) shr 8) or
              ((Offset and TpvUInt32($0000ff00)) shl 8) or
              ((Offset and TpvUInt32($000000ff)) shl 24);
 {$endif}
+     inc(Offset);
     end;
     CopyFromPointer:=pointer(TpvPtrUInt(TpvPtrUInt(OutputPointer)-TpvPtrUInt(Offset)));
     if TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(aDestData) then begin
@@ -631,15 +634,19 @@ begin
 
   if (TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(OutputPointer)) and (TpvPtrUInt(OutputPointer)<(TpvPtrUInt(CopyFromPointer)+TpvPtrUInt(Len))) then begin
    // Overlapping
-   repeat
+   while Len>0 do begin
     OutputPointer^:=CopyFromPointer^;
     inc(OutputPointer);
     inc(CopyFromPointer);
     dec(Len);
-   until Len=0;
+   end;
   end else begin
    // Non-overlapping
-   case Len of
+   if Len>0 then begin
+    Move(CopyFromPointer^,OutputPointer^,Len);
+    inc(OutputPointer,Len);
+   end;
+(* case Len of
     1:begin
      OutputPointer^:=CopyFromPointer^;
      inc(OutputPointer);
@@ -717,7 +724,7 @@ begin
      end;
 {$endif}
     end;
-   end;
+   end;*)
   end;
 
  end;

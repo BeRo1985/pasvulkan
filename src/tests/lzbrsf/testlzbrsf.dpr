@@ -37,7 +37,7 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
- if LZBRSFCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRSFMode.VeryFast) then begin
+ if LZBRSFCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRSFMode.Medium) then begin
  
   OutputFileStream:=TFileStream.Create('output.dat',fmCreate);
   try
@@ -104,6 +104,8 @@ var OriginalFileStream:TFileStream;
     UncompressedFileStream:TFileStream;
     OriginalSize:TpvUInt64;
     UncompressedSize:TpvUInt64;
+    Index:TpvUInt64;
+    OK:boolean;
     OriginalData:Pointer;
     UncompressedData:Pointer;
 begin
@@ -129,10 +131,16 @@ begin
  end;
 
  if OriginalSize=UncompressedSize then begin
-  if CompareMem(OriginalData,UncompressedData,OriginalSize) then begin
+  OK:=true;
+  for Index:=1 to OriginalSize do begin
+   if PByte(UncompressedData)[Index-1]<>PByte(OriginalData)[Index-1] then begin
+     WriteLn('Failed because of different data at byte position ',Index-1,'!');
+    OK:=false;
+    break;
+   end;
+  end;
+  if OK then begin
    WriteLn('OK!');
-  end else begin
-   WriteLn('Failed because of different data!');
   end;
  end else begin
   WriteLn('Failed because of different sizes!');
@@ -160,8 +168,8 @@ begin
   end;
  end;
 
- WriteLn('Press enter to continue...');
- ReadLn;
+{WriteLn('Press enter to continue...');
+ ReadLn;//}
 
 end.
 
