@@ -496,12 +496,12 @@ var CRCTable:array[0..255] of TpvUInt32;
 
 function ReadByte(const Stream:TStream):TpvUInt8;
 begin
- Stream.Read(result,1);
+ Stream.Read(result,SizeOf(TpvUInt8));
 end;
 
 procedure WriteByte(const Stream:TStream;const b:TpvUInt8);
 begin
- Stream.Write(b,1);
+ Stream.Write(b,SizeOf(TpvUInt8));
 end;
 
 procedure InitBitModels(var probs:array of TpvInt16);
@@ -3152,22 +3152,22 @@ const LZMA_BASE_SIZE=1846;
       LZMA_RESULT_OK=true;
       LZMA_RESULT_DATA_ERROR=false;
 
-type PLZMAPropertiesArray=^TLZMAPropertiesArray;
-     TLZMAPropertiesArray=array[0..LZMA_PROPERTIES_SIZE-1] of TpvUInt8;
+type TLZMAPropertiesArray=array[0..LZMA_PROPERTIES_SIZE-1] of TpvUInt8;
+     PLZMAPropertiesArray=^TLZMAPropertiesArray;
 
      PLZMASizeArray=^TLZMASizeArray;
      TLZMASizeArray=array[0..7] of TpvUInt8;
 
-     PLZMAProperties=^TLZMAProperties;
      TLZMAProperties=packed record
       lc,LiteralPosition,PositionState:TpvInt32;
      end;
+     PLZMAProperties=^TLZMAProperties;
 
-     PLZMADecoderState=^TLZMADecoderState;
      TLZMADecoderState=packed record
       Properties:TLZMAProperties;
       Probs:pointer;
      end;
+     PLZMADecoderState=^TLZMADecoderState;
 
 const kNumTopBits=24;
       kTopValue=1 shl kNumTopBits;
@@ -3540,6 +3540,8 @@ function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestD
 var Encoder:TLZMAEncoder;
     InStream,OutStream:TMemoryStream;
     i:TpvInt32;
+    u:TpvUInt64;
+    b:TpvUInt8;
 begin
  InStream:=TMemoryStream.Create;
  try
@@ -3579,8 +3581,10 @@ begin
     Encoder.WriteCoderProperties(OutStream);
     InStream.Write(aInData^,aInLen);
     InStream.Seek(0,soBeginning);
+    u:=InStream.Size;
     for i:=0 to 7 do begin
-     OutStream.WriteByte((TpvUInt64(InStream.Size) shr (8*i)) and $ff);
+     b:=(u shr (i shl 3)) and $ff;
+     OutStream.WriteBuffer(b,SizeOf(TpvUInt8));
     end;
     Encoder.Code(InStream,OutStream,-1,-1);
    finally
@@ -3606,6 +3610,7 @@ var LZMAProperties:TLZMAProperties;
     LZMAProbsSize:TpvUInt32;
     CompressedDataBytesProcessed:TpvUInt64;
     UncompressedDataBytesProcessed:TpvUInt64;
+    LZMASizeArray:PLZMASizeArray;
 begin
  if aInLen>=(SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray)) then begin
   LZMADecodeProperties(LZMAProperties,aInData,0);
@@ -3614,7 +3619,15 @@ begin
   try
    LZMADecoderState.Properties:=LZMAProperties;
    LZMADecoderState.Probs:=LZMAProbs;
-   aDestLen:=TpvUInt64(pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)))^);
+   LZMASizeArray:=pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)));
+   aDestLen:=(TpvUInt64(LZMASizeArray^[0]) shl 0) or
+             (TpvUInt64(LZMASizeArray^[1]) shl 8) or
+             (TpvUInt64(LZMASizeArray^[2]) shl 16) or
+             (TpvUInt64(LZMASizeArray^[3]) shl 24) or
+             (TpvUInt64(LZMASizeArray^[4]) shl 32) or
+             (TpvUInt64(LZMASizeArray^[5]) shl 40) or
+             (TpvUInt64(LZMASizeArray^[6]) shl 48) or
+             (TpvUInt64(LZMASizeArray^[7]) shl 56);
    CompressedDataBytesProcessed:=0;
    UncompressedDataBytesProcessed:=0;
    if aDestLen>0 then begin
