@@ -403,6 +403,9 @@ type TBlock1=TpvUInt8;
      TBlock6=array[0..5] of TpvUInt8;
      TBlock7=array[0..6] of TpvUInt8;
      TBlock8=TpvUInt64;
+     TBlock16=array[0..1] of TpvUInt64;
+     TBlock32=array[0..3] of TpvUInt64;
+     TBlock64=array[0..7] of TpvUInt64;
      PBlock1=^TBlock1;
      PBlock2=^TBlock2;
      PBlock3=^TBlock3;
@@ -411,6 +414,9 @@ type TBlock1=TpvUInt8;
      PBlock6=^TBlock6;
      PBlock7=^TBlock7;
      PBlock8=^TBlock8;
+     PBlock16=^TBlock16;
+     PBlock32=^TBlock32;
+     PBlock64=^TBlock64;
 var InputPointer,InputEnd,OutputPointer,OutputEnd,CopyFromPointer:PpvUInt8;
     Len,Offset,Tag:TpvUInt32;
     OutputSize:TpvUInt64;
@@ -648,20 +654,58 @@ begin
   end;
 
   if (TpvPtrUInt(CopyFromPointer)<TpvPtrUInt(OutputPointer)) and (TpvPtrUInt(OutputPointer)<(TpvPtrUInt(CopyFromPointer)+TpvPtrUInt(Len))) then begin
+
    // Overlapping
+
    while Len>0 do begin
     OutputPointer^:=CopyFromPointer^;
     inc(OutputPointer);
     inc(CopyFromPointer);
     dec(Len);
    end;
+
   end else begin
 
    // Non-overlapping
 
+   if Len>SizeOf(TBlock8) then begin
+
+    while Len>=SizeOf(TBlock64) do begin
+     PBlock64(pointer(OutputPointer))^:=PBlock64(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock64));
+     inc(CopyFromPointer,SizeOf(TBlock64));
+     dec(Len,SizeOf(TBlock64));
+    end;
+
+    while Len>=SizeOf(TBlock32) do begin
+     PBlock32(pointer(OutputPointer))^:=PBlock32(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock32));
+     inc(CopyFromPointer,SizeOf(TBlock32));
+     dec(Len,SizeOf(TBlock32));
+    end;
+
+    while Len>=SizeOf(TBlock16) do begin
+     PBlock16(pointer(OutputPointer))^:=PBlock16(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock16));
+     inc(CopyFromPointer,SizeOf(TBlock16));
+     dec(Len,SizeOf(TBlock16));
+    end;
+
+    while Len>=SizeOf(TBlock8) do begin
+     PBlock8(pointer(OutputPointer))^:=PBlock8(pointer(CopyFromPointer))^;
+     inc(OutputPointer,SizeOf(TBlock8));
+     inc(CopyFromPointer,SizeOf(TBlock8));
+     dec(Len,SizeOf(TBlock8));
+    end;
+
+   end;
+
    case Len of
 
     0:begin
+
+     // Do nothing in this case
+
     end;
 
     1:begin
@@ -692,7 +736,6 @@ begin
 
     end;
 
-{$ifdef cpu64}
     5:begin
 
      PBlock5(pointer(OutputPointer))^:=PBlock5(pointer(CopyFromPointer))^;
@@ -720,36 +763,10 @@ begin
      inc(OutputPointer,SizeOf(TBlock8));
 
     end;
-{$endif}
 
     else begin
 
-{$ifdef fpc}
-     Move(CopyFromPointer^,OutputPointer^,Len);
-     inc(OutputPointer,Len);
-{$else}
-{$ifdef cpu64}
-     while Len>=SizeOf(TpvUInt64) do begin
-      TpvUInt64(pointer(OutputPointer)^):=TpvUInt64(pointer(CopyFromPointer)^);
-      inc(OutputPointer,SizeOf(TpvUInt64));
-      inc(CopyFromPointer,SizeOf(TpvUInt64));
-      dec(Len,SizeOf(TpvUInt64));
-     end;
-{$else}
-     while Len>=SizeOf(TpvUInt32) do begin
-      TpvUInt32(pointer(OutputPointer)^):=TpvUInt32(pointer(CopyFromPointer)^);
-      inc(OutputPointer,SizeOf(TpvUInt32));
-      inc(CopyFromPointer,SizeOf(TpvUInt32));
-      dec(Len,SizeOf(TpvUInt32));
-     end;
-{$endif}
-     while Len>0 do begin
-      OutputPointer^:=CopyFromPointer^;
-      inc(OutputPointer);
-      inc(CopyFromPointer);
-      dec(Len);
-     end;
-{$endif}
+     Assert(false);
 
     end;
 
