@@ -860,7 +860,11 @@ begin
    end;
    GetMem(aDestData,OutputSize);
   end;
-  DestLen:=LZBRRCDecompressASM(@PpvUInt8Array(aInData)^[8],aDestData);
+  if aWithSize then begin
+   DestLen:=LZBRRCDecompressASM(@PpvUInt8Array(aInData)^[8],aDestData);
+  end else begin
+   DestLen:=LZBRRCDecompressASM(@PpvUInt8Array(aInData)^[0],aDestData);
+  end;
   if (not aWithSize) and (aOutputSize<0) then begin
    aDestLen:=DestLen;
   end;
@@ -975,11 +979,19 @@ begin
    end;
    GetMem(aDestData,OutputSize);
   end;
-  Code:=(PpvUInt8Array(aInData)^[8] shl 24) or
-        (PpvUInt8Array(aInData)^[9] shl 16) or
-        (PpvUInt8Array(aInData)^[10] shl 8) or
-        (PpvUInt8Array(aInData)^[11] shl 0);
-  Position:=12;
+  if aWithSize then begin
+   Code:=(PpvUInt8Array(aInData)^[8] shl 24) or
+         (PpvUInt8Array(aInData)^[9] shl 16) or
+         (PpvUInt8Array(aInData)^[10] shl 8) or
+         (PpvUInt8Array(aInData)^[11] shl 0);
+   Position:=12;
+  end else begin
+   Code:=(PpvUInt8Array(aInData)^[0] shl 24) or
+         (PpvUInt8Array(aInData)^[1] shl 16) or
+         (PpvUInt8Array(aInData)^[2] shl 8) or
+         (PpvUInt8Array(aInData)^[3] shl 0);
+   Position:=4;
+  end;
   Range:=$ffffffff;
   for Value:=0 to SizeModels-1 do begin
    Model[Value]:=2048;
