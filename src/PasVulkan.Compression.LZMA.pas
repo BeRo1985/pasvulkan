@@ -1872,7 +1872,7 @@ end;
 procedure TLZMADecoder.DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt64);
 begin
  if assigned(fOnProgress) then begin
-  fOnProgress(action,value);
+  fOnProgress(Action,Value);
  end;
 end;
 
@@ -3140,7 +3140,7 @@ end;
 procedure TLZMAEncoder.DoProgress(const Action:TLZMAProgressAction;const Value:TpvInt64);
 begin
  if assigned(fOnProgress) then begin
-  fOnProgress(action,value);
+  fOnProgress(Action,Value);
  end;
 end;
 
