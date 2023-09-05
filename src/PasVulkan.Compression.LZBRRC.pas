@@ -398,15 +398,15 @@ begin
           if Difference=0 then begin
            inc(MatchLength,SizeOf(TpvUInt32));
           end else begin
- {$if defined(FPC_BIG_ENDIAN)}
+{$if defined(FPC_BIG_ENDIAN)}
            if (Difference shr 16)<>0 then begin
             inc(MatchLength,not (Difference shr 24));
            end else begin
             inc(MatchLength,2+(not (Difference shr 8)));
            end;
- {$else}
+{$else}
            inc(MatchLength,MultiplyDeBruijnBytePosition[TpvUInt32(TpvUInt32(Difference and (-Difference))*TpvUInt32($077cb531)) shr 27]);
- {$ifend}
+{$ifend}
            break;
           end;
          end;
@@ -457,11 +457,16 @@ begin
          Step:=BestMatchLength;
         end;
         Offset:=0;
-        while (Offset<Step) and (({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer)) do begin
-         EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,0);
-         EncodeTree(LiteralModel,8,4,PpvUInt8Array(CurrentPointer)^[Offset]);
-         LastWasMatch:=false;
-         inc(Offset);
+        while Offset<Step do begin
+         if ({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer) then begin
+          EncodeBit(FlagModel+TpvUInt8(ord(LastWasMatch) and 1),5,0);
+          EncodeTree(LiteralModel,8,4,PpvUInt8Array(CurrentPointer)^[Offset]);
+          LastWasMatch:=false;
+          inc(Offset);
+         end else begin
+          BestMatchLength:=Offset; // Because we reached EndSearchPointer, so that the tail remaining literal stuff is processing the right remaining offset then
+          break;
+         end;
         end;
         if BestMatchLength=1 then begin
          BestMatchLength:=Offset;
@@ -939,7 +944,7 @@ var Len,Offset,LastOffset,DestLen,Value:TpvInt32;
     OutputSize:TpvUInt64;
 begin
  result:=false;
- if aInLen>=12 then begin
+ if (aWithSize and (aInLen>=12)) or ((not aWithSize) and (aInLen>=4)) then begin
   OK:=true;
   if aWithSize then begin
    OutputSize:=PpvUInt64(aInData)^;
