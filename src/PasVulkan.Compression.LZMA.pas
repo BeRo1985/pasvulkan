@@ -7,6 +7,8 @@ unit PasVulkan.Compression.LZMA;
   {$ifend}
  {$endif}
 {$endif}
+{$rangechecks off}
+{$overflowchecks off}
 
 interface
 
