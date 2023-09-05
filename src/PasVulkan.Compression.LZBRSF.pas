@@ -67,6 +67,11 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Types;
 
+// LZBRSF is a pure byte-wise compression algorithm, so it is pretty fast, but it doesn't compress
+// very well, but it is still better than nothing, and it is also very fast at decompression, so it
+// is a pretty good choice for games, where the compression ratio isn't that important, but only the
+// decompression speed.
+
 type TpvLZBRSFLevel=0..9;
      PpvLZBRSFLevel=^TpvLZBRSFLevel;
 

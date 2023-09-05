@@ -16,6 +16,9 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Types;
 
+// The old good LZMA, but it is slow, but it compresses very well. It should be used for data, where
+// the compression ratio is more important than the decompression speed.
+
 const kNumRepDistances=4;
       kNumStates=12;
       kNumPosSlotBits=6;

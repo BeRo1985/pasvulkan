@@ -67,6 +67,11 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Types;
 
+// LZBRRC is a LZ77-based compression algorithm but with range coding for the entropy coding, so it
+// is pretty fast and it does also compress very well, but LZMA is still better at the compression
+// ratio. LZBRRC is also very fast at decompression, so it is a good choice for games, because it is
+// fast at both compression and decompression, and it compresses very well, so it saves a lot of space.
+
 type TpvLZBRRCLevel=0..9;
      PpvLZBRRCLevel=^TpvLZBRRCLevel;
 
