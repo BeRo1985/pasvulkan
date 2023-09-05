@@ -269,7 +269,10 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  end;
 begin
  result:=false;
- AllocatedDestSize:=SizeOf(TpvUInt32);
+ AllocatedDestSize:=aInLen;
+ if AllocatedDestSize<SizeOf(TpvUInt32) then begin
+  AllocatedDestSize:=SizeOf(TpvUInt32);
+ end;
  GetMem(aDestData,AllocatedDestSize);
  aDestLen:=0;
  try

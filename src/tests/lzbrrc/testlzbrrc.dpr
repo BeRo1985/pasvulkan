@@ -1,4 +1,4 @@
-program testlzbrsf;
+program testlzbrrc;
 {$ifdef fpc}
  {$mode delphi}
 {$endif}
@@ -15,9 +15,9 @@ uses SysUtils,
      Classes,
      Math,
      PasVulkan.Types,
-     PasVulkan.Compression.LZBRSF;
+     PasVulkan.Compression.LZBRRC;
 
-procedure TestLZBRSFCompress;
+procedure TestLZBRRCCompress;
 var InputFileStream:TFileStream;
     OutputFileStream:TFileStream;
     CompressedSize:TpvUInt64;
@@ -37,7 +37,7 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
- if LZBRSFCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRSFLevel(5)) then begin
+ if LZBRRCCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRRCLevel(1)) then begin
  
   OutputFileStream:=TFileStream.Create('output.dat',fmCreate);
   try
@@ -58,7 +58,7 @@ begin
 
 end;
 
-procedure TestLZBRSFDecompress;
+procedure TestLZBRRCDecompress;
 var InputFileStream:TFileStream;
     OutputFileStream:TFileStream;
     CompressedSize:TpvUInt64;
@@ -78,7 +78,7 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
- if LZBRSFDecompress(CompressedData,CompressedSize,UncompressedData,UncompressedSize) then begin
+ if LZBRRCDecompress(CompressedData,CompressedSize,UncompressedData,UncompressedSize) then begin
  
   OutputFileStream:=TFileStream.Create('output2.dat',fmCreate);
   try
@@ -158,8 +158,8 @@ begin
  
  try
 
-  TestLZBRSFCompress;
-  TestLZBRSFDecompress;
+  TestLZBRRCCompress;
+  TestLZBRRCDecompress;
   TestCompare;
 
  except
