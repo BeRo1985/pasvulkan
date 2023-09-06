@@ -74,6 +74,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Compression.Deflate,
+     PasVulkan.Compression.LZBRS,
      PasVulkan.Compression.LZBRSF,
      PasVulkan.Compression.LZBRRC,
      PasVulkan.Compression.LZMA;
@@ -84,7 +85,8 @@ type TpvCompressionMethod=
        Deflate=1,
        LZBRSF=2,
        LZBRRC=3,
-       LZMA=4
+       LZMA=4,
+       LZBRS=5
       );
 
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
@@ -220,6 +222,9 @@ begin
   TpvUInt8(TpvCompressionMethod.LZMA):begin
    aJob.Success:=LZMACompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,TpvLZMALevel(aJob.FileHeader^.CompressionLevel),false);
   end;
+  TpvUInt8(TpvCompressionMethod.LZBRS):begin
+   aJob.Success:=LZBRSCompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,TpvLZBRSLevel(aJob.FileHeader^.CompressionLevel),false);
+  end; 
   else begin
    aJob.Success:=false;
   end;
@@ -456,6 +461,12 @@ begin
    // The old good LZMA, but it is slow, but it compresses very well. It should be used for data, where the compression ratio is more important 
    // than the decompression speed.  
    aJob.Success:=LZMADecompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,aJob.CompressionPartHeader^.UncompressedSize,false);
+  end;
+  TpvUInt8(TpvCompressionMethod.LZBRS):begin
+   // LZBRS is a simple LZ77/LZSS-style algorithm like BriefLZ, but with 32-bit tags instead 16-bit tags,
+   // and with end tag (match with offset 0)
+   // Not to be confused with the old equal-named LRBRS from BeRoEXEPacker, which was 8-bit byte-wise tag-based.
+   aJob.Success:=LZBRSDecompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,aJob.CompressionPartHeader^.UncompressedSize,false);
   end;
   else begin
    aJob.Success:=false;
