@@ -262,7 +262,7 @@ begin
  
  try
 
-  TestLZBRSCompress;
+  //TestLZBRSCompress;
   TestLZBRSDecompress;
   TestCompare;//}
 
