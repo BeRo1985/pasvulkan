@@ -206,6 +206,12 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
  procedure DoOutputBit(Bit:boolean);
  begin
   if BitCount=0 then begin
+{$ifdef BIG_ENDIAN}
+   Tag:=((Tag and TpvUInt64($ff000000) shr 24) or
+        ((Tag and TpvUInt64($00ff0000) shr 8) or
+        ((Tag and TpvUInt64($0000ff00) shl 8) or
+        ((Tag and TpvUInt64($000000ff) shl 24);
+{$endif}
    PpvUInt32(Pointer(@PBytes(aDestData)^[TagPointer]))^:=Tag;
    if AllocatedDestSize<(aDestLen+SizeOf(TpvUInt32)) then begin
     AllocatedDestSize:=(aDestLen+SizeOf(TpvUInt32)) shl 1;
@@ -226,6 +232,12 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
   RemainBits:=Bits;
   while RemainBits>0 do begin
    if BitCount=0 then begin
+{$ifdef BIG_ENDIAN}
+    Tag:=((Tag and TpvUInt64($ff000000) shr 24) or
+         ((Tag and TpvUInt64($00ff0000) shr 8) or
+         ((Tag and TpvUInt64($0000ff00) shl 8) or
+         ((Tag and TpvUInt64($000000ff) shl 24);
+{$endif}
     PpvUInt32(Pointer(@PBytes(aDestData)^[TagPointer]))^:=Tag;
     if AllocatedDestSize<(aDestLen+SizeOf(TpvUInt32)) then begin
      AllocatedDestSize:=(aDestLen+SizeOf(TpvUInt32)) shl 1;
@@ -546,11 +558,24 @@ begin
    FreeMem(HashTable);
   end;
   FlushLiterals;
-  DoOutputBit(true);
-  DoOutputGamma(2);
-  DoOutputGamma(2);
-  DoOutputUInt8(0);
-  PpvUInt32(Pointer(@PBytes(aDestData)^[TagPointer]))^:=Tag shl BitCount;
+  begin
+   // End tag
+   DoOutputBit(true);
+   DoOutputGamma(2);
+   DoOutputGamma(2);
+   DoOutputUInt8(0);
+  end;
+  begin
+   // Flush bits
+   Tag:=Tag shl BitCount;
+{$ifdef BIG_ENDIAN}
+   Tag:=((Tag and TpvUInt64($ff000000) shr 24) or
+        ((Tag and TpvUInt64($00ff0000) shr 8) or
+        ((Tag and TpvUInt64($0000ff00) shl 8) or
+        ((Tag and TpvUInt64($000000ff) shl 24);
+{$endif}
+   PpvUInt32(Pointer(@PBytes(aDestData)^[TagPointer]))^:=Tag;
+  end;
  finally
   if aDestLen>0 then begin
    ReallocMem(aDestData,aDestLen);
@@ -598,6 +623,12 @@ function GetBit:TpvUInt32;
     exit;
    end;
    Tag:=TpvUInt32(pointer(InputPointer)^);
+{$ifdef BIG_ENDIAN}
+   Tag:=((Tag and TpvUInt64($ff000000) shr 24) or
+        ((Tag and TpvUInt64($00ff0000) shr 8) or
+        ((Tag and TpvUInt64($0000ff00) shl 8) or
+        ((Tag and TpvUInt64($000000ff) shl 24);
+{$endif}
    inc(InputPointer,SizeOf(TpvUInt32));
    BitCount:=31;
   end else begin
@@ -731,6 +762,12 @@ begin
  result:=true;
 
  Tag:=TpvUInt32(pointer(InputPointer)^);
+{$ifdef BIG_ENDIAN}
+ Tag:=((Tag and TpvUInt64($ff000000) shr 24) or
+      ((Tag and TpvUInt64($00ff0000) shr 8) or
+      ((Tag and TpvUInt64($0000ff00) shl 8) or
+      ((Tag and TpvUInt64($000000ff) shl 24);
+{$endif}
  inc(InputPointer,SizeOf(TpvUInt32));
  BitCount:=32;
 
