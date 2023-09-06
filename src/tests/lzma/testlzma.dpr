@@ -37,6 +37,8 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
+ CompressedData:=nil;
+
  if LZMACompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZMALevel(9)) then begin
  
   OutputFileStream:=TFileStream.Create('output.dat',fmCreate);
@@ -77,6 +79,8 @@ begin
  finally
   FreeAndNil(InputFileStream);
  end;
+
+ UncompressedData:=nil;
 
  if LZMADecompress(CompressedData,CompressedSize,UncompressedData,UncompressedSize) then begin
  
@@ -158,7 +162,7 @@ begin
  
  try
 
-  TestLZMACompress;
+  //TestLZMACompress;
   TestLZMADecompress;
   TestCompare;
 

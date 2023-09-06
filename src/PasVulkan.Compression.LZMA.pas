@@ -3610,7 +3610,77 @@ begin
  end;
 end;
 
+type TISzAlloc=record
+      Alloc:function(P:Pointer;Size:TpvSizeUInt):Pointer; cdecl;
+      Free:procedure(P:Pointer;Address:Pointer); cdecl;
+     end;
+     PISzAlloc=^TISzAlloc;
+
+function _Alloc(P:Pointer;Size:TpvSizeUInt):Pointer; cdecl;
+begin
+ GetMem(result,Size);
+ FillChar(result^,Size,#0);
+end;
+
+procedure _Free(P:Pointer;Address:Pointer); cdecl;
+begin
+ if assigned(Address) then begin
+  FreeMem(Address);
+ end;
+end;
+
+const ISzAlloc:TISzAlloc=(Alloc:@_Alloc;Free:@_Free);
+
+{$if defined(Android) and defined(cpu386)}
+{$l lzma_c/lzmadec_android_x86_32.o}
+{$define HasLZMADec}
+{$elseif defined(Android) and defined(cpuamd64)}
+{$l lzma_c/lzmadec_android_x86_64.o}
+{$define HasLZMADec}
+{$elseif defined(Android) and defined(cpuaarch64)}
+{$l lzma_c/lzmadec_android_aarch64.o}
+{$define HasLZMADec}
+{$elseif defined(Linux) and defined(cpu386)}
+{$l lzma_c/lzmadec_linux_x86_32.o}
+{$define HasLZMADec}
+{$elseif defined(Linux) and defined(cpuamd64)}
+{$l lzma_c/lzmadec_linux_x86_64.o}
+{$define HasLZMADec}
+{$elseif defined(Linux) and defined(cpuaarch64)}
+{$l lzma_c/lzmadec_linux_aarch64.o}
+{$define HasLZMADec}
+{$elseif defined(Windows) and defined(cpu386)}
+{$l lzma_c\lzmadec_windows_x86_32.o}
+{$define HasLZMADec}
+{$elseif defined(Windows) and defined(cpuamd64)}
+{$l lzma_c\lzmadec_windows_x86_64.o}
+{$define HasLZMADec}
+{$elseif defined(Windows) and defined(cpuaarch64)}
+{$l lzma_c\lzmadec_windows_aarch64.o}
+{$define HasLZMADec}
+{$else}
+{$undef HasLZMADec}
+// => Pure-pascal LZMA decoder
+{$endif}
+
+{$ifdef HasLZMADec}
+const LZMA_FINISH_ANY=0;
+      LZMA_FINISH_END=1;
+
+      SZ_OK=0;
+
+function C_LzmaDecode(dest:pointer;destLen:PpvSizeUInt;src:pointer;srcLen:PpvSizeUInt;propData:pointer;propSize:TpvSizeUInt;finishMode:TpvInt32;status:PpvInt32;alloc:PISzAlloc):TPvInt32; cdecl; external name 'LzmaDecode';
+{$endif}
+
 function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64;const aWithSize:boolean):boolean;
+{$ifdef HasLZMADec}
+var SrcLen,
+    DestLen:TpvSizeUInt;
+    LZMASizeArrayOffset:TpvUInt64;
+    LZMASizeArray:PLZMASizeArray;
+    Allocated:boolean;
+    Status:TpvInt32;
+{$else}
 var LZMAProperties:TLZMAProperties;
     LZMADecoderState:TLZMADecoderState;
     LZMAProbs:pointer;
@@ -3620,8 +3690,61 @@ var LZMAProperties:TLZMAProperties;
     LZMASizeArrayOffset:TpvUInt64;
     LZMASizeArray:PLZMASizeArray;
     Allocated:boolean;
+{$endif}
 begin
- if aInLen>=(SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray)) then begin
+ if (aWithSize and (aInLen>=(SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray)))) or
+    ((not aWithSize) and (aInLen>=SizeOf(TLZMAPropertiesArray))) then begin
+{$ifdef HasLZMADec}
+  if aWithSize then begin
+   LZMASizeArray:=pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)));
+   LZMASizeArrayOffset:=SizeOf(TLZMASizeArray);
+   aDestLen:=(TpvUInt64(LZMASizeArray^[0]) shl 0) or
+             (TpvUInt64(LZMASizeArray^[1]) shl 8) or
+             (TpvUInt64(LZMASizeArray^[2]) shl 16) or
+             (TpvUInt64(LZMASizeArray^[3]) shl 24) or
+             (TpvUInt64(LZMASizeArray^[4]) shl 32) or
+             (TpvUInt64(LZMASizeArray^[5]) shl 40) or
+             (TpvUInt64(LZMASizeArray^[6]) shl 48) or
+             (TpvUInt64(LZMASizeArray^[7]) shl 56);
+  end else begin
+   LZMASizeArrayOffset:=0;
+   if aOutputSize>=0 then begin
+    aDestLen:=aOutputSize;
+   end else begin
+    aDestLen:=0;
+   end;
+  end;
+  if aDestLen>0 then begin
+   Allocated:=not assigned(aDestData);
+   if Allocated then begin
+    GetMem(aDestData,aDestLen);
+   end;
+   Status:=0;
+   SrcLen:=aInLen-(SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset);
+   DestLen:=aDestLen;
+   result:=C_LzmaDecode(aDestData,
+                        @DestLen,
+                        pointer(TpvPtrUInt(TpvPtrUInt(aInData)+SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset)),
+                        @SrcLen,
+                        aInData,
+                        SizeOf(TLZMAPropertiesArray),
+                        LZMA_FINISH_ANY,
+                        @Status,
+                        @ISzAlloc
+                       )=SZ_OK;
+   result:=result and (aDestLen=DestLen);
+   if not result then begin
+    if Allocated then begin
+     FreeMem(aDestData);
+     aDestData:=nil;
+    end;
+    aDestLen:=0;
+   end;
+  end else begin
+   aDestLen:=0;
+   result:=true;
+  end;
+{$else}
   LZMADecodeProperties(LZMAProperties,aInData,0);
   LZMAProbsSize:=LZMAGetNumProbs(LZMAProperties)*SizeOf(TpvUInt32);
   GetMem(LZMAProbs,LZMAProbsSize);
@@ -3677,6 +3800,7 @@ begin
    FreeMem(LZMAProbs);
    LZMAProbs:=nil;
   end;
+{$endif}
  end else begin
   aDestLen:=0;
   result:=false;
