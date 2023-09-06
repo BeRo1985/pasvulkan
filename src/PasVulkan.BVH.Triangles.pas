@@ -1428,6 +1428,12 @@ begin
   end;
  end;
 
+ if length(fSkipListNodes)<>fCountSkipListNodes then begin
+  SetLength(fSkipListNodes,fCountSkipListNodes);
+ end;
+
+ fSkipListNodeMap:=nil;
+
 end;
 
 procedure TpvTriangleBVH.LoadFromStream(const aStream:TStream);
