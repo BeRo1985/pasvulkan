@@ -1377,11 +1377,11 @@ begin
 
  end;
 
- if length(fSkipListNodeMap)<=fCountTreeNodes then begin
-  SetLength(fSkipListNodeMap,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
+ if length(fSkipListNodeMap)<fCountTreeNodes then begin
+  SetLength(fSkipListNodeMap,fCountTreeNodes);//+((fCountTreeNodes+1) shr 1));
  end;
- if length(fSkipListNodes)<=fCountTreeNodes then begin
-  SetLength(fSkipListNodes,fCountTreeNodes+((fCountTreeNodes+1) shr 1));
+ if length(fSkipListNodes)<fCountTreeNodes then begin
+  SetLength(fSkipListNodes,fCountTreeNodes);
  end;
  fCountSkipListNodes:=0;
  fTreeNodeStack.Push((TpvUInt64(fTreeNodeRoot) shl 1) or 0);
@@ -1392,7 +1392,13 @@ begin
    0:begin
     SkipListNodeIndex:=fCountSkipListNodes;
     inc(fCountSkipListNodes);
+    if length(fSkipListNodes)<=fCountSkipListNodes then begin
+     SetLength(fSkipListNodes,fCountSkipListNodes+((fCountSkipListNodes+1) shr 1));
+    end;
     SkipListNode:=@fSkipListNodes[SkipListNodeIndex];
+    if length(fSkipListNodeMap)<=TreeNodeIndex then begin
+     SetLength(fSkipListNodeMap,(TreeNodeIndex+1)+((TreeNodeIndex+2) shr 1));
+    end;
     fSkipListNodeMap[TreeNodeIndex]:=SkipListNodeIndex;
     SkipListNode^.Min.xyz:=TreeNode^.Bounds.Min;
     SkipListNode^.Min.w:=0.0;
