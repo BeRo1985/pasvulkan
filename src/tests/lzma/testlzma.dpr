@@ -162,7 +162,7 @@ begin
  
  try
 
-  //TestLZMACompress;
+  TestLZMACompress;
   TestLZMADecompress;
   TestCompare;
 
