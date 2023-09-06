@@ -3629,7 +3629,11 @@ begin
  end;
 end;
 
+{$ifdef fpc}
 const ISzAlloc:TISzAlloc=(Alloc:@_Alloc;Free:@_Free);
+{$else}
+const ISzAlloc:TISzAlloc=(Alloc:_Alloc;Free:_Free);
+{$endif}
 
 {$if defined(Android) and defined(cpu386)}
 {$l lzma_c/lzmadec_android_x86_32.o}
@@ -3661,7 +3665,7 @@ const ISzAlloc:TISzAlloc=(Alloc:@_Alloc;Free:@_Free);
 {$else}
 {$undef HasLZMADec}
 // => Pure-pascal LZMA decoder
-{$endif}
+{$ifend}
 
 {$ifdef HasLZMADec}
 const LZMA_FINISH_ANY=0;

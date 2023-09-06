@@ -577,7 +577,7 @@ end;
 {$if defined(fpc) and defined(cpuamd64)}
 {$if defined(cpuamd64)}
 {$warnings off}
-function LZBRRCDecompressASM(aSrc,aDst:Pointer):TpvUInt64; {$ifdef fpc}{$ifdef Windows}ms_abi_cdecl;{$else}sysv_abi_cdecl{$ifend}{$endif} assembler; {$ifdef fpc}nostackframe;{$endif}
+function LZBRRCDecompressASM(aSrc,aDst:Pointer):TpvUInt64; {$ifdef fpc}{$if defined(Windows)}ms_abi_cdecl;{$else}sysv_abi_cdecl{$ifend}{$endif} assembler; {$ifdef fpc}nostackframe;{$endif}
 const FlagModel=0;
       PrevMatchModel=2;
       MatchLowModel=3;

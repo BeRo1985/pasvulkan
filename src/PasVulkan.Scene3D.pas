@@ -6894,7 +6894,7 @@ begin
    // Just reupload all buffers in this case, since the size of the buffers has changed or the buffers are not yet allocated
 
    if (not assigned(fVulkanVertexBuffer)) and (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))) then begin
-    FreeMem(fVulkanVertexBuffer);
+    FreeAndNil(fVulkanVertexBuffer);
     fVulkanVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                 Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex),
                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -6922,7 +6922,7 @@ begin
    end;
 
    if (not assigned(fVulkanDrawIndexBuffer)) and (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
-    FreeMem(fVulkanDrawIndexBuffer);
+    FreeAndNil(fVulkanDrawIndexBuffer);
     fVulkanDrawIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                    Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -6950,7 +6950,7 @@ begin
    end;
 
    if (not assigned(fVulkanDrawUniqueIndexBuffer)) and (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
-    FreeMem(fVulkanDrawUniqueIndexBuffer);
+    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
     fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                          Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32),
                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -6978,7 +6978,7 @@ begin
    end;
 
    if (not assigned(fVulkanMorphTargetVertexBuffer)) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) then begin
-    FreeMem(fVulkanMorphTargetVertexBuffer);
+    FreeAndNil(fVulkanMorphTargetVertexBuffer);
     fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                            Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex),
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -7006,7 +7006,7 @@ begin
    end;
 
    if (not assigned(fVulkanJointBlockBuffer)) and (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) then begin
-    FreeMem(fVulkanJointBlockBuffer);
+    FreeAndNil(fVulkanJointBlockBuffer);
     fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                     Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
