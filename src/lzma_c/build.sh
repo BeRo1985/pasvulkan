@@ -7,8 +7,8 @@ clang -c -target i386-linux -g -gdwarf-2 -masm=intel -Wno-c++2b-extensions -Wno-
 clang -c -target i386-linux -g -gdwarf-2 -masm=intel -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O4 -march=haswell -D linux -fverbose-asm -fno-builtin LzmaDec.c -S -o lzmadec_linux_x86_32.s
 
 # Linux x86_64
-clang -c -target x86_64-linux -g -gdwarf-2 -masm=intel -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O1 -march=haswell -D linux -fverbose-asm -fno-builtin LzmaDec.c -o lzmadec_linux_x86_64.o
-clang -c -target x86_64-linux -g -gdwarf-2 -masm=intel -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O1 -march=haswell -D linux -fverbose-asm -fno-builtin LzmaDec.c -S -o lzmadec_linux_x86_64.s
+clang -c -target x86_64-linux -g -gdwarf-2 -masm=intel -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O4 -march=haswell -D linux -fverbose-asm -fno-builtin LzmaDec.c -o lzmadec_linux_x86_64.o
+clang -c -target x86_64-linux -g -gdwarf-2 -masm=intel -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O4 -march=haswell -D linux -fverbose-asm -fno-builtin LzmaDec.c -S -o lzmadec_linux_x86_64.s
 
 # Linux AArch64
 clang -c -target aarch64-linux -g -gdwarf-2 -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O4 -D linux -fverbose-asm -fno-builtin LzmaDec.c -o lzmadec_linux_aarch64.o
