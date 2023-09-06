@@ -88,6 +88,51 @@ function LZBRRCDecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestDat
 
 implementation
 
+{$if not declared(BSRDWord)}
+{$if defined(cpu386)}
+function BSRDWord(Value:TpvUInt32):TpvUInt32; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+ bsr eax,eax
+ jnz @Done
+ mov eax,255
+@Done:
+end;
+{$elseif defined(cpuamd64) or defined(cpux64)}
+function BSRDWord(Value:TpvUInt32):TpvUInt32; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .NOFRAME
+{$endif}
+{$ifdef Windows}
+ bsr eax,ecx
+{$else}
+ bsr eax,edi
+{$endif}
+ jnz @Done
+ mov eax,255
+@Done:
+end;
+{$else}
+function BSRDWord(Value:TpvUInt32):TpvUInt32;
+const BSRDebruijn32Multiplicator=TpvUInt32($07c4acdd);
+      BSRDebruijn32Shift=27;
+      BSRDebruijn32Mask=31;
+      BSRDebruijn32Table:array[0..31] of TpvInt32=(0,9,1,10,13,21,2,29,11,14,16,18,22,25,3,30,8,12,20,28,15,17,24,7,19,27,23,6,26,5,4,31);
+begin
+ if Value=0 then begin
+  result:=255;
+ end else begin
+  Value:=Value or (Value shr 1);
+  Value:=Value or (Value shr 2);
+  Value:=Value or (Value shr 4);
+  Value:=Value or (Value shr 8);
+  Value:=Value or (Value shr 16);
+  result:=BSRDebruijn32Table[((Value*BSRDebruijn32Multiplicator) shr BSRDebruijn32Shift) and BSRDebruijn32Mask];
+ end;
+end;
+{$ifend}
+{$ifend}
+
 const FlagModel=0;
       PreviousMatchModel=2;
       MatchLowModel=3;

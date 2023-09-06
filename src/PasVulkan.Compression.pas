@@ -154,6 +154,7 @@ procedure CompressPart(const aJob:PCompressionPartJob);
     FileName:TpvUTF8String;
     TemporaryOutData:Pointer;
     TemporaryOutDataSize:TpvUInt64;//}
+var OutSize:TpvSizeUInt;
 begin
 
  aJob^.OutData:=nil;
@@ -171,7 +172,9 @@ begin
    end;
   end;
   TpvUInt8(TpvCompressionMethod.Deflate):begin
-   aJob.Success:=DoDeflate(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,TpvDeflateMode(aJob.FileHeader^.CompressionLevel),false);
+   OutSize:=aJob.OutSize;
+   aJob.Success:=DoDeflate(aJob.InData,aJob.InSize,aJob.OutData,OutSize,TpvDeflateMode(aJob.FileHeader^.CompressionLevel),false);
+   aJob.OutSize:=OutSize;
   end;
   TpvUInt8(TpvCompressionMethod.LZBRSF):begin
    aJob.Success:=LZBRSFCompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,TpvLZBRSFLevel(aJob.FileHeader^.CompressionLevel),false);
@@ -281,7 +284,7 @@ begin
 
     Offset:=0;
     RemainSize:=InSize;
-    PartSize:=Max(1,(InSize+(FileHeader.Parts-1)) div FileHeader.Parts);
+    PartSize:=TpvUInt64(Max(TpvUInt64(1),TpvUInt64((InSize+(FileHeader.Parts-1)) div FileHeader.Parts)));
     for PartIndex:=0 to FileHeader.Parts-1 do begin
      if (PartIndex=(FileHeader.Parts-1)) or (RemainSize<PartSize) then begin
       Size:=RemainSize;
@@ -394,7 +397,7 @@ end;
 
 procedure DecompressPart(const aJob:PDecompressionPartJob);
 var TemporaryDeflateOutData:Pointer; // Deflate isn't in-place, so we need a temporary buffer
-    TemporaryDeflateOutSize:TpvUInt64;
+    TemporaryDeflateOutSize:TpvSizeUInt;
 begin 
 
  case aJob.FileHeader^.CompressionMethod of
