@@ -39,6 +39,8 @@ begin
   FreeAndNil(InputFileStream);
  end;
 
+ CompressedData:=nil;
+
  if LZBRRCCompress(UncompressedData,UncompressedSize,CompressedData,CompressedSize,TpvLZBRRCLevel(5)) then begin
  
   OutputFileStream:=TFileStream.Create('output.dat',fmCreate);
@@ -79,6 +81,8 @@ begin
  finally
   FreeAndNil(InputFileStream);
  end;
+
+ UncompressedData:=nil;
 
  if
 {$if declared(LZBRRCFastDecompress)}
