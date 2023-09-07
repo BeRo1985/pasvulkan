@@ -12311,8 +12311,10 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     MaterialToDuplicate,DuplicatedMaterial,Material:TpvScene3D.TMaterial;
     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
-    SrcVertex,DstVertex:PVertex;
     Generation:TpvUInt32;
+    SrcVertex,DstVertex:PVertex;
+    SrcMorphTargetVertex,DstMorphTargetVertex:PMorphTargetVertex;
+    SrcJointBlock,DstJointBlock:PJointBlock;
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
@@ -12570,7 +12572,21 @@ begin
     fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[fVulkanDrawUniqueIndexBufferOffset+Index]:=fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Items[Index]+fVulkanVertexBufferOffset;
    end;
 
+   for Index:=0 to fGroup.fMorphTargetVertices.Count-1 do begin
+    SrcMorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[Index];
+    DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.Items[fVulkanMorphTargetVertexBufferOffset+Index];
+    DstMorphTargetVertex^:=SrcMorphTargetVertex^;
+    inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
+    if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
+     inc(DstMorphTargetVertex^.Next,fVulkanMorphTargetVertexBufferOffset);
+    end;
+   end;
 
+   for Index:=0 to fGroup.fJointBlocks.Count-1 do begin
+    SrcJointBlock:=@fGroup.fJointBlocks.Items[Index];
+    DstJointBlock:=@fSceneInstance.fVulkanJointBlockBufferData.Items[fVulkanJointBlockBufferOffset+Index];
+    DstJointBlock^:=SrcJointBlock^;
+   end;
 
   finally
    fSceneInstance.fBufferRangeAllocatorLock.Release;
