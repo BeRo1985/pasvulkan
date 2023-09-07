@@ -76,6 +76,7 @@ uses SysUtils,
      PasVulkan.Compression.Deflate,
      PasVulkan.Compression.LZBRS,
      PasVulkan.Compression.LZBRSF,
+     PasVulkan.Compression.LZBRSX,
      PasVulkan.Compression.LZBRRC,
      PasVulkan.Compression.LZMA;
 
@@ -86,7 +87,8 @@ type TpvCompressionMethod=
        LZBRSF=2,
        LZBRRC=3,
        LZMA=4,
-       LZBRS=5
+       LZBRS=5,
+       LZBRSX=6
       );
 
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
@@ -224,7 +226,10 @@ begin
   end;
   TpvUInt8(TpvCompressionMethod.LZBRS):begin
    aJob.Success:=LZBRSCompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,TpvLZBRSLevel(aJob.FileHeader^.CompressionLevel),false);
-  end; 
+  end;
+  TpvUInt8(TpvCompressionMethod.LZBRSX):begin
+   aJob.Success:=LZBRSXCompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,TpvLZBRSXLevel(aJob.FileHeader^.CompressionLevel),false);
+  end;
   else begin
    aJob.Success:=false;
   end;
@@ -467,6 +472,10 @@ begin
    // and with end tag (match with offset 0)
    // Not to be confused with the old equal-named LRBRS from BeRoEXEPacker, which was 8-bit byte-wise tag-based.
    aJob.Success:=LZBRSDecompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,aJob.CompressionPartHeader^.UncompressedSize,false);
+  end;
+  TpvUInt8(TpvCompressionMethod.LZBRSX):begin
+   // LZBRSX is a simple LZ77/LZSS-style algorithm like apLib, but with 32-bit tags instead 8-bit tags
+   aJob.Success:=LZBRSXDecompress(aJob.InData,aJob.InSize,aJob.OutData,aJob.OutSize,aJob.CompressionPartHeader^.UncompressedSize,false);
   end;
   else begin
    aJob.Success:=false;
