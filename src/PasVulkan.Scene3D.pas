@@ -2419,6 +2419,7 @@ type EpvScene3D=class(Exception);
        fVulkanJointBlockBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
+       fVulkanPersistentBuffers:TVulkanPersistentBuffers;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
@@ -16010,6 +16011,8 @@ begin
 
  fVulkanMorphTargetVertexWeightsBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
+ fVulkanPersistentBuffers:=TpvScene3D.TVulkanPersistentBuffers.Create(self);
+
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
  fUploaded:=false;
@@ -16454,6 +16457,8 @@ begin
  FreeAndNil(fVulkanNodeMatricesBufferRangeAllocator);
 
  FreeAndNil(fVulkanMorphTargetVertexWeightsBufferRangeAllocator);
+
+ FreeAndNil(fVulkanPersistentBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
 
@@ -17467,6 +17472,10 @@ begin
 
   for Group in fGroups do begin
    Group.ExecuteGPUUpdate(aInFlightFrameIndex);
+  end;
+
+  if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+   fVulkanPersistentBuffers.Update;
   end;
 
   if fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
