@@ -1205,8 +1205,8 @@ type EpvScene3D=class(Exception);
             TMorphTargetVertexDynamicArray=TpvDynamicArray<TMorphTargetVertex>;
             TDynamicIndices=TpvDynamicArray<TVkUInt32>;
             TDynamicJointBlocks=TpvDynamicArray<TJointBlock>;
-            { TVulkanPersistentBufferData }
-            TVulkanPersistentBufferData=class
+            { TVulkanLongTermStaticBufferData }
+            TVulkanLongTermStaticBufferData=class
              private
               fSceneInstance:TpvScene3D;
               fVulkanVertexBuffer:TpvVulkanBuffer;
@@ -1222,21 +1222,23 @@ type EpvScene3D=class(Exception);
               procedure Update;
               procedure UpdateReleaseFrameCounter;
             end;
-            TVulkanPersistentBufferDataArray=array[0..MaxInFlightFrames-1] of TVulkanPersistentBufferData;
-            { TVulkanPersistentBuffers }
-            TVulkanPersistentBuffers=class
+            TVulkanLongTermStaticBufferDataArray=array[0..MaxInFlightFrames-1] of TVulkanLongTermStaticBufferData;
+            { TVulkanLongTermStaticBuffers }
+            TVulkanLongTermStaticBuffers=class
              private
               fSceneInstance:TpvScene3D;
-              fBufferDataArray:TVulkanPersistentBufferDataArray;
-              fBufferData:TVulkanPersistentBufferData;
+              fBufferDataArray:TVulkanLongTermStaticBufferDataArray;
+              fBufferData:TVulkanLongTermStaticBufferData;
               fCurrentIndex:TpvSizeInt;
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
               procedure Update;
              published
-              property BufferData:TVulkanPersistentBufferData read fBufferData;
+              property BufferData:TVulkanLongTermStaticBufferData read fBufferData;
             end;
+            { TVulkanShortTermDynamicBufferData }
+            { TVulkanShortTermDynamicBuffers }
             { TGroup }
             TGroup=class(TBaseObject) // A group is a GLTF scene in a uber-scene
              public
@@ -2419,7 +2421,7 @@ type EpvScene3D=class(Exception);
        fVulkanJointBlockBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
-       fVulkanPersistentBuffers:TVulkanPersistentBuffers;
+       fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
@@ -6844,9 +6846,9 @@ begin
  end;
 end;
 
-{ TpvScene3D.TVulkanPersistentBufferData }
+{ TpvScene3D.TVulkanLongTermStaticBufferData }
 
-constructor TpvScene3D.TVulkanPersistentBufferData.Create(const aSceneInstance:TpvScene3D);
+constructor TpvScene3D.TVulkanLongTermStaticBufferData.Create(const aSceneInstance:TpvScene3D);
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
@@ -6857,7 +6859,7 @@ begin
  fVulkanJointBlockBuffer:=nil;
 end;
 
-destructor TpvScene3D.TVulkanPersistentBufferData.Destroy;
+destructor TpvScene3D.TVulkanLongTermStaticBufferData.Destroy;
 begin
  FreeAndNil(fVulkanVertexBuffer);
  FreeAndNil(fVulkanDrawIndexBuffer);
@@ -6867,7 +6869,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvScene3D.TVulkanPersistentBufferData.Check:Boolean;
+function TpvScene3D.TVulkanLongTermStaticBufferData.Check:Boolean;
 begin
  result:=((not assigned(fVulkanVertexBuffer)) and
           (not assigned(fVulkanDrawIndexBuffer)) and
@@ -6881,7 +6883,7 @@ begin
           (assigned(fVulkanJointBlockBuffer) and ((Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))<=fVulkanJointBlockBuffer.Size)));
 end;
 
-procedure TpvScene3D.TVulkanPersistentBufferData.Update;
+procedure TpvScene3D.TVulkanLongTermStaticBufferData.Update;
 var GroupInstance:TpvScene3D.TGroup.TInstance;
 begin
 
@@ -7130,7 +7132,7 @@ begin
 
 end;
 
-procedure TpvScene3D.TVulkanPersistentBufferData.UpdateReleaseFrameCounter;
+procedure TpvScene3D.TVulkanLongTermStaticBufferData.UpdateReleaseFrameCounter;
 begin
  if fReleaseFrameCounter>0 then begin
   dec(fReleaseFrameCounter);
@@ -7145,21 +7147,21 @@ begin
  end;
 end;
 
-{ TpvScene3D.TVulkanPersistentBuffers }
+{ TpvScene3D.TVulkanLongTermStaticBuffers }
 
-constructor TpvScene3D.TVulkanPersistentBuffers.Create(const aSceneInstance:TpvScene3D);
+constructor TpvScene3D.TVulkanLongTermStaticBuffers.Create(const aSceneInstance:TpvScene3D);
 var Index:TpvSizeInt;
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
  for Index:=0 to MaxInFlightFrames-1 do begin
-  fBufferDataArray[Index]:=TpvScene3D.TVulkanPersistentBufferData.Create(fSceneInstance);
+  fBufferDataArray[Index]:=TpvScene3D.TVulkanLongTermStaticBufferData.Create(fSceneInstance);
  end;
  fCurrentIndex:=0;
  fBufferData:=fBufferDataArray[fCurrentIndex];
 end;
 
-destructor TpvScene3D.TVulkanPersistentBuffers.Destroy;
+destructor TpvScene3D.TVulkanLongTermStaticBuffers.Destroy;
 var Index:TpvSizeInt;
 begin
  for Index:=0 to MaxInFlightFrames-1 do begin
@@ -7168,7 +7170,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TVulkanPersistentBuffers.Update;
+procedure TpvScene3D.TVulkanLongTermStaticBuffers.Update;
 var Index:TpvSizeInt;
 begin
  if not fBufferDataArray[fCurrentIndex].Check then begin
@@ -16011,7 +16013,7 @@ begin
 
  fVulkanMorphTargetVertexWeightsBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
- fVulkanPersistentBuffers:=TpvScene3D.TVulkanPersistentBuffers.Create(self);
+ fVulkanLongTermStaticBuffers:=TpvScene3D.TVulkanLongTermStaticBuffers.Create(self);
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
@@ -16458,7 +16460,7 @@ begin
 
  FreeAndNil(fVulkanMorphTargetVertexWeightsBufferRangeAllocator);
 
- FreeAndNil(fVulkanPersistentBuffers);
+ FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
 
@@ -17475,7 +17477,7 @@ begin
   end;
 
   if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
-   fVulkanPersistentBuffers.Update;
+   fVulkanLongTermStaticBuffers.Update;
   end;
 
   if fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
