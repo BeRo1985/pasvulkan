@@ -262,11 +262,11 @@ begin
  
  try
 
- {TestLZBRSFCompress;
+  TestLZBRSFCompress;
   TestLZBRSFDecompress;
   TestCompare;//}
 
-  DebugBroken;
+//DebugBroken;
 
  except
   on e:Exception do begin
