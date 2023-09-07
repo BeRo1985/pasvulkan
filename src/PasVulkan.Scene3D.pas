@@ -6892,7 +6892,8 @@ begin
      ((not assigned(fVulkanMorphTargetVertexBuffer)) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
      ((not assigned(fVulkanJointBlockBuffer)) and (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock)))) then begin
 
-   // Just reupload all buffers in this case, since the size of the buffers has changed or the buffers are not yet allocated
+   // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
+   // or the buffers are not yet allocated
 
    if (not assigned(fVulkanVertexBuffer)) and (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))) then begin
     FreeAndNil(fVulkanVertexBuffer);
@@ -12310,6 +12311,8 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     MaterialToDuplicate,DuplicatedMaterial,Material:TpvScene3D.TMaterial;
     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
+    SrcVertex,DstVertex:PVertex;
+    Generation:TpvUInt32;
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
@@ -12494,6 +12497,10 @@ begin
 
  if fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
 
+  repeat
+   Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
+  until (Generation and $fff)<>0;
+
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
 
@@ -12517,6 +12524,53 @@ begin
 
    fVulkanMorphTargetVertexWeightsBufferCount:=length(fMorphTargetVertexWeights);
    fVulkanMorphTargetVertexWeightsBufferOffset:=fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.Allocate(fVulkanMorphTargetVertexWeightsBufferCount);
+
+   if fSceneInstance.fVulkanVertexBufferData.Count<(fVulkanVertexBufferOffset+fVulkanVertexBufferCount) then begin
+    fSceneInstance.fVulkanVertexBufferData.Resize(fVulkanVertexBufferOffset+fVulkanVertexBufferCount);
+   end;
+
+   if fSceneInstance.fVulkanDrawIndexBufferData.Count<(fVulkanDrawIndexBufferOffset+fVulkanDrawIndexBufferCount) then begin
+    fSceneInstance.fVulkanDrawIndexBufferData.Resize(fVulkanDrawIndexBufferOffset+fVulkanDrawIndexBufferCount);
+   end;
+
+   if fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count<(fVulkanDrawUniqueIndexBufferOffset+fVulkanDrawUniqueIndexBufferCount) then begin
+    fSceneInstance.fVulkanDrawUniqueIndexBufferData.Resize(fVulkanDrawUniqueIndexBufferOffset+fVulkanDrawUniqueIndexBufferCount);
+   end;
+
+   if fSceneInstance.fVulkanMorphTargetVertexBufferData.Count<(fVulkanMorphTargetVertexBufferOffset+fVulkanMorphTargetVertexBufferCount) then begin
+    fSceneInstance.fVulkanMorphTargetVertexBufferData.Resize(fVulkanMorphTargetVertexBufferOffset+fVulkanMorphTargetVertexBufferCount);
+   end;
+
+   if fSceneInstance.fVulkanJointBlockBufferData.Count<(fVulkanJointBlockBufferOffset+fVulkanJointBlockBufferCount) then begin
+    fSceneInstance.fVulkanJointBlockBufferData.Resize(fVulkanJointBlockBufferOffset+fVulkanJointBlockBufferCount);
+   end;
+
+   for Index:=0 to fGroup.fVertices.Count-1 do begin
+    SrcVertex:=@fGroup.fVertices.Items[Index];
+    DstVertex:=@fSceneInstance.fVulkanVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
+    DstVertex^:=SrcVertex^;
+    DstVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
+    if (DstVertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (DstVertex^.CountJointBlocks>0) then begin
+     inc(DstVertex^.JointBlockBaseIndex,fVulkanJointBlockBufferOffset);
+    end;
+    if DstVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
+     inc(DstVertex^.MorphTargetVertexBaseIndex,fVulkanMorphTargetVertexBufferOffset);
+    end;
+    if DstVertex^.NodeIndex>0 then begin
+     inc(DstVertex^.NodeIndex,fVulkanNodeMatricesBufferOffset);
+    end;
+    DstVertex^.FlagsGeneration:=(DstVertex^.FlagsGeneration and $f) or ((Generation and $fff) shl 4);
+   end;
+
+   for Index:=0 to fGroup.fDrawChoreographyBatchCondensedIndices.Count-1 do begin
+    fSceneInstance.fVulkanDrawIndexBufferData.Items[fVulkanDrawIndexBufferOffset+Index]:=fGroup.fDrawChoreographyBatchCondensedIndices.Items[Index]+fVulkanVertexBufferOffset;
+   end;
+
+   for Index:=0 to fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Count-1 do begin
+    fSceneInstance.fVulkanDrawUniqueIndexBufferData.Items[fVulkanDrawUniqueIndexBufferOffset+Index]:=fGroup.fDrawChoreographyBatchCondensedUniqueIndices.Items[Index]+fVulkanVertexBufferOffset;
+   end;
+
+
 
   finally
    fSceneInstance.fBufferRangeAllocatorLock.Release;
