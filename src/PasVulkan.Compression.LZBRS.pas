@@ -518,17 +518,29 @@ begin
       DoOutputGamma((BestMatchDistance shr 8)+2);
       DoOutputUInt8(BestMatchDistance and $ff);
      end else begin
-      if SkipStrength>31 then begin
+      if (SkipStrength>31) and (BestMatchLength=1) then begin
        DoOutputLiteral(CurrentPointer);
       end else begin
-       Step:=UnsuccessfulFindMatchAttempts shr SkipStrength;
-       Offset:=0;
-       while (Offset<Step) and (({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer)) do begin
-        DoOutputLiteral(@PpvUInt8Array(CurrentPointer)^[Offset]);
-        inc(Offset);
+       BestMatchLength:=1;
+       if BestMatchLength=1 then begin
+        Step:=UnsuccessfulFindMatchAttempts shr SkipStrength;
+       end else begin
+        Step:=BestMatchLength;
        end;
-       BestMatchLength:=Offset;
-       inc(UnsuccessfulFindMatchAttempts,ord(UnsuccessfulFindMatchAttempts<TpvUInt32($ffffffff)) and 1);
+       Offset:=0;
+       while Offset<Step do begin
+        if ({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer) then begin
+         DoOutputLiteral(@PpvUInt8Array(CurrentPointer)^[Offset]);
+         inc(Offset);
+        end else begin
+         BestMatchLength:=Offset; // Because we reached EndSearchPointer, so that the tail remaining literal stuff is processing the right remaining offset then
+         break;
+        end;
+       end;
+       if BestMatchLength=1 then begin
+        BestMatchLength:=Offset;
+        inc(UnsuccessfulFindMatchAttempts,ord(UnsuccessfulFindMatchAttempts<TpvUInt32($ffffffff)) and 1);
+       end;
       end;
      end;
      HashTableItem^:=CurrentPointer;
