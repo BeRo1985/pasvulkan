@@ -12586,6 +12586,10 @@ begin
     SrcJointBlock:=@fGroup.fJointBlocks.Items[Index];
     DstJointBlock:=@fSceneInstance.fVulkanJointBlockBufferData.Items[fVulkanJointBlockBufferOffset+Index];
     DstJointBlock^:=SrcJointBlock^;
+    inc(DstJointBlock^.Joints[0],fVulkanNodeMatricesBufferOffset);
+    inc(DstJointBlock^.Joints[1],fVulkanNodeMatricesBufferOffset);
+    inc(DstJointBlock^.Joints[2],fVulkanNodeMatricesBufferOffset);
+    inc(DstJointBlock^.Joints[3],fVulkanNodeMatricesBufferOffset);
    end;
 
   finally
