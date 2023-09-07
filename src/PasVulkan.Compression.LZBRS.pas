@@ -112,8 +112,6 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
     Greedy:boolean;
     Tag:TpvUInt32;
     TagPointer:TpvUInt64;
-    LiteralStart:PpvUInt8;
-    LiteralLength:TpvUInt64;
     AllocatedDestSize:TpvUInt64;
  procedure DoOutputBlock(const aData:Pointer;const aSize:TpvUInt64);
  begin
@@ -414,28 +412,6 @@ var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt
    DoOutputBit(false);
   end;
  end;
- procedure FlushLiterals;
- begin
-  while LiteralLength>0 do begin
-   dec(LiteralLength);
-   DoOutputBit(false);
-   DoOutputUInt8(LiteralStart^);
-   inc(LiteralStart);
-  end;
-  LiteralStart:=nil;
-  LiteralLength:=0;
- end;
- procedure DoOutputLiteral(const aPosition:PpvUInt8);
- begin
-  if (LiteralLength=0) or
-     ((LiteralLength>0) and ((TpvPtrUInt(LiteralStart)+LiteralLength)<>TpvPtrUInt(aPosition))) then begin
-   if LiteralLength>0 then begin
-    FlushLiterals;
-   end;
-   LiteralStart:=aPosition;
-  end;
-  inc(LiteralLength);
- end;
 begin
  result:=false;
  AllocatedDestSize:=aInLen;
@@ -448,8 +424,6 @@ begin
   MaxSteps:=1 shl TpvInt32(aLevel);
   SkipStrength:=(32-9)+TpvInt32(aLevel);
   Greedy:=aLevel>=TpvLZBRSLevel(1);
-  LiteralStart:=nil;
-  LiteralLength:=0;
   if aWithSize then begin
    DoOutputUInt64(aInLen);
   end;
@@ -512,14 +486,14 @@ begin
       end;
      end;
      if (BestMatchLength>4) or ((BestMatchLength=4) and (BestMatchDistance<$7e00)) then begin
-      FlushLiterals;
       DoOutputBit(true);
       DoOutputGamma(BestMatchLength-2);
       DoOutputGamma((BestMatchDistance shr 8)+2);
       DoOutputUInt8(BestMatchDistance and $ff);
      end else begin
       if (SkipStrength>31) and (BestMatchLength=1) then begin
-       DoOutputLiteral(CurrentPointer);
+       DoOutputBit(false);
+       DoOutputUInt8(CurrentPointer^);
       end else begin
        BestMatchLength:=1;
        if BestMatchLength=1 then begin
@@ -530,7 +504,8 @@ begin
        Offset:=0;
        while Offset<Step do begin
         if ({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer) then begin
-         DoOutputLiteral(@PpvUInt8Array(CurrentPointer)^[Offset]);
+         DoOutputBit(false);
+         DoOutputUInt8(PpvUInt8Array(CurrentPointer)^[Offset]);
          inc(Offset);
         end else begin
          BestMatchLength:=Offset; // Because we reached EndSearchPointer, so that the tail remaining literal stuff is processing the right remaining offset then
@@ -560,7 +535,8 @@ begin
      inc(CurrentPointer,BestMatchLength);
     end;
     while {%H-}TpvPtrUInt(CurrentPointer)<{%H-}TpvPtrUInt(EndPointer) do begin
-     DoOutputLiteral(CurrentPointer);
+     DoOutputBit(false);
+     DoOutputUInt8(CurrentPointer^);
      inc(CurrentPointer);
     end;
    finally
@@ -569,7 +545,6 @@ begin
   finally
    FreeMem(HashTable);
   end;
-  FlushLiterals;
   begin
    // End tag
    DoOutputBit(true);
