@@ -18987,7 +18987,9 @@ begin
 
   if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
    aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
-   if (aPreviousInFlightFrameIndex>=0) and assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
+   if (aPreviousInFlightFrameIndex>=0) and
+      assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) and
+      (fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Size>=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Size) then begin
     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
    end else begin
     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
