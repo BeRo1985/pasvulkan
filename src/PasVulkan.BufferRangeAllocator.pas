@@ -79,6 +79,7 @@ type { TpvBufferRangeAllocator }
               Len:TpvSizeInt;
               Previous:PBufferRangeAllocatorRange;
               Next:PBufferRangeAllocatorRange;
+              procedure SwapWith(var aWith:TBufferRangeAllocatorRange);
               class function CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PBufferRangeAllocatorRange; static;
             end;
             { TBufferRangeAllocatorRangeList }
@@ -90,6 +91,7 @@ type { TpvBufferRangeAllocator }
               procedure Finalize;
               procedure Insert(const aRange:PBufferRangeAllocatorRange);
               procedure Remove(const aRange:PBufferRangeAllocatorRange);
+              procedure Sort;
               procedure MergeRanges; // only for free ranges 
             end;
       private
@@ -111,7 +113,15 @@ type { TpvBufferRangeAllocator }
 
 implementation
 
+uses PasVulkan.Utils;
+
 { TpvBufferRangeAllocator.TBufferRangeAllocatorRange }
+
+procedure TpvBufferRangeAllocator.TBufferRangeAllocatorRange.SwapWith(var aWith:TBufferRangeAllocatorRange);
+begin
+ TpvSwap<TpvSizeInt>.Swap(Start,aWith.Start);
+ TpvSwap<TpvSizeInt>.Swap(Len,aWith.Len);
+end;
 
 class function TpvBufferRangeAllocator.TBufferRangeAllocatorRange.CreateRange(const aStart,aLen:TpvSizeInt):TpvBufferRangeAllocator.PBufferRangeAllocatorRange;
 begin
@@ -147,27 +157,27 @@ procedure TpvBufferRangeAllocator.TBufferRangeAllocatorRangeList.Insert(const aR
 var Current,Previous:PBufferRangeAllocatorRange;
 begin
  if assigned(aRange) then begin
-  if assigned(Last) and (aRange^.Start>=(Last^.Start+Last^.Len)) then begin
-   Previous:=Last;
-   Current:=nil;
-  end else if assigned(First) then begin
-   Current:=First;
-   while assigned(Current) and (Current^.Start<aRange^.Start) do begin
-    Previous:=Current;
-    Current:=Current^.Next;
-   end;
-   if assigned(Previous) then begin
-    Previous^.Next:=aRange;
-   end else begin
+  if assigned(First) then begin
+   if aRange^.Start<First^.Start then begin
+    aRange^.Next:=First;
+    aRange^.Next^.Previous:=aRange;
     First:=aRange;
-   end;
-   if assigned(Current) then begin
-    Current^.Previous:=aRange;
-   end else begin
+   end else if aRange^.Start>Last^.Start then begin
+    aRange^.Previous:=Last;
+    aRange^.Previous^.Next:=aRange;
     Last:=aRange;
+   end else begin
+    Current:=First;
+    while assigned(Current^.Next) and (Current^.Next^.Start<aRange^.Start) do begin
+     Current:=Current^.Next;
+    end;
+    aRange^.Next:=Current^.Next;
+    if assigned(Current^.Next) then begin
+     aRange^.Next^.Previous:=aRange;
+    end;
+    Current^.Next:=aRange;
+    aRange^.Previous:=Current;
    end;
-   aRange^.Previous:=Previous;
-   aRange^.Next:=Current;
   end else begin
    First:=aRange;
    Last:=aRange;
@@ -195,26 +205,31 @@ begin
  end;
 end;
 
+procedure TpvBufferRangeAllocator.TBufferRangeAllocatorRangeList.Sort;
+var Current,Next,ToDelete:PBufferRangeAllocatorRange;
+begin
+ Current:=First;
+ while assigned(Current) and assigned(Current^.Next) do begin
+  Next:=Current^.Next;
+  if Current^.Start>Current^.Next^.Start then begin
+   Current^.SwapWith(Next^);
+   if assigned(Current^.Previous) then begin
+    Current:=Current^.Previous;
+   end else begin
+    Current:=Next;
+   end;
+  end else begin
+   Current:=Next;
+  end;
+ end;
+end;
+
 procedure TpvBufferRangeAllocator.TBufferRangeAllocatorRangeList.MergeRanges;
 var Current,Next,ToDelete:PBufferRangeAllocatorRange;
 begin
 
  // Sorting per linked list bubble sort, just for safety, should not be needed, when the sorting insert function works correctly
- Current:=First;
- while assigned(Current) and assigned(Current^.Next) do begin
-  if Current^.Start>Current^.Next^.Start then begin
-   Next:=Current^.Next;
-   Current^.Next:=Current^.Next^.Next;
-   Next^.Next:=First;
-   if assigned(Current^.Previous) then begin
-    Current:=Current^.Previous;
-   end else begin
-    Current:=Current^.Next;
-   end; 
-  end else begin
-   Current:=Current^.Next;
-  end;  
- end;
+ Sort;
 
  // Merging 
  Current:=First;
@@ -289,7 +304,7 @@ begin
     Current:=Current^.Next;
    end;
    result:=fCapacity;
-   inc(fCapacity,(fCapacity+1) shr 1); // 1.5x
+   inc(fCapacity,(aSize)+(fCapacity+aSize+1) shr 1); // 1.5x
    if assigned(fOnResize) then begin
     fOnResize(self,fCapacity);
    end;

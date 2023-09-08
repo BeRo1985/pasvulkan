@@ -16342,8 +16342,7 @@ begin
  end;
 
 //A!
-//
-  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+ fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
  fMeshGenerationCounter:=1;
 
