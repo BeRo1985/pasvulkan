@@ -18570,6 +18570,7 @@ var Index,OtherIndex:TpvSizeInt;
     Group:TpvScene3D.TGroup;
     Current,Next:PCachedVertexRange;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
 begin
 
  if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
@@ -18620,7 +18621,19 @@ begin
   begin
 
    for Index:=0 to fCachedVertexRanges.Count-1 do begin
+
     Current:=@fCachedVertexRanges.Items[Index];
+
+    MeshComputeStagePushConstants.IndexOffset:=Current^.Offset;
+    MeshComputeStagePushConstants.CountIndices:=Current^.Count;
+
+    aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
+                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                    0,
+                                    SizeOf(TpvScene3D.TMeshComputeStagePushConstants),
+                                    @MeshComputeStagePushConstants);
+
+    aCommandBuffer.CmdDispatch((Current^.Count+127) shr 7,1,1);
 
    end;
 
