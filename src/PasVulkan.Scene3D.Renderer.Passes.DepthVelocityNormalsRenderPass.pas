@@ -385,7 +385,7 @@ begin
      if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
       VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
      end else begin
-      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthFragment);
+      //VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthFragment);
      end;
 
      VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(PrimitiveTopology);
