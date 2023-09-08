@@ -288,6 +288,7 @@ begin
     end;
     Current:=Current^.Next;
    end;
+   result:=fCapacity;
    inc(fCapacity,(fCapacity+1) shr 1); // 1.5x
    if assigned(fOnResize) then begin
     fOnResize(self,fCapacity);
@@ -295,7 +296,7 @@ begin
    Current:=fFreeRanges.Last;
    Next:=Current^.CreateRange(result,aSize);
    fFreeRanges.Insert(Next);
-  until true;
+  until false;
  end else begin
   result:=-1;
  end;
