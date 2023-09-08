@@ -146,7 +146,7 @@ begin
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
- fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshComputeVulkanDescriptorSetLayout);
+ fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshMaterialMapComputeVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
  fPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,

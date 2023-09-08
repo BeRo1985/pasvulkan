@@ -61,6 +61,7 @@ layout(std430, set = 0, binding = 4) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
+#ifdef USE_MATERIAL_ID_MAP  
 layout(std430, set = 0, binding = 5) buffer NodeMatrices {
   mat4 nodeMatrices[];
 };
@@ -69,9 +70,16 @@ layout(std430, set = 0, binding = 6) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
-#ifdef USE_MATERIAL_ID_MAP  
 layout(std430, set = 0, binding = 7) buffer MaterialIDMap {
   uint materialIDMap[];
+};
+#else
+layout(std430, set = 1, binding = 0) buffer NodeMatrices {
+  mat4 nodeMatrices[];
+};
+
+layout(std430, set = 1, binding = 1) buffer MorphTargetWeights {
+  float morphTargetWeights[];
 };
 #endif
 
