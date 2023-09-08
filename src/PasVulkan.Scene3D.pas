@@ -18560,15 +18560,23 @@ begin
  end;
 end;
 
+function TpvScene3DUpdateCachedVerticesCompare(const a,b:TpvScene3D.TCachedVertexRange):TpvInt32;
+begin
+ result:=Sign(a.Offset-b.Offset);
+end;
+
 procedure TpvScene3D.UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                           const aInFlightFrameIndex:TpvSizeInt;
                                           const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout);
-var Group:TpvScene3D.TGroup;
+var Index,OtherIndex:TpvSizeInt;
+    Group:TpvScene3D.TGroup;
+    Current,Next:PCachedVertexRange;
 begin
  if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
   fCachedVertexRanges.Count:=0;
  end;
+
  for Group in fGroups do begin
   if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
    Group.UpdateCachedVertices(aPipeline,
@@ -18577,9 +18585,39 @@ begin
                               aPipelineLayout);
   end;
  end;
+
  if (fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers) and
     (fCachedVertexRanges.Count>0) then begin
-  // TODO: Cache Vertex
+
+  if fCachedVertexRanges.Count>1 then begin
+
+   // Sort ranges
+   TpvTypedSort<TpvScene3D.TCachedVertexRange>.IntroSort(@fCachedVertexRanges.Items[0],
+                                                         0,
+                                                         fCachedVertexRanges.Count-1,
+                                                         TpvScene3DUpdateCachedVerticesCompare);
+
+   // Consolidate ranges
+   Index:=0;
+   while (Index+1)<fCachedVertexRanges.Count do begin
+    Current:=@fCachedVertexRanges.Items[Index];
+    Next:=@fCachedVertexRanges.Items[Index+1];
+    if (Current^.Offset+Current^.Count)>=Next^.Offset then begin
+     Current^.Count:=(Next^.Offset+Next^.Count)-Current^.Offset;
+     if (Index+2)<fCachedVertexRanges.Count then begin
+//    Move(fCachedVertexRanges.Items[Index+2],fCachedVertexRanges.Items[Index+1],((Count-2)-Index)*SizeOf(TCachedVertexRange));
+      for OtherIndex:=Index+1 to fCachedVertexRanges.Count-2 do begin
+       fCachedVertexRanges.Items[OtherIndex]:=fCachedVertexRanges.Items[OtherIndex+1];
+      end;
+     end;
+     dec(fCachedVertexRanges.Count);
+    end else begin
+     inc(Index);
+    end;
+   end;
+
+  end;
+
  end;
 end;
 
