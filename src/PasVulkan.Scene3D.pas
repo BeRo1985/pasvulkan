@@ -16271,6 +16271,7 @@ begin
          end;
          else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
           // TODO
+          aCommandBuffer.CmdDrawIndexed(fVulkanDrawIndexBufferOffset+IndicesCount,1,IndicesStart,0,0);
          end;
         end;
        end;
@@ -16341,7 +16342,8 @@ begin
  end;
 
 //A!
- fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+//
+  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
  fMeshGenerationCounter:=1;
 
@@ -18872,7 +18874,7 @@ begin
 
   if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
    aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
-   if aPreviousInFlightFrameIndex>=0 then begin
+   if (aPreviousInFlightFrameIndex>=0) and assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) then begin
     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
    end else begin
     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
