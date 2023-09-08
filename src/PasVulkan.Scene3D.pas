@@ -1769,7 +1769,7 @@ type EpvScene3D=class(Exception);
                           PSkin=^TInstanceSkin;
                           TSkins=array of TpvScene3D.TGroup.TInstance.TSkin;
                           TNodeIndices=array of TpvSizeInt;
-                          TOnNodeMatrix=procedure(const aInstance:TInstance;aNode,InstanceNode:pointer;var Matrix:TpvMatrix4x4) of object;
+                          TOnNodeMatrix=function(const aInstance:TInstance;aNode,InstanceNode:pointer;var Matrix:TpvMatrix4x4):Boolean of object;
                           TNodeMatrices=array of TpvMatrix4x4;
                           TMorphTargetVertexWeights=array of TpvFloat;
                           { TLight }
@@ -2047,6 +2047,7 @@ type EpvScene3D=class(Exception);
                      fOnNodeMatrixPost:TOnNodeMatrix;
                      fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
                      fUploaded:boolean;
+                     fDirtyCounter:TPasMPInt32;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -2081,6 +2082,7 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
+                     procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
                      procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                        const aRenderPassIndex:TpvSizeInt;
                                        const aViewBaseIndex:TpvSizeInt;
@@ -2146,6 +2148,7 @@ type EpvScene3D=class(Exception);
                                         const aZNear:PpvFloat=nil;
                                         const aZFar:PpvFloat=nil;
                                         const aAspectRatio:TpvFloat=0.0):boolean;
+                     procedure SetDirty;
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
@@ -2156,7 +2159,7 @@ type EpvScene3D=class(Exception);
                      property Nodes:TpvScene3D.TGroup.TInstance.TNodes read fNodes;
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
                      property UserData:pointer read fUserData write fUserData;
-                     property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+                     property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
                     published
                      property VulkanData:TVulkanData read fVulkanData;
                     public
@@ -12758,6 +12761,8 @@ begin
 
  fModelMatrix:=TpvMatrix4x4.Identity;
 
+ fDirtyCounter:=1;
+
  fScene:=-1;
 
  fNodes:=nil;
@@ -15021,7 +15026,7 @@ var CullFace,Blend:TPasGLTFInt32;
   Node:=fGroup.fNodes[aNodeIndex];
   InstanceNode^.Processed:=true;
   Dirty:=aDirty;
-  if InstanceNode^.CountOverwrites>0 then begin
+  if (InstanceNode^.CountOverwrites>0) and (Node.Flags<>[]) then begin
    Dirty:=true;
    SkinUsed:=true;
    TranslationSum.Clear;
@@ -15123,11 +15128,15 @@ var CullFace,Blend:TPasGLTFInt32;
           (TpvMatrix4x4.CreateFromQuaternion(Rotation)*
            TpvMatrix4x4.CreateTranslation(Translation));
   if assigned(fOnNodeMatrixPre) then begin
-   fOnNodeMatrixPre(self,Node,InstanceNode,Matrix);
+   if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
+    Dirty:=true;
+   end;
   end;
   Matrix:=Matrix*Node.fMatrix;
   if assigned(fOnNodeMatrixPost) then begin
-   fOnNodeMatrixPost(self,Node,InstanceNode,Matrix);
+   if fOnNodeMatrixPost(self,Node,InstanceNode,Matrix) then begin
+    Dirty:=true;
+   end;
   end;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
@@ -15288,7 +15297,7 @@ var Index:TPasGLTFSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     AABB:TpvAABB;
-    HasMaterialUpdate:boolean;
+    HasMaterialUpdate,Dirty:boolean;
 begin
 
  if aInFlightFrameIndex>=0 then begin
@@ -15360,8 +15369,13 @@ begin
     SceneInstance.NewMaterialDataGeneration;
    end;
 
+   Dirty:=fDirtyCounter>0;
+   if Dirty then begin
+    dec(fDirtyCounter);
+   end;
+
    for Index:=0 to Scene.fNodes.Count-1 do begin
-    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,false);
+    ProcessNode(Scene.fNodes[Index].Index,TpvMatrix4x4.Identity,Dirty);
    end;
 
    if aInFlightFrameIndex>=0 then begin
@@ -15906,6 +15920,19 @@ begin
     result:=false;
    end;
   end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.SetDirty;
+begin
+ fDirtyCounter:=fGroup.fSceneInstance.fCountInFlightFrames+1;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+begin
+ if fModelMatrix<>aModelMatrix then begin
+  fModelMatrix:=aModelMatrix;
+  SetDirty;
  end;
 end;
 
