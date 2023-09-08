@@ -7315,6 +7315,10 @@ begin
 end;
 
 procedure TpvScene3D.TVulkanShortTermDynamicBufferData.Update;
+var GroupInstanceNodeIndex:TpvSizeInt;
+    Group:TpvScene3D.TGroup;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+    GroupInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
 
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
@@ -7328,6 +7332,19 @@ begin
 
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
+
+   for Group in fSceneInstance.fGroups do begin
+    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+     for GroupInstance in Group.fInstances do begin
+      for GroupInstanceNodeIndex:=0 to length(GroupInstance.fNodes)-1 do begin
+       GroupInstanceNode:=@GroupInstance.fNodes[GroupInstanceNodeIndex];
+       if GroupInstanceNode^.CacheVerticesDirtyCounter<=fSceneInstance.fCountInFlightFrames then begin
+        GroupInstanceNode^.CacheVerticesDirtyCounter:=fSceneInstance.fCountInFlightFrames;
+       end;
+      end;
+     end;
+    end;
+   end;
 
    if (not assigned(fVulkanCachedVertexBuffer)) and (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex))) then begin
     FreeAndNil(fVulkanCachedVertexBuffer);
