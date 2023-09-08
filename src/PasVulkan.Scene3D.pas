@@ -1211,6 +1211,7 @@ type EpvScene3D=class(Exception);
             TVulkanLongTermStaticBufferData=class
              private
               fSceneInstance:TpvScene3D;
+              fVulkanCachedVertexBuffer:TpvVulkanBuffer;
               fVulkanVertexBuffer:TpvVulkanBuffer;
               fVulkanDrawIndexBuffer:TpvVulkanBuffer;
               fVulkanDrawUniqueIndexBuffer:TpvVulkanBuffer;
@@ -6882,6 +6883,7 @@ constructor TpvScene3D.TVulkanLongTermStaticBufferData.Create(const aSceneInstan
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
+ fVulkanCachedVertexBuffer:=nil;
  fVulkanVertexBuffer:=nil;
  fVulkanDrawIndexBuffer:=nil;
  fVulkanDrawUniqueIndexBuffer:=nil;
@@ -6891,6 +6893,7 @@ end;
 
 destructor TpvScene3D.TVulkanLongTermStaticBufferData.Destroy;
 begin
+ FreeAndNil(fVulkanCachedVertexBuffer);
  FreeAndNil(fVulkanVertexBuffer);
  FreeAndNil(fVulkanDrawIndexBuffer);
  FreeAndNil(fVulkanDrawUniqueIndexBuffer);
@@ -6901,12 +6904,14 @@ end;
 
 function TpvScene3D.TVulkanLongTermStaticBufferData.Check:Boolean;
 begin
- result:=((not assigned(fVulkanVertexBuffer)) and
+ result:=((not assigned(fVulkanCachedVertexBuffer)) and
+          (not assigned(fVulkanVertexBuffer)) and
           (not assigned(fVulkanDrawIndexBuffer)) and
           (not assigned(fVulkanDrawUniqueIndexBuffer)) and
           (not assigned(fVulkanMorphTargetVertexBuffer)) and
           (not assigned(fVulkanJointBlockBuffer))) or
-         ((assigned(fVulkanVertexBuffer) and ((Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))<=fVulkanVertexBuffer.Size)) and
+         ((assigned(fVulkanCachedVertexBuffer) and ((Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex))<=fVulkanCachedVertexBuffer.Size)) and
+          (assigned(fVulkanVertexBuffer) and ((Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))<=fVulkanVertexBuffer.Size)) and
           (assigned(fVulkanDrawIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawIndexBuffer.Size)) and
           (assigned(fVulkanDrawUniqueIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawUniqueIndexBuffer.Size)) and
           (assigned(fVulkanMorphTargetVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))<=fVulkanMorphTargetVertexBuffer.Size)) and
@@ -6919,7 +6924,8 @@ begin
 
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
 
-  if ((not assigned(fVulkanVertexBuffer)) and (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex)))) or
+  if ((not assigned(fVulkanCachedVertexBuffer)) and (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex)))) or
+     ((not assigned(fVulkanVertexBuffer)) and (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex)))) or
      ((not assigned(fVulkanDrawIndexBuffer)) and (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanDrawUniqueIndexBuffer)) and (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanMorphTargetVertexBuffer)) and (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
@@ -6927,6 +6933,25 @@ begin
 
    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
    // or the buffers are not yet allocated
+
+   if (not assigned(fVulkanCachedVertexBuffer)) and (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex))) then begin
+    FreeAndNil(fVulkanCachedVertexBuffer);
+    fVulkanCachedVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      []
+                                                     );
+   end;
 
    if (not assigned(fVulkanVertexBuffer)) and (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))) then begin
     FreeAndNil(fVulkanVertexBuffer);
@@ -7168,6 +7193,7 @@ begin
   dec(fReleaseFrameCounter);
   if fReleaseFrameCounter=0 then begin
    // The buffers are no longer in use by the GPU, so we can free it safely
+   FreeAndNil(fVulkanCachedVertexBuffer);
    FreeAndNil(fVulkanVertexBuffer);
    FreeAndNil(fVulkanDrawIndexBuffer);
    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
