@@ -92,11 +92,13 @@ type { TpvScene3DRendererPassesDepthVelocityNormalsRenderPass }
        fResourceNormals:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
+       fMeshVelocityNormalsVertexShaderModule:TpvVulkanShaderModule;
        fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthMaskedFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthVelocityNormalsFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthVelocityNormalsMaskedFragmentShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageMeshVelocityNormalsVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthMaskedFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthVelocityNormalsFragment:TpvVulkanPipelineShaderStage;
@@ -225,9 +227,16 @@ begin
 
  MeshFragmentSpecializationConstants:=fInstance.MeshFragmentSpecializationConstants;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_velocity_vert.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_vert.spv');
  try
   fMeshVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_velocity_vert.spv');
+ try
+  fMeshVelocityNormalsVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
@@ -282,6 +291,8 @@ begin
 
  fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
 
+ fVulkanPipelineShaderStageMeshVelocityNormalsVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVelocityNormalsVertexShaderModule,'main');
+
  fVulkanPipelineShaderStageMeshDepthFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthFragmentShaderModule,'main');
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthFragment);
 
@@ -299,6 +310,8 @@ end;
 procedure TpvScene3DRendererPassesDepthVelocityNormalsRenderPass.ReleasePersistentResources;
 begin
 
+ FreeAndNil(fVulkanPipelineShaderStageMeshVelocityNormalsVertex);
+
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshDepthFragment);
@@ -308,6 +321,8 @@ begin
  FreeAndNil(fVulkanPipelineShaderStageMeshDepthVelocityNormalsFragment);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshDepthVelocityNormalsMaskedFragment);
+
+ FreeAndNil(fMeshVelocityNormalsVertexShaderModule);
 
  FreeAndNil(fMeshVertexShaderModule);
 
@@ -479,7 +494,7 @@ begin
 
     try
 
-     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
+     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVelocityNormalsVertex);
      if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
       VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthVelocityNormalsMaskedFragment);
      end else begin
