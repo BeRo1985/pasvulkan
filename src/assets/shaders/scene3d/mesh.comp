@@ -18,6 +18,7 @@ struct InPackedVertex {
   uvec4 normalTangentTexCoord0;
   uvec4 texCoord1Color0;
   uvec4 morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID;
+  uvec4 rootNodeGeneration;
 };
 
 struct OutPackedVertex {
@@ -145,7 +146,7 @@ void main() {
 
       mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
-      mat4 modelNodeMatrix = nodeMatrices[0] * nodeMatrix;
+      mat4 modelNodeMatrix = nodeMatrices[inPackedVertex.rootNodeGeneration.x] * nodeMatrix;
 	  
       vec3 position = inPosition;
 
@@ -218,7 +219,7 @@ void main() {
 #endif                                                   
                                                   );
         outPackedVertex.normalSignTangentGeneration = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)),  //
-                                                            packSnorm2x16(tangent.xy), (packSnorm2x16(vec2(tangent.z, 0.0)) & 0xffffu) | (uint(generation & 0xffffu) << 16u));
+                                                            packSnorm2x16(tangent.xy), (packSnorm2x16(vec2(tangent.z, 0.0)) & 0xffffu) | (uint(inPackedVertex.rootNodeGeneration.y & 0xffffu) << 16u));
         outPackedVertex.texCoord0TexCoord1 = uvec4(inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/,  //
                                                    inPackedVertex.texCoord1Color0.xy /* uvec2(floatBitsToUint(texCoord1.xy)) */);
         outPackedVertex.color0ModelScale = uvec4(inPackedVertex.texCoord1Color0.zw /*uvec2(packHalf2x16(color.xy), packHalf2x16(color.zw))*/,  //

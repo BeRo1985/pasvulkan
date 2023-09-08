@@ -17121,7 +17121,7 @@ begin
 
  fDataAligned:=nil;
 
- fDataSize:=aStream.Size;
+  fDataSize:=aStream.Size;
  if (fDataSize and 3)<>0 then begin
   inc(fDataSize,4-(fDataSize and 3));
  end;

@@ -315,10 +315,14 @@ type EpvScene3D=class(Exception);
                MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
                JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
                CountJointBlocks:TpvUInt16;           // + 2 = 58 (unsigned 16-bit count of joint blocks)
-               FlagsGeneration:TpvUInt16;            // + 2 = 60 (unsigned 4-bit flags + 12-bit generation)
+               Flags:TpvUInt16;                      // + 2 = 60 (unsigned 16-bit flags)
                MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 24-bit material ID)
+               RootNode:TpvUInt32;                   // + 4 = 68 (unsigned 32-bit root node)
+               Generation:TpvUInt32;                 // + 4 = 72 (unsigned 32-bit generation)
+               Unused1:TpvUInt32;                    // + 4 = 76 (unsigned 32-bit)
+               Unused2:TpvUInt32;                    // + 4 = 80 (unsigned 32-bit)
               );                                     //  ==   ==
-              true:(                                 //  64   64 per vertex
+              true:(                                 //  80   80 per vertex
                Padding:array[0..63] of TpvUInt8;
               );
             end;
@@ -8222,7 +8226,8 @@ begin
     Vertex:=@fGroup.fVertices.Items[VertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     Vertex^.MaterialID:=MaterialID;
-    Vertex^.FlagsGeneration:=(Vertex^.FlagsGeneration and $f) or ((Generation and $fff) shl 4);
+    Vertex^.Generation:=Generation;
+    Vertex^.RootNode:=0;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -8281,7 +8286,8 @@ begin
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     Vertex^.MaterialID:=MaterialID;
-    Vertex^.FlagsGeneration:=(Vertex^.FlagsGeneration and $f) or ((Generation and $fff) shl 4);
+    Vertex^.Generation:=Generation;
+    Vertex^.RootNode:=0;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -8724,7 +8730,8 @@ begin
         FillChar(Vertex^,SizeOf(TVertex),#0);
         Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
         Vertex^.NodeIndex:=TpvUInt32($ffffffff);
-        Vertex^.FlagsGeneration:=(Generation and $fff) shl 4;
+        Vertex^.Generation:=Generation;
+        Vertex^.RootNode:=0;
         if VertexIndex<length(TemporaryNormals) then begin
          TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
         end else begin
@@ -8744,11 +8751,11 @@ begin
         Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
 {$if true}
         if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
-         Vertex^.FlagsGeneration:=Vertex^.FlagsGeneration or (1 shl 0);
+         Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
         end;
 {$else}
         if (VertexIndex<length(TemporaryTangents)) and (TpvVector4(pointer(@TemporaryTangents[VertexIndex])^).w<0) then begin
-         Vertex^.FlagsGeneration:=Vertex^.FlagsGeneration or (1 shl 0);
+         Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
         end;
 {$ifend}
         if VertexIndex<length(TemporaryTexCoord0) then begin
@@ -12846,6 +12853,7 @@ begin
 
    fVulkanVertexBufferCount:=fGroup.fVertices.Count;
    fVulkanVertexBufferOffset:=fSceneInstance.fVulkanVertexBufferRangeAllocator.Allocate(fVulkanVertexBufferCount);
+   writeln(fVulkanVertexBufferOffset);
 
    fVulkanDrawIndexBufferCount:=fGroup.fDrawChoreographyBatchCondensedIndices.Count;
    fVulkanDrawIndexBufferOffset:=fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Allocate(fVulkanDrawIndexBufferCount);
@@ -12908,10 +12916,9 @@ begin
     if DstVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      inc(DstVertex^.MorphTargetVertexBaseIndex,fVulkanMorphTargetVertexBufferOffset);
     end;
-    if DstVertex^.NodeIndex>0 then begin
-     inc(DstVertex^.NodeIndex,fVulkanNodeMatricesBufferOffset);
-    end;
-    DstVertex^.FlagsGeneration:=(DstVertex^.FlagsGeneration and $f) or ((Generation and $fff) shl 4);
+    inc(DstVertex^.NodeIndex,fVulkanNodeMatricesBufferOffset);
+    DstVertex^.RootNode:=fVulkanNodeMatricesBufferOffset;
+    DstVertex^.Generation:=Generation;
    end;
 
    for Index:=0 to fGroup.fDrawChoreographyBatchCondensedIndices.Count-1 do begin
@@ -16086,7 +16093,7 @@ begin
 
        else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
 
-        CachedVertexRange.Offset:=fVulkanVertexBufferOffset+IndicesStart;
+        CachedVertexRange.Offset:=fVulkanDrawUniqueIndexBufferOffset+IndicesStart;
         CachedVertexRange.Count:=IndicesCount;
         fGroup.fSceneInstance.fCachedVertexRanges.Add(CachedVertexRange);
 
@@ -16271,7 +16278,7 @@ begin
          end;
          else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
           // TODO
-          aCommandBuffer.CmdDrawIndexed(fVulkanDrawIndexBufferOffset+IndicesCount,1,IndicesStart,0,0);
+          aCommandBuffer.CmdDrawIndexed(IndicesCount,1,fVulkanDrawIndexBufferOffset+IndicesStart,0,0);
          end;
         end;
        end;
@@ -16342,6 +16349,7 @@ begin
  end;
 
 //A!
+//
  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
  fMeshGenerationCounter:=1;

@@ -280,6 +280,7 @@ var Current,Next:PBufferRangeAllocatorRange;
 begin
  if aSize>0 then begin
   repeat
+
    Current:=fFreeRanges.First;
    while assigned(Current) do begin
     if Current^.Len=aSize then begin
@@ -303,18 +304,22 @@ begin
     end;
     Current:=Current^.Next;
    end;
+
    result:=fCapacity;
-   inc(fCapacity,(aSize)+(fCapacity+aSize+1) shr 1); // 1.5x
+   inc(fCapacity,aSize);
    if assigned(fOnResize) then begin
     fOnResize(self,fCapacity);
    end;
    Current:=fFreeRanges.Last;
    Next:=Current^.CreateRange(result,aSize);
    fFreeRanges.Insert(Next);
+
   until false;
+
  end else begin
   result:=-1;
  end;
+
 end;
 
 procedure TpvBufferRangeAllocator.Release(const aStart:TpvSizeInt;aSize:TpvSizeInt);
