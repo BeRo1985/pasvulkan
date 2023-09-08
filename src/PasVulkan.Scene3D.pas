@@ -15249,10 +15249,10 @@ begin
     end;
    end;
    else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-    if length(fNodeMatrices)>0 then begin
+    if (length(fNodeMatrices)>0) and (length(fNodeMatrices)=fVulkanNodeMatricesBufferCount) then begin
      Move(fNodeMatrices[0],fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex].Items[fVulkanNodeMatricesBufferOffset],length(fNodeMatrices)*SizeOf(TpvMatrix4x4));
     end;
-    if length(fMorphTargetVertexWeights)>0 then begin
+    if (length(fMorphTargetVertexWeights)>0) and (length(fMorphTargetVertexWeights)=fVulkanMorphTargetVertexWeightsBufferCount) then begin
      Move(fMorphTargetVertexWeights[0],fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[aInFlightFrameIndex].Items[fVulkanMorphTargetVertexWeightsBufferOffset],length(fMorphTargetVertexWeights)*SizeOf(TpvFloat));
     end;
    end;
