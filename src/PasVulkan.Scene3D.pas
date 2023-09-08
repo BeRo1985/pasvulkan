@@ -2313,6 +2313,12 @@ type EpvScene3D=class(Exception);
             TVertexStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
             TInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
             TCountInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvSizeInt;
+            TCachedVertexRange=record
+             Offset:TpvSizeInt;
+             Count:TpvSizeInt;
+            end;
+            PCachedVertexRange=^TCachedVertexRange;
+            TCachedVertexRanges=TpvDynamicArray<TCachedVertexRange>;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -2459,6 +2465,7 @@ type EpvScene3D=class(Exception);
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
        fVulkanShortTermDynamicBuffers:TVulkanShortTermDynamicBuffers;
+       fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
@@ -11679,7 +11686,7 @@ begin
     end;
    end;
    else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-    // TODO
+    // Nothing in this case
    end;
   end;
  end;
@@ -15938,6 +15945,7 @@ var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
     FirstFlush:boolean;
     DrawChoreographyBatchUniqueItem:TpvScene3D.TGroup.TDrawChoreographyBatchItem;
     MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
+    CachedVertexRange:TpvScene3D.TCachedVertexRange;
 begin
 
  fCachedVerticesUpdated:=false;
@@ -16061,6 +16069,10 @@ begin
        end;
 
        else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
+
+        CachedVertexRange.Offset:=fVulkanVertexBufferOffset+IndicesStart;
+        CachedVertexRange.Count:=IndicesCount;
+        fGroup.fSceneInstance.fCachedVertexRanges.Add(CachedVertexRange);
 
        end;
 
@@ -16351,6 +16363,8 @@ begin
  fVulkanLongTermStaticBuffers:=TpvScene3D.TVulkanLongTermStaticBuffers.Create(self);
 
  fVulkanShortTermDynamicBuffers:=TpvScene3D.TVulkanShortTermDynamicBuffers.Create(self);
+
+ fCachedVertexRanges.Initialize;
 
  fUseBufferDeviceAddress:=aUseBufferDeviceAddress;
 
@@ -16854,6 +16868,8 @@ begin
   fVulkanNodeMatricesBufferData[Index].Finalize;
   fVulkanMorphTargetVertexWeightsBufferData[Index].Finalize;
  end;
+
+ fCachedVertexRanges.Finalize;
 
  FreeAndNil(fVulkanVertexBufferRangeAllocator);
 
@@ -18550,6 +18566,9 @@ procedure TpvScene3D.UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                           const aPipelineLayout:TpvVulkanPipelineLayout);
 var Group:TpvScene3D.TGroup;
 begin
+ if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+  fCachedVertexRanges.Count:=0;
+ end;
  for Group in fGroups do begin
   if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
    Group.UpdateCachedVertices(aPipeline,
@@ -18557,6 +18576,10 @@ begin
                               aCommandBuffer,
                               aPipelineLayout);
   end;
+ end;
+ if (fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers) and
+    (fCachedVertexRanges.Count>0) then begin
+  // TODO: Cache Vertex
  end;
 end;
 
