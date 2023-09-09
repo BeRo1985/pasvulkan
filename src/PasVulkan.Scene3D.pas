@@ -2556,6 +2556,7 @@ type EpvScene3D=class(Exception);
        procedure ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure TransferViewsToPreviousViews;
        procedure ClearViews;
+       procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
        function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
        procedure UpdateViews(const aInFlightFrameIndex:TpvSizeInt);
@@ -18605,6 +18606,19 @@ end;
 procedure TpvScene3D.ClearViews;
 begin
  fViews.Count:=0;
+end;
+
+procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
+begin
+
+ ExecuteGPUUpdate(aInFlightFrameIndex);
+
+ TransferViewsToPreviousViews;
+
+ ClearViews;
+
+ ResetRenderPasses;
+
 end;
 
 function TpvScene3D.AddView(const aView:TpvScene3D.TView):TpvSizeInt;

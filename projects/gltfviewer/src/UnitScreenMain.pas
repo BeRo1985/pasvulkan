@@ -571,13 +571,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
- fScene3D.ExecuteGPUUpdate(InFlightFrameIndex);
-
- fScene3D.TransferViewsToPreviousViews;
-
- fScene3D.ClearViews;
-
- fScene3D.ResetRenderPasses;
+ fScene3D.BeginFrame(InFlightFrameIndex);
 
  fRendererInstance.Reset;
 
