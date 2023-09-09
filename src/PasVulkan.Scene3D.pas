@@ -1228,6 +1228,7 @@ type EpvScene3D=class(Exception);
              public
               function Clone:TDrawChoreographyBatchItem;
               function CompareTo(const aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
+              class function SortCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
              published
               property Group:TpvScene3D.TGroup read fGroup write fGroup;
               property GroupInstance:TObject read fGroupInstance write fGroupInstance;
@@ -6954,6 +6955,35 @@ begin
  end;
 end;
 
+class function TpvScene3D.TDrawChoreographyBatchItem.SortCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
+begin
+ result:=Sign(TpvInt32(aCurrent.fAlphaMode)-TpvInt32(aOther.fAlphaMode));
+ if result=0 then begin
+  result:=Sign(TpvInt32(aCurrent.fPrimitiveTopology)-TpvInt32(aOther.fPrimitiveTopology));
+  if result=0 then begin
+   result:=Sign(TpvInt32(ord(aCurrent.fDoubleSided) and 1)-TpvInt32(ord(aOther.fDoubleSided) and 1));
+   if result=0 then begin
+    result:=Sign(TpvPtrInt(aCurrent.fMaterial)-TpvPtrInt(aOther.fMaterial));
+    if result=0 then begin
+     result:=Sign(TpvPtrInt(aCurrent.fNode)-TpvPtrInt(aOther.fNode));
+     if result=0 then begin
+      result:=Sign(TpvPtrInt(aCurrent.fMesh)-TpvPtrInt(aOther.fMesh));
+      if result=0 then begin
+       result:=Sign(aCurrent.MeshPrimitive-aOther.MeshPrimitive);
+       if result=0 then begin
+        result:=Sign(aCurrent.fStartIndex-aOther.fStartIndex);
+        if result=0 then begin
+         result:=Sign(aCurrent.fCountIndices-aOther.fCountIndices);
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
 { TpvScene3D.TGroup.TDrawChoreographyBatchItems }
 
 procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject);
@@ -6973,127 +7003,12 @@ begin
 end;
 
 procedure TpvScene3D.TDrawChoreographyBatchItems.Sort;
-type PStackItem=^TStackItem;
-     TStackItem=record
-      Left,Right,Depth:TpvSizeInt;
-     end;
-var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvSizeInt;
-    StackItem:PStackItem;
-    Stack:array[0..31] of TStackItem;
 begin
  if Count>1 then begin
-  StackItem:=@Stack[0];
-  StackItem^.Left:=0;
-  StackItem^.Right:=Count-1;
-  StackItem^.Depth:=IntLog2(Count) shl 1;
-  inc(StackItem);
-  while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
-   dec(StackItem);
-   Left:=StackItem^.Left;
-   Right:=StackItem^.Right;
-   Depth:=StackItem^.Depth;
-   Size:=(Right-Left)+1;
-   if Size<16 then begin
-    // Insertion sort
-    iA:=Left;
-    iB:=iA+1;
-    while iB<=Right do begin
-     iC:=iB;
-     while (iA>=Left) and
-           (iC>=Left) and
-           (Items[iA].CompareTo(Items[iC])>0) do begin
-      Exchange(iA,iC);
-      dec(iA);
-      dec(iC);
-     end;
-     iA:=iB;
-     inc(iB);
-    end;
-   end else begin
-    if (Depth=0) or (TpvPtrUInt(TpvPointer(StackItem))>=TpvPtrUInt(TpvPointer(@Stack[high(Stack)-1]))) then begin
-     // Heap sort
-     i:=Size div 2;
-     repeat
-      if i>0 then begin
-       dec(i);
-      end else begin
-       dec(Size);
-       if Size>0 then begin
-        Exchange(Left+Size,Left);
-       end else begin
-        break;
-       end;
-      end;
-      Parent:=i;
-      repeat
-       Child:=(Parent*2)+1;
-       if Child<Size then begin
-        if (Child<(Size-1)) and (Items[Left+Child].CompareTo(Items[Left+Child+1])<0) then begin
-         inc(Child);
-        end;
-        if Items[Left+Parent].CompareTo(Items[Left+Child])<0 then begin
-         Exchange(Left+Parent,Left+Child);
-         Parent:=Child;
-         continue;
-        end;
-       end;
-       break;
-      until false;
-     until false;
-    end else begin
-     // Quick sort width median-of-three optimization
-     Middle:=Left+((Right-Left) shr 1);
-     if (Right-Left)>3 then begin
-      if Items[Left].CompareTo(Items[Middle])>0 then begin
-       Exchange(Left,Middle);
-      end;
-      if Items[Left].CompareTo(Items[Right])>0 then begin
-       Exchange(Left,Right);
-      end;
-      if Items[Middle].CompareTo(Items[Right])>0 then begin
-       Exchange(Middle,Right);
-      end;
-     end;
-     Pivot:=Middle;
-     i:=Left;
-     j:=Right;
-     repeat
-      while (i<Right) and (Items[i].CompareTo(Items[Pivot])<0) do begin
-       inc(i);
-      end;
-      while (j>=i) and (Items[j].CompareTo(Items[Pivot])>0) do begin
-       dec(j);
-      end;
-      if i>j then begin
-       break;
-      end else begin
-       if i<>j then begin
-        Exchange(i,j);
-        if Pivot=i then begin
-         Pivot:=j;
-        end else if Pivot=j then begin
-         Pivot:=i;
-        end;
-       end;
-       inc(i);
-       dec(j);
-      end;
-     until false;
-     if i<Right then begin
-      StackItem^.Left:=i;
-      StackItem^.Right:=Right;
-      StackItem^.Depth:=Depth-1;
-      inc(StackItem);
-     end;
-     if Left<j then begin
-      StackItem^.Left:=Left;
-      StackItem^.Right:=j;
-      StackItem^.Depth:=Depth-1;
-      inc(StackItem);
-     end;
-    end;
-   end;
-  end;
+  TpvTypedSort<TpvScene3D.TDrawChoreographyBatchItem>.IntroSort(PointerToItems,
+                                                                0,
+                                                                Count-1,
+                                                                TpvScene3D.TDrawChoreographyBatchItem.SortCompareTo);
  end;
 end;
 
