@@ -10520,6 +10520,8 @@ begin
       if Primitive^.CountIndices>0 then begin
        DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
        try
+        DrawChoreographyBatchItem.fGroup:=self;
+        DrawChoreographyBatchItem.fGroupInstance:=nil;
         DrawChoreographyBatchItem.fAlphaMode:=Material.fData.AlphaMode;
         DrawChoreographyBatchItem.fPrimitiveTopology:=Primitive^.PrimitiveMode;
         DrawChoreographyBatchItem.fDoubleSided:=Material.fData.DoubleSided;
@@ -10582,6 +10584,8 @@ begin
    if CountIndices>0 then begin
     OtherDrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
     try
+     OtherDrawChoreographyBatchItem.fGroup:=self;
+     OtherDrawChoreographyBatchItem.fGroupInstance:=nil;
      OtherDrawChoreographyBatchItem.fAlphaMode:=DrawChoreographyBatchItem.fAlphaMode;
      OtherDrawChoreographyBatchItem.fPrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
      OtherDrawChoreographyBatchItem.fDoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
