@@ -1330,6 +1330,42 @@ type EpvScene3D=class(Exception);
              published
               property BufferData:TVulkanShortTermDynamicBufferData read fBufferData;
             end;
+            { TVulkanIndirectCommandBuffer }
+            TVulkanIndirectCommandBuffer=class
+             public
+              type TItem=TVkDrawIndexedIndirectCommand;
+                   PItem=^TItem;
+                   TItems=array of TItem;
+                   PItems=^TItems;
+             private 
+              fSceneInstance:TpvScene3D;
+              fItems:TItems;
+              fCount:TpvSizeInt;
+              fVulkanBuffer:TpvVulkanBuffer;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D;const aCapacity:TpvSizeInt); reintroduce;
+              destructor Destroy; override;
+              procedure Clear;
+              function IsFull:boolean; 
+              function Add(const aItem:TItem):Boolean;
+              procedure Upload;
+            end;
+            TVulkanIndirectCommandBuffers=TpvObjectGenericList<TVulkanIndirectCommandBuffer>;
+            { TVulkanFrameIndirectCommandBuffers }
+            TVulkanFrameIndirectCommandBuffers=class
+             private
+              fSceneInstance:TpvScene3D;
+              fInFlightFrameIndex:TpvSizeInt;
+              fBuffers:TVulkanIndirectCommandBuffers;
+              fCount:TpvSizeInt;
+              fCurrentBuffer:TVulkanIndirectCommandBuffer;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt); reintroduce;
+              destructor Destroy; override;
+              procedure Reset;
+              function Acquire:TVulkanIndirectCommandBuffer;               
+            end;
+            TVulkanFrameIndirectCommandBuffersArray=array[0..MaxInFlightFrames-1] of TVulkanFrameIndirectCommandBuffers;
             { TGroup }
             TGroup=class(TBaseObject) // A group is a GLTF scene in a uber-scene
              public
@@ -2521,6 +2557,7 @@ type EpvScene3D=class(Exception);
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
        fDrawChoreographyBatchItemRenderPassBuckets:TDrawChoreographyBatchItemRenderPassBuckets;
+       fVulkanFrameIndirectCommandBuffersArray:TVulkanFrameIndirectCommandBuffersArray;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -7750,6 +7787,152 @@ begin
  fCurrentIndex:=aInFlightFrameIndex; // just the in flight frame index without manual index cycling
  fBufferData:=fBufferDataArray[fCurrentIndex];
  fBufferData.Update;
+end;
+
+{ TpvScene3D.TVulkanIndirectCommandBuffer }
+
+constructor TpvScene3D.TVulkanIndirectCommandBuffer.Create(const aSceneInstance:TpvScene3D;const aCapacity:TpvSizeInt);
+begin
+ inherited Create;
+ 
+ fSceneInstance:=aSceneInstance;
+ 
+ fItems:=nil;
+ SetLength(fItems,aCapacity); 
+
+ fCount:=0;
+
+ case fSceneInstance.fBufferStreamingMode of
+
+  TBufferStreamingMode.Direct:begin
+   fVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                         aCapacity*SizeOf(TVkDrawIndexedIndirectCommand),
+                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                         [],
+                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         0,
+                                         [TpvVulkanBufferFlag.PersistentMapped]
+                                        );
+  end;
+
+  TBufferStreamingMode.Staging:begin
+   fVulkanBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                          aCapacity*SizeOf(TVkDrawIndexedIndirectCommand),
+                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
+                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                          [],
+                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                          0,
+                                          0,
+                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                          0,
+                                          0,
+                                          0,
+                                          0,
+                                          []
+                                         );
+  end;
+
+  else begin
+   Assert(false); 
+  end;
+
+ end; 
+  
+end;
+
+destructor TpvScene3D.TVulkanIndirectCommandBuffer.Destroy;
+begin
+ FreeAndNil(fVulkanBuffer);
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TVulkanIndirectCommandBuffer.Clear;
+begin
+ fCount:=0;
+end;
+
+function TpvScene3D.TVulkanIndirectCommandBuffer.IsFull:boolean;
+begin
+ result:=fCount>=length(fItems);
+end;
+
+function TpvScene3D.TVulkanIndirectCommandBuffer.Add(const aItem:TItem):Boolean;
+begin
+ result:=fCount<length(fItems);
+ if result then begin
+  fItems[fCount]:=aItem;
+  inc(fCount);
+ end;
+end;
+
+procedure TpvScene3D.TVulkanIndirectCommandBuffer.Upload;
+begin
+ if fCount>0 then begin
+  case fSceneInstance.fBufferStreamingMode of
+   TBufferStreamingMode.Direct:begin
+    fVulkanBuffer.UpdateData(fItems[0],0,fCount*SizeOf(TVkDrawIndexedIndirectCommand),FlushUpdateData);
+   end;
+   TBufferStreamingMode.Staging:begin
+    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                      fSceneInstance.fVulkanStagingCommandBuffer,
+                                                      fSceneInstance.fVulkanStagingFence,
+                                                      fItems[0],
+                                                      fVulkanBuffer,
+                                                      0,
+                                                      fCount*SizeOf(TVkDrawIndexedIndirectCommand));
+   end;
+   else begin
+    Assert(false);
+   end;
+  end;
+ end;
+end;
+
+{ TpvScene3D.TVulkanFrameIndirectCommandBuffers }
+
+constructor TpvScene3D.TVulkanFrameIndirectCommandBuffers.Create(const aSceneInstance:TpvScene3D;const aInFlightFrameIndex:TpvSizeInt);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fInFlightFrameIndex:=aInFlightFrameIndex;
+ fBuffers:=TVulkanIndirectCommandBuffers.Create;
+ fBuffers.OwnsObjects:=true;
+ fCount:=0;
+ fCurrentBuffer:=nil;
+end;
+
+destructor TpvScene3D.TVulkanFrameIndirectCommandBuffers.Destroy;
+begin
+ FreeAndNil(fBuffers);
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TVulkanFrameIndirectCommandBuffers.Reset;
+begin
+ fCount:=0;
+ fCurrentBuffer:=nil;
+end;
+
+function TpvScene3D.TVulkanFrameIndirectCommandBuffers.Acquire:TVulkanIndirectCommandBuffer;
+var Index:TpvSizeInt;
+begin
+ Index:=fCount;
+ inc(fCount);
+ if Index<fBuffers.Count then begin
+  fCurrentBuffer:=fBuffers[Index];
+ end else begin 
+  fCurrentBuffer:=TVulkanIndirectCommandBuffer.Create(fSceneInstance,65536);
+  fBuffers.Add(fCurrentBuffer);
+ end;
+ result:=fCurrentBuffer;
 end;
 
 { TpvScene3D.TGroup.TGroupObject }
@@ -16569,6 +16752,10 @@ begin
 //A!
 //fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fVulkanFrameIndirectCommandBuffersArray[Index]:=TVulkanFrameIndirectCommandBuffers.Create(self,Index);
+ end;
+
  for Index:=0 to MaxRenderPassIndices-1 do begin
   for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
@@ -17023,6 +17210,10 @@ begin
     FreeAndNil(fDrawChoreographyBatchItemRenderPassBuckets[Index,PrimitiveTopology,FaceCullingMode]);
    end;
   end;
+ end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fVulkanFrameIndirectCommandBuffersArray[Index]);
  end;
 
  while fGroups.Count>0 do begin
@@ -18625,6 +18816,10 @@ begin
 
  ResetRenderPasses;
 
+ if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+  fVulkanFrameIndirectCommandBuffersArray[aInFlightFrameIndex].Reset;
+ end;
+
 end;
 
 function TpvScene3D.AddView(const aView:TpvScene3D.TView):TpvSizeInt;
@@ -19100,6 +19295,9 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     IndicesStart,IndicesCount,
     DrawChoreographyBatchItemIndex,
     CountDrawChoreographyBatchItems:TpvSizeInt;
+    VulkanFrameIndirectCommandBuffers:TVulkanFrameIndirectCommandBuffers;
+    VulkanIndirectCommandBuffer:TVulkanIndirectCommandBuffer;
+    DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
@@ -19180,6 +19378,10 @@ begin
      end;
     end;
 
+    VulkanFrameIndirectCommandBuffers:=fVulkanFrameIndirectCommandBuffersArray[aInFlightFrameIndex];
+
+    VulkanIndirectCommandBuffer:=nil;
+
     for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
 
      for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
@@ -19205,6 +19407,8 @@ begin
        end;
 
        if assigned(Pipeline) then begin
+
+        VulkanIndirectCommandBuffer:=nil;
 
         IndicesStart:=0;
         IndicesCount:=0;
@@ -19232,9 +19436,35 @@ begin
          end;
 
          if IndicesCount>0 then begin
-          aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+          if (not assigned(VulkanIndirectCommandBuffer)) or
+             (VulkanIndirectCommandBuffer.IsFull) then begin
+           if assigned(VulkanIndirectCommandBuffer) and (VulkanIndirectCommandBuffer.fCount>0) then begin
+            VulkanIndirectCommandBuffer.Upload;
+            aCommandBuffer.CmdDrawIndexedIndirect(VulkanIndirectCommandBuffer.fVulkanBuffer.Handle,
+                                                  0,
+                                                  VulkanIndirectCommandBuffer.fCount,
+                                                  SizeOf(TVkDrawIndexedIndirectCommand));
+           end;
+           VulkanIndirectCommandBuffer:=VulkanFrameIndirectCommandBuffers.Acquire;
+           VulkanIndirectCommandBuffer.Clear;
+          end;
+          DrawIndexedIndirectCommand.indexCount:=IndicesCount;
+          DrawIndexedIndirectCommand.instanceCount:=1;
+          DrawIndexedIndirectCommand.firstIndex:=IndicesStart;
+          DrawIndexedIndirectCommand.vertexOffset:=0;
+          DrawIndexedIndirectCommand.firstInstance:=0;
+          VulkanIndirectCommandBuffer.Add(DrawIndexedIndirectCommand);
+          //aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
          end;
 
+        end;
+
+        if assigned(VulkanIndirectCommandBuffer) and (VulkanIndirectCommandBuffer.fCount>0) then begin
+         VulkanIndirectCommandBuffer.Upload;
+         aCommandBuffer.CmdDrawIndexedIndirect(VulkanIndirectCommandBuffer.fVulkanBuffer.Handle,
+                                               0,
+                                               VulkanIndirectCommandBuffer.fCount,
+                                               SizeOf(TVkDrawIndexedIndirectCommand));
         end;
 
        end;
