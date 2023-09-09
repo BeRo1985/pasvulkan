@@ -19454,7 +19454,7 @@ begin
           DrawIndexedIndirectCommand.vertexOffset:=0;
           DrawIndexedIndirectCommand.firstInstance:=0;
           VulkanIndirectCommandBuffer.Add(DrawIndexedIndirectCommand);
-          //aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+//        aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
          end;
 
         end;
