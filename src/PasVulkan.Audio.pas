@@ -2419,8 +2419,14 @@ begin
    case Loop.Mode of
     SoundLoopModeFORWARD,SoundLoopModeBACKWARD:begin
      LoopStart:=Loop.StartSample;
-     LoopEnd:=Loop.EndSample;
-     if (LoopStart>0) and (LoopEnd>0) and (LoopEnd<=SampleLength) then begin
+     LoopEnd:=Min(Loop.EndSample,SampleLength);
+     if (LoopStart>=0) and (LoopStart<LoopEnd) and (LoopEnd<=SampleLength) then begin
+      if LoopStart=0 then begin
+       for Counter:=0 to SampleFixUp-1 do begin
+        Data^[(LoopStart-(Counter+1))*2]:=Data^[(LoopEnd-(Counter+1))*2];
+        Data^[((LoopStart-(Counter+1))*2)+1]:=Data^[((LoopEnd-(Counter+1))*2)+1];
+       end;
+      end;
       for Counter:=0 to SampleFixUp-1 do begin
        Data^[(LoopEnd+Counter)*2]:=Data^[(LoopStart+Counter)*2];
        Data^[((LoopEnd+Counter)*2)+1]:=Data^[((LoopStart+Counter)*2)+1];
