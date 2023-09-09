@@ -1227,8 +1227,7 @@ type EpvScene3D=class(Exception);
               fCountIndices:TpvSizeInt;
              public
               function Clone:TDrawChoreographyBatchItem;
-              function CompareTo(const aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
-              class function SortCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
+              class function CompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
              published
               property Group:TpvScene3D.TGroup read fGroup write fGroup;
               property GroupInstance:TObject read fGroupInstance write fGroupInstance;
@@ -6926,36 +6925,7 @@ begin
  result.fCountIndices:=fCountIndices;
 end;
 
-function TpvScene3D.TDrawChoreographyBatchItem.CompareTo(const aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
-begin
- result:=Sign(TpvInt32(fAlphaMode)-TpvInt32(aOther.fAlphaMode));
- if result=0 then begin
-  result:=Sign(TpvInt32(fPrimitiveTopology)-TpvInt32(aOther.fPrimitiveTopology));
-  if result=0 then begin
-   result:=Sign(TpvInt32(ord(fDoubleSided) and 1)-TpvInt32(ord(aOther.fDoubleSided) and 1));
-   if result=0 then begin
-    result:=Sign(TpvPtrInt(fMaterial)-TpvPtrInt(aOther.fMaterial));
-    if result=0 then begin
-     result:=Sign(TpvPtrInt(fNode)-TpvPtrInt(aOther.fNode));
-     if result=0 then begin
-      result:=Sign(TpvPtrInt(fMesh)-TpvPtrInt(aOther.fMesh));
-      if result=0 then begin
-       result:=Sign(MeshPrimitive-aOther.MeshPrimitive);
-       if result=0 then begin
-        result:=Sign(fStartIndex-aOther.fStartIndex);
-        if result=0 then begin
-         result:=Sign(fCountIndices-aOther.fCountIndices);
-        end;
-       end;
-      end;
-     end;
-    end;
-   end;
-  end;
- end;
-end;
-
-class function TpvScene3D.TDrawChoreographyBatchItem.SortCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
+class function TpvScene3D.TDrawChoreographyBatchItem.CompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
 begin
  result:=Sign(TpvInt32(aCurrent.fAlphaMode)-TpvInt32(aOther.fAlphaMode));
  if result=0 then begin
@@ -7008,7 +6978,7 @@ begin
   TpvTypedSort<TpvScene3D.TDrawChoreographyBatchItem>.IntroSort(PointerToItems,
                                                                 0,
                                                                 Count-1,
-                                                                TpvScene3D.TDrawChoreographyBatchItem.SortCompareTo);
+                                                                TpvScene3D.TDrawChoreographyBatchItem.CompareTo);
  end;
 end;
 
