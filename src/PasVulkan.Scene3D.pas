@@ -1241,6 +1241,7 @@ type EpvScene3D=class(Exception);
              public
               function Clone:TDrawChoreographyBatchItem;
               class function CompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
+              class function IndexOrderCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
              published
               property Group:TpvScene3D.TGroup read fGroup write fGroup;
               property GroupInstance:TObject read fGroupInstance write fGroupInstance;
@@ -1259,6 +1260,7 @@ type EpvScene3D=class(Exception);
              public
               procedure GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
               procedure Sort;
+              procedure IndexOrderSort;
             end;
             TDrawChoreographyBatchItemBuckets=array[TPrimitiveTopology,TFaceCullingMode] of TDrawChoreographyBatchItems;
             PDrawChoreographyBatchItemBuckets=^TDrawChoreographyBatchItemBuckets;
@@ -6990,6 +6992,14 @@ begin
  end;
 end;
 
+class function TpvScene3D.TDrawChoreographyBatchItem.IndexOrderCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32;
+begin
+ result:=Sign(aCurrent.fStartIndex-aOther.fStartIndex);
+ if result=0 then begin
+  result:=Sign(aCurrent.fCountIndices-aOther.fCountIndices);
+ end;
+end;
+
 { TpvScene3D.TGroup.TDrawChoreographyBatchItems }
 
 procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
@@ -7019,6 +7029,16 @@ begin
                                                                 0,
                                                                 Count-1,
                                                                 TpvScene3D.TDrawChoreographyBatchItem.CompareTo);
+ end;
+end;
+
+procedure TpvScene3D.TDrawChoreographyBatchItems.IndexOrderSort;
+begin
+ if Count>1 then begin
+  TpvTypedSort<TpvScene3D.TDrawChoreographyBatchItem>.IntroSort(PointerToItems,
+                                                                0,
+                                                                Count-1,
+                                                                TpvScene3D.TDrawChoreographyBatchItem.IndexOrderCompareTo);
  end;
 end;
 
@@ -19148,7 +19168,7 @@ begin
 
       if DrawChoreographyBatchItems.Count>0 then begin
 
-       DrawChoreographyBatchItems.Sort;
+       DrawChoreographyBatchItems.IndexOrderSort;
 
        NewPipeline:=aGraphicsPipelines[PrimitiveTopology,FaceCullingMode];
        if Pipeline<>NewPipeline then begin
