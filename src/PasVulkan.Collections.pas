@@ -199,6 +199,8 @@ type TpvDynamicArray<T>=record
        property Sorted:boolean read fSorted;
      end;
 
+     { TpvObjectGenericList }
+
      TpvObjectGenericList<T:class>=class
       private
        type TValueEnumerator=record
@@ -224,6 +226,7 @@ type TpvDynamicArray<T>=record
        constructor Create(const aOwnsObjects:boolean=true); reintroduce;
        destructor Destroy; override;
        procedure Clear;
+       procedure ClearNoFree;
        function Contains(const pItem:T):Boolean;
        function IndexOf(const pItem:T):TpvSizeInt;
        function Add(const pItem:T):TpvSizeInt;
@@ -1675,6 +1678,17 @@ begin
  fAllocated:=0;
 end;
 
+procedure TpvObjectGenericList<T>.ClearNoFree;
+var Index:TpvSizeInt;
+begin
+ if fOwnsObjects then begin
+  for Index:=fCount-1 downto 0 do begin
+   FreeAndNil(fItems[Index]);
+  end;
+ end;
+ fCount:=0;
+end;
+
 procedure TpvObjectGenericList<T>.SetCount(const pNewCount:TpvSizeInt);
 var Index,NewAllocated:TpvSizeInt;
     Item:TpvPointer;
@@ -1871,7 +1885,7 @@ begin
  fItems[pWithIndex]:=Temporary;
 end;
 
-function TpvObjectGenericList<T>.GetEnumerator:TpvObjectGenericList<T>.TValueEnumerator;
+function TpvObjectGenericList<T>.GetEnumerator: TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
 end;

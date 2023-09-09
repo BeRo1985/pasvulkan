@@ -1248,6 +1248,9 @@ type EpvScene3D=class(Exception);
               procedure Sort;
             end;
             TDrawChoreographyBatchItemBuckets=array[TPrimitiveTopology,TFaceCullingMode] of TDrawChoreographyBatchItems;
+            PDrawChoreographyBatchItemBuckets=^TDrawChoreographyBatchItemBuckets;
+            TDrawChoreographyBatchItemRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchItemBuckets;
+            PDrawChoreographyBatchItemRenderPassBuckets=^TDrawChoreographyBatchItemRenderPassBuckets;
             { TVulkanLongTermStaticBufferData }
             TVulkanLongTermStaticBufferData=class
              private
