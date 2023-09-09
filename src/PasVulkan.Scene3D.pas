@@ -1348,6 +1348,7 @@ type EpvScene3D=class(Exception);
               procedure Clear;
               function IsFull:boolean; 
               function Add(const aItem:TItem):Boolean;
+              function IndirectAdd:PItem;
               procedure Upload;
             end;
             TVulkanIndirectCommandBuffers=TpvObjectGenericList<TVulkanIndirectCommandBuffer>;
@@ -7870,6 +7871,16 @@ begin
  if result then begin
   fItems[fCount]:=aItem;
   inc(fCount);
+ end;
+end;
+
+function TpvScene3D.TVulkanIndirectCommandBuffer.IndirectAdd:PItem;
+begin
+ if fCount<length(fItems) then begin
+  result:=@fItems[fCount];
+  inc(fCount);
+ end else begin
+  result:=nil;
  end;
 end;
 
@@ -19297,7 +19308,7 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     CountDrawChoreographyBatchItems:TpvSizeInt;
     VulkanFrameIndirectCommandBuffers:TVulkanFrameIndirectCommandBuffers;
     VulkanIndirectCommandBuffer:TVulkanIndirectCommandBuffer;
-    DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
+    DrawIndexedIndirectCommand:PVkDrawIndexedIndirectCommand;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
@@ -19437,7 +19448,7 @@ begin
 
          if IndicesCount>0 then begin
           if (not assigned(VulkanIndirectCommandBuffer)) or
-             (VulkanIndirectCommandBuffer.IsFull) then begin
+             VulkanIndirectCommandBuffer.IsFull then begin
            if assigned(VulkanIndirectCommandBuffer) and (VulkanIndirectCommandBuffer.fCount>0) then begin
             VulkanIndirectCommandBuffer.Upload;
             aCommandBuffer.CmdDrawIndexedIndirect(VulkanIndirectCommandBuffer.fVulkanBuffer.Handle,
@@ -19448,13 +19459,16 @@ begin
            VulkanIndirectCommandBuffer:=VulkanFrameIndirectCommandBuffers.Acquire;
            VulkanIndirectCommandBuffer.Clear;
           end;
-          DrawIndexedIndirectCommand.indexCount:=IndicesCount;
-          DrawIndexedIndirectCommand.instanceCount:=1;
-          DrawIndexedIndirectCommand.firstIndex:=IndicesStart;
-          DrawIndexedIndirectCommand.vertexOffset:=0;
-          DrawIndexedIndirectCommand.firstInstance:=0;
-          VulkanIndirectCommandBuffer.Add(DrawIndexedIndirectCommand);
-//        aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+          DrawIndexedIndirectCommand:=VulkanIndirectCommandBuffer.IndirectAdd;
+          if assigned(DrawIndexedIndirectCommand) then begin
+           DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
+           DrawIndexedIndirectCommand^.instanceCount:=1;
+           DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
+           DrawIndexedIndirectCommand^.vertexOffset:=0;
+           DrawIndexedIndirectCommand^.firstInstance:=0;
+{         end else begin
+           aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);//}
+          end;
          end;
 
         end;
