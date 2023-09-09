@@ -1244,7 +1244,7 @@ type EpvScene3D=class(Exception);
             { TDrawChoreographyBatchItems }
             TDrawChoreographyBatchItems=class(TpvObjectGenericList<TDrawChoreographyBatchItem>)
              public
-              procedure GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject);
+              procedure GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
               procedure Sort;
             end;
             TDrawChoreographyBatchItemBuckets=array[TPrimitiveTopology,TFaceCullingMode] of TDrawChoreographyBatchItems;
@@ -2006,6 +2006,18 @@ type EpvScene3D=class(Exception);
                             property EffectiveData:TpvScene3D.TMaterial.PData read fEffectiveData;
                           end;
                           TMaterials=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TMaterial>;
+                          { TScene }
+                          TScene=class
+                           private
+                            fInstance:TInstance;
+                            fScene:TpvScene3D.TGroup.TScene;
+                            fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
+                            fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
+                           public
+                            constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aScene:TpvScene3D.TGroup.TScene);
+                            destructor Destroy; override;
+                          end;
+                          TScenes=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TScene>;
                           { TVulkanData }
                           TVulkanData=class
                            private
@@ -2042,6 +2054,7 @@ type EpvScene3D=class(Exception);
                      fAnimations:TpvScene3D.TGroup.TInstance.TAnimations;
                      fNodes:TpvScene3D.TGroup.TInstance.TNodes;
                      fSkins:TpvScene3D.TGroup.TInstance.TSkins;
+                     fScenes:TpvScene3D.TGroup.TInstance.TScenes;
                      fCameras:TpvScene3D.TGroup.TInstance.TCameras;
                      fLights:TpvScene3D.TGroup.TInstance.TLights;
                      fLightNodes:TNodeIndices;
@@ -2065,7 +2078,7 @@ type EpvScene3D=class(Exception);
                      fVulkanComputeDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
                      fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
                      fSetGroupInstanceResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
-                     fScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
+                     fActiveScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fAABBTreeProxy:TpvSizeInt;
@@ -6956,7 +6969,7 @@ end;
 
 { TpvScene3D.TGroup.TDrawChoreographyBatchItems }
 
-procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject);
+procedure TpvScene3D.TDrawChoreographyBatchItems.GroupInstanceClone(const aFrom:TDrawChoreographyBatchItems;const aGroupInstance:TObject;const aIsUnique:Boolean);
 var DrawChoreographyBatchItem,NewDrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
 begin
  for DrawChoreographyBatchItem in aFrom do begin
@@ -6964,7 +6977,11 @@ begin
   try
    NewDrawChoreographyBatchItem.fGroupInstance:=aGroupInstance;
    if assigned(aGroupInstance) then begin
-    inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fVulkanDrawIndexBufferOffset);
+    if aIsUnique then begin
+     inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fVulkanDrawUniqueIndexBufferOffset);
+    end else begin
+     inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fVulkanDrawIndexBufferOffset);
+    end;
    end;
   finally
    Add(NewDrawChoreographyBatchItem);
@@ -12410,6 +12427,36 @@ begin
  end;
 end;
 
+{ TpvScene3D.TGroup.TInstance.TScene }
+
+constructor TpvScene3D.TGroup.TInstance.TScene.Create(const aInstance:TpvScene3D.TGroup.TInstance;const aScene:TpvScene3D.TGroup.TScene);
+begin
+ inherited Create;
+
+ fInstance:=aInstance;
+
+ fScene:=aScene;
+
+ fDrawChoreographyBatchItems:=TpvScene3D.TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchItems.OwnsObjects:=true;
+ fDrawChoreographyBatchItems.GroupInstanceClone(fScene.fDrawChoreographyBatchItems,fInstance,false);
+
+ fDrawChoreographyBatchUniqueItems:=TpvScene3D.TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchUniqueItems.OwnsObjects:=true;
+ fDrawChoreographyBatchUniqueItems.GroupInstanceClone(fScene.fDrawChoreographyBatchUniqueItems,fInstance,true);
+
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TScene.Destroy;
+begin
+
+ FreeAndNil(fDrawChoreographyBatchItems);
+
+ FreeAndNil(fDrawChoreographyBatchUniqueItems);
+
+ inherited Destroy;
+end;
+
 { TpvScene3D.TGroup.TInstance.TVulkanData }
 
 constructor TpvScene3D.TGroup.TInstance.TVulkanData.Create(const aInstance:TGroup.TInstance);
@@ -12984,6 +13031,12 @@ begin
 
  end;
 
+ fScenes:=TpvScene3D.TGroup.TInstance.TScenes.Create;
+ fScenes.OwnsObjects:=true;
+ for Index:=0 to fGroup.fScenes.Count-1 do begin
+  fScenes.Add(TpvScene3D.TGroup.TInstance.TScene.Create(self,fGroup.fScenes[Index]));
+ end;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
@@ -13030,6 +13083,7 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+ FreeAndNil(fScenes);
  FreeAndNil(fCameras);
  FreeAndNil(fLights);
  for Index:=0 to length(fNodes)-1 do begin
@@ -13153,7 +13207,7 @@ begin
  result:=fAnimations[aIndex+1];
 end;
 
-procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene: TpvSizeInt);
+procedure TpvScene3D.TGroup.TInstance.SetScene(const aScene:TpvSizeInt);
 begin
  fScene:=Min(Max(aScene,-1),fGroup.fScenes.Count-1);
 end;
@@ -15241,7 +15295,7 @@ begin
   if assigned(Scene) then begin
 
    if aInFlightFrameIndex>=0 then begin
-    fScenes[aInFlightFrameIndex]:=Scene;
+    fActiveScenes[aInFlightFrameIndex]:=Scene;
    end;
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
@@ -15429,7 +15483,7 @@ procedure TpvScene3D.TGroup.TInstance.PrepareGPUUpdate(const aInFlightFrameIndex
 begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
-    assigned(fScenes[aInFlightFrameIndex]) then begin
+    assigned(fActiveScenes[aInFlightFrameIndex]) then begin
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
     fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
@@ -15453,7 +15507,7 @@ procedure TpvScene3D.TGroup.TInstance.ExecuteGPUUpdate(const aInFlightFrameIndex
 begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
-    assigned(fScenes[aInFlightFrameIndex]) then begin
+    assigned(fActiveScenes[aInFlightFrameIndex]) then begin
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
     fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
@@ -15952,7 +16006,7 @@ begin
    for NodeIndex:=0 to length(fNodes)-1 do begin
     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
    end;
-   Scene:=fScenes[aInFlightFrameIndex];
+   Scene:=fActiveScenes[aInFlightFrameIndex];
    if assigned(Scene) then begin
     if aPotentiallyVisibleSetCulling then begin
      PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
@@ -16009,7 +16063,7 @@ begin
 
  if fActives[aInFlightFrameIndex] then begin
 
-  Scene:=fScenes[aInFlightFrameIndex];
+  Scene:=fActiveScenes[aInFlightFrameIndex];
 
   if assigned(Scene) then begin
 
@@ -16204,7 +16258,7 @@ begin
 
   Culling:=fGroup.fCulling;
 
-  Scene:=fScenes[aInFlightFrameIndex];
+  Scene:=fActiveScenes[aInFlightFrameIndex];
 
   if assigned(Scene) then begin
 
