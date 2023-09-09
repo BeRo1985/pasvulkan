@@ -602,7 +602,7 @@ begin
        end;
       end;
 
-      VulkanGraphicsPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(PrimitiveTopology);
+      VulkanGraphicsPipeline.InputAssemblyState.Topology:=TpvScene3D.VulkanPrimitiveTopologies[PrimitiveTopology];
       VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
       fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline);

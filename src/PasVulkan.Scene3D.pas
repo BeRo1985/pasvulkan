@@ -121,8 +121,21 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashBits=16;
              LightClusterGridHashSize=1 shl LightClusterGridHashBits;
              LightClusterGridHashMask=LightClusterGridHashSize-1;
-       type TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-            TDoubleSided=boolean;
+       type TPrimitiveTopology=
+             (
+              Points,
+              Lines,
+              Triangles
+             );
+          //TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+            PPrimitiveTopology=^TPrimitiveTopology;
+       const VulkanPrimitiveTopologies:array[TPrimitiveTopology] of TVkPrimitiveTopology=
+              (
+               VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+               VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+               VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+              );
+       type TDoubleSided=boolean;
             TFrontFacesInversed=boolean;
             TFaceCullingMode=
              (
@@ -1546,7 +1559,7 @@ type EpvScene3D=class(Exception);
                                  PNodeMeshPrimitiveInstance=^TNodeMeshPrimitiveInstance;
                                  TNodeMeshPrimitiveInstances=TpvDynamicArray<TNodeMeshPrimitiveInstance>;
                            public
-                            PrimitiveMode:TVkPrimitiveTopology;
+                            PrimitiveTopology:TPrimitiveTopology;
                             MaterialID:TpvInt64;
                             Material:TMaterial;
                             Targets:TTargets;
@@ -2499,6 +2512,7 @@ type EpvScene3D=class(Exception);
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
+       fDrawChoreographyBatchItemRenderPassBuckets:TDrawChoreographyBatchItemRenderPassBuckets;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
@@ -8555,8 +8569,10 @@ var Index,
     TemporaryJoints:array[0..9] of TPasGLTF.TUInt32Vector4DynamicArray;
     TemporaryTexCoord0,
     TemporaryTexCoord1:TPasGLTF.TVector2DynamicArray;
+    TemporaryLoadedIndices,
     TemporaryIndices,
     TemporaryTriangleIndices:TPasGLTFUInt32DynamicArray;
+    SourceMeshPrimitiveMode:TPasGLTF.TMesh.TPrimitive.TMode;
     Normal,Tangent,Bitangent,p1p0,p2p0:TpvVector3;
     p0,p1,p2:PpvVector3;
     t1t0,t2t0:TpvVector2;
@@ -8710,42 +8726,85 @@ begin
       begin
        // load or generate vertex indices
        if SourceMeshPrimitive.Indices>=0 then begin
-        TemporaryIndices:=aSourceDocument.Accessors[SourceMeshPrimitive.Indices].DecodeAsUInt32Array(false);
+        TemporaryLoadedIndices:=aSourceDocument.Accessors[SourceMeshPrimitive.Indices].DecodeAsUInt32Array(false);
        end else begin
-        SetLength(TemporaryIndices,length(TemporaryPositions));
-        for IndexIndex:=0 to length(TemporaryIndices)-1 do begin
-         TemporaryIndices[IndexIndex]:=IndexIndex;
+        SetLength(TemporaryLoadedIndices,length(TemporaryPositions));
+        for IndexIndex:=0 to length(TemporaryLoadedIndices)-1 do begin
+         TemporaryLoadedIndices[IndexIndex]:=IndexIndex;
         end;
        end;
+       // Convert loops, strips and fans to pure list variants
        case SourceMeshPrimitive.Mode of
+        TPasGLTF.TMesh.TPrimitive.TMode.Points:begin
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Points;
+         TemporaryIndices:=TemporaryLoadedIndices;
+         TemporaryTriangleIndices:=nil;
+        end;
+        TPasGLTF.TMesh.TPrimitive.TMode.Lines:begin
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
+         TemporaryIndices:=TemporaryLoadedIndices;
+         TemporaryTriangleIndices:=nil;
+        end;
+        TPasGLTF.TMesh.TPrimitive.TMode.LineLoop:begin
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
+         TemporaryIndices:=nil;
+         SetLength(TemporaryIndices,length(TemporaryLoadedIndices)*2);
+         for IndexIndex:=0 to length(TemporaryLoadedIndices)-2 do begin
+          TemporaryIndices[(IndexIndex*2)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+          TemporaryIndices[(IndexIndex*2)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+         end;
+         if length(TemporaryLoadedIndices)>0 then begin
+          TemporaryIndices[((length(TemporaryLoadedIndices)-1)*2)+0]:=TemporaryLoadedIndices[length(TemporaryLoadedIndices)-1];
+          TemporaryIndices[((length(TemporaryLoadedIndices)-1)*2)+1]:=0;
+         end;
+         TemporaryTriangleIndices:=nil;
+        end;
+        TPasGLTF.TMesh.TPrimitive.TMode.LineStrip:begin
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Lines;
+         TemporaryIndices:=nil;
+         SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-1)*2);
+         for IndexIndex:=0 to length(TemporaryLoadedIndices)-2 do begin
+          TemporaryIndices[(IndexIndex*2)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+          TemporaryIndices[(IndexIndex*2)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+         end;
+         TemporaryTriangleIndices:=nil;
+        end;
         TPasGLTF.TMesh.TPrimitive.TMode.Triangles:begin
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
+         TemporaryIndices:=TemporaryLoadedIndices;
          TemporaryTriangleIndices:=TemporaryIndices;
         end;
         TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip:begin
-         TemporaryTriangleIndices:=nil;
-         SetLength(TemporaryTriangleIndices,(length(TemporaryIndices)-2)*3);
-         for IndexIndex:=0 to length(TemporaryIndices)-3 do begin
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
+         TemporaryIndices:=nil;
+         SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-2)*3);
+         for IndexIndex:=0 to length(TemporaryLoadedIndices)-3 do begin
           if (IndexIndex and 1)<>0 then begin
-           TemporaryTriangleIndices[(IndexIndex*3)+0]:=TemporaryIndices[IndexIndex+0];
-           TemporaryTriangleIndices[(IndexIndex*3)+1]:=TemporaryIndices[IndexIndex+1];
-           TemporaryTriangleIndices[(IndexIndex*3)+2]:=TemporaryIndices[IndexIndex+2];
+           TemporaryIndices[(IndexIndex*3)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+           TemporaryIndices[(IndexIndex*3)+1]:=TemporaryLoadedIndices[IndexIndex+1];
+           TemporaryIndices[(IndexIndex*3)+2]:=TemporaryLoadedIndices[IndexIndex+2];
           end else begin
-           TemporaryTriangleIndices[(IndexIndex*3)+0]:=TemporaryIndices[IndexIndex+0];
-           TemporaryTriangleIndices[(IndexIndex*3)+1]:=TemporaryIndices[IndexIndex+2];
-           TemporaryTriangleIndices[(IndexIndex*3)+2]:=TemporaryIndices[IndexIndex+1];
+           TemporaryIndices[(IndexIndex*3)+0]:=TemporaryLoadedIndices[IndexIndex+0];
+           TemporaryIndices[(IndexIndex*3)+1]:=TemporaryLoadedIndices[IndexIndex+2];
+           TemporaryIndices[(IndexIndex*3)+2]:=TemporaryLoadedIndices[IndexIndex+1];
           end;
          end;
+         TemporaryTriangleIndices:=TemporaryIndices;
         end;
         TPasGLTF.TMesh.TPrimitive.TMode.TriangleFan:begin
-         TemporaryTriangleIndices:=nil;
-         SetLength(TemporaryTriangleIndices,(length(TemporaryIndices)-2)*3);
-         for IndexIndex:=2 to length(TemporaryIndices)-1 do begin
-          TemporaryTriangleIndices[((IndexIndex-1)*3)+0]:=TemporaryIndices[0];
-          TemporaryTriangleIndices[((IndexIndex-1)*3)+1]:=TemporaryIndices[IndexIndex-1];
-          TemporaryTriangleIndices[((IndexIndex-1)*3)+2]:=TemporaryIndices[IndexIndex];
+         SourceMeshPrimitiveMode:=TPasGLTF.TMesh.TPrimitive.TMode.Triangles;
+         TemporaryIndices:=nil;
+         SetLength(TemporaryIndices,(length(TemporaryLoadedIndices)-2)*3);
+         for IndexIndex:=2 to length(TemporaryLoadedIndices)-1 do begin
+          TemporaryIndices[((IndexIndex-1)*3)+0]:=TemporaryLoadedIndices[0];
+          TemporaryIndices[((IndexIndex-1)*3)+1]:=TemporaryLoadedIndices[IndexIndex-1];
+          TemporaryIndices[((IndexIndex-1)*3)+2]:=TemporaryLoadedIndices[IndexIndex];
          end;
+         TemporaryTriangleIndices:=TemporaryIndices;
         end;
         else begin
+         SourceMeshPrimitiveMode:=SourceMeshPrimitive.Mode;
+         TemporaryIndices:=TemporaryLoadedIndices;
          TemporaryTriangleIndices:=nil;
         end;
        end;
@@ -8876,27 +8935,19 @@ begin
 
       begin
        // Primitive mode
-       case SourceMeshPrimitive.Mode of
+       case SourceMeshPrimitiveMode of
         TPasGLTF.TMesh.TPrimitive.TMode.Points:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+         DestinationMeshPrimitive^.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Points;
         end;
-        TPasGLTF.TMesh.TPrimitive.TMode.Lines:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        end;
-        TPasGLTF.TMesh.TPrimitive.TMode.LineLoop:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        end;
+        TPasGLTF.TMesh.TPrimitive.TMode.Lines,
+        TPasGLTF.TMesh.TPrimitive.TMode.LineLoop,
         TPasGLTF.TMesh.TPrimitive.TMode.LineStrip:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+         DestinationMeshPrimitive^.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Lines;
         end;
-        TPasGLTF.TMesh.TPrimitive.TMode.Triangles:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        end;
-        TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        end;
+        TPasGLTF.TMesh.TPrimitive.TMode.Triangles,
+        TPasGLTF.TMesh.TPrimitive.TMode.TriangleStrip,
         TPasGLTF.TMesh.TPrimitive.TMode.TriangleFan:begin
-         DestinationMeshPrimitive^.PrimitiveMode:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+         DestinationMeshPrimitive^.PrimitiveTopology:=TpvScene3D.TPrimitiveTopology.Triangles;
         end;
         else begin
          raise EPasGLTF.Create('Invalid primitive mode');
@@ -10543,7 +10594,7 @@ begin
         DrawChoreographyBatchItem.fGroup:=self;
         DrawChoreographyBatchItem.fGroupInstance:=nil;
         DrawChoreographyBatchItem.fAlphaMode:=Material.fData.AlphaMode;
-        DrawChoreographyBatchItem.fPrimitiveTopology:=Primitive^.PrimitiveMode;
+        DrawChoreographyBatchItem.fPrimitiveTopology:=Primitive^.PrimitiveTopology;
         DrawChoreographyBatchItem.fDoubleSided:=Material.fData.DoubleSided;
         DrawChoreographyBatchItem.fMaterial:=Material;
         DrawChoreographyBatchItem.fNode:=Node;
@@ -15570,10 +15621,8 @@ begin
     Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
     if assigned(Primitive^.Material) and
        (Primitive^.Material.fData.AlphaMode in aMaterialAlphaModes) then begin
-     case Primitive^.PrimitiveMode of
-      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
+     case Primitive^.PrimitiveTopology of
+      TpvScene3D.TPrimitiveTopology.Triangles:begin
        SetLength(BakedVertices,Primitive^.CountVertices);
        for VertexIndex:=Primitive^.StartBufferVertexOffset to (Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
         Vertex:=@Group.fVertices.Items[VertexIndex];
@@ -15604,37 +15653,9 @@ begin
        end;
        TemporaryTriangleIndices:=nil;
        try
-        case Primitive^.PrimitiveMode of
-         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:begin
-          SetLength(TemporaryTriangleIndices,Primitive^.CountIndices);
-          for IndexIndex:=Primitive^.StartBufferIndexOffset to (Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
-           TemporaryTriangleIndices[IndexIndex-Primitive^.StartBufferIndexOffset]:=Group.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset;
-          end;
-         end;
-         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:begin
-          SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
-          for IndexIndex:=0 to Primitive^.CountIndices-3 do begin
-           if (IndexIndex and 1)<>0 then begin
-            TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
-           end else begin
-            TemporaryTriangleIndices[(IndexIndex*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+0]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+1]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+2]-Primitive^.StartBufferVertexOffset;
-            TemporaryTriangleIndices[(IndexIndex*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex+1]-Primitive^.StartBufferVertexOffset;
-           end;
-          end;
-         end;
-         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:begin
-          SetLength(TemporaryTriangleIndices,(Primitive^.CountIndices-2)*3);
-          for IndexIndex:=2 to Primitive^.CountIndices-1 do begin
-           TemporaryTriangleIndices[((IndexIndex-1)*3)+0]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+0]-Primitive^.StartBufferVertexOffset;
-           TemporaryTriangleIndices[((IndexIndex-1)*3)+1]:=Group.fIndices.Items[(Primitive^.StartBufferIndexOffset+IndexIndex)-1]-Primitive^.StartBufferVertexOffset;
-           TemporaryTriangleIndices[((IndexIndex-1)*3)+2]:=Group.fIndices.Items[Primitive^.StartBufferIndexOffset+IndexIndex]-Primitive^.StartBufferVertexOffset;
-          end;
-         end;
-         else begin
-         end;
+        SetLength(TemporaryTriangleIndices,Primitive^.CountIndices);
+        for IndexIndex:=Primitive^.StartBufferIndexOffset to (Primitive^.StartBufferIndexOffset+Primitive^.CountIndices)-1 do begin
+         TemporaryTriangleIndices[IndexIndex-Primitive^.StartBufferIndexOffset]:=Group.fIndices.Items[IndexIndex]-Primitive^.StartBufferVertexOffset;
         end;
         IndexIndex:=0;
         while (IndexIndex+2)<length(TemporaryTriangleIndices) do begin
@@ -16443,6 +16464,8 @@ begin
 //
  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
+ FillChar(fDrawChoreographyBatchItemRenderPassBuckets,SizeOf(TDrawChoreographyBatchItemRenderPassBuckets),#0);
+
  fMeshGenerationCounter:=1;
 
  fNewInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
@@ -16822,6 +16845,8 @@ end;
 
 destructor TpvScene3D.Destroy;
 var Index:TpvSizeInt;
+    PrimitiveTopology:TPrimitiveTopology;
+    FaceCullingMode:TFaceCullingMode;
     CurrentObject:TObject;
 begin
 
@@ -16880,6 +16905,14 @@ begin
 
  FreeAndNil(fNewInstances);
  FreeAndNil(fNewInstanceListLock);
+
+ for Index:=0 to MaxRenderPassIndices-1 do begin
+  for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
+   for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
+    FreeAndNil(fDrawChoreographyBatchItemRenderPassBuckets[Index,PrimitiveTopology,FaceCullingMode]);
+   end;
+  end;
+ end;
 
  while fGroups.Count>0 do begin
   fGroups[fGroups.Count-1].Free;
