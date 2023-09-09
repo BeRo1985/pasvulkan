@@ -593,6 +593,8 @@ begin
                         aWaitSemaphore,
                         aWaitFence);
 
+ fScene3D.EndFrame(InFlightFrameIndex);
+
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,false);
 
 end;
