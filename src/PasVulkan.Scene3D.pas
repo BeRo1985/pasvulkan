@@ -16540,8 +16540,7 @@ begin
  end;
 
 //A!
-//
- fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+//fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
  for Index:=0 to MaxRenderPassIndices-1 do begin
   for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
@@ -19174,7 +19173,9 @@ begin
         CountDrawChoreographyBatchItems:=DrawChoreographyBatchItems.Count;
 
         while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+
          DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+         inc(DrawChoreographyBatchItemIndex);
 
          IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
          IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
