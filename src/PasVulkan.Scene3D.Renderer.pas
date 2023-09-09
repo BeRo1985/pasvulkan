@@ -443,6 +443,10 @@ begin
     (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SPIRV_1_4_EXTENSION_NAME)>=0) then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
  end;
+ if ((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
+    (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)>=0) then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
+ end;
 end;
 
 class function TpvScene3DRenderer.CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean;

@@ -16553,7 +16553,13 @@ begin
   TpvVulkanVendorID.NVIDIA,
   TpvVulkanVendorID.AMD,
   TpvVulkanVendorID.Intel:begin
-   fDrawBufferStorageMode:=TDrawBufferStorageMode.CombinedBigBuffers;
+   if (fVulkanDevice.PhysicalDevice.Features.multiDrawIndirect<>VK_FALSE) and
+      (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount>=65536) and
+      (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue>=TpvInt64($80000000)) then begin
+    fDrawBufferStorageMode:=TDrawBufferStorageMode.CombinedBigBuffers;
+   end else begin
+    fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+   end;
   end;
   else begin
    fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
