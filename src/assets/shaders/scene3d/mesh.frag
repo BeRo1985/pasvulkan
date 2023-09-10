@@ -120,10 +120,10 @@ struct Material {
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
-  vec4 volumeAttenuationColor;
+  uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
   uvec4 alphaCutOffFlagsTex0Tex1;
-  int textures[16];
-  mat3x2 textureTransforms[16];
+  int textures[20];
+  mat3x2 textureTransforms[20];
 };
 #endif
 
@@ -173,10 +173,10 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   vec4 clearcoatFactorClearcoatRoughnessFactor;
   vec4 iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum;
   vec4 iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance;
-  vec4 volumeAttenuationColor;
+  uvec4 volumeAttenuationColorAnisotropyStrengthAnisotropyRotation;
   uvec4 alphaCutOffFlagsTex0Tex1;
-  int textures[16];
-  mat3x2 textureTransforms[16];
+  int textures[20];
+  mat3x2 textureTransforms[20];
 };
 
 layout(std140, set = 0, binding = 3) uniform Materials {
@@ -435,17 +435,21 @@ float iridescenceFactor = 0.0;
 float iridescenceIor = 1.3;
 float iridescenceThickness = 400.0;
 
+#define ENABLE_ANISOTROPIC
 #ifdef ENABLE_ANISOTROPIC
-vec3 anisotropyDirection = vec3(0.0);
-vec3 anisotropyT = vec3(0.0);
-vec3 anisotropyB = vec3(0.0);
-float anisotropyStrength = 0.0;
-float alphaRoughnessAnisotropyT = 0.0;
-float alphaRoughnessAnisotropyB = 0.0;
-float anisotropyTdotV = 0.0;
-float anisotropyBdotV = 0.0;
-float anisotropyTdotL = 0.0;
-float anisotropyBdotL = 0.0;
+bool anisotropyActive;
+vec3 anisotropyDirection;
+vec3 anisotropyT;
+vec3 anisotropyB;
+float anisotropyStrength;
+float alphaRoughnessAnisotropyT;
+float alphaRoughnessAnisotropyB;
+float anisotropyTdotV;
+float anisotropyBdotV;
+float anisotropyTdotL;
+float anisotropyBdotL;
+float anisotropyTdotH;
+float anisotropyBdotH;
 #endif
 
 #if defined(BLEND) || defined(LOOPOIT) || defined(LOCKOIT) || defined(MBOIT) || defined(WBOIT) || defined(DFAOIT)
@@ -513,9 +517,16 @@ float Schlick_to_F0(float f, float VdotH) { return Schlick_to_F0(f, 1.0, VdotH);
 
 float V_GGX(float NdotL, float NdotV, float alphaRoughness) {
 #ifdef ENABLE_ANISOTROPIC
-  float GGXV = NdotL * length(vec3(alphaRoughnessAnisotropyT * anisotropyTdotV, alphaRoughnessAnisotropyB * anisotropyBdotV, NdotV));
-  float GGXL = NdotV * length(vec3(alphaRoughnessAnisotropyT * anisotropyTdotL, alphaRoughnessAnisotropyB * anisotropyBdotL, NdotL));
-  return clamp(0.5 / (GGXV + GGXL), 0.0, 1.0);
+  float GGX;
+  if (anisotropyActive) {
+    GGX = (NdotL * length(vec3(alphaRoughnessAnisotropyT * anisotropyTdotV, alphaRoughnessAnisotropyB * anisotropyBdotV, NdotV))) + //
+          (NdotV * length(vec3(alphaRoughnessAnisotropyT * anisotropyTdotL, alphaRoughnessAnisotropyB * anisotropyBdotL, NdotL)));
+  }else{
+    float alphaRoughnessSq = alphaRoughness * alphaRoughness;
+    GGX = (NdotL * sqrt(((NdotV * NdotV) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq)) +  //
+          (NdotV * sqrt(((NdotL * NdotL) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq));
+  }
+  return (GGX > 0.0) ? clamp(0.5 / GGX, 0.0, 1.0) : 0.0;
 #else
   float alphaRoughnessSq = alphaRoughness * alphaRoughness;
   float GGX = (NdotL * sqrt(((NdotV * NdotV) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq)) +  //
@@ -526,9 +537,15 @@ float V_GGX(float NdotL, float NdotV, float alphaRoughness) {
 
 float D_GGX(float NdotH, float alphaRoughness) {
 #ifdef ENABLE_ANISOTROPIC
-  float a2 = alphaRoughnessAnisotropyT * alphaRoughnessAnisotropyB;
-  vec3 f = vec3(ab * TdotH, at * BdotH, a2 * NdotH);
-  return (a2 * pow2(a2 / dot(f, f))) / PI;  
+  if (anisotropyActive) {
+    float a2 = alphaRoughnessAnisotropyT * alphaRoughnessAnisotropyB;
+    vec3 f = vec3(alphaRoughnessAnisotropyB * anisotropyTdotH, alphaRoughnessAnisotropyT * anisotropyBdotH, a2 * NdotH);
+    return (a2 * pow2(a2 / dot(f, f))) / PI;  
+  }else{
+    float alphaRoughnessSq = alphaRoughness * alphaRoughness;
+    float f = ((NdotH * NdotH) * (alphaRoughnessSq - 1.0)) + 1.0;
+    return alphaRoughnessSq / (PI * (f * f));
+  }
 #else
   float alphaRoughnessSq = alphaRoughness * alphaRoughness;
   float f = ((NdotH * NdotH) * (alphaRoughnessSq - 1.0)) + 1.0;
@@ -740,6 +757,8 @@ void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in ve
 #ifdef ENABLE_ANISOTROPIC
     anisotropyTdotL = dot(anisotropyT, lightDirection);
     anisotropyBdotL = dot(anisotropyB, lightDirection);
+    anisotropyTdotH = dot(anisotropyT, halfVector);
+    anisotropyBdotH = dot(anisotropyB, halfVector);
 #endif
     diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
     specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
@@ -786,8 +805,10 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
 vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
 #ifdef ENABLE_ANISOTROPIC
-  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);
-  normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
+  if(anisotropyActive){
+  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);  
+    normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
+  }
 #endif
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
   float ao = cavity * ambientOcclusion,                                                                                                   //
@@ -1589,7 +1610,7 @@ void main() {
       if ((flags & (1u << 12u)) != 0u) {
         volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 15)) != 0) ? textureFetch(15, vec4(1.0), false).y : 1.0);  
         volumeAttenuationDistance = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.w;        
-        volumeAttenuationColor = material.volumeAttenuationColor.xyz;        
+        volumeAttenuationColor = uintBitsToFloat(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.xyz);        
       }
 #endif
 
@@ -1665,22 +1686,19 @@ void main() {
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity * ambientOcclusion, alphaRoughness);
 
 #ifdef ENABLE_ANISOTROPIC
-      {
-        vec2 direction = vec2(1.0, 0.0);
-        float strengthFactor = 1.0;
-        /*vec3 anisotropySample = texture(u_AnisotropySampler, getAnisotropyUV()).xyz;
-        direction = anisotropySample.xy * 2.0 - vec2(1.0);
-        strengthFactor = anisotropySample.z;*/
-        vec2 directionRotation = vec2(1.0, 0.0); // cos(theta), sin(theta)
+      if (anisotropyActive = ((flags & (1u << 13u)) != 0u)) {
+        vec2 ansitropicStrengthAnsitropicRotation = unpackHalf2x16(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.w);        
+        vec2 directionRotation = vec2(sin(vec2(ansitropicStrengthAnsitropicRotation.y) + vec2(1.5707963267948966, 0.0)));
         mat2 rotationMatrix = mat2(directionRotation.x, directionRotation.y, -directionRotation.y, directionRotation.x);
-        direction = rotationMatrix * direction.xy;
-        anisotropicT = mat3(workTangent, workBitangent, normal) * normalize(vec3(direction, 0.0));
-        anisotropicB = cross(workNormal, anisotropicT);
-        //anisotropyStrength = clamp(u_Anisotropy.z * strengthFactor, 0.0, 1.0);
+        vec3 anisotropySample = textureFetch(16, vec4(1.0, 0.5, 1.0, 1.0), false).xyz;
+        vec2 direction = rotationMatrix * fma(anisotropySample.xy, vec2(2.0), vec2(-1.0));
+        anisotropyT = mat3(workTangent, workBitangent, normal) * normalize(vec3(direction, 0.0));
+        anisotropyB = cross(workNormal, anisotropyT);
+        anisotropyStrength = clamp(ansitropicStrengthAnsitropicRotation.x * anisotropySample.z, 0.0, 1.0);
         alphaRoughnessAnisotropyT = mix(alphaRoughness, 1.0, anisotropyStrength * anisotropyStrength);
         alphaRoughnessAnisotropyB = clamp(alphaRoughness, 1e-3, 1.0);
         anisotropyTdotV = dot(anisotropyT, viewDirection);
-        anisotropyBdotV = dot(anisotropyB, viewDirection);
+        anisotropyBdotV = dot(anisotropyB, viewDirection);   
       }
 #endif
 
