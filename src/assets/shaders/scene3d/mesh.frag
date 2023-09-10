@@ -754,12 +754,11 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   return (FmsEms + k_D) * irradiance;
 }
 
-vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
+vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
 /*
   //float tangentRoughness = mix(roughness, 1.0, anisotropy * anisotropy);
-  vec3 bentNormal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropy * (1.0 - roughness)))));
-  vec3 reflection = normalize(reflect(-viewDirection, bentNormal));
+  normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropy * (1.0 - roughness)))));
 */
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
   float ao = cavity * ambientOcclusion,                                                                                                   //
