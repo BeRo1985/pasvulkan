@@ -19462,8 +19462,12 @@ begin
       end;
      end;
 
-     VulkanFrameIndirectCommandBufferManager:=fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex];
-     VulkanFrameIndirectCommandBufferManager.fCommandBuffer:=aCommandBuffer;
+     if fUseMultiIndirectDraw then begin
+      VulkanFrameIndirectCommandBufferManager:=fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex];
+      VulkanFrameIndirectCommandBufferManager.fCommandBuffer:=aCommandBuffer;
+     end else begin
+      VulkanFrameIndirectCommandBufferManager:=nil;
+     end;
 
      for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
 
@@ -19477,6 +19481,9 @@ begin
 
         NewPipeline:=aGraphicsPipelines[PrimitiveTopology,FaceCullingMode];
         if Pipeline<>NewPipeline then begin
+         if fUseMultiIndirectDraw and assigned(Pipeline) then begin
+          VulkanFrameIndirectCommandBufferManager.Flush;
+         end;
          Pipeline:=NewPipeline;
          if assigned(Pipeline) then begin
           aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
@@ -19490,8 +19497,6 @@ begin
         end;
 
         if assigned(Pipeline) then begin
-
-         //VulkanFrameIndirectCommandBufferManager.Acquire;
 
          IndicesStart:=0;
          IndicesCount:=0;
@@ -19519,21 +19524,21 @@ begin
           end;
 
           if IndicesCount>0 then begin
-           DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
-           if assigned(DrawIndexedIndirectCommand) then begin
-            DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
-            DrawIndexedIndirectCommand^.instanceCount:=1;
-            DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
-            DrawIndexedIndirectCommand^.vertexOffset:=0;
-            DrawIndexedIndirectCommand^.firstInstance:=0;
- {         end else begin
-            aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);//}
+           if fUseMultiIndirectDraw then begin
+            DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
+            if assigned(DrawIndexedIndirectCommand) then begin
+             DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
+             DrawIndexedIndirectCommand^.instanceCount:=1;
+             DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
+             DrawIndexedIndirectCommand^.vertexOffset:=0;
+             DrawIndexedIndirectCommand^.firstInstance:=0;
+            end;
+           end else begin
+            aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
            end;
           end;
 
          end;
-
-         VulkanFrameIndirectCommandBufferManager.Flush;
 
         end;
 
@@ -19541,6 +19546,10 @@ begin
 
       end;
 
+     end;
+
+     if fUseMultiIndirectDraw then begin
+      VulkanFrameIndirectCommandBufferManager.Flush;
      end;
 
     end else begin
