@@ -268,6 +268,38 @@ vec4 sq(vec4 t){
   return t * t; //
 }
 
+float pow2(float t){
+  return t * t; //
+}
+
+vec2 pow2(vec2 t){
+  return t * t; //
+}
+
+vec3 pow2(vec3 t){
+  return t * t; //
+}
+
+vec4 pow2(vec4 t){
+  return t * t; //
+}
+
+float pow4(float t){
+  return t * t * t * t;  
+}
+
+vec2 pow4(vec2 t){
+  return t * t * t * t;  
+}
+
+vec3 pow4(vec3 t){
+  return t * t * t * t;  
+}
+
+vec4 pow4(vec4 t){
+  return t * t * t * t;  
+}
+
 #if 0
 vec3 convertLinearRGBToSRGB(vec3 c) {
   return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
@@ -709,7 +741,7 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
   float ao = cavity * ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
-  vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).rg;
+  vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
   vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
   vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
   vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
@@ -723,9 +755,14 @@ vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection,
 }
 
 vec3 getIBLRadianceGGX(const in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
+  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+/*
+  //float tangentRoughness = mix(roughness, 1.0, anisotropy * anisotropy);
+  vec3 bentNormal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropy * (1.0 - roughness)))));
+  vec3 reflection = normalize(reflect(-viewDirection, bentNormal));
+*/
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0),                                                                            //
-      ao = cavity * ambientOcclusion,                                                                                                   //
+  float ao = cavity * ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
   vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
