@@ -19399,6 +19399,7 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     CountDrawChoreographyBatchItems:TpvSizeInt;
     VulkanFrameIndirectCommandBufferManager:TVulkanFrameIndirectCommandBufferManager;
     DrawIndexedIndirectCommand:PVkDrawIndexedIndirectCommand;
+    First:Boolean;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
@@ -19457,6 +19458,8 @@ begin
 
     if fUseMultiIndirectDraw then begin
 
+     First:=true;
+
      for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
       for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
        fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,PrimitiveTopology,FaceCullingMode].ClearNoFree;
@@ -19499,13 +19502,19 @@ begin
          end;
         end;
 
-        SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-        if assigned(aOnSetRenderPassResources) then begin
-         aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-        end;
-
         if assigned(Pipeline) then begin
+
+         if First then begin
+
+          First:=false;
+
+          SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+          if assigned(aOnSetRenderPassResources) then begin
+           aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+          end;
+
+         end;
 
          DrawChoreographyBatchItemIndex:=0;
          CountDrawChoreographyBatchItems:=DrawChoreographyBatchItems.Count;
