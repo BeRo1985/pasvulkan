@@ -19498,9 +19498,6 @@ begin
 
         if assigned(Pipeline) then begin
 
-         IndicesStart:=0;
-         IndicesCount:=0;
-
          DrawChoreographyBatchItemIndex:=0;
          CountDrawChoreographyBatchItems:=DrawChoreographyBatchItems.Count;
 
