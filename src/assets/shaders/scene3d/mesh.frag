@@ -1665,10 +1665,23 @@ void main() {
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity * ambientOcclusion, alphaRoughness);
 
 #ifdef ENABLE_ANISOTROPIC
-      alphaRoughnessAnisotropyT = mix(alphaRoughness, 1.0, anisotropyStrength * anisotropyStrength);
-      alphaRoughnessAnisotropyB = clamp(alphaRoughness, 1e-3, 1.0);
-      anisotropyTdotV = dot(anisotropyT, viewDirection);
-      anisotropyBdotV = dot(anisotropyB, viewDirection);
+      {
+        vec2 direction = vec2(1.0, 0.0);
+        float strengthFactor = 1.0;
+        /*vec3 anisotropySample = texture(u_AnisotropySampler, getAnisotropyUV()).xyz;
+        direction = anisotropySample.xy * 2.0 - vec2(1.0);
+        strengthFactor = anisotropySample.z;*/
+        vec2 directionRotation = vec2(1.0, 0.0); // cos(theta), sin(theta)
+        mat2 rotationMatrix = mat2(directionRotation.x, directionRotation.y, -directionRotation.y, directionRotation.x);
+        direction = rotationMatrix * direction.xy;
+        anisotropicT = mat3(workTangent, workBitangent, normal) * normalize(vec3(direction, 0.0));
+        anisotropicB = cross(workNormal, anisotropicT);
+        //anisotropyStrength = clamp(u_Anisotropy.z * strengthFactor, 0.0, 1.0);
+        alphaRoughnessAnisotropyT = mix(alphaRoughness, 1.0, anisotropyStrength * anisotropyStrength);
+        alphaRoughnessAnisotropyB = clamp(alphaRoughness, 1e-3, 1.0);
+        anisotropyTdotV = dot(anisotropyT, viewDirection);
+        anisotropyBdotV = dot(anisotropyB, viewDirection);
+      }
 #endif
 
 #ifdef LIGHTS
