@@ -19094,8 +19094,11 @@ procedure TpvScene3D.SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuf
                                         const aRenderPassIndex:TpvSizeInt;
                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
                                         const aInFlightFrameIndex:TpvSizeInt);
+const Offsets:TVkDeviceSize=0;
 begin
+
  if not fSetGlobalResourcesDone[aRenderPassIndex] then begin
+
   fSetGlobalResourcesDone[aRenderPassIndex]:=true;
   aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
@@ -19109,7 +19112,24 @@ begin
                                        @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                        0,
                                        nil);
+
+  if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+
+   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
+   if aPreviousInFlightFrameIndex>=0 then begin
+    if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) and
+       (fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Size>=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Size) then begin
+     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
+    end else begin
+     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
+    end;
+   end;
+   aCommandBuffer.CmdBindIndexBuffer(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
+
+  end;
+
  end;
+
 end;
 
 function TpvScene3DUpdateCachedVerticesCompare(const a,b:TpvScene3D.TCachedVertexRange):TpvInt32;
@@ -19434,17 +19454,6 @@ begin
    end;
 
    else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-
-    aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
-    if aPreviousInFlightFrameIndex>=0 then begin
-     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) and
-        (fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Size>=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Size) then begin
-      aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
-     end else begin
-      aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
-     end;
-    end;
-    aCommandBuffer.CmdBindIndexBuffer(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
 
     if fUseMultiIndirectDraw then begin
 
