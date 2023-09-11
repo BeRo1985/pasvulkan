@@ -2412,6 +2412,7 @@ type EpvScene3D=class(Exception);
               property CameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices read fCameraNodeIndices;
              published
               property Culling:boolean read fCulling write fCulling;
+              property Headless:boolean read fHeadless write fHeadless;
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
               property Cameras:TCameras read fCameras;
