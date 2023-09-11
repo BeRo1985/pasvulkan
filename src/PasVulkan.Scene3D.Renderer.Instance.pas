@@ -388,6 +388,7 @@ type { TpvScene3DRendererInstance }
        fHUDRenderPassParent:TObject;
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
+       procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
@@ -2618,7 +2619,7 @@ var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     CameraPositon:TpvVector3;
     View:TpvScene3D.TView;
-    zNeaz,zFar:TpvScalar;
+    zNear,zFar:TpvScalar;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
@@ -2702,6 +2703,20 @@ begin
  end;
 
  InFlightFrameState^.CountReflectionProbeViews:=6;
+
+end;
+
+procedure TpvScene3DRendererInstance.AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
+var Index:TpvSizeInt;
+    InFlightFrameState:PInFlightFrameState;
+    CameraPositon:TpvVector3;
+    View:TpvScene3D.TView;
+    zNear,zFar:TpvScalar;
+begin
+
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+
 
 end;
 
@@ -2812,8 +2827,12 @@ begin
   InFlightFrameState^.CountReflectionProbeViews:=0;
  end;
 
- InFlightFrameState^.ReflectiveShadowMapViewIndex:=-1;
- InFlightFrameState^.CountReflectiveShadowMapProbeViews:=0;
+ if false then begin
+  AddReflectiveShadowMapView(aInFlightFrameIndex);
+ end else begin
+  InFlightFrameState^.ReflectiveShadowMapViewIndex:=-1;
+  InFlightFrameState^.CountReflectiveShadowMapProbeViews:=0;
+ end;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
 
