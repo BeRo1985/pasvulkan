@@ -2709,7 +2709,7 @@ end;
 procedure TpvScene3DRendererInstance.AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
 var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
-    CameraPositon,
+    Origin,
     LightForwardVector,
     LightSideVector,
     LightUpVector:TpvVector3;
@@ -2732,6 +2732,8 @@ begin
  BoundingBox.Max.x:=ceil(BoundingBox.Max.x/16.0)*16.0;
  BoundingBox.Max.y:=ceil(BoundingBox.Max.y/16.0)*16.0;
  BoundingBox.Max.z:=ceil(BoundingBox.Max.z/16.0)*16.0;
+
+ Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
 
  LightForwardVector:=-Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
 //LightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
@@ -2760,10 +2762,12 @@ begin
  LightViewMatrix.RawComponents[2,1]:=LightUpVector.z;
  LightViewMatrix.RawComponents[2,2]:=LightForwardVector.z;
  LightViewMatrix.RawComponents[2,3]:=0.0;
- LightViewMatrix.RawComponents[3,0]:=0.0;
- LightViewMatrix.RawComponents[3,1]:=0.0;
- LightViewMatrix.RawComponents[3,2]:=0.0;
+ LightViewMatrix.RawComponents[3,0]:=-LightSideVector.Dot(Origin);
+ LightViewMatrix.RawComponents[3,1]:=-LightUpVector.Dot(Origin);
+ LightViewMatrix.RawComponents[3,2]:=-LightForwardVector.Dot(Origin);
  LightViewMatrix.RawComponents[3,3]:=1.0;
+
+ BoundingBox:=BoundingBox.Transform(LightViewMatrix);
 
  LightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(BoundingBox.Min.x,
                                                                      BoundingBox.Max.x,
