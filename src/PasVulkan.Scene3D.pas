@@ -2141,6 +2141,7 @@ type EpvScene3D=class(Exception);
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
                      fActive:boolean;
+                     fHeadless:boolean;
                      fPreviousActive:boolean;
                      fIsNewInstance:TPasMPBool32;
                      fScene:TPasGLTFSizeInt;
@@ -2232,7 +2233,7 @@ type EpvScene3D=class(Exception);
                                          const aRenderPassIndex:TpvSizeInt;
                                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                     public
-                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
+                     constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false); reintroduce;
                      destructor Destroy; override;
                      procedure AfterConstruction; override;
                      procedure BeforeDestruction; override;
@@ -2402,7 +2403,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
-              function CreateInstance:TpvScene3D.TGroup.TInstance;
+              function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
               property NodeIndexByName[const aNodeName:TpvUTF8String]:TpvSizeInt read GetNodeIndexByName;
@@ -12214,10 +12215,10 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.CreateInstance:TpvScene3D.TGroup.TInstance;
+function TpvScene3D.TGroup.CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
 begin
  if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
-  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self);
+  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,aHeadless);
  end else begin
   result:=nil;
  end;
@@ -13173,7 +13174,7 @@ end;
 
 { TpvScene3D.TGroup.TInstance }
 
-constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false);
 var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
@@ -13199,6 +13200,8 @@ begin
  fLock:=TPasMPSpinLock.Create;
 
  fActive:=true;
+
+ fHeadless:=aHeadless;
 
  fPreviousActive:=false;
 
@@ -13361,9 +13364,14 @@ begin
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
-    fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
+    if aHeadless then begin
+     fVulkanDatas[Index]:=nil;
+    end else begin
+     fVulkanDatas[Index]:=TpvScene3D.TGroup.TInstance.TVulkanData.Create(self);
+    end;
    end;
    else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
+    fVulkanDatas[Index]:=nil;
    end;
   end;
   fPotentiallyVisibleSetNodeIndices[Index]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
@@ -13375,7 +13383,7 @@ begin
 
  fOnNodeFilter:=nil;
 
- if fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+ if (not aHeadless) and (fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers) then begin
 
   repeat
    Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
@@ -13518,7 +13526,8 @@ var Index:TPasGLTFSizeInt;
 begin
  Unload;
  if assigned(fSceneInstance) and
-    (fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers) then begin
+    (fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers) and
+    not fHeadless then begin
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
    fSceneInstance.fVulkanVertexBufferRangeAllocator.Release(fVulkanVertexBufferOffset);
@@ -13565,7 +13574,7 @@ begin
    FreeAndNil(fNodes[Index].Light);
   end;
  end;
- if fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.SeparateBuffers then begin
+ if (fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.SeparateBuffers) and not fHeadless then begin
   for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
    FreeAndNil(fVulkanDatas[Index]);
   end;
@@ -13731,7 +13740,7 @@ begin
 
       try
 
-       if assigned(fSceneInstance.fVulkanDevice) then begin
+       if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
 
  {      SetLength(fNodeMatrices,fGroup.fNodes.Count+fGroup.fCountJointNodeMatrices+1);
 
@@ -13941,23 +13950,25 @@ begin
   try
    if fUploaded then begin
     try
-     case fSceneInstance.fDrawBufferStorageMode of
-      TDrawBufferStorageMode.SeparateBuffers:begin
-       for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-        FreeAndNil(fVulkanComputeDescriptorSets[Index]);
-        FreeAndNil(fVulkanCachedVertexBuffers[Index]);
+     if not fHeadless then begin
+      case fSceneInstance.fDrawBufferStorageMode of
+       TDrawBufferStorageMode.SeparateBuffers:begin
+        for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+         FreeAndNil(fVulkanComputeDescriptorSets[Index]);
+         FreeAndNil(fVulkanCachedVertexBuffers[Index]);
+        end;
+        FreeAndNil(fVulkanComputeDescriptorPool);
+        FreeAndNil(fVulkanMaterialIDMapBuffer);
+        for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+         fVulkanDatas[Index].Unload;
+        end;
        end;
-       FreeAndNil(fVulkanComputeDescriptorPool);
-       FreeAndNil(fVulkanMaterialIDMapBuffer);
-       for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-        fVulkanDatas[Index].Unload;
+       else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
        end;
       end;
-      else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-      end;
+ {    fNodeMatrices:=nil;
+      fMorphTargetVertexWeights:=nil;}
      end;
-{    fNodeMatrices:=nil;
-     fMorphTargetVertexWeights:=nil;}
     finally
      fUploaded:=false;
     end;
@@ -15979,7 +15990,8 @@ procedure TpvScene3D.TGroup.TInstance.PrepareGPUUpdate(const aInFlightFrameIndex
 begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
-    assigned(fActiveScenes[aInFlightFrameIndex]) then begin
+    assigned(fActiveScenes[aInFlightFrameIndex]) and
+    not fHeadless then begin
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
     fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
@@ -16003,7 +16015,8 @@ procedure TpvScene3D.TGroup.TInstance.ExecuteGPUUpdate(const aInFlightFrameIndex
 begin
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
-    assigned(fActiveScenes[aInFlightFrameIndex]) then begin
+    assigned(fActiveScenes[aInFlightFrameIndex]) and
+    not fHeadless then begin
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
     fVulkanData:=fVulkanDatas[aInFlightFrameIndex];
@@ -16527,7 +16540,7 @@ begin
 
  fCachedVerticesUpdated:=false;
 
- if fActives[aInFlightFrameIndex] then begin
+ if fActives[aInFlightFrameIndex] and not fHeadless then begin
 
   Scene:=fActiveScenes[aInFlightFrameIndex];
 
@@ -16674,7 +16687,7 @@ procedure TpvScene3D.TGroup.TInstance.SetGroupInstanceResources(const aCommandBu
                                                                 const aInFlightFrameIndex:TpvSizeInt);
 const Offsets:TVkDeviceSize=0;
 begin
- if not fSetGroupInstanceResourcesDone[aRenderPassIndex] then begin
+ if not (fSetGroupInstanceResourcesDone[aRenderPassIndex] or fHeadless) then begin
   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=true;
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
@@ -16714,7 +16727,7 @@ begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) and not fHeadless then begin
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
@@ -16871,7 +16884,7 @@ begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) and not fHeadless then begin
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
