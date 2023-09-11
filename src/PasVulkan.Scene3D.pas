@@ -2297,6 +2297,7 @@ type EpvScene3D=class(Exception);
                    TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fCulling:boolean;
+              fHeadless:boolean;
               fObjects:TBaseObjects;
               fMaterialsToDuplicate:TpvScene3D.TGroup.TMaterialsToDuplicate;
               fMaterials:TpvScene3D.TMaterials;
@@ -10096,6 +10097,8 @@ constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;c
 begin
  inherited Create(aResourceManager,aParent,aMetaResource);
 
+ fHeadless:=false;
+
  fMaximumCountInstances:=-1;
 
  fLock:=TPasMPSpinLock.Create;
@@ -10361,7 +10364,7 @@ var Index:TpvSizeInt;
   fMorphTargetVertices.Finish;
   fJointBlocks.Finish;
 
-  if assigned(fSceneInstance.fVulkanDevice) then begin
+  if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
 
    case fSceneInstance.fDrawBufferStorageMode of
 
@@ -10618,7 +10621,7 @@ begin
     try
      if not fUploaded then begin
       try
-       if assigned(fSceneInstance.fVulkanDevice) then begin
+       if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
         UniversalQueue:=fSceneInstance.fVulkanDevice.UniversalQueue;
         try
          UniversalCommandPool:=TpvVulkanCommandPool.Create(fSceneInstance.fVulkanDevice,
@@ -10697,21 +10700,23 @@ begin
   try
    if fUploaded then begin
     try
-     case fSceneInstance.fDrawBufferStorageMode of
-      TDrawBufferStorageMode.SeparateBuffers:begin
-       FreeAndNil(fVulkanVertexBuffer);
-  //   FreeAndNil(fVulkanIndexBuffer);
-       FreeAndNil(fVulkanDrawIndexBuffer);
-       FreeAndNil(fVulkanDrawUniqueIndexBuffer);
-       FreeAndNil(fVulkanMorphTargetVertexBuffer);
-       FreeAndNil(fVulkanJointBlockBuffer);
-{      for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-        FreeAndNil(fVulkanNodeMatricesStagingBuffers[Index]);
-        FreeAndNil(fVulkanMorphTargetVertexWeightsStagingBuffers[Index]);
-       end;}
-      end;
-      else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-       // TODO
+     if not fHeadless then begin
+      case fSceneInstance.fDrawBufferStorageMode of
+       TDrawBufferStorageMode.SeparateBuffers:begin
+        FreeAndNil(fVulkanVertexBuffer);
+   //   FreeAndNil(fVulkanIndexBuffer);
+        FreeAndNil(fVulkanDrawIndexBuffer);
+        FreeAndNil(fVulkanDrawUniqueIndexBuffer);
+        FreeAndNil(fVulkanMorphTargetVertexBuffer);
+        FreeAndNil(fVulkanJointBlockBuffer);
+ {      for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+         FreeAndNil(fVulkanNodeMatricesStagingBuffers[Index]);
+         FreeAndNil(fVulkanMorphTargetVertexWeightsStagingBuffers[Index]);
+        end;}
+       end;
+       else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
+        // TODO
+       end;
       end;
      end;
     finally
@@ -12074,16 +12079,20 @@ end;
 procedure TpvScene3D.TGroup.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
- for Instance in fInstances do begin
-  Instance.PrepareGPUUpdate(aInFlightFrameIndex);
+ if not fHeadless then begin
+  for Instance in fInstances do begin
+   Instance.PrepareGPUUpdate(aInFlightFrameIndex);
+  end;
  end;
 end;
 
 procedure TpvScene3D.TGroup.ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
- for Instance in fInstances do begin
-  Instance.ExecuteGPUUpdate(aInFlightFrameIndex);
+ if not fHeadless then begin
+  for Instance in fInstances do begin
+   Instance.ExecuteGPUUpdate(aInFlightFrameIndex);
+  end;
  end;
 end;
 
@@ -12112,7 +12121,7 @@ procedure TpvScene3D.TGroup.SetGroupResources(const aCommandBuffer:TpvVulkanComm
                                               const aInFlightFrameIndex:TpvSizeInt);
 const Offsets:TVkDeviceSize=0;
 begin
- if not fSetGroupResourcesDone[aRenderPassIndex] then begin
+ if not (fSetGroupResourcesDone[aRenderPassIndex] or fHeadless) then begin
   fSetGroupResourcesDone[aRenderPassIndex]:=true;
   case fSceneInstance.fDrawBufferStorageMode of
    TDrawBufferStorageMode.SeparateBuffers:begin
@@ -12133,46 +12142,48 @@ var Instance:TpvScene3D.TGroup.TInstance;
     Count:TVkSizeInt;
 begin
  fCachedVerticesUpdated:=false;
- for Instance in fInstances do begin
-  Instance.UpdateCachedVertices(aPipeline,
-                                aInFlightFrameIndex,
-                                aCommandBuffer,
-                                aPipelineLayout);
- end;
- if fCachedVerticesUpdated then begin
-  case fSceneInstance.fDrawBufferStorageMode of
-   TDrawBufferStorageMode.SeparateBuffers:begin
-    if length(fCachedVertexBufferMemoryBarriers)<fInstances.Count then begin
-     SetLength(fCachedVertexBufferMemoryBarriers,fInstances.Count*2);
-    end;
-    Count:=0;
-    for Instance in fInstances do begin
-     if Instance.fCachedVerticesUpdated then begin
-      BufferMemoryBarrier:=@fCachedVertexBufferMemoryBarriers[Count];
-      FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
-      BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-      BufferMemoryBarrier^.pNext:=nil;
-      BufferMemoryBarrier^.buffer:=Instance.fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle;
-      BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-      BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
-      BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-      BufferMemoryBarrier^.offset:=0;
-      BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
+ if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
+  for Instance in fInstances do begin
+   Instance.UpdateCachedVertices(aPipeline,
+                                 aInFlightFrameIndex,
+                                 aCommandBuffer,
+                                 aPipelineLayout);
+  end;
+  if fCachedVerticesUpdated then begin
+   case fSceneInstance.fDrawBufferStorageMode of
+    TDrawBufferStorageMode.SeparateBuffers:begin
+     if length(fCachedVertexBufferMemoryBarriers)<fInstances.Count then begin
+      SetLength(fCachedVertexBufferMemoryBarriers,fInstances.Count*2);
+     end;
+     Count:=0;
+     for Instance in fInstances do begin
+      if Instance.fCachedVerticesUpdated then begin
+       BufferMemoryBarrier:=@fCachedVertexBufferMemoryBarriers[Count];
+       FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
+       BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+       BufferMemoryBarrier^.pNext:=nil;
+       BufferMemoryBarrier^.buffer:=Instance.fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle;
+       BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+       BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+       BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+       BufferMemoryBarrier^.offset:=0;
+       BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
+      end;
+     end;
+     if Count>0 then begin
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
+                                        0,
+                                        0,nil,
+                                        Count,@fCachedVertexBufferMemoryBarriers[0],
+                                        0,nil);
      end;
     end;
-    if Count>0 then begin
-     aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
-                                       0,
-                                       0,nil,
-                                       Count,@fCachedVertexBufferMemoryBarriers[0],
-                                       0,nil);
+    else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
     end;
-   end;
-   else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
    end;
   end;
  end;
@@ -12190,16 +12201,18 @@ procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPi
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  fSetGroupResourcesDone[aRenderPassIndex]:=false;
- for Instance in fInstances do begin
-  Instance.Draw(aGraphicsPipelines,
-                aPreviousInFlightFrameIndex,
-                aInFlightFrameIndex,
-                aRenderPassIndex,
-                aCommandBuffer,
-                aPipeline,
-                aPipelineLayout,
-                aOnSetRenderPassResources,
-                aMaterialAlphaModes);
+ if not fHeadless then begin
+  for Instance in fInstances do begin
+   Instance.Draw(aGraphicsPipelines,
+                 aPreviousInFlightFrameIndex,
+                 aInFlightFrameIndex,
+                 aRenderPassIndex,
+                 aCommandBuffer,
+                 aPipeline,
+                 aPipelineLayout,
+                 aOnSetRenderPassResources,
+                 aMaterialAlphaModes);
+  end;
  end;
 end;
 
@@ -12208,17 +12221,19 @@ procedure TpvScene3D.TGroup.BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
- for Instance in fInstances do begin
-  Instance.BatchDraw(aInFlightFrameIndex,
-                     aRenderPassIndex,
-                     aMaterialAlphaModes);
+ if not fHeadless then begin
+  for Instance in fInstances do begin
+   Instance.BatchDraw(aInFlightFrameIndex,
+                      aRenderPassIndex,
+                      aMaterialAlphaModes);
+  end;
  end;
 end;
 
 function TpvScene3D.TGroup.CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
 begin
  if (fMaximumCountInstances<0) or (fInstances.Count<fMaximumCountInstances) then begin
-  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,aHeadless);
+  result:=TpvScene3D.TGroup.TInstance.Create(ResourceManager,self,nil,fHeadless or aHeadless);
  end else begin
   result:=nil;
  end;
