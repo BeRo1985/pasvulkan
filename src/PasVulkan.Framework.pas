@@ -23070,6 +23070,7 @@ var KTX2Header:TKTX2Header;
     OutData:Pointer;
     KTXResult:TKTX_error_code;
     KTXTranscodeFormat:Tktx_transcode_fmt_e;
+    FormatProperties:TVkFormatProperties;
 begin
 
  BasePosition:=aStream.Position;
@@ -23112,14 +23113,20 @@ begin
      end else if fDevice.PhysicalDevice.Features.textureCompressionETC2<>VK_FALSE then begin
       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ETC2_RGBA;
      end else if fDevice.PhysicalDevice.Features.textureCompressionBC<>VK_FALSE then begin
-      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC3_RGBA;
+      FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(VK_FORMAT_BC7_SRGB_BLOCK);
+      if ((FormatProperties.linearTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))<>0) or
+         ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))<>0) then begin
+       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC7_RGBA;
+      end else begin
+       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC3_RGBA;
+      end;
      end else begin
       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_RGBA32;
 //    raise EpvVulkanTextureException.Create('Vulkan implementation does not support any available transcode target.');
      end;
      KTXResult:=ktxTexture2_TranscodeBasis(fKTXTexture,
                                            KTXTranscodeFormat,
-                                           Tktx_transcode_flags(Tktx_transcode_flag_bits_e.KTX_TF_HIGH_QUALITY));
+                                           0);//Tktx_transcode_flags(Tktx_transcode_flag_bits_e.KTX_TF_HIGH_QUALITY));
      if KTXResult<>TKTX_error_code.KTX_SUCCESS then begin
       raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
      end;
