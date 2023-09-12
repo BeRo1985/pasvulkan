@@ -22755,7 +22755,7 @@ begin
                         @AllData[0],
                         length(AllData),
                         true,
-                        false,//MustSwap,
+                        {$ifdef BIG_ENDIAN}true{$else}false{$endif},
                         KTX2Header.TypeSize,
                         false,
                         aAdditionalSRGB);
