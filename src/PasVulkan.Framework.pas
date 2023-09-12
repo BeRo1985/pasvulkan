@@ -3570,6 +3570,7 @@ implementation
 uses PasVulkan.Utils,
      PasVulkan.Image.Utils,
      PasVulkan.Streams,
+     PasVulkan.Compression.Deflate,
      PasVulkan.NVIDIA.AfterMath;
 
 const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
@@ -22449,8 +22450,8 @@ end;
 procedure TpvVulkanTexture.LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean=false);
 const	SUPERCOMPRESSION_NONE=0;
       SUPERCOMPRESSION_CRN=1;
-      SUPERCOMPRESSION_ZLIB=2;
-      SUPERCOMPRESSION_ZSTD=3;
+      SUPERCOMPRESSION_ZSTD=2;
+      SUPERCOMPRESSION_ZLIB=3;
 type TKTX2Identifier=array[0..11] of TpvUInt8;
      PKTX2Identifier=^TKTX2Identifier;
      TKTX2Header=packed record
@@ -22468,8 +22469,8 @@ type TKTX2Identifier=array[0..11] of TpvUInt8;
       dfdByteLength:TpvUInt32;
       kvdByteOffset:TpvUInt32;
       kvdByteLength:TpvUInt32;
-      sgdByteOffset:TpvUInt32;
-      sgdByteLength:TpvUInt32;
+      sgdByteOffset:TpvUInt64;
+      sgdByteLength:TpvUInt64;
      end;
      PKTX2Header=^TKTX2Header;
      TKTX2Level=packed record
@@ -22512,12 +22513,17 @@ type TKTX2Identifier=array[0..11] of TpvUInt8;
      PKTX2DataFormatDescriptorItem=^TKTX2DataFormatDescriptorItem;
      TKTX2DataFormatDescriptorItems=array of TKTX2DataFormatDescriptorItem;
      TKeyValueHashMap=TpvStringHashMap<RawByteString>;
+const KTX2HeaderSize=SizeOf(TKTX2Header);
 var KTX2Header:TKTX2Header;
     KTX2Levels:TKTX2Levels;
     KTX2DataFormatDescriptor:TKTX2DataFormatDescriptor;
-    KeyValueByteLength,LevelCount,Remain,Count,CountSamples:UInt32;
-    NullPosition:Int32;
-    NewPosition,BasePosition:UInt64;
+    LevelIndex:TpvSizeInt;
+    KeyValueByteLength,LevelCount,Remain,Count,CountSamples:TpvUInt32;
+    NullPosition:TpvInt32;
+    NewPosition,BasePosition,
+    DataSize,UncompressedDataSize,
+    LevelSize,UncompressedLevelSize,
+    FirstLevelFileOffset,Offset:TpvUInt64;
     KeyValue,Key,Value:RawByteString;
     KeyValueHashMap:TKeyValueHashMap;
     DFDChunkSystem:TpvChunkStream;
@@ -22525,11 +22531,16 @@ var KTX2Header:TKTX2Header;
     SGDChunkSystem:TpvChunkStream;
     KTX2DataFormatDescriptorItem:TKTX2DataFormatDescriptorItem;
     KTX2DataFormatDescriptorItems:TKTX2DataFormatDescriptorItems;
+    AllData:TpvUInt8DynamicArray;
+    RawData:TpvUInt8DynamicArray;
+    UncompressedRawData:TpvUInt8DynamicArray;
+    InLen,OutLen,AllDataOffset:TpvSizeUInt;
+    OutData:Pointer;
 begin
 
  BasePosition:=aStream.Position;
 
- if aStream.Read(KTX2Header,SizeOf(TKTX2Header))<>SizeOf(TKTX2Header) then begin
+ if aStream.Read(KTX2Header,KTX2HeaderSize)<>KTX2HeaderSize then begin
   raise EpvVulkanTextureException.Create('Stream read error');
  end;
 
@@ -22652,6 +22663,108 @@ begin
 
        finally
         FreeAndNil(SGDChunkSystem);
+       end;
+      end;
+
+      case KTX2Header.SuperCompressionScheme of
+       SUPERCOMPRESSION_NONE,
+       SUPERCOMPRESSION_ZLIB:begin
+        if TVkFormat(KTX2Header.VkFormat)=VK_FORMAT_UNDEFINED then begin
+         raise EpvVulkanTextureException.Create('Invalid KTX2 variant');
+        end;
+        AllData:=nil;
+        try
+         DataSize:=0;
+         for LevelIndex:=0 to TpvSizeInt(LevelCount)-1 do begin
+          inc(DataSize,KTX2Levels[LevelIndex].ByteLength);
+         end;
+         if DataSize=0 then begin
+          raise EpvVulkanTextureException.Create('Empty KTX2');
+         end;
+         SetLength(AllData,DataSize);
+         AllDataOffset:=0;
+         DataSize:=KTX2Levels[0].ByteLength;
+         UncompressedDataSize:=KTX2Levels[0].UncompressedByteLength;
+         for LevelIndex:=0 to TpvSizeInt(LevelCount)-1 do begin
+          LevelSize:=KTX2Levels[LevelIndex].ByteLength;
+          if UncompressedDataSize<UncompressedLevelSize then begin
+           raise EpvVulkanTextureException.Create('KTX2 levels cannot be larger than the base level');
+          end;
+          if KTX2Levels[LevelIndex].ByteLength=0 then begin
+           raise EpvVulkanTextureException.Create('KTX2 levels cannot be null-sized');
+          end;
+          Offset:=KTX2Levels[LevelIndex].ByteOffset;
+          if aStream.Seek(Offset,soBeginning)<>Offset then begin
+           raise EpvVulkanTextureException.Create('Stream seek error');
+          end;
+          RawData:=nil;
+          try
+           UncompressedRawData:=nil;
+           try
+            SetLength(RawData,KTX2Levels[LevelIndex].ByteLength);
+            aStream.ReadBuffer(RawData[0],KTX2Levels[LevelIndex].ByteLength);
+            case KTX2Header.SuperCompressionScheme of
+             SUPERCOMPRESSION_ZLIB:begin
+              InLen:=KTX2Levels[LevelIndex].ByteLength;
+              OutData:=nil;
+              try
+               OutLen:=0;
+               if DoInflate(@RawData[0],InLen,OutData,OutLen,true) and
+                  assigned(OutData) and
+                  (OutLen=KTX2Levels[LevelIndex].UncompressedByteLength) then begin
+                SetLength(UncompressedRawData,KTX2Levels[LevelIndex].UncompressedByteLength);
+                Move(OutData^,UncompressedRawData[0],KTX2Levels[LevelIndex].UncompressedByteLength);
+               end else begin
+                raise EpvVulkanTextureException.Create('Failed KTX2 mipmap level decompression');
+               end;
+              finally
+               if assigned(OutData) then begin
+                try
+                 FreeMem(OutData);
+                finally
+                 OutData:=nil;
+                end;
+               end;
+              end;
+             end;
+             else begin
+              if KTX2Levels[LevelIndex].UncompressedByteLength<>KTX2Levels[LevelIndex].ByteLength then begin
+               raise EpvVulkanTextureException.Create('Uncompressed KTX2 levels cannot have different sizes');
+              end;
+              UncompressedRawData:=RawData;
+             end;
+            end;
+            Move(UncompressedRawData[0],AllData[AllDataOffset],length(UncompressedRawData));
+            inc(AllDataOffset,length(UncompressedRawData));
+           finally
+            UncompressedRawData:=nil;
+           end;
+          finally
+           RawData:=nil;
+          end;
+         end;
+         LoadFromMemory(TVkFormat(KTX2Header.VkFormat),
+                        VK_SAMPLE_COUNT_1_BIT,
+                        Max(1,KTX2Header.PixelWidth),
+                        Max(1,KTX2Header.PixelHeight),
+                        KTX2Header.PixelDepth,
+                        IfThen(KTX2Header.LayerCount=1,0,KTX2Header.LayerCount),
+                        KTX2Header.FaceCount,
+                        KTX2Header.LevelCount,
+                        [TpvVulkanTextureUsageFlag.Sampled],
+                        @AllData[0],
+                        length(AllData),
+                        true,
+                        false,//MustSwap,
+                        KTX2Header.TypeSize,
+                        false,
+                        aAdditionalSRGB);
+        finally
+         AllData:=nil;
+        end;
+       end;
+       else begin
+        raise EpvVulkanTextureException.Create('Unsupported KTX2 variant');
        end;
       end;
 
