@@ -5245,6 +5245,8 @@ begin
 end;
 
 procedure TpvScene3D.TTexture.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceTexture:TPasGLTF.TTexture;const aImageMap:TImages;const aSamplerMap:TSamplers);
+var TextureBASISUJSONItem:TPasJSONItem;
+    TextureBASISUSource:TpvInt64;
 begin
 
  fName:=aSourceTexture.Name;
@@ -5254,7 +5256,16 @@ begin
 
   fSceneInstance.fImageListLock.Acquire;
   try
-   if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
+   TextureBASISUSource:=-1;
+   if assigned(aSourceTexture.Extensions) and (aSourceTexture.Extensions is TPasJSONItemObject) then begin
+    TextureBASISUJSONItem:=TPasJSONItemObject(aSourceTexture.Extensions).Properties['KHR_texture_basisu'];
+    if assigned(TextureBASISUJSONItem) and (TextureBASISUJSONItem is TPasJSONItemObject) then begin
+     TextureBASISUSource:=TPasJSON.GetInt64(TPasJSONItemObject(TextureBASISUJSONItem).Properties['source'],-1);
+    end;
+   end;
+   if (TextureBASISUSource>=0) and (TextureBASISUSource<aImageMap.Count) then begin
+    fImage:=aImageMap[TextureBASISUSource];
+   end else if (aSourceTexture.Source>=0) and (aSourceTexture.Source<aImageMap.Count) then begin
     fImage:=aImageMap[aSourceTexture.Source];
    end else begin
     fImage:=nil;
