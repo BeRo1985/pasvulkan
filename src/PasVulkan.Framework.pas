@@ -22505,12 +22505,16 @@ type TKTX2Identifier=array[0..11] of TpvUInt8;
      end;
      PKTX2DataFormatDescriptorSample=^TKTX2DataFormatDescriptorSample;
      TKTX2DataFormatDescriptorSamples=array of TKTX2DataFormatDescriptorSample;
+     TKTX2DataFormatDescriptorItem=record
+      Header:TKTX2DataFormatDescriptorBasicFormat;
+      Samples:TKTX2DataFormatDescriptorSamples;
+     end;
+     PKTX2DataFormatDescriptorItem=^TKTX2DataFormatDescriptorItem;
+     TKTX2DataFormatDescriptorItems=array of TKTX2DataFormatDescriptorItem;
      TKeyValueHashMap=TpvStringHashMap<RawByteString>;
 var KTX2Header:TKTX2Header;
     KTX2Levels:TKTX2Levels;
     KTX2DataFormatDescriptor:TKTX2DataFormatDescriptor;
-    KTX2DataFormatDescriptorBasicFormat:TKTX2DataFormatDescriptorBasicFormat;
-    KTX2DataFormatDescriptorSamples:TKTX2DataFormatDescriptorSamples;
     KeyValueByteLength,LevelCount,Remain,Count,CountSamples:UInt32;
     NullPosition:Int32;
     NewPosition,BasePosition:UInt64;
@@ -22519,6 +22523,8 @@ var KTX2Header:TKTX2Header;
     DFDChunkSystem:TpvChunkStream;
     KVDChunkSystem:TpvChunkStream;
     SGDChunkSystem:TpvChunkStream;
+    KTX2DataFormatDescriptorItem:TKTX2DataFormatDescriptorItem;
+    KTX2DataFormatDescriptorItems:TKTX2DataFormatDescriptorItems;
 begin
 
  BasePosition:=aStream.Position;
@@ -22561,41 +22567,43 @@ begin
    raise EpvVulkanTextureException.Create('Stream read error');
   end;
 
-  if aStream.Read(KTX2DataFormatDescriptor,SizeOf(TKTX2DataFormatDescriptor))<>SizeOf(TKTX2DataFormatDescriptor) then begin
-   raise EpvVulkanTextureException.Create('Stream read error');
-  end;
-
   DFDChunkSystem:=TpvChunkStream.Create(aStream,BasePosition+KTX2Header.dfdByteOffset,KTX2Header.dfdByteLength,false);
   try
 
-   FillChar(KTX2DataFormatDescriptorBasicFormat,SizeOf(TKTX2DataFormatDescriptorBasicFormat),#0);
-
-   Remain:=KTX2DataFormatDescriptor.dfdTotalSize;
-   Count:=Min(SizeOf(KTX2DataFormatDescriptorBasicFormat),Remain);
-   if Count>0 then begin
-    if DFDChunkSystem.Read(KTX2DataFormatDescriptorBasicFormat,Count)<>Count then begin
-     raise EpvVulkanTextureException.Create('Stream read error');
-    end;
-    dec(Remain,Count);
+   if DFDChunkSystem.Read(KTX2DataFormatDescriptor,SizeOf(TKTX2DataFormatDescriptor))<>SizeOf(TKTX2DataFormatDescriptor) then begin
+    raise EpvVulkanTextureException.Create('Stream read error');
    end;
-   NewPosition:=DFDChunkSystem.Position+Remain;
-   if DFDChunkSystem.Seek(NewPosition,soBeginning)<>NewPosition then begin
-    raise EpvVulkanTextureException.Create('Stream seek error');
-   end;
-   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[0]);
-   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[1]);
-   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[2]);
-   inc(KTX2DataFormatDescriptorBasicFormat.TexelBlockDimensions[3]);
 
-   CountSamples:=((KTX2DataFormatDescriptorBasicFormat.DescriptionBlockSize shr 2)-6) shr 2;
-
-   KTX2DataFormatDescriptorSamples:=nil;
+   KTX2DataFormatDescriptorItems:=nil;
    try
 
-    if CountSamples>0 then begin
-     SetLength(KTX2DataFormatDescriptorSamples,CountSamples);
-     if DFDChunkSystem.Read(KTX2DataFormatDescriptorSamples[0],CountSamples*SizeOf(TKTX2DataFormatDescriptorSample))<>(CountSamples*SizeOf(TKTX2DataFormatDescriptorSample)) then begin
+    Remain:=KTX2DataFormatDescriptor.dfdTotalSize;
+    while Remain>=SizeOf(TKTX2DataFormatDescriptorBasicFormat) do begin
+     KTX2DataFormatDescriptorItem.Samples:=nil;
+     FillChar(KTX2DataFormatDescriptorItem.Header,SizeOf(TKTX2DataFormatDescriptorBasicFormat),#0);
+     if DFDChunkSystem.Read(KTX2DataFormatDescriptorItem.Header,SizeOf(TKTX2DataFormatDescriptorBasicFormat))<>SizeOf(TKTX2DataFormatDescriptorBasicFormat) then begin
       raise EpvVulkanTextureException.Create('Stream read error');
+     end;
+     dec(Remain,SizeOf(TKTX2DataFormatDescriptorBasicFormat));
+{    inc(KTX2DataFormatDescriptorItem.Header.TexelBlockDimensions[0]);
+     inc(KTX2DataFormatDescriptorItem.Header.TexelBlockDimensions[1]);
+     inc(KTX2DataFormatDescriptorItem.Header.TexelBlockDimensions[2]);
+     inc(KTX2DataFormatDescriptorItem.Header.TexelBlockDimensions[3]);//}
+     CountSamples:=(KTX2DataFormatDescriptorItem.Header.DescriptionBlockSize-SizeOf(TKTX2DataFormatDescriptorBasicFormat)) shr 4;
+     if (CountSamples>0) and (Remain>=(CountSamples*SizeOf(TKTX2DataFormatDescriptorSample))) then begin
+      dec(Remain,CountSamples*SizeOf(TKTX2DataFormatDescriptorSample));
+      KTX2DataFormatDescriptorItem.Samples:=nil;
+      try
+       SetLength(KTX2DataFormatDescriptorItem.Samples,CountSamples);
+       if DFDChunkSystem.Read(KTX2DataFormatDescriptorItem.Samples[0],CountSamples*SizeOf(TKTX2DataFormatDescriptorSample))<>(CountSamples*SizeOf(TKTX2DataFormatDescriptorSample)) then begin
+        raise EpvVulkanTextureException.Create('Stream read error');
+       end;
+       KTX2DataFormatDescriptorItems:=KTX2DataFormatDescriptorItems+[KTX2DataFormatDescriptorItem];
+      finally
+       KTX2DataFormatDescriptorItem.Samples:=nil;
+      end;
+     end else begin
+      break;
      end;
     end;
 
@@ -22605,7 +22613,7 @@ begin
      KeyValueHashMap:=TKeyValueHashMap.Create('');
      try
 
-      while KVDChunkSystem.Position<KVDChunkSystem.Size do begin
+      while (KVDChunkSystem.Position+(SizeOf(UInt32)+2))<KVDChunkSystem.Size do begin
        if KVDChunkSystem.Read(KeyValueByteLength,SizeOf(UInt32))<>SizeOf(UInt32) then begin
         raise EpvVulkanTextureException.Create('Stream read error');
        end;
@@ -22656,7 +22664,7 @@ begin
     end;
 
    finally
-    KTX2DataFormatDescriptorSamples:=nil;
+    KTX2DataFormatDescriptorItems:=nil;
    end;
 
   finally
