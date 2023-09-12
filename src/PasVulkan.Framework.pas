@@ -70,7 +70,7 @@ uses {$if defined(Windows)}
      {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
      {$if defined(Android)}PasVulkan.Android,{$ifend}
-     SysUtils,Classes,SyncObjs,Math,
+     SysUtils,Classes,SyncObjs,Math,{$ifdef fpc}dynlibs,{$endif}
      PasMP,
      PUCU,
      Vulkan,
@@ -3171,6 +3171,7 @@ type EpvVulkanException=class(Exception);
        fDevice:TpvVulkanDevice;
        fFormat:TVkFormat;
        fSRGBFormat:TVkFormat;
+       fDeviceMemory:TVkDeviceMemory;
        fImageLayout:TVkImageLayout;
        fImage:TpvVulkanImage;
        fImageView:TpvVulkanImageView;
@@ -3208,6 +3209,7 @@ type EpvVulkanException=class(Exception);
        fData:Pointer;
        fDataSize:TpvSizeInt;
        fDoFreeDataAfterFinish:boolean;
+       fKTXTexture:pointer;
        procedure UpdateSRGBFormat;
        procedure SetSampler(const aSampler:TpvVulkanSampler);
       public
@@ -3572,6 +3574,289 @@ uses PasVulkan.Utils,
      PasVulkan.Streams,
      PasVulkan.Compression.Deflate,
      PasVulkan.NVIDIA.AfterMath;
+
+const KTX_SUCCESS=0;
+      KTX_FILE_DATA_ERROR=1;
+      KTX_FILE_ISPIPE=2;
+      KTX_FILE_OPEN_FAILED=3;
+      KTX_FILE_OVERFLOW=4;
+      KTX_FILE_READ_ERROR=5;
+      KTX_FILE_SEEK_ERROR=6;
+      KTX_FILE_UNEXPECTED_EOF=7;
+      KTX_FILE_WRITE_ERROR=8;
+      KTX_GL_ERROR=9;
+      KTX_INVALID_OPERATION=10;
+      KTX_INVALID_VALUE=11;
+      KTX_NOT_FOUND=12;
+      KTX_OUT_OF_MEMORY=13;
+      KTX_TRANSCODE_FAILED=14;
+      KTX_UNKNOWN_FILE_FORMAT=15;
+      KTX_UNSUPPORTED_TEXTURE_TYPE=16;
+      KTX_UNSUPPORTED_FEATURE=17;
+      KTX_LIBRARY_NOT_LINKED=18;
+      KTX_DECOMPRESS_LENGTH_ERROR=19;
+      KTX_DECOMPRESS_CHECKSUM_ERROR=20;
+
+      ktxNilLibHandle={$ifdef fpc}NilHandle{$else}THandle(0){$endif};
+
+type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
+
+     TKTX_error_code=TpvInt32;
+
+     TktxBool=boolean;
+
+     TktxOrientationX=TpvUInt32;//(KTX_ORIENT_X_LEFT=ord('l'),KTX_ORIENT_X_RIGHT=ord('r'));
+
+     TktxOrientationY=TpvUInt32;//(KTX_ORIENT_Y_UP=ord('u'),KTX_ORIENT_Y_DOWN=ord('d'));
+
+     TktxOrientationZ=TpvUInt32;//(KTX_ORIENT_Z_IN=ord('i'),KTX_ORIENT_Z_OUT=ord('o'));
+
+     TktxOrientation=record
+      x:TktxOrientationX;
+      y:TktxOrientationY;
+      z:TktxOrientationZ;
+     end;
+
+     TktxHashList=Pointer;
+
+     PktxTexture=^TktxTexture;
+
+     TktxTextureIterateCallback=function(miplevel,face,width,height,depth:TpvInt32;faceLodSize:TpvUInt64;pixels,UserData:pointer):TKTX_error_code; cdecl;
+
+     TktxTextureVTbl=record
+      Destroy:procedure(this:PktxTexture); cdecl;
+      GetImageOffset:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;offset:PpvSizeUInt):TKTX_error_code; cdecl;
+      GetDataSizeUncompressed:function(this:PktxTexture):TpvSizeUInt; cdecl;
+      GetImageSize:function(this:PktxTexture;level:TpvUInt32):TpvSizeUInt; cdecl;
+      IterateLevels:function(this:PktxTexture;iterCb:TktxTextureIterateCallback;UserData:Pointer):TpvSizeUInt; cdecl;
+      IterateLoadLevelFaces:function(this:PktxTexture;iterCb:TktxTextureIterateCallback;UserData:Pointer):TpvSizeUInt; cdecl;
+      NeedsTranscoding:function(this:PktxTexture):boolean; cdecl;
+      LoadImageData:function(this:PktxTexture;pBuffer:Pointer;BufSize:TpvSizeUInt):TKTX_error_code; cdecl;
+      SetImageFromMemory:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;src:Pointer;srcSize:TpvSizeUInt):TKTX_error_code; cdecl;
+      SetImageFromStdioStream:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;src:Pointer;srcSize:TpvSizeUInt):TKTX_error_code; cdecl;
+      WriteToStdioStream:function(this:PktxTexture;dstsstr:Pointer):TKTX_error_code; cdecl;
+      WriteToNamedFile:function(this:PktxTexture;dstname:PAnsiChar):TKTX_error_code; cdecl;
+      WriteToMemory:function(this:PktxTexture;out bytes:Pointer;out size:TpvSizeUInt):TKTX_error_code; cdecl;
+      WriteToStream:function(this:PktxTexture;dststr:Pointer):TKTX_error_code; cdecl;
+     end;
+
+     PktxTextureVTbl=^TktxTextureVTbl;
+
+     TktxTexture=record
+      classID:TpvUInt32;//TktxTextureClassID;
+      vtbl:PktxTextureVTbl;
+      vvtbl:Pointer;
+      _protected:Pointer;
+      isArray:TktxBool;
+      isCubemap:TktxBool;
+      isCompressed:TktxBool;
+      generateMipmaps:TktxBool;
+      baseWidth:TpvUInt32;
+      baseHeight:TpvUInt32;
+      baseDepth:TpvUInt32;
+      numDimensions:TpvUInt32;
+      numLevels:TpvUInt32;
+      numLayers:TpvUInt32;
+      numFaces:TpvUInt32;
+      orientation:TktxOrientation;
+      kvDataHead:TktxHashList;
+      kvDataLen:TpvUInt32;
+      kvData:PpvUInt8;
+      dataSize:TpvSizeUInt;
+      pData:PpvUInt8;
+     end;
+
+     PPktxTexture=^PktxTexture;
+
+     PktxTexture1=PktxTexture;
+     PPktxTexture1=^PktxTexture1;
+
+     PktxTexture2=PktxTexture;
+     PPktxTexture2=^PktxTexture2;
+
+     TktxVulkanFunctions=record
+      vkGetInstanceProcAddr:TvkGetInstanceProcAddr;
+      vkGetDeviceProcAddr:TvkGetDeviceProcAddr;
+      vkAllocateCommandBuffers:TvkAllocateCommandBuffers;
+      vkAllocateMemory:TvkAllocateMemory;
+      vkBeginCommandBuffer:TvkBeginCommandBuffer;
+      vkBindBufferMemory:TvkBindBufferMemory;
+      vkBindImageMemory:TvkBindImageMemory;
+      vkCmdBlitImage:TvkCmdBlitImage;
+      vkCmdCopyBufferToImage:TvkCmdCopyBufferToImage;
+      vkCmdPipelineBarrier:TvkCmdPipelineBarrier;
+      vkCreateImage:TvkCreateImage;
+      vkDestroyImage:TvkDestroyImage;
+      vkCreateBuffer:TvkCreateBuffer;
+      vkDestroyBuffer:TvkDestroyBuffer;
+      vkCreateFence:TvkCreateFence;
+      vkDestroyFence:TvkDestroyFence;
+      vkEndCommandBuffer:TvkEndCommandBuffer;
+      vkFreeCommandBuffers:TvkFreeCommandBuffers;
+      vkFreeMemory:TvkFreeMemory;
+      vkGetBufferMemoryRequirements:TvkGetBufferMemoryRequirements;
+      vkGetImageMemoryRequirements:TvkGetImageMemoryRequirements;
+      vkGetImageSubresourceLayout:TvkGetImageSubresourceLayout;
+      vkGetPhysicalDeviceImageFormatProperties:TvkGetPhysicalDeviceImageFormatProperties;
+      vkGetPhysicalDeviceFormatProperties:TvkGetPhysicalDeviceFormatProperties;
+      vkGetPhysicalDeviceMemoryProperties:TvkGetPhysicalDeviceMemoryProperties;
+      vkMapMemory:TvkMapMemory;
+      vkQueueSubmit:TvkQueueSubmit;
+      vkQueueWaitIdle:TvkQueueWaitIdle;
+      vkUnmapMemory:TvkUnmapMemory;
+      vkWaitForFences:TvkWaitForFences;
+     end;
+     PktxVulkanFunctions=^TktxVulkanFunctions;
+
+     TktxVulkanTexture=record
+      vkDestroyImage:TvkDestroyImage;
+      vkFreeMemory:TvkFreeMemory;
+      image:TVkImage;
+      imageFormat:TVkFormat;
+      imageLayout:TVkImageLayout;
+      deviceMemory:TVkDeviceMemory;
+      viewType:TVkImageViewType;
+      width:TpvUInt32;
+      height:TpvUInt32;
+      depth:TpvUInt32;
+      levelCount:TpvUInt32;
+      layerCount:TpvUInt32;
+     end;
+     PktxVulkanTexture=^TktxVulkanTexture;
+
+     TktxVulkanDeviceInfo=record
+      instance:TVkInstance;
+      physicalDevice:TVkPhysicalDevice;
+      device:TVkDevice;
+      queue:TVkQueue;
+      cmdBuffer:TVkCommandBuffer;
+      cmdPool:TVkCommandPool;
+      pAllocator:PVkAllocationCallbacks;
+      deviceMemoryProperties:TVkPhysicalDeviceMemoryProperties;
+      vkFuncs:TktxVulkanFunctions;
+     end;
+     PktxVulkanDeviceInfo=^TktxVulkanDeviceInfo;
+
+     TktxTextureCreateFlags=TpvUInt32;
+
+     TktxTexture_CreateFromMemory=function(bytes:Pointer;size:TpvSizeUInt;createFlags:TktxTextureCreateFlags;newTex:PPktxTexture):TKTX_error_code; cdecl;
+     TktxTexture_GetData=function(this:PktxTexture):Pointer; cdecl;
+     TktxTexture_GetRowPitch=function(this:PktxTexture;level:TpvUInt32):TpvUInt32; cdecl;
+     TktxTexture_GetElementSize=function(this:PktxTexture):TpvUInt32; cdecl;
+     TktxTexture_GetDataSize=function(this:PktxTexture):TpvSizeUInt; cdecl;
+     TktxVulkanTexture_Destruct=procedure(This:PktxVulkanTexture;device:TVkDevice;pAllocator:PVkAllocationCallbacks); cdecl;
+     TktxVulkanDeviceInfo_CreateEx=function(instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):PktxVulkanDeviceInfo; cdecl; 
+     TktxVulkanDeviceInfo_Create=function(physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):PktxVulkanDeviceInfo; cdecl;
+     TktxVulkanDeviceInfo_Construct=function(This:PktxVulkanDeviceInfo;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):TKTX_error_code; cdecl;
+     TktxVulkanDeviceInfo_ConstructEx=function(This:PktxVulkanDeviceInfo;instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):TKTX_error_code; cdecl;
+     TktxVulkanDeviceInfo_Destruct=procedure(This:PktxVulkanDeviceInfo); cdecl;
+     TktxVulkanDeviceInfo_Destroy=procedure(This:PktxVulkanDeviceInfo); cdecl;
+     TktxTexture_VkUploadEx=function(This:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; cdecl;
+     TktxTexture_VkUpload=function(texture:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; cdecl;
+     TktxTexture1_VkUploadEx=function(This:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; cdecl;
+     TktxTexture1_VkUpload=function(texture:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; cdecl;
+     TktxTexture2_VkUploadEx=function(This:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; cdecl;
+     TktxTexture2_VkUpload=function(texture:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; cdecl;
+     TktxTexture_GetVkFormat=function(This:PktxTexture):TVkFormat; cdecl;
+     TktxTexture1_GetVkFormat=function(This:PktxTexture1):TVkFormat; cdecl;
+     TktxTexture2_GetVkFormat=function(This:PktxTexture2):TVkFormat; cdecl;
+
+var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
+    ktxTexture_GetData:TktxTexture_GetData=nil;
+    ktxTexture_GetRowPitch:TktxTexture_GetRowPitch=nil;
+    ktxTexture_GetElementSize:TktxTexture_GetElementSize=nil;
+    ktxTexture_GetDataSize:TktxTexture_GetDataSize=nil;
+    ktxVulkanTexture_Destruct:TktxVulkanTexture_Destruct=nil;
+    ktxVulkanDeviceInfo_CreateEx:TktxVulkanDeviceInfo_CreateEx=nil;
+    ktxVulkanDeviceInfo_Create:TktxVulkanDeviceInfo_Create=nil;
+    ktxVulkanDeviceInfo_Construct:TktxVulkanDeviceInfo_Construct=nil;
+    ktxVulkanDeviceInfo_ConstructEx:TktxVulkanDeviceInfo_ConstructEx=nil;
+    ktxVulkanDeviceInfo_Destruct:TktxVulkanDeviceInfo_Destruct=nil;
+    ktxVulkanDeviceInfo_Destroy:TktxVulkanDeviceInfo_Destroy=nil;
+    ktxTexture_VkUploadEx:TktxTexture_VkUploadEx=nil;
+    ktxTexture_VkUpload:TktxTexture_VkUpload=nil;
+    ktxTexture1_VkUploadEx:TktxTexture1_VkUploadEx=nil;
+    ktxTexture1_VkUpload:TktxTexture1_VkUpload=nil;
+    ktxTexture2_VkUploadEx:TktxTexture2_VkUploadEx=nil;
+    ktxTexture2_VkUpload:TktxTexture2_VkUpload=nil;
+    ktxTexture_GetVkFormat:TktxTexture_GetVkFormat=nil;
+    ktxTexture1_GetVkFormat:TktxTexture1_GetVkFormat=nil;
+    ktxTexture2_GetVkFormat:TktxTexture2_GetVkFormat=nil;
+
+    ktxVulkanFunctions:TktxVulkanFunctions;
+
+    ktxLibraryHandle:{$ifdef fpc}TLibHandle{$else}THandle{$endif}=ktxNilLibHandle;
+
+    ktxLoadAttempted:TPasMPBool32=false;
+
+    ktxLoaded:TPasMPBool32=false;
+
+    ktxLoadLock:TPasMPInt32=0;
+
+procedure LoadKTXLibrary;
+begin
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(ktxLoadLock);
+ try
+  if not ktxLoadAttempted then begin
+   try
+    ktxLibraryHandle:=LoadLibrary({$if defined(Windows)}'libktx.dll'{$elseif defined(Darwin)}'libktx.dylib'{$else}IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libktx.so'{$ifend});
+    if ktxLibraryHandle<>ktxNilLibHandle then begin
+     ktxTexture_CreateFromMemory:=GetProcAddress(ktxLibraryHandle,'ktxTexture_CreateFromMemory');
+     ktxTexture_GetData:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetData');
+     ktxTexture_GetRowPitch:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetRowPitch');
+     ktxTexture_GetElementSize:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetElementSize');
+     ktxTexture_GetDataSize:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetDataSize');
+     ktxVulkanTexture_Destruct:=GetProcAddress(ktxLibraryHandle,'ktxVulkanTexture_Destruct');
+     ktxVulkanDeviceInfo_CreateEx:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_CreateEx');
+     ktxVulkanDeviceInfo_Create:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Create');
+     ktxVulkanDeviceInfo_Construct:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Construct');
+     ktxVulkanDeviceInfo_ConstructEx:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_ConstructEx');
+     ktxVulkanDeviceInfo_Destruct:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Destruct');
+     ktxVulkanDeviceInfo_Destroy:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Destroy');
+     ktxTexture_VkUploadEx:=GetProcAddress(ktxLibraryHandle,'ktxTexture_VkUploadEx');
+     ktxTexture_VkUpload:=GetProcAddress(ktxLibraryHandle,'ktxTexture_VkUpload');
+     ktxTexture1_VkUploadEx:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_VkUploadEx');
+     ktxTexture1_VkUpload:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_VkUpload');
+     ktxTexture2_VkUploadEx:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_VkUploadEx');
+     ktxTexture2_VkUpload:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_VkUpload');
+     ktxTexture_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetVkFormat');
+     ktxTexture1_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_GetVkFormat');
+     ktxTexture2_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_GetVkFormat');
+     if assigned(ktxTexture_CreateFromMemory) and
+        assigned(ktxTexture_GetData) and
+        assigned(ktxTexture_GetRowPitch) and
+        assigned(ktxTexture_GetElementSize) and
+        assigned(ktxTexture_GetDataSize) and
+        assigned(ktxVulkanTexture_Destruct) and
+        assigned(ktxVulkanDeviceInfo_CreateEx) and
+        assigned(ktxVulkanDeviceInfo_Create) and
+        assigned(ktxVulkanDeviceInfo_Construct) and
+        assigned(ktxVulkanDeviceInfo_ConstructEx) and
+        assigned(ktxVulkanDeviceInfo_Destruct) and
+        assigned(ktxVulkanDeviceInfo_Destroy) and
+        assigned(ktxTexture_VkUploadEx) and
+        assigned(ktxTexture_VkUpload) and
+        assigned(ktxTexture1_VkUploadEx) and
+        assigned(ktxTexture1_VkUpload) and
+        assigned(ktxTexture2_VkUploadEx) and
+        assigned(ktxTexture2_VkUpload) and
+        assigned(ktxTexture_GetVkFormat) and
+        assigned(ktxTexture1_GetVkFormat) and
+        assigned(ktxTexture2_GetVkFormat) then begin
+      ktxLoaded:=true;
+     end else begin
+      FreeLibrary(ktxLibraryHandle);
+      ktxLibraryHandle:=ktxNilLibHandle;
+     end;
+    end; 
+   finally
+    ktxLoadAttempted:=true;
+   end;
+  end;
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(ktxLoadLock);
+ end;
+end;
 
 const BooleanToVkBool:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
@@ -20839,6 +21124,8 @@ begin
 
  fImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
 
+ fDeviceMemory:=VK_NULL_HANDLE;
+
  fImage:=nil;
 
  fImageView:=nil;
@@ -20880,6 +21167,8 @@ begin
  fDataSize:=0;
 
  fDoFreeDataAfterFinish:=true;
+
+ fKTXTexture:=nil;
 
 end;
 
@@ -21169,6 +21458,13 @@ begin
    fData:=nil;
   end;
  end;
+ if assigned(fKTXTexture) then begin
+  try
+   PktxTexture(fKTXTexture)^.vtbl^.Destroy(fKTXTexture);
+  finally
+   fKTXTexture:=nil;
+  end;
+ end;
  Unload;
  inherited Destroy;
 end;
@@ -21186,6 +21482,13 @@ begin
    fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
   finally
    fMemoryBlock:=nil;
+  end;
+ end;
+ if fDeviceMemory<>VK_NULL_HANDLE then begin
+  try
+   fDevice.Commands.FreeMemory(fDevice.Handle,fDeviceMemory,nil);
+  finally
+   fDeviceMemory:=VK_NULL_HANDLE;
   end;
  end;
  FreeAndNil(fImage);
@@ -21939,6 +22242,120 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
                                   const aTransferQueue:TpvVulkanQueue;
                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                   const aTransferFence:TpvVulkanFence);
+ procedure DoKTX;
+ var KTXTexture:PktxTexture;
+     KTXVulkanFunctions:TktxVulkanFunctions;
+     KTXVulkanDeviceInfo:PktxVulkanDeviceInfo;
+     KTXVulkanTexture:TktxVulkanTexture;
+     CommandPool:TpvVulkanCommandPool;
+ begin
+
+  KTXTexture:=fKTXTexture;
+
+  KTXVulkanFunctions.vkGetInstanceProcAddr:=fDevice.fInstance.Commands.Commands.GetInstanceProcAddr;
+  KTXVulkanFunctions.vkGetDeviceProcAddr:=fDevice.Commands.Commands.GetDeviceProcAddr;
+  KTXVulkanFunctions.vkAllocateCommandBuffers:=fDevice.Commands.Commands.AllocateCommandBuffers;
+  KTXVulkanFunctions.vkAllocateMemory:=fDevice.Commands.Commands.AllocateMemory;
+  KTXVulkanFunctions.vkBeginCommandBuffer:=fDevice.Commands.Commands.BeginCommandBuffer;
+  KTXVulkanFunctions.vkBindBufferMemory:=fDevice.Commands.Commands.BindBufferMemory;
+  KTXVulkanFunctions.vkBindImageMemory:=fDevice.Commands.Commands.BindImageMemory;
+  KTXVulkanFunctions.vkCmdBlitImage:=fDevice.Commands.Commands.CmdBlitImage;
+  KTXVulkanFunctions.vkCmdCopyBufferToImage:=fDevice.Commands.Commands.CmdCopyBufferToImage;
+  KTXVulkanFunctions.vkCmdPipelineBarrier:=fDevice.Commands.Commands.CmdPipelineBarrier;
+  KTXVulkanFunctions.vkCreateImage:=fDevice.Commands.Commands.CreateImage;
+  KTXVulkanFunctions.vkDestroyImage:=fDevice.Commands.Commands.DestroyImage;
+  KTXVulkanFunctions.vkCreateBuffer:=fDevice.Commands.Commands.CreateBuffer;
+  KTXVulkanFunctions.vkDestroyBuffer:=fDevice.Commands.Commands.DestroyBuffer;
+  KTXVulkanFunctions.vkCreateFence:=fDevice.Commands.Commands.CreateFence;
+  KTXVulkanFunctions.vkDestroyFence:=fDevice.Commands.Commands.DestroyFence;
+  KTXVulkanFunctions.vkEndCommandBuffer:=fDevice.Commands.Commands.EndCommandBuffer;
+  KTXVulkanFunctions.vkFreeCommandBuffers:=fDevice.Commands.Commands.FreeCommandBuffers;
+  KTXVulkanFunctions.vkFreeMemory:=fDevice.Commands.Commands.FreeMemory;
+  KTXVulkanFunctions.vkGetBufferMemoryRequirements:=fDevice.Commands.Commands.GetBufferMemoryRequirements;
+  KTXVulkanFunctions.vkGetImageMemoryRequirements:=fDevice.Commands.Commands.GetImageMemoryRequirements;
+  KTXVulkanFunctions.vkGetImageSubresourceLayout:=fDevice.Commands.Commands.GetImageSubresourceLayout;
+  KTXVulkanFunctions.vkGetPhysicalDeviceImageFormatProperties:=fDevice.Commands.Commands.GetPhysicalDeviceImageFormatProperties;
+  KTXVulkanFunctions.vkGetPhysicalDeviceFormatProperties:=fDevice.Commands.Commands.GetPhysicalDeviceFormatProperties;
+  KTXVulkanFunctions.vkGetPhysicalDeviceMemoryProperties:=fDevice.Commands.Commands.GetPhysicalDeviceMemoryProperties;
+  KTXVulkanFunctions.vkMapMemory:=fDevice.Commands.Commands.MapMemory;
+  KTXVulkanFunctions.vkQueueSubmit:=fDevice.Commands.Commands.QueueSubmit;
+  KTXVulkanFunctions.vkQueueWaitIdle:=fDevice.Commands.Commands.QueueWaitIdle;
+  KTXVulkanFunctions.vkUnmapMemory:=fDevice.Commands.Commands.UnmapMemory;
+  KTXVulkanFunctions.vkWaitForFences:=fDevice.Commands.Commands.WaitForFences;
+{ KTXVulkanDeviceInfo.instance:=fDevice.Instance.Handle;
+  KTXVulkanDeviceInfo.physicalDevice:=fDevice.PhysicalDevice.Handle;
+  KTXVulkanDeviceInfo.device:=fDevice.Handle;
+  KTXVulkanDeviceInfo.queue:=aGraphicsQueue.Handle;
+  KTXVulkanDeviceInfo.cmdBuffer:=aGraphicsCommandBuffer.Handle;
+  KTXVulkanDeviceInfo.cmdPool:=aGraphicsCommandBuffer.CommandPool.Handle;
+  KTXVulkanDeviceInfo.pAllocator:=nil;
+  KTXVulkanDeviceInfo.deviceMemoryProperties:=fDevice.PhysicalDevice.MemoryProperties;
+  KTXVulkanDeviceInfo.vkFuncs:=KTXVulkanFunctions;}
+  CommandPool:=aGraphicsCommandBuffer.fCommandPool;
+  try
+   KTXVulkanDeviceInfo:=ktxVulkanDeviceInfo_CreateEx(fDevice.Instance.Handle,
+                                                     fDevice.PhysicalDevice.Handle,
+                                                     fDevice.Handle,
+                                                     aGraphicsQueue.Handle,
+                                                     CommandPool.Handle,
+                                                     nil,
+                                                     @KTXVulkanFunctions);
+   if assigned(KTXVulkanDeviceInfo) then begin
+    try
+     if ktxTexture_VkUploadEx(ktxTexture,
+                              KTXVulkanDeviceInfo,
+                              @KTXVulkanTexture,
+                              VK_IMAGE_TILING_OPTIMAL,
+                              TpvUInt32(VK_IMAGE_USAGE_SAMPLED_BIT),
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)=KTX_SUCCESS then begin
+      fWidth:=KTXVulkanTexture.width;
+      fHeight:=KTXVulkanTexture.height;
+      fDepth:=KTXVulkanTexture.depth;
+      fCountArrayLayers:=KTXVulkanTexture.layerCount;
+      fCountMipMaps:=KTXVulkanTexture.levelCount;
+      fCountStorageLevels:=KTXVulkanTexture.levelCount;
+      fImageLayout:=KTXVulkanTexture.imageLayout;
+      fFormat:=KTXVulkanTexture.imageFormat;
+      fImageViewType:=KTXVulkanTexture.viewType;
+      fDeviceMemory:=KTXVulkanTexture.deviceMemory;
+      fImage:=TpvVulkanImage.Create(fDevice,KTXVulkanTexture.image,nil,true);
+      fImageView:=TpvVulkanImageView.Create(fDevice,
+                                            fImage,
+                                            fImageViewType,
+                                            fFormat,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            VK_COMPONENT_SWIZZLE_IDENTITY,
+                                            TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                            0,
+                                            Max(1,fCountStorageLevels),
+                                            0,
+                                            Max(1,fTotalCountArrayLayers));
+      if assigned(fSampler) then begin
+       fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
+      end else begin
+       fDescriptorImageInfo.sampler:=VK_NULL_HANDLE;
+      end;
+      if assigned(fImageView) then begin
+       fDescriptorImageInfo.imageView:=fImageView.fImageViewHandle;
+      end else begin
+       fDescriptorImageInfo.imageView:=VK_NULL_HANDLE;
+      end;
+      fDescriptorImageInfo.imageLayout:=fImageLayout;
+     end else begin
+      raise EpvVulkanTextureException.Create('Invalid KTX image');
+     end;
+    finally
+     ktxVulkanDeviceInfo_Destroy(KTXVulkanDeviceInfo);
+    end;
+   end else begin
+    raise EpvVulkanTextureException.Create('KTX library error');
+   end;
+  finally
+  end;
+
+ end;
 var MaxDimension,MaxMipMapLevels:TpvInt32;
     FormatProperties:TVkFormatProperties;
     Usage:TVkImageUsageFlags;
@@ -21949,6 +22366,11 @@ var MaxDimension,MaxMipMapLevels:TpvInt32;
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
 begin
+
+ if assigned(fKTXTexture) then begin
+  DoKTX;
+  exit;
+ end;
 
  try
 
@@ -22561,6 +22983,40 @@ begin
 
  if not (KTX2Header.FaceCount in [1,6]) then begin
   raise EpvVulkanTextureException.Create('Invalid KTX2 stream (Count of faces must be 1 or 6)');
+ end;
+
+ if ktxLoaded then begin
+
+  AllData:=nil;
+  try
+   SetLength(AllData,aStream.Size);
+   aStream.Seek(0,soBeginning);
+   aStream.ReadBuffer(AllData[0],aStream.Size);
+   if ktxTexture_CreateFromMemory(@AllData[0],length(AllData),0,@fKTXTexture)=KTX_SUCCESS then begin
+    LoadFromMemory(TVkFormat(KTX2Header.VkFormat),
+                   VK_SAMPLE_COUNT_1_BIT,
+                   Max(1,KTX2Header.PixelWidth),
+                   Max(1,KTX2Header.PixelHeight),
+                   KTX2Header.PixelDepth,
+                   IfThen(KTX2Header.LayerCount=1,0,KTX2Header.LayerCount),
+                   KTX2Header.FaceCount,
+                   KTX2Header.LevelCount,
+                   [TpvVulkanTextureUsageFlag.Sampled],
+                   nil,
+                   0,
+                   true,
+                   {$ifdef BIG_ENDIAN}true{$else}false{$endif},
+                   KTX2Header.TypeSize,
+                   false,
+                   aAdditionalSRGB);
+   end else begin
+    raise EpvVulkanTextureException.Create('Invalid KTX2');
+   end;
+  finally
+   AllData:=nil;
+  end;
+
+  exit;
  end;
 
  if KTX2Header.LevelCount<>0 then begin
@@ -25102,6 +25558,7 @@ begin
 end;
 
 initialization
+ LoadKTXLibrary;
 finalization
 end.
 
