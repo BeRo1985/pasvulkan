@@ -23126,7 +23126,7 @@ begin
      end;
      KTXResult:=ktxTexture2_TranscodeBasis(fKTXTexture,
                                            KTXTranscodeFormat,
-                                           0);//Tktx_transcode_flags(Tktx_transcode_flag_bits_e.KTX_TF_HIGH_QUALITY));
+                                           Tktx_transcode_flags(Tktx_transcode_flag_bits_e.KTX_TF_HIGH_QUALITY));
      if KTXResult<>TKTX_error_code.KTX_SUCCESS then begin
       raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
      end;
