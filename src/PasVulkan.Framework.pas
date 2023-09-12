@@ -3575,33 +3575,34 @@ uses PasVulkan.Utils,
      PasVulkan.Compression.Deflate,
      PasVulkan.NVIDIA.AfterMath;
 
-const KTX_SUCCESS=0;
-      KTX_FILE_DATA_ERROR=1;
-      KTX_FILE_ISPIPE=2;
-      KTX_FILE_OPEN_FAILED=3;
-      KTX_FILE_OVERFLOW=4;
-      KTX_FILE_READ_ERROR=5;
-      KTX_FILE_SEEK_ERROR=6;
-      KTX_FILE_UNEXPECTED_EOF=7;
-      KTX_FILE_WRITE_ERROR=8;
-      KTX_GL_ERROR=9;
-      KTX_INVALID_OPERATION=10;
-      KTX_INVALID_VALUE=11;
-      KTX_NOT_FOUND=12;
-      KTX_OUT_OF_MEMORY=13;
-      KTX_TRANSCODE_FAILED=14;
-      KTX_UNKNOWN_FILE_FORMAT=15;
-      KTX_UNSUPPORTED_TEXTURE_TYPE=16;
-      KTX_UNSUPPORTED_FEATURE=17;
-      KTX_LIBRARY_NOT_LINKED=18;
-      KTX_DECOMPRESS_LENGTH_ERROR=19;
-      KTX_DECOMPRESS_CHECKSUM_ERROR=20;
-
-      ktxNilLibHandle={$ifdef fpc}NilHandle{$else}THandle(0){$endif};
+const ktxNilLibHandle={$ifdef fpc}NilHandle{$else}THandle(0){$endif};
 
 type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
 
-     TKTX_error_code=TpvInt32;
+     TKTX_error_code=
+      (
+       KTX_SUCCESS=0,
+       KTX_FILE_DATA_ERROR=1,
+       KTX_FILE_ISPIPE=2,
+       KTX_FILE_OPEN_FAILED=3,
+       KTX_FILE_OVERFLOW=4,
+       KTX_FILE_READ_ERROR=5,
+       KTX_FILE_SEEK_ERROR=6,
+       KTX_FILE_UNEXPECTED_EOF=7,
+       KTX_FILE_WRITE_ERROR=8,
+       KTX_GL_ERROR=9,
+       KTX_INVALID_OPERATION=10,
+       KTX_INVALID_VALUE=11,
+       KTX_NOT_FOUND=12,
+       KTX_OUT_OF_MEMORY=13,
+       KTX_TRANSCODE_FAILED=14,
+       KTX_UNKNOWN_FILE_FORMAT=15,
+       KTX_UNSUPPORTED_TEXTURE_TYPE=16,
+       KTX_UNSUPPORTED_FEATURE=17,
+       KTX_LIBRARY_NOT_LINKED=18,
+       KTX_DECOMPRESS_LENGTH_ERROR=19,
+       KTX_DECOMPRESS_CHECKSUM_ERROR=20
+     );
 
      TktxBool=boolean;
 
@@ -3792,6 +3793,78 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxLoaded:TPasMPBool32=false;
 
     ktxLoadLock:TPasMPInt32=0;
+
+function KTXErrorCodeToString(const aErrorCode:TKTX_error_code):TpvRawByteString;
+begin
+ case aErrorCode of 
+  TKTX_error_code.KTX_SUCCESS:begin
+   result:='KTX_SUCCESS';
+  end; 
+  TKTX_error_code.KTX_FILE_DATA_ERROR:begin
+   result:='KTX_FILE_DATA_ERROR';
+  end; 
+  TKTX_error_code.KTX_FILE_ISPIPE:begin
+   result:='KTX_FILE_ISPIPE';
+  end; 
+  TKTX_error_code.KTX_FILE_OPEN_FAILED:begin
+   result:='KTX_FILE_OPEN_FAILED';
+  end; 
+  TKTX_error_code.KTX_FILE_OVERFLOW:begin
+   result:='KTX_FILE_OVERFLOW';
+  end; 
+  TKTX_error_code.KTX_FILE_READ_ERROR:begin
+   result:='KTX_FILE_READ_ERROR';
+  end; 
+  TKTX_error_code.KTX_FILE_SEEK_ERROR:begin
+   result:='KTX_FILE_SEEK_ERROR';
+  end; 
+  TKTX_error_code.KTX_FILE_UNEXPECTED_EOF:begin
+   result:='KTX_FILE_UNEXPECTED_EOF';
+  end; 
+  TKTX_error_code.KTX_FILE_WRITE_ERROR:begin
+   result:='KTX_FILE_WRITE_ERROR';
+  end; 
+  TKTX_error_code.KTX_GL_ERROR:begin
+   result:='KTX_GL_ERROR';
+  end; 
+  TKTX_error_code.KTX_INVALID_OPERATION:begin
+   result:='KTX_INVALID_OPERATION';
+  end; 
+  TKTX_error_code.KTX_INVALID_VALUE:begin
+   result:='KTX_INVALID_VALUE';
+  end; 
+  TKTX_error_code.KTX_NOT_FOUND:begin
+   result:='KTX_NOT_FOUND';
+  end; 
+  TKTX_error_code.KTX_OUT_OF_MEMORY:begin
+   result:='KTX_OUT_OF_MEMORY';
+  end; 
+  TKTX_error_code.KTX_TRANSCODE_FAILED:begin
+   result:='KTX_TRANSCODE_FAILED';
+  end; 
+  TKTX_error_code.KTX_UNKNOWN_FILE_FORMAT:begin
+   result:='KTX_UNKNOWN_FILE_FORMAT';
+  end; 
+  TKTX_error_code.KTX_UNSUPPORTED_TEXTURE_TYPE:begin
+   result:='KTX_UNSUPPORTED_TEXTURE_TYPE';
+  end; 
+  TKTX_error_code.KTX_UNSUPPORTED_FEATURE:begin
+   result:='KTX_UNSUPPORTED_FEATURE';
+  end; 
+  TKTX_error_code.KTX_LIBRARY_NOT_LINKED:begin
+   result:='KTX_LIBRARY_NOT_LINKED';
+  end; 
+  TKTX_error_code.KTX_DECOMPRESS_LENGTH_ERROR:begin
+   result:='KTX_DECOMPRESS_LENGTH_ERROR';
+  end; 
+  TKTX_error_code.KTX_DECOMPRESS_CHECKSUM_ERROR:begin
+   result:='KTX_DECOMPRESS_CHECKSUM_ERROR';
+  end; 
+  else begin
+   result:='Unknown';
+  end;
+ end;
+end; 
 
 procedure LoadKTXLibrary;
 begin
@@ -22248,6 +22321,7 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
      KTXVulkanDeviceInfo:PktxVulkanDeviceInfo;
      KTXVulkanTexture:TktxVulkanTexture;
      CommandPool:TpvVulkanCommandPool;
+     KTXResult:TKTX_error_code;
  begin
 
   KTXTexture:=fKTXTexture;
@@ -22302,12 +22376,13 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
                                                      @KTXVulkanFunctions);
    if assigned(KTXVulkanDeviceInfo) then begin
     try
-     if ktxTexture_VkUploadEx(ktxTexture,
-                              KTXVulkanDeviceInfo,
-                              @KTXVulkanTexture,
-                              VK_IMAGE_TILING_OPTIMAL,
-                              TpvUInt32(VK_IMAGE_USAGE_SAMPLED_BIT),
-                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)=KTX_SUCCESS then begin
+     KTXResult:=ktxTexture_VkUploadEx(ktxTexture,
+                                      KTXVulkanDeviceInfo,
+                                      @KTXVulkanTexture,
+                                      VK_IMAGE_TILING_OPTIMAL,
+                                      TpvUInt32(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+     if KTXResult=TKTX_error_code.KTX_SUCCESS then begin
       fWidth:=KTXVulkanTexture.width;
       fHeight:=KTXVulkanTexture.height;
       fDepth:=KTXVulkanTexture.depth;
@@ -22345,7 +22420,7 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
       end;
       fDescriptorImageInfo.imageLayout:=fImageLayout;
      end else begin
-      raise EpvVulkanTextureException.Create('Invalid KTX image');
+      raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
      end;
     finally
      ktxVulkanDeviceInfo_Destroy(KTXVulkanDeviceInfo);
@@ -22993,7 +23068,7 @@ begin
    SetLength(AllData,aStream.Size);
    aStream.Seek(0,soBeginning);
    aStream.ReadBuffer(AllData[0],aStream.Size);
-   if ktxTexture_CreateFromMemory(@AllData[0],length(AllData),0,@fKTXTexture)=KTX_SUCCESS then begin
+   if ktxTexture_CreateFromMemory(@AllData[0],length(AllData),0,@fKTXTexture)=TKTX_error_code.KTX_SUCCESS then begin
     LoadFromMemory(TVkFormat(KTX2Header.VkFormat),
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,KTX2Header.PixelWidth),
