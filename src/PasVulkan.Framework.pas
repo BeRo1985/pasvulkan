@@ -22332,6 +22332,7 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
                                             Max(1,fCountStorageLevels),
                                             0,
                                             Max(1,fTotalCountArrayLayers));
+      fImage.ImageView:=fImageView;
       if assigned(fSampler) then begin
        fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
       end else begin

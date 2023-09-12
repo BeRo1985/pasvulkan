@@ -5134,7 +5134,11 @@ begin
  end else begin
   result.ImageView:=VK_NULL_HANDLE;
  end;
- result.ImageLayout:=fImage.fTexture.ImageLayout;
+ if assigned(fImage) and (fImage.fReferenceCounter>0) then begin
+  result.ImageLayout:=fImage.fTexture.ImageLayout;
+ end else begin
+  result.ImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+ end;
 end;
 
 function TpvScene3D.TTexture.GetHashData:THashData;
