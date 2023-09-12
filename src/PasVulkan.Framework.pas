@@ -3740,6 +3740,36 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
 
      TktxTextureCreateFlags=TpvUInt32;
 
+     Tktx_transcode_fmt_e=
+      (
+       KTX_TTF_ETC1_RGB=0,
+       KTX_TTF_ETC2_RGBA=1,
+       KTX_TTF_BC1_RGB=2,
+       KTX_TTF_BC3_RGBA=3,
+       KTX_TTF_BC4_R=4,
+       KTX_TTF_BC5_RG=5,
+       KTX_TTF_BC7_RGBA=6,
+       KTX_TTF_PVRTC1_4_RGB=8,
+       KTX_TTF_PVRTC1_4_RGBA=9,
+       KTX_TTF_ASTC_4x4_RGBA=10,
+       KTX_TTF_RGBA32=13,
+       KTX_TTF_RGB565=14,
+       KTX_TTF_BGR565=15,
+       KTX_TTF_RGBA4444=16,
+       KTX_TTF_ETC=22,
+       KTX_TTF_BC1_OR_3=23,
+       KTX_TTF_NOSELECTION=$7fffffff
+      );
+
+     Tktx_transcode_flag_bits_e=
+      (
+       KTX_TF_PVRTC_DECODE_TO_NEXT_POW2=2,
+       KTX_TF_TRANSCODE_ALPHA_DATA_TO_OPAQUE_FORMATS=4,
+       KTX_TF_HIGH_QUALITY=32
+      );
+
+     Tktx_transcode_flags=TpvUInt32;
+
      TktxTexture_CreateFromMemory=function(bytes:Pointer;size:TpvSizeUInt;createFlags:TktxTextureCreateFlags;newTex:PPktxTexture):TKTX_error_code; cdecl;
      TktxTexture_GetData=function(this:PktxTexture):Pointer; cdecl;
      TktxTexture_GetRowPitch=function(this:PktxTexture;level:TpvUInt32):TpvUInt32; cdecl;
@@ -3761,6 +3791,7 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
      TktxTexture_GetVkFormat=function(This:PktxTexture):TVkFormat; cdecl;
      TktxTexture1_GetVkFormat=function(This:PktxTexture1):TVkFormat; cdecl;
      TktxTexture2_GetVkFormat=function(This:PktxTexture2):TVkFormat; cdecl;
+     TktxTexture2_TranscodeBasis=function(This:PktxTexture2;outputFormat:Tktx_transcode_fmt_e;transcodeFlags:Tktx_transcode_flags):TKTX_error_code; cdecl;
 
 var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxTexture_GetData:TktxTexture_GetData=nil;
@@ -3783,6 +3814,7 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxTexture_GetVkFormat:TktxTexture_GetVkFormat=nil;
     ktxTexture1_GetVkFormat:TktxTexture1_GetVkFormat=nil;
     ktxTexture2_GetVkFormat:TktxTexture2_GetVkFormat=nil;
+    ktxTexture2_TranscodeBasis:TktxTexture2_TranscodeBasis=nil;
 
     ktxVulkanFunctions:TktxVulkanFunctions;
 
@@ -3895,6 +3927,7 @@ begin
      ktxTexture_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetVkFormat');
      ktxTexture1_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_GetVkFormat');
      ktxTexture2_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_GetVkFormat');
+     ktxTexture2_TranscodeBasis:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_TranscodeBasis');
      if assigned(ktxTexture_CreateFromMemory) and
         assigned(ktxTexture_GetData) and
         assigned(ktxTexture_GetRowPitch) and
@@ -3915,7 +3948,8 @@ begin
         assigned(ktxTexture2_VkUpload) and
         assigned(ktxTexture_GetVkFormat) and
         assigned(ktxTexture1_GetVkFormat) and
-        assigned(ktxTexture2_GetVkFormat) then begin
+        assigned(ktxTexture2_GetVkFormat) and
+        assigned(ktxTexture2_TranscodeBasis) then begin
       ktxLoaded:=true;
      end else begin
       FreeLibrary(ktxLibraryHandle);
@@ -23034,6 +23068,8 @@ var KTX2Header:TKTX2Header;
     UncompressedRawData:TpvUInt8DynamicArray;
     InLen,OutLen,AllDataOffset:TpvSizeUInt;
     OutData:Pointer;
+    KTXResult:TKTX_error_code;
+    KTXTranscodeFormat:Tktx_transcode_fmt_e;
 begin
 
  BasePosition:=aStream.Position;
@@ -23068,7 +23104,26 @@ begin
    SetLength(AllData,aStream.Size);
    aStream.Seek(0,soBeginning);
    aStream.ReadBuffer(AllData[0],aStream.Size);
-   if ktxTexture_CreateFromMemory(@AllData[0],length(AllData),0,@fKTXTexture)=TKTX_error_code.KTX_SUCCESS then begin
+   KTXResult:=ktxTexture_CreateFromMemory(@AllData[0],length(AllData),0,@fKTXTexture);
+   if KTXResult=TKTX_error_code.KTX_SUCCESS then begin
+    if PktxTexture(fKTXTexture)^.vtbl^.NeedsTranscoding(fKTXTexture) then begin
+     if fDevice.PhysicalDevice.Features.textureCompressionASTC_LDR<>VK_FALSE then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ASTC_4x4_RGBA;
+     end else if fDevice.PhysicalDevice.Features.textureCompressionETC2<>VK_FALSE then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ETC2_RGBA;
+     end else if fDevice.PhysicalDevice.Features.textureCompressionBC<>VK_FALSE then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC3_RGBA;
+     end else begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_RGBA32;
+//    raise EpvVulkanTextureException.Create('Vulkan implementation does not support any available transcode target.');
+     end;
+     KTXResult:=ktxTexture2_TranscodeBasis(fKTXTexture,
+                                           KTXTranscodeFormat,
+                                           Tktx_transcode_flags(Tktx_transcode_flag_bits_e.KTX_TF_HIGH_QUALITY));
+     if KTXResult<>TKTX_error_code.KTX_SUCCESS then begin
+      raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
+     end;
+    end;
     LoadFromMemory(TVkFormat(KTX2Header.VkFormat),
                    VK_SAMPLE_COUNT_1_BIT,
                    Max(1,KTX2Header.PixelWidth),
@@ -23086,7 +23141,7 @@ begin
                    false,
                    aAdditionalSRGB);
    end else begin
-    raise EpvVulkanTextureException.Create('Invalid KTX2');
+    raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
    end;
   finally
    AllData:=nil;
