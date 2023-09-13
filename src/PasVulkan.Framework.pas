@@ -3946,7 +3946,7 @@ begin
  try
   if not ktxLoadAttempted then begin
    try
-    ktxLibraryHandle:=LoadLibrary({$if defined(Windows)}'libktx.dll'{$elseif defined(Darwin)}'libktx.dylib'{$else}IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libktx.so'{$ifend});
+    ktxLibraryHandle:=LoadLibrary({$if defined(Windows)}'ktx.dll'{$elseif defined(Darwin)}'libktx.dylib'{$else}IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'libktx.so'{$ifend});
     if ktxLibraryHandle<>ktxNilLibHandle then begin
      ktxTexture_CreateFromMemory:=GetProcAddress(ktxLibraryHandle,'ktxTexture_CreateFromMemory');
      ktxTexture_GetData:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetData');
