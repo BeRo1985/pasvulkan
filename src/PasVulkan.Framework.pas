@@ -23177,8 +23177,8 @@ begin
      end else if fDevice.PhysicalDevice.Features.textureCompressionBC<>VK_FALSE then begin
       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC3_RGBA;
      end else begin
-      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_RGBA32;
-//    raise EpvVulkanTextureException.Create('Vulkan implementation does not support any available transcode target.');
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_RGBA32; // Fallback to RGBA32 if nothing else is available
+//    raise EpvVulkanTextureException.Create('Vulkan implementation does not support any available transcode target.'); // Alternately just throw a exception, since it will be rare anyway or almost almost never happen.  
      end;
      KTXResult:=ktxTexture2_TranscodeBasis(fKTXTexture,
                                            KTXTranscodeFormat,
