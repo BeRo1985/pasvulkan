@@ -3770,6 +3770,46 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
 
      Tktx_transcode_flags=TpvUInt32;
 
+     Tkhr_df_model_e=
+      (
+       KHR_DF_MODEL_UNSPECIFIED=0,
+       KHR_DF_MODEL_RGBSDA=1,
+       KHR_DF_MODEL_YUVSDA=2,
+       KHR_DF_MODEL_YIQSDA=3,
+       KHR_DF_MODEL_LABSDA=4,
+       KHR_DF_MODEL_CMYKA=5,
+       KHR_DF_MODEL_XYZW=6,
+       KHR_DF_MODEL_HSVA_ANG=7,
+       KHR_DF_MODEL_HSLA_ANG=8,
+       KHR_DF_MODEL_HSVA_HEX=9,
+       KHR_DF_MODEL_HSLA_HEX=10,
+       KHR_DF_MODEL_YCGCOA=11,
+       KHR_DF_MODEL_YCCBCCRC=12,
+       KHR_DF_MODEL_ICTCP=13,
+       KHR_DF_MODEL_CIEXYZ=14,
+       KHR_DF_MODEL_CIEXYY=15,
+       KHR_DF_MODEL_DXT1A=128,
+       KHR_DF_MODEL_BC1A=128,
+       KHR_DF_MODEL_DXT2=129,
+       KHR_DF_MODEL_DXT3=129,
+       KHR_DF_MODEL_BC2=129,
+       KHR_DF_MODEL_DXT4=130,
+       KHR_DF_MODEL_DXT5=130,
+       KHR_DF_MODEL_BC3=130,
+       KHR_DF_MODEL_BC4=131,
+       KHR_DF_MODEL_BC5=132,
+       KHR_DF_MODEL_BC6H=133,
+       KHR_DF_MODEL_BC7=134,
+       KHR_DF_MODEL_ETC1=160,
+       KHR_DF_MODEL_ETC2=161,
+       KHR_DF_MODEL_ASTC=162,
+       KHR_DF_MODEL_ETC1S=163,
+       KHR_DF_MODEL_PVRTC=164,
+       KHR_DF_MODEL_PVRTC2=165,
+       KHR_DF_MODEL_UASTC=166,
+       KHR_DF_MODEL_MAX=$ff
+      );
+
      TktxTexture_CreateFromMemory=function(bytes:Pointer;size:TpvSizeUInt;createFlags:TktxTextureCreateFlags;newTex:PPktxTexture):TKTX_error_code; cdecl;
      TktxTexture_GetData=function(this:PktxTexture):Pointer; cdecl;
      TktxTexture_GetRowPitch=function(this:PktxTexture;level:TpvUInt32):TpvUInt32; cdecl;
@@ -3792,6 +3832,7 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
      TktxTexture1_GetVkFormat=function(This:PktxTexture1):TVkFormat; cdecl;
      TktxTexture2_GetVkFormat=function(This:PktxTexture2):TVkFormat; cdecl;
      TktxTexture2_TranscodeBasis=function(This:PktxTexture2;outputFormat:Tktx_transcode_fmt_e;transcodeFlags:Tktx_transcode_flags):TKTX_error_code; cdecl;
+     TktxTexture2_GetColorModel_e=function(This:PktxTexture2):Tkhr_df_model_e; cdecl;
 
 var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxTexture_GetData:TktxTexture_GetData=nil;
@@ -3815,6 +3856,7 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxTexture1_GetVkFormat:TktxTexture1_GetVkFormat=nil;
     ktxTexture2_GetVkFormat:TktxTexture2_GetVkFormat=nil;
     ktxTexture2_TranscodeBasis:TktxTexture2_TranscodeBasis=nil;
+    ktxTexture2_GetColorModel_e:TktxTexture2_GetColorModel_e=nil;
 
     ktxVulkanFunctions:TktxVulkanFunctions;
 
@@ -3928,6 +3970,7 @@ begin
      ktxTexture1_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_GetVkFormat');
      ktxTexture2_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_GetVkFormat');
      ktxTexture2_TranscodeBasis:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_TranscodeBasis');
+     ktxTexture2_GetColorModel_e:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_GetColorModel_e');
      if assigned(ktxTexture_CreateFromMemory) and
         assigned(ktxTexture_GetData) and
         assigned(ktxTexture_GetRowPitch) and
@@ -3949,7 +3992,8 @@ begin
         assigned(ktxTexture_GetVkFormat) and
         assigned(ktxTexture1_GetVkFormat) and
         assigned(ktxTexture2_GetVkFormat) and
-        assigned(ktxTexture2_TranscodeBasis) then begin
+        assigned(ktxTexture2_TranscodeBasis) and 
+        assigned(ktxTexture2_GetColorModel_e) then begin
       ktxLoaded:=true;
      end else begin
       FreeLibrary(ktxLibraryHandle);
@@ -23070,7 +23114,9 @@ var KTX2Header:TKTX2Header;
     OutData:Pointer;
     KTXResult:TKTX_error_code;
     KTXTranscodeFormat:Tktx_transcode_fmt_e;
+    ColorModel:Tkhr_df_model_e;
     FormatProperties:TVkFormatProperties;
+    HasBC7Support:boolean;
 begin
 
  BasePosition:=aStream.Position;
@@ -23108,18 +23154,28 @@ begin
    KTXResult:=ktxTexture_CreateFromMemory(@AllData[0],length(AllData),0,@fKTXTexture);
    if KTXResult=TKTX_error_code.KTX_SUCCESS then begin
     if PktxTexture(fKTXTexture)^.vtbl^.NeedsTranscoding(fKTXTexture) then begin
-     if fDevice.PhysicalDevice.Features.textureCompressionASTC_LDR<>VK_FALSE then begin
+     if fDevice.PhysicalDevice.Features.textureCompressionBC<>VK_FALSE then begin
+      FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(VK_FORMAT_BC7_SRGB_BLOCK);
+      HasBC7Support:=((FormatProperties.linearTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))<>0) or
+                     ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))<>0);
+     end else begin
+      HasBC7Support:=false;
+     end;
+     ColorModel:=ktxTexture2_GetColorModel_e(fKTXTexture);
+     if (ColorModel=Tkhr_df_model_e.KHR_DF_MODEL_UASTC) and (fDevice.PhysicalDevice.Features.textureCompressionASTC_LDR<>VK_FALSE) then begin
       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ASTC_4x4_RGBA;
+     end else if (ColorModel=Tkhr_df_model_e.KHR_DF_MODEL_UASTC) and HasBC7Support then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC7_RGBA;
+     end else if (ColorModel=Tkhr_df_model_e.KHR_DF_MODEL_ETC1S) and (fDevice.PhysicalDevice.Features.textureCompressionETC2<>VK_FALSE) then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ETC2_RGBA;
+     end else if fDevice.PhysicalDevice.Features.textureCompressionASTC_LDR<>VK_FALSE then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ASTC_4x4_RGBA;
+     end else if HasBC7Support then begin
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC7_RGBA;
      end else if fDevice.PhysicalDevice.Features.textureCompressionETC2<>VK_FALSE then begin
       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_ETC2_RGBA;
      end else if fDevice.PhysicalDevice.Features.textureCompressionBC<>VK_FALSE then begin
-      FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(VK_FORMAT_BC7_SRGB_BLOCK);
-      if ((FormatProperties.linearTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))<>0) or
-         ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))<>0) then begin
-       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC7_RGBA;
-      end else begin
-       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC3_RGBA;
-      end;
+      KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_BC3_RGBA;
      end else begin
       KTXTranscodeFormat:=Tktx_transcode_fmt_e.KTX_TTF_RGBA32;
 //    raise EpvVulkanTextureException.Create('Vulkan implementation does not support any available transcode target.');
