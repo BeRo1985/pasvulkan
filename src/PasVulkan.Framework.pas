@@ -3622,23 +3622,23 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
 
      PktxTexture=^TktxTexture;
 
-     TktxTextureIterateCallback=function(miplevel,face,width,height,depth:TpvInt32;faceLodSize:TpvUInt64;pixels,UserData:pointer):TKTX_error_code; cdecl;
+     TktxTextureIterateCallback=function(miplevel,face,width,height,depth:TpvInt32;faceLodSize:TpvUInt64;pixels,UserData:pointer):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
 
      TktxTextureVTbl=record
-      Destroy:procedure(this:PktxTexture); cdecl;
-      GetImageOffset:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;offset:PpvSizeUInt):TKTX_error_code; cdecl;
-      GetDataSizeUncompressed:function(this:PktxTexture):TpvSizeUInt; cdecl;
-      GetImageSize:function(this:PktxTexture;level:TpvUInt32):TpvSizeUInt; cdecl;
-      IterateLevels:function(this:PktxTexture;iterCb:TktxTextureIterateCallback;UserData:Pointer):TpvSizeUInt; cdecl;
-      IterateLoadLevelFaces:function(this:PktxTexture;iterCb:TktxTextureIterateCallback;UserData:Pointer):TpvSizeUInt; cdecl;
-      NeedsTranscoding:function(this:PktxTexture):boolean; cdecl;
-      LoadImageData:function(this:PktxTexture;pBuffer:Pointer;BufSize:TpvSizeUInt):TKTX_error_code; cdecl;
-      SetImageFromMemory:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;src:Pointer;srcSize:TpvSizeUInt):TKTX_error_code; cdecl;
-      SetImageFromStdioStream:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;src:Pointer;srcSize:TpvSizeUInt):TKTX_error_code; cdecl;
-      WriteToStdioStream:function(this:PktxTexture;dstsstr:Pointer):TKTX_error_code; cdecl;
-      WriteToNamedFile:function(this:PktxTexture;dstname:PAnsiChar):TKTX_error_code; cdecl;
-      WriteToMemory:function(this:PktxTexture;out bytes:Pointer;out size:TpvSizeUInt):TKTX_error_code; cdecl;
-      WriteToStream:function(this:PktxTexture;dststr:Pointer):TKTX_error_code; cdecl;
+      Destroy:procedure(this:PktxTexture); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      GetImageOffset:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;offset:PpvSizeUInt):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      GetDataSizeUncompressed:function(this:PktxTexture):TpvSizeUInt; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      GetImageSize:function(this:PktxTexture;level:TpvUInt32):TpvSizeUInt; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      IterateLevels:function(this:PktxTexture;iterCb:TktxTextureIterateCallback;UserData:Pointer):TpvSizeUInt; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      IterateLoadLevelFaces:function(this:PktxTexture;iterCb:TktxTextureIterateCallback;UserData:Pointer):TpvSizeUInt; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      NeedsTranscoding:function(this:PktxTexture):boolean; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      LoadImageData:function(this:PktxTexture;pBuffer:Pointer;BufSize:TpvSizeUInt):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      SetImageFromMemory:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;src:Pointer;srcSize:TpvSizeUInt):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      SetImageFromStdioStream:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;src:Pointer;srcSize:TpvSizeUInt):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      WriteToStdioStream:function(this:PktxTexture;dstsstr:Pointer):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      WriteToNamedFile:function(this:PktxTexture;dstname:PAnsiChar):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      WriteToMemory:function(this:PktxTexture;out bytes:Pointer;out size:TpvSizeUInt):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+      WriteToStream:function(this:PktxTexture;dststr:Pointer):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      end;
 
      PktxTextureVTbl=^TktxTextureVTbl;
@@ -3810,29 +3810,29 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
        KHR_DF_MODEL_MAX=$ff
       );
 
-     TktxTexture_CreateFromMemory=function(bytes:Pointer;size:TpvSizeUInt;createFlags:TktxTextureCreateFlags;newTex:PPktxTexture):TKTX_error_code; cdecl;
-     TktxTexture_GetData=function(this:PktxTexture):Pointer; cdecl;
-     TktxTexture_GetRowPitch=function(this:PktxTexture;level:TpvUInt32):TpvUInt32; cdecl;
-     TktxTexture_GetElementSize=function(this:PktxTexture):TpvUInt32; cdecl;
-     TktxTexture_GetDataSize=function(this:PktxTexture):TpvSizeUInt; cdecl;
-     TktxVulkanTexture_Destruct=procedure(This:PktxVulkanTexture;device:TVkDevice;pAllocator:PVkAllocationCallbacks); cdecl;
-     TktxVulkanDeviceInfo_CreateEx=function(instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):PktxVulkanDeviceInfo; cdecl; 
-     TktxVulkanDeviceInfo_Create=function(physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):PktxVulkanDeviceInfo; cdecl;
-     TktxVulkanDeviceInfo_Construct=function(This:PktxVulkanDeviceInfo;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):TKTX_error_code; cdecl;
-     TktxVulkanDeviceInfo_ConstructEx=function(This:PktxVulkanDeviceInfo;instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):TKTX_error_code; cdecl;
-     TktxVulkanDeviceInfo_Destruct=procedure(This:PktxVulkanDeviceInfo); cdecl;
-     TktxVulkanDeviceInfo_Destroy=procedure(This:PktxVulkanDeviceInfo); cdecl;
-     TktxTexture_VkUploadEx=function(This:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; cdecl;
-     TktxTexture_VkUpload=function(texture:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; cdecl;
-     TktxTexture1_VkUploadEx=function(This:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; cdecl;
-     TktxTexture1_VkUpload=function(texture:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; cdecl;
-     TktxTexture2_VkUploadEx=function(This:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; cdecl;
-     TktxTexture2_VkUpload=function(texture:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; cdecl;
-     TktxTexture_GetVkFormat=function(This:PktxTexture):TVkFormat; cdecl;
-     TktxTexture1_GetVkFormat=function(This:PktxTexture1):TVkFormat; cdecl;
-     TktxTexture2_GetVkFormat=function(This:PktxTexture2):TVkFormat; cdecl;
-     TktxTexture2_TranscodeBasis=function(This:PktxTexture2;outputFormat:Tktx_transcode_fmt_e;transcodeFlags:Tktx_transcode_flags):TKTX_error_code; cdecl;
-     TktxTexture2_GetColorModel_e=function(This:PktxTexture2):Tkhr_df_model_e; cdecl;
+     TktxTexture_CreateFromMemory=function(bytes:Pointer;size:TpvSizeUInt;createFlags:TktxTextureCreateFlags;newTex:PPktxTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_GetData=function(this:PktxTexture):Pointer; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_GetRowPitch=function(this:PktxTexture;level:TpvUInt32):TpvUInt32; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_GetElementSize=function(this:PktxTexture):TpvUInt32; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_GetDataSize=function(this:PktxTexture):TpvSizeUInt; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_Destruct=procedure(This:PktxVulkanTexture;device:TVkDevice;pAllocator:PVkAllocationCallbacks); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanDeviceInfo_CreateEx=function(instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):PktxVulkanDeviceInfo; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend} 
+     TktxVulkanDeviceInfo_Create=function(physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):PktxVulkanDeviceInfo; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanDeviceInfo_Construct=function(This:PktxVulkanDeviceInfo;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanDeviceInfo_ConstructEx=function(This:PktxVulkanDeviceInfo;instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanDeviceInfo_Destruct=procedure(This:PktxVulkanDeviceInfo); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanDeviceInfo_Destroy=procedure(This:PktxVulkanDeviceInfo); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_VkUploadEx=function(This:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_VkUpload=function(texture:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture1_VkUploadEx=function(This:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture1_VkUpload=function(texture:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture2_VkUploadEx=function(This:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture2_VkUpload=function(texture:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_GetVkFormat=function(This:PktxTexture):TVkFormat; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture1_GetVkFormat=function(This:PktxTexture1):TVkFormat; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture2_GetVkFormat=function(This:PktxTexture2):TVkFormat; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture2_TranscodeBasis=function(This:PktxTexture2;outputFormat:Tktx_transcode_fmt_e;transcodeFlags:Tktx_transcode_flags):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture2_GetColorModel_e=function(This:PktxTexture2):Tkhr_df_model_e; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
 
 var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxTexture_GetData:TktxTexture_GetData=nil;
