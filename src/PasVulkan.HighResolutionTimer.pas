@@ -58,6 +58,7 @@ unit PasVulkan.HighResolutionTimer;
   {$ifend}
  {$endif}
 {$endif}
+{$rangechecks off}
 {$m+}
 
 interface
