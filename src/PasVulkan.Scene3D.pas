@@ -1352,6 +1352,8 @@ type EpvScene3D=class(Exception);
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
+             public
+              property BufferDataArray:TVulkanShortTermDynamicBufferDataArray read fBufferDataArray;
              published
               property BufferData:TVulkanShortTermDynamicBufferData read fBufferData;
             end;
@@ -2179,7 +2181,7 @@ type EpvScene3D=class(Exception);
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fAABBTreeProxy:TpvSizeInt;
-                     fVisibleBitmap:TPasMPUInt32;
+                     fVisibleBitmap:array[0..MaxInFlightFrames-1] of TPasMPUInt32;
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanVertexBufferCount:TpvInt64;
                      fVulkanDrawIndexBufferOffset:TpvInt64;
@@ -2190,8 +2192,10 @@ type EpvScene3D=class(Exception);
                      fVulkanMorphTargetVertexBufferCount:TpvInt64;
                      fVulkanJointBlockBufferOffset:TpvInt64;
                      fVulkanJointBlockBufferCount:TpvInt64;
+                    public
                      fVulkanNodeMatricesBufferOffset:TpvInt64;
                      fVulkanNodeMatricesBufferCount:TpvInt64;
+                    private
                      fVulkanMorphTargetVertexWeightsBufferOffset:TpvInt64;
                      fVulkanMorphTargetVertexWeightsBufferCount:TpvInt64;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
@@ -2587,7 +2591,9 @@ type EpvScene3D=class(Exception);
        fVulkanDrawUniqueIndexBufferData:TDynamicIndices;
        fVulkanMorphTargetVertexBufferData:TMorphTargetVertexDynamicArray;
        fVulkanJointBlockBufferData:TDynamicJointBlocks;
+      public
        fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TDynamicMatrices;
+      private
        fVulkanMorphTargetVertexWeightsBufferData:array[0..MaxInFlightFrames-1] of TDynamicFloats;
        fVulkanVertexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawIndexBufferRangeAllocator:TpvBufferRangeAllocator;
@@ -2597,7 +2603,9 @@ type EpvScene3D=class(Exception);
        fVulkanNodeMatricesBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexWeightsBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanLongTermStaticBuffers:TVulkanLongTermStaticBuffers;
+      public
        fVulkanShortTermDynamicBuffers:TVulkanShortTermDynamicBuffers;
+      private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -2611,7 +2619,8 @@ type EpvScene3D=class(Exception);
        procedure CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicArray;
                                           const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                           const aRoot:TpvSizeInt;
-                                          const aVisibleBit:TPasMPUInt32);
+                                          const aVisibleBit:TPasMPUInt32;
+                                          const aInFlightFrameIndex:TpvSizeInt);
        procedure CullLightAABBTreeWithFrustums(const aInFlightFrameIndex:TpvSizeInt;
                                                const aFrustums:TpvFrustumDynamicArray;
                                                const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
@@ -13425,7 +13434,7 @@ begin
 
    fVulkanVertexBufferCount:=fGroup.fVertices.Count;
    fVulkanVertexBufferOffset:=fSceneInstance.fVulkanVertexBufferRangeAllocator.Allocate(fVulkanVertexBufferCount);
-   writeln(fVulkanVertexBufferOffset);
+// writeln(fVulkanVertexBufferOffset);
 
    fVulkanDrawIndexBufferCount:=fGroup.fDrawChoreographyBatchCondensedIndices.Count;
    fVulkanDrawIndexBufferOffset:=fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Allocate(fVulkanDrawIndexBufferCount);
@@ -16505,7 +16514,7 @@ var NodeIndex,ViewIndex:TpvSizeInt;
     OK:boolean;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
   if (length(aFrustums)>0) or
@@ -16577,7 +16586,7 @@ begin
 
   if assigned(Scene) then begin
 
-   FillChar(fCacheVerticesNodeDirtyBitmap[0],Length(fCacheVerticesNodeDirtyBitmap)*SizeOf(TpvUInt32),#0);
+   FillChar(fCacheVerticesNodeDirtyBitmap[0],Length(fCacheVerticesNodeDirtyBitmap)*SizeOf(TpvUInt32),#$0);
 
    for NodeIndex:=0 to length(fNodes)-1 do begin
     Node:=@fNodes[NodeIndex];
@@ -16758,7 +16767,7 @@ begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) and not fHeadless then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and not fHeadless then begin
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
@@ -16915,7 +16924,7 @@ begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap and VisibleBit)<>0) and not fHeadless then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and not fHeadless then begin
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
@@ -18725,7 +18734,8 @@ end;
 procedure TpvScene3D.CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicArray;
                                               const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                               const aRoot:TpvSizeInt;
-                                              const aVisibleBit:TPasMPUInt32);
+                                              const aVisibleBit:TPasMPUInt32;
+                                              const aInFlightFrameIndex:TpvSizeInt);
  procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
  var Index:TpvSizeInt;
      TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
@@ -18752,7 +18762,7 @@ procedure TpvScene3D.CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicA
    end;
    if OK then begin
     if TreeNode^.UserData<>0 then begin
-     TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap,aVisibleBit);
+     TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap[aInFlightFrameIndex],aVisibleBit);
     end;
     if TreeNode^.Children[0]>=0 then begin
      ProcessNode(TreeNode^.Children[0],Mask);
@@ -18804,7 +18814,7 @@ begin
     end;
     if OK then begin
      if TreeNode^.UserData<>0 then begin
-      TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap,aVisibleBit);
+      TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap[aInFlightFrameIndex],aVisibleBit);
      end;
      if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
       if TreeNode^.Children[0]>=0 then begin
@@ -19239,7 +19249,7 @@ begin
     SetLength(Frustums,aCountViews);
 
     for GroupInstance in fGroupInstances do begin
-     TPasMPInterlocked.BitwiseAnd(GroupInstance.fVisibleBitmap,not VisibleBit);
+     TPasMPInterlocked.BitwiseAnd(GroupInstance.fVisibleBitmap[aInFlightFrameIndex],not VisibleBit);
     end;
 
     AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
@@ -19249,12 +19259,12 @@ begin
      Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
     end;
 
-    CullAABBTreeWithFrustums(Frustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit);
+    CullAABBTreeWithFrustums(Frustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit,aInFlightFrameIndex);
 
    end else begin
 
     for GroupInstance in fGroupInstances do begin
-     TPasMPInterlocked.BitwiseOr(GroupInstance.fVisibleBitmap,VisibleBit);
+     TPasMPInterlocked.BitwiseOr(GroupInstance.fVisibleBitmap[aInFlightFrameIndex],VisibleBit);
     end;
 
    end;

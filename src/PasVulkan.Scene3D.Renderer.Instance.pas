@@ -2945,7 +2945,7 @@ begin
                            fWidth,
                            fHeight,
                            true,
-                           true,
+                           false,
                            true);
  end;
 

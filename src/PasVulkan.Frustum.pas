@@ -125,7 +125,7 @@ begin
  fPlanes[TFrustumSide.Right]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]-ViewProjectionMatrix.Rows[0]).Normalize;
  fPlanes[TFrustumSide.Top]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]-ViewProjectionMatrix.Rows[1]).Normalize;
  fPlanes[TFrustumSide.Bottom]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]+ViewProjectionMatrix.Rows[1]).Normalize;
- fPlanes[TFrustumSide.Near_]:=TpvPlane.Create(ViewProjectionMatrix.Rows[2]+ViewProjectionMatrix.Rows[2]).Normalize;
+ fPlanes[TFrustumSide.Near_]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]+ViewProjectionMatrix.Rows[2]).Normalize;
  fPlanes[TFrustumSide.Far_]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]-ViewProjectionMatrix.Rows[2]).Normalize;
 
  for FrustumSide:=Low(TFrustumSide) to High(TFrustumSide) do begin
