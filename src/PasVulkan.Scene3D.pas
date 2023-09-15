@@ -18673,29 +18673,51 @@ begin
 
     if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]<>fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex] then begin
 
-     fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]:=fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex];
-
      if fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]<fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex] then begin
 
       case fBufferStreamingMode of
 
        TBufferStreamingMode.Direct:begin
 
-        fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-                                                                   fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
-                                                                   fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
+        if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]=0 then begin
+
+         fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,0],
+                                                                    0,
+                                                                    fVulkanMaterialDataBuffers[aInFlightFrameIndex].Size);
+
+        end else begin
+
+         fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
+                                                                    fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
+                                                                    fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
+
+        end;
 
        end;
 
        TBufferStreamingMode.Staging:begin
 
-        fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                           fVulkanStagingCommandBuffer,
-                                           fVulkanStagingFence,
-                                           fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-                                           fVulkanMaterialDataBuffers[aInFlightFrameIndex],
-                                           fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
-                                           fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
+        if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]=0 then begin
+
+         fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                            fVulkanStagingCommandBuffer,
+                                            fVulkanStagingFence,
+                                            fInFlightFrameMaterialBufferData[aInFlightFrameIndex,0],
+                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex],
+                                            0,
+                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex].Size);
+
+        end else begin
+
+         fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                            fVulkanStagingCommandBuffer,
+                                            fVulkanStagingFence,
+                                            fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
+                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex],
+                                            fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
+                                            fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
+
+        end;
 
  {      fVulkanMaterialDataStagingBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
                                                                           fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
@@ -18706,7 +18728,6 @@ begin
                                                                  0,
                                                                  0,
                                                                  fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]);}
-
        end;
 
        else begin
@@ -18716,6 +18737,8 @@ begin
       end;
 
      end;
+
+     fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]:=fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex];
 
     end;
 
