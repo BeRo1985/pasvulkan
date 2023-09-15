@@ -2434,7 +2434,9 @@ type EpvScene3D=class(Exception);
             TSamplerIDHashMap=TpvHashMap<TID,TSampler>;
             TTextureIDHashMap=TpvHashMap<TID,TTexture>;
             TMaterialIDHashMap=TpvHashMap<TID,TMaterial>;
-            TMaterialIDDirtyMap=array[0..(($10000+31) shr 5)-1] of TPasMPUint32;
+            TMaterialIDDirtyMap=array[0..(($10000+31) shr 5)-1] of TPasMPUInt32;
+            PMaterialIDDirtyMap=^TMaterialIDDirtyMap;
+            TMaterialIDDirtyMaps=array[0..MaxInFlightFrames-1] of TMaterialIDDirtyMap;
             TMaterialIDMap=array[0..$ffff] of TMaterial;
             TMaterialGenerations=array[0..$ffff] of TpvUInt64;
             TImageHashMap=TpvHashMap<TImage.THashData,TImage>;
@@ -2444,6 +2446,7 @@ type EpvScene3D=class(Exception);
             TBufferMemoryBarriers=TpvDynamicArray<TVkBufferMemoryBarrier>;
             TInFlightFrameBufferMemoryBarriers=array[0..MaxInFlightFrames-1] of TBufferMemoryBarriers;
             TMaterialBufferData=array[0..65535] of TMaterial.TShaderData;
+            PMaterialBufferData=^TMaterialBufferData;
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
             TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TVertexStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
@@ -2455,6 +2458,7 @@ type EpvScene3D=class(Exception);
             end;
             PCachedVertexRange=^TCachedVertexRange;
             TCachedVertexRanges=TpvDynamicArray<TCachedVertexRange>;
+            TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -2500,13 +2504,8 @@ type EpvScene3D=class(Exception);
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightMetaInfoStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;}
-       fMaterialBufferData:TMaterialBufferData;
        fInFlightFrameMaterialBufferData:array[0..MaxInFlightFrames-1] of TMaterialBufferData;
-       fInFlightFrameMaterialBufferDataOffsets:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       fInFlightFrameMaterialBufferDataSizes:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       fInFlightFrameMaterialBufferDataMinMaterialID:array[0..MaxInFlightFrames-1] of TpvUInt32;
-       fInFlightFrameMaterialBufferDataGeneration:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       fInFlightFrameMaterialBufferDataUploadedGeneration:array[0..MaxInFlightFrames-1] of TpvUInt64;
+       fInFlightFrameMaterialBufferDataGenerations:TInFlightFrameMaterialBufferDataGenerations;
 //     fVulkanMaterialDataStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -2528,18 +2527,17 @@ type EpvScene3D=class(Exception);
        fTextureHashMap:TTextureHashMap;
        fMaterialListLock:TPasMPCriticalSection;
        fMaterials:TMaterials;
+       fMaxMaterialID:TPasMPInt32;
        fMaterialIDManager:TIDManager;
        fMaterialIDHashMap:TMaterialIDHashMap;
-       fMaterialIDDirtyMap:TMaterialIDDirtyMap;
+       fMaterialIDDirtyMaps:TMaterialIDDirtyMaps;
+       fMaterialIDToUpdateDirtyMaps:TMaterialIDDirtyMaps;
        fMaterialIDMap:TMaterialIDMap;
        fMaterialHashMap:TMaterialHashMap;
        fEmptyMaterial:TpvScene3D.TMaterial;
-       fMaterialDataMaterialGenerations:TMaterialGenerations;
        fMaterialDataProcessedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       fMaterialDataProcessedMinChangedID:array[0..MaxInFlightFrames-1] of TpvUInt32;
-       fMaterialDataProcessedMaxChangedID:array[0..MaxInFlightFrames-1] of TpvUInt32;
+       fMaterialDataUpdatedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fMaterialDataGeneration:TpvUInt64;
-       fMaterialDataProcessedGeneration:TpvUInt64;
        fMaterialDataGenerationLock:TPasMPSpinLock;
        fLights:TInFlightFrameLights;
        fCountLights:TCountInFlightFrameLights;
@@ -5589,6 +5587,7 @@ begin
 end;
 
 procedure TpvScene3D.TMaterial.AfterConstruction;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AfterConstruction;
  try
@@ -5599,7 +5598,12 @@ begin
    fSceneInstance.fMaterialIDHashMap.Add(fID,self);
    if (fID>0) and (fID<$10000) then begin
     fSceneInstance.fMaterialIDMap[fID]:=self;
-    TPasMPInterlocked.BitwiseOr(fSceneInstance.fMaterialIDDirtyMap[fID shr 5],TPasMPUInt32(1) shl (fID and 31));
+    for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+     TPasMPInterlocked.BitwiseOr(fSceneInstance.fMaterialIDDirtyMaps[InFlightFrameIndex,fID shr 5],TPasMPUInt32(1) shl (fID and 31));
+    end;
+   end;
+   if fSceneInstance.fMaxMaterialID<fID then begin
+    fSceneInstance.fMaxMaterialID:=fID;
    end;
   finally
    fSceneInstance.fMaterialListLock.Release;
@@ -5616,6 +5620,7 @@ begin
 end;
 
 procedure TpvScene3D.TMaterial.Remove;
+var InFlightFrameIndex:TpvSizeInt;
 begin
  if fAdded then begin
   try
@@ -5628,7 +5633,9 @@ begin
     if fID>0 then begin
      if fID<$10000 then begin
       fSceneInstance.fMaterialIDMap[fID]:=nil;
-      TPasMPInterlocked.BitwiseOr(fSceneInstance.fMaterialIDDirtyMap[fID shr 5],TPasMPUInt32(1) shl (fID and 31));
+      for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+       TPasMPInterlocked.BitwiseOr(fSceneInstance.fMaterialIDDirtyMaps[InFlightFrameIndex,fID shr 5],TPasMPUInt32(1) shl (fID and 31));
+      end;
      end;
      if fSceneInstance.fMaterialIDHashMap[fID]=self then begin
       fSceneInstance.fMaterialIDHashMap.Delete(fID);
@@ -6496,6 +6503,7 @@ begin
 end;
 
 procedure TpvScene3D.TMaterial.FillShaderData;
+var InFlightFrameIndex:TpvSizeInt;
 begin
 
  fShaderData:=DefaultShaderData;
@@ -6708,10 +6716,12 @@ begin
  TPasMPInterlocked.Increment(fGeneration);
 
  if assigned(fSceneInstance) and (fID>0) and (fID<$10000) then begin
-  TPasMPInterlocked.BitwiseOr(fSceneInstance.fMaterialIDDirtyMap[fID shr 5],TPasMPUInt32(1) shl (fID and 31));
+  for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+   TPasMPInterlocked.BitwiseOr(fSceneInstance.fMaterialIDDirtyMaps[InFlightFrameIndex,fID shr 5],TPasMPUInt32(1) shl (fID and 31));
+  end;
  end;
 
- end;
+end;
 
 { TpvScene3D.TLight }
 
@@ -17156,17 +17166,21 @@ begin
  fMaterials:=TMaterials.Create;
  fMaterials.OwnsObjects:=false;
 
+ fMaxMaterialID:=2;
+
  fMaterialIDManager:=TIDManager.Create;
 
  fMaterialIDHashMap:=TMaterialIDHashMap.Create(nil);
 
- FillChar(fMaterialIDDirtyMap,SizeOf(TMaterialIDDirtyMap),#0);
+ FillChar(fMaterialIDDirtyMaps,SizeOf(TMaterialIDDirtyMaps),#0);
+
+ FillChar(fMaterialIDToUpdateDirtyMaps,SizeOf(TMaterialIDDirtyMaps),#0);
 
  FillChar(fMaterialIDMap,SizeOf(TMaterialIDMap),#0);
 
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
- FillChar(fMaterialDataMaterialGenerations,SizeOf(fMaterialDataMaterialGenerations),#$ff);
+ FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
 
  fDefaultSampler:=TSampler.Create(ResourceManager,self);
  fDefaultSampler.AssignFromDefault;
@@ -17662,13 +17676,11 @@ begin
    inc(fMaterialDataGeneration);
    if fMaterialDataGeneration=0 then begin
     fMaterialDataGeneration:=1;
-    fMaterialDataProcessedGeneration:=0;
     for Index:=0 to fCountInFlightFrames-1 do begin
      fMaterialDataProcessedGenerations[Index]:=0;
-     fMaterialDataProcessedMinChangedID[Index]:=0;
-     fMaterialDataProcessedMaxChangedID[Index]:=$ffff;
+     fMaterialDataUpdatedGenerations[Index]:=0;
     end;
-    FillChar(fMaterialDataMaterialGenerations,SizeOf(fMaterialDataMaterialGenerations),#$ff);
+    FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
    end;
   finally
    fMaterialDataGenerationLock.Release;
@@ -17955,36 +17967,30 @@ begin
          end;
         end;
 
-        for Index:=0 to length(fMaterialBufferData)-1 do begin
-         fMaterialBufferData[Index]:=TMaterial.DefaultShaderData;
+        for Index:=0 to High(TMaterialBufferData) do begin
+         fInFlightFrameMaterialBufferData[0,Index]:=TMaterial.DefaultShaderData;
         end;
 
-        FillChar(fMaterialDataMaterialGenerations,SizeOf(fMaterialDataMaterialGenerations),#$ff);
+        FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
 
         MaxMaterialID:=0;
 
         fMaterialDataGeneration:=1;
 
-        fMaterialDataProcessedGeneration:=0;
-
         for Index:=0 to fMaterials.Count-1 do begin
          Material:=fMaterials[Index];
-         if (Material.ID>0) and (Material.ID<length(fMaterialBufferData)) then begin
-          fMaterialBufferData[Material.ID]:=Material.fShaderData;
-          fMaterialDataMaterialGenerations[Material.ID]:=Material.fGeneration;
+         if (Material.ID>0) and (Material.ID<=High(TMaterialBufferData)) then begin
+          fInFlightFrameMaterialBufferData[0,Material.ID]:=Material.fShaderData;
+          fInFlightFrameMaterialBufferDataGenerations[0,Material.ID]:=Material.fGeneration;
           if MaxMaterialID<Material.ID then begin
            MaxMaterialID:=Material.ID;
           end;
          end;
         end;
 
-        for Index:=0 to fCountInFlightFrames-1 do begin
-         fInFlightFrameMaterialBufferData[Index]:=fMaterialBufferData;
-         fInFlightFrameMaterialBufferDataOffsets[Index]:=0;
-         fInFlightFrameMaterialBufferDataSizes[Index]:=0;
-         fInFlightFrameMaterialBufferDataMinMaterialID[Index]:=0;
-         fInFlightFrameMaterialBufferDataGeneration[Index]:=0;
-         fInFlightFrameMaterialBufferDataUploadedGeneration[Index]:=0;
+        for Index:=1 to fCountInFlightFrames-1 do begin
+         fInFlightFrameMaterialBufferData[Index]:=fInFlightFrameMaterialBufferData[0];
+         fInFlightFrameMaterialBufferDataGenerations[Index]:=fInFlightFrameMaterialBufferDataGenerations[0];
         end;
 
    //   MaterialBufferDataSize:=Min(RoundUpToPowerOfTwo((MaxMaterialID+1)*SizeOf(TMaterial.TShaderData)),SizeOf(TMaterialBufferData));
@@ -18085,7 +18091,7 @@ begin
                 fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                    UniversalCommandBuffer,
                                                    UniversalFence,
-                                                   fMaterialBufferData,
+                                                   fInFlightFrameMaterialBufferData[Index],
                                                    fVulkanMaterialDataBuffers[Index],
                                                    0,
                                                    MaterialBufferDataSize);
@@ -18122,7 +18128,7 @@ begin
                 fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                    UniversalCommandBuffer,
                                                    UniversalFence,
-                                                   fMaterialBufferData,
+                                                   fInFlightFrameMaterialBufferData[Index],
                                                    fVulkanMaterialDataBuffers[Index],
                                                    0,
                                                    MaterialBufferDataSize);
@@ -18280,8 +18286,7 @@ begin
 
         for Index:=0 to fCountInFlightFrames-1 do begin
          fMaterialDataProcessedGenerations[Index]:=0;
-         fMaterialDataProcessedMaxChangedID[Index]:=$ffff;
-         fMaterialDataProcessedMinChangedID[Index]:=0;
+         fMaterialDataUpdatedGenerations[Index]:=0;
         end;
 
         fMaterialDataGeneration:=1;
@@ -18479,8 +18484,7 @@ begin
 end;
 
 procedure TpvScene3D.PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
-var Index,ItemID,BaseItemID,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
-    MinMaterialID,MaxMaterialID:TpvUInt32;
+var Index,ItemID,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     OldGeneration,NewGeneration:TpvUInt64;
     DirtyBits:TPasMPUInt32;
     LightBuffer:TpvScene3D.TLightBuffer;
@@ -18490,6 +18494,7 @@ var Index,ItemID,BaseItemID,MaterialBufferDataOffset,MaterialBufferDataSize:TpvS
     GroupInstance:TpvScene3D.TGroup.TInstance;
     First:boolean;
     Material:TpvScene3D.TMaterial;
+    MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -18531,70 +18536,37 @@ begin
 
   end;
 
-  if (fMaterialDataProcessedGeneration<>fMaterialDataGeneration) or
-     (fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataProcessedGeneration) then begin
+  if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
 
    fMaterialDataGenerationLock.Acquire;
    try
 
-    if fMaterialDataProcessedGeneration<>fMaterialDataGeneration then begin
-     fMaterialDataProcessedGeneration:=fMaterialDataGeneration;
-     MinMaterialID:=$ffff;
-     MaxMaterialID:=0;
-     BaseItemID:=0;
-     for Index:=0 to length(fMaterialIDDirtyMap)-1 do begin
-      DirtyBits:=TPasMPInterlocked.Exchange(fMaterialIDDirtyMap[Index],0);
+    if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
+
+     fMaterialDataProcessedGenerations[aInFlightFrameIndex]:=fMaterialDataGeneration;
+
+     MaterialIDDirtyMap:=@fMaterialIDDirtyMaps[aInFlightFrameIndex];
+     for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
+      DirtyBits:=TPasMPInterlocked.Exchange(MaterialIDDirtyMap^[Index],0);
+      if DirtyBits<>0 then begin
+       TPasMPInterlocked.BitwiseOr(fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex,Index],DirtyBits);
+      end;
       while DirtyBits<>0 do begin
-       ItemID:=BaseItemID+TPasMPMath.FindFirstSetBit32(DirtyBits);
+       ItemID:=(Index shl 5) or TPasMPMath.FindFirstSetBit32(DirtyBits);
        if (ItemID>=0) and (ItemID<length(fMaterialIDMap)) then begin
         Material:=fMaterialIDMap[ItemID];
         if assigned(Material) then begin
-         fMaterialBufferData[ItemID]:=Material.fShaderData;
-         fMaterialDataMaterialGenerations[ItemID]:=Material.fGeneration;
+         fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID]:=Material.fShaderData;
+         fInFlightFrameMaterialBufferDataGenerations[aInFlightFrameIndex,ItemID]:=Material.fGeneration;
         end else begin
-         fMaterialBufferData[ItemID]:=TMaterial.DefaultShaderData;
-         fMaterialDataMaterialGenerations[ItemID]:=High(TpvUInt64);
-        end;
-        if MinMaterialID>ItemID then begin
-         MinMaterialID:=ItemID;
-        end;
-        if MaxMaterialID<ItemID then begin
-         MaxMaterialID:=ItemID;
+         fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID]:=TMaterial.DefaultShaderData;
+         fInFlightFrameMaterialBufferDataGenerations[aInFlightFrameIndex,ItemID]:=High(TpvUInt64);
         end;
        end;
        DirtyBits:=DirtyBits and (DirtyBits-1);
       end;
-      inc(BaseItemID,32);
      end;
-     if MinMaterialID<=MaxMaterialID then begin
-      for Index:=0 to CountInFlightFrames-1 do begin
-       if fMaterialDataProcessedMinChangedID[Index]>MinMaterialID then begin
-        fMaterialDataProcessedMinChangedID[Index]:=MinMaterialID;
-       end;
-       if fMaterialDataProcessedMaxChangedID[Index]<MaxMaterialID then begin
-        fMaterialDataProcessedMaxChangedID[Index]:=MaxMaterialID;
-       end;
-      end;
-     end;
-    end;
 
-    if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataProcessedGeneration then begin
-     fMaterialDataProcessedGenerations[aInFlightFrameIndex]:=fMaterialDataProcessedGeneration;
-     MinMaterialID:=fMaterialDataProcessedMinChangedID[aInFlightFrameIndex];
-     MaxMaterialID:=fMaterialDataProcessedMaxChangedID[aInFlightFrameIndex];
-     if MinMaterialID<=MaxMaterialID then begin
-      fMaterialDataProcessedMinChangedID[aInFlightFrameIndex]:=$ffff;
-      fMaterialDataProcessedMaxChangedID[aInFlightFrameIndex]:=$0000;
-      MaterialBufferDataOffset:=SizeOf(TMaterial.TShaderData)*MinMaterialID;
-      MaterialBufferDataSize:=SizeOf(TMaterial.TShaderData)*(MaxMaterialID+1);
-      fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]:=MaterialBufferDataOffset;
-      fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]:=MaterialBufferDataSize;
-      fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]:=MinMaterialID;
-      inc(fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex]);
-      Move(fMaterialBufferData[fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-           fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-           MaterialBufferDataSize-MaterialBufferDataOffset);
-     end;
     end;
 
    finally
@@ -18634,6 +18606,12 @@ end;
 
 procedure TpvScene3D.ExecuteGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
+    Index,ItemID:TpvSizeInt;
+    MaterialIDDirtyMap:PMaterialIDDirtyMap;
+    DirtyBits,MinMaterialID,MaxMaterialID:TpvUInt32;
+    MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeUInt;
+    InFlightFrameMaterialBufferVulkanGPUData:PMaterialBufferData;
+    VulkanMaterialDataBuffer:TpvVulkanBuffer;
 begin
 
  if assigned(fVulkanDevice) then begin
@@ -18666,79 +18644,126 @@ begin
    end;
   end;
 
-  if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]<>fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex] then begin
+  if fMaterialDataUpdatedGenerations[aInFlightFrameIndex]<>fMaterialDataProcessedGenerations[aInFlightFrameIndex] then begin
 
    fMaterialDataGenerationLock.Acquire;
    try
 
-    if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]<>fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex] then begin
+    if fMaterialDataUpdatedGenerations[aInFlightFrameIndex]<>fMaterialDataProcessedGenerations[aInFlightFrameIndex] then begin
 
-     if fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]<fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex] then begin
+     case fBufferStreamingMode of
 
-      case fBufferStreamingMode of
+      TBufferStreamingMode.Direct:begin
 
-       TBufferStreamingMode.Direct:begin
+       if fMaterialDataUpdatedGenerations[aInFlightFrameIndex]=0 then begin
 
-        if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]=0 then begin
-
-         fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,0],
-                                                                    0,
-                                                                    fVulkanMaterialDataBuffers[aInFlightFrameIndex].Size);
-
-        end else begin
-
-         fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-                                                                    fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
-                                                                    fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
-
+        MaterialIDDirtyMap:=@fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex];
+        for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
+         TPasMPInterlocked.Write(MaterialIDDirtyMap^[Index],0);
         end;
 
-       end;
+        fVulkanMaterialDataBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,0],
+                                                                   0,
+                                                                   fVulkanMaterialDataBuffers[aInFlightFrameIndex].Size);
 
-       TBufferStreamingMode.Staging:begin
+       end else begin
 
-        if fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]=0 then begin
+        VulkanMaterialDataBuffer:=fVulkanMaterialDataBuffers[aInFlightFrameIndex];
 
-         fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                            fVulkanStagingCommandBuffer,
-                                            fVulkanStagingFence,
-                                            fInFlightFrameMaterialBufferData[aInFlightFrameIndex,0],
-                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex],
-                                            0,
-                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex].Size);
-
+        if (VulkanMaterialDataBuffer.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
+         InFlightFrameMaterialBufferVulkanGPUData:=VulkanMaterialDataBuffer.Memory.MapMemory(0,VulkanMaterialDataBuffer.Size);
+         try
+          if assigned(InFlightFrameMaterialBufferVulkanGPUData) then begin
+           MaterialIDDirtyMap:=@fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex];
+           for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
+            DirtyBits:=TPasMPInterlocked.Exchange(MaterialIDDirtyMap^[Index],0);
+            while DirtyBits<>0 do begin
+             ItemID:=(Index shl 5) or TPasMPMath.FindFirstSetBit32(DirtyBits);
+             if (ItemID>=0) and (ItemID<length(fMaterialIDMap)) then begin
+              InFlightFrameMaterialBufferVulkanGPUData^[ItemID]:=fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID];
+             end;
+             DirtyBits:=DirtyBits and (DirtyBits-1);
+            end;
+           end;
+           VulkanMaterialDataBuffer.Flush(InFlightFrameMaterialBufferVulkanGPUData,0,VulkanMaterialDataBuffer.Size,false);
+          end else begin
+           raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+          end;
+         finally
+          VulkanMaterialDataBuffer.Memory.UnmapMemory;
+         end;
         end else begin
-
-         fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                            fVulkanStagingCommandBuffer,
-                                            fVulkanStagingFence,
-                                            fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex],
-                                            fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
-                                            fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
-
+         raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
         end;
 
- {      fVulkanMaterialDataStagingBuffers[aInFlightFrameIndex].UpdateData(fInFlightFrameMaterialBufferData[aInFlightFrameIndex,fInFlightFrameMaterialBufferDataMinMaterialID[aInFlightFrameIndex]],
-                                                                          fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex],
-                                                                          fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]-fInFlightFrameMaterialBufferDataOffsets[aInFlightFrameIndex]);
-
-        fVulkanMaterialDataBuffers[aInFlightFrameIndex].CopyFrom(fVulkanBufferCopyBatchItemArrays[aInFlightFrameIndex],
-                                                                 fVulkanMaterialDataStagingBuffers[aInFlightFrameIndex],
-                                                                 0,
-                                                                 0,
-                                                                 fInFlightFrameMaterialBufferDataSizes[aInFlightFrameIndex]);}
-       end;
-
-       else begin
-        Assert(false);
        end;
 
       end;
 
+      TBufferStreamingMode.Staging:begin
+
+       if fMaterialDataUpdatedGenerations[aInFlightFrameIndex]=0 then begin
+
+        MaterialIDDirtyMap:=@fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex];
+        for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
+         TPasMPInterlocked.Write(MaterialIDDirtyMap^[Index],0);
+        end;
+
+        fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                           fVulkanStagingCommandBuffer,
+                                           fVulkanStagingFence,
+                                           fInFlightFrameMaterialBufferData[aInFlightFrameIndex,0],
+                                           fVulkanMaterialDataBuffers[aInFlightFrameIndex],
+                                           0,
+                                           fVulkanMaterialDataBuffers[aInFlightFrameIndex].Size);
+
+       end else begin
+
+        MaterialIDDirtyMap:=@fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex];
+        MinMaterialID:=$ffff;
+        MaxMaterialID:=$0000;
+        for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
+         DirtyBits:=TPasMPInterlocked.Exchange(MaterialIDDirtyMap^[Index],0);
+         while DirtyBits<>0 do begin
+          ItemID:=(Index shl 5) or TPasMPMath.FindFirstSetBit32(DirtyBits);
+          if (ItemID>=0) and (ItemID<length(fMaterialIDMap)) then begin
+           if MinMaterialID>ItemID then begin
+            MinMaterialID:=ItemID;
+           end;
+           if MaxMaterialID<ItemID then begin
+            MaxMaterialID:=ItemID;
+           end;
+          end;
+          DirtyBits:=DirtyBits and (DirtyBits-1);
+         end;
+        end;
+
+        MaterialBufferDataOffset:=SizeOf(TMaterial.TShaderData)*MinMaterialID;
+        MaterialBufferDataSize:=SizeOf(TMaterial.TShaderData)*(MaxMaterialID+1);
+
+        if MaterialBufferDataOffset<MaterialBufferDataSize then begin
+
+         fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
+                                            fVulkanStagingCommandBuffer,
+                                            fVulkanStagingFence,
+                                            fInFlightFrameMaterialBufferData[aInFlightFrameIndex,MinMaterialID],
+                                            fVulkanMaterialDataBuffers[aInFlightFrameIndex],
+                                            MaterialBufferDataOffset,
+                                            MaterialBufferDataSize-MaterialBufferDataOffset);
+
+        end;
+
+       end;
+
+      end;
+
+      else begin
+       Assert(false);
+      end;
+
      end;
 
-     fInFlightFrameMaterialBufferDataUploadedGeneration[aInFlightFrameIndex]:=fInFlightFrameMaterialBufferDataGeneration[aInFlightFrameIndex];
+     fMaterialDataUpdatedGenerations[aInFlightFrameIndex]:=fMaterialDataProcessedGenerations[aInFlightFrameIndex];
 
     end;
 
