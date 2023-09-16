@@ -16441,7 +16441,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
 begin
- if fModelMatrix<>aModelMatrix then begin
+ if not CompareMem(@fModelMatrix,@aModelMatrix,SizeOf(TpvMatrix4x4)) then begin
   fModelMatrix:=aModelMatrix;
   SetDirty;
  end;
