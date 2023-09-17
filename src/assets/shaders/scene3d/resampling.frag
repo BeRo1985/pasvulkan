@@ -10,6 +10,9 @@ layout(location = 0) out vec4 outFragColor;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
+float posInfinity = uintBitsToFloat(0x7f800000u);
+float negInfinity = uintBitsToFloat(0xff800000u);
+
 #define DYNAMIC_SIZED_LANCZOS 0
 #define DYNAMIC_SIZED_LANCZOS_RADIUS 5
 
@@ -30,14 +33,19 @@ vec4 lanczos(sampler2DArray tex, vec2 texCoord, int r) {
   texCoord -= vec2(0.5) / texSize;
   vec2 center = floor(texCoord * texSize) / texSize;
   vec4 total = vec4(0);    
+  vec4 minValue = vec4(posInfinity); // infinity
+  vec4 maxValue = vec4(negInfinity); // -infinity
   for (int x = -r; x <= r; x++) {
     for (int y = -r; y <= r; y++) {
       vec2 uv = (vec2(x,y) / texSize) + center;
-      total += texelFetch(tex, ivec3(uv * texSize, float(gl_ViewIndex)), 0) * 
-                lanczosWeight(clamp((uv - texCoord) * texSize, vec2(-r), vec2(r)), float(r));
+      vec4 c = texelFetch(tex, ivec3(uv * texSize, float(gl_ViewIndex)), 0);
+      minValue = min(minValue, c);
+      maxValue = max(maxValue, c);
+      total += c * 
+               lanczosWeight(clamp((uv - texCoord) * texSize, vec2(-r), vec2(r)), float(r));
     }
-  }
-  return total;
+  }  
+  return clamp(total, minValue, maxValue); // Anti-ringing clamp
 }
 #endif
 
@@ -66,27 +74,39 @@ void main(){
   coefsY = 2.0 * ((sin(coefsY) * sin(coefsY*0.5)) / (coefsY * coefsY));
   coefsY /= dot(coefsY, vec4(1.0));
 
-  vec4 texel0 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 0.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 1.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,    
-                     textureLod(uTexture, vec3(xy + (vec2( 2.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw) * coefsX;
+  mat4 colors0 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 0.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 1.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,    
+                      textureLod(uTexture, vec3(xy + (vec2( 2.0, -1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw);
+  vec4 texel0 = colors0 * coefsX;
+  vec4 minValue = min(min(min(colors0[0], colors0[1]), colors0[2]), colors0[3]);
+  vec4 maxValue = max(max(max(colors0[0], colors0[1]), colors0[2]), colors0[3]);
   
-  vec4 texel1 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 0.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 1.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 2.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw) * coefsX;
+  mat4 colors1 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 0.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 1.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 2.0,  0.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw);
+  vec4 texel1 = colors1 * coefsX;
+  minValue = min(min(minValue, min(min(colors1[0], colors1[1]), colors1[2])), colors1[3]);
+  maxValue = max(max(maxValue, max(max(colors1[0], colors1[1]), colors1[2])), colors1[3]);
   
-  vec4 texel2 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 0.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 1.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 2.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw) * coefsX;
+  mat4 colors2 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 0.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 1.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 2.0,  1.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw);
+  vec4 texel2 = colors2 * coefsX;
+  minValue = min(min(minValue, min(min(colors2[0], colors2[1]), colors2[2])), colors2[3]);
+  maxValue = max(max(maxValue, max(max(colors2[0], colors2[1]), colors2[2])), colors2[3]);
   
-  vec4 texel3 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 0.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 1.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
-                     textureLod(uTexture, vec3(xy + (vec2( 2.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw) * coefsX;                                                           
+  mat4 colors3 = mat4(textureLod(uTexture, vec3(xy + (vec2(-1.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 0.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 1.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw,
+                      textureLod(uTexture, vec3(xy + (vec2( 2.0,  2.0) / texSize), float(gl_ViewIndex)), 0.0).xyzw);
+  vec4 texel3 = colors3 * coefsX;                
+  minValue = min(min(minValue, min(min(colors3[0], colors3[1]), colors3[2])), colors3[3]);
+  maxValue = max(max(maxValue, max(max(colors3[0], colors3[1]), colors3[2])), colors3[3]);                                           
   
-  outFragColor = mat4(texel0, texel1, texel2, texel3)*coefsY;
+  outFragColor = clamp(mat4(texel0, texel1, texel2, texel3) * coefsY, minValue, maxValue); // Anti-ringing clamp
 #endif
 
 }
