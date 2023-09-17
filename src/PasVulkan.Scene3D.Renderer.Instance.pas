@@ -384,12 +384,20 @@ type { TpvScene3DRendererInstance }
        fImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps;
       private
        fPasses:TObject;
+      private
        fLastOutputResource:TpvFrameGraph.TPass.TUsedImageResource;
+      private
        fCascadedShadowMapBuilder:TCascadedShadowMapBuilder;
+      private
        fHUDSize:TpvFrameGraph.TImageSize;
        fHUDRenderPassClass:THUDRenderPassClass;
        fHUDRenderPassParent:TObject;
-       fSizeFactor:TpvScalar;
+      private
+       fSizeFactor:TpvDouble;
+      private
+       function GetPixelAmountFactor:TpvDouble;
+       procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
+      private
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
        procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
@@ -505,7 +513,8 @@ type { TpvScene3DRendererInstance }
        property FOV:TpvFloat read fFOV write fFOV;
        property ZNear:TpvFloat read fZNear write fZNear;
        property ZFar:TpvFloat read fZFar write fZFar;
-       property SizeFactor:TpvScalar read fSizeFactor write fSizeFactor;
+       property PixelAmountFactor:TpvDouble read GetPixelAmountFactor write SetPixelAmountFactor;
+       property SizeFactor:TpvDouble read fSizeFactor write fSizeFactor;
        property UseDebugBlit:boolean read fUseDebugBlit write fUseDebugBlit;
      end;
 
@@ -1165,6 +1174,16 @@ begin
  FreeAndNil(fCameraPreset);
 
  inherited Destroy;
+end;
+
+function TpvScene3DRendererInstance.GetPixelAmountFactor:TpvDouble;
+begin
+ result:=sqr(fSizeFactor);
+end;
+
+procedure TpvScene3DRendererInstance.SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
+begin
+ fSizeFactor:=sqrt(aPixelAmountFactor);
 end;
 
 procedure TpvScene3DRendererInstance.Prepare;
