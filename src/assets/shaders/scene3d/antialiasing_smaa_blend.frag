@@ -17,6 +17,8 @@ layout(push_constant) uniform PushConstants {
   vec4 metrics;  //
 } pushConstants;
 
+#include "antialiasing_srgb.glsl"
+
 vec4 SMAA_RT_METRICS = pushConstants.metrics;
 
 void SMAAMovc(bvec2 cond, inout vec2 variable, vec2 value) {
@@ -59,5 +61,6 @@ void main() {
     outColor = (blendingWeight.x * textureLod(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0)) +  // LinearSampler
                (blendingWeight.y * textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0));   // LinearSampler
   }
-  outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);
+  outFragColor = outColor;
+  //outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);
 }

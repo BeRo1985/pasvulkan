@@ -134,11 +134,21 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceColor:=AddImageInput('resourcetype_color_tonemapping',
+ Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
+                                       fInstance.SizeFactor,
+                                       fInstance.SizeFactor,
+                                       1.0,
+                                       fInstance.CountSurfaceViews);
+
+ fResourceColor:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
+                               fInstance.LastOutputResource.Resource.Name,
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                               []);
+{fResourceColor:=AddImageInput('resourcetype_color_tonemapping',
                                'resource_tonemapping_color',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                               [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                              );
+                               []
+                              );}
 
  fResourceSurface:=AddImageOutput('resourcetype_color_antialiasing',
                                   'resource_antialiasing_color',

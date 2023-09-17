@@ -14,6 +14,8 @@ layout(location = 0) out vec2 outFragOutput;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uColorTexture;
 
+#include "antialiasing_srgb.glsl"
+
 void main() {
   const float SMAA_THRESHOLD = 0.1;
   const float SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR = 2.0;

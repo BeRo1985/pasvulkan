@@ -3,12 +3,15 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 outFragColor;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
+
+#include "antialiasing_srgb.glsl"
 
 void main(){
   vec2 fragCoordInvScale = vec2(1.0) / vec2(textureSize(uTexture, 0).xy);
@@ -37,5 +40,6 @@ void main(){
        rgbB = (rgbA * (1.0 / 2.0)) + ((1.0 / 4.0) * (textureLod(uTexture, vec3(p.xy + (dir * ((0.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw + textureLod(uTexture, vec3(p.xy + (dir * ((3.0 / 3.0) - 0.5)), float(gl_ViewIndex)), 0.0).xyzw));
   float lumaB = dot(rgbB.xyz, luma);
   vec4 outColor = ((lumaB < lumaMin) || (lumaB > lumaMax)) ? rgbA : rgbB;
-  outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);
+  outFragColor = outColor;
+//outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);
 }
