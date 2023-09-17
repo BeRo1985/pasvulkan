@@ -42,7 +42,7 @@ void main() {
 
   // Is there any blending weight with a value greater than 0.0?
   if (dot(a, vec4(1.0, 1.0, 1.0, 1.0)) <= 1e-5) {
-    outColor = textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0);  // LinearSampler
+    outColor = SRGBawareTexture(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0);  // LinearSampler
   } else {
     bool h = max(a.x, a.z) > max(a.y, a.w);  // max(horizontal) > max(vertical)
 
@@ -58,8 +58,8 @@ void main() {
 
     // We exploit bilinear filtering to mix current pixel with the chosen
     // neighbor:
-    outColor = (blendingWeight.x * textureLod(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0)) +  // LinearSampler
-               (blendingWeight.y * textureLod(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0));   // LinearSampler
+    outColor = (blendingWeight.x * SRGBawareTexture(uColorTexture, vec3(blendingCoord.xy, float(gl_ViewIndex)), 0)) +  // LinearSampler
+               (blendingWeight.y * SRGBawareTexture(uColorTexture, vec3(blendingCoord.zw, float(gl_ViewIndex)), 0));   // LinearSampler
   }
   outFragColor = outColor;
   //outFragColor = vec4(mix(pow((outColor.xyz + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), outColor.xyz / vec3(12.92), lessThan(outColor.xyz, vec3(4.045e-2))), outColor.w);
