@@ -2059,7 +2059,7 @@ begin
  fScaledWidth:=Max(1,round(fSizeFactor*fWidth));
  fScaledHeight:=Max(1,round(fSizeFactor*fHeight));
 
- fCameraPreset.MaxCoC:=((fCameraPreset.BlurKernelSize*4.0)+6.0)/fHeight;
+ fCameraPreset.MaxCoC:=((fCameraPreset.BlurKernelSize*4.0)+6.0)/fScaledHeight;
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
