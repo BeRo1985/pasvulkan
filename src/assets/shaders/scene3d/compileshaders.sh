@@ -173,6 +173,8 @@ compileshaderarguments=(
 
   '-V particle.vert -o particle_vert.spv'
 
+  '-V resampling.frag -o resampling_frag.spv'
+
 )
 
 #############################################
