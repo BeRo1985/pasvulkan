@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\tracks\0.glb&quot; --force-use-validation-layers --antialiasing-mode smaa"/>
+        <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\muscle_car.glb&quot; --force-use-validation-layers --antialiasing-mode msaa"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\tracks\0.glb&quot; --force-use-validation-layers --antialiasing-mode smaa"/>
+            <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\muscle_car.glb&quot; --force-use-validation-layers --antialiasing-mode msaa"/>
           </local>
         </Mode0>
       </Modes>

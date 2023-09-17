@@ -800,8 +800,8 @@ begin
  end;
 
  fSkyBox.AllocateResources(fVulkanRenderPass,
-                           fInstance.Width,
-                           fInstance.Height,
+                           fInstance.ScaledWidth,
+                           fInstance.ScaledHeight,
                            fInstance.Renderer.SurfaceSampleCountFlagBits);
 
 end;
