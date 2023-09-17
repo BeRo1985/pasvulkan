@@ -10,7 +10,7 @@ layout(location = 0) out vec4 outFragColor;
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
-#define DYNAMIC_SIZED_LANCZOS 1
+#define DYNAMIC_SIZED_LANCZOS 0
 #define DYNAMIC_SIZED_LANCZOS_RADIUS 5
 
 #if DYNAMIC_SIZED_LANCZOS
