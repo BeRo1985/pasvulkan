@@ -1986,14 +1986,14 @@ begin
 
  case ImageResourceType.fImageSize.Kind of
   TpvFrameGraph.TImageSize.TKind.Absolute:begin
-   fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
-   fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
-   fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
+   fExtent.width:=Max(1,round(ImageResourceType.fImageSize.Size.x));
+   fExtent.height:=Max(1,round(ImageResourceType.fImageSize.Size.y));
+   fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
   end;
   TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
-   fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth));
-   fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight));
-   fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
+   fExtent.width:=Max(1,round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth));
+   fExtent.height:=Max(1,round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight));
+   fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
   end;
   else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
   end;
@@ -4011,21 +4011,21 @@ begin
   RenderPass:=Subpass.fRenderPass;
   case RenderPass.fSize.Kind of
    TpvFrameGraph.TImageSize.TKind.Absolute:begin
-    Width:=Max(1,trunc(RenderPass.fSize.Size.x));
-    Height:=Max(1,trunc(RenderPass.fSize.Size.y));
+    Width:=Max(1,round(RenderPass.fSize.Size.x));
+    Height:=Max(1,round(RenderPass.fSize.Size.y));
     if fMultiview then begin
      Layers:=1;
     end else begin
-     Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+     Layers:=Max(1,round(RenderPass.fSize.Size.w));
     end;
    end;
    TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
-    Width:=Max(1,trunc(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
-    Height:=Max(1,trunc(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
+    Width:=Max(1,round(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
+    Height:=Max(1,round(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
     if fMultiview then begin
      Layers:=1;
     end else begin
-     Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+     Layers:=Max(1,round(RenderPass.fSize.Size.w));
     end;
    end;
    else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
@@ -5483,11 +5483,11 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourcePhysicalImageData.fRequestedFormat:=ImageResourceType.fFormat;
      ResourcePhysicalImageData.fFormat:=ImageResourceType.fFormat;
      ResourcePhysicalImageData.fAdditionalFormat:=ImageResourceType.fAdditionalFormat;
-     ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
-     ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
-     ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
+     ResourcePhysicalImageData.fExtent.width:=Max(1,round(ImageResourceType.fImageSize.Size.x));
+     ResourcePhysicalImageData.fExtent.height:=Max(1,round(ImageResourceType.fImageSize.Size.y));
+     ResourcePhysicalImageData.fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
      ResourcePhysicalImageData.fCountMipMaps:=1;
-     ResourcePhysicalImageData.fCountArrayLayers:=trunc(ImageResourceType.fImageSize.Size.w);
+     ResourcePhysicalImageData.fCountArrayLayers:=round(ImageResourceType.fImageSize.Size.w);
      ResourcePhysicalImageData.fTextureArray:=ResourcePhysicalImageData.fCountArrayLayers>0;
      ResourcePhysicalImageData.fCountArrayLayers:=Max(1,ResourcePhysicalImageData.fCountArrayLayers);
      ResourcePhysicalImageData.fSamples:=ImageResourceType.fSamples;

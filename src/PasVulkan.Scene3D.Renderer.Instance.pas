@@ -299,6 +299,8 @@ type { TpvScene3DRendererInstance }
        fHeight:TpvInt32;
        fHUDWidth:TpvInt32;
        fHUDHeight:TpvInt32;
+       fScaledWidth:TpvInt32;
+       fScaledHeight:TpvInt32;
        fFrustumClusterGridSizeX:TpvInt32;
        fFrustumClusterGridSizeY:TpvInt32;
        fFrustumClusterGridSizeZ:TpvInt32;
@@ -494,6 +496,8 @@ type { TpvScene3DRendererInstance }
        property Height:TpvInt32 read fHeight write fHeight;
        property HUDWidth:TpvInt32 read fHUDWidth write fHUDWidth;
        property HUDHeight:TpvInt32 read fHUDHeight write fHUDHeight;
+       property ScaledWidth:TpvInt32 read fScaledWidth;
+       property ScaledHeight:TpvInt32 read fScaledHeight;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
        property SurfaceMultiviewMask:TpvUInt32 read fSurfaceMultiviewMask write fSurfaceMultiviewMask;
        property FOV:TpvFloat read fFOV write fFOV;
@@ -2051,6 +2055,9 @@ begin
   fHUDHeight:=fHeight;
 
  end;
+
+ fScaledWidth:=Max(1,round(fSizeFactor*fWidth));
+ fScaledHeight:=Max(1,round(fSizeFactor*fHeight));
 
  fCameraPreset.MaxCoC:=((fCameraPreset.BlurKernelSize*4.0)+6.0)/fHeight;
 
