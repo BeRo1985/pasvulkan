@@ -3052,7 +3052,7 @@ begin
                            fScaledWidth,
                            fScaledHeight,
                            true,
-                           false,
+                           true,
                            true);
  end;
 
