@@ -403,7 +403,7 @@ procedure TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass.Execute(cons
 var Metrices:TpvVector4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- Metrices:=TpvVector4.Create(1.0/fInstance.Width,1.0/fInstance.Height,fInstance.Width,fInstance.Height);
+ Metrices:=TpvVector4.Create(1.0/fInstance.ScaledWidth,1.0/fInstance.ScaledHeight,fInstance.ScaledWidth,fInstance.ScaledHeight);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
