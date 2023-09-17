@@ -547,6 +547,15 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DeepAndFastApproximateOrderIndependentTransparencyRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.OrderIndependentTransparencyResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.LuminanceHistogramComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.LuminanceAverageComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.LuminanceAdaptationRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingFXAARenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAEdgesRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPreCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAARenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AntialiasingTAAPostCustomPass,
@@ -563,15 +572,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.LuminanceHistogramComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.LuminanceAverageComputePass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingNoneRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingDSAARenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingFXAARenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAEdgesRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAAWeightsRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.AntialiasingSMAABlendRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
@@ -620,6 +621,15 @@ type TpvScene3DRendererInstancePasses=class
        fDeepAndFastApproximateOrderIndependentTransparencyRenderPass:TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyRenderPass;
        fDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass;
        fOrderIndependentTransparencyResolveRenderPass:TpvScene3DRendererPassesOrderIndependentTransparencyResolveRenderPass;
+       fLuminanceHistogramComputePass:TpvScene3DRendererPassesLuminanceHistogramComputePass;
+       fLuminanceAverageComputePass:TpvScene3DRendererPassesLuminanceAverageComputePass;
+       fLuminanceAdaptationRenderPass:TpvScene3DRendererPassesLuminanceAdaptationRenderPass;
+       fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
+       fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
+       fAntialiasingFXAARenderPass:TpvScene3DRendererPassesAntialiasingFXAARenderPass;
+       fAntialiasingSMAAEdgesRenderPass:TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass;
+       fAntialiasingSMAAWeightsRenderPass:TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass;
+       fAntialiasingSMAABlendRenderPass:TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass;
        fAntialiasingTAAPreCustomPass:TpvScene3DRendererPassesAntialiasingTAAPreCustomPass;
        fAntialiasingTAARenderPass:TpvScene3DRendererPassesAntialiasingTAARenderPass;
        fAntialiasingTAAPostCustomPass:TpvScene3DRendererPassesAntialiasingTAAPostCustomPass;
@@ -636,15 +646,7 @@ type TpvScene3DRendererInstancePasses=class
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
-       fLuminanceHistogramComputePass:TpvScene3DRendererPassesLuminanceHistogramComputePass;
-       fLuminanceAverageComputePass:TpvScene3DRendererPassesLuminanceAverageComputePass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
-       fAntialiasingNoneRenderPass:TpvScene3DRendererPassesAntialiasingNoneRenderPass;
-       fAntialiasingDSAARenderPass:TpvScene3DRendererPassesAntialiasingDSAARenderPass;
-       fAntialiasingFXAARenderPass:TpvScene3DRendererPassesAntialiasingFXAARenderPass;
-       fAntialiasingSMAAEdgesRenderPass:TpvScene3DRendererPassesAntialiasingSMAAEdgesRenderPass;
-       fAntialiasingSMAAWeightsRenderPass:TpvScene3DRendererPassesAntialiasingSMAAWeightsRenderPass;
-       fAntialiasingSMAABlendRenderPass:TpvScene3DRendererPassesAntialiasingSMAABlendRenderPass;
        fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
@@ -1847,6 +1849,9 @@ begin
 
   TpvScene3DRendererInstancePasses(fPasses).fLuminanceAverageComputePass:=TpvScene3DRendererPassesLuminanceAverageComputePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fLuminanceAverageComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLuminanceHistogramComputePass);
+
+  TpvScene3DRendererInstancePasses(fPasses).fLuminanceAdaptationRenderPass:=TpvScene3DRendererPassesLuminanceAdaptationRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fLuminanceAdaptationRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLuminanceAverageComputePass);
 
  end;
 

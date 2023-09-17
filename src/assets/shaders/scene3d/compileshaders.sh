@@ -54,6 +54,8 @@ compileshaderarguments=(
 
   '-V luminance_average.comp -o luminance_average_comp.spv'
 
+  '-V luminance_adaptation.frag -o luminance_adaptation_frag.spv' 
+
   '-V frustumclustergridbuild.comp -o frustumclustergridbuild_comp.spv'
   '-V frustumclustergridbuild.comp -DREVERSEDZ -o frustumclustergridbuild_reversedz_comp.spv'
 
