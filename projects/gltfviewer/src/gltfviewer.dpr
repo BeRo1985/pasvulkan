@@ -171,7 +171,7 @@ begin
 {$ifend}
 {$if defined(fpc) and defined(Linux)}
  // Workaround for a segv-exception-issue with closed-source NVidia drivers on Linux at program exit
- fpkill(fpgetpid,9);
+ //fpkill(fpgetpid,9);
 {$ifend}
 {$ifend}
 end.

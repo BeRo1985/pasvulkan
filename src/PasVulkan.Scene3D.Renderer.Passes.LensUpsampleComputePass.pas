@@ -321,8 +321,8 @@ begin
                                        0,
                                        nil);
 
-  aCommandBuffer.CmdDispatch(Max(1,(fInstance.Width+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
-                             Max(1,(fInstance.Height+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
+  aCommandBuffer.CmdDispatch(Max(1,(fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].Width+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
+                             Max(1,(fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].Height+((1 shl (4+MipMapLevelIndex))-1)) shr (4+MipMapLevelIndex)),
                              fInstance.CountSurfaceViews);
 
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);

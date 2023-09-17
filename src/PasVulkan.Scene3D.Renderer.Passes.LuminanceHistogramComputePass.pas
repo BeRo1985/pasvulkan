@@ -362,8 +362,8 @@ begin
                                  SizeOf(TpvScene3DRendererInstance.TLuminancePushConstants),
                                  @fInstance.fLuminancePushConstants);
 
- aCommandBuffer.CmdDispatch(Max(1,(fInstance.Width+((1 shl 4)-1)) shr 4),
-                            Max(1,(fInstance.Height+((1 shl 4)-1)) shr 4),
+ aCommandBuffer.CmdDispatch(Max(1,(fResourceInput.Width+((1 shl 4)-1)) shr 4),
+                            Max(1,(fResourceInput.Height+((1 shl 4)-1)) shr 4),
                             1);//fInstance.CountSurfaceViews);
 
 end;

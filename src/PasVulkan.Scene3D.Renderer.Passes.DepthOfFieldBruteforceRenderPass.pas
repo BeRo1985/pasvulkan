@@ -137,8 +137,8 @@ begin
 //SeparateCommandBuffer:=true;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
-                                       1.0,
-                                       1.0,
+                                       fInstance.SizeFactor,
+                                       fInstance.SizeFactor,
                                        1.0,
                                        fInstance.CountSurfaceViews);
 

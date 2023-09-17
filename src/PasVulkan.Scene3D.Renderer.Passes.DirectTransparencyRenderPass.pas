@@ -132,8 +132,8 @@ inherited Create(aFrameGraph);
  Queue:=aFrameGraph.UniversalQueue;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
-                                       1.0,
-                                       1.0,
+                                       fInstance.SizeFactor,
+                                       fInstance.SizeFactor,
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
@@ -488,8 +488,8 @@ begin
 
      fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline);
 
-     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.Width,fInstance.Height,0.0,1.0);
-     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.Width,fInstance.Height);
+     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fResourceColor.Width,fResourceColor.Height,0.0,1.0);
+     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fResourceColor.Width,fResourceColor.Height);
 
      VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
      VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;

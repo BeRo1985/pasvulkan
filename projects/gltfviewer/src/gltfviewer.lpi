@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\tracks\4t3.glb&quot; --force-use-validation-layers"/>
+        <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\tracks\0.glb&quot; --force-use-validation-layers"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\tracks\4t3.glb&quot; --force-use-validation-layers"/>
+            <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\kartgame1\assets\tracks\0.glb&quot; --force-use-validation-layers"/>
           </local>
         </Mode0>
       </Modes>

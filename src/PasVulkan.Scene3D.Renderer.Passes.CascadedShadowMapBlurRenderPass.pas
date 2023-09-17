@@ -311,8 +311,8 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.CascadedShadowMapWidth,fInstance.CascadedShadowMapHeight,0.0,1.0);
- fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.CascadedShadowMapWidth,fInstance.CascadedShadowMapHeight);
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,trunc(PhysicalRenderPass.Size.Size.x),trunc(PhysicalRenderPass.Size.Size.y),0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,trunc(PhysicalRenderPass.Size.Size.x),trunc(PhysicalRenderPass.Size.Size.y));
 
  fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;

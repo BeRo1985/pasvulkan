@@ -128,8 +128,8 @@ begin
 //SeparateCommandBuffer:=true;
 
  Size:=TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,
-                                       1.0,
-                                       1.0,
+                                       fInstance.SizeFactor,
+                                       fInstance.SizeFactor,
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
@@ -258,8 +258,8 @@ begin
  fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
  fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fInstance.Width,fInstance.Height,0.0,1.0);
- fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fInstance.Width,fInstance.Height);
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fResourceOutput.Width,fResourceOutput.Height,0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fResourceOutput.Width,fResourceOutput.Height);
 
  fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
  fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
