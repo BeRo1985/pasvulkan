@@ -2154,8 +2154,8 @@ begin
                                                       SizeOf(TpvVector4));
      end;
 
-     fFrustumClusterGridTileSizeX:=(fWidth+(fFrustumClusterGridSizeX-1)) div fFrustumClusterGridSizeX;
-     fFrustumClusterGridTileSizeY:=(fHeight+(fFrustumClusterGridSizeY-1)) div fFrustumClusterGridSizeY;
+     fFrustumClusterGridTileSizeX:=(fScaledWidth+(fFrustumClusterGridSizeX-1)) div fFrustumClusterGridSizeX;
+     fFrustumClusterGridTileSizeY:=(fScaledHeight+(fFrustumClusterGridSizeY-1)) div fFrustumClusterGridSizeY;
 
      fFrustumClusterGridCountTotalViews:=fCountSurfaceViews; // +6 for local light and reflection probe cubemap
 
@@ -2237,8 +2237,8 @@ begin
      end;
 
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-      fDepthMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-      fSceneMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      fDepthMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      fSceneMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScaledWidth,fScaledHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       if assigned(fHUDRenderPassClass) then begin
        fHUDMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fHUDWidth,fHUDHeight,1,VK_FORMAT_R8G8B8A8_SRGB,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       end else begin
@@ -2253,8 +2253,8 @@ begin
 
        fCountLockOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;//Min(Max(CountOrderIndependentTransparencyLayers,fCountSurfaceMSAASamples),16);
 
-       fLockOrderIndependentTransparentUniformBuffer.ViewPort.x:=fWidth;
-       fLockOrderIndependentTransparentUniformBuffer.ViewPort.y:=fHeight;
+       fLockOrderIndependentTransparentUniformBuffer.ViewPort.x:=fScaledWidth;
+       fLockOrderIndependentTransparentUniformBuffer.ViewPort.y:=fScaledHeight;
        fLockOrderIndependentTransparentUniformBuffer.ViewPort.z:=fLockOrderIndependentTransparentUniformBuffer.ViewPort.x*fLockOrderIndependentTransparentUniformBuffer.ViewPort.y;
        fLockOrderIndependentTransparentUniformBuffer.ViewPort.w:=(fCountLockOrderIndependentTransparencyLayers and $ffff) or ((Renderer.CountSurfaceMSAASamples and $ffff) shl 16);
 
@@ -2267,19 +2267,19 @@ begin
 
        for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
 
-        fLockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLockOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*4),
+        fLockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fScaledWidth*fScaledHeight*fCountLockOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*4),
                                                                                                                                          VK_FORMAT_R32G32B32A32_UINT,
                                                                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
 
-        fLockOrderIndependentTransparencyAuxImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                   fHeight,
+        fLockOrderIndependentTransparencyAuxImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                   fScaledHeight,
                                                                                                                                    fCountSurfaceViews,
                                                                                                                                    VK_FORMAT_R32_UINT,
                                                                                                                                    VK_SAMPLE_COUNT_1_BIT);
 
         if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKOIT then begin
-         fLockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                         fHeight,
+         fLockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                         fScaledHeight,
                                                                                                                                          fCountSurfaceViews,
                                                                                                                                          VK_FORMAT_R32_UINT,
                                                                                                                                          VK_SAMPLE_COUNT_1_BIT);
@@ -2293,8 +2293,8 @@ begin
 
        fCountLoopOrderIndependentTransparencyLayers:=CountOrderIndependentTransparencyLayers;//Min(Max(CountOrderIndependentTransparencyLayers,fCountSurfaceMSAASamples),16);
 
-       fLoopOrderIndependentTransparentUniformBuffer.ViewPort.x:=fWidth;
-       fLoopOrderIndependentTransparentUniformBuffer.ViewPort.y:=fHeight;
+       fLoopOrderIndependentTransparentUniformBuffer.ViewPort.x:=fScaledWidth;
+       fLoopOrderIndependentTransparentUniformBuffer.ViewPort.y:=fScaledHeight;
        fLoopOrderIndependentTransparentUniformBuffer.ViewPort.z:=fLoopOrderIndependentTransparentUniformBuffer.ViewPort.x*fLoopOrderIndependentTransparentUniformBuffer.ViewPort.y;
        fLoopOrderIndependentTransparentUniformBuffer.ViewPort.w:=(fCountLoopOrderIndependentTransparencyLayers and $ffff) or ((Renderer.CountSurfaceMSAASamples and $ffff) shl 16);
 
@@ -2307,16 +2307,16 @@ begin
 
        for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
 
-        fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*2),
+        fLoopOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fScaledWidth*fScaledHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*2),
                                                                                                                                          VK_FORMAT_R32G32_UINT,
                                                                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 
-        fLoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*1),
+        fLoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fScaledWidth*fScaledHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*1),
                                                                                                                                          VK_FORMAT_R32_UINT,
                                                                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 
         if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-         fLoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fWidth*fHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*1),
+         fLoopOrderIndependentTransparencySBufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fScaledWidth*fScaledHeight*fCountLoopOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*1),
                                                                                                                                           VK_FORMAT_R32_UINT,
                                                                                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT));
         end else begin
@@ -2347,29 +2347,29 @@ begin
       TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
       TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
        for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-        fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                                                 fHeight,
+        fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                                                 fScaledHeight,
                                                                                                                                                                  fCountSurfaceViews,
                                                                                                                                                                  VK_FORMAT_R32G32B32A32_UINT,
                                                                                                                                                                  Renderer.SurfaceSampleCountFlagBits);
-        fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                                              fHeight,
+        fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                                              fScaledHeight,
                                                                                                                                                               fCountSurfaceViews,
                                                                                                                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
                                                                                                                                                               Renderer.SurfaceSampleCountFlagBits);
-        fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                                         fHeight,
+        fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                                         fScaledHeight,
                                                                                                                                                          fCountSurfaceViews,
                                                                                                                                                          VK_FORMAT_R16G16B16A16_SFLOAT,
                                                                                                                                                          Renderer.SurfaceSampleCountFlagBits);
-        fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                                        fHeight,
+        fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                                        fScaledHeight,
                                                                                                                                                         fCountSurfaceViews*2,
                                                                                                                                                         VK_FORMAT_R16G16B16A16_SFLOAT,
                                                                                                                                                         Renderer.SurfaceSampleCountFlagBits);
         if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
-         fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fWidth,
-                                                                                                                                                           fHeight,
+         fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScaledWidth,
+                                                                                                                                                           fScaledHeight,
                                                                                                                                                            fCountSurfaceViews,
                                                                                                                                                            VK_FORMAT_R32_UINT,
                                                                                                                                                            VK_SAMPLE_COUNT_1_BIT);
@@ -2448,14 +2448,14 @@ begin
 
  if Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-   fTAAHistoryColorImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fWidth,
-                                                                                     fHeight,
+   fTAAHistoryColorImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScaledWidth,
+                                                                                     fScaledHeight,
                                                                                      fCountSurfaceViews,
                                                                                      Renderer.OptimizedNonAlphaFormat,
                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-   fTAAHistoryDepthImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fWidth,
-                                                                                     fHeight,
+   fTAAHistoryDepthImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScaledWidth,
+                                                                                     fScaledHeight,
                                                                                      fCountSurfaceViews,
                                                                                      VK_FORMAT_D32_SFLOAT,
                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
@@ -2583,7 +2583,7 @@ end;
 function TpvScene3DRendererInstance.GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
 begin
  if (Renderer.AntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA) and (aFrameCounter>=0) then begin
-  result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*1.0)/TpvVector2.InlineableCreate(fWidth,fHeight);
+  result:=((JitterOffsets[aFrameCounter and JitterOffsetMask]-TpvVector2.InlineableCreate(0.5,0.5))*1.0)/TpvVector2.InlineableCreate(fScaledWidth,fScaledHeight);
  end else begin
   result.x:=0.0;
   result.y:=0.0;
@@ -2848,12 +2848,12 @@ begin
 
    if fZFar>0.0 then begin
     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
-                                                                                  fWidth/fHeight,
+                                                                                  fScaledWidth/fScaledHeight,
                                                                                   abs(fZNear),
                                                                                   IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
    end else begin
     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
-                                                                                  fWidth/fHeight,
+                                                                                  fScaledWidth/fScaledHeight,
                                                                                   abs(fZNear),
                                                                                   IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
    end;
@@ -2953,8 +2953,8 @@ begin
                            InFlightFrameState^.ViewRenderPassIndex,
                            InFlightFrameState^.FinalViewIndex,
                            InFlightFrameState^.CountFinalViews,
-                           fWidth,
-                           fHeight,
+                           fScaledWidth,
+                           fScaledHeight,
                            true,
                            false,
                            true);
@@ -3004,7 +3004,7 @@ begin
  fFrustumClusterGridPushConstants.TileSizeY:=fFrustumClusterGridTileSizeY;
  fFrustumClusterGridPushConstants.ZNear:=InFlightFrameStates[aInFlightFrameIndex].ZNear;
  fFrustumClusterGridPushConstants.ZFar:=InFlightFrameStates[aInFlightFrameIndex].ZFar;
- fFrustumClusterGridPushConstants.ViewRect:=TpvVector4.InlineableCreate(0.0,0.0,fWidth,fHeight);
+ fFrustumClusterGridPushConstants.ViewRect:=TpvVector4.InlineableCreate(0.0,0.0,fScaledWidth,fScaledHeight);
  fFrustumClusterGridPushConstants.CountLights:=Renderer.Scene3D.LightBuffers[aInFlightFrameIndex].LightItems.Count;
  fFrustumClusterGridPushConstants.Size:=fFrustumClusterGridSizeX*fFrustumClusterGridSizeY*fFrustumClusterGridSizeZ;
  fFrustumClusterGridPushConstants.OffsetedViewIndex:=fInFlightFrameStates[aInFlightFrameIndex].FinalViewIndex;
