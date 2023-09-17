@@ -207,6 +207,8 @@ begin
 
  fRendererInstance:=TpvScene3DRendererInstance.Create(fRenderer,UnitApplication.Application.VirtualReality);
 
+ fRendererInstance.SizeFactor:=1.0;
+
  fRendererInstance.Prepare;
 
  fRendererInstance.AcquirePersistentResources;

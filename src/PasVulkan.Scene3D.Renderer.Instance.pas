@@ -363,6 +363,7 @@ type { TpvScene3DRendererInstance }
       private
        fDepthMipmappedArray2DImages:TMipmappedArray2DImages;
        fSceneMipmappedArray2DImages:TMipmappedArray2DImages;
+       fFullResSceneMipmappedArray2DImages:TMipmappedArray2DImages;
        fHUDMipmappedArray2DImages:TMipmappedArray2DImages;
       private
        fLuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers;
@@ -462,6 +463,7 @@ type { TpvScene3DRendererInstance }
       public
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
        property SceneMipmappedArray2DImages:TMipmappedArray2DImages read fSceneMipmappedArray2DImages;
+       property FullResSceneMipmappedArray2DImages:TMipmappedArray2DImages read fFullResSceneMipmappedArray2DImages;
        property HUDMipmappedArray2DImages:TMipmappedArray2DImages read fHUDMipmappedArray2DImages;
       public
        property LuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceHistogramVulkanBuffers;
@@ -569,6 +571,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.UpsamplingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
@@ -643,6 +646,7 @@ type TpvScene3DRendererInstancePasses=class
        fDepthOfFieldGatherPass1RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass;
        fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
+       fUpsamplingRenderPass:TpvScene3DRendererPassesUpsamplingRenderPass;
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
@@ -1978,6 +1982,10 @@ begin
 
  end; //*)
 
+ if not SameValue(fSizeFactor,1.0) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fUpsamplingRenderPass:=TpvScene3DRendererPassesUpsamplingRenderPass.Create(fFrameGraph,self);
+ end;
+
  if not assigned(VirtualReality) then begin
 
   case Renderer.LensMode of
@@ -2297,6 +2305,11 @@ begin
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
       fDepthMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,false,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       fSceneMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScaledWidth,fScaledHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      if SameValue(fSizeFactor,1.0) then begin
+       fFullResSceneMipmappedArray2DImages[InFlightFrameIndex]:=fSceneMipmappedArray2DImages[InFlightFrameIndex];
+      end else begin
+       fFullResSceneMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fWidth,fHeight,fCountSurfaceViews,Renderer.OptimizedNonAlphaFormat,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      end;
       if assigned(fHUDRenderPassClass) then begin
        fHUDMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fHUDWidth,fHUDHeight,1,VK_FORMAT_R8G8B8A8_SRGB,true,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       end else begin
@@ -2553,7 +2566,13 @@ begin
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fDepthMipmappedArray2DImages[InFlightFrameIndex]);
-  FreeAndNil(fSceneMipmappedArray2DImages[InFlightFrameIndex]);
+  if fSceneMipmappedArray2DImages[InFlightFrameIndex]=fFullResSceneMipmappedArray2DImages[InFlightFrameIndex] then begin
+   FreeAndNil(fSceneMipmappedArray2DImages[InFlightFrameIndex]);
+   fFullResSceneMipmappedArray2DImages[InFlightFrameIndex]:=nil;
+  end else begin
+   FreeAndNil(fSceneMipmappedArray2DImages[InFlightFrameIndex]);
+   FreeAndNil(fFullResSceneMipmappedArray2DImages[InFlightFrameIndex]);
+  end;
   FreeAndNil(fHUDMipmappedArray2DImages[InFlightFrameIndex]);
  end;
 
@@ -3087,7 +3106,7 @@ begin
  fLuminancePushConstants.TimeCoefficient:=Clamp(1.0-exp(t*(-TwoPI)),0.025,1.0);
  fLuminancePushConstants.MinLuminance:=exp(LN2*Renderer.MinLogLuminance);
  fLuminancePushConstants.MaxLuminance:=exp(LN2*Renderer.MaxLogLuminance);
- fLuminancePushConstants.CountPixels:=fWidth*fHeight*fCountSurfaceViews;
+ fLuminancePushConstants.CountPixels:=fScaledWidth*fScaledHeight*fCountSurfaceViews;
 
  fFrameGraph.Draw(aSwapChainImageIndex,
                   aInFlightFrameIndex,
