@@ -27,13 +27,7 @@ vec4 SRGBout(vec4 color) {
   return convertSRGBToLinearRGB(ApplyInverseToneMapping(color));
 }
 
-vec4 SRGBawareTextureLOD(sampler2DArray tex, vec3 texCoord, float lod) {
-  
-  int intlod = int(lod);
-
-  ivec2 texSize = textureSize(tex, intlod).xy;
-
-  vec2 uv_adjusted = fma(texCoord.xy, vec2(texSize), -vec2(0.5));
+ /*vec2 uv_adjusted = fma(texCoord.xy, vec2(texSize), -vec2(0.5));
   vec2 f = fract(uv_adjusted);
   
   ivec2 i0 = ivec2(uv_adjusted);
@@ -46,9 +40,44 @@ vec4 SRGBawareTextureLOD(sampler2DArray tex, vec3 texCoord, float lod) {
   vec4 t2 = SRGBin(texelFetch(tex, ivec3(i2, int(texCoord.z)), intlod));
   vec4 t3 = SRGBin(texelFetch(tex, ivec3(i3, int(texCoord.z)), intlod));
 
-  vec4 r = SRGBout(mix(mix(t0, t1, f.x), mix(t2, t3, f.x), f.y));
+  vec4 r = SRGBout(mix(mix(t0, t1, f.x), mix(t2, t3, f.x), f.y));*/
+
+vec4 SRGBawareTexture(sampler2DArray tex, vec3 texCoord, float lod) {
+  
+  int intlod = int(lod);
+
+  ivec2 texSize = textureSize(tex, intlod).xy;
+
+  texCoord.xy *= vec2(texSize);
+  vec2 fracTexCoords = fract(texCoord.xy);
+  texCoord.xy -= fracTexCoords;
+
+  vec4 t0 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(-0.5, -0.5), texCoord.z), lod));
+  vec4 t1 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(0.5, -0.5), texCoord.z), lod));
+  vec4 t2 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(-0.5, 0.5), texCoord.z), lod));
+  vec4 t3 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(0.5, 0.5), texCoord.z), lod));
+
+  vec4 r = SRGBout(mix(mix(t0, t1, fracTexCoords.x), mix(t2, t3, fracTexCoords.x), fracTexCoords.y));
   return r;
 }
  
+vec4 SRGBGammaCorrectedTexture(sampler2DArray tex, vec3 texCoord, float lod) {
+  
+  int intlod = int(lod);
 
+  ivec2 texSize = textureSize(tex, intlod).xy;
+
+  texCoord.xy *= vec2(texSize);
+  vec2 fracTexCoords = fract(texCoord.xy);
+  texCoord.xy -= fracTexCoords;
+
+  vec4 t0 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(-0.5, -0.5), texCoord.z), lod));
+  vec4 t1 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(0.5, -0.5), texCoord.z), lod));
+  vec4 t2 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(-0.5, 0.5), texCoord.z), lod));
+  vec4 t3 = SRGBin(texture(tex, vec3(texCoord.xy + vec2(0.5, 0.5), texCoord.z), lod));
+
+  vec4 r = mix(mix(t0, t1, fracTexCoords.x), mix(t2, t3, fracTexCoords.x), fracTexCoords.y);
+  return r;
+}
+ 
 #endif 
