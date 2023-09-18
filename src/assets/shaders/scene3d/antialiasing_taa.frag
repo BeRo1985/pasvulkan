@@ -17,6 +17,7 @@ layout(set = 0, binding = 4) uniform sampler2DArray uVelocityTexture;
 layout(push_constant, std140, row_major) uniform PushConstants {
   float translucentCoefficient;
   float opaqueCoefficient;
+  float mixCoefficient;
   float varianceClipGamma;
   float feedbackMin; 
   float feedbackMax; 
@@ -122,7 +123,7 @@ void main() {
       // (min 3 4 5 + min 3 4 5) * 0.5
       //        7         6 7 8        
       vec4 minimumColor = min(min(min(min(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]),
-          maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
+           maximumColor = max(max(max(max(currentSamples[1], currentSamples[3]), currentSamples[4]), currentSamples[5]), currentSamples[7]);
       minimumColor = (minimumColor + min(min(min(min(minimumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
       maximumColor = (maximumColor + max(max(max(max(maximumColor, currentSamples[0]), currentSamples[2]), currentSamples[6]), currentSamples[8])) * 0.5;
       vec4 averageColor = (currentSamples[0] + currentSamples[1] + currentSamples[2] + currentSamples[3] + currentSamples[4] + currentSamples[5] + currentSamples[6] + currentSamples[7] + currentSamples[8]) * (1.0 / 9.0);
@@ -143,7 +144,7 @@ void main() {
         maximumColor = min(maximumColor, m0 + sigma);
       }            
 
-      {
+      { 
         vec2 chromaExtent = vec2(maximumColor.x - minimumColor.x) * 0.25;
         vec2 chromaCenter = currentSamples[4].yz;
         minimumColor.yz = chromaCenter - chromaExtent;
@@ -158,11 +159,15 @@ void main() {
       float currentLuminance = currentSamples[4].x;
       float historyLuminance = historySample.x;    
       float unbiasedWeight = 1.0 - (abs(currentLuminance - historyLuminance) / max(currentLuminance, max(historyLuminance, 0.2)));
-      historySample = mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
+      vec4 outSample = mix(currentSamples[4], historySample, mix(pushConstants.feedbackMin, pushConstants.feedbackMax, clamp(unbiasedWeight * unbiasedWeight, 0.0, 1.0)));
 
-      color = mix(historySample, 
-                  currentSamples[4], 
-                  vec4(mix(mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0)), 0.0, 1.0))); 
+      color = mix(outSample, 
+                  mix(historySample,
+                      currentSamples[4], 
+                      mix(pushConstants.translucentCoefficient, 
+                            pushConstants.opaqueCoefficient, 
+                            clamp(currentSamples[4].w, 0.0, 1.0))), 
+                  clamp(pushConstants.mixCoefficient, 0.0, 1.0)); 
 
       color = clamp(Untonemap(YCoCgToRGB(color)), vec4(0.0), vec4(65536.0));    
 

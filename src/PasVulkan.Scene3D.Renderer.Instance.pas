@@ -3053,7 +3053,7 @@ begin
                            fScaledHeight,
                            true,
                            true,
-                           true);
+                           false);
  end;
 
  // Reflection probe viewport(s)
