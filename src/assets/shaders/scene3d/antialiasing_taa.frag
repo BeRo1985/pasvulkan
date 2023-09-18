@@ -3,6 +3,7 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec2 inTexCoord;
 
@@ -30,16 +31,20 @@ const mat3 RGBToYCoCgMatrix = mat3(0.25, 0.5, -0.25, 0.5, 0.0, 0.5, 0.25, -0.5, 
 
 const mat3 YCoCgToRGBMatrix = mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0);
 
-float Luminance(vec4 color){
+/*float Luminance(vec4 color){
     return dot(color.xyz, vec3(0.2125, 0.7154, 0.0721));
-}
+}*/
+
+#include "bidirectional_tonemapping.glsl"
 
 vec4 Tonemap(vec4 color){
-  return vec4(color.xyz / (Luminance(color) + 1.0), color.w);
+  return ApplyToneMapping(color);
+  //return vec4(color.xyz / (Luminance(color) + 1.0), color.w);
 }
 
 vec4 Untonemap(vec4 color){
-  return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
+  return ApplyInverseToneMapping(color); 
+  //return vec4(color.xyz / max(1.0 - Luminance(color), 1e-4), color.w);
 }
 
 vec4 RGBToYCoCg(in vec4 c){

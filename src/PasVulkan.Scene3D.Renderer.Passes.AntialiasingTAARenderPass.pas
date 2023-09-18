@@ -476,7 +476,7 @@ begin
   PushConstants.TranslucentCoefficient:=Clamp(1.0-exp((-30.0)*pvApplication.DeltaTime),0.001,0.5);
   PushConstants.OpaqueCoefficient:=Clamp(1.0-exp((-3.0)*pvApplication.DeltaTime),0.001,0.5);
  end;
- PushConstants.MixCoefficient:=1.0;
+ PushConstants.MixCoefficient:=0.0;
  PushConstants.VarianceClipGamma:=1.0;
  PushConstants.FeedbackMin:=0.88;
  PushConstants.FeedbackMax:=0.97;
