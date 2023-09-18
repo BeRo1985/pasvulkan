@@ -223,7 +223,7 @@ void main() {
         outPackedVertex.texCoord0TexCoord1 = uvec4(inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/,  //
                                                    inPackedVertex.texCoord1Color0.xy /* uvec2(floatBitsToUint(texCoord1.xy)) */);
         outPackedVertex.color0ModelScale = uvec4(inPackedVertex.texCoord1Color0.zw /*uvec2(packHalf2x16(color.xy), packHalf2x16(color.zw))*/,  //
-                                                     vec2(packHalf2x16(modelScale.xy), packHalf2x16(vec2(modelScale.z, 0.0))));                    //
+                                                 vec2(packHalf2x16(modelScale.xy), packHalf2x16(vec2(modelScale.z, 0.0))));                    //
         outVertices[vertexIndex] = outPackedVertex;
       }
     }
