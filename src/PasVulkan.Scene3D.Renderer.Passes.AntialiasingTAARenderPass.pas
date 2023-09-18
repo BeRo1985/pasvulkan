@@ -88,6 +88,7 @@ type { TpvScene3DRendererPassesAntialiasingTAARenderPass }
               FeedbackMax:TpvFloat;
               ZMul:TpvFloat;
               ZAdd:TpvFloat;
+              JitterUV:TpvVector2;
              end;
        private
         fInstance:TpvScene3DRendererInstance;
@@ -486,6 +487,7 @@ begin
   PushConstants.ZMul:=1.0;
   PushConstants.ZAdd:=0.0;
  end;
+ PushConstants.JitterUV:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].Jitter.xy;
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
