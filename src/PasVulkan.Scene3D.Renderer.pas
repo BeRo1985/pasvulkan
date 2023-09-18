@@ -649,7 +649,8 @@ begin
   fCountCascadedShadowMapMSAASamples:=1;
  end;
 
- if fAntialiasingMode=TpvScene3DRendererAntialiasingMode.MSAA then begin
+ if (fAntialiasingMode=TpvScene3DRendererAntialiasingMode.MSAA) or
+    (fAntialiasingMode=TpvScene3DRendererAntialiasingMode.MSAASMAA) then begin
   if (fMaxMSAA>=64) and ((SampleCounts and TVkSampleCountFlags(VK_SAMPLE_COUNT_64_BIT))<>0) then begin
    fSurfaceSampleCountFlagBits:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_64_BIT);
    fCountSurfaceMSAASamples:=64;
@@ -939,7 +940,8 @@ begin
 
      case fAntialiasingMode of
 
-      TpvScene3DRendererAntialiasingMode.SMAA:begin
+      TpvScene3DRendererAntialiasingMode.SMAA,
+      TpvScene3DRendererAntialiasingMode.MSAASMAA:begin
 
        fSMAAAreaTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                            UniversalQueue,
