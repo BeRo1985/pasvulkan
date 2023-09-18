@@ -111,7 +111,7 @@ type { TpvScene3DRendererInstance }
              CountReflectionProbeViews:TpvSizeInt;
 
              ReflectiveShadowMapViewIndex:TpvSizeInt;
-             CountReflectiveShadowMapProbeViews:TpvSizeInt;
+             CountReflectiveShadowMapViews:TpvSizeInt;
 
              CascadedShadowMapViewIndex:TpvSizeInt;
              CountCascadedShadowMapViews:TpvSizeInt;
@@ -529,6 +529,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapBlurRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ReflectiveShadowMapRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
@@ -602,6 +603,7 @@ type TpvScene3DRendererInstancePasses=class
        fCascadedShadowMapRenderPass:TpvScene3DRendererPassesCascadedShadowMapRenderPass;
        fCascadedShadowMapResolveRenderPass:TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesCascadedShadowMapBlurRenderPass;
+       fReflectiveShadowMapRenderPass:TpvScene3DRendererPassesReflectiveShadowMapRenderPass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
@@ -2892,6 +2894,7 @@ begin
  View.InverseViewMatrix:=View.ViewMatrix.Inverse;
 
  InFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews.Add(View);
+ InFlightFrameState^.CountReflectiveShadowMapViews:=1;
 
 end;
 
@@ -3006,7 +3009,7 @@ begin
   AddReflectiveShadowMapView(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectiveShadowMapViewIndex:=-1;
-  InFlightFrameState^.CountReflectiveShadowMapProbeViews:=0;
+  InFlightFrameState^.CountReflectiveShadowMapViews:=0;
  end;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
@@ -3034,7 +3037,7 @@ begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=-1;
  end;
 
- if InFlightFrameState^.CountReflectiveShadowMapProbeViews>0 then begin
+ if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
   InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
  end else begin
   InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=-1;
