@@ -506,7 +506,12 @@ echo "Packing . . ."
 #cp -f *.spv ../../../assets/shaders/
 
 rm -f scene3dshaders.zip
-zip -m9 scene3dshaders.zip *.spv virtualsymlinks.json
+
+# Get a sorted list of .spv files
+spv_files=( $(ls *.spv | sort) )
+
+# Create the zip archive with virtualsymlinks.json as the first entry
+zip -m9 scene3dshaders.zip "virtualsymlinks.json" "${spv_files[@]}"
 
 # Delete all shader binaries and virtualsymlinks.json
 
