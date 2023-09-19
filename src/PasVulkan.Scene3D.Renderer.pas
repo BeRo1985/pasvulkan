@@ -162,7 +162,7 @@ type TpvScene3DRenderer=class;
        fSSAOSampler:TpvVulkanSampler;
        fSMAAAreaTexture:TpvVulkanTexture;
        fSMAASearchTexture:TpvVulkanTexture;
-       fEmptySSAOReflectionProbeTexture:TpvVulkanTexture;
+       fEmptySSAOTexture:TpvVulkanTexture;
 {      fLensColorTexture:TpvVulkanTexture;
        fLensDirtTexture:TpvVulkanTexture;
        fLensStarTexture:TpvVulkanTexture;}
@@ -224,7 +224,7 @@ type TpvScene3DRenderer=class;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
        property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
        property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
-       property EmptySSAOReflectionProbeTexture:TpvVulkanTexture read fEmptySSAOReflectionProbeTexture;
+       property EmptySSAOTexture:TpvVulkanTexture read fEmptySSAOTexture;
 {      property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
        property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
        property LensStarTexture:TpvVulkanTexture read fLensStarTexture;}
@@ -1007,7 +1007,7 @@ begin
      try
       SetLength(EmptySSAOCubeMapTextureData,2048*2048*6);
       FillChar(EmptySSAOCubeMapTextureData[0],length(EmptySSAOCubeMapTextureData)*SizeOf(TpvUInt8),#$ff);
-      fEmptySSAOReflectionProbeTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+      fEmptySSAOTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                                           UniversalQueue,
                                                                           UniversalCommandBuffer,
                                                                           UniversalFence,
@@ -1147,7 +1147,7 @@ begin
  FreeAndNil(fSMAAAreaTexture);
  FreeAndNil(fSMAASearchTexture);
 
- FreeAndNil(fEmptySSAOReflectionProbeTexture);
+ FreeAndNil(fEmptySSAOTexture);
 
 {FreeAndNil(fLensColorTexture);
  FreeAndNil(fLensDirtTexture);
