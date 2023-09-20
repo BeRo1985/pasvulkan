@@ -496,8 +496,8 @@ type { TpvScene3DRendererInstance }
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
        property ReflectionProbeHeight:TpvInt32 read fReflectionProbeHeight write fReflectionProbeHeight;
-       property ReflectiveShadowMapWidth:TpvInt32 read fReflectionProbeWidth write fReflectiveShadowMapWidth;
-       property ReflectiveShadowMapHeight:TpvInt32 read fReflectionProbeHeight write fReflectiveShadowMapHeight;
+       property ReflectiveShadowMapWidth:TpvInt32 read fReflectiveShadowMapWidth write fReflectiveShadowMapWidth;
+       property ReflectiveShadowMapHeight:TpvInt32 read fReflectiveShadowMapHeight write fReflectiveShadowMapHeight;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
        property CascadedShadowMapHeight:TpvInt32 read fCascadedShadowMapHeight write fCascadedShadowMapHeight;
        property Left:TpvInt32 read fLeft write fLeft;
