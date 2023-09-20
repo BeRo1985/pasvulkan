@@ -91,6 +91,7 @@ type { TpvScene3DRendererPassesReflectiveShadowMapRenderPass }
        fInstance:TpvScene3DRendererInstance;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceNormalUsed:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
@@ -143,7 +144,7 @@ inherited Create(aFrameGraph);
                                        fInstance.ReflectiveShadowMapWidth,
                                        fInstance.ReflectiveShadowMapHeight,
                                        1.0,
-                                       6);
+                                       1);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                            'resource_cascadedshadowmap_data_final',
@@ -151,19 +152,28 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceColor:=AddImageOutput('resourcetype_ReflectiveShadowMap_color',
-                                'resource_ReflectiveShadowMap_color', //_optimized_non_alpha
+ fResourceColor:=AddImageOutput('resourcetype_reflectiveshadowmap_color',
+                                'resource_reflectiveshadowmap_color', //_optimized_non_alpha
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                 TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                              TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
- fResourceDepth:=AddImageDepthOutput('resourcetype_ReflectiveShadowMap_depth',
-                                     'resource_ReflectiveShadowMap_depth',
+ fResourceNormalUsed:=AddImageOutput('resourcetype_reflectiveshadowmap_normalused',
+                                     'resource_reflectiveshadowmap_normalused', //_optimized_non_alpha
+                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
+
+ fResourceDepth:=AddImageDepthOutput('resourcetype_reflectiveshadowmap_depth',
+                                     'resource_reflectiveshadowmap_depth',
                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                  TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
+//                                                                TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );//}
 
@@ -201,9 +211,9 @@ begin
  if fInstance.Renderer.UseDemote then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_rsm_alphatest_demote_frag.spv');
  end else if fInstance.Renderer.UseNoDiscard then begin
-  if fInstance.ZFar<0.0 then begin
+{ if fInstance.ZFar<0.0 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_rsm_alphatest_nodiscard_frag.spv');
-  end else begin
+  end else}begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_rsm_alphatest_nodiscard_frag.spv');
   end;
  end else begin
@@ -227,9 +237,9 @@ begin
   if fInstance.Renderer.UseDemote then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_alphatest_demote_frag.spv');
   end else if fInstance.Renderer.UseNoDiscard then begin
-   if fInstance.ZFar<0.0 then begin
+{  if fInstance.ZFar<0.0 then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_depth_alphatest_nodiscard_frag.spv');
-   end else begin
+   end else}begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_alphatest_nodiscard_frag.spv');
    end;
   end else begin
@@ -578,6 +588,14 @@ begin
                                                                            VK_BLEND_FACTOR_ZERO,
                                                                            VK_BLEND_OP_ADD,
                                                                            0);
+       VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           0);
       end else begin
        if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Blend then begin
         VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
@@ -604,13 +622,24 @@ begin
                                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
        end;
+       VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_FACTOR_ZERO,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
       end;
 
       VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
       VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=AlphaMode<>TpvScene3D.TMaterial.TAlphaMode.Blend;
-      if fInstance.ZFar<0.0 then begin
+{     if fInstance.ZFar<0.0 then begin
        VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
-       end else begin
+       end else}begin
        VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
       end;
       VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
@@ -690,12 +719,23 @@ begin
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
   VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
   VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
-  if fInstance.ZFar<0.0 then begin
+{ if fInstance.ZFar<0.0 then begin
    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
-   end else begin
+   end else}begin
    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
   end;
   VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
@@ -749,10 +789,10 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesReflectiveShadowMapRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
-                                                                             const aRenderPassIndex:TpvSizeInt;
-                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                                                             const aInFlightFrameIndex:TpvSizeInt);
+                                                                                         const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                                         const aRenderPassIndex:TpvSizeInt;
+                                                                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                                         const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
@@ -767,7 +807,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesReflectiveShadowMapRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                            const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+                                                                        const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);

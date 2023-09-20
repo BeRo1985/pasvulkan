@@ -149,8 +149,13 @@ type TpvScene3DRendererAntialiasingMode=
        // A camera reflection probe is a cubemap that is updated every frame to reflect the scene around it. Nintendo seems to use this technique in some 
        // of their Nintendo Switch games. It may seem like the wrong approach at first glance, but apparently it still seems to work well, at least when 
        // used well in a targeted way.
-       CameraReflectionProbe{, 
+       CameraReflectionProbe,
 
+       // The idea of "Radiance hints" is based on reflective shadow maps (RSMs), where but instead of depth, the albedo color is stored in the RSMs. And
+       // with cascaded radiance hints, the scene is split into multiple cascades, where each cascade has its own voxel-grid-like state. This technique is
+       // very similar to  cascaded shadow maps (CSMs), only that it is used for global illumination instead of shadows.
+       CascadedRadianceHints
+{
        // Possible further options on my todo list for the future:
        
        // At Voxel cone tracing, the scene is voxelized and then cone traced in an approximated way with help of mipmaps of the 3D voxel texture. This is 
@@ -158,11 +163,6 @@ type TpvScene3DRendererAntialiasingMode=
        // scene is split into multiple cascades, where each cascade has its own voxel grid map. This technique is very similar to cascaded shadow maps (CSMs),
        // only that it is used for global illumination instead of shadows.
        CascadedVoxelConeTracing, 
-
-       // The idea of "Radiance hints" is based on reflective shadow maps (RSMs), where but instead of depth, the albedo color is stored in the RSMs. And 
-       // with cascaded radiance hints, the scene is split into multiple cascades, where each cascade has its own voxel-grid-like state. This technique is 
-       // very similar to  cascaded shadow maps (CSMs), only that it is used for global illumination instead of shadows.       
-       CascadedRadianceHints,
 
        // And finally, the most accurate and most expensive way to add global illumination to a scene is to use hardware ray tracing for 1SPP path tracing  
        // together with temporal denoising. This technique is extremely accurate, but also extremely expensive. But it is also the only way to get the most 
