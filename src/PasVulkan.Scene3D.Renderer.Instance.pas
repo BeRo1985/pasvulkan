@@ -2999,26 +2999,26 @@ begin
 
    ViewLeft.ViewMatrix:=ViewMatrix;
 
-   if fFOV<0.0 then begin
+   if fFOV>0.0 then begin
     if fZFar>0.0 then begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedZeroToOne(-fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedZeroToOne(fFOV,
                                                                                                 fScaledWidth/fScaledHeight,
                                                                                                 abs(fZNear),
                                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end else begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedOneToZero(-fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedOneToZero(fFOV,
                                                                                                 fScaledWidth/fScaledHeight,
                                                                                                 abs(fZNear),
                                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end;
    end else begin
     if fZFar>0.0 then begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(-fFOV,
                                                                                    fScaledWidth/fScaledHeight,
                                                                                    abs(fZNear),
                                                                                    IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end else begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(-fFOV,
                                                                                    fScaledWidth/fScaledHeight,
                                                                                    abs(fZNear),
                                                                                    IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
