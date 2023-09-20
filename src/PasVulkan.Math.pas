@@ -816,6 +816,14 @@ type PpvScalar=^TpvScalar;
        constructor CreatePerspectiveRightHandedOneToZero(const fovy,Aspect,zNear,zFar:TpvScalar);
        constructor CreatePerspectiveReversedZ(const aFOVY,aAspectRatio,aZNear:TpvScalar);
        constructor CreatePerspective(const fovy,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveLeftHandedNegativeOneToPositiveOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveLeftHandedZeroToOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveLeftHandedOneToZero(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveRightHandedNegativeOneToPositiveOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveRightHandedZeroToOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveRightHandedOneToZero(const fovx,Aspect,zNear,zFar:TpvScalar);
+       constructor CreateHorizontalFOVPerspectiveReversedZ(const aFOVX,aAspectRatio,aZNear:TpvScalar);
+       constructor CreateHorizontalFOVPerspective(const fovx,Aspect,zNear,zFar:TpvScalar);
        constructor CreateLookAt(const Eye,Center,Up:TpvVector3);
        constructor CreateFill(const Eye,RightVector,UpVector,ForwardVector:TpvVector3);
        constructor CreateConstructX(const xAxis:TpvVector3);
@@ -9177,6 +9185,156 @@ begin
   RawComponents:=TpvMatrix4x4.Identity.RawComponents;
   RawComponents[0,0]:=Cotangent/aspect;
   RawComponents[1,1]:=Cotangent;
+  RawComponents[2,2]:=(-(zFar+zNear))/ZDelta;
+  RawComponents[2,3]:=-1.0;
+  RawComponents[3,2]:=(-(2.0*zNear*zFar))/ZDelta;
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveLeftHandedNegativeOneToPositiveOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
+  RawComponents[2,2]:=(-(zFar+zNear))/(zFar-zNear);
+  RawComponents[2,3]:=1.0;
+  RawComponents[3,2]:=(-(2.0*zNear*zFar))/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveLeftHandedZeroToOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
+  RawComponents[2,2]:=zFar/(zFar-zNear);
+  RawComponents[2,3]:=1.0;
+  RawComponents[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveLeftHandedOneToZero(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
+  RawComponents[2,2]:=(-zNear)/(zFar-zNear);
+  RawComponents[2,3]:=1.0;
+  RawComponents[3,2]:=(zNear*zFar)/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedNegativeOneToPositiveOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
+  RawComponents[2,2]:=(-(zFar+zNear))/(zFar-zNear);
+  RawComponents[2,3]:=-1.0;
+  RawComponents[3,2]:=(-(2.0*zNear*zFar))/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedZeroToOne(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
+  RawComponents[2,2]:=zFar/(zNear-zFar);
+  RawComponents[2,3]:=-1.0;
+  RawComponents[3,2]:=(-(zNear*zFar))/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedOneToZero(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
+  RawComponents[2,2]:=zNear/(zFar-zNear);
+  RawComponents[2,3]:=-1.0;
+  RawComponents[3,2]:=(zNear*zFar)/(zFar-zNear);
+  RawComponents[3,3]:=0.0;
+ end;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspectiveReversedZ(const aFOVX,aAspectRatio,aZNear:TpvScalar);
+var t,sx,sy:TpvScalar;
+begin
+ t:=tan(aFOVX*DEG2RAD*0.5);
+ sx:=1.0/t;
+ sy:=sx*aAspectRatio;
+ RawComponents[0,0]:=sx;
+ RawComponents[0,1]:=0.0;
+ RawComponents[0,2]:=0.0;
+ RawComponents[0,3]:=0.0;
+ RawComponents[1,0]:=0.0;
+ RawComponents[1,1]:=sy;
+ RawComponents[1,2]:=0.0;
+ RawComponents[1,3]:=0.0;
+ RawComponents[2,0]:=0.0;
+ RawComponents[2,1]:=0.0;
+ RawComponents[2,2]:=0.0;
+ RawComponents[2,3]:=-1.0;
+ RawComponents[3,0]:=0.0;
+ RawComponents[3,1]:=0.0;
+ RawComponents[3,2]:=aZNear;
+ RawComponents[3,3]:=0.0;
+end;
+
+constructor TpvMatrix4x4.CreateHorizontalFOVPerspective(const fovx,Aspect,zNear,zFar:TpvScalar);
+var Sine,Cotangent,ZDelta,Radians:TpvScalar;
+begin
+ Radians:=(fovx*0.5)*DEG2RAD;
+ ZDelta:=zFar-zNear;
+ Sine:=sin(Radians);
+ if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
+  Cotangent:=cos(Radians)/Sine;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
+  RawComponents[0,0]:=Cotangent;
+  RawComponents[1,1]:=Cotangent*aspect;
   RawComponents[2,2]:=(-(zFar+zNear))/ZDelta;
   RawComponents[2,3]:=-1.0;
   RawComponents[3,2]:=(-(2.0*zNear*zFar))/ZDelta;
