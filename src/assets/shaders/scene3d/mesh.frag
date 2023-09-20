@@ -2132,14 +2132,15 @@ void main() {
   outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - inJitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - inJitter.zw)) * 0.5;
 
   vec3 normal = normalize(workNormal);
-  normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
-  outFragNormal = vec4(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)), 1.0);  
+/*normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+  outFragNormal = vec4(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)), 1.0);*/
+  outFragNormal = vec4(vec3(fma(normal.xyz, vec3(0.5), vec3(0.5))), 1.0);  
 
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
 
   vec3 normal = normalize(workNormal);
-  //normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
-//outFragNormalUsed = vec4(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)), 1.0);  
+/*normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
+  outFragNormalUsed = vec4(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)), 1.0);*/  
   outFragNormalUsed = vec4(vec3(fma(normal.xyz, vec3(0.5), vec3(0.5))), 1.0);  
 
   //outFragPosition = inWorldSpacePosition.xyz;

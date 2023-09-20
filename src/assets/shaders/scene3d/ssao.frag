@@ -162,7 +162,10 @@ void main() {
   } else {
     vec3 normal;
 #if 1
-    { normal = signedOctDecode(textureLod(uTextureNormals, vec3(inTexCoord, viewIndex), 0).xyz); }
+    { 
+//    normal = signedOctDecode(textureLod(uTextureNormals, vec3(inTexCoord, viewIndex), 0).xyz); 
+      normal = fma(textureLod(uTextureNormals, vec3(inTexCoord, viewIndex), 0).xyz, vec3(2.0), vec3(-1.0)); 
+    }
 #elif 0
     {
       vec2 texelSize = vec2(1.0) / vec2(textureSize(uTextureDepth, 0).xy);  // vec2(dFdx(texCoord.x), dFdy(texCoord.y));
