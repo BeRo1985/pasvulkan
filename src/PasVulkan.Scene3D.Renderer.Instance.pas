@@ -3126,7 +3126,7 @@ begin
                            true);
  end;
 
- // Reflection probe viewport(s)
+ // Reflective shadow map viewport(s)
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ReflectiveShadowMapRenderPassIndex,
