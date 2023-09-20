@@ -153,7 +153,7 @@ inherited Create(aFrameGraph);
                                    'resource_normals_data',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
 
@@ -188,7 +188,7 @@ inherited Create(aFrameGraph);
                                    'resource_normals_data_msaa',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                                                TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                   );
 
@@ -197,7 +197,7 @@ inherited Create(aFrameGraph);
                                           'resource_normals_data_msaa',
                                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                           TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
-                                                                       TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                                                       TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0)),
                                           [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                          );
 
