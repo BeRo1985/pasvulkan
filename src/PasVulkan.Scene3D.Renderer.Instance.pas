@@ -3000,6 +3000,7 @@ begin
    ViewLeft.ViewMatrix:=ViewMatrix;
 
    if fFOV>0.0 then begin
+    // > 0.0 = Horizontal FOV
     if fZFar>0.0 then begin
      ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedZeroToOne(fFOV,
                                                                                                 fScaledWidth/fScaledHeight,
@@ -3012,6 +3013,7 @@ begin
                                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end;
    end else begin
+    // < 0.0 = Vertical FOV
     if fZFar>0.0 then begin
      ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(-fFOV,
                                                                                    fScaledWidth/fScaledHeight,
