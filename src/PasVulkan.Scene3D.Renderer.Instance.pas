@@ -95,6 +95,13 @@ type { TpvScene3DRendererInstance }
       public
        const CountCascadedShadowMapCascades=4;
              CountOrderIndependentTransparencyLayers=8;
+             CountGlobalIlluminationRadiantHintCascades=4;
+             CountGlobalIlluminationRadiantHintVolumeImages=9;
+             GlobalIlluminationRadiantHintVolumeSize=32;
+             GlobalIlluminationRadiantHintVolumeDataSize=(GlobalIlluminationRadiantHintVolumeSize*
+                                                          GlobalIlluminationRadiantHintVolumeSize*
+                                                          GlobalIlluminationRadiantHintVolumeSize)*
+                                                         GlobalIlluminationRadiantHintVolumeSize;
        type { TInFlightFrameState }
             TInFlightFrameState=record
 
@@ -280,6 +287,9 @@ type { TpvScene3DRendererInstance }
               constructor Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject); reintroduce; virtual;
             end;
             THUDRenderPassClass=class of THUDRenderPass;
+            TCascadedRadianceHintVolumeImages=array[0..CountGlobalIlluminationRadiantHintCascades-1,0..CountGlobalIlluminationRadiantHintVolumeImages-1] of TpvScene3DRendererImage3D;
+            TInFlightFrameCascadedRadianceHintVolumeImages=array[0..MaxInFlightFrames-1] of TCascadedRadianceHintVolumeImages;
+            PInFlightFrameCascadedRadianceHintVolumeImages=^TInFlightFrameCascadedRadianceHintVolumeImages;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -323,6 +333,8 @@ type { TpvScene3DRendererInstance }
        fCountRealViews:TpvInt32;
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+      private
+       fInFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
@@ -426,6 +438,8 @@ type { TpvScene3DRendererInstance }
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
+      public
+       property InFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeImages;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -1051,6 +1065,8 @@ begin
 
  FillChar(fCascadedShadowMapVulkanUniformBuffers,SizeOf(TCascadedShadowMapVulkanUniformBuffers),#0);
 
+ FillChar(fInFlightFrameCascadedRadianceHintVolumeImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1139,7 +1155,7 @@ begin
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
-var InFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
 begin
 
  FreeAndNil(fFrameGraph);
@@ -1152,6 +1168,14 @@ begin
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
+   for ImageIndex:=0 to CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
+    FreeAndNil(fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
+   end;
+  end;
  end;
 
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
@@ -1192,7 +1216,40 @@ end;
 procedure TpvScene3DRendererInstance.Prepare;
 var AntialiasingFirstPass:TpvFrameGraph.TPass;
     AntialiasingLastPass:TpvFrameGraph.TPass;
+    InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
 begin
+
+ case Renderer.GlobalIlluminatonMode of
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+    for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
+     for ImageIndex:=0 to CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
+      if (ImageIndex+1)<CountGlobalIlluminationRadiantHintVolumeImages then begin
+       fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                    VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                                    VK_IMAGE_LAYOUT_GENERAL);
+      end else begin
+       fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                    VK_FORMAT_R32G32B32A32_SFLOAT,
+                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                                    VK_IMAGE_LAYOUT_GENERAL);
+      end;
+     end;
+    end;
+   end;
+
+  end;
+
+  else begin
+  end;
+
+ end;
 
  if assigned(fVirtualReality) then begin
 
