@@ -335,6 +335,7 @@ type { TpvScene3DRendererInstance }
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
        fInFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages;
+       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages:TInFlightFrameCascadedRadianceHintVolumeImages;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
@@ -440,6 +441,7 @@ type { TpvScene3DRendererInstance }
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
        property InFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeImages;
+       property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -1067,6 +1069,8 @@ begin
 
  FillChar(fInFlightFrameCascadedRadianceHintVolumeImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
 
+ FillChar(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1174,6 +1178,7 @@ begin
   for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
    for ImageIndex:=0 to CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
     FreeAndNil(fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
+    FreeAndNil(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
    end;
   end;
  end;
@@ -1217,6 +1222,7 @@ procedure TpvScene3DRendererInstance.Prepare;
 var AntialiasingFirstPass:TpvFrameGraph.TPass;
     AntialiasingLastPass:TpvFrameGraph.TPass;
     InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
+    Format:TVkFormat;
 begin
 
  case Renderer.GlobalIlluminatonMode of
@@ -1226,20 +1232,22 @@ begin
     for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
      for ImageIndex:=0 to CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
       if (ImageIndex+1)<CountGlobalIlluminationRadiantHintVolumeImages then begin
-       fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
-                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
-                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
-                                                                                                                                    VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                    VK_IMAGE_LAYOUT_GENERAL);
+       Format:=VK_FORMAT_R16G16B16A16_SFLOAT;
       end else begin
-       fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
-                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
-                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
-                                                                                                                                    VK_FORMAT_R32G32B32A32_SFLOAT,
-                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                    VK_IMAGE_LAYOUT_GENERAL);
+       Format:=VK_FORMAT_R32G32B32A32_SFLOAT;
       end;
+      fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                   GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                   GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                   Format,
+                                                                                                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                                   VK_IMAGE_LAYOUT_GENERAL);
+      fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                               GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                               GlobalIlluminationRadiantHintVolumeSize,
+                                                                                                                                               Format,
+                                                                                                                                               VK_SAMPLE_COUNT_1_BIT,
+                                                                                                                                               VK_IMAGE_LAYOUT_GENERAL);
      end;
     end;
    end;
