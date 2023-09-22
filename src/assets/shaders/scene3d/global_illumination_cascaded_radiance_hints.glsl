@@ -1,6 +1,8 @@
 #ifndef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS_GLSL
 #define GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS_GLSL
 
+/* clang-format off */
+
 /*
 **
 ** How my "Blended Cascaded Cached Radiance Hints" global illumination technique works, see
@@ -60,7 +62,7 @@
 
 #define GI_SECONDARY_BOUNCE_FACTOR 0.01
 
-layout(std140) uniform uboGlobalIlluminationData {
+layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING, std140) uniform uboGlobalIlluminationData {
   vec4 globalIlluminationVolumeAABBMin[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBMax[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBScale[GI_CASCADES];
@@ -206,11 +208,15 @@ float globalIlluminationSphericalHarmonicsDecodeWithCosineLobe(in vec3 pDirectio
 }
 
 vec3 globalIlluminationConvertRGBToYCoCg(vec3 c){
-	return vec3(dot(c, vec3(0.25, 0.5, 0.25)), dot(c, vec3(0.5, 0.0, -0.5)), dot(c, vec3(-0.25, 0.5, -0.25)));
+	return vec3(dot(c, vec3(0.25, 0.5, 0.25)),
+              dot(c, vec3(0.5, 0.0, -0.5)),
+              dot(c, vec3(-0.25, 0.5, -0.25)));
 }
 
 vec3 globalIlluminationConvertYCoCgToRGB(vec3 c){
-  return vec3(dot(c, vec3(1.0, 1.0, -1.0)), dot(c, vec3(1.0, 0.0, 1.0)), dot(c, vec3(1.0, -1.0, -1.0))); 
+  return vec3(dot(c, vec3(1.0, 1.0, -1.0)),
+              dot(c, vec3(1.0, 0.0, 1.0)),
+              dot(c, vec3(1.0, -1.0, -1.0))); 
 }
 
 #if GI_COMPRESSION == 0
@@ -651,5 +657,6 @@ vec3 globalIlluminationGetSpecularColor(const in vec3 pWorldSpacePosition, const
 
 #endif
 
+/* clang-format on */
 
 #endif
