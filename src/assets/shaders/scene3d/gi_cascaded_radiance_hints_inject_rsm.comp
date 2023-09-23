@@ -22,9 +22,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = RSM depth, 1 = RSM color, 2 = RSM normal, 3 = depth buffer
 layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 3, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
-layout(set = 0, binding = 4) uniform sampler3D uTexLastSH[]; // The previous global illumination volume textures
-layout(set = 0, binding = 5) uniform sampler3D uTexLastMetaInfo[]; // The previous global illumination volume meta info texture
-layout(set = 0, binding = 6, std140) uniform uMetaData {
+layout(set = 0, binding = 4, std140) uniform uMetaData {
   mat4 uWorldToReflectiveShadowMapMatrix;
   mat4 uReflectiveShadowMapToWorldMatrix;
   mat4 uModelViewProjectionMatrix;
