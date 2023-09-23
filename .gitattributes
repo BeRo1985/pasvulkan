@@ -6,6 +6,10 @@
 *.lpr -text linguist-language=Pascal
 *.lpi -text linguist-language=XML
 *.poca -text linguist-language=js
+*.vert -text linguist-language=GLSL
+*.frag -text linguist-language=GLSL
+*.comp -text linguist-language=GLSL
+*.geom -text linguist-language=GLSL
 *.glsl -text
 *.meta -text
 *.txt -text
