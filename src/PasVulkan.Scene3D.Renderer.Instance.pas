@@ -1652,7 +1652,7 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_topdownskyocclusionmap_z',
+ fFrameGraph.AddImageResourceType('resourcetype_topdownskyocclusionmap_data',
                                   false,
                                   VK_FORMAT_R32_SFLOAT,
                                   VK_SAMPLE_COUNT_1_BIT,
