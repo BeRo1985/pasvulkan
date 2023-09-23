@@ -4247,39 +4247,42 @@ begin
  fEventPipelineBarrierGroups.Execute(aCommandBuffer);
  fBeforePipelineBarrierGroups.Execute(aCommandBuffer);
  ResetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
- if fHasVulkanSurfaceFrameBuffers then begin
-  fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
-                                   fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex],
-                                   SubpassContents,
-                                   0,
-                                   0,
-                                   fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex].Width,
-                                   fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex].Height);
- end else begin
-  fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
-                                    fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex],
+ if (fSubpasses.Count>1) or
+    ((fSubpasses.Count=1) and (fSubpasses[0].fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1])) then begin
+  if fHasVulkanSurfaceFrameBuffers then begin
+   fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
+                                    fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex],
                                     SubpassContents,
                                     0,
                                     0,
-                                    fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex].Width,
-                                    fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex].Height);
- end;
- for SubpassIndex:=0 to fSubpasses.Count-1 do begin
-  Subpass:=fSubpasses[SubpassIndex];
-  if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-   if not SingleSubpassDebug then begin
-    Subpass.fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
+                                    fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex].Width,
+                                    fVulkanSurfaceFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawSwapChainImageIndex].Height);
+  end else begin
+   fVulkanRenderPass.BeginRenderPass(aCommandBuffer,
+                                     fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex],
+                                     SubpassContents,
+                                     0,
+                                     0,
+                                     fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex].Width,
+                                     fVulkanFrameBuffers[fFrameGraph.fDrawInFlightFrameIndex].Height);
+  end;
+  for SubpassIndex:=0 to fSubpasses.Count-1 do begin
+   Subpass:=fSubpasses[SubpassIndex];
+   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
+    if not SingleSubpassDebug then begin
+     Subpass.fRenderPass.AddStartMarker(fQueue,aCommandBuffer);
+    end;
+    Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
+    if not SingleSubpassDebug then begin
+     Subpass.fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+    end;
    end;
-   Subpass.fRenderPass.Execute(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex,fFrameGraph.fDrawFrameIndex);
-   if not SingleSubpassDebug then begin
-    Subpass.fRenderPass.AddEndMarker(fQueue,aCommandBuffer);
+   if (SubpassIndex+1)<fSubpasses.Count then begin
+    aCommandBuffer.CmdNextSubpass(SubpassContents);
    end;
   end;
-  if (SubpassIndex+1)<fSubpasses.Count then begin
-   aCommandBuffer.CmdNextSubpass(SubpassContents);
-  end;
+  fVulkanRenderPass.EndRenderPass(aCommandBuffer);
  end;
- fVulkanRenderPass.EndRenderPass(aCommandBuffer);
  fAfterPipelineBarrierGroups.Execute(aCommandBuffer);
  SetEvents(aCommandBuffer,fFrameGraph.fDrawInFlightFrameIndex);
  if SingleSubpassDebug then begin
