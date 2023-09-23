@@ -83,6 +83,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.SkyCubeMap,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
      PasVulkan.Scene3D.Renderer.ImageBasedLighting.EnvMapCubeMaps,
+     PasVulkan.Scene3D.Renderer.ImageBasedLighting.SphericalHarmonics,
      PasVulkan.Scene3D.Renderer.Charlie.BRDF,
      PasVulkan.Scene3D.Renderer.GGX.BRDF,
      PasVulkan.Scene3D.Renderer.SheenE.BRDF,
@@ -156,6 +157,7 @@ type TpvScene3DRenderer=class;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
        fSkySphericalHarmonicsBuffer:TpvVulkanBuffer;
+       fSkySphericalHarmonics:TpvScene3DRendererImageBasedLightingSphericalHarmonics;
        fGGXBRDF:TpvScene3DRendererGGXBRDF;
        fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
        fSheenEBRDF:TpvScene3DRendererSheenEBRDF;
@@ -832,6 +834,8 @@ begin
                                                       [TpvVulkanBufferFlag.PersistentMapped]
                                                      );
 
+ fSkySphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fSkySphericalHarmonicsBuffer);
+
  fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
  fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
@@ -1189,6 +1193,8 @@ begin
  FreeAndNil(fSheenEBRDF);
 
  FreeAndNil(fImageBasedLightingEnvMapCubeMaps);
+
+ FreeAndNil(fSkySphericalHarmonics);
 
  FreeAndNil(fSkySphericalHarmonicsBuffer);
 
