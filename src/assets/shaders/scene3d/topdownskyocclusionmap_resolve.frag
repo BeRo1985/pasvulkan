@@ -18,18 +18,21 @@ layout(push_constant) uniform PushConstants {
 
 /* clang-format on */
 
-float linearizeDepth(float z) {
+float linearizeDepth(float depth) {
 #if 0
-  vec2 v = (pushConstants.inverseViewProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+  vec2 v = (pushConstants.inverseViewProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), depth), 1.0)).yw;
 #else
-  vec2 v = fma(pushConstants.inverseViewProjectionMatrix[2].zw, vec2(z), pushConstants.inverseViewProjectionMatrix[3].zw);
+  vec2 v = fma(pushConstants.inverseViewProjectionMatrix[2].yw, vec2(depth), pushConstants.inverseViewProjectionMatrix[3].yw);
 #endif
   return v.x / v.y;
 }
 
 void main() {
   float depth = textureLod(uTextureDepth, inTexCoord, 0).x;
-  vec4 clipSpacePosition = vec4(fma(vec3(inTexCoord, depth), vec2(2.0, 1.0).xxy, vec2(-1.0, 0.0).xxy), 1.0);
-  vec4 worldSpacePosition = pushConstants.inverseViewProjectionMatrix * clipSpacePosition;
-  oOutputZ = worldSpacePosition.z / worldSpacePosition.w;
+#if 0
+  vec4 worldSpacePosition = pushConstants.inverseViewProjectionMatrix * vec4(fma(inTexCoord, vec2(2.0), vec2(-1.0), depth, 1.0);
+  oOutputZ = worldSpacePosition.y / worldSpacePosition.w;
+#else
+  oOutputZ = linearizeDepth(depth);
+#endif
 }

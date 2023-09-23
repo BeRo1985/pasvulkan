@@ -18,7 +18,7 @@ layout(push_constant) uniform PushConstants {
 /* clang-format on */
 
 float GaussianBlur(const in sampler2D pTexSource, const in vec2 pCenterUV, const in float pLOD, const in vec2 pPixelOffset){
-#if 1
+#if 0
   return ((textureLod(pTexSource, vec2(pCenterUV + (pPixelOffset * 0.5949592424752924)), pLOD).x +
            textureLod(pTexSource, vec2(pCenterUV - (pPixelOffset * 0.5949592424752924)), pLOD).x) * 0.3870341767000849)+
          ((textureLod(pTexSource, vec2(pCenterUV + (pPixelOffset * 2.176069137573487)), pLOD).x +
