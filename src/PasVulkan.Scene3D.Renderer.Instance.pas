@@ -286,6 +286,12 @@ type { TpvScene3DRendererInstance }
                     private
                      fCascadedVolumes:TCascadedVolumes;
                      fAABB:TpvAABB;
+                     fCellSize:TpvScalar;
+                     fSnapSize:TpvScalar;
+                     fOffset:TpvVector3;
+                     fDelta:TpvVector4;
+                     fLastAABB:TpvAABB;
+                     fLastOffset:TpvVector3;
                     public
                      constructor Create(const aCascadedVolumes:TCascadedVolumes); reintroduce;
                      destructor Destroy; override;
@@ -296,10 +302,12 @@ type { TpvScene3DRendererInstance }
               fVolumeSize:TpvSizeInt;
               fCountCascades:TpvSizeInt;
               fCascades:TCascades;
+              fFirst:Boolean;
              public
               constructor Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt); reintroduce;
               destructor Destroy; override;
-              procedure Update;
+              procedure Reset;
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
              published
               property Cascades:TCascades read fCascades;
             end;
@@ -989,7 +997,7 @@ end;
 { TpvScene3DRendererInstance.TCascadedVolumes }
 
 constructor TpvScene3DRendererInstance.TCascadedVolumes.Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt);
-var Index:TpvSizeInt;
+var CascadeIndex:TpvSizeInt;
 begin
 
  inherited Create;
@@ -1001,9 +1009,11 @@ begin
  fCountCascades:=aCountCascades;
 
  fCascades:=TpvScene3DRendererInstance.TCascadedVolumes.TCascades.Create(true);
- for Index:=0 to fCountCascades-1 do begin
+ for CascadeIndex:=0 to fCountCascades-1 do begin
   fCascades.Add(TpvScene3DRendererInstance.TCascadedVolumes.TCascade.Create(self));
  end;
+
+ fFirst:=true;
 
 end;
 
@@ -1013,8 +1023,121 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererInstance.TCascadedVolumes.Update;
+procedure TpvScene3DRendererInstance.TCascadedVolumes.Reset;
 begin
+ fFirst:=true;
+end;
+
+procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFrameIndex:TpvSizeInt);
+ procedure ComputeGridExtents(out aAABBMin,aAABBMax:TpvScalar;
+                              const aPosition,aDirection,aGridSize:TpvScalar;
+                              const aTotalCells,aBufferCells:TpvInt32);
+ var HalfCells,MaxCell:TpvInt32;
+     CellSize:TpvScalar;
+ begin
+  HalfCells:=aTotalCells shr 1;
+  MaxCell:=Min(Max(HalfCells-trunc(aDirection*(aBufferCells-HalfCells)),
+                   aBufferCells),
+                   aTotalCells-aBufferCells);
+  CellSize:=aGridSize/aTotalCells;
+  aAABBMax:=aPosition+(MaxCell*CellSize);
+  aAABBMin:=aAABBMax-aGridSize;
+ end;
+var CascadeIndex,AxisIndex:TpvSizeInt;
+    CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
+    InFlightFrameState:PInFlightFrameState;
+    View:TpvScene3D.PView;
+    ViewPosition:TpvVector3;
+    ViewDirection:TpvVector3;
+    GridDimensions:TpvVector3;
+    SnappedPosition:TpvVector3;
+    GridSize:TpvVector3;
+    SceneAABB:TpvAABB;
+    AABB:TpvAABB;
+    Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
+begin
+
+ InFlightFrameState:=@fRendererInstance.fInFlightFrameStates[aInFlightFrameIndex];
+
+ View:=@fRendererInstance.Views.Items[InFlightFrameState^.FinalViewIndex];
+
+ ViewPosition:=TpvVector3.InlineableCreate(View^.InverseViewMatrix.RawComponents[3,0],
+                                           View^.InverseViewMatrix.RawComponents[3,1],
+                                           View^.InverseViewMatrix.RawComponents[3,2])/View^.InverseViewMatrix.RawComponents[3,3];
+
+ ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
+                                            -View^.InverseViewMatrix.RawComponents[2,1],
+                                            -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;
+
+ GridDimensions:=TpvVector3.InlineableCreate(fVolumeSize,fVolumeSize,fVolumeSize);
+
+ SceneAABB:=fRendererInstance.Renderer.Scene3D.BoundingBox;
+
+ SceneAABB.Min.x:=floor(SceneAABB.Min.x/16.0)*16.0;
+ SceneAABB.Min.y:=floor(SceneAABB.Min.y/16.0)*16.0;
+ SceneAABB.Min.z:=floor(SceneAABB.Min.z/16.0)*16.0;
+
+ SceneAABB.Max.x:=ceil(SceneAABB.Min.x/16.0)*16.0;
+ SceneAABB.Max.y:=ceil(SceneAABB.Min.y/16.0)*16.0;
+ SceneAABB.Max.z:=ceil(SceneAABB.Min.z/16.0)*16.0;
+
+ MaxAxisSize:=Max(Max(SceneAABB.Max.x-SceneAABB.Min.x,SceneAABB.Max.y-SceneAABB.Min.y),SceneAABB.Max.z-SceneAABB.Min.z);
+
+ MaximumCascadeCellSize:=Max(1.0,MaxAxisSize/fVolumeSize);
+
+ for CascadeIndex:=0 to fCountCascades-1 do begin
+
+  Cascade:=fCascades[CascadeIndex];
+
+  if CascadeIndex=(fCountCascades-1) then begin
+   CellSize:=MaximumCascadeCellSize;
+  end else begin
+   CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,4.0),1.0),MaximumCascadeCellSize);
+  end;
+
+  SnapSize:=CellSize;
+
+  SnappedPosition.x:=floor(ViewPosition.x/SnapSize)*SnapSize;
+  SnappedPosition.y:=floor(ViewPosition.y/SnapSize)*SnapSize;
+  SnappedPosition.z:=floor(ViewPosition.z/SnapSize)*SnapSize;
+
+  GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
+
+  for AxisIndex:=0 to 2 do begin
+   ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
+                      AABB.Max.RawComponents[AxisIndex],
+                      SnappedPosition.xyz[AxisIndex],
+                      ViewDirection.xyz[AxisIndex],
+                      GridSize.xyz[AxisIndex],
+                      trunc(GridDimensions.xyz[AxisIndex]),
+                      fCountCascades-CascadeIndex);
+  end;
+
+  Cascade.fAABB:=AABB;
+  Cascade.fCellSize:=CellSize;
+  Cascade.fSnapSize:=SnapSize;
+  Cascade.fOffset:=ViewPosition-SnappedPosition;
+
+  if fFirst then begin
+   Cascade.fDelta:=TpvVector4.InlineableCreate(Infinity,Infinity,Infinity,-1.0);
+  end else begin
+   Cascade.fDelta.x:=floor((Cascade.fAABB.Min.x-Cascade.fLastAABB.Min.x)/CellSize);
+   Cascade.fDelta.y:=floor((Cascade.fAABB.Min.y-Cascade.fLastAABB.Min.y)/CellSize);
+   Cascade.fDelta.z:=floor((Cascade.fAABB.Min.z-Cascade.fLastAABB.Min.z)/CellSize);
+   if (Cascade.fDelta.x<>0.0) or (Cascade.fDelta.y<>0.0) or (Cascade.fDelta.z<>0.0) then begin
+    Cascade.fDelta.w:=1.0;
+   end else begin
+    Cascade.fDelta.w:=0.0;
+   end;
+  end;
+
+  Cascade.fLastAABB:=Cascade.fAABB;
+  Cascade.fLastOffset:=Cascade.fOffset;
+
+ end;
+
+ fFirst:=false;
+
 end;
 
 { TpvScene3DRendererInstance.THUDRenderPass }
