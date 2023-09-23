@@ -1227,9 +1227,9 @@ begin
 
  fReflectionProbeHeight:=256;
 
- fTopDownSkyOcclusionMapWidth:=1024;
+ fTopDownSkyOcclusionMapWidth:=256;
 
- fTopDownSkyOcclusionMapHeight:=1024;
+ fTopDownSkyOcclusionMapHeight:=256;
 
  fReflectiveShadowMapWidth:=2048;
 

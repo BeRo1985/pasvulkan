@@ -1,0 +1,101 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#define NUM_COEFS 9
+#define NUM_SAMPLES 8
+#define LOCAL_SIZE 8
+#define NUM_INVOCATIONS (LOCAL_SIZE * LOCAL_SIZE)
+#define NUM_SHARED (NUM_INVOCATIONS * NUM_COEFS)
+
+/* clang-format off */
+layout(local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+
+layout(push_constant, std140, row_major) uniform PushConstants {
+  int  numSamples;
+} pushConstants;
+/* clang-format on */
+
+layout(set = 0, binding = 0) uniform samplerCube uSourceTexture;
+
+layout(set = 0, binding = 1, std430) buffer SphericalHarmonicsBuffer {
+  vec3 sphericalHarmonics[9];
+} sphericalHarmonicsBuffer;
+
+const float gDivSamples = 4.0 / 4096.0; // each invocation processes 8x8 with a a work size of 8x8, so 8x8x8x8 = 4096 samples
+//const float gDivSamples = 12.56637062 / 4096.0; // each invocation processes 8x8 with a a work size of 8x8, so 8x8x8x8 = 4096 samples
+
+shared vec3 sSphericalHarmonics[NUM_SHARED];
+
+void main() {
+
+ ivec2 lInvocationPosition = (ivec2(gl_WorkGroupID.xy) * ivec2(gl_WorkGroupSize.xy)) + ivec2(gl_LocalInvocationID.xy);
+    
+  vec3 lSphericalHarmonics[NUM_COEFS];
+  for(uint lCoefIndex = 0u; lCoefIndex < uint(NUM_COEFS); lCoefIndex++){
+    lSphericalHarmonics[lCoefIndex] = vec3(0.0);
+  }
+    
+  for(int lY = 0; lY < NUM_SAMPLES; lY++){
+    for(int lX = 0; lX < NUM_SAMPLES; lX++){
+      vec2 lCoord = vec2(vec2(ivec2((lInvocationPosition * NUM_SAMPLES) + ivec2(lX, lY))) * vec2(1.0 / 64.0));// * vec2(1.0, 0.5); 
+      vec2 lThetaPhi = ((lCoord * 2.0) - vec2(1.0)) * vec2(3.1415926535897932384626433832795, -1.5707963267948966192313216916398);
+      vec3 lRayDirection = normalize(vec3(cos(lThetaPhi.x) * cos(lThetaPhi.y), sin(lThetaPhi.y), sin(lThetaPhi.x) * cos(lThetaPhi.y)));
+      vec3 lColor = textureLod(uSourceTexture, lRayDirection, 0.0).xyz;
+      lSphericalHarmonics[0] += 0.282094792 * lColor;
+      lSphericalHarmonics[1] += ((-0.488602512) * lRayDirection.y) * lColor;
+      lSphericalHarmonics[2] += (0.488602512 * lRayDirection.z) * lColor;
+      lSphericalHarmonics[3] += ((-0.488602512) * lRayDirection.x) * lColor;
+      lSphericalHarmonics[4] += (1.092548431 * (lRayDirection.x * lRayDirection.y)) * lColor;
+      lSphericalHarmonics[5] += ((-1.092548431) * (lRayDirection.y * lRayDirection.z)) * lColor;
+      lSphericalHarmonics[6] += ((0.946174695 * (lRayDirection.z * lRayDirection.z)) - 0.315391565) * lColor;
+      lSphericalHarmonics[7] += ((-1.092548431) * (lRayDirection.x * lRayDirection.z)) * lColor;
+      lSphericalHarmonics[8] += (0.546274215 * ((lRayDirection.x * lRayDirection.x) - (lRayDirection.y * lRayDirection.y))) * lColor;        
+    }
+  }
+  
+  memoryBarrier();
+  barrier();  
+  
+  uint lInvocationIndex = gl_LocalInvocationIndex;
+
+  for(uint lCoefIndex = 0u; lCoefIndex < uint(NUM_COEFS); lCoefIndex++){
+    uint lIndex = (lInvocationIndex * NUM_COEFS) + lCoefIndex;
+    sSphericalHarmonics[lIndex] = lSphericalHarmonics[lCoefIndex];
+  }
+
+#if 0    
+  for(uint lOffset = NUM_SHARED >> 1; lOffset >= uint(NUM_COEFS); lOffset >>= 1){
+    memoryBarrierShared();
+    barrier();
+    for(uint lDst = lInvocationIndex; lDst < lOffset; lDst += uint(NUM_INVOCATIONS)){
+      sSphericalHarmonics[lDst] += sSphericalHarmonics[lDst + lOffset];
+    }    
+  }
+#else 
+  memoryBarrier();
+  barrier();
+  if(lInvocationIndex == 0u){
+    for(uint lOtherInvocationIndex = 1u; lOtherInvocationIndex < NUM_INVOCATIONS; lOtherInvocationIndex++){
+      for(uint lCoefIndex = 0u; lCoefIndex < uint(NUM_COEFS); lCoefIndex++){
+        sSphericalHarmonics[lCoefIndex] += sSphericalHarmonics[(lOtherInvocationIndex * NUM_COEFS) + lCoefIndex];
+      }
+    }
+  }
+#endif    
+
+  memoryBarrier();
+  barrier();
+  
+  if(lInvocationIndex == 0u){
+    for(uint lCoefIndex = 0u; lCoefIndex < uint(NUM_COEFS); lCoefIndex++){
+      sphericalHarmonicsBuffer.sphericalHarmonics[lCoefIndex] = sSphericalHarmonics[lCoefIndex] * gDivSamples;
+    }          
+  }    
+  
+  memoryBarrier();
+  barrier();
+
+}

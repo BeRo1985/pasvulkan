@@ -174,6 +174,8 @@ compileshaderarguments=(
   '-V particle.vert -o particle_vert.spv'
 
   '-V resampling.frag -o resampling_frag.spv'
+   
+  '-V cubemap_sphericalharmonics.comp -o cubemap_sphericalharmonics_comp.spv'
 
   '-V topdownskyocclusionmap_resolve.frag -o topdownskyocclusionmap_resolve_frag.spv'
 
