@@ -147,7 +147,7 @@ begin
                                        fInstance.TopDownSkyOcclusionMapWidth,
                                        fInstance.TopDownSkyOcclusionMapHeight,
                                        1.0,
-                                       TpvScene3DRendererInstance.CountTopDownSkyOcclusionMapCascades);
+                                       1);
 
   if aHorziontal then begin
 

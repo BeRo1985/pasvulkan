@@ -130,7 +130,7 @@ inherited Create(aFrameGraph);
                                        fInstance.TopDownSkyOcclusionMapWidth,
                                        fInstance.TopDownSkyOcclusionMapHeight,
                                        1.0,
-                                       TpvScene3DRendererInstance.CountTopDownSkyOcclusionMapCascades);
+                                       1);
 
  fResourceDepth:=AddImageDepthOutput('resourcetype_topdownskyocclusionmap_depth',
                                      'resource_topdownskyocclusionmap_depth',

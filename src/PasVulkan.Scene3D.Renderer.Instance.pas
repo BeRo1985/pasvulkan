@@ -128,6 +128,7 @@ type { TpvScene3DRendererInstance }
              CountCascadedShadowMapViews:TpvSizeInt;
 
              ReflectionProbeRenderPassIndex:TpvSizeInt;
+             TopDownSkyOcclusionMapRenderPassIndex:TpvSizeInt;
              ReflectiveShadowMapRenderPassIndex:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
@@ -335,8 +336,8 @@ type { TpvScene3DRendererInstance }
        fHasExternalOutputImage:boolean;
        fReflectionProbeWidth:TpvInt32;
        fReflectionProbeHeight:TpvInt32;
-       fTopViewSkyOcclusionMapWidth:TpvInt32;
-       fTopViewSkyOcclusionMapHeight:TpvInt32;
+       fTopDownSkyOcclusionMapWidth:TpvInt32;
+       fTopDownSkyOcclusionMapHeight:TpvInt32;
        fReflectiveShadowMapWidth:TpvInt32;
        fReflectiveShadowMapHeight:TpvInt32;
        fCascadedShadowMapWidth:TpvInt32;
@@ -553,8 +554,8 @@ type { TpvScene3DRendererInstance }
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
        property ReflectionProbeHeight:TpvInt32 read fReflectionProbeHeight write fReflectionProbeHeight;
-       property TopViewSkyOcclusionMapWidth:TpvInt32 read fTopViewSkyOcclusionMapWidth write fTopViewSkyOcclusionMapWidth;
-       property TopViewSkyOcclusionMapHeight:TpvInt32 read fTopViewSkyOcclusionMapHeight write fTopViewSkyOcclusionMapHeight;
+       property TopDownSkyOcclusionMapWidth:TpvInt32 read fTopDownSkyOcclusionMapWidth write fTopDownSkyOcclusionMapWidth;
+       property TopDownSkyOcclusionMapHeight:TpvInt32 read fTopDownSkyOcclusionMapHeight write fTopDownSkyOcclusionMapHeight;
        property ReflectiveShadowMapWidth:TpvInt32 read fReflectiveShadowMapWidth write fReflectiveShadowMapWidth;
        property ReflectiveShadowMapHeight:TpvInt32 read fReflectiveShadowMapHeight write fReflectiveShadowMapHeight;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
@@ -588,6 +589,9 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapBlurRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapResolveRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectiveShadowMapRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
@@ -662,6 +666,9 @@ type TpvScene3DRendererInstancePasses=class
        fCascadedShadowMapRenderPass:TpvScene3DRendererPassesCascadedShadowMapRenderPass;
        fCascadedShadowMapResolveRenderPass:TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesCascadedShadowMapBlurRenderPass;
+       fTopDownSkyOcclusionMapRenderPass:TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass;
+       fTopDownSkyOcclusionMapResolveRenderPass:TpvScene3DRendererPassesTopDownSkyOcclusionMapResolveRenderPass;
+       fTopDownSkyOcclusionMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesTopDownSkyOcclusionMapBlurRenderPass;
        fReflectiveShadowMapRenderPass:TpvScene3DRendererPassesReflectiveShadowMapRenderPass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
@@ -1218,9 +1225,9 @@ begin
 
  fReflectionProbeHeight:=256;
 
- fTopViewSkyOcclusionMapWidth:=1024;
+ fTopDownSkyOcclusionMapWidth:=1024;
 
- fTopViewSkyOcclusionMapHeight:=1024;
+ fTopDownSkyOcclusionMapHeight:=1024;
 
  fReflectiveShadowMapWidth:=2048;
 
@@ -1647,7 +1654,7 @@ begin
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fTopViewSkyOcclusionMapWidth,fTopViewSkyOcclusionMapHeight,1.0,1),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fTopDownSkyOcclusionMapWidth,fTopDownSkyOcclusionMapHeight,1.0,1),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -1657,7 +1664,7 @@ begin
                                   VK_FORMAT_R32_SFLOAT,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fTopViewSkyOcclusionMapWidth,fTopViewSkyOcclusionMapHeight,1.0,1),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fTopDownSkyOcclusionMapWidth,fTopDownSkyOcclusionMapHeight,1.0,1),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -3491,6 +3498,12 @@ begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
  end else begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=-1;
+ end;
+
+ if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
+  InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ end else begin
+  InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin

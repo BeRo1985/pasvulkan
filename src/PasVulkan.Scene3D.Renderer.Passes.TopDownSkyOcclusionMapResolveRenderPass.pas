@@ -81,7 +81,7 @@ type { TpvScene3DRendererPassesTopDownSkyOcclusionMapResolveRenderPass }
      TpvScene3DRendererPassesTopDownSkyOcclusionMapResolveRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        type TFragmentStagePushConstants=record
-             CountSamples:Int32;
+             InverseViewProjectMatrix:TpvMatrix4x4;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -141,7 +141,7 @@ begin
                                        fInstance.TopDownSkyOcclusionMapWidth,
                                        fInstance.TopDownSkyOcclusionMapHeight,
                                        1.0,
-                                       TpvScene3DRendererInstance.CountTopDownSkyOcclusionMapCascades);
+                                       1);
 
  fResourceInput:=AddImageInput('resourcetype_topdownskyocclusionmap_depth',
                                'resource_topdownskyocclusionmap_depth',
@@ -364,7 +364,8 @@ end;
 procedure TpvScene3DRendererPassesTopDownSkyOcclusionMapResolveRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- fFragmentStagePushConstants.CountSamples:=fInstance.Renderer.CountTopDownSkyOcclusionMapMSAASamples;
+ fFragmentStagePushConstants.InverseViewProjectMatrix:=fInstance.Views.Items[fInstance.InFlightFrameStates^[aInFlightFrameIndex].TopDownSkyOcclusionMapViewIndex].InverseViewMatrix*
+                                                       fInstance.Views.Items[fInstance.InFlightFrameStates^[aInFlightFrameIndex].TopDownSkyOcclusionMapViewIndex].InverseProjectionMatrix;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
