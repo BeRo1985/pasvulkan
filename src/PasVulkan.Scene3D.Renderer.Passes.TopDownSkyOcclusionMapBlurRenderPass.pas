@@ -147,7 +147,7 @@ begin
                                        fInstance.TopDownSkyOcclusionMapWidth,
                                        fInstance.TopDownSkyOcclusionMapHeight,
                                        1.0,
-                                       1);
+                                       0);
 
   if aHorziontal then begin
 

@@ -130,7 +130,7 @@ inherited Create(aFrameGraph);
                                        fInstance.TopDownSkyOcclusionMapWidth,
                                        fInstance.TopDownSkyOcclusionMapHeight,
                                        1.0,
-                                       1);
+                                       0);
 
  fResourceDepth:=AddImageDepthOutput('resourcetype_topdownskyocclusionmap_depth',
                                      'resource_topdownskyocclusionmap_depth',

@@ -141,7 +141,7 @@ begin
                                        fInstance.TopDownSkyOcclusionMapWidth,
                                        fInstance.TopDownSkyOcclusionMapHeight,
                                        1.0,
-                                       1);
+                                       0);
 
  fResourceInput:=AddImageInput('resourcetype_topdownskyocclusionmap_depth',
                                'resource_topdownskyocclusionmap_depth',
