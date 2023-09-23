@@ -20,7 +20,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 layout(set = 0, binding = 0) uniform sampler2D uTexture2DInputs[]; // 0 = RSM depth, 1 = RSM color, 2 = RSM normal, 3 = depth buffer
 layout(set = 0, binding = 1, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
-layout(set = 0, binding = 2, rgba32f) coherent uniform image3D uImageMetaInfo; // The global illumination volume meta info image
+layout(set = 0, binding = 2, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
 layout(set = 0, binding = 3) uniform sampler3D uTexLastSH[]; // The previous global illumination volume textures
 layout(set = 0, binding = 4) uniform sampler3D uTexLastMetaInfo; // The previous global illumination volume meta info texture
 layout(set = 0, binding = 5, std140) uniform uMetaData {
@@ -187,62 +187,62 @@ void main(){
     
     int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;
     lInvocationPosition.z -= (lCascadeIndex * GI_MAX_DEPTH);
-    
+
+#if GI_COMPRESSION == 0
+    int lTexIndexOffset = lCascadeIndex * 7;
+#elif GI_COMPRESSION == 1
+    int lTexIndexOffset = lCascadeIndex * 5;
+#elif GI_COMPRESSION == 2
+    int lTexIndexOffset = lCascadeIndex * 3;
+#else
+    #error "GI_COMPRESSION must be 0, 1 or 2"
+#endif   
+
     if(globalIlluminationVolumeAABBDeltas[lCascadeIndex].w >= 0){
       ivec3 lCacheVolumePosition = lInvocationPosition + globalIlluminationVolumeAABBDeltas[lCascadeIndex].xyz;
       if(all(greaterThanEqual(lCacheVolumePosition, ivec3(0))) && all(lessThan(lCacheVolumePosition, uGlobalIlluminationVolumeSize))){
         if(uFirst > 0){
-          lCacheVolumePosition += ivec3(0, 0, 1 + ((GI_MAX_DEPTH + 2) * lCascadeIndex));
 #if GI_COMPRESSION == 0
-          vec4 uCachedSH0 = texelFetch(uTexLastSH[0], lCacheVolumePosition, 0);
-          vec4 uCachedSH1 = texelFetch(uTexLastSH[1], lCacheVolumePosition, 0);
-          vec4 uCachedSH2 = texelFetch(uTexLastSH[2], lCacheVolumePosition, 0);
-          vec4 uCachedSH3 = texelFetch(uTexLastSH[3], lCacheVolumePosition, 0);
-          vec4 uCachedSH4 = texelFetch(uTexLastSH[4], lCacheVolumePosition, 0);
-          vec4 uCachedSH5 = texelFetch(uTexLastSH[5], lCacheVolumePosition, 0);
-          vec4 uCachedSH6 = texelFetch(uTexLastSH[6], lCacheVolumePosition, 0);
+          vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
+          vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
+          vec4 uCachedSH2 = texelFetch(uTexLastSH[lTexIndexOffset + 2], lCacheVolumePosition, 0);
+          vec4 uCachedSH3 = texelFetch(uTexLastSH[lTexIndexOffset + 3], lCacheVolumePosition, 0);
+          vec4 uCachedSH4 = texelFetch(uTexLastSH[lTexIndexOffset + 4], lCacheVolumePosition, 0);
+          vec4 uCachedSH5 = texelFetch(uTexLastSH[lTexIndexOffset + 5], lCacheVolumePosition, 0);
+          vec4 uCachedSH6 = texelFetch(uTexLastSH[lTexIndexOffset + 6], lCacheVolumePosition, 0);
 #elif GI_COMPRESSION == 1
-          vec4 uCachedSH0 = texelFetch(uTexLastSH[0], lCacheVolumePosition, 0);
-          vec4 uCachedSH1 = texelFetch(uTexLastSH[1], lCacheVolumePosition, 0);
-          vec4 uCachedSH2 = texelFetch(uTexLastSH[2], lCacheVolumePosition, 0);
-          vec4 uCachedSH3 = texelFetch(uTexLastSH[3], lCacheVolumePosition, 0);
-          vec4 uCachedSH4 = texelFetch(uTexLastSH[4], lCacheVolumePosition, 0);
+          vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
+          vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
+          vec4 uCachedSH2 = texelFetch(uTexLastSH[lTexIndexOffset + 2], lCacheVolumePosition, 0);
+          vec4 uCachedSH3 = texelFetch(uTexLastSH[lTexIndexOffset + 3], lCacheVolumePosition, 0);
+          vec4 uCachedSH4 = texelFetch(uTexLastSH[lTexIndexOffset + 4], lCacheVolumePosition, 0);
 #elif GI_COMPRESSION == 2
-          vec4 uCachedSH0 = texelFetch(uTexLastSH[0], lCacheVolumePosition, 0);
-          vec4 uCachedSH1 = texelFetch(uTexLastSH[1], lCacheVolumePosition, 0);
-          vec4 uCachedSH2 = texelFetch(uTexLastSH[2], lCacheVolumePosition, 0);
+          vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
+          vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
+          vec4 uCachedSH2 = texelFetch(uTexLastSH[lTexIndexOffset + 2], lCacheVolumePosition, 0);
 #endif      
-          vec4 uCachedMetaInfo = texelFetch(uTexLastMetaInfo, lCacheVolumePosition, 0);
-          ivec3 lVolumePosition = lInvocationPosition + ivec3(0, 0, 1 + ((GI_MAX_DEPTH + 2) * lCascadeIndex));
-          for(int lVolumeWritePass = 0; lVolumeWritePass < 2; lVolumeWritePass++){
+          vec4 uCachedMetaInfo = texelFetch(uTexLastMetaInfo[lCascadeIndex], lCacheVolumePosition, 0);
+          ivec3 lVolumePosition = lInvocationPosition;
 #if GI_COMPRESSION == 0
-            imageStore(uImageSH[0], lVolumePosition, uCachedSH0);
-            imageStore(uImageSH[1], lVolumePosition, uCachedSH1);
-            imageStore(uImageSH[2], lVolumePosition, uCachedSH2);
-            imageStore(uImageSH[3], lVolumePosition, uCachedSH3);
-            imageStore(uImageSH[4], lVolumePosition, uCachedSH4);
-            imageStore(uImageSH[5], lVolumePosition, uCachedSH5);
-            imageStore(uImageSH[6], lVolumePosition, uCachedSH6);
+          imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, uCachedSH0);
+          imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, uCachedSH1);
+          imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, uCachedSH2);
+          imageStore(uImageSH[lTexIndexOffset + 3], lVolumePosition, uCachedSH3);
+          imageStore(uImageSH[lTexIndexOffset + 4], lVolumePosition, uCachedSH4);
+          imageStore(uImageSH[lTexIndexOffset + 5], lVolumePosition, uCachedSH5);
+          imageStore(uImageSH[lTexIndexOffset + 6], lVolumePosition, uCachedSH6);
 #elif GI_COMPRESSION == 1
-            imageStore(uImageSH[0], lVolumePosition, uCachedSH0);
-            imageStore(uImageSH[1], lVolumePosition, uCachedSH1);
-            imageStore(uImageSH[2], lVolumePosition, uCachedSH2);
-            imageStore(uImageSH[3], lVolumePosition, uCachedSH3);
-            imageStore(uImageSH[4], lVolumePosition, uCachedSH4);
+          imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, uCachedSH0);
+          imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, uCachedSH1);
+          imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, uCachedSH2);
+          imageStore(uImageSH[lTexIndexOffset + 3], lVolumePosition, uCachedSH3);
+          imageStore(uImageSH[lTexIndexOffset + 4], lVolumePosition, uCachedSH4);
 #elif GI_COMPRESSION == 2
-            imageStore(uImageSH[0], lVolumePosition, uCachedSH0);
-            imageStore(uImageSH[1], lVolumePosition, uCachedSH1);
-            imageStore(uImageSH[2], lVolumePosition, uCachedSH2);
+          imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, uCachedSH0);
+          imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, uCachedSH1);
+          imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, uCachedSH2);
 #endif      
-            imageStore(uImageMetaInfo, lVolumePosition, uCachedMetaInfo);        
-            if(lInvocationPosition.z == 0){
-              lVolumePosition.z--; 
-            }else if(lInvocationPosition.z == (GI_MAX_DEPTH - 1)){
-              lVolumePosition.z++; 
-            }else{
-              break; 
-            }     
-          }
+          imageStore(uImageMetaInfo[lCascadeIndex], lVolumePosition, uCachedMetaInfo);                    
         }           
         return;    
       }
@@ -398,13 +398,13 @@ void main(){
 
     if(uFirst == 0){
 #if GI_COMPRESSION == 0
-      vec4 lTSH0 = imageLoad(uImageSH[0], lVolumePosition);   
-      vec4 lTSH1 = imageLoad(uImageSH[1], lVolumePosition);   
-      vec4 lTSH2 = imageLoad(uImageSH[2], lVolumePosition);   
-      vec4 lTSH3 = imageLoad(uImageSH[3], lVolumePosition);   
-      vec4 lTSH4 = imageLoad(uImageSH[4], lVolumePosition);   
-      vec4 lTSH5 = imageLoad(uImageSH[5], lVolumePosition);   
-      vec4 lTSH6 = imageLoad(uImageSH[6], lVolumePosition);   
+      vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
+      vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
+      vec4 lTSH2 = imageLoad(uImageSH[lTexIndexOffset + 2], lVolumePosition);   
+      vec4 lTSH3 = imageLoad(uImageSH[lTexIndexOffset + 3], lVolumePosition);   
+      vec4 lTSH4 = imageLoad(uImageSH[lTexIndexOffset + 4], lVolumePosition);   
+      vec4 lTSH5 = imageLoad(uImageSH[lTexIndexOffset + 5], lVolumePosition);   
+      vec4 lTSH6 = imageLoad(uImageSH[lTexIndexOffset + 6], lVolumePosition);   
       lSphericalHarmonics[0] += vec3(lTSH0.xyz);
       lSphericalHarmonics[1] += vec3(lTSH0.w, lTSH1.xy);
       lSphericalHarmonics[2] += vec3(lTSH1.zw, lTSH2.x);
@@ -415,11 +415,11 @@ void main(){
       lSphericalHarmonics[7] += vec3(lTSH5.yzw);
       lSphericalHarmonics[8] += vec3(lTSH6.xyz);
 #elif GI_COMPRESSION == 1
-      vec4 lTSH0 = imageLoad(uImageSH[0], lVolumePosition);   
-      vec4 lTSH1 = imageLoad(uImageSH[1], lVolumePosition);   
-      vec4 lTSH2 = imageLoad(uImageSH[2], lVolumePosition);   
-      vec4 lTSH3 = imageLoad(uImageSH[3], lVolumePosition);   
-      vec4 lTSH4 = imageLoad(uImageSH[4], lVolumePosition);   
+      vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
+      vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
+      vec4 lTSH2 = imageLoad(uImageSH[lTexIndexOffset + 2], lVolumePosition);   
+      vec4 lTSH3 = imageLoad(uImageSH[lTexIndexOffset + 3], lVolumePosition);   
+      vec4 lTSH4 = imageLoad(uImageSH[lTexIndexOffset + 4], lVolumePosition);   
       lSphericalHarmonics[0] += vec3(lTSH0.xyz);
       lSphericalHarmonics[1] += vec3(lTSH0.w, lTSH1.xy);
       lSphericalHarmonics[2] += vec3(lTSH1.zw, lTSH2.x);
@@ -430,9 +430,9 @@ void main(){
       lSphericalHarmonics[7] += vec3(lTSH3.w, vec2(0.0));
       lSphericalHarmonics[8] += vec3(lTSH4.x, vec2(0.0));
 #elif GI_COMPRESSION == 2
-      vec4 lTSH0 = imageLoad(uImageSH[0], lVolumePosition);   
-      vec4 lTSH1 = imageLoad(uImageSH[1], lVolumePosition);   
-      vec4 lTSH2 = imageLoad(uImageSH[2], lVolumePosition);   
+      vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
+      vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
+      vec4 lTSH2 = imageLoad(uImageSH[lTexIndexOffset + 2], lVolumePosition);   
       lSphericalHarmonics[0] += vec3(lTSH0.xyz);
       lSphericalHarmonics[1] += vec3(lTSH0.w, vec2(0.0));
       lSphericalHarmonics[2] += vec3(lTSH1.x, vec2(0.0));
@@ -445,35 +445,26 @@ void main(){
 #endif
     }
     
-    for(int lVolumeWritePass = 0; lVolumeWritePass < 2; lVolumeWritePass++){
 #if GI_COMPRESSION == 0
-      imageStore(uImageSH[0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
-      imageStore(uImageSH[1], lVolumePosition, vec4(lSphericalHarmonics[1].yz, lSphericalHarmonics[2].xy));
-      imageStore(uImageSH[2], lVolumePosition, vec4(lSphericalHarmonics[2].z, lSphericalHarmonics[3].xyz));
-      imageStore(uImageSH[3], lVolumePosition, vec4(lSphericalHarmonics[4].xyz, lSphericalHarmonics[5].x));
-      imageStore(uImageSH[4], lVolumePosition, vec4(lSphericalHarmonics[5].yz, lSphericalHarmonics[6].xy));
-      imageStore(uImageSH[5], lVolumePosition, vec4(lSphericalHarmonics[6].z, lSphericalHarmonics[7].xyz));
-      imageStore(uImageSH[6], lVolumePosition, vec4(lSphericalHarmonics[8].xyz, 0.0));
+    imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
+    imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, vec4(lSphericalHarmonics[1].yz, lSphericalHarmonics[2].xy));
+    imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, vec4(lSphericalHarmonics[2].z, lSphericalHarmonics[3].xyz));
+    imageStore(uImageSH[lTexIndexOffset + 3], lVolumePosition, vec4(lSphericalHarmonics[4].xyz, lSphericalHarmonics[5].x));
+    imageStore(uImageSH[lTexIndexOffset + 4], lVolumePosition, vec4(lSphericalHarmonics[5].yz, lSphericalHarmonics[6].xy));
+    imageStore(uImageSH[lTexIndexOffset + 5], lVolumePosition, vec4(lSphericalHarmonics[6].z, lSphericalHarmonics[7].xyz));
+    imageStore(uImageSH[lTexIndexOffset + 6], lVolumePosition, vec4(lSphericalHarmonics[8].xyz, 0.0));
 #elif GI_COMPRESSION == 1
-      imageStore(uImageSH[0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
-      imageStore(uImageSH[1], lVolumePosition, vec4(lSphericalHarmonics[1].yz, lSphericalHarmonics[2].xy));
-      imageStore(uImageSH[2], lVolumePosition, vec4(lSphericalHarmonics[2].z, lSphericalHarmonics[3].xyz));
-      imageStore(uImageSH[3], lVolumePosition, vec4(lSphericalHarmonics[4].x, lSphericalHarmonics[5].x, lSphericalHarmonics[6].x, lSphericalHarmonics[7].x));
-      imageStore(uImageSH[4], lVolumePosition, vec4(lSphericalHarmonics[8].x, vec3(0.0)));
+    imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
+    imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, vec4(lSphericalHarmonics[1].yz, lSphericalHarmonics[2].xy));
+    imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, vec4(lSphericalHarmonics[2].z, lSphericalHarmonics[3].xyz));
+    imageStore(uImageSH[lTexIndexOffset + 3], lVolumePosition, vec4(lSphericalHarmonics[4].x, lSphericalHarmonics[5].x, lSphericalHarmonics[6].x, lSphericalHarmonics[7].x));
+    imageStore(uImageSH[lTexIndexOffset + 4], lVolumePosition, vec4(lSphericalHarmonics[8].x, vec3(0.0)));
 #elif GI_COMPRESSION == 2
-      imageStore(uImageSH[0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
-      imageStore(uImageSH[1], lVolumePosition, vec4(lSphericalHarmonics[2].x, lSphericalHarmonics[3].x, lSphericalHarmonics[4].x, lSphericalHarmonics[5].x));
-      imageStore(uImageSH[2], lVolumePosition, vec4(lSphericalHarmonics[6].x, lSphericalHarmonics[7].x, lSphericalHarmonics[8].x, 0.0));
+    imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
+    imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, vec4(lSphericalHarmonics[2].x, lSphericalHarmonics[3].x, lSphericalHarmonics[4].x, lSphericalHarmonics[5].x));
+    imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, vec4(lSphericalHarmonics[6].x, lSphericalHarmonics[7].x, lSphericalHarmonics[8].x, 0.0));
 #endif      
-      imageStore(uImageMetaInfo, lVolumePosition, lMetaInfo);        
-      if(lInvocationPosition.z == 0){
-        lVolumePosition.z--; 
-      }else if(lInvocationPosition.z == (GI_MAX_DEPTH - 1)){
-        lVolumePosition.z++; 
-      }else{
-        break; 
-      }     
-    }
+    imageStore(uImageMetaInfo[lCascadeIndex], lVolumePosition, lMetaInfo);        
 
   }
 
