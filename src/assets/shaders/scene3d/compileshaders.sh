@@ -175,6 +175,10 @@ compileshaderarguments=(
 
   '-V resampling.frag -o resampling_frag.spv'
 
+  '-V topdownskyocclusionmap_resolve.frag -o topdownskyocclusionmap_resolve_frag.spv'
+
+  '-V topdownskyocclusionmap_blur.frag -o topdownskyocclusionmap_blur_frag.spv'
+
   '-V gi_cascaded_radiance_hints_inject_rsm.comp -o gi_cascaded_radiance_hints_inject_rsm_comp.spv'
 
   '-V gi_cascaded_radiance_hints_bounce.comp -o gi_cascaded_radiance_hints_bounce_comp.spv'

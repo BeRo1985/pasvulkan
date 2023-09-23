@@ -118,6 +118,9 @@ type { TpvScene3DRendererInstance }
              ReflectionProbeViewIndex:TpvSizeInt;
              CountReflectionProbeViews:TpvSizeInt;
 
+             TopDownSkyOcclusionMapViewIndex:TpvSizeInt;
+             CountTopDownSkyOcclusionMapViews:TpvSizeInt;
+
              ReflectiveShadowMapViewIndex:TpvSizeInt;
              CountReflectiveShadowMapViews:TpvSizeInt;
 
@@ -332,6 +335,8 @@ type { TpvScene3DRendererInstance }
        fHasExternalOutputImage:boolean;
        fReflectionProbeWidth:TpvInt32;
        fReflectionProbeHeight:TpvInt32;
+       fTopViewSkyOcclusionMapWidth:TpvInt32;
+       fTopViewSkyOcclusionMapHeight:TpvInt32;
        fReflectiveShadowMapWidth:TpvInt32;
        fReflectiveShadowMapHeight:TpvInt32;
        fCascadedShadowMapWidth:TpvInt32;
@@ -448,6 +453,7 @@ type { TpvScene3DRendererInstance }
       private
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
+       procedure AddTopDownSkyOcclusionMapView(const aInFlightFrameIndex:TpvInt32);
        procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
@@ -547,6 +553,8 @@ type { TpvScene3DRendererInstance }
        property HasExternalOutputImage:boolean read fHasExternalOutputImage;
        property ReflectionProbeWidth:TpvInt32 read fReflectionProbeWidth write fReflectionProbeWidth;
        property ReflectionProbeHeight:TpvInt32 read fReflectionProbeHeight write fReflectionProbeHeight;
+       property TopViewSkyOcclusionMapWidth:TpvInt32 read fTopViewSkyOcclusionMapWidth write fTopViewSkyOcclusionMapWidth;
+       property TopViewSkyOcclusionMapHeight:TpvInt32 read fTopViewSkyOcclusionMapHeight write fTopViewSkyOcclusionMapHeight;
        property ReflectiveShadowMapWidth:TpvInt32 read fReflectiveShadowMapWidth write fReflectiveShadowMapWidth;
        property ReflectiveShadowMapHeight:TpvInt32 read fReflectiveShadowMapHeight write fReflectiveShadowMapHeight;
        property CascadedShadowMapWidth:TpvInt32 read fCascadedShadowMapWidth write fCascadedShadowMapWidth;
@@ -1210,6 +1218,10 @@ begin
 
  fReflectionProbeHeight:=256;
 
+ fTopViewSkyOcclusionMapWidth:=1024;
+
+ fTopViewSkyOcclusionMapHeight:=1024;
+
  fReflectiveShadowMapWidth:=2048;
 
  fReflectiveShadowMapHeight:=2048;
@@ -1603,7 +1615,7 @@ begin
                                   Renderer.OptimizedNonAlphaFormat,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectiveShadowMapWidth,ReflectiveShadowMapHeight,1.0,1),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fReflectiveShadowMapWidth,fReflectiveShadowMapHeight,1.0,1),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -1614,7 +1626,7 @@ begin
                                   VK_FORMAT_A2B10G10R10_UNORM_PACK32,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectiveShadowMapWidth,ReflectiveShadowMapHeight,1.0,1),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fReflectiveShadowMapWidth,fReflectiveShadowMapHeight,1.0,1),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
@@ -1625,8 +1637,28 @@ begin
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
-                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,ReflectiveShadowMapWidth,ReflectiveShadowMapHeight,1.0,1),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fReflectiveShadowMapWidth,fReflectiveShadowMapHeight,1.0,1),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_topdownskyocclusionmap_depth',
+                                  false,
+                                  VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
+                                  VK_SAMPLE_COUNT_1_BIT,
+                                  TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fTopViewSkyOcclusionMapWidth,fTopViewSkyOcclusionMapHeight,1.0,1),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1
+                                 );
+
+ fFrameGraph.AddImageResourceType('resourcetype_topdownskyocclusionmap_z',
+                                  false,
+                                  VK_FORMAT_R32_SFLOAT,
+                                  VK_SAMPLE_COUNT_1_BIT,
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.Absolute,fTopViewSkyOcclusionMapWidth,fTopViewSkyOcclusionMapHeight,1.0,1),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1
                                  );
 
@@ -3131,6 +3163,89 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.AddTopDownSkyOcclusionMapView(const aInFlightFrameIndex:TpvInt32);
+var Index:TpvSizeInt;
+    InFlightFrameState:PInFlightFrameState;
+    Origin,
+    TopDownForwardVector,
+    TopDownSideVector,
+    TopDownUpVector:TpvVector3;
+    View:TpvScene3D.TView;
+    zNear,zFar:TpvScalar;
+    BoundingBox:TpvAABB;
+    TopDownViewMatrix,
+    TopDownProjectionMatrix,
+    TopDownViewProjectionMatrix:TpvMatrix4x4;
+begin
+
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ BoundingBox:=Renderer.Scene3D.BoundingBox;
+
+ BoundingBox.Min.x:=floor(BoundingBox.Min.x/16.0)*16.0;
+ BoundingBox.Min.y:=floor(BoundingBox.Min.y/16.0)*16.0;
+ BoundingBox.Min.z:=floor(BoundingBox.Min.z/16.0)*16.0;
+
+ BoundingBox.Max.x:=ceil(BoundingBox.Max.x/16.0)*16.0;
+ BoundingBox.Max.y:=ceil(BoundingBox.Max.y/16.0)*16.0;
+ BoundingBox.Max.z:=ceil(BoundingBox.Max.z/16.0)*16.0;
+
+ Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
+
+ TopDownForwardVector:=TpvVector3.InlineableCreate(0.0,-1.0,0.0);
+//TopDownForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
+ TopDownSideVector:=TopDownForwardVector.Perpendicular;
+{TopDownSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
+                                              -fViews.Items[0].ViewMatrix.RawComponents[1,2],
+                                              -fViews.Items[0].ViewMatrix.RawComponents[2,2]).Normalize;
+ if abs(TopDownForwardVector.Dot(TopDownSideVector))>0.5 then begin
+  if abs(TopDownForwardVector.Dot(TpvVector3.YAxis))<0.9 then begin
+   TopDownSideVector:=TpvVector3.YAxis;
+  end else begin
+   TopDownSideVector:=TpvVector3.ZAxis;
+  end;
+ end;}
+ TopDownUpVector:=(TopDownForwardVector.Cross(TopDownSideVector)).Normalize;
+ TopDownSideVector:=(TopDownUpVector.Cross(TopDownForwardVector)).Normalize;
+ TopDownViewMatrix.RawComponents[0,0]:=TopDownSideVector.x;
+ TopDownViewMatrix.RawComponents[0,1]:=TopDownUpVector.x;
+ TopDownViewMatrix.RawComponents[0,2]:=TopDownForwardVector.x;
+ TopDownViewMatrix.RawComponents[0,3]:=0.0;
+ TopDownViewMatrix.RawComponents[1,0]:=TopDownSideVector.y;
+ TopDownViewMatrix.RawComponents[1,1]:=TopDownUpVector.y;
+ TopDownViewMatrix.RawComponents[1,2]:=TopDownForwardVector.y;
+ TopDownViewMatrix.RawComponents[1,3]:=0.0;
+ TopDownViewMatrix.RawComponents[2,0]:=TopDownSideVector.z;
+ TopDownViewMatrix.RawComponents[2,1]:=TopDownUpVector.z;
+ TopDownViewMatrix.RawComponents[2,2]:=TopDownForwardVector.z;
+ TopDownViewMatrix.RawComponents[2,3]:=0.0;
+ TopDownViewMatrix.RawComponents[3,0]:=-TopDownSideVector.Dot(Origin);
+ TopDownViewMatrix.RawComponents[3,1]:=-TopDownUpVector.Dot(Origin);
+ TopDownViewMatrix.RawComponents[3,2]:=-TopDownForwardVector.Dot(Origin);
+ TopDownViewMatrix.RawComponents[3,3]:=1.0;
+
+ BoundingBox:=BoundingBox.Transform(TopDownViewMatrix);
+
+ TopDownProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(BoundingBox.Min.x,
+                                                                       BoundingBox.Max.x,
+                                                                       BoundingBox.Min.y,
+                                                                       BoundingBox.Max.y,
+                                                                       BoundingBox.Min.z,
+                                                                       BoundingBox.Max.z);
+
+ TopDownViewProjectionMatrix:=TopDownViewMatrix*TopDownProjectionMatrix;
+
+ View.ProjectionMatrix:=TopDownProjectionMatrix;
+ View.InverseProjectionMatrix:=View.ProjectionMatrix.Inverse;
+
+ View.ViewMatrix:=TopDownViewMatrix;
+ View.InverseViewMatrix:=View.ViewMatrix.Inverse;
+
+ InFlightFrameState^.TopDownSkyOcclusionMapViewIndex:=fViews.Add(View);
+ InFlightFrameState^.CountTopDownSkyOcclusionMapViews:=1;
+
+end;
+
 procedure TpvScene3DRendererInstance.AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
 var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
@@ -3338,10 +3453,19 @@ begin
  end;
 
  if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints then begin
+
+  AddTopDownSkyOcclusionMapView(aInFlightFrameIndex);
+
   AddReflectiveShadowMapView(aInFlightFrameIndex);
+
  end else begin
+
+  InFlightFrameState^.TopDownSkyOcclusionMapViewIndex:=-1;
+  InFlightFrameState^.CountTopDownSkyOcclusionMapViews:=0;
+
   InFlightFrameState^.ReflectiveShadowMapViewIndex:=-1;
   InFlightFrameState^.CountReflectiveShadowMapViews:=0;
+
  end;
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
