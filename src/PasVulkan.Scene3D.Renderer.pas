@@ -118,6 +118,11 @@ type TpvScene3DRenderer=class;
 
      { TpvScene3DRenderer }
      TpvScene3DRenderer=class(TpvScene3DRendererBaseObject)
+      public
+       type TSphericalHarmonicsBufferData=record
+             Coefs:array[0..8] of TpvVector4;
+            end;
+            PSphericalHarmonicsBufferData=^TSphericalHarmonicsBufferData;
       private
        fScene3D:TpvScene3D;
        fVulkanDevice:TpvVulkanDevice;
@@ -150,6 +155,7 @@ type TpvScene3DRenderer=class;
        fCountSurfaceMSAASamples:TpvSizeInt;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
+       fSkySphericalHarmonicsBuffer:TpvVulkanBuffer;
        fGGXBRDF:TpvScene3DRendererGGXBRDF;
        fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
        fSheenEBRDF:TpvScene3DRendererSheenEBRDF;
@@ -212,6 +218,7 @@ type TpvScene3DRenderer=class;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
+       property SkySphericalHarmonicsBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsBuffer;
        property GGXBRDF:TpvScene3DRendererGGXBRDF read fGGXBRDF;
        property CharlieBRDF:TpvScene3DRendererCharlieBRDF read fCharlieBRDF;
        property SheenEBRDF:TpvScene3DRendererSheenEBRDF read fSheenEBRDF;
@@ -809,6 +816,22 @@ begin
 
  fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat);
 
+ fSkySphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                      SizeOf(TSphericalHarmonicsBufferData),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [TpvVulkanBufferFlag.PersistentMapped]
+                                                     );
+
  fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
 
  fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
@@ -1166,6 +1189,8 @@ begin
  FreeAndNil(fSheenEBRDF);
 
  FreeAndNil(fImageBasedLightingEnvMapCubeMaps);
+
+ FreeAndNil(fSkySphericalHarmonicsBuffer);
 
  FreeAndNil(fSkyCubeMap);
 
