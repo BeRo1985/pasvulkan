@@ -289,6 +289,7 @@ type { TpvScene3DRendererInstance }
                      fCellSize:TpvScalar;
                      fSnapSize:TpvScalar;
                      fOffset:TpvVector3;
+                     fBorderCells:TpvInt32;
                      fDelta:TpvVector4;
                      fLastAABB:TpvAABB;
                      fLastOffset:TpvVector3;
@@ -1043,7 +1044,7 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
   aAABBMax:=aPosition+(MaxCell*CellSize);
   aAABBMin:=aAABBMax-aGridSize;
  end;
-var CascadeIndex,AxisIndex:TpvSizeInt;
+var CascadeIndex,AxisIndex,BorderCells:TpvSizeInt;
     CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
     View:TpvScene3D.PView;
@@ -1103,6 +1104,8 @@ begin
 
   GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
 
+  BorderCells:=fCountCascades-CascadeIndex;
+
   for AxisIndex:=0 to 2 do begin
    ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
                       AABB.Max.RawComponents[AxisIndex],
@@ -1110,13 +1113,14 @@ begin
                       ViewDirection.xyz[AxisIndex],
                       GridSize.xyz[AxisIndex],
                       trunc(GridDimensions.xyz[AxisIndex]),
-                      fCountCascades-CascadeIndex);
+                      BorderCells);
   end;
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
   Cascade.fSnapSize:=SnapSize;
   Cascade.fOffset:=ViewPosition-SnappedPosition;
+  Cascade.fBorderCells:=BorderCells;
 
   if fFirst then begin
    Cascade.fDelta:=TpvVector4.InlineableCreate(Infinity,Infinity,Infinity,-1.0);
