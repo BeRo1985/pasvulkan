@@ -133,6 +133,8 @@ type { TpvScene3DRendererInstance }
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
 
+             TopDownSkyOcclusionMapViewProjectionMatrix:TpvMatrix4x4;
+
              ZNear:TpvFloat;
              ZFar:TpvFloat;
 
@@ -3261,6 +3263,8 @@ begin
 
  View.ViewMatrix:=TopDownViewMatrix;
  View.InverseViewMatrix:=View.ViewMatrix.Inverse;
+
+ InFlightFrameState^.TopDownSkyOcclusionMapViewProjectionMatrix:=TopDownViewProjectionMatrix;
 
  InFlightFrameState^.TopDownSkyOcclusionMapViewIndex:=fViews.Add(View);
  InFlightFrameState^.CountTopDownSkyOcclusionMapViews:=1;

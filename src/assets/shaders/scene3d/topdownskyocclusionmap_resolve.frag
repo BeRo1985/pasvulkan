@@ -18,6 +18,15 @@ layout(push_constant) uniform PushConstants {
 
 /* clang-format on */
 
+float linearizeDepth(float z) {
+#if 0
+  vec2 v = (pushConstants.inverseViewProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(pushConstants.inverseViewProjectionMatrix[2].zw, vec2(z), pushConstants.inverseViewProjectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
+}
+
 void main() {
   float depth = textureLod(uTextureDepth, inTexCoord, 0).x;
   vec4 clipSpacePosition = vec4(fma(vec3(inTexCoord, depth), vec2(2.0, 1.0).xxy, vec2(-1.0, 0.0).xxy), 1.0);
