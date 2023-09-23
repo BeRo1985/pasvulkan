@@ -78,8 +78,8 @@ const ivec3 uGlobalIlluminationVolumeSize = ivec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, G
 const ivec3 uGlobalIlluminationCascadedVolumeSize = ivec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, GI_MAX_DEPTH * GI_CASCADES);
 const vec3 uGlobalIlluminationVolumeSizeVector = vec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, GI_MAX_DEPTH);
 const vec3 uGlobalIlluminationVolumeSizeInvVector = vec3(1.0) / vec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, GI_MAX_DEPTH);
-const vec3 uGlobalIlluminationVolumeSizeExVector = vec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, (GI_MAX_DEPTH + 2) * GI_CASCADES);
-const vec3 uGlobalIlluminationVolumeSizeExInvVector = vec3(1.0) / uGlobalIlluminationVolumeSizeExVector;
+//const vec3 uGlobalIlluminationVolumeSizeExVector = vec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, (GI_MAX_DEPTH + 2) * GI_CASCADES);
+//const vec3 uGlobalIlluminationVolumeSizeExInvVector = vec3(1.0) / uGlobalIlluminationVolumeSizeExVector;
 
 vec3 globalIlluminationHash(vec3 lPosition){
   lPosition = fract(lPosition * vec3(5.3983, 5.4427, 6.9371));
@@ -91,24 +91,8 @@ vec3 globalIlluminationRandom(vec3 lPosition){
   return globalIlluminationHash(lPosition * 37.0);
 }
 
-vec3 globalIlluminationVolumeGet3DTexturePosition(vec4 pPosition){
-  return clamp(((clamp(pPosition.xyz, vec3(0.0), vec3(1.0)) * uGlobalIlluminationVolumeSizeVector) + vec3(0.0, 0.0, 1.0 + (float(GI_MAX_DEPTH + 2) * pPosition.w))) * uGlobalIlluminationVolumeSizeExInvVector, vec3(0.0), vec3(1.0));
-}
-
-int globalIlluminationVolumeGetBaseIndex(const in ivec4 pPosition){
-  return clamp((((((pPosition.w * GI_MAX_DEPTH) + pPosition.z) * GI_MAX_HEIGHT) + pPosition.y) * GI_MAX_WIDTH) + pPosition.x, 0, GI_SIZE);
-}
-
-int globalIlluminationVolumeGetCellIndex(const in int pCascadeIndex, const in vec3 pPosition){
-  vec3 lAABBMin = globalIlluminationVolumeAABBMin[pCascadeIndex].xyz;
-  vec3 lAABBMax = globalIlluminationVolumeAABBMax[pCascadeIndex].xyz;
-  int lIndex = -1;
-  if(all(greaterThanEqual(pPosition, lAABBMin)) && all(lessThanEqual(pPosition, lAABBMax))){
-    vec3 lfPosition = clamp((pPosition - lAABBMin) * globalIlluminationVolumeAABBScale[pCascadeIndex].xyz, vec3(0.0), vec3(1.0));
-    ivec3 liPosition = clamp(ivec3(floor(lfPosition * uGlobalIlluminationVolumeSizeVector)), ivec3(0), ivec3(uGlobalIlluminationVolumeSize));
-    lIndex = clamp((((((pCascadeIndex * GI_MAX_DEPTH) + liPosition.z) * GI_MAX_HEIGHT) + liPosition.y) * GI_MAX_WIDTH) + liPosition.x, 0, GI_SIZE);    
-  }
-  return lIndex;  
+vec3 globalIlluminationVolumeGet3DTexturePosition(vec3 pPosition){
+  return clamp(pPosition.xyz, vec3(0.0),vec3(1.0));
 }
 
 void globalIlluminationSphericalHarmonicsEncode(in vec3 pDirection, in vec3 pC, out vec4 pSphericalHarmonics[9]){
@@ -488,34 +472,52 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
     vec4 lAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex];
     vec4 lAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex];
+#if GI_COMPRESSION == 0
+    int lTexIndexOffset = lCascadeIndex * 7;
+#elif GI_COMPRESSION == 1
+    int lTexIndexOffset = lCascadeIndex * 5;
+#elif GI_COMPRESSION == 2
+    int lTexIndexOffset = lCascadeIndex * 3;
+#else
+    #error "GI_COMPRESSION must be 0, 1 or 2"
+#endif   
 #if 1
-    vec3 lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), float(lCascadeIndex)));
-    vec4 lTSH0 = textureLod(uTexGlobalIlluminationSH[0], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-    vec4 lTSH1 = textureLod(uTexGlobalIlluminationSH[1], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-    vec4 lTSH2 = textureLod(uTexGlobalIlluminationSH[2], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec3 lVolume3DPosition = clamp(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), vec3(0.0), vec3(1.0));
+    vec4 lTSH0 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 0], lVolume3DPosition, 0.0);
+    vec4 lTSH1 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 1], lVolume3DPosition, 0.0);
+    vec4 lTSH2 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 2], lVolume3DPosition, 0.0);
 #if GI_COMPRESSION < 2
-    vec4 lTSH3 = textureLod(uTexGlobalIlluminationSH[3], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-    vec4 lTSH4 = textureLod(uTexGlobalIlluminationSH[4], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec4 lTSH3 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 3], lVolume3DPosition, 0.0);
+    vec4 lTSH4 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 4], lVolume3DPosition, 0.0);
 #endif
 #if GI_COMPRESSION < 1
-    vec4 lTSH5 = textureLod(uTexGlobalIlluminationSH[5], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-    vec4 lTSH6 = textureLod(uTexGlobalIlluminationSH[6], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+    vec4 lTSH5 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 5], lVolume3DPosition, 0.0);
+    vec4 lTSH6 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 6], lVolume3DPosition, 0.0);
 #endif
     if((lCascadeIndex + 1) < GI_CASCADES){
       vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(vWorldSpacePosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
       float lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
       if(lAABBFadeFactor > 1e-4){
-        lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), float(lCascadeIndex + 1)));
-        lTSH0 = mix(lTSH0, textureLod(uTexGlobalIlluminationSH[0], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTSH1 = mix(lTSH1, textureLod(uTexGlobalIlluminationSH[1], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTSH2 = mix(lTSH2, textureLod(uTexGlobalIlluminationSH[2], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lVolume3DPosition = clamp(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), vec3(0.0), vec3(1.0));
+#if GI_COMPRESSION == 0
+        lTexIndexOffset += 7;
+#elif GI_COMPRESSION == 1
+        lTexIndexOffset += 5;
+#elif GI_COMPRESSION == 2
+        lTexIndexOffset += 3;
+#else
+        #error "GI_COMPRESSION must be 0, 1 or 2"
+#endif   
+        lTSH0 = mix(lTSH0, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 0], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTSH1 = mix(lTSH1, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 1], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTSH2 = mix(lTSH2, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 2], lVolume3DPosition, 0.0), lAABBFadeFactor);
 #if GI_COMPRESSION < 2
-        lTSH3 = mix(lTSH3, textureLod(uTexGlobalIlluminationSH[3], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTSH4 = mix(lTSH4, textureLod(uTexGlobalIlluminationSH[4], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTSH3 = mix(lTSH3, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 3], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTSH4 = mix(lTSH4, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 4], lVolume3DPosition, 0.0), lAABBFadeFactor);
 #endif
 #if GI_COMPRESSION < 1
-        lTSH5 = mix(lTSH5, textureLod(uTexGlobalIlluminationSH[5], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTSH6 = mix(lTSH6, textureLod(uTexGlobalIlluminationSH[6], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);        
+        lTSH5 = mix(lTSH5, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 5], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTSH6 = mix(lTSH6, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 6], lVolume3DPosition, 0.0), lAABBFadeFactor);        
 #endif
       }   
     }
@@ -547,30 +549,39 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     for(int lIndex = 0; lIndex < 4; lIndex++){
       vec3 lSampleDirection = (gNormal * lD[lIndex].x) + (lTangent * lD[lIndex].y) + (lBitangent * lD[lIndex].z);
       vec3 lSampleOffset = (lSampleDirection + (gNormal * 0.5)) * uGlobalIlluminationVolumeSizeInvVector;
-      vec3 lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz) + lSampleOffset, float(lCascadeIndex)));
-      vec4 lTTSH0 = textureLod(uTexGlobalIlluminationSH[0], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-      vec4 lTTSH1 = textureLod(uTexGlobalIlluminationSH[1], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-      vec4 lTTSH2 = textureLod(uTexGlobalIlluminationSH[2], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec3 lVolume3DPosition = clamp(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), vec3(0.0), vec3(1.0));
+      vec4 lTTSH0 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 0], lVolume3DPosition, 0.0);
+      vec4 lTTSH1 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 1], lVolume3DPosition, 0.0);
+      vec4 lTTSH2 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 2], lVolume3DPosition, 0.0);
 #if GI_COMPRESSION < 2
-      vec4 lTTSH3 = textureLod(uTexGlobalIlluminationSH[3], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-      vec4 lTTSH4 = textureLod(uTexGlobalIlluminationSH[4], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec4 lTTSH3 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 3], lVolume3DPosition, 0.0);
+      vec4 lTTSH4 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 4], lVolume3DPosition, 0.0);
 #endif
 #if GI_COMPRESSION < 1
-      vec4 lTTSH5 = textureLod(uTexGlobalIlluminationSH[5], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
-      vec4 lTTSH6 = textureLod(uTexGlobalIlluminationSH[6], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0);
+      vec4 lTTSH5 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 5], lVolume3DPosition, 0.0);
+      vec4 lTTSH6 = textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 6], lVolume3DPosition, 0.0);
 #endif
       if(lAABBFadeFactor > 1e-4){
-        lGlobalIlluminationVolumeGet3DTexturePosition = globalIlluminationVolumeGet3DTexturePosition(vec4(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz) + lSampleOffset, float(lCascadeIndex + 1)));
-        lTTSH0 = mix(lTTSH0, textureLod(uTexGlobalIlluminationSH[0], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTTSH1 = mix(lTTSH1, textureLod(uTexGlobalIlluminationSH[1], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTTSH2 = mix(lTTSH2, textureLod(uTexGlobalIlluminationSH[2], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+#if GI_COMPRESSION == 0
+        lTexIndexOffset += 7;
+#elif GI_COMPRESSION == 1
+        lTexIndexOffset += 5;
+#elif GI_COMPRESSION == 2
+        lTexIndexOffset += 3;
+#else
+        #error "GI_COMPRESSION must be 0, 1 or 2"
+#endif   
+        lVolume3DPosition = clamp(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), vec3(0.0), vec3(1.0));
+        lTTSH0 = mix(lTTSH0, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 0], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTTSH1 = mix(lTTSH1, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 1], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTTSH2 = mix(lTTSH2, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 2], lVolume3DPosition, 0.0), lAABBFadeFactor);
 #if GI_COMPRESSION < 2
-        lTTSH3 = mix(lTTSH3, textureLod(uTexGlobalIlluminationSH[3], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTTSH4 = mix(lTTSH4, textureLod(uTexGlobalIlluminationSH[4], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
+        lTTSH3 = mix(lTTSH3, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 3], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTTSH4 = mix(lTTSH4, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 4], lVolume3DPosition, 0.0), lAABBFadeFactor);
 #endif
 #if GI_COMPRESSION < 1
-        lTTSH5 = mix(lTTSH5, textureLod(uTexGlobalIlluminationSH[5], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);
-        lTTSH6 = mix(lTTSH6, textureLod(uTexGlobalIlluminationSH[6], lGlobalIlluminationVolumeGet3DTexturePosition, 0.0), lAABBFadeFactor);        
+        lTTSH5 = mix(lTTSH5, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 5], lVolume3DPosition, 0.0), lAABBFadeFactor);
+        lTTSH6 = mix(lTTSH6, textureLod(uTexGlobalIlluminationSH[lTexIndexOffset + 6], lVolume3DPosition, 0.0), lAABBFadeFactor);        
 #endif
       }
       lTSH0 += lTTSH0 * 0.25;               
