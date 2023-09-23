@@ -26,6 +26,8 @@ const float gDivSamples = 4.0 / 4096.0; // each invocation processes 8x8 with a 
 
 shared vec3 sSphericalHarmonics[NUM_SHARED]; // 8*8*9*4*4 = 9216 bytes (since vec3 can be here actually a vec4 for alignment reasons)
 
+#include "global_illumination_cascaded_radiance_hints.glsl"
+
 void main() {
 
  ivec2 lInvocationPosition = (ivec2(gl_WorkGroupID.xy) * ivec2(gl_WorkGroupSize.xy)) + ivec2(gl_LocalInvocationID.xy);
@@ -40,7 +42,7 @@ void main() {
       vec2 lCoord = vec2(vec2(ivec2((lInvocationPosition * NUM_SAMPLES) + ivec2(lX, lY))) * vec2(1.0 / 64.0));// * vec2(1.0, 0.5); 
       vec2 lThetaPhi = ((lCoord * 2.0) - vec2(1.0)) * vec2(3.1415926535897932384626433832795, -1.5707963267948966192313216916398);
       vec3 lRayDirection = normalize(vec3(cos(lThetaPhi.x) * cos(lThetaPhi.y), sin(lThetaPhi.y), sin(lThetaPhi.x) * cos(lThetaPhi.y)));
-      vec3 lColor = textureLod(uSourceTexture, lRayDirection, 0.0).xyz;
+      vec3 lColor = globalIlluminationEncodeColor(textureLod(uSourceTexture, lRayDirection, 0.0).xyz);
       lSphericalHarmonics[0] += 0.282094792 * lColor;
       lSphericalHarmonics[1] += ((-0.488602512) * lRayDirection.y) * lColor;
       lSphericalHarmonics[2] += (0.488602512 * lRayDirection.z) * lColor;

@@ -62,6 +62,7 @@
 
 #define GI_SECONDARY_BOUNCE_FACTOR 0.01
 
+#ifdef GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET
 layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING, std140) uniform uboGlobalIlluminationData {
   vec4 globalIlluminationVolumeAABBMin[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBMax[GI_CASCADES];
@@ -73,6 +74,7 @@ layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATI
   ivec4 globalIlluminationVolumeAABBDeltas[GI_CASCADES];
   mat4 globalIlluminationVolumeViewProjectionMatrices[GI_CASCADES * 3];
 };
+#endif
  
 const ivec3 uGlobalIlluminationVolumeSize = ivec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, GI_MAX_DEPTH);
 const ivec3 uGlobalIlluminationCascadedVolumeSize = ivec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, GI_MAX_DEPTH * GI_CASCADES);

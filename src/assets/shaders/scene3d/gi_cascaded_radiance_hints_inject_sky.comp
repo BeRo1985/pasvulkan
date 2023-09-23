@@ -1,0 +1,164 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+#define OCCLUSION_SAMPLES 0
+#define SAMPLES 32 
+#define USE_3D_ARRAY
+
+#if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
+  #undef USE_3D_ARRAY
+#endif
+
+#define INJECT_RSM_COMPUTE_SHADER
+
+// Push contants
+layout(push_constant) uniform PushConstants {
+  mat4 uTopDownSkyOcclusionMapViewProjectionMatrix;
+  int uFirst;
+};
+
+layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = Top-down sky occlusion map (pre-blurred), 1 = depth buffer
+layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
+layout(set = 0, binding = 3, std430) buffer SkySphericalHarmonicsBuffer {
+   vec4 uSkySphericalHarmonics[9];  // The sky spherical harmonics
+};
+
+#define uTexTopDownSkyOcclusionMap uTexture2DInputs[0]
+#define uTexDepthBuffer uTexture2DInputs[1]
+
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 0
+#define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+
+#include "global_illumination_cascaded_radiance_hints.glsl"
+
+void main(){
+
+  ivec3 lInvocationPosition = (ivec3(gl_WorkGroupID.xyz) * ivec3(gl_WorkGroupSize.xyz)) + ivec3(gl_LocalInvocationID.xyz);
+  if(all(greaterThanEqual(lInvocationPosition, ivec3(0))) && all(lessThan(lInvocationPosition, uGlobalIlluminationCascadedVolumeSize))){
+    
+    int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;
+    lInvocationPosition.z -= (lCascadeIndex * GI_MAX_DEPTH);
+
+  #if GI_COMPRESSION == 0
+      int lTexIndexOffset = lCascadeIndex * 7;
+  #elif GI_COMPRESSION == 1
+      int lTexIndexOffset = lCascadeIndex * 5;
+  #elif GI_COMPRESSION == 2
+      int lTexIndexOffset = lCascadeIndex * 3;
+  #else
+      #error "GI_COMPRESSION must be 0, 1 or 2"
+  #endif   
+
+    if(globalIlluminationVolumeAABBDeltas[lCascadeIndex].w >= 0){
+      ivec3 lCacheVolumePosition = lInvocationPosition + globalIlluminationVolumeAABBDeltas[lCascadeIndex].xyz;
+      if(all(greaterThanEqual(lCacheVolumePosition, ivec3(0))) && all(lessThan(lCacheVolumePosition, uGlobalIlluminationVolumeSize))){
+        // Discard, because in this case, we can use the cached values
+        return;    
+      }
+    }
+    
+    vec3 lGlobalIlluminationVolumeAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex].xyz;   
+    vec3 lGlobalIlluminationVolumeAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex].xyz;   
+      
+    vec3 lPosition = lGlobalIlluminationVolumeAABBMin + ((vec3(lInvocationPosition) + vec3(0.5)) * ((lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin) / vec3(uGlobalIlluminationVolumeSize))); 
+
+    vec4 lBaseUVPos = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lPosition, 1.0); 
+    vec2 lBaseUV = clamp(fma(vec2(lBaseUVPos.xy / lBaseUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0),vec2(1.0));
+
+    float lTopDownSkyOcclusionMapHeight = textureLod(uTexTopDownSkyOcclusionMap, lBaseUV, 0.0).x;
+    float lTopDownSkyOcclusionMapHeightDifference = lTopDownSkyOcclusionMapHeight - lPosition.y;
+    float lTopDownSkyOcclusionMapFactor = smoothstep(-0.1, 0.0, lTopDownSkyOcclusionMapHeightDifference); // <= TODO: Verify and improve if necessary
+
+    vec3 lSphericalHarmonics[9];
+    lSphericalHarmonics[0] = uSkySphericalHarmonics[0].xyz * lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[1] = uSkySphericalHarmonics[1].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[2] = uSkySphericalHarmonics[2].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[3] = uSkySphericalHarmonics[3].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[4] = uSkySphericalHarmonics[4].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[5] = uSkySphericalHarmonics[5].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[6] = uSkySphericalHarmonics[6].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[7] = uSkySphericalHarmonics[7].xyz * lTopDownSkyOcclusionMapFactor;
+    lSphericalHarmonics[8] = uSkySphericalHarmonics[8].xyz * lTopDownSkyOcclusionMapFactor;
+    
+    ivec3 lVolumePosition = lInvocationPosition;
+
+    if(uFirst == 0){
+#if GI_COMPRESSION == 0
+      vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
+      vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
+      vec4 lTSH2 = imageLoad(uImageSH[lTexIndexOffset + 2], lVolumePosition);   
+      vec4 lTSH3 = imageLoad(uImageSH[lTexIndexOffset + 3], lVolumePosition);   
+      vec4 lTSH4 = imageLoad(uImageSH[lTexIndexOffset + 4], lVolumePosition);   
+      vec4 lTSH5 = imageLoad(uImageSH[lTexIndexOffset + 5], lVolumePosition);   
+      vec4 lTSH6 = imageLoad(uImageSH[lTexIndexOffset + 6], lVolumePosition);   
+      lSphericalHarmonics[0] += vec3(lTSH0.xyz);
+      lSphericalHarmonics[1] += vec3(lTSH0.w, lTSH1.xy);
+      lSphericalHarmonics[2] += vec3(lTSH1.zw, lTSH2.x);
+      lSphericalHarmonics[3] += vec3(lTSH2.yzw);
+      lSphericalHarmonics[4] += vec3(lTSH3.xyz);
+      lSphericalHarmonics[5] += vec3(lTSH3.w, lTSH4.xy);
+      lSphericalHarmonics[6] += vec3(lTSH4.zw, lTSH5.x);
+      lSphericalHarmonics[7] += vec3(lTSH5.yzw);
+      lSphericalHarmonics[8] += vec3(lTSH6.xyz);
+#elif GI_COMPRESSION == 1
+      vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
+      vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
+      vec4 lTSH2 = imageLoad(uImageSH[lTexIndexOffset + 2], lVolumePosition);   
+      vec4 lTSH3 = imageLoad(uImageSH[lTexIndexOffset + 3], lVolumePosition);   
+      vec4 lTSH4 = imageLoad(uImageSH[lTexIndexOffset + 4], lVolumePosition);   
+      lSphericalHarmonics[0] += vec3(lTSH0.xyz);
+      lSphericalHarmonics[1] += vec3(lTSH0.w, lTSH1.xy);
+      lSphericalHarmonics[2] += vec3(lTSH1.zw, lTSH2.x);
+      lSphericalHarmonics[3] += vec3(lTSH2.yzw);
+      lSphericalHarmonics[4] += vec3(lTSH3.x, vec2(0.0));
+      lSphericalHarmonics[5] += vec3(lTSH3.y, vec2(0.0));
+      lSphericalHarmonics[6] += vec3(lTSH3.z, vec2(0.0));
+      lSphericalHarmonics[7] += vec3(lTSH3.w, vec2(0.0));
+      lSphericalHarmonics[8] += vec3(lTSH4.x, vec2(0.0));
+#elif GI_COMPRESSION == 2
+      vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
+      vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
+      vec4 lTSH2 = imageLoad(uImageSH[lTexIndexOffset + 2], lVolumePosition);   
+      lSphericalHarmonics[0] += vec3(lTSH0.xyz);
+      lSphericalHarmonics[1] += vec3(lTSH0.w, vec2(0.0));
+      lSphericalHarmonics[2] += vec3(lTSH1.x, vec2(0.0));
+      lSphericalHarmonics[3] += vec3(lTSH1.y, vec2(0.0));
+      lSphericalHarmonics[4] += vec3(lTSH1.z, vec2(0.0));
+      lSphericalHarmonics[5] += vec3(lTSH1.w, vec2(0.0));
+      lSphericalHarmonics[6] += vec3(lTSH2.x, vec2(0.0));
+      lSphericalHarmonics[7] += vec3(lTSH2.y, vec2(0.0));
+      lSphericalHarmonics[8] += vec3(lTSH2.z, vec2(0.0));
+#endif
+    }
+    
+#if GI_COMPRESSION == 0
+    imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
+    imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, vec4(lSphericalHarmonics[1].yz, lSphericalHarmonics[2].xy));
+    imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, vec4(lSphericalHarmonics[2].z, lSphericalHarmonics[3].xyz));
+    imageStore(uImageSH[lTexIndexOffset + 3], lVolumePosition, vec4(lSphericalHarmonics[4].xyz, lSphericalHarmonics[5].x));
+    imageStore(uImageSH[lTexIndexOffset + 4], lVolumePosition, vec4(lSphericalHarmonics[5].yz, lSphericalHarmonics[6].xy));
+    imageStore(uImageSH[lTexIndexOffset + 5], lVolumePosition, vec4(lSphericalHarmonics[6].z, lSphericalHarmonics[7].xyz));
+    imageStore(uImageSH[lTexIndexOffset + 6], lVolumePosition, vec4(lSphericalHarmonics[8].xyz, 0.0));
+#elif GI_COMPRESSION == 1
+    imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
+    imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, vec4(lSphericalHarmonics[1].yz, lSphericalHarmonics[2].xy));
+    imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, vec4(lSphericalHarmonics[2].z, lSphericalHarmonics[3].xyz));
+    imageStore(uImageSH[lTexIndexOffset + 3], lVolumePosition, vec4(lSphericalHarmonics[4].x, lSphericalHarmonics[5].x, lSphericalHarmonics[6].x, lSphericalHarmonics[7].x));
+    imageStore(uImageSH[lTexIndexOffset + 4], lVolumePosition, vec4(lSphericalHarmonics[8].x, vec3(0.0)));
+#elif GI_COMPRESSION == 2
+    imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));
+    imageStore(uImageSH[lTexIndexOffset + 1], lVolumePosition, vec4(lSphericalHarmonics[2].x, lSphericalHarmonics[3].x, lSphericalHarmonics[4].x, lSphericalHarmonics[5].x));
+    imageStore(uImageSH[lTexIndexOffset + 2], lVolumePosition, vec4(lSphericalHarmonics[6].x, lSphericalHarmonics[7].x, lSphericalHarmonics[8].x, 0.0));
+#endif      
+
+  }
+
+} 

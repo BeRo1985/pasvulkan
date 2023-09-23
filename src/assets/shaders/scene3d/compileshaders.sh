@@ -181,6 +181,10 @@ compileshaderarguments=(
 
   '-V topdownskyocclusionmap_blur.frag -o topdownskyocclusionmap_blur_frag.spv'
 
+  '-V gi_cascaded_radiance_hints_inject_cached.comp -o gi_cascaded_radiance_hints_inject_cached_comp.spv'
+
+  '-V gi_cascaded_radiance_hints_inject_sky.comp -o gi_cascaded_radiance_hints_inject_sky_comp.spv'
+  
   '-V gi_cascaded_radiance_hints_inject_rsm.comp -o gi_cascaded_radiance_hints_inject_rsm_comp.spv'
 
   '-V gi_cascaded_radiance_hints_bounce.comp -o gi_cascaded_radiance_hints_bounce_comp.spv'
