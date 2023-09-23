@@ -278,6 +278,31 @@ type { TpvScene3DRendererInstance }
               destructor Destroy; override;
               procedure Calculate(const aInFlightFrameIndex:TpvInt32);
             end;
+            { TCascadedVolumes }
+            TCascadedVolumes=class
+             public
+              type { TCascade }
+                   TCascade=class
+                    private
+                     fCascadedVolumes:TCascadedVolumes;
+                     fAABB:TpvAABB;
+                    public
+                     constructor Create(const aCascadedVolumes:TCascadedVolumes); reintroduce;
+                     destructor Destroy; override;
+                   end;
+                   TCascades=TpvObjectGenericList<TCascade>;
+             private
+              fRendererInstance:TpvScene3DRendererInstance;
+              fVolumeSize:TpvSizeInt;
+              fCountCascades:TpvSizeInt;
+              fCascades:TCascades;
+             public
+              constructor Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt); reintroduce;
+              destructor Destroy; override;
+              procedure Update;
+             published
+              property Cascades:TCascades read fCascades;
+            end;
             { THUDRenderPass }
             THUDRenderPass=class(TpvFrameGraph.TRenderPass)
              protected
@@ -946,6 +971,50 @@ begin
 
  InFlightFrameState^.CountCascadedShadowMapViews:=CountCascadedShadowMapCascades;
 
+end;
+
+{ TpvScene3DRendererInstance.TCascadedVolumes.TCascade }
+
+constructor TpvScene3DRendererInstance.TCascadedVolumes.TCascade.Create(const aCascadedVolumes:TCascadedVolumes);
+begin
+ inherited Create;
+ fCascadedVolumes:=aCascadedVolumes;
+end;
+
+destructor TpvScene3DRendererInstance.TCascadedVolumes.TCascade.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvScene3DRendererInstance.TCascadedVolumes }
+
+constructor TpvScene3DRendererInstance.TCascadedVolumes.Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt);
+var Index:TpvSizeInt;
+begin
+
+ inherited Create;
+
+ fRendererInstance:=aRendererInstance;
+
+ fVolumeSize:=aVolumeSize;
+
+ fCountCascades:=aCountCascades;
+
+ fCascades:=TpvScene3DRendererInstance.TCascadedVolumes.TCascades.Create(true);
+ for Index:=0 to fCountCascades-1 do begin
+  fCascades.Add(TpvScene3DRendererInstance.TCascadedVolumes.TCascade.Create(self));
+ end;
+
+end;
+
+destructor TpvScene3DRendererInstance.TCascadedVolumes.Destroy;
+begin
+ FreeAndNil(fCascades);
+ inherited Destroy;
+end;
+
+procedure TpvScene3DRendererInstance.TCascadedVolumes.Update;
+begin
 end;
 
 { TpvScene3DRendererInstance.THUDRenderPass }
