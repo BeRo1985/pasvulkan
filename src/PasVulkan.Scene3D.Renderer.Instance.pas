@@ -232,6 +232,23 @@ type { TpvScene3DRendererInstance }
              CountPixels:TpvUInt32;
             end;
             PLuminancePushConstants=^TLuminancePushConstants;
+            TIntVector4=record
+             x,y,z,w:TpvInt32;
+            end;
+            PIntVector4=^TIntVector4;
+            TGlobalIlluminationRadianceHintsUniformBufferData=record
+             AABBMin:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBMax:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBScale:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBSnappedCenter:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBCenter:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBFadeStart:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBFadeEnd:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBDeltas:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TIntVector4;
+            end;
+            PGlobalIlluminationRadianceHintsUniformBufferData=^TGlobalIlluminationRadianceHintsUniformBufferData;
+            TGlobalIlluminationRadianceHintsUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsUniformBufferData;
+            PGlobalIlluminationRadianceHintsUniformBufferDataArray=^TGlobalIlluminationRadianceHintsUniformBufferDataArray;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -394,6 +411,9 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
        fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
       private
+       fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
+       fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
+      private
        fCountLockOrderIndependentTransparencyLayers:TpvInt32;
        fLockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer;
        fLockOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
@@ -455,6 +475,7 @@ type { TpvScene3DRendererInstance }
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
       private
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
+       procedure UpdateGlobalIlluminationRadianceHints(const aInFlightFrameIndex:TpvInt32);
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
        procedure AddTopDownSkyOcclusionMapView(const aInFlightFrameIndex:TpvInt32);
        procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
@@ -505,6 +526,8 @@ type { TpvScene3DRendererInstance }
       public
        property CascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers read fCascadedShadowMapUniformBuffers;
        property CascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers read fCascadedShadowMapVulkanUniformBuffers;
+      public
+       property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
       public
        property CountLockOrderIndependentTransparencyLayers:TpvInt32 read fCountLockOrderIndependentTransparencyLayers;
        property LockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer read fLockOrderIndependentTransparentUniformBuffer;
@@ -1095,9 +1118,9 @@ begin
  SceneAABB.Min.y:=floor(SceneAABB.Min.y/16.0)*16.0;
  SceneAABB.Min.z:=floor(SceneAABB.Min.z/16.0)*16.0;
 
- SceneAABB.Max.x:=ceil(SceneAABB.Min.x/16.0)*16.0;
- SceneAABB.Max.y:=ceil(SceneAABB.Min.y/16.0)*16.0;
- SceneAABB.Max.z:=ceil(SceneAABB.Min.z/16.0)*16.0;
+ SceneAABB.Max.x:=ceil((SceneAABB.Max.x+8.0)/16.0)*16.0;
+ SceneAABB.Max.y:=ceil((SceneAABB.Max.y+8.0)/16.0)*16.0;
+ SceneAABB.Max.z:=ceil((SceneAABB.Max.z+8.0)/16.0)*16.0;
 
  MaxAxisSize:=Max(Max(SceneAABB.Max.x-SceneAABB.Min.x,SceneAABB.Max.y-SceneAABB.Min.y),SceneAABB.Max.z-SceneAABB.Min.z);
 
@@ -1288,6 +1311,8 @@ begin
 
  FillChar(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
 
+ fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1400,6 +1425,8 @@ begin
   end;
  end;
 
+ FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
+
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
  case Renderer.TransparencyMode of
@@ -1444,6 +1471,10 @@ begin
 
  case Renderer.GlobalIlluminatonMode of
   TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+
+   fGlobalIlluminationRadianceHintsCascadedVolumes:=TCascadedVolumes.Create(self,
+                                                                            GlobalIlluminationRadiantHintVolumeSize,
+                                                                            CountGlobalIlluminationRadiantHintCascades);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
     for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
@@ -3068,6 +3099,39 @@ begin
  end;
 end;
 
+procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationRadianceHints(const aInFlightFrameIndex:TpvInt32);
+var CascadeIndex:TpvSizeInt;
+    GlobalIlluminationRadianceHintsUniformBufferData:PGlobalIlluminationRadianceHintsUniformBufferData;
+    CascadedVolumeCascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
+    s:TpvScalar;
+begin
+
+ fGlobalIlluminationRadianceHintsCascadedVolumes.Update(aInFlightFrameIndex);
+
+ GlobalIlluminationRadianceHintsUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
+
+ for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
+
+  CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
+
+  s:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationRadiantHintCascades-1)].fCellSize*2.0;
+
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/(CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min),0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBSnappedCenter[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-(CascadedVolumeCascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-CascadedVolumeCascade.fSnapSize,0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5)+CascadedVolumeCascade.fOffset,0.0);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=trunc(CascadedVolumeCascade.fDelta.x);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=trunc(CascadedVolumeCascade.fDelta.y);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=trunc(CascadedVolumeCascade.fDelta.z);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=0;
+
+ end;
+
+end;
+
 procedure TpvScene3DRendererInstance.AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
 const CubeMapMatrices:array[0..5] of TpvMatrix4x4=
        (
@@ -3532,6 +3596,10 @@ begin
 
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
+
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints then begin
+  UpdateGlobalIlluminationRadianceHints(aInFlightFrameIndex);
+ end;
 
  // Final viewport(s)
  if InFlightFrameState^.CountFinalViews>0 then begin
