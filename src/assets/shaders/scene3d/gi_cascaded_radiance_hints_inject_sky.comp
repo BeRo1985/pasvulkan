@@ -25,7 +25,7 @@ layout(push_constant) uniform PushConstants {
   int uFirst;
 };
 
-layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = Top-down sky occlusion map (pre-blurred), 1 = depth buffer
+layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = Top-down sky occlusion map, 1 = depth buffer
 layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 3, std430) buffer SkySphericalHarmonicsBuffer {
    vec4 uSkySphericalHarmonics[9];  // The sky spherical harmonics
@@ -74,12 +74,11 @@ void main(){
     vec3 lPosition = lGlobalIlluminationVolumeAABBMin + ((vec3(lInvocationPosition) + vec3(0.5)) * lCellSize); 
 
 #if SAMPLES == 0
-    vec4 lBaseUVPos = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lPosition, 1.0); 
-    vec2 lBaseUV = clamp(fma(vec2(lBaseUVPos.xy / lBaseUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0),vec2(1.0));
+    vec4 lBasePosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lPosition, 1.0); 
+    lBasePosition /= lBasePosition.w;
+    vec2 lBaseUV = clamp(fma(vec2(lBaseUVPos.xy), vec2(0.5), vec2(0.5)), vec2(0.0),vec2(1.0));
 
-    float lTopDownSkyOcclusionMapHeight = textureLod(uTexTopDownSkyOcclusionMap, lBaseUV, 0.0).x;
-    float lTopDownSkyOcclusionMapHeightDifference = lTopDownSkyOcclusionMapHeight - lPosition.y;
-    float lTopDownSkyOcclusionMapFactor = smoothstep(-0.1, 0.0, lTopDownSkyOcclusionMapHeightDifference); // <= TODO: Verify and improve if necessary
+    float lTopDownSkyOcclusionMapFactor = step(lBasePosition.z, textureLod(uTexTopDownSkyOcclusionMap, lBaseUV, 0.0).x);
 #elif SAMPLES > 0
 
 #if !defined(USE_3D_ARRAY)
@@ -117,12 +116,11 @@ void main(){
 #endif      
 #endif
 
-      vec4 lSampleUVPos = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
-      lSampleUVPos /= lSampleUVPos.w;
-      vec2 lSampleUV = clamp(fma(vec2(lSampleUVPos.xy), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0));
+      vec4 lSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
+      lSampleUVWPosition /= lSampleUVWPosition.w;
+      vec2 lSampleUV = clamp(fma(vec2(lSampleUVWPosition.xy), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0));
 
-      float lTopDownSkyOcclusionMapHeight = textureLod(uTexTopDownSkyOcclusionMap, lSampleUV, 0.0).x;
-      lVisibility += step(lSamplePosition.y, lTopDownSkyOcclusionMapHeight);
+      lVisibility += step(lSampleUVWPosition.z, textureLod(uTexTopDownSkyOcclusionMap, lSampleUV, 0.0).x);
 
 #if OCCLUSION_SAMPLES > 0
       float lCurrentVisibility;
