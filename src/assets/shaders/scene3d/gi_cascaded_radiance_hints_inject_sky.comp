@@ -93,7 +93,7 @@ void main(){
     float lRadius = length(lPosition - vec3(lInvocationPosition)); 
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
-//#define USE_PLANE_SAMPLING
+#undef USE_PLANE_SAMPLING
 #if defined(USE_3D_ARRAY)
 #if defined(USE_PLANE_SAMPLING)
       vec3 lSamplePosition = lPosition + vec3(((gGlobalIlluminationTaps2D[lSampleIndex] - vec2(0.5)) * 2.0) * lRadius, 0.0).xzy; 
