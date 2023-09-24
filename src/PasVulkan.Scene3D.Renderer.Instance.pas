@@ -3163,7 +3163,6 @@ begin
                                                  0,
                                                  SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData));
 
-
 end;
 
 procedure TpvScene3DRendererInstance.AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);

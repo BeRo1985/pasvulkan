@@ -90,7 +90,7 @@ void main(){
 #endif    
 
     float lVisibility = 0.0; 
-    float lRadius = length(lPosition - vec3(lInvocationPosition)); 
+    float lRadius = length(lPosition - vec3(lInvocationPosition)) * 0.9; 
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
 #undef USE_PLANE_SAMPLING
