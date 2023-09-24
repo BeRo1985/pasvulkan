@@ -266,18 +266,18 @@ begin
     for SHTextureIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages-1 do begin
      ImageSHDescriptorImageInfoArray[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
                                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageView,
-                                                                           fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageLayout);
-     TexLastMetaInfoDescriptorImageInfoArray[Index]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                   fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageView,
-                                                                                   fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageLayout);
+                                                                           VK_IMAGE_LAYOUT_GENERAL);
+     TexLastSHDescriptorImageInfoArray[Index]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                             fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageView,
+                                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
      inc(Index);
     end;
-    ImageMetaInfoDescriptorImageInfoArray[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                                fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
-                                                                                fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageLayout);
-    TexLastMetaInfoDescriptorImageInfoArray[Index]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                                                  fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
-                                                                                  fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageLayout);
+    ImageMetaInfoDescriptorImageInfoArray[CascadeIndex]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
+                                                                                       fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
+                                                                                       VK_IMAGE_LAYOUT_GENERAL);
+    TexLastMetaInfoDescriptorImageInfoArray[CascadeIndex]:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                                         fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
+                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
    end;
 
    fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
@@ -378,13 +378,13 @@ begin
  Index:=0;
  for CascadeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades-1 do begin
   for VolumeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
-   ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+   ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
                                                             TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            VK_IMAGE_LAYOUT_UNDEFINED,//VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                             VK_IMAGE_LAYOUT_GENERAL,
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].DescriptorImageInfo.imageView,
+                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
                                                             TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                             0,
                                                                                             1,
@@ -431,7 +431,7 @@ begin
                                                             VK_IMAGE_LAYOUT_GENERAL,
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].DescriptorImageInfo.imageView,
+                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
                                                             TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                             0,
                                                                                             1,

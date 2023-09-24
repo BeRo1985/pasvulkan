@@ -700,6 +700,7 @@ type TpvScene3DRendererInstancePasses=class
        fTopDownSkyOcclusionMapResolveRenderPass:TpvScene3DRendererPassesTopDownSkyOcclusionMapResolveRenderPass;
        fTopDownSkyOcclusionMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesTopDownSkyOcclusionMapBlurRenderPass;
        fReflectiveShadowMapRenderPass:TpvScene3DRendererPassesReflectiveShadowMapRenderPass;
+       fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
@@ -2104,6 +2105,9 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapBlurRenderPasses[1]);
 
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass:=TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
+
   end;
   else begin
    TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass:=nil;
@@ -2166,6 +2170,13 @@ begin
  end;
  if assigned(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass) then begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
+ end;
+ case Renderer.GlobalIlluminatonMode of
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass);
+  end;
+  else begin
+  end;
  end;
  case Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS:begin
