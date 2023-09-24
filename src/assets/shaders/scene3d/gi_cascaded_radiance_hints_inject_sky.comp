@@ -90,6 +90,7 @@ void main(){
 #endif    
 
     float lVisibility = 0.0; 
+    float lFactor = 1.0;
     float lRadius = length(lPosition - vec3(lInvocationPosition)) * 0.9; 
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
@@ -123,13 +124,29 @@ void main(){
       float lTopDownSkyOcclusionMapHeight = textureLod(uTexTopDownSkyOcclusionMap, lSampleUV, 0.0).x;
       lVisibility += step(lSamplePosition.y, lTopDownSkyOcclusionMapHeight);
 
+#if OCCLUSION_SAMPLES > 0
+      float lCurrentVisibility;
+      {
+        vec4 lTemp = uModelViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
+        lTemp /= lTemp.w;
+        lCurrentVisibility = (lTemp.z < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * 1.1)) ? 1.0 : -1.0; 
+      }
+      float lDepthVisibility = 1.0; 
+      for(int lOcclusionSampleIndex = 1; lOcclusionSampleIndex < OCCLUSION_SAMPLES; lOcclusionSampleIndex++){ 
+        vec4 lTemp = uModelViewProjectionMatrix * vec4(mix(lSamplePosition, lPosition, float(lOcclusionSampleIndex) / float(OCCLUSION_SAMPLES)), 1.0); 
+        lTemp /= lTemp.w;
+        lDepthVisibility -= ((lTemp.z * lCurrentVisibility) < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * lCurrentVisibility)) ? 0.0 : (1.0 / float(OCCLUSION_SAMPLES)); 
+      } 
+      lFactor *= clamp(lDepthVisibility, 0.0, 1.0);
+#endif 
+
 #if !defined(USE_3D_ARRAY)
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
 #endif      
 
     } 
 
-    float lTopDownSkyOcclusionMapFactor = clamp(lVisibility / float(SAMPLES), 0.0, 1.0);
+    float lTopDownSkyOcclusionMapFactor = clamp((lVisibility / float(SAMPLES)) * lFactor, 0.0, 1.0);
 
 #endif 
 
