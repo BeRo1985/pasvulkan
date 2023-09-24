@@ -331,6 +331,29 @@ void globalIlluminationSphericalHarmonicsExtract(const in vec3 pSphericalHarmoni
   ambient = max(vec3(0.0), (pSphericalHarmonics[0].rgb - (directional * g_sh1)) * inverseAmbientLightNormalizationFactor);  
 }
 
+void globalIlluminationSphericalHarmonicsExtractAndSubtract(inout vec3 pSphericalHarmonics[9], out vec3 ambient, out vec3 directional, out vec3 direction){
+  const float g_sh1 = 0.2820947917738781;                                                     // 0.5 * sqrt(1.0 / pi)
+  const float g_sh2 = 0.4886025119029199;                                                     // 0.5 * sqrt(3.0 / pi) 
+  const float g_sh3 = 1.0925484305920790;                                                     // 0.5 * sqrt(15.0 / pi) 
+  const float g_sh4 = 0.3153915652525200;                                                     // 0.25 * sqrt(5.0 / pi) 
+  const float g_sh5 = 0.5462742152960395;                                                     // 0.25 * sqrt(15.0 / pi) 
+  const float directionalLightNormalizationFactor = 2.9567930857315701;                       // (16.0 * pi) / 17.0
+  const float ambientLightNormalizationFactor = 3.5449077018110321;                           // 2.0 * sqrt(pi)
+  const float inverseAmbientLightNormalizationFactor = 1.0 / ambientLightNormalizationFactor;  
+  direction = normalize((normalize(vec3(-pSphericalHarmonics[3].r, -pSphericalHarmonics[1].r, pSphericalHarmonics[2].r)) * 0.3) + 
+                        (normalize(vec3(-pSphericalHarmonics[3].g, -pSphericalHarmonics[1].g, pSphericalHarmonics[2].g)) * 0.59) + 
+                        (normalize(vec3(-pSphericalHarmonics[3].b, -pSphericalHarmonics[1].b, pSphericalHarmonics[2].b)) * 0.11));
+  vec3 sh0l = vec3(g_sh1, -(g_sh2 * direction.y), g_sh2 * direction.z) * directionalLightNormalizationFactor;
+  vec3 sh1l = vec3(-(g_sh2 * direction.x), g_sh3 * (direction.y * direction.x), -(g_sh3 * (direction.y * direction.z))) * directionalLightNormalizationFactor;
+  vec3 sh2l = vec3(g_sh4 * ((3.0 * (direction.z * direction.z)) - 1.0), -(g_sh3 * (direction.x * direction.z)), g_sh5 * ((direction.x * direction.x) - (direction.y * direction.y))) * directionalLightNormalizationFactor;
+  directional = max(vec3(0.0), vec3(dot(vec3(pSphericalHarmonics[0].r, pSphericalHarmonics[1].r, pSphericalHarmonics[2].r), sh0l) + dot(vec3(pSphericalHarmonics[3].r, pSphericalHarmonics[4].r, pSphericalHarmonics[5].r), sh1l) + dot(vec3(pSphericalHarmonics[6].r, pSphericalHarmonics[7].r, pSphericalHarmonics[8].r), sh2l),
+                                    dot(vec3(pSphericalHarmonics[0].g, pSphericalHarmonics[1].g, pSphericalHarmonics[2].g), sh0l) + dot(vec3(pSphericalHarmonics[3].g, pSphericalHarmonics[4].g, pSphericalHarmonics[5].g), sh1l) + dot(vec3(pSphericalHarmonics[6].g, pSphericalHarmonics[7].g, pSphericalHarmonics[8].g), sh2l),
+                                    dot(vec3(pSphericalHarmonics[0].b, pSphericalHarmonics[1].b, pSphericalHarmonics[2].b), sh0l) + dot(vec3(pSphericalHarmonics[3].b, pSphericalHarmonics[4].b, pSphericalHarmonics[5].b), sh1l) + dot(vec3(pSphericalHarmonics[6].b, pSphericalHarmonics[7].b, pSphericalHarmonics[8].b), sh2l)) /
+                                   (dot(sh0l, sh0l) + dot(sh1l, sh1l) + dot(sh2l, sh2l)));
+  ambient = max(vec3(0.0), (pSphericalHarmonics[0].rgb - (directional * g_sh1)) * inverseAmbientLightNormalizationFactor);  
+  globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(direction, -directional, pSphericalHarmonics);
+}
+
 void globalIlluminationSphericalHarmonicsExtractDominantLight(const in vec3 pSphericalHarmonics[9], out vec3 directional, out vec3 direction){
   const float g_sh1 = 0.2820947917738781;                                                     // 0.5 * sqrt(1.0 / pi)
   const float g_sh2 = 0.4886025119029199;                                                     // 0.5 * sqrt(3.0 / pi) 
