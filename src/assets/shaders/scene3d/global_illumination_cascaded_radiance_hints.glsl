@@ -72,7 +72,6 @@ layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATI
   vec4 globalIlluminationVolumeAABBFadeStart[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBFadeEnd[GI_CASCADES];
   ivec4 globalIlluminationVolumeAABBDeltas[GI_CASCADES];
-  mat4 globalIlluminationVolumeViewProjectionMatrices[GI_CASCADES * 3];
 };
 #endif
  
