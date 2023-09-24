@@ -2751,6 +2751,11 @@ type EpvScene3D=class(Exception);
        property Lights:TInFlightFrameLights read fLights;
        property CountLights:TCountInFlightFrameLights read fCountLights;
       published
+       property VulkanStagingQueue:TpvVulkanQueue read fVulkanStagingQueue;
+       property VulkanStagingCommandPool:TpvVulkanCommandPool read fVulkanStagingCommandPool;
+       property VulkanStagingCommandBuffer:TpvVulkanCommandBuffer read fVulkanStagingCommandBuffer;
+       property VulkanStagingFence:TpvVulkanFence read fVulkanStagingFence;
+      published
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;

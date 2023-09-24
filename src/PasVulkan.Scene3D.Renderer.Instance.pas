@@ -347,6 +347,7 @@ type { TpvScene3DRendererInstance }
             TCascadedRadianceHintVolumeImages=array[0..CountGlobalIlluminationRadiantHintCascades-1,0..CountGlobalIlluminationRadiantHintVolumeImages-1] of TpvScene3DRendererImage3D;
             TInFlightFrameCascadedRadianceHintVolumeImages=array[0..MaxInFlightFrames-1] of TCascadedRadianceHintVolumeImages;
             PInFlightFrameCascadedRadianceHintVolumeImages=^TInFlightFrameCascadedRadianceHintVolumeImages;
+            TGlobalIlluminationRadianceHintsUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -412,6 +413,7 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
       private
        fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
+       fGlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers;
        fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
       private
        fCountLockOrderIndependentTransparencyLayers:TpvInt32;
@@ -1311,6 +1313,8 @@ begin
 
  FillChar(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages,SizeOf(TInFlightFrameCascadedRadianceHintVolumeImages),#0);
 
+ FillChar(fGlobalIlluminationRadianceHintsUniformBuffers,SizeOf(TGlobalIlluminationRadianceHintsUniformBuffers),#0);
+
  fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -1425,6 +1429,10 @@ begin
   end;
  end;
 
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]);
+ end;
+
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
@@ -1475,6 +1483,23 @@ begin
    fGlobalIlluminationRadianceHintsCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                             GlobalIlluminationRadiantHintVolumeSize,
                                                                             CountGlobalIlluminationRadiantHintCascades);
+
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+    fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                               SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData),
+                                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                               [],
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               [TpvVulkanBufferFlag.PersistentMapped]);
+   end;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
     for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
@@ -3129,6 +3154,15 @@ begin
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=0;
 
  end;
+
+ pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                                 Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                                 Renderer.Scene3D.VulkanStagingFence,
+                                                 GlobalIlluminationRadianceHintsUniformBufferData^,
+                                                 fGlobalIlluminationRadianceHintsUniformBuffers[aInFlightFrameIndex],
+                                                 0,
+                                                 SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData));
+
 
 end;
 
