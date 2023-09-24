@@ -124,6 +124,7 @@ void main(){
 #if !defined(USE_3D_ARRAY)
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
 #endif      
+
     } 
 
     float lTopDownSkyOcclusionMapFactor = clamp(lVisibility / float(SAMPLES), 0.0, 1.0);
