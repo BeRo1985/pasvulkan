@@ -96,7 +96,8 @@ type { TpvScene3DRendererInstance }
        const CountCascadedShadowMapCascades=4;
              CountOrderIndependentTransparencyLayers=8;
              CountGlobalIlluminationRadiantHintCascades=4;
-             CountGlobalIlluminationRadiantHintVolumeImages=9;
+             CountGlobalIlluminationRadiantHintSHImages=7;
+             CountGlobalIlluminationRadiantHintVolumeImages=CountGlobalIlluminationRadiantHintSHImages+1;
              GlobalIlluminationRadiantHintVolumeSize=32;
              GlobalIlluminationRadiantHintVolumeDataSize=(GlobalIlluminationRadiantHintVolumeSize*
                                                           GlobalIlluminationRadiantHintVolumeSize*
@@ -530,6 +531,7 @@ type { TpvScene3DRendererInstance }
        property CascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers read fCascadedShadowMapVulkanUniformBuffers;
       public
        property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
+       property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
       public
        property CountLockOrderIndependentTransparencyLayers:TpvInt32 read fCountLockOrderIndependentTransparencyLayers;
        property LockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer read fLockOrderIndependentTransparentUniformBuffer;
@@ -620,6 +622,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectiveShadowMapRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectCachedComputePass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
@@ -1514,13 +1517,13 @@ begin
                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                    Format,
                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                   VK_IMAGE_LAYOUT_GENERAL);
+                                                                                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                Format,
                                                                                                                                                VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                               VK_IMAGE_LAYOUT_GENERAL);
+                                                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
      end;
     end;
    end;
