@@ -69,7 +69,9 @@ void main(){
     vec3 lGlobalIlluminationVolumeAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex].xyz;   
     vec3 lGlobalIlluminationVolumeAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex].xyz;   
       
-    vec3 lPosition = lGlobalIlluminationVolumeAABBMin + ((vec3(lInvocationPosition) + vec3(0.5)) * ((lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin) / vec3(uGlobalIlluminationVolumeSize))); 
+    vec3 lCellSize = (lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin) / vec3(uGlobalIlluminationVolumeSize);
+
+    vec3 lPosition = lGlobalIlluminationVolumeAABBMin + ((vec3(lInvocationPosition) + vec3(0.5)) * lCellSize); 
 
 #if SAMPLES == 0
     vec4 lBaseUVPos = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lPosition, 1.0); 
@@ -88,7 +90,7 @@ void main(){
 #endif    
 
     float lVisibility = 0.0; 
-    float lRadius = 0.5; // meters
+    float lRadius = length(lPosition - vec3(lInvocationPosition)); 
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
 #define USE_PLANE_SAMPLING
