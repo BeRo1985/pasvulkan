@@ -196,7 +196,7 @@ begin
  finally
   FreeAndNil(StringList);
  end;
- StringList:=TStringList.Create;
+(*StringList:=TStringList.Create;
  try
   ConvertFile('shaders/scene3d/scene3dshaders.zip','Scene3DSPIRVShaders');
 { ConvertFile('textures/scene3d/lenscolor.png','Scene3DLensColor');
@@ -205,5 +205,5 @@ begin
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanScene3DAssets.inc');
  finally
   FreeAndNil(StringList);
- end;
+ end;*)
 end.
