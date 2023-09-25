@@ -134,7 +134,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var InFlightFrameIndex,Index,CascadeIndex,VolumeIndex:TpvInt32;
+var Index,CascadeIndex,VolumeIndex:TpvInt32;
     ClearValue,MetaInfoClearValue:TVkClearColorValue;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages)-1] of TVkImageMemoryBarrier;
@@ -156,7 +156,7 @@ begin
                                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
+                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[aInFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
                                                             ImageSubresourceRange);
    inc(Index);
   end;
@@ -182,13 +182,13 @@ begin
  for CascadeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades-1 do begin
   for VolumeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
    if VolumeIndex=(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages-1) then begin
-    aCommandBuffer.CmdClearColorImage(fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
+    aCommandBuffer.CmdClearColorImage(fInstance.InFlightFrameCascadedRadianceHintVolumeImages[aInFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       @MetaInfoClearValue,
                                       1,
                                       @ImageSubresourceRange);
    end else begin
-    aCommandBuffer.CmdClearColorImage(fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
+    aCommandBuffer.CmdClearColorImage(fInstance.InFlightFrameCascadedRadianceHintVolumeImages[aInFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                       @ClearValue,
                                       1,
@@ -206,7 +206,7 @@ begin
                                                             VK_IMAGE_LAYOUT_GENERAL,
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
+                                                            fInstance.InFlightFrameCascadedRadianceHintVolumeImages[aInFlightFrameIndex,CascadeIndex,VolumeIndex].VulkanImage.Handle,
                                                             ImageSubresourceRange);
    inc(Index);
   end;
