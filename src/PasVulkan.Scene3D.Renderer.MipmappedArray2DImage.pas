@@ -85,6 +85,7 @@ type { TpvScene3DRendererMipmappedArray2DImage }
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fMipMapLevels:TpvInt32;
+       fFormat:TVkFormat;
       public
 
        VulkanImageViews:array of TpvVulkanImageView;
@@ -119,6 +120,8 @@ type { TpvScene3DRendererMipmappedArray2DImage }
 
        property MipMapLevels:TpvInt32 read fMipMapLevels;
 
+       property Format:TVkFormat read fFormat;
+
      end;
 
 implementation
@@ -150,6 +153,8 @@ begin
  fHeight:=aHeight;
 
  fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight)+1));
+
+ fFormat:=aFormat;
 
  if aLayers>1 then begin
   ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
