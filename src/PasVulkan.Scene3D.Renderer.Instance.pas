@@ -630,6 +630,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectCachedComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectSkyComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectRSMComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
@@ -711,6 +712,7 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass;
        fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass;
        fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass;
+       fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
@@ -1528,13 +1530,13 @@ begin
                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                    Format,
                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                   VK_IMAGE_LAYOUT_GENERAL);
+                                                                                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                Format,
                                                                                                                                                VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                               VK_IMAGE_LAYOUT_GENERAL);
+                                                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
      end;
     end;
    end;
@@ -2133,6 +2135,9 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass);
 
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass);
+
   end;
   else begin
    TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass:=nil;
@@ -2198,7 +2203,7 @@ begin
  end;
  case Renderer.GlobalIlluminatonMode of
   TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
-   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass);
   end;
   else begin
   end;

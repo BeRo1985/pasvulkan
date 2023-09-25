@@ -25,8 +25,8 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 layout(set = 0, binding = 1, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 2, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
-layout(set = 0, binding = 3, rgba16f) readonly uniform image3D uImageLastSH[]; // The previous global illumination volume images
-layout(set = 0, binding = 4, rgba32f) readonly uniform image3D uImageLastMetaInfo[]; // The previous global illumination volume meta info image
+layout(set = 0, binding = 3) uniform sampler3D uTexLastSH[]; // The previous global illumination volume textures
+layout(set = 0, binding = 4) uniform sampler3D uTexLastMetaInfo[]; // The previous global illumination volume meta info texture
 
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 0
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
@@ -55,25 +55,25 @@ void main(){
       ivec3 lCacheVolumePosition = lInvocationPosition + globalIlluminationVolumeAABBDeltas[lCascadeIndex].xyz;
       if(all(greaterThanEqual(lCacheVolumePosition, ivec3(0))) && all(lessThan(lCacheVolumePosition, uGlobalIlluminationVolumeSize))){
 #if GI_COMPRESSION == 0
-        vec4 uCachedSH0 = imageLoad(uImageLastSH[lTexIndexOffset + 0], lCacheVolumePosition);
-        vec4 uCachedSH1 = imageLoad(uImageLastSH[lTexIndexOffset + 1], lCacheVolumePosition);
-        vec4 uCachedSH2 = imageLoad(uImageLastSH[lTexIndexOffset + 2], lCacheVolumePosition);
-        vec4 uCachedSH3 = imageLoad(uImageLastSH[lTexIndexOffset + 3], lCacheVolumePosition);
-        vec4 uCachedSH4 = imageLoad(uImageLastSH[lTexIndexOffset + 4], lCacheVolumePosition);
-        vec4 uCachedSH5 = imageLoad(uImageLastSH[lTexIndexOffset + 5], lCacheVolumePosition);
-        vec4 uCachedSH6 = imageLoad(uImageLastSH[lTexIndexOffset + 6], lCacheVolumePosition);
+        vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
+        vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
+        vec4 uCachedSH2 = texelFetch(uTexLastSH[lTexIndexOffset + 2], lCacheVolumePosition, 0);
+        vec4 uCachedSH3 = texelFetch(uTexLastSH[lTexIndexOffset + 3], lCacheVolumePosition, 0);
+        vec4 uCachedSH4 = texelFetch(uTexLastSH[lTexIndexOffset + 4], lCacheVolumePosition, 0);
+        vec4 uCachedSH5 = texelFetch(uTexLastSH[lTexIndexOffset + 5], lCacheVolumePosition, 0);
+        vec4 uCachedSH6 = texelFetch(uTexLastSH[lTexIndexOffset + 6], lCacheVolumePosition, 0);
 #elif GI_COMPRESSION == 1
-        vec4 uCachedSH0 = imageLoad(uImageLastSH[lTexIndexOffset + 0], lCacheVolumePosition);
-        vec4 uCachedSH1 = imageLoad(uImageLastSH[lTexIndexOffset + 1], lCacheVolumePosition);
-        vec4 uCachedSH2 = imageLoad(uImageLastSH[lTexIndexOffset + 2], lCacheVolumePosition);
-        vec4 uCachedSH3 = imageLoad(uImageLastSH[lTexIndexOffset + 3], lCacheVolumePosition);
-        vec4 uCachedSH4 = imageLoad(uImageLastSH[lTexIndexOffset + 4], lCacheVolumePosition);
+        vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
+        vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
+        vec4 uCachedSH2 = texelFetch(uTexLastSH[lTexIndexOffset + 2], lCacheVolumePosition, 0);
+        vec4 uCachedSH3 = texelFetch(uTexLastSH[lTexIndexOffset + 3], lCacheVolumePosition, 0);
+        vec4 uCachedSH4 = texelFetch(uTexLastSH[lTexIndexOffset + 4], lCacheVolumePosition, 0);
 #elif GI_COMPRESSION == 2
-        vec4 uCachedSH0 = imageLoad(uImageLastSH[lTexIndexOffset + 0], lCacheVolumePosition);
-        vec4 uCachedSH1 = imageLoad(uImageLastSH[lTexIndexOffset + 1], lCacheVolumePosition);
-        vec4 uCachedSH2 = imageLoad(uImageLastSH[lTexIndexOffset + 2], lCacheVolumePosition);
+        vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
+        vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
+        vec4 uCachedSH2 = texelFetch(uTexLastSH[lTexIndexOffset + 2], lCacheVolumePosition, 0);
 #endif      
-        vec4 uCachedMetaInfo = imageLoad(uImageLastMetaInfo[lCascadeIndex], lCacheVolumePosition);
+        vec4 uCachedMetaInfo = texelFetch(uTexLastMetaInfo[lCascadeIndex], lCacheVolumePosition, 0);
         ivec3 lVolumePosition = lInvocationPosition;
 #if GI_COMPRESSION == 0
         imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, uCachedSH0);
