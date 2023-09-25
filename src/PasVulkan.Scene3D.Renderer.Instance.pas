@@ -1522,13 +1522,13 @@ begin
                                                                                                                                    GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                    Format,
                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                                                                                                                   VK_IMAGE_LAYOUT_GENERAL);
       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                Format,
                                                                                                                                                VK_SAMPLE_COUNT_1_BIT,
-                                                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                                                                                                                               VK_IMAGE_LAYOUT_GENERAL);
      end;
     end;
    end;
@@ -3178,7 +3178,7 @@ begin
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=trunc(CascadedVolumeCascade.fDelta.x);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=trunc(CascadedVolumeCascade.fDelta.y);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=trunc(CascadedVolumeCascade.fDelta.z);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=0;
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=trunc(CascadedVolumeCascade.fDelta.w);
 
  end;
 
