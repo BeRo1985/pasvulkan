@@ -375,7 +375,7 @@ begin
 
  InFlightFrameIndex:=aInFlightFrameIndex;
 
- Index:=0;
+{Index:=0;
  for CascadeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades-1 do begin
   for VolumeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
    ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(0,//TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -398,7 +398,7 @@ begin
                                    0,
                                    0,nil,
                                    0,nil,
-                                   length(ImageMemoryBarriers),@ImageMemoryBarriers[0]);
+                                   length(ImageMemoryBarriers),@ImageMemoryBarriers[0]);//}
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
