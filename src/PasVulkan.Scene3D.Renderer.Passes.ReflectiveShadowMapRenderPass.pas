@@ -144,7 +144,7 @@ inherited Create(aFrameGraph);
                                        fInstance.ReflectiveShadowMapWidth,
                                        fInstance.ReflectiveShadowMapHeight,
                                        1.0,
-                                       1);
+                                       0);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                            'resource_cascadedshadowmap_data_final',

@@ -164,7 +164,7 @@ begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_cascaded_radiance_hints_inject_sky_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_cascaded_radiance_hints_inject_rsm_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -369,7 +369,7 @@ begin
    fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                   0,
                                                                   1,
-                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                   [],
                                                                   [fVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                   [],
