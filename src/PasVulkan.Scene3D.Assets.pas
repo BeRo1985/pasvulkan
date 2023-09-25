@@ -89,7 +89,7 @@ implementation
  {$l assets/shaders/scene3d/scene3dshaders_zip_aarch64_android.o}
 {$elseif defined(Android) and defined(cpu386)}
  {$l assets/shaders/scene3d/scene3dshaders_zip_x86_32_android.o}
-{$elseif defined(Android) and defined(cpux86_64)}
+{$elseif defined(Android) and (defined(cpuamd64) or defined(cpux86_64))}
  {$l assets/shaders/scene3d/scene3dshaders_zip_x86_64_android.o}
 {$ifend}
 
