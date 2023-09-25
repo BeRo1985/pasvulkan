@@ -187,7 +187,11 @@ implementation
 uses PasVulkan.Scene3D.Assets;
 
 initialization
+{$if declared(get_pasvulkan_scene3dshaders_zip_data) and declared(get_pasvulkan_scene3dshaders_zip_size)}
+ pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(get_pasvulkan_scene3dshaders_zip_data,get_pasvulkan_scene3dshaders_zip_size,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.zip'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.zip'{$endif});
+{$else}
  pvScene3DShaderVirtualFileSystem:=TpvVirtualFileSystem.Create(@PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersData[0],PasVulkan.Scene3D.Assets.Scene3DSPIRVShadersDataSize,{$ifdef Windows}'d:\GitHub\pasvulkan\src\assets\shaders\scene3d\scene3dshaders.zip'{$else}'/home/bero/Projects/GitHub/pasvulkan/src/assets/shaders/scene3d/scene3dshaders.zip'{$endif});
+{$ifend}
 finalization
  FreeAndNil(pvScene3DShaderVirtualFileSystem);
 end.

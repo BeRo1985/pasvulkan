@@ -62,8 +62,35 @@ unit PasVulkan.Scene3D.Assets;
 
 interface
 
-{$i PasVulkanScene3DAssets.inc}
+uses PasVulkan.Types;
+
+function get_pasvulkan_scene3dshaders_zip_data:pointer; cdecl; external name 'get_pasvulkan_scene3dshaders_zip_data';
+function get_pasvulkan_scene3dshaders_zip_size:TpvUInt32; cdecl; external name 'get_pasvulkan_scene3dshaders_zip_size';
 
 implementation
+
+{$if defined(Linux) and defined(cpu386)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_x86_32_linux.o}
+{$elseif defined(Linux) and (defined(cpuamd64) or defined(cpux86_64))}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_x86_64_linux.o}
+{$elseif defined(Linux) and defined(cpuarm)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_arm32_linux.o}
+{$elseif defined(Linux) and defined(cpuaarch64)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_aarch64_linux.o}
+{$elseif defined(Windows) and defined(cpu386)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_x86_32_windows.o}
+{$elseif defined(Windows) and (defined(cpuamd64) or defined(cpux86_64))}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_x86_64_windows.o}
+{$elseif defined(Windows) and defined(cpuaarch64)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_aarch64_windows.o}
+{$elseif defined(Android) and defined(cpuarm)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_arm32_android.o}
+{$elseif defined(Android) and defined(cpuaarch64)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_aarch64_android.o}
+{$elseif defined(Android) and defined(cpu386)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_x86_32_android.o}
+{$elseif defined(Android) and defined(cpux86_64)}
+ {$l assets/shaders/scene3d/scene3dshaders_zip_x86_64_android.o}
+{$ifend}
 
 end.
