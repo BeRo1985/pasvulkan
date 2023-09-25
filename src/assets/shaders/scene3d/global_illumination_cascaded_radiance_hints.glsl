@@ -32,7 +32,9 @@
 
 //#define GI_VISUALIZE_CASCADES
 
-#define GI_COMPRESSION 0
+#ifndef GI_COMPRESSION
+  #define GI_COMPRESSION 0
+#endif
 
 #if GI_COMPRESSION == 0  
   // Full RGB spherical harmonics for best quality but with the most memory usage
