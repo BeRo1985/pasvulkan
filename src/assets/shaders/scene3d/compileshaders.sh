@@ -532,6 +532,57 @@ zip -m9 scene3dshaders.zip "virtualsymlinks.json" "${spv_files[@]}"
 rm -f *.spv
 rm -f virtualsymlinks.json
 
+# Compile bin2c
+
+clang ./bin2c.c -o ./bin2c
+
+# Convert the zip archive to a C header file
+./bin2c scene3dshaders.zip pasvulkan_scene3dshaders_zip scene3dshaders_zip.c
+
+# Compile the C header file for all platforms in parallel
+
+# Compile for x86-32 Linux
+clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_x86_32_linux.o &
+
+# Compile for x86-64 Linux
+clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_x86_64_linux.o & 
+
+# Compile for x86-32 Windows
+clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_x86_32_windows.o &
+
+# Compile for x86-64 Windows
+clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_x86_64_windows.o &
+
+# Compile for AArch64 Windows
+clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_aarch64_windows.o &
+
+# Compile for ARM32 Linux
+clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_arm32_linux.o &
+
+# Compile for AArch64 Linux
+clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_aarch64_linux.o &
+
+# Compile for x86-32 Android
+clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_x86_32_android.o &
+
+# Compile for x86-64 Android
+clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_x86_64_android.o &
+
+# Compile for ARM32 Android
+clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_arm32_android.o &
+
+# Compile for AArch64 Android
+clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 scene3dshaders_zip.c -o scene3dshaders_zip_aarch64_android.o &
+
+# Wait for all compilation jobs to finish
+wait
+
+# Delete the C source file
+rm -f scene3dshaders_zip.c
+
+# Delete the bin2c executable
+rm -f bin2c
+
 # Done!
 
 echo "Done!"
