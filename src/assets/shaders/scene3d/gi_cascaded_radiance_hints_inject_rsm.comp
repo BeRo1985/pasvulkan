@@ -31,7 +31,6 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
   vec4 uLightColor;
   float uMaximumSamplingDistance;
   float uSpread;
-  int uFirst;  
 };
 
 #define uTexReflectiveShadowMapDepth uTexture2DInputs[0]
@@ -184,7 +183,7 @@ void main(){
     
     ivec3 lVolumePosition = lInvocationPosition;
 
-    vec4 lMetaInfo = (uFirst > 0) ? vec4(lMinimumDistance, vec3(0.0)) : imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
+    vec4 lMetaInfo = imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
     lMetaInfo = vec4(min(lMetaInfo.x, lMinimumDistance), max(lMetaInfo.y, lMaximumDistance), 0.0, 0.0);
 
     float lSHScale = 1.0 / (3.14159265359 * float(SAMPLES));
@@ -219,7 +218,7 @@ void main(){
     lSphericalHarmonics[8].x *= lSHScale;
 #endif      
 
-    if(uFirst == 0){
+    {
 #if GI_COMPRESSION == 0
       vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
       vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   

@@ -22,7 +22,6 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 // Push contants
 layout(push_constant) uniform PushConstants {
   mat4 uTopDownSkyOcclusionMapViewProjectionMatrix;
-  int uFirst;
 };
 
 layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = Top-down sky occlusion map, 1 = depth buffer
@@ -162,7 +161,7 @@ void main(){
     
     ivec3 lVolumePosition = lInvocationPosition;
 
-    if(uFirst == 0){
+    {
 #if GI_COMPRESSION == 0
       vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
       vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   

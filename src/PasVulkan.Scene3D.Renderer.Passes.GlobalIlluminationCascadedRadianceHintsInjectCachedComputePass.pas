@@ -80,10 +80,10 @@ uses SysUtils,
 type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass }
      TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass=class(TpvFrameGraph.TComputePass)
       public
-       type TPushConstants=record
+{      type TPushConstants=record
              First:TpvInt32;
             end;
-            PPushConstants=^TPushConstants;
+            PPushConstants=^TPushConstants;//}
       private
        fInstance:TpvScene3DRendererInstance;
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -94,7 +94,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCach
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
        fVulkanSampler:TpvVulkanSampler;
-       fFirst:Boolean;
+       //fFirst:Boolean;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -119,7 +119,7 @@ begin
 
  Name:='GlobalIlluminationCascadedRadianceHintsInjectCachedComputePass';
 
- fFirst:=true;
+ //fFirst:=true;
 
 {fResourceInput:=AddImageInput(fInstance.LastOutputResource.ResourceType.Name,
                                fInstance.LastOutputResource.Resource.Name,
@@ -227,9 +227,9 @@ begin
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+{fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
-                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.TPushConstants));
+                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.TPushConstants));//}
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -368,7 +368,7 @@ procedure TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectC
 var InFlightFrameIndex,Index,CascadeIndex,VolumeIndex:TpvInt32;
     Pipeline:TpvVulkanComputePipeline;
     ImageMemoryBarriers:array[0..(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages)-1] of TVkImageMemoryBarrier;
-    PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.TPushConstants;
+//  PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.TPushConstants;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -410,17 +410,17 @@ begin
                                       0,
                                       nil);
 
- PushConstants.First:=IfThen(fFirst,1,0);
+{PushConstants.First:=IfThen(fFirst,1,0);
  fFirst:=false;
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  0,
                                  SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.TPushConstants),
-                                 @PushConstants);
+                                 @PushConstants);//}
 
- aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeDataSize+7) shr 3,
-                            (TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeDataSize+7) shr 3,
-                            (TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeDataSize+7) shr 3);
+ aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize+7) shr 3,
+                            (TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize+7) shr 3,
+                            ((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades)+7) shr 3);
 
  Index:=0;
  for CascadeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades-1 do begin
