@@ -3646,9 +3646,13 @@ begin
  end;
  InFlightFrameState^.CountViews:=fViews.Count;
 
- fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex].UpdateData(fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
-                                                                        0,
-                                                                        SizeOf(TCascadedShadowMapUniformBuffer));
+ Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                            Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                            Renderer.Scene3D.VulkanStagingFence,
+                                            fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
+                                            fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex],
+                                            0,
+                                            SizeOf(TCascadedShadowMapUniformBuffer));
 
  InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
 
@@ -3778,7 +3782,13 @@ begin
  fFrustumClusterGridPushConstants.ZBias:=-((fFrustumClusterGridSizeZ*Log2(fFrustumClusterGridPushConstants.ZNear))/Log2(fFrustumClusterGridPushConstants.ZFar/fFrustumClusterGridPushConstants.ZNear));
  fFrustumClusterGridPushConstants.ZMax:=fFrustumClusterGridSizeZ-1;
 
- fFrustumClusterGridGlobalsVulkanBuffers[aInFlightFrameIndex].UpdateData(fFrustumClusterGridPushConstants,0,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants));
+ Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                            Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                            Renderer.Scene3D.VulkanStagingFence,
+                                            fFrustumClusterGridPushConstants,
+                                            fFrustumClusterGridGlobalsVulkanBuffers[aInFlightFrameIndex],
+                                            0,
+                                            SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants));
 
  fLuminancePushConstants.MinLogLuminance:=Renderer.MinLogLuminance;
  fLuminancePushConstants.LogLuminanceRange:=Renderer.MaxLogLuminance-Renderer.MinLogLuminance;
