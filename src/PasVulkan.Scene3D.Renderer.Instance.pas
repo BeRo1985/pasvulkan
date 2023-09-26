@@ -1347,7 +1347,7 @@ begin
                                                                                      0,
                                                                                      0,
                                                                                      0,
-                                                                                     [TpvVulkanBufferFlag.PersistentMapped]);
+                                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
  end;
 
  case Renderer.TransparencyMode of

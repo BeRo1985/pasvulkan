@@ -299,7 +299,7 @@ begin
                                                                      0,
                                                                      0,
                                                                      0,
-                                                                     [TpvVulkanBufferFlag.PersistentMapped]);
+                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
 
    SetLength(ImageSHDescriptorImageInfoArray,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages);
    SetLength(ImageMetaInfoDescriptorImageInfoArray,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades);
