@@ -1759,6 +1759,8 @@ type EpvApplication=class(Exception)
        procedure AddLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
        procedure RemoveLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
 
+       function GetPercentileXthFrameTime(const aPercentileXth:TpvDouble):TpvDouble;
+
        procedure Initialize;
 
        procedure Terminate;
@@ -2080,6 +2082,8 @@ procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedStat
 {$ifend}
 
 implementation
+
+uses PasVulkan.Utils;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -9895,6 +9899,74 @@ begin
   fFramesPerSecond:=1.0/fFloatDeltaTime;
  end else begin
   fFramesPerSecond:=0.0;
+ end;
+
+end;
+
+function TpvApplicationGetPercentile95thFrameTimeCompare(const a,b:TpvDouble):TpvInt32;
+begin
+ result:=Sign(a-b);
+end;
+
+function TpvApplication.GetPercentileXthFrameTime(const aPercentileXth:TpvDouble):TpvDouble;
+var FrameTimes:TpvDoubleDynamicArray;
+    Index:TpvSizeInt;
+    TotalTimeTaken,DestinationAccumulatedTime,Sample,Factor:TpvDouble;
+begin
+
+ // Don't solely rely on the count of samples. Factor in the total time consumed (which favors
+ // bigger samples). Here's an illustrative case with 95th percentile:
+ // If a game operates at 60 fps for 1 hour and then takes the next hour to render one frame,
+ // Using only the sample count would suggest 60 fps / 16.67mspf.
+ // But in reality, the user experienced 1 hour at 60 fps and another hour at 0.000277778 fps.
+ // The accurate 95-p is 0.000277778 fps (3600000 mspf), not 60 fps.
+
+ result:=-1.0;
+
+ if fFrameTimesHistoryCount>0 then begin
+
+  FrameTimes:=nil;
+  try
+
+   SetLength(FrameTimes,fFrameTimesHistoryCount);
+
+   for Index:=0 to length(FrameTimes)-1 do begin
+    FrameTimes[Index]:=fFrameTimesHistoryDeltaTimes[((fFrameTimesHistoryIndex+FrameTimesHistorySize)-(Index+1)) and FrameTimesHistoryMask];
+   end;
+
+   if fFrameTimesHistoryCount>1 then begin
+    TpvTypedSort<TpvDouble>.IntroSort(@FrameTimes[0],0,length(FrameTimes)-1,TpvApplicationGetPercentile95thFrameTimeCompare);
+   end;
+
+   TotalTimeTaken:=0.0;
+   for Index:=0 to length(FrameTimes)-1 do begin
+    TotalTimeTaken:=TotalTimeTaken+FrameTimes[Index];
+   end;
+
+   Factor:=aPercentileXth*0.01;
+   if Factor<=0.0 then begin
+    Factor:=0.0;
+   end else if Factor>=1.0 then begin
+    Factor:=1.0;
+   end;
+
+   DestinationAccumulatedTime:=TotalTimeTaken*Factor;
+
+   TotalTimeTaken:=0.0;
+   for Index:=0 to length(FrameTimes)-1 do begin
+    Sample:=FrameTimes[Index];
+    if TotalTimeTaken>=DestinationAccumulatedTime then begin
+     result:=Sample;
+     break;
+    end else begin
+     TotalTimeTaken:=TotalTimeTaken+Sample;
+    end;
+   end;
+
+  finally
+   FrameTimes:=nil;
+  end;
+
  end;
 
 end;
