@@ -1759,7 +1759,7 @@ type EpvApplication=class(Exception)
        procedure AddLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
        procedure RemoveLifecycleListener(const aLifecycleListener:TpvApplicationLifecycleListener);
 
-       function GetPercentile95thFrameTime:TpvDouble;
+       function GetPercentileXthFrameTime(const aPercentileXth:TpvDouble):TpvDouble;
 
        procedure Initialize;
 
@@ -9908,14 +9908,14 @@ begin
  result:=Sign(a-b);
 end;
 
-function TpvApplication.GetPercentile95thFrameTime:TpvDouble;
+function TpvApplication.GetPercentileXthFrameTime(const aPercentileXth:TpvDouble):TpvDouble;
 var FrameTimes:TpvDoubleDynamicArray;
     Index:TpvSizeInt;
-    TotalTimeTaken,DestinationAccumulatedTime,Sample:TpvDouble;
+    TotalTimeTaken,DestinationAccumulatedTime,Sample,Factor:TpvDouble;
 begin
 
  // Don't solely rely on the count of samples. Factor in the total time consumed (which favors
- // bigger samples). Here's an illustrative case:
+ // bigger samples). Here's an illustrative case with 95th percentile:
  // If a game operates at 60 fps for 1 hour and then takes the next hour to render one frame,
  // Using only the sample count would suggest 60 fps / 16.67mspf.
  // But in reality, the user experienced 1 hour at 60 fps and another hour at 0.000277778 fps.
@@ -9943,7 +9943,14 @@ begin
     TotalTimeTaken:=TotalTimeTaken+FrameTimes[Index];
    end;
 
-   DestinationAccumulatedTime:=TotalTimeTaken*0.95;
+   Factor:=aPercentileXth*0.01;
+   if Factor<=0.0 then begin
+    Factor:=0.0;
+   end else if Factor>=1.0 then begin
+    Factor:=1.0;
+   end;
+
+   DestinationAccumulatedTime:=TotalTimeTaken*Factor;
 
    TotalTimeTaken:=0.0;
    for Index:=0 to length(FrameTimes)-1 do begin
