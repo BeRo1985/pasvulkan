@@ -831,7 +831,7 @@ begin
                                                       0,
                                                       0,
                                                       0,
-                                                      [TpvVulkanBufferFlag.PersistentMapped]
+                                                      []
                                                      );
 
  fSkySphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fSkySphericalHarmonicsBuffer);
