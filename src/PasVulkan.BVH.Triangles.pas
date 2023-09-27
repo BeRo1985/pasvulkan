@@ -197,6 +197,7 @@ type EpvTriangleBVH=class(Exception);
        fBVHIntersectionCost:TpvScalar;
        fMaximumTrianglesPerNode:TpvInt32;
        fTriangleAreaSplitThreshold:TpvScalar;
+       fParallel:Boolean;
        procedure SplitTooLargeTriangles;
        function EvaluateSAH(const aParentTreeNode:PpvTriangleBVHTreeNode;const aAxis:TpvInt32;const aSplitPosition:TpvFloat):TpvFloat;
        function FindBestSplitPlaneMeanVariance(const aParentTreeNode:PpvTriangleBVHTreeNode;out aAxis:TpvInt32;out aSplitPosition:TpvFloat):Boolean;
@@ -236,6 +237,7 @@ type EpvTriangleBVH=class(Exception);
        property BVHIntersectionCost:TpvScalar read fBVHIntersectionCost write fBVHIntersectionCost;
        property MaximumTrianglesPerNode:TpvInt32 read fMaximumTrianglesPerNode write fMaximumTrianglesPerNode;
        property TriangleAreaSplitThreshold:TpvScalar read fTriangleAreaSplitThreshold write fTriangleAreaSplitThreshold;
+       property Parallel:Boolean read fParallel write fParallel;
      end;
 
 implementation
@@ -359,6 +361,8 @@ begin
  fMaximumTrianglesPerNode:=4;
 
  fTriangleAreaSplitThreshold:=0.0;
+
+ fParallel:=false;
 
 end;
 
@@ -1355,7 +1359,7 @@ begin
     fNodeQueue.Clear;
     fNodeQueue.Enqueue(0);
     fCountActiveWorkers:=0;
-    if assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>0) then begin
+    if fParallel and assigned(fPasMPInstance) and (fPasMPInstance.CountJobWorkerThreads>0) then begin
      Jobs:=nil;
      try
       SetLength(Jobs,fPasMPInstance.CountJobWorkerThreads);
