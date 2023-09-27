@@ -159,7 +159,7 @@ type EpvTriangleBVH=class(Exception);
 
      TpvTriangleBVHSkipListNodes=array of TpvTriangleBVHSkipListNode;
 
-     TpvTriangleBVHNodeQueue=TPasMPUnboundedQueue<TpvInt32>;
+     TpvTriangleBVHNodeQueue=TpvDynamicQueue<TpvInt32>;
 
      TpvTriangleBVHBuildMode=
       (
@@ -340,7 +340,7 @@ begin
  fSkipListNodes:=nil;
  fCountSkipListNodes:=0;
 
- fNodeQueue:=TpvTriangleBVHNodeQueue.Create;
+ fNodeQueue.Initialize;
 
  fNodeQueueLock:=TPasMPSlimReaderWriterLock.Create;
 
@@ -368,7 +368,7 @@ begin
  fTreeNodes:=nil;
  fSkipListNodes:=nil;
  fTreeNodeStack.Finalize;
- FreeAndNil(fNodeQueue);
+ fNodeQueue.Finalize;
  FreeAndNil(fNodeQueueLock);
  fSkipListNodeMap:=nil;
  inherited Destroy;
