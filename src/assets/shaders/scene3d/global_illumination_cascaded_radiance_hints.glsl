@@ -194,16 +194,22 @@ float globalIlluminationSphericalHarmonicsDecodeWithCosineLobe(in vec3 pDirectio
          ((0.429043 * ((pDirection.x * pDirection.x) - (pDirection.y * pDirection.y))) * pSphericalHarmonics[8]);
 }
 
+const mat3 RGBToYCoCgMatrix = mat3(0.25, 0.5, -0.25, 0.5, 0.0, 0.5, 0.25, -0.5, -0.25);
+
+const mat3 YCoCgToRGBMatrix = mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0);
+
 vec3 globalIlluminationConvertRGBToYCoCg(vec3 c){
-	return vec3(dot(c, vec3(0.25, 0.5, 0.25)),
+  return RGBToYCoCgMatrix * c;
+/*return vec3(dot(c, vec3(0.25, 0.5, 0.25)),
               dot(c, vec3(0.5, 0.0, -0.5)),
-              dot(c, vec3(-0.25, 0.5, -0.25)));
+              dot(c, vec3(-0.25, 0.5, -0.25)));*/
 }
 
 vec3 globalIlluminationConvertYCoCgToRGB(vec3 c){
-  return vec3(dot(c, vec3(1.0, 1.0, -1.0)),
+  return YCoCgToRGBMatrix * c;
+/*return vec3(dot(c, vec3(1.0, 1.0, -1.0)),
               dot(c, vec3(1.0, 0.0, 1.0)),
-              dot(c, vec3(1.0, -1.0, -1.0))); 
+              dot(c, vec3(1.0, -1.0, -1.0)));*/ 
 }
 
 #if GI_COMPRESSION == 0
