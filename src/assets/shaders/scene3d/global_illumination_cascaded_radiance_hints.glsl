@@ -198,6 +198,10 @@ const mat3 RGBToYCoCgMatrix = mat3(0.25, 0.5, -0.25, 0.5, 0.0, 0.5, 0.25, -0.5, 
 
 const mat3 YCoCgToRGBMatrix = mat3(1.0, 1.0, 1.0, 1.0, 0.0, -1.0, -1.0, 1.0, -1.0);
 
+const mat3 RGBToG_DeltaR_DeltaBMatrix = mat3(0.0, 1.0, 0.0, 1.0, -1.0,-1.0, 0.0, 0.0, 1.0);
+
+const mat3 G_DeltaR_DeltaBToRGBMatrix = mat3(1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+
 vec3 globalIlluminationConvertRGBToYCoCg(vec3 c){
   return RGBToYCoCgMatrix * c;
 /*return vec3(dot(c, vec3(0.25, 0.5, 0.25)),
@@ -212,12 +216,27 @@ vec3 globalIlluminationConvertYCoCgToRGB(vec3 c){
               dot(c, vec3(1.0, -1.0, -1.0)));*/ 
 }
 
+vec3 globalIlluminationConvertRGBToG_DeltaR_DeltaBMatrix(vec3 c){
+  return RGBToG_DeltaR_DeltaBMatrix * c;
+///return vec3(c.y, c.x - c.y, c.z - c.y);
+}
+
+vec3 globalIlluminationConvertG_DeltaR_DeltaBToRGBMatrix(vec3 c){
+  return G_DeltaR_DeltaBToRGBMatrix * c;
+///return vec3(c.y + c.x, c.x, c.z + c.x);
+}
+
 #if GI_COMPRESSION == 0
   #define globalIlluminationEncodeColor(c) (c) 
   #define globalIlluminationDecodeColor(c) (c) 
 #else
+#if 0
   #define globalIlluminationEncodeColor(c) globalIlluminationConvertRGBToYCoCg(c) 
   #define globalIlluminationDecodeColor(c) globalIlluminationConvertYCoCgToRGB(c) 
+#else
+  #define globalIlluminationEncodeColor(c) globalIlluminationConvertRGBToG_DeltaR_DeltaBMatrix(c)
+  #define globalIlluminationDecodeColor(c) globalIlluminationConvertG_DeltaR_DeltaBToRGBMatrix(c)
+#endif
 #endif
 
 void globalIlluminationCompressedSphericalHarmonicsEncode(in vec3 pDirection, in vec3 pC, out vec3 pSphericalHarmonics[9]){
