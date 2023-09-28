@@ -428,6 +428,7 @@ begin
                                                     fVulkanUniformBuffers[InFlightFrameIndex].Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);
+
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
