@@ -154,6 +154,8 @@ type TpvScene3DRenderer=class;
        fCountCascadedShadowMapMSAASamples:TpvSizeInt;
        fSurfaceSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:TpvSizeInt;
+       fGlobalIlluminationRadianceHintsMaximumSamplingDistance:TpvScalar;
+       fGlobalIlluminationRadianceHintsSpread:TpvScalar;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
        fSkySphericalHarmonicsBuffer:TpvVulkanBuffer;
@@ -220,6 +222,8 @@ type TpvScene3DRenderer=class;
        property CountCascadedShadowMapMSAASamples:TpvSizeInt read fCountCascadedShadowMapMSAASamples;
        property SurfaceSampleCountFlagBits:TVkSampleCountFlagBits read fSurfaceSampleCountFlagBits;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
+       property GlobalIlluminationRadianceHintsMaximumSamplingDistance:TpvScalar read fGlobalIlluminationRadianceHintsMaximumSamplingDistance write fGlobalIlluminationRadianceHintsMaximumSamplingDistance;
+       property GlobalIlluminationRadianceHintsSpread:TpvScalar read fGlobalIlluminationRadianceHintsSpread write fGlobalIlluminationRadianceHintsSpread;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
        property SkySphericalHarmonicsBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsBuffer;
@@ -378,6 +382,10 @@ begin
 
  fVirtualRealityHUDWidth:=2048;
  fVirtualRealityHUDHeight:=1152;
+
+ fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=512.0;
+
+ fGlobalIlluminationRadianceHintsSpread:=5.0;
 
  fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
 

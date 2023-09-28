@@ -412,8 +412,8 @@ begin
  UniformBufferData.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
  UniformBufferData.LightPosition:=(-UniformBufferData.LightDirection)*65536.0;
  UniformBufferData.LightColor:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
- UniformBufferData.MaximumSamplingDistance:=512.0;
- UniformBufferData.Spread:=5.0;
+ UniformBufferData.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
+ UniformBufferData.Spread:=fInstance.Renderer.GlobalIlluminationRadianceHintsSpread;
  //fVulkanUniformBuffers[InFlightFrameIndex]
 
  aCommandBuffer.CmdUpdateBuffer(fVulkanUniformBuffers[InFlightFrameIndex].Handle,

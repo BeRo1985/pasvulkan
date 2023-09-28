@@ -432,7 +432,7 @@ begin
                                       0,
                                       nil);
 
- PushConstants.MaximumSamplingDistance:=512.0;
+ PushConstants.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  0,
