@@ -151,7 +151,7 @@ type TpvScene=class;
        function GetNodeOf(const aNodeClass:TpvSceneNodeClass;const aIndex:TpvSizeInt=0):TpvSceneNode;
        function GetNodeCountOf(const aNodeClass:TpvSceneNodeClass):TpvSizeInt;
        procedure StartLoad; virtual;
-       procedure BackgroundLoad; virtual;
+       procedure BackgroundLoad; virtual                                      ;
        procedure FinishLoad; virtual;
        procedure WaitForLoaded; virtual;
        function IsLoaded:boolean; virtual;
@@ -648,6 +648,7 @@ begin
  end else begin
   fTransform:=aWorldTransform;
  end;
+ UpdateCachedWorldTransform;
 end;
 
 procedure TpvSceneNode3D.UpdateBounds;
