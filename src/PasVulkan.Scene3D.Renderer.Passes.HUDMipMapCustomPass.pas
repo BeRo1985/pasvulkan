@@ -81,7 +81,6 @@ type { TpvScene3DRendererPassesHUDMipMapCustomPass }
       private
        fInstance:TpvScene3DRendererInstance;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
-       fVulkanSampler:TpvVulkanSampler;
        fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -136,24 +135,6 @@ begin
 
  inherited AcquireVolatileResources;
 
- fVulkanSampler:=TpvVulkanSampler.Create(fInstance.Renderer.VulkanDevice,
-                                         TVkFilter.VK_FILTER_NEAREST,
-                                         TVkFilter.VK_FILTER_NEAREST,
-                                         TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         0.0,
-                                         false,
-                                         0.0,
-                                         false,
-                                         VK_COMPARE_OP_ALWAYS,
-                                         0.0,
-                                         0.0,
-                                         VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
-                                         false);
-
-
  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -181,7 +162,6 @@ begin
  for InFlightFrameIndex:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
  end;
- FreeAndNil(fVulkanSampler);
  inherited ReleaseVolatileResources;
 end;
 
