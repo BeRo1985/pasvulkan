@@ -393,6 +393,7 @@ end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,Index,CascadeIndex,VolumeIndex:TpvInt32;
+    BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages)-1] of TVkImageMemoryBarrier;
 //  PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TPushConstants;
     UniformBufferData:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TUniformBufferData;
@@ -419,6 +420,20 @@ begin
                                 0,
                                 SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TUniformBufferData),
                                 @UniformBufferData);
+
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT),
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fVulkanUniformBuffers[InFlightFrameIndex].Handle,
+                                                    0,
+                                                    VK_WHOLE_SIZE);
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarrier,
+                                   0,nil);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
