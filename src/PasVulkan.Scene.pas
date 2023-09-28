@@ -682,7 +682,7 @@ begin
  fLastCachedWorldTransform:=fCachedWorldTransform;
 end;
 
-procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble); // <- should call UpdateCachedWorldTransform on your own
+procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
 begin
  inherited Update(aDeltaTime);
 end;
