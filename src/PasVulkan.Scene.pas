@@ -203,6 +203,8 @@ type TpvScene=class;
        fBounds:TpvAABB;
       protected
        procedure UpdateCachedWorldTransform; virtual;
+       procedure RecursiveUpdateCachedWorldTransform; virtual;
+       procedure SetTransform(const aValue:TpvMatrix4x4); virtual;
        function GetWorldTransform:TpvMatrix4x4; virtual;
        procedure SetWorldTransform(const aWorldTransform:TpvMatrix4x4); virtual;
        procedure UpdateBounds; virtual;
@@ -213,7 +215,7 @@ type TpvScene=class;
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Interpolate(const aAlpha:TpvDouble); override;
       public
-       property Transform:TpvMatrix4x4 read fTransform write fTransform;
+       property Transform:TpvMatrix4x4 read fTransform write SetTransform;
        property WorldTransform:TpvMatrix4x4 read GetWorldTransform write SetWorldTransform;
        property CachedWorldTransform:TpvMatrix4x4 read fCachedWorldTransform;
        property LastCachedWorldTransform:TpvMatrix4x4 read fLastCachedWorldTransform;
@@ -630,6 +632,25 @@ begin
  end else begin
   fCachedWorldTransform:=fTransform;
  end;
+end;
+
+procedure TpvSceneNode3D.RecursiveUpdateCachedWorldTransform;
+var Index:TpvSizeInt;
+    Node:TpvSceneNode;
+begin
+ UpdateCachedWorldTransform;
+ for Index:=0 to fChildren.Count-1 do begin
+  Node:=fChildren[Index];
+  if Node is TpvSceneNode3D then begin
+   TpvSceneNode3D(Node).RecursiveUpdateCachedWorldTransform;
+  end;
+ end;
+end;
+
+procedure TpvSceneNode3D.SetTransform(const aValue:TpvMatrix4x4);
+begin
+ fTransform:=aValue;
+ RecursiveUpdateCachedWorldTransform;
 end;
 
 function TpvSceneNode3D.GetWorldTransform:TpvMatrix4x4;
