@@ -130,6 +130,19 @@ type TpvScene=class;
 
      TpvSceneNodeHashMap=TpvHashMap<TpvSceneNodeClass,TpvSceneNodes>;
 
+     TpvSceneNodeState=TPasMPInt32;
+     PpvSceneNodeState=^TpvSceneNodeState;
+
+     TpvSceneNodeStateHelper=record helper for TpvSceneNodeState
+      public
+       const Unloaded=TpvSceneNodeState(0);
+             StartingLoading=TpvSceneNodeState(1);
+             Loading=TpvSceneNodeState(2);
+             Loaded=TpvSceneNodeState(3);
+             Failed=TpvSceneNodeState(4);
+             Unloading=TpvSceneNodeState(5);
+     end;
+
      { TpvSceneNode }
      TpvSceneNode=class      
       public
@@ -140,7 +153,7 @@ type TpvScene=class;
        fChildren:TpvSceneNodes;
        fNodeHashMap:TpvSceneNodeHashMap;
        fLock:TpvInt32;
-       fLoadState:TPasMPInt32;
+       fState:TpvSceneNodeState;
        fDestroying:boolean;
       public
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); reintroduce; virtual;
@@ -161,6 +174,8 @@ type TpvScene=class;
        procedure FrameUpdate; virtual;
        procedure Render; virtual;
        procedure UpdateAudio; virtual;
+      public
+       property State:TpvSceneNodeState read fState;
       published
        property Scene:TpvScene read fScene;
        property Parent:TpvSceneNode read fParent;
@@ -250,7 +265,7 @@ begin
 
  fDestroying:=false;
 
- TPasMPInterlocked.Write(fLoadState,0);
+ TPasMPInterlocked.Write(fState,TpvSceneNodeState.Unloaded);
 
  fNodeHashMap:=TpvSceneNodeHashMap.Create(nil);
 
@@ -400,7 +415,7 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.StartLoad;
  end;
- TPasMPInterlocked.Write(fLoadState,1);
+ TPasMPInterlocked.Write(fState,TpvSceneNodeState.StartingLoading);
 end;
 
 procedure TpvSceneNode.BackgroundLoad;
@@ -411,7 +426,7 @@ begin
   ChildNode:=fChildren[ChildNodeIndex];
   ChildNode.BackgroundLoad;
  end;
- TPasMPInterlocked.Write(fLoadState,2);
+ TPasMPInterlocked.Write(fState,TpvSceneNodeState.Loading);
 end;
 
 procedure TpvSceneNode.FinishLoad;
@@ -424,10 +439,10 @@ begin
  end;
  pvApplication.Log(LOG_DEBUG,ClassName+'.FinishLoad.WaitForLoaded','Entering...');
  try
-  while TPasMPInterlocked.Read(fLoadState)<2 do begin
+  while TPasMPInterlocked.Read(fState)<TpvSceneNodeState.Loading do begin
    Sleep(1);
   end;
-  TPasMPInterlocked.Write(fLoadState,3);
+  TPasMPInterlocked.Write(fState,TpvSceneNodeState.Loaded);
  finally
   pvApplication.Log(LOG_DEBUG,ClassName+'.FinishLoad.WaitForLoaded','Leaving...');
  end;
@@ -443,7 +458,7 @@ begin
    ChildNode:=fChildren[ChildNodeIndex];
    ChildNode.WaitForLoaded;
   end;
-  while TPasMPInterlocked.Read(fLoadState)<3 do begin
+  while TPasMPInterlocked.Read(fState)<TpvSceneNodeState.Loaded do begin
    Sleep(1);
   end;
  finally
@@ -462,16 +477,20 @@ begin
    exit;
   end;
  end;
- result:=TPasMPInterlocked.Read(fLoadState)>=3;
+ result:=TPasMPInterlocked.Read(fState)>=TpvSceneNodeState.Loaded;
 end;
 
 procedure TpvSceneNode.Store;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.Store;
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.Store;
+   end;
+  end;
  end;
 end;
 
@@ -479,9 +498,13 @@ procedure TpvSceneNode.Update(const aDeltaTime:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.Update(aDeltaTime);
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.Update(aDeltaTime);
+   end;
+  end;
  end;
 end;
 
@@ -489,9 +512,13 @@ procedure TpvSceneNode.Interpolate(const aAlpha:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.Interpolate(aAlpha);
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.Interpolate(aAlpha);
+   end;
+  end;
  end;
 end;
 
@@ -499,9 +526,13 @@ procedure TpvSceneNode.FrameUpdate;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.FrameUpdate;
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.FrameUpdate;
+   end;
+  end;
  end;
 end;
 
@@ -509,9 +540,13 @@ procedure TpvSceneNode.Render;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.Render;
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.Render;
+   end;
+  end;
  end;
 end;
 
@@ -519,9 +554,13 @@ procedure TpvSceneNode.UpdateAudio;
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
 begin
- for ChildNodeIndex:=0 to fChildren.Count-1 do begin
-  ChildNode:=fChildren[ChildNodeIndex];
-  ChildNode.UpdateAudio;
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.UpdateAudio;
+   end;
+  end;
  end;
 end;
 
