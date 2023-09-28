@@ -669,7 +669,7 @@ begin
  end else begin
   fTransform:=aWorldTransform;
  end;
- UpdateCachedWorldTransform;
+ RecursiveUpdateCachedWorldTransform;
 end;
 
 procedure TpvSceneNode3D.UpdateBounds;
