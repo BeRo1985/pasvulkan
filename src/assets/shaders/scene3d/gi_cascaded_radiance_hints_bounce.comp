@@ -19,29 +19,16 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define INJECT_RSM_COMPUTE_SHADER
 
-layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = RSM depth, 1 = RSM color, 2 = RSM normal, 3 = depth buffer
-layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
-layout(set = 0, binding = 3, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
-layout(set = 0, binding = 4) uniform sampler3D uTexLastSH[]; // The previous global illumination volume textures
-layout(set = 0, binding = 5) uniform sampler3D uTexLastMetaInfo[]; // The previous global illumination volume meta info texture
-layout(set = 0, binding = 6) uniform sampler3D uTexSH[]; // The current global illumination volume textures
-layout(set = 0, binding = 7) uniform sampler3D uTexMetaInfo[]; // The current global illumination volume meta info texture
-layout(set = 0, binding = 8, std140) uniform uMetaData {
-  mat4 uWorldToReflectiveShadowMapMatrix;
-  mat4 uReflectiveShadowMapToWorldMatrix;
-  mat4 uModelViewProjectionMatrix;
-  vec4 uLightDirection;
-  vec4 uLightPosition;
-  vec4 uLightColor;
+layout(push_constant) uniform PushConstants {
   float uMaximumSamplingDistance;
-  float uSpread;
-  int uFirst;  
 };
 
-#define uTexReflectiveShadowMapDepth uTexture2DInputs[0]
-#define uTexReflectiveShadowMapColor uTexture2DInputs[1]
-#define uTexReflectiveShadowMapNormal uTexture2DInputs[2]
-#define uTexDepthBuffer uTexture2DInputs[3]
+layout(set = 0, binding = 1, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
+layout(set = 0, binding = 2, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
+layout(set = 0, binding = 3) uniform sampler3D uTexLastSH[]; // The previous global illumination volume textures
+layout(set = 0, binding = 4) uniform sampler3D uTexLastMetaInfo[]; // The previous global illumination volume meta info texture
+layout(set = 0, binding = 5) uniform sampler3D uTexSH[]; // The current global illumination volume textures
+layout(set = 0, binding = 6) uniform sampler3D uTexMetaInfo[]; // The current global illumination volume meta info texture
 
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 0
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
