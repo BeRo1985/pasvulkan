@@ -102,7 +102,6 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMC
        fVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
-       fVulkanSampler:TpvVulkanSampler;
        fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
        fVulkanUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        //fFirst:Boolean;
@@ -189,23 +188,6 @@ var InFlightFrameIndex,PreviousInFlightFrameIndex,Index,CascadeIndex,SHTextureIn
 begin
 
  inherited AcquireVolatileResources;
-
- fVulkanSampler:=TpvVulkanSampler.Create(fInstance.Renderer.VulkanDevice,
-                                         TVkFilter.VK_FILTER_LINEAR,
-                                         TVkFilter.VK_FILTER_LINEAR,
-                                         TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                         0.0,
-                                         false,
-                                         0.0,
-                                         false,
-                                         VK_COMPARE_OP_ALWAYS,
-                                         0.0,
-                                         0.0,
-                                         VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
-                                         false);
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -332,16 +314,16 @@ begin
                                                                   0,
                                                                   4,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                  [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                  fResourceRSMColor.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                  fResourceRSMColor.ResourceTransition.Layout),
-                                                                   TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                   TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                  fResourceRSMNormalUsed.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                  fResourceRSMNormalUsed.ResourceTransition.Layout),
-                                                                   TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                   TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                  fResourceRSMDepth.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                  fResourceRSMDepth.ResourceTransition.Layout),
-                                                                   TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                   TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                  fVulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                   [],
@@ -401,7 +383,6 @@ begin
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
- FreeAndNil(fVulkanSampler);
  inherited ReleaseVolatileResources;
 end;
 
