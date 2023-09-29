@@ -406,8 +406,8 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[InFlightFrameIndex];
 
- UniformBufferData.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
  UniformBufferData.WorldToReflectiveShadowMapMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix;
+ UniformBufferData.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
  UniformBufferData.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
  UniformBufferData.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
  UniformBufferData.LightPosition:=(-UniformBufferData.LightDirection)*65536.0;
