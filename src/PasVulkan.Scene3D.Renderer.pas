@@ -144,6 +144,7 @@ type TpvScene3DRenderer=class;
        fVirtualRealityHUDHeight:TpvInt32;
        fBufferDeviceAddress:boolean;
        fMeshFragTypeName:TpvUTF8String;
+       fMeshFragGlobalIlluminationTypeName:TpvUTF8String;
        fMeshFragShadowTypeName:TpvUTF8String;
        fOptimizedNonAlphaFormat:TVkFormat;
        fUseDepthPrepass:boolean;
@@ -212,6 +213,7 @@ type TpvScene3DRenderer=class;
        property VirtualRealityHUDHeight:TpvInt32 read fVirtualRealityHUDHeight write fVirtualRealityHUDHeight;
        property BufferDeviceAddress:boolean read fBufferDeviceAddress;
        property MeshFragTypeName:TpvUTF8String read fMeshFragTypeName;
+       property MeshFragGlobalIlluminationTypeName:TpvUTF8String read fMeshFragGlobalIlluminationTypeName;
        property MeshFragShadowTypeName:TpvUTF8String read fMeshFragShadowTypeName;
        property OptimizedNonAlphaFormat:TVkFormat read fOptimizedNonAlphaFormat;
        property UseDepthPrepass:boolean read fUseDepthPrepass;
@@ -634,6 +636,15 @@ begin
 
  if fShadowMode=TpvScene3DRendererShadowMode.Auto then begin
   fShadowMode:=TpvScene3DRendererShadowMode.PCF;
+ end;
+
+ case fGlobalIlluminatonMode of
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+   fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
+  end;
+  else begin
+   fMeshFragGlobalIlluminationTypeName:='';
+  end;
  end;
 
  if fShadowMode in [TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS] then begin
