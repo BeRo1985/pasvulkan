@@ -1998,7 +1998,35 @@ void main() {
                     clearcoatRoughness,                 //
                     specularWeight);                    //
 #endif
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
+#ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+      {
+        vec3 volumeSphericalHarmonics[9];
+        globalIlluminationVolumeLookUp(volumeSphericalHarmonics, inWorldSpacePosition.xyz, vec3(0.0));
+        vec3 shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
+        globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
+        vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
+        diffuseOutput += shResidualDiffuse * diffuseColorAlpha.xyz * ambientOcclusion;
+        doSingleLight(shDominantDirectionalLightColor,                    //
+                      vec3(ambientOcclusion),                             //
+                      shDominantDirectionalLightDirection,                //
+                      normal.xyz,                                         //
+                      diffuseColorAlpha.xyz,                              //
+                      F0,                                                 //
+                      F90,                                                //
+                      viewDirection,                                      //
+                      refractiveAngle,                                    //
+                      transparency,                                       //
+                      alphaRoughness,                                     //
+                      cavity,                                             //
+                      sheenColor,                                         //
+                      sheenRoughness,                                     //
+                      clearcoatNormal,                                    //
+                      clearcoatF0,                                        //
+                      clearcoatRoughness,                                 //
+                      specularWeight);                                    //
+      }
+#endif
+#if !(defined(REFLECTIVESHADOWMAPOUTPUT) || defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS))
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight);
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
       if ((flags & (1u << 7u)) != 0u) {
