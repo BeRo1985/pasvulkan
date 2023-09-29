@@ -387,7 +387,7 @@ begin
 
  fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=2048.0;
 
- fGlobalIlluminationRadianceHintsSpread:=0.25;
+ fGlobalIlluminationRadianceHintsSpread:=0.1;
 
  fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
 
