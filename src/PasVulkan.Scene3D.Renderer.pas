@@ -385,9 +385,9 @@ begin
  fVirtualRealityHUDWidth:=2048;
  fVirtualRealityHUDHeight:=1152;
 
- fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=128.0;
+ fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=2048.0;
 
- fGlobalIlluminationRadianceHintsSpread:=0.1;
+ fGlobalIlluminationRadianceHintsSpread:=0.25;
 
  fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
 
