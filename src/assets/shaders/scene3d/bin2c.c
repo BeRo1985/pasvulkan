@@ -5,6 +5,38 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/*static const char* byte_to_strliteral(uint8_t byte, uint8_t next_byte) {
+  switch (byte) {
+    case '\0': return "\\0";
+    case '\n': return "\\n";
+    case '\t': return "\\t";
+    case '\v': return "\\v";
+    case '\b': return "\\b";
+    case '\r': return "\\r";
+    case '\f': return "\\f";
+    case '\a': return "\\a";
+    case '\\': return "\\\\";
+    case '\"': return "\\\"";
+    case '\?': return "\\?"; // for avoiding trigraphs
+    default:
+      if ((byte >= 0x20) && (byte <= 0x7E)) {
+        static char printable[2] = {0};
+        printable[0] = byte;
+        return printable;
+      } else {
+        static char nonprintable[15] = {0};
+        if(((next_byte >= '0') && (next_byte <= '9')) ||
+           ((next_byte >= 'a') && (next_byte <= 'f')) ||
+           ((next_byte >= 'A') && (next_byte <= 'F'))) {
+          snprintf(nonprintable, sizeof(nonprintable), "\\x%02x\" \"", byte);
+        } else {
+          snprintf(nonprintable, sizeof(nonprintable), "\\x%02x", byte);
+        }
+        return nonprintable;
+      }
+  }
+}*/
+
 int main(int argc, char **argv) {
 	FILE *inputFile, *outputFile;
   char* inputFileName = argv[1];
@@ -37,24 +69,92 @@ int main(int argc, char **argv) {
   fseek(inputFile, 0, SEEK_SET);
   size_t inputPosition = 0;
   fprintf(outputFile, "#include <stdint.h>\n");
-  fprintf(outputFile, "static const uint8_t %s_data[%zu] = {\n", variableName, inputFileSize);
+  fprintf(outputFile, "static const unsigned char %s_data[%zu] = \"", variableName, inputFileSize);
+//fprintf(outputFile, "static const uint8_t %s_data[%zu] = {\n", variableName, inputFileSize);
   while(inputPosition < inputFileSize){
-    uint8_t buffer[16];
+    uint8_t buffer[128];
     size_t readSize = fread(buffer, 1, sizeof(buffer), inputFile);
     if(!readSize){
       fprintf(stderr, "Can't read input file \"%s\"", inputFileName);
       return errno;
     }
-    for(size_t i = 0; i < readSize; ++i){
+    for(size_t i = 0; i < readSize; ++i) {
+      uint8_t current_byte = buffer[i];
+      switch(current_byte){
+        case '\0':{
+          fprintf(outputFile, "\\0"); 
+          break;
+        }
+        case '\n':{
+          fprintf(outputFile, "\\n"); 
+          break;
+        }
+        case '\t':{
+          fprintf(outputFile, "\\t"); 
+          break;
+        }
+        case '\v':{
+          fprintf(outputFile, "\\v"); 
+          break;
+        }
+        case '\b':{
+          fprintf(outputFile, "\\b"); 
+          break;
+        }
+        case '\r':{
+          fprintf(outputFile, "\\r"); 
+          break;
+        }
+        case '\f':{
+          fprintf(outputFile, "\\f"); 
+          break;
+        }
+        case '\a':{
+          fprintf(outputFile, "\\a"); 
+          break;
+        }
+        case '\\':{
+          fprintf(outputFile, "\\\\"); 
+          break;
+        }
+        case '\"':{
+          fprintf(outputFile, "\\\""); 
+          break;
+        }
+        case '\?':{
+          fprintf(outputFile, "\\?"); // for avoiding trigraphs 
+          break;
+        }
+        default:{
+          if ((current_byte >= 0x20) && (current_byte <= 0x7E)) {
+            fprintf(outputFile, "%c", current_byte);
+          } else {
+            uint8_t next_byte = ((i + 1) < readSize) ? buffer[i + 1] : 0;
+            if(((next_byte >= '0') && (next_byte <= '9')) ||
+               ((next_byte >= 'a') && (next_byte <= 'f')) ||
+               ((next_byte >= 'A') && (next_byte <= 'F'))) {
+              fprintf(outputFile, "\\x%02x\" \"", current_byte);
+            } else {
+              fprintf(outputFile, "\\x%02x", current_byte);
+            }
+          }
+          break;
+        }
+      }
+//    fprintf(outputFile, "%s", byte_to_strliteral(buffer[i], ((i + 1) < readSize) ? buffer[i + 1] : 0));
+    }    
+    fprintf(outputFile, "\"\n\"");
+/*  for(size_t i = 0; i < readSize; ++i){
       fprintf(outputFile, "0x%02x", buffer[i]);
       if((inputPosition + i + 1) < inputFileSize){
         fprintf(outputFile, ", ");
       }
     }
-    fprintf(outputFile, "\n");
+    fprintf(outputFile, "\n");*/
     inputPosition += readSize;
   }
-  fprintf(outputFile, "};\n"); 
+  fprintf(outputFile, "\";\n"); 
+//fprintf(outputFile, "};\n"); 
   fprintf(outputFile, "static const uint32_t %s_size = %zu;\n", variableName, inputFileSize);
   fprintf(outputFile, "#if defined(__arm__) || defined(__arm) || defined(__M_ARM)\n"); 
   fprintf(outputFile, "#ifndef __arm__\n"); 
@@ -87,7 +187,7 @@ int main(int argc, char **argv) {
   fprintf(outputFile, "  return %s_size;\n", variableName);
   fprintf(outputFile, "}\n");
   fprintf(outputFile, "const uint8_t* CALLCONV get_%s_data(){\n", variableName);
-  fprintf(outputFile, "  return %s_data;\n", variableName);
+  fprintf(outputFile, "  return (void*)&%s_data;\n", variableName);
   fprintf(outputFile, "}\n");
   fclose(inputFile);
   fclose(outputFile);
