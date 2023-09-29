@@ -555,6 +555,13 @@ begin
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
+ case fInstance.Renderer.GlobalIlluminatonMode of
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationRadianceHintsDescriptorSetLayout);
+  end;
+  else begin
+  end;
+ end;
  fVulkanPipelineLayout.Initialize;
 
  for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass do begin
@@ -843,16 +850,32 @@ procedure TpvScene3DRendererPassesForwardRenderPass.OnSetRenderPassResources(con
                                                                              const aRenderPassIndex:TpvSizeInt;
                                                                              const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                              const aInFlightFrameIndex:TpvSizeInt);
+var DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       fVulkanPipelineLayout.Handle,
-                                       1,
-                                       1,
-                                       @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                       0,
-                                       nil);
+  case fInstance.Renderer.GlobalIlluminatonMode of
+   TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+    DescriptorSets[0]:=fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+    DescriptorSets[1]:=fInstance.GlobalIlluminationRadianceHintsDescriptorSets[aInFlightFrameIndex].Handle;
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanPipelineLayout.Handle,
+                                         1,
+                                         2,
+                                         @DescriptorSets,
+                                         0,
+                                         nil);
+   end;
+   else begin
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanPipelineLayout.Handle,
+                                         1,
+                                         1,
+                                         @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                         0,
+                                         nil);
+   end;
+  end;
  end;
 end;
 
