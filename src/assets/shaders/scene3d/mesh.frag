@@ -243,14 +243,17 @@ layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
   uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
 };
 
-#ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
-  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
-  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 8
-  layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 9) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
-  #define GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
-  #include "global_illumination_cascaded_radiance_hints.glsl"
 #endif
 
+// Extra global illumination descriptor set (optional, if global illumination is enabled) for more easily sharing the same 
+// global illumination data between multiple passes (e.g. opaque and transparent passes).
+
+#ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 2
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
+  layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 1) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
+  #define GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
+  #include "global_illumination_cascaded_radiance_hints.glsl"
 #endif
 
 #define TRANSPARENCY_DECLARATION
