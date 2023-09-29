@@ -369,6 +369,10 @@ void globalIlluminationSphericalHarmonicsExtractAndSubtract(inout vec3 pSpherica
   direction = normalize((normalize(vec3(-pSphericalHarmonics[3].r, -pSphericalHarmonics[1].r, pSphericalHarmonics[2].r)) * 0.3) + 
                         (normalize(vec3(-pSphericalHarmonics[3].g, -pSphericalHarmonics[1].g, pSphericalHarmonics[2].g)) * 0.59) + 
                         (normalize(vec3(-pSphericalHarmonics[3].b, -pSphericalHarmonics[1].b, pSphericalHarmonics[2].b)) * 0.11));
+/*directional = globalIlluminationCompressedSphericalHarmonicsDecode(direction, pSphericalHarmonics) * directionalLightNormalizationFactor;
+  ambient = max(vec3(0.0), (pSphericalHarmonics[0].rgb - (directional * g_sh1)) * inverseAmbientLightNormalizationFactor);
+  // Subtract the dominant light from the spherical harmonics for avoiding double lighting:
+  globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(direction, -directional, pSphericalHarmonics);*/
   vec3 sh0l = vec3(g_sh1, -(g_sh2 * direction.y), g_sh2 * direction.z) * directionalLightNormalizationFactor;
   vec3 sh1l = vec3(-(g_sh2 * direction.x), g_sh3 * (direction.y * direction.x), -(g_sh3 * (direction.y * direction.z))) * directionalLightNormalizationFactor;
   vec3 sh2l = vec3(g_sh4 * ((3.0 * (direction.z * direction.z)) - 1.0), -(g_sh3 * (direction.x * direction.z)), g_sh5 * ((direction.x * direction.x) - (direction.y * direction.y))) * directionalLightNormalizationFactor;
@@ -387,7 +391,7 @@ void globalIlluminationSphericalHarmonicsExtractAndSubtract(inout vec3 pSpherica
   pSphericalHarmonics[5] -= directional * (-(g_sh3 * (direction.y * direction.z)));
   pSphericalHarmonics[6] -= directional * (g_sh4 * ((3.0 * (direction.z * direction.z)) - 1.0));
   pSphericalHarmonics[7] -= directional * (-(g_sh3 * (direction.x * direction.z)));
-  pSphericalHarmonics[8] -= directional * (g_sh5 * ((direction.x * direction.x) - (direction.y * direction.y)));
+  pSphericalHarmonics[8] -= directional * (g_sh5 * ((direction.x * direction.x) - (direction.y * direction.y)));/**/
 }
 
 void globalIlluminationSphericalHarmonicsExtractDominantLight(const in vec3 pSphericalHarmonics[9], out vec3 directional, out vec3 direction){
@@ -530,6 +534,9 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     }
     lCascadeIndex++;
   }
+  if(lCascadeIndex >= GI_CASCADES){
+    lCascadeIndex = GI_CASCADES - 1;
+  } 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
     vec4 lAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex];
     vec4 lAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex];

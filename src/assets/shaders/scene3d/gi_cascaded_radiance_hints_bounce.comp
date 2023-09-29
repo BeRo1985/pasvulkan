@@ -168,6 +168,10 @@ void main(){
         }
         lSampleCascadeIndex++;
       }
+
+      if(lSampleCascadeIndex >= GI_CASCADES){
+        lSampleCascadeIndex = GI_CASCADES - 1;
+      } 
       
       if((lSampleCascadeIndex >= 0) && (lSampleCascadeIndex < GI_CASCADES)){
         lMustReprocessOnMove = (lCascadeIndex < lSampleCascadeIndex) ? true : lMustReprocessOnMove;

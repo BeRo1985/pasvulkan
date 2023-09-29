@@ -2005,7 +2005,7 @@ void main() {
       {
         vec3 volumeSphericalHarmonics[9];
         globalIlluminationVolumeLookUp(volumeSphericalHarmonics, inWorldSpacePosition.xyz, vec3(0.0));
-        vec3 shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection;
+        vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
         globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
         diffuseOutput += shResidualDiffuse * diffuseColorAlpha.xyz * ambientOcclusion;
