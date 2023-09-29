@@ -408,6 +408,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets;
+       fGlobalIlluminationRadianceHintsFirsts:array[0..MaxInFlightFrames-1] of LongBool;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
@@ -1350,6 +1351,10 @@ begin
  fGlobalIlluminationRadianceHintsDescriptorPool:=nil;
 
  fGlobalIlluminationRadianceHintsDescriptorSetLayout:=nil;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fGlobalIlluminationRadianceHintsFirsts[InFlightFrameIndex]:=true;
+ end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
@@ -3287,9 +3292,15 @@ begin
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=trunc(CascadedVolumeCascade.fDelta.x);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=trunc(CascadedVolumeCascade.fDelta.y);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=trunc(CascadedVolumeCascade.fDelta.z);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;//trunc(CascadedVolumeCascade.fDelta.w);
+  if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
+  end else begin
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=trunc(CascadedVolumeCascade.fDelta.w);
+  end;
 
  end;
+
+ fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
 
  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
