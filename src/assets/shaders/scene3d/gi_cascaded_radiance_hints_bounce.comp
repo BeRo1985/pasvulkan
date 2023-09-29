@@ -61,7 +61,7 @@ void main(){
       if((all(greaterThanEqual(lVolumePosition, ivec3(lBorderCells))) && all(lessThan(lVolumePosition, uGlobalIlluminationVolumeSize - ivec3(lBorderCells)))) &&
           (all(greaterThanEqual(lCacheVolumePosition, ivec3(lBorderCells))) && all(lessThan(lCacheVolumePosition, uGlobalIlluminationVolumeSize - ivec3(lBorderCells))))){
         vec4 uCachedMetaInfo = texelFetch(uTexLastMetaInfo[lCascadeIndex], lCacheVolumePosition, 0);
-        if(uCachedMetaInfo.w < 0.5){ 
+        /*if(uCachedMetaInfo.w < 0.5)*/{ 
 #if GI_COMPRESSION == 0
           vec4 uCachedSH0 = texelFetch(uTexLastSH[lTexIndexOffset + 0], lCacheVolumePosition, 0);
           vec4 uCachedSH1 = texelFetch(uTexLastSH[lTexIndexOffset + 1], lCacheVolumePosition, 0);
