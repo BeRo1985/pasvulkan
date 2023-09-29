@@ -1502,6 +1502,7 @@ void main() {
     case smPBRMetallicRoughness:
     case smPBRSpecularGlossiness: {
       vec4 diffuseColorAlpha = vec4(1.0);
+      vec4 baseColor = vec4(1.0);
       float ior = material.iorIridescenceFactorIridescenceIorIridescenceThicknessMinimum.x;
       vec3 F0 = vec3((abs(ior - 1.5) < 1e-6) ? 0.04 : pow((ior - 1.0) / (ior + 1.0), 2.0));
       vec3 F90 = vec3(1.0);
@@ -1516,7 +1517,7 @@ void main() {
             specularColorFactor *= textureFetch(11, vec4(1.0), true).xyz;
           }
           vec3 dielectricSpecularF0 = clamp(F0 * specularColorFactor, vec3(0.0), vec3(1.0));
-          vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+          baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
           vec2 metallicRoughness = clamp(textureFetch(1, vec4(1.0), false).zy * material.metallicRoughnessNormalScaleOcclusionStrengthFactor.xy, vec2(0.0, 1e-3), vec2(1.0));
           diffuseColorAlpha = vec4(max(vec3(0.0), baseColor.xyz * (1.0 - metallicRoughness.x)), baseColor.w);
           F0 = mix(dielectricSpecularF0, baseColor.xyz, metallicRoughness.x);
@@ -1525,9 +1526,9 @@ void main() {
         }
         case smPBRSpecularGlossiness: {
           vec4 specularGlossiness = textureFetch(1, vec4(1.0), true) * vec4(material.specularFactor.xyz, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
-          diffuseColorAlpha = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+          baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
           F0 = specularGlossiness.xyz;
-          diffuseColorAlpha.xyz *= max(0.0, 1.0 - max(max(F0.x, F0.y), F0.z));
+          diffuseColorAlpha.xyz = baseColor.xyz * max(0.0, 1.0 - max(max(F0.x, F0.y), F0.z));
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
           break;
         }
@@ -2008,10 +2009,10 @@ void main() {
         vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
         globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
-        diffuseOutput += shResidualDiffuse * diffuseColorAlpha.xyz * ambientOcclusion;
+        diffuseOutput += shResidualDiffuse * baseColor.xyz * ambientOcclusion;
         doSingleLight(shDominantDirectionalLightColor,                    //
                       vec3(ambientOcclusion),                             //
-                      shDominantDirectionalLightDirection,                //
+                      -shDominantDirectionalLightDirection,               //
                       normal.xyz,                                         //
                       diffuseColorAlpha.xyz,                              //
                       F0,                                                 //
