@@ -212,14 +212,14 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass1_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass1_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass1_alphatest_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_mboit_pass1_alphatest_frag.spv');
  try
   fMeshMaskedFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -442,6 +442,13 @@ begin
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
+ case fInstance.Renderer.GlobalIlluminatonMode of
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationRadianceHintsDescriptorSetLayout);
+  end;
+  else begin
+  end;
+ end;
  fVulkanPipelineLayout.Initialize;
 
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -706,16 +713,32 @@ procedure TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyAbsorba
                                                                                                             const aRenderPassIndex:TpvSizeInt;
                                                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                                             const aInFlightFrameIndex:TpvSizeInt);
+var DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
-  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       fVulkanPipelineLayout.Handle,
-                                       1,
-                                       1,
-                                       @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
-                                       0,
-                                       nil);
+  case fInstance.Renderer.GlobalIlluminatonMode of
+   TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+    DescriptorSets[0]:=fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+    DescriptorSets[1]:=fInstance.GlobalIlluminationRadianceHintsDescriptorSets[aInFlightFrameIndex].Handle;
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanPipelineLayout.Handle,
+                                         1,
+                                         2,
+                                         @DescriptorSets,
+                                         0,
+                                         nil);
+   end;
+   else begin
+    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                         fVulkanPipelineLayout.Handle,
+                                         1,
+                                         1,
+                                         @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                         0,
+                                         nil);
+   end;
+  end;
  end;
 end;
 
