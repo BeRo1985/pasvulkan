@@ -353,6 +353,7 @@ type { TpvScene3DRendererInstance }
             TInFlightFrameCascadedRadianceHintVolumeImages=array[0..MaxInFlightFrames-1] of TCascadedRadianceHintVolumeImages;
             PInFlightFrameCascadedRadianceHintVolumeImages=^TInFlightFrameCascadedRadianceHintVolumeImages;
             TGlobalIlluminationRadianceHintsUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalIlluminationRadianceHintsDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -401,6 +402,12 @@ type { TpvScene3DRendererInstance }
       private
        fInFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages;
        fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages:TInFlightFrameCascadedRadianceHintVolumeImages;
+       fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
+       fGlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers;
+       fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
+       fGlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool;
+       fGlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
@@ -416,10 +423,6 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameCascadedShadowMaps:TInFlightFrameCascadedShadowMaps;
        fCascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers;
        fCascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers;
-      private
-       fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
-       fGlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers;
-       fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
       private
        fCountLockOrderIndependentTransparencyLayers:TpvInt32;
        fLockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer;
@@ -513,6 +516,11 @@ type { TpvScene3DRendererInstance }
       public
        property InFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeImages;
        property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
+       property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
+       property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
+       property GlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool read fGlobalIlluminationRadianceHintsDescriptorPool;
+       property GlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationRadianceHintsDescriptorSetLayout;
+       property GlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets read fGlobalIlluminationRadianceHintsDescriptorSets;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -533,9 +541,6 @@ type { TpvScene3DRendererInstance }
       public
        property CascadedShadowMapUniformBuffers:TCascadedShadowMapUniformBuffers read fCascadedShadowMapUniformBuffers;
        property CascadedShadowMapVulkanUniformBuffers:TCascadedShadowMapVulkanUniformBuffers read fCascadedShadowMapVulkanUniformBuffers;
-      public
-       property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
-       property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
       public
        property CountLockOrderIndependentTransparencyLayers:TpvInt32 read fCountLockOrderIndependentTransparencyLayers;
        property LockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer read fLockOrderIndependentTransparentUniformBuffer;
@@ -1335,6 +1340,12 @@ begin
 
  fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
 
+ FillChar(fGlobalIlluminationRadianceHintsDescriptorSets,SizeOf(TGlobalIlluminationRadianceHintsDescriptorSets),#0);
+
+ fGlobalIlluminationRadianceHintsDescriptorPool:=nil;
+
+ fGlobalIlluminationRadianceHintsDescriptorSetLayout:=nil;
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1448,8 +1459,13 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]);
  end;
+
+ FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorSetLayout);
+
+ FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorPool);
 
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 
@@ -1491,8 +1507,9 @@ end;
 procedure TpvScene3DRendererInstance.Prepare;
 var AntialiasingFirstPass:TpvFrameGraph.TPass;
     AntialiasingLastPass:TpvFrameGraph.TPass;
-    InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
+    InFlightFrameIndex,CascadeIndex,ImageIndex,Index:TpvSizeInt;
     Format:TVkFormat;
+    GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
 begin
 
  case Renderer.GlobalIlluminatonMode of
@@ -1542,6 +1559,70 @@ begin
      end;
     end;
    end;
+
+   fGlobalIlluminationRadianceHintsDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
+                                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                                  Renderer.CountInFlightFrames);
+   fGlobalIlluminationRadianceHintsDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
+   fGlobalIlluminationRadianceHintsDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages);
+   fGlobalIlluminationRadianceHintsDescriptorPool.Initialize;
+
+   fGlobalIlluminationRadianceHintsDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
+   fGlobalIlluminationRadianceHintsDescriptorSetLayout.AddBinding(0,
+                                                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                  1,
+                                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                  []);
+   fGlobalIlluminationRadianceHintsDescriptorSetLayout.AddBinding(1,
+                                                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                                  TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages,
+                                                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                  []);
+   fGlobalIlluminationRadianceHintsDescriptorSetLayout.Initialize;
+
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+    GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:=nil;
+    try
+
+     SetLength(GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages);
+     Index:=0;
+     for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
+      for ImageIndex:=0 to CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
+       GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[Index]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
+                                                                                                         fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+                                                                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+       inc(Index);
+      end;
+     end;
+
+     fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationRadianceHintsDescriptorPool,fGlobalIlluminationRadianceHintsDescriptorSetLayout);
+     fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                                             0,
+                                                                                             1,
+                                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                                             [],
+                                                                                             [fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                             [],
+                                                                                             false
+                                                                                            );
+     fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                                             0,
+                                                                                             length(GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray),
+                                                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                             GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray,
+                                                                                             [],
+                                                                                             [],
+                                                                                             false
+                                                                                            );
+     fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex].Flush;
+
+    finally
+     GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:=nil;
+    end;
+
+   end;
+
 
   end;
 
