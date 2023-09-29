@@ -1588,7 +1588,7 @@ begin
      SetLength(GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages);
      Index:=0;
      for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
-      for ImageIndex:=0 to CountGlobalIlluminationRadiantHintVolumeImages-1 do begin
+      for ImageIndex:=0 to CountGlobalIlluminationRadiantHintSHImages-1 do begin
        GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[Index]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
                                                                                                          fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -1596,7 +1596,8 @@ begin
       end;
      end;
 
-     fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationRadianceHintsDescriptorPool,fGlobalIlluminationRadianceHintsDescriptorSetLayout);
+     fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationRadianceHintsDescriptorPool,
+                                                                                                       fGlobalIlluminationRadianceHintsDescriptorSetLayout);
      fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                                              0,
                                                                                              1,
@@ -1622,7 +1623,6 @@ begin
     end;
 
    end;
-
 
   end;
 
