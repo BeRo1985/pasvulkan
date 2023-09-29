@@ -493,18 +493,27 @@ deduplicate_spv_files() {
 glslangValidatorPath=$(which glslangValidator)
 spirvOptPath=$(which spirv-opt)
 
+# Use a trap to kill all child processes when an error occurs
+trap 'kill 0' ERR
+
 # Compile all shaders
 
 echo "Compiling . . ."
 
+#pids=()
+
 for index in ${!compileshaderarguments[@]}; do
-   parameters=${compileshaderarguments[$index]}
-   # echo "Processing $parameters . . ."
-   (     
-     ${glslangValidatorPath} $parameters
-     #--target-env spirv1.5 
-     #>/dev/null
-   ) & 
+  parameters=${compileshaderarguments[$index]}
+  # echo "Processing $parameters . . ."
+  (     
+    ${glslangValidatorPath} $parameters #--target-env spirv1.5 >/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Error encountered. Stopping compilation."
+      kill -s TERM 0
+      exit 1
+    fi     
+  ) & 
+  #pids+=("$!")
 done
 
 wait 

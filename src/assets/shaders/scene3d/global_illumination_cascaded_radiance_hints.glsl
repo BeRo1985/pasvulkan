@@ -510,7 +510,7 @@ void  globalIlluminationSphericalHarmonicsMultiply(inout vec3 y[9], const in vec
   // multiply count=120
 }
 
-#ifdef MESH_FRAGMENT
+#ifdef GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
 void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset){
   vec3 lWorldSpacePosition = pWorldPosition + (pOffset * ((globalIlluminationVolumeAABBMax[0].xyz - globalIlluminationVolumeAABBMin[0].xyz) * uGlobalIlluminationVolumeSizeInvVector));
   int lCascadeIndex = 0;
@@ -546,7 +546,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     vec4 lTSH6 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 6], lVolume3DPosition, 0.0);
 #endif
     if((lCascadeIndex + 1) < GI_CASCADES){
-      vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(vWorldSpacePosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
+      vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(pWorldPosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
       float lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
       if(lAABBFadeFactor > 1e-4){
         lVolume3DPosition = clamp(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), vec3(0.0), vec3(1.0));
@@ -594,7 +594,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
 #endif
     float lAABBFadeFactor = 0.0;
     if((lCascadeIndex + 1) < GI_CASCADES){
-      vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(vWorldSpacePosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
+      vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(pWorldPosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
       lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
     }
     for(int lIndex = 0; lIndex < 4; lIndex++){
@@ -697,12 +697,12 @@ vec3 globalIlluminationGetSpecularColor(const in vec3 pWorldSpacePosition, const
   vec3 lReflectionVector = normalize(reflect(-pViewDirection, pNormal));
   float lReflectionOffset = pow(clamp(1.0 - pMaterialRoughness, 0.0, 1.0), 4.0) * 8.0;
   vec3 lSpecularSphericalHarmonics[9];
-  globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition.xyz, lReflectionVector * lReflectionOffset);
+  globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition, lReflectionVector * lReflectionOffset);
   vec3 lGlobalIlluminationSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
 #ifdef GI_SPECULAR_MULTIPLE_TAPS
   if(lReflectionOffset > 1.0){
     if(lReflectionOffset > 5.0){
-      globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition.xyz, lReflectionVector * (lReflectionOffset * 0.5));
+      globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition, lReflectionVector * (lReflectionOffset * 0.5));
       vec3 lGlobalIlluminationOtherSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
       vec2 lGlobalIlluminationSpecularFactors = vec2(dot(lGlobalIlluminationOtherSpecularColor, vec3(0.07475, 0.14675, 0.0285)), dot(lGlobalIlluminationSpecularColor, vec3(0.22425, 0.44025, 0.0855)));
       lGlobalIlluminationSpecularColor = mix(lGlobalIlluminationOtherSpecularColor, lGlobalIlluminationSpecularColor, clamp(lGlobalIlluminationSpecularFactors.y / max(1e-4, lGlobalIlluminationSpecularFactors.x + lGlobalIlluminationSpecularFactors.y), 0.0, 1.0));
