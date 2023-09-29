@@ -1528,7 +1528,7 @@ void main() {
           vec4 specularGlossiness = textureFetch(1, vec4(1.0), true) * vec4(material.specularFactor.xyz, material.metallicRoughnessNormalScaleOcclusionStrengthFactor.y);
           baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
           F0 = specularGlossiness.xyz;
-          diffuseColorAlpha.xyz = baseColor.xyz * max(0.0, 1.0 - max(max(F0.x, F0.y), F0.z));
+          diffuseColorAlpha = vec4(baseColor.xyz * max(0.0, 1.0 - max(max(F0.x, F0.y), F0.z)), baseColor.w);
           perceptualRoughness = clamp(1.0 - specularGlossiness.w, 1e-3, 1.0);
           break;
         }
