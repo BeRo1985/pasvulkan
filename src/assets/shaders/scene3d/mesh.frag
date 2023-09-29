@@ -1588,10 +1588,17 @@ void main() {
       float transparency = 0.0;
       float refractiveAngle = 0.0;
       float shadow = 1.0;
+      float screenSpaceAmbientOcclusion = 1.0;
   #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(BLEND) || defined(ENVMAP)
       ambientOcclusion = 1.0;
+  #else      
+  #ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+      screenSpaceAmbientOcclusion = texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
+      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : screenSpaceAmbientOcclusion;
   #else
       ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
+      screenSpaceAmbientOcclusion = ambientOcclusion;
+  #endif
   #endif
 
       vec3 viewDirection = normalize(-inCameraRelativePosition);
@@ -2009,9 +2016,9 @@ void main() {
         vec3 shAmbient = vec3(0.0), shDominantDirectionalLightColor = vec3(0.0), shDominantDirectionalLightDirection = vec3(0.0);
         globalIlluminationSphericalHarmonicsExtractAndSubtract(volumeSphericalHarmonics, shAmbient, shDominantDirectionalLightColor, shDominantDirectionalLightDirection);
         vec3 shResidualDiffuse = max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(normal, volumeSphericalHarmonics)));
-        diffuseOutput += shResidualDiffuse * baseColor.xyz * ambientOcclusion;
+        diffuseOutput += shResidualDiffuse * baseColor.xyz * screenSpaceAmbientOcclusion * cavity;
         doSingleLight(shDominantDirectionalLightColor,                    //
-                      vec3(ambientOcclusion),                             //
+                      vec3(screenSpaceAmbientOcclusion * cavity),         //
                       -shDominantDirectionalLightDirection,               //
                       normal.xyz,                                         //
                       diffuseColorAlpha.xyz,                              //
