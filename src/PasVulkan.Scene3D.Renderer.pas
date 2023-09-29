@@ -638,15 +638,6 @@ begin
   fShadowMode:=TpvScene3DRendererShadowMode.PCF;
  end;
 
- case fGlobalIlluminatonMode of
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
-   fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
-  end;
-  else begin
-   fMeshFragGlobalIlluminationTypeName:='';
-  end;
- end;
-
  if fShadowMode in [TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCSS] then begin
   fMeshFragShadowTypeName:='pcfpcss';
  end else begin
@@ -826,6 +817,15 @@ begin
 
  if fGlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.Auto then begin
   fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints;//StaticEnvironmentMap;//CameraReflectionProbe;//
+ end;
+
+ case fGlobalIlluminatonMode of
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+   fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
+  end;
+  else begin
+   fMeshFragGlobalIlluminationTypeName:='';
+  end;
  end;
 
 end;
