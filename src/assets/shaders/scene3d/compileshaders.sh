@@ -341,6 +341,17 @@ addMeshFragmentShadingAntialiasingVariants(){
   
 }
 
+# Add mesh fragment shader variants with different global illumination techniques (if any)
+addMeshFragmentShadingGlobalIlluminationVariants(){
+  
+  # No global illumination
+  addMeshFragmentShadingAntialiasingVariants "${1}" "$2"
+
+  # Cascaded radiance hints
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_radiance_hints" "$2 -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS"
+  
+}
+
 # Add mesh fragment shader depth only with different alphatest variants 
 addMeshFragmentDepthOnlyAlphaTestVariants(){
   
@@ -383,14 +394,14 @@ addMeshFragmentPassTargetVariants(){
   # Depth only stuff
   addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"  
 
-  # The reflectfive shadow map stuff
+  # The reflective shadow map stuff
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
 
   # The actual shading stuff
-  addMeshFragmentShadingAntialiasingVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS"  
+  addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS"  
   
   # The environment map stuff
-  #addMeshFragmentShadingAntialiasingVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DENVMAP"
+  #addMeshFragmentShadingGlobalIlluminationVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DENVMAP"
 
 }
 
