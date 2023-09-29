@@ -242,6 +242,14 @@ layout (std430, set = 1, binding = 6) readonly buffer FrustumClusterGridIndexLis
 layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
   uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
 };
+
+#ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 1
+  #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 8
+  layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 9) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
+  #include "global_illumination_cascaded_radiance_hints.glsl"
+#endif
+
 #endif
 
 #define TRANSPARENCY_DECLARATION
