@@ -2037,7 +2037,8 @@ void main() {
                       specularWeight);                                    //
       }
 #endif
-#if !(defined(REFLECTIVESHADOWMAPOUTPUT) || defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS))
+#if !defined(REFLECTIVESHADOWMAPOUTPUT) 
+#if !defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight);
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
       if ((flags & (1u << 7u)) != 0u) {
@@ -2047,6 +2048,7 @@ void main() {
         clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
         clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
       }
+#endif
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
         transmissionOutput += getIBLVolumeRefraction(normal.xyz, viewDirection,
