@@ -1157,8 +1157,10 @@ begin
 
   if CascadeIndex=(fCountCascades-1) then begin
    CellSize:=MaximumCascadeCellSize;
+  end else if CascadeIndex=0 then begin
+   CellSize:=1.0;
   end else begin
-   CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,4.0),1.0),MaximumCascadeCellSize);
+   CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,2.0),1.0),MaximumCascadeCellSize);
   end;
 
   SnapSize:=CellSize;
@@ -1170,6 +1172,9 @@ begin
   GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
 
   BorderCells:=fCountCascades-CascadeIndex;
+
+{ AABB.Min:=SnappedPosition-(GridSize*0.5);
+  AABB.Max:=SnappedPosition+(GridSize*0.5);}
 
   for AxisIndex:=0 to 2 do begin
    ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
@@ -3282,7 +3287,7 @@ begin
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=trunc(CascadedVolumeCascade.fDelta.x);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=trunc(CascadedVolumeCascade.fDelta.y);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=trunc(CascadedVolumeCascade.fDelta.z);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;//trunc(CascadedVolumeCascade.fDelta.w);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=trunc(CascadedVolumeCascade.fDelta.w);
 
  end;
 

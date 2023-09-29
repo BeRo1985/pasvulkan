@@ -2053,7 +2053,11 @@ void main() {
       }
 #endif
 #endif
+#if defined(REFLECTIVESHADOWMAPOUTPUT)
+      vec3 emissiveOutput = vec3(0.0); // No emissive output for RSMs
+#else
       vec3 emissiveOutput = emissiveTexture.xyz * material.emissiveFactor.xyz * material.emissiveFactor.w;
+#endif
       color = vec2(0.0, diffuseColorAlpha.w).xxxy;
 #ifndef EXTRAEMISSIONOUTPUT
       color.xyz += emissiveOutput;
