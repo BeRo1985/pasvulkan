@@ -3287,7 +3287,7 @@ begin
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=trunc(CascadedVolumeCascade.fDelta.x);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=trunc(CascadedVolumeCascade.fDelta.y);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=trunc(CascadedVolumeCascade.fDelta.z);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=trunc(CascadedVolumeCascade.fDelta.w);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;//trunc(CascadedVolumeCascade.fDelta.w);
 
  end;
 

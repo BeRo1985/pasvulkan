@@ -385,7 +385,7 @@ begin
  fVirtualRealityHUDWidth:=2048;
  fVirtualRealityHUDHeight:=1152;
 
- fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=512.0;
+ fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=128.0;
 
  fGlobalIlluminationRadianceHintsSpread:=0.1;
 
