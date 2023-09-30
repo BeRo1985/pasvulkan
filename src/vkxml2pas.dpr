@@ -3822,6 +3822,33 @@ begin
              end;
              TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
              inc(TypeDefinition^.CountMembers);
+             if (Type_='HWND') or (Type_='HMONITOR') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
+              TypeDefinition^.Define:='Windows';
+             end else if Type_='RROutput' then begin
+              TypeDefinition^.Define:='RandR';
+             end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
+              TypeDefinition^.Define:='XLIB';
+             end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
+              TypeDefinition^.Define:='XCB';
+             end else if (Type_='wl_display') or (Type_='wl_surface') then begin
+              TypeDefinition^.Define:='Wayland';
+             end else if (Type_='ANativeWindow') or (Type_='AHardwareBuffer') then begin
+              TypeDefinition^.Define:='Android';
+             end else if (Type_='zx_handle_t') or (pos('FUCHSIA',UpperCase(Type_))>0) then begin
+              TypeDefinition^.Define:='Fuchsia';
+             end else if (Type_='IDirectFB') or (Type_='IDirectFBSurface') or (pos('DIRECTFB',UpperCase(Type_))>0) then begin
+              TypeDefinition^.Define:='DirectFB';
+             end else if (pos('_screen_context',Type_)>0) or (pos('_screen_window',Type_)>0) or (pos('qnx',LowerCase(Type_))>0) then begin
+              TypeDefinition^.Define:='QNX';
+             end else if pos('StdVideo',Type_)>0 then begin
+              TypeDefinition^.Define:='VkStdVideo';
+             end else if pos('VkVideo',Type_)>0 then begin
+              TypeDefinition^.Define:='VkVideo';
+             end else if (pos('NvSci',Type_)>0) or (Type_='VkSemaphoreSciSyncPoolNV') then begin
+              TypeDefinition^.Define:='NvSci';
+             end else if (Type_='VkFaultLevel') or (Type_='VkFaultType') or (Type_='VkFaultData') then begin
+              TypeDefinition^.Define:='VulkanSC';
+             end;
              TypeDefinitionMember^.Type_:=Type_;
              k:=pos(',',Text);
              if k>0 then begin
