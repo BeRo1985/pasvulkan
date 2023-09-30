@@ -88,6 +88,7 @@ uses {$if defined(Windows)}
      {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}
      {$if defined(DirectFB) and defined(VulkanUseDirectFBUnits)}DirectFB,{$ifend}
      {$if defined(QNX) and defined(VulkanUseQNXUnits)}QNX,{$ifend}
+     {$if defined(Metal) and defined(VulkanUseMetalUnits)}Metal,{$ifend}
      SysUtils;
 
 const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Android}'libvulkan.so'{$else}{$ifdef Unix}'libvulkan.so.1'{$else}'libvulkan'{$endif}{$endif}{$endif};
@@ -1481,29 +1482,41 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PAHardwareBuffer=^TAHardwareBuffer;
      TAHardwareBuffer=TVkNonDefinedType;
 
+{$ifdef Metal}
      PPCAMetalLayer=^PCAMetalLayer;
      PCAMetalLayer=^TCAMetalLayer;
      TCAMetalLayer=TVkNonDefinedType;
+{$endif}
 
+{$ifdef Metal}
      PPMTLDevice_id=^PMTLDevice_id;
      PMTLDevice_id=^TMTLDevice_id;
      TMTLDevice_id=TVkNonDefinedType;
+{$endif}
 
+{$ifdef Metal}
      PPMTLCommandQueue_id=^PMTLCommandQueue_id;
      PMTLCommandQueue_id=^TMTLCommandQueue_id;
      TMTLCommandQueue_id=TVkNonDefinedType;
+{$endif}
 
+{$ifdef Metal}
      PPMTLBuffer_id=^PMTLBuffer_id;
      PMTLBuffer_id=^TMTLBuffer_id;
      TMTLBuffer_id=TVkNonDefinedType;
+{$endif}
 
+{$ifdef Metal}
      PPMTLTexture_id=^PMTLTexture_id;
      PMTLTexture_id=^TMTLTexture_id;
      TMTLTexture_id=TVkNonDefinedType;
+{$endif}
 
+{$ifdef Metal}
      PPMTLSharedEvent_id=^PMTLSharedEvent_id;
      PMTLSharedEvent_id=^TMTLSharedEvent_id;
      TMTLSharedEvent_id=TVkNonDefinedType;
+{$endif}
 
      PPIOSurfaceRef=^PIOSurfaceRef;
      PIOSurfaceRef=^TIOSurfaceRef;
@@ -11435,6 +11448,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+{$ifdef NvSci}
      PPVkMemoryGetSciBufInfoNV=^PVkMemoryGetSciBufInfoNV;
      PVkMemoryGetSciBufInfoNV=^TVkMemoryGetSciBufInfoNV;
      TVkMemoryGetSciBufInfoNV=record
@@ -11450,7 +11464,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aHandleType:TVkExternalMemoryHandleTypeFlagBits);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkMemorySciBufPropertiesNV=^PVkMemorySciBufPropertiesNV;
      PVkMemorySciBufPropertiesNV=^TVkMemorySciBufPropertiesNV;
      TVkMemorySciBufPropertiesNV=record
@@ -11464,7 +11480,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aMemoryTypeBits:TVkUInt32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkPhysicalDeviceExternalMemorySciBufFeaturesNV=^PVkPhysicalDeviceExternalMemorySciBufFeaturesNV;
      PVkPhysicalDeviceExternalMemorySciBufFeaturesNV=^TVkPhysicalDeviceExternalMemorySciBufFeaturesNV;
      TVkPhysicalDeviceExternalMemorySciBufFeaturesNV=record
@@ -11480,10 +11498,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aSciBufExport:TVkBool32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkPhysicalDeviceExternalSciBufFeaturesNV=^PVkPhysicalDeviceExternalSciBufFeaturesNV;
      PVkPhysicalDeviceExternalSciBufFeaturesNV=^TVkPhysicalDeviceExternalSciBufFeaturesNV;
      TVkPhysicalDeviceExternalSciBufFeaturesNV=TVkPhysicalDeviceExternalMemorySciBufFeaturesNV;
+{$endif}
 
      PPVkWin32KeyedMutexAcquireReleaseInfoNV=^PVkWin32KeyedMutexAcquireReleaseInfoNV;
      PVkWin32KeyedMutexAcquireReleaseInfoNV=^TVkWin32KeyedMutexAcquireReleaseInfoNV;
@@ -12953,6 +12974,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+{$ifdef NvSci}
      PPVkImportFenceSciSyncInfoNV=^PVkImportFenceSciSyncInfoNV;
      PVkImportFenceSciSyncInfoNV=^TVkImportFenceSciSyncInfoNV;
      TVkImportFenceSciSyncInfoNV=record
@@ -12970,7 +12992,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aHandle:PVkVoid);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkFenceGetSciSyncInfoNV=^PVkFenceGetSciSyncInfoNV;
      PVkFenceGetSciSyncInfoNV=^TVkFenceGetSciSyncInfoNV;
      TVkFenceGetSciSyncInfoNV=record
@@ -12986,6 +13010,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aHandleType:TVkExternalFenceHandleTypeFlagBits);
 {$endif}
      end;
+{$endif}
 
 {$ifdef NvSci}
      PPVkExportSemaphoreSciSyncInfoNV=^PVkExportSemaphoreSciSyncInfoNV;
@@ -13003,6 +13028,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+{$ifdef NvSci}
      PPVkImportSemaphoreSciSyncInfoNV=^PVkImportSemaphoreSciSyncInfoNV;
      PVkImportSemaphoreSciSyncInfoNV=^TVkImportSemaphoreSciSyncInfoNV;
      TVkImportSemaphoreSciSyncInfoNV=record
@@ -13020,7 +13046,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aHandle:PVkVoid);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkSemaphoreGetSciSyncInfoNV=^PVkSemaphoreGetSciSyncInfoNV;
      PVkSemaphoreGetSciSyncInfoNV=^TVkSemaphoreGetSciSyncInfoNV;
      TVkSemaphoreGetSciSyncInfoNV=record
@@ -13036,7 +13064,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aHandleType:TVkExternalSemaphoreHandleTypeFlagBits);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkSciSyncAttributesInfoNV=^PVkSciSyncAttributesInfoNV;
      PVkSciSyncAttributesInfoNV=^TVkSciSyncAttributesInfoNV;
      TVkSciSyncAttributesInfoNV=record
@@ -13052,7 +13082,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aPrimitiveType:TVkSciSyncPrimitiveTypeNV);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkPhysicalDeviceExternalSciSyncFeaturesNV=^PVkPhysicalDeviceExternalSciSyncFeaturesNV;
      PVkPhysicalDeviceExternalSciSyncFeaturesNV=^TVkPhysicalDeviceExternalSciSyncFeaturesNV;
      TVkPhysicalDeviceExternalSciSyncFeaturesNV=record
@@ -13072,7 +13104,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aSciSyncExport:TVkBool32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkPhysicalDeviceExternalSciSync2FeaturesNV=^PVkPhysicalDeviceExternalSciSync2FeaturesNV;
      PVkPhysicalDeviceExternalSciSync2FeaturesNV=^TVkPhysicalDeviceExternalSciSync2FeaturesNV;
      TVkPhysicalDeviceExternalSciSync2FeaturesNV=record
@@ -13092,6 +13126,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aSciSyncExport:TVkBool32);
 {$endif}
      end;
+{$endif}
 
 {$ifdef NvSci}
      PPVkSemaphoreSciSyncPoolCreateInfoNV=^PVkSemaphoreSciSyncPoolCreateInfoNV;
@@ -13127,6 +13162,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+{$ifdef NvSci}
      PPVkDeviceSemaphoreSciSyncPoolReservationCreateInfoNV=^PVkDeviceSemaphoreSciSyncPoolReservationCreateInfoNV;
      PVkDeviceSemaphoreSciSyncPoolReservationCreateInfoNV=^TVkDeviceSemaphoreSciSyncPoolReservationCreateInfoNV;
      TVkDeviceSemaphoreSciSyncPoolReservationCreateInfoNV=record
@@ -13140,6 +13176,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aSemaphoreSciSyncPoolRequestCount:TVkUInt32);
 {$endif}
      end;
+{$endif}
 
      PPVkPhysicalDeviceMultiviewFeatures=^PVkPhysicalDeviceMultiviewFeatures;
      PVkPhysicalDeviceMultiviewFeatures=^TVkPhysicalDeviceMultiviewFeatures;
@@ -16899,6 +16936,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef NvSci}
      PPVkPhysicalDeviceExclusiveScissorFeaturesNV=^PVkPhysicalDeviceExclusiveScissorFeaturesNV;
      PVkPhysicalDeviceExclusiveScissorFeaturesNV=^TVkPhysicalDeviceExclusiveScissorFeaturesNV;
      TVkPhysicalDeviceExclusiveScissorFeaturesNV=record
@@ -16912,7 +16950,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aExclusiveScissor:TVkBool32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkPipelineViewportExclusiveScissorStateCreateInfoNV=^PVkPipelineViewportExclusiveScissorStateCreateInfoNV;
      PVkPipelineViewportExclusiveScissorStateCreateInfoNV=^TVkPipelineViewportExclusiveScissorStateCreateInfoNV;
      TVkPipelineViewportExclusiveScissorStateCreateInfoNV=record
@@ -16928,6 +16968,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aPExclusiveScissors:PVkRect2D);
 {$endif}
      end;
+{$endif}
 
      PPVkPhysicalDeviceCornerSampledImageFeaturesNV=^PVkPhysicalDeviceCornerSampledImageFeaturesNV;
      PVkPhysicalDeviceCornerSampledImageFeaturesNV=^TVkPhysicalDeviceCornerSampledImageFeaturesNV;
@@ -18899,6 +18940,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef VulkanSC}
      PPVkPerformanceQueryReservationInfoKHR=^PVkPerformanceQueryReservationInfoKHR;
      PVkPerformanceQueryReservationInfoKHR=^TVkPerformanceQueryReservationInfoKHR;
      TVkPerformanceQueryReservationInfoKHR=record
@@ -18912,6 +18954,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aMaxPerformanceQueriesPerPool:TVkUInt32);
 {$endif}
      end;
+{$endif}
 
      PPVkHeadlessSurfaceCreateInfoEXT=^PVkHeadlessSurfaceCreateInfoEXT;
      PVkHeadlessSurfaceCreateInfoEXT=^TVkHeadlessSurfaceCreateInfoEXT;
@@ -20156,7 +20199,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPPFN_vkFaultCallbackFunction=^PPFN_vkFaultCallbackFunction;
      PPFN_vkFaultCallbackFunction=^TPFN_vkFaultCallbackFunction;
      TPFN_vkFaultCallbackFunction=procedure(unrecordedFaults:TVkBool32;faultCount:TVkUInt32;const pFaults:PVkFaultData); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef VulkanSC}
      PPVkFaultCallbackInfo=^PVkFaultCallbackInfo;
      PVkFaultCallbackInfo=^TVkFaultCallbackInfo;
      TVkFaultCallbackInfo=record
@@ -20947,6 +20992,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef VulkanSC}
      PPVkPipelineOfflineCreateInfo=^PVkPipelineOfflineCreateInfo;
      PVkPipelineOfflineCreateInfo=^TVkPipelineOfflineCreateInfo;
      TVkPipelineOfflineCreateInfo=record
@@ -20964,6 +21010,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aPoolEntrySize:TVkDeviceSize);
 {$endif}
      end;
+{$endif}
 
      PPVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures=^PVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures;
      PVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures=^TVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures;
@@ -22351,6 +22398,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef VulkanSC}
      PPVkPhysicalDeviceVulkanSC10Properties=^PVkPhysicalDeviceVulkanSC10Properties;
      PVkPhysicalDeviceVulkanSC10Properties=^TVkPhysicalDeviceVulkanSC10Properties;
      TVkPhysicalDeviceVulkanSC10Properties=record
@@ -22398,7 +22446,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMaxCommandBufferSize:TVkDeviceSize);
 {$endif}
      end;
+{$endif}
 
+{$ifdef VulkanSC}
      PPVkPipelinePoolSize=^PVkPipelinePoolSize;
      PVkPipelinePoolSize=^TVkPipelinePoolSize;
      TVkPipelinePoolSize=record
@@ -22414,7 +22464,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aPoolEntryCount:TVkUInt32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef VulkanSC}
      PPVkDeviceObjectReservationCreateInfo=^PVkDeviceObjectReservationCreateInfo;
      PVkDeviceObjectReservationCreateInfo=^TVkDeviceObjectReservationCreateInfo;
      TVkDeviceObjectReservationCreateInfo=record
@@ -22508,7 +22560,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMaxImmutableSamplersPerDescriptorSetLayout:TVkUInt32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef VulkanSC}
      PPVkCommandPoolMemoryReservationCreateInfo=^PVkCommandPoolMemoryReservationCreateInfo;
      PVkCommandPoolMemoryReservationCreateInfo=^TVkCommandPoolMemoryReservationCreateInfo;
      TVkCommandPoolMemoryReservationCreateInfo=record
@@ -22524,7 +22578,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aCommandPoolMaxCommandBuffers:TVkUInt32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef VulkanSC}
      PPVkCommandPoolMemoryConsumption=^PVkCommandPoolMemoryConsumption;
      PVkCommandPoolMemoryConsumption=^TVkCommandPoolMemoryConsumption;
      TVkCommandPoolMemoryConsumption=record
@@ -22542,7 +22598,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aCommandBufferAllocated:TVkDeviceSize);
 {$endif}
      end;
+{$endif}
 
+{$ifdef VulkanSC}
      PPVkPhysicalDeviceVulkanSC10Features=^PVkPhysicalDeviceVulkanSC10Features;
      PVkPhysicalDeviceVulkanSC10Features=^TVkPhysicalDeviceVulkanSC10Features;
      TVkPhysicalDeviceVulkanSC10Features=record
@@ -22556,6 +22614,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aShaderAtomicInstructions:TVkBool32);
 {$endif}
      end;
+{$endif}
 
      PPVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT=^PVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT;
      PVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT=^TVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT;
@@ -24229,6 +24288,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+{$ifdef NvSci}
      PPVkPhysicalDeviceInheritedViewportScissorFeaturesNV=^PVkPhysicalDeviceInheritedViewportScissorFeaturesNV;
      PVkPhysicalDeviceInheritedViewportScissorFeaturesNV=^TVkPhysicalDeviceInheritedViewportScissorFeaturesNV;
      TVkPhysicalDeviceInheritedViewportScissorFeaturesNV=record
@@ -24242,7 +24302,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aInheritedViewportScissor2D:TVkBool32);
 {$endif}
      end;
+{$endif}
 
+{$ifdef NvSci}
      PPVkCommandBufferInheritanceViewportScissorInfoNV=^PVkCommandBufferInheritanceViewportScissorInfoNV;
      PVkCommandBufferInheritanceViewportScissorInfoNV=^TVkCommandBufferInheritanceViewportScissorInfoNV;
      TVkCommandBufferInheritanceViewportScissorInfoNV=record
@@ -24260,6 +24322,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aPViewportDepths:PVkViewport);
 {$endif}
      end;
+{$endif}
 
      PPVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT=^PVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT;
      PVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT=^TVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT;
@@ -26312,6 +26375,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef Metal}
      PPVkExportMetalDeviceInfoEXT=^PVkExportMetalDeviceInfoEXT;
      PVkExportMetalDeviceInfoEXT=^TVkExportMetalDeviceInfoEXT;
      TVkExportMetalDeviceInfoEXT=record
@@ -26325,7 +26389,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aMtlDevice:TMTLDevice_id);
 {$endif}
      end;
+{$endif}
 
+{$ifdef Metal}
      PPVkExportMetalCommandQueueInfoEXT=^PVkExportMetalCommandQueueInfoEXT;
      PVkExportMetalCommandQueueInfoEXT=^TVkExportMetalCommandQueueInfoEXT;
      TVkExportMetalCommandQueueInfoEXT=record
@@ -26341,7 +26407,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMtlCommandQueue:TMTLCommandQueue_id);
 {$endif}
      end;
+{$endif}
 
+{$ifdef Metal}
      PPVkExportMetalBufferInfoEXT=^PVkExportMetalBufferInfoEXT;
      PVkExportMetalBufferInfoEXT=^TVkExportMetalBufferInfoEXT;
      TVkExportMetalBufferInfoEXT=record
@@ -26357,7 +26425,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMtlBuffer:TMTLBuffer_id);
 {$endif}
      end;
+{$endif}
 
+{$ifdef Metal}
      PPVkImportMetalBufferInfoEXT=^PVkImportMetalBufferInfoEXT;
      PVkImportMetalBufferInfoEXT=^TVkImportMetalBufferInfoEXT;
      TVkImportMetalBufferInfoEXT=record
@@ -26371,7 +26441,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aMtlBuffer:TMTLBuffer_id);
 {$endif}
      end;
+{$endif}
 
+{$ifdef Metal}
      PPVkExportMetalTextureInfoEXT=^PVkExportMetalTextureInfoEXT;
      PVkExportMetalTextureInfoEXT=^TVkExportMetalTextureInfoEXT;
      TVkExportMetalTextureInfoEXT=record
@@ -26393,7 +26465,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMtlTexture:TMTLTexture_id);
 {$endif}
      end;
+{$endif}
 
+{$ifdef Metal}
      PPVkImportMetalTextureInfoEXT=^PVkImportMetalTextureInfoEXT;
      PVkImportMetalTextureInfoEXT=^TVkImportMetalTextureInfoEXT;
      TVkImportMetalTextureInfoEXT=record
@@ -26409,6 +26483,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMtlTexture:TMTLTexture_id);
 {$endif}
      end;
+{$endif}
 
      PPVkExportMetalIOSurfaceInfoEXT=^PVkExportMetalIOSurfaceInfoEXT;
      PVkExportMetalIOSurfaceInfoEXT=^TVkExportMetalIOSurfaceInfoEXT;
@@ -26440,6 +26515,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef Metal}
      PPVkExportMetalSharedEventInfoEXT=^PVkExportMetalSharedEventInfoEXT;
      PVkExportMetalSharedEventInfoEXT=^TVkExportMetalSharedEventInfoEXT;
      TVkExportMetalSharedEventInfoEXT=record
@@ -26457,7 +26533,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aMtlSharedEvent:TMTLSharedEvent_id);
 {$endif}
      end;
+{$endif}
 
+{$ifdef Metal}
      PPVkImportMetalSharedEventInfoEXT=^PVkImportMetalSharedEventInfoEXT;
      PVkImportMetalSharedEventInfoEXT=^TVkImportMetalSharedEventInfoEXT;
      TVkImportMetalSharedEventInfoEXT=record
@@ -26471,6 +26549,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aMtlSharedEvent:TMTLSharedEvent_id);
 {$endif}
      end;
+{$endif}
 
      PPVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT=^PVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT;
      PVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT=^TVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT;
@@ -28818,17 +28897,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkImportFenceFdKHR=function(device:TVkDevice;const pImportFenceFdInfo:PVkImportFenceFdInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+{$ifdef NvSci}
      TvkGetFenceSciSyncFenceNV=function(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef NvSci}
      TvkGetFenceSciSyncObjNV=function(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef NvSci}
      TvkImportFenceSciSyncFenceNV=function(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef NvSci}
      TvkImportFenceSciSyncObjNV=function(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef NvSci}
      TvkGetSemaphoreSciSyncObjNV=function(device:TVkDevice;const pGetSciSyncInfo:PVkSemaphoreGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
+{$ifdef NvSci}
      TvkImportSemaphoreSciSyncObjNV=function(device:TVkDevice;const pImportSemaphoreSciSyncInfo:PVkImportSemaphoreSciSyncInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
 {$ifdef NvSci}
      TvkGetPhysicalDeviceSciSyncAttributesNV=function(physicalDevice:TVkPhysicalDevice;const pSciSyncAttributesInfo:PVkSciSyncAttributesInfoNV;pAttributes:TNvSciSyncAttrList):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -29512,7 +29603,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkTransitionImageLayoutEXT=function(device:TVkDevice;transitionCount:TVkUInt32;const pTransitions:PVkHostImageLayoutTransitionInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+{$ifdef VulkanSC}
      TvkGetCommandPoolMemoryConsumption=procedure(device:TVkDevice;commandPool:TVkCommandPool;commandBuffer:TVkCommandBuffer;pConsumption:PVkCommandPoolMemoryConsumption); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
 {$ifdef VkVideo}
      TvkGetPhysicalDeviceVideoCapabilitiesKHR=function(physicalDevice:TVkPhysicalDevice;const pVideoProfile:PVkVideoProfileInfoKHR;pCapabilities:PVkVideoCapabilitiesKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -30310,17 +30403,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       ImportFenceFdKHR:TvkImportFenceFdKHR;
 
+{$ifdef NvSci}
       GetFenceSciSyncFenceNV:TvkGetFenceSciSyncFenceNV;
+{$endif}
 
+{$ifdef NvSci}
       GetFenceSciSyncObjNV:TvkGetFenceSciSyncObjNV;
+{$endif}
 
+{$ifdef NvSci}
       ImportFenceSciSyncFenceNV:TvkImportFenceSciSyncFenceNV;
+{$endif}
 
+{$ifdef NvSci}
       ImportFenceSciSyncObjNV:TvkImportFenceSciSyncObjNV;
+{$endif}
 
+{$ifdef NvSci}
       GetSemaphoreSciSyncObjNV:TvkGetSemaphoreSciSyncObjNV;
+{$endif}
 
+{$ifdef NvSci}
       ImportSemaphoreSciSyncObjNV:TvkImportSemaphoreSciSyncObjNV;
+{$endif}
 
 {$ifdef NvSci}
       GetPhysicalDeviceSciSyncAttributesNV:TvkGetPhysicalDeviceSciSyncAttributesNV;
@@ -31004,7 +31109,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       TransitionImageLayoutEXT:TvkTransitionImageLayoutEXT;
 
+{$ifdef VulkanSC}
       GetCommandPoolMemoryConsumption:TvkGetCommandPoolMemoryConsumption;
+{$endif}
 
 {$ifdef VkVideo}
       GetPhysicalDeviceVideoCapabilitiesKHR:TvkGetPhysicalDeviceVideoCapabilitiesKHR;
@@ -31807,17 +31914,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function ImportFenceFdKHR(device:TVkDevice;const pImportFenceFdInfo:PVkImportFenceFdInfoKHR):TVkResult; virtual;
 
+{$ifdef NvSci}
        function GetFenceSciSyncFenceNV(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; virtual;
+{$endif}
 
+{$ifdef NvSci}
        function GetFenceSciSyncObjNV(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; virtual;
+{$endif}
 
+{$ifdef NvSci}
        function ImportFenceSciSyncFenceNV(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; virtual;
+{$endif}
 
+{$ifdef NvSci}
        function ImportFenceSciSyncObjNV(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult; virtual;
+{$endif}
 
+{$ifdef NvSci}
        function GetSemaphoreSciSyncObjNV(device:TVkDevice;const pGetSciSyncInfo:PVkSemaphoreGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult; virtual;
+{$endif}
 
+{$ifdef NvSci}
        function ImportSemaphoreSciSyncObjNV(device:TVkDevice;const pImportSemaphoreSciSyncInfo:PVkImportSemaphoreSciSyncInfoNV):TVkResult; virtual;
+{$endif}
 
 {$ifdef NvSci}
        function GetPhysicalDeviceSciSyncAttributesNV(physicalDevice:TVkPhysicalDevice;const pSciSyncAttributesInfo:PVkSciSyncAttributesInfoNV;pAttributes:TNvSciSyncAttrList):TVkResult; virtual;
@@ -32501,7 +32620,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function TransitionImageLayoutEXT(device:TVkDevice;transitionCount:TVkUInt32;const pTransitions:PVkHostImageLayoutTransitionInfoEXT):TVkResult; virtual;
 
+{$ifdef VulkanSC}
        procedure GetCommandPoolMemoryConsumption(device:TVkDevice;commandPool:TVkCommandPool;commandBuffer:TVkCommandBuffer;pConsumption:PVkCommandPoolMemoryConsumption); virtual;
+{$endif}
 
 {$ifdef VkVideo}
        function GetPhysicalDeviceVideoCapabilitiesKHR(physicalDevice:TVkPhysicalDevice;const pVideoProfile:PVkVideoProfileInfoKHR;pCapabilities:PVkVideoCapabilitiesKHR):TVkResult; virtual;
@@ -33302,17 +33423,29 @@ var LibVulkan:pointer=nil;
 
     vkImportFenceFdKHR:TvkImportFenceFdKHR=nil;
 
+{$ifdef NvSci}
     vkGetFenceSciSyncFenceNV:TvkGetFenceSciSyncFenceNV=nil;
+{$endif}
 
+{$ifdef NvSci}
     vkGetFenceSciSyncObjNV:TvkGetFenceSciSyncObjNV=nil;
+{$endif}
 
+{$ifdef NvSci}
     vkImportFenceSciSyncFenceNV:TvkImportFenceSciSyncFenceNV=nil;
+{$endif}
 
+{$ifdef NvSci}
     vkImportFenceSciSyncObjNV:TvkImportFenceSciSyncObjNV=nil;
+{$endif}
 
+{$ifdef NvSci}
     vkGetSemaphoreSciSyncObjNV:TvkGetSemaphoreSciSyncObjNV=nil;
+{$endif}
 
+{$ifdef NvSci}
     vkImportSemaphoreSciSyncObjNV:TvkImportSemaphoreSciSyncObjNV=nil;
+{$endif}
 
 {$ifdef NvSci}
     vkGetPhysicalDeviceSciSyncAttributesNV:TvkGetPhysicalDeviceSciSyncAttributesNV=nil;
@@ -33996,7 +34129,9 @@ var LibVulkan:pointer=nil;
 
     vkTransitionImageLayoutEXT:TvkTransitionImageLayoutEXT=nil;
 
+{$ifdef VulkanSC}
     vkGetCommandPoolMemoryConsumption:TvkGetCommandPoolMemoryConsumption=nil;
+{$endif}
 
 {$ifdef VkVideo}
     vkGetPhysicalDeviceVideoCapabilitiesKHR:TvkGetPhysicalDeviceVideoCapabilitiesKHR=nil;
@@ -35425,30 +35560,42 @@ begin
    @vkImportFenceFdKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkImportFenceFdKHR'));
    @vk.fCommands.ImportFenceFdKHR:=addr(vkImportFenceFdKHR);
   end;
+{$ifdef NvSci}
   if not assigned(vkGetFenceSciSyncFenceNV) then begin
    @vkGetFenceSciSyncFenceNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetFenceSciSyncFenceNV'));
    @vk.fCommands.GetFenceSciSyncFenceNV:=addr(vkGetFenceSciSyncFenceNV);
   end;
+{$endif}
+{$ifdef NvSci}
   if not assigned(vkGetFenceSciSyncObjNV) then begin
    @vkGetFenceSciSyncObjNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetFenceSciSyncObjNV'));
    @vk.fCommands.GetFenceSciSyncObjNV:=addr(vkGetFenceSciSyncObjNV);
   end;
+{$endif}
+{$ifdef NvSci}
   if not assigned(vkImportFenceSciSyncFenceNV) then begin
    @vkImportFenceSciSyncFenceNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkImportFenceSciSyncFenceNV'));
    @vk.fCommands.ImportFenceSciSyncFenceNV:=addr(vkImportFenceSciSyncFenceNV);
   end;
+{$endif}
+{$ifdef NvSci}
   if not assigned(vkImportFenceSciSyncObjNV) then begin
    @vkImportFenceSciSyncObjNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkImportFenceSciSyncObjNV'));
    @vk.fCommands.ImportFenceSciSyncObjNV:=addr(vkImportFenceSciSyncObjNV);
   end;
+{$endif}
+{$ifdef NvSci}
   if not assigned(vkGetSemaphoreSciSyncObjNV) then begin
    @vkGetSemaphoreSciSyncObjNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSemaphoreSciSyncObjNV'));
    @vk.fCommands.GetSemaphoreSciSyncObjNV:=addr(vkGetSemaphoreSciSyncObjNV);
   end;
+{$endif}
+{$ifdef NvSci}
   if not assigned(vkImportSemaphoreSciSyncObjNV) then begin
    @vkImportSemaphoreSciSyncObjNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkImportSemaphoreSciSyncObjNV'));
    @vk.fCommands.ImportSemaphoreSciSyncObjNV:=addr(vkImportSemaphoreSciSyncObjNV);
   end;
+{$endif}
 {$ifdef NvSci}
   if not assigned(vkGetPhysicalDeviceSciSyncAttributesNV) then begin
    @vkGetPhysicalDeviceSciSyncAttributesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSciSyncAttributesNV'));
@@ -36791,10 +36938,12 @@ begin
    @vkTransitionImageLayoutEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkTransitionImageLayoutEXT'));
    @vk.fCommands.TransitionImageLayoutEXT:=addr(vkTransitionImageLayoutEXT);
   end;
+{$ifdef VulkanSC}
   if not assigned(vkGetCommandPoolMemoryConsumption) then begin
    @vkGetCommandPoolMemoryConsumption:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetCommandPoolMemoryConsumption'));
    @vk.fCommands.GetCommandPoolMemoryConsumption:=addr(vkGetCommandPoolMemoryConsumption);
   end;
+{$endif}
 {$ifdef VkVideo}
   if not assigned(vkGetPhysicalDeviceVideoCapabilitiesKHR) then begin
    @vkGetPhysicalDeviceVideoCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceVideoCapabilitiesKHR'));
@@ -37550,12 +37699,24 @@ begin
 {$endif}
   @InstanceCommands.GetFenceFdKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetFenceFdKHR')));
   @InstanceCommands.ImportFenceFdKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkImportFenceFdKHR')));
+{$ifdef NvSci}
   @InstanceCommands.GetFenceSciSyncFenceNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetFenceSciSyncFenceNV')));
+{$endif}
+{$ifdef NvSci}
   @InstanceCommands.GetFenceSciSyncObjNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetFenceSciSyncObjNV')));
+{$endif}
+{$ifdef NvSci}
   @InstanceCommands.ImportFenceSciSyncFenceNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkImportFenceSciSyncFenceNV')));
+{$endif}
+{$ifdef NvSci}
   @InstanceCommands.ImportFenceSciSyncObjNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkImportFenceSciSyncObjNV')));
+{$endif}
+{$ifdef NvSci}
   @InstanceCommands.GetSemaphoreSciSyncObjNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSemaphoreSciSyncObjNV')));
+{$endif}
+{$ifdef NvSci}
   @InstanceCommands.ImportSemaphoreSciSyncObjNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkImportSemaphoreSciSyncObjNV')));
+{$endif}
 {$ifdef NvSci}
   @InstanceCommands.GetPhysicalDeviceSciSyncAttributesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSciSyncAttributesNV')));
 {$endif}
@@ -37908,7 +38069,9 @@ begin
   @InstanceCommands.CopyImageToMemoryEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCopyImageToMemoryEXT')));
   @InstanceCommands.CopyImageToImageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCopyImageToImageEXT')));
   @InstanceCommands.TransitionImageLayoutEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkTransitionImageLayoutEXT')));
+{$ifdef VulkanSC}
   @InstanceCommands.GetCommandPoolMemoryConsumption:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetCommandPoolMemoryConsumption')));
+{$endif}
 {$ifdef VkVideo}
   @InstanceCommands.GetPhysicalDeviceVideoCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceVideoCapabilitiesKHR')));
 {$endif}
@@ -38271,12 +38434,24 @@ begin
 {$endif}
   @DeviceCommands.GetFenceFdKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetFenceFdKHR')));
   @DeviceCommands.ImportFenceFdKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkImportFenceFdKHR')));
+{$ifdef NvSci}
   @DeviceCommands.GetFenceSciSyncFenceNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetFenceSciSyncFenceNV')));
+{$endif}
+{$ifdef NvSci}
   @DeviceCommands.GetFenceSciSyncObjNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetFenceSciSyncObjNV')));
+{$endif}
+{$ifdef NvSci}
   @DeviceCommands.ImportFenceSciSyncFenceNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkImportFenceSciSyncFenceNV')));
+{$endif}
+{$ifdef NvSci}
   @DeviceCommands.ImportFenceSciSyncObjNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkImportFenceSciSyncObjNV')));
+{$endif}
+{$ifdef NvSci}
   @DeviceCommands.GetSemaphoreSciSyncObjNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSemaphoreSciSyncObjNV')));
+{$endif}
+{$ifdef NvSci}
   @DeviceCommands.ImportSemaphoreSciSyncObjNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkImportSemaphoreSciSyncObjNV')));
+{$endif}
 {$ifdef NvSci}
   @DeviceCommands.CreateSemaphoreSciSyncPoolNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateSemaphoreSciSyncPoolNV')));
 {$endif}
@@ -38585,7 +38760,9 @@ begin
   @DeviceCommands.CopyImageToMemoryEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCopyImageToMemoryEXT')));
   @DeviceCommands.CopyImageToImageEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCopyImageToImageEXT')));
   @DeviceCommands.TransitionImageLayoutEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkTransitionImageLayoutEXT')));
+{$ifdef VulkanSC}
   @DeviceCommands.GetCommandPoolMemoryConsumption:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetCommandPoolMemoryConsumption')));
+{$endif}
 {$ifdef VkVideo}
   @DeviceCommands.CreateVideoSessionKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateVideoSessionKHR')));
 {$endif}
@@ -41211,6 +41388,7 @@ begin
 end;
 {$endif}
 
+{$ifdef NvSci}
 constructor TVkMemoryGetSciBufInfoNV.Create(const aMemory:TVkDeviceMemory;
                                             const aHandleType:TVkExternalMemoryHandleTypeFlagBits);
 begin
@@ -41219,14 +41397,18 @@ begin
  memory:=aMemory;
  handleType:=aHandleType;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkMemorySciBufPropertiesNV.Create(const aMemoryTypeBits:TVkUInt32);
 begin
  sType:=VK_STRUCTURE_TYPE_MEMORY_SCI_BUF_PROPERTIES_NV;
  pNext:=nil;
  memoryTypeBits:=aMemoryTypeBits;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkPhysicalDeviceExternalMemorySciBufFeaturesNV.Create(const aSciBufImport:TVkBool32;
                                                                    const aSciBufExport:TVkBool32);
 begin
@@ -41235,6 +41417,7 @@ begin
  sciBufImport:=aSciBufImport;
  sciBufExport:=aSciBufExport;
 end;
+{$endif}
 
 constructor TVkWin32KeyedMutexAcquireReleaseInfoNV.Create(const aAcquireCount:TVkUInt32;
                                                           const aPAcquireSyncs:PVkDeviceMemory;
@@ -42071,6 +42254,7 @@ begin
 end;
 {$endif}
 
+{$ifdef NvSci}
 constructor TVkImportFenceSciSyncInfoNV.Create(const aFence:TVkFence;
                                                const aHandleType:TVkExternalFenceHandleTypeFlagBits;
                                                const aHandle:PVkVoid);
@@ -42081,7 +42265,9 @@ begin
  handleType:=aHandleType;
  handle:=aHandle;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkFenceGetSciSyncInfoNV.Create(const aFence:TVkFence;
                                             const aHandleType:TVkExternalFenceHandleTypeFlagBits);
 begin
@@ -42090,6 +42276,7 @@ begin
  fence:=aFence;
  handleType:=aHandleType;
 end;
+{$endif}
 
 {$ifdef NvSci}
 constructor TVkExportSemaphoreSciSyncInfoNV.Create(const aPAttributes:TNvSciSyncAttrList);
@@ -42100,6 +42287,7 @@ begin
 end;
 {$endif}
 
+{$ifdef NvSci}
 constructor TVkImportSemaphoreSciSyncInfoNV.Create(const aSemaphore:TVkSemaphore;
                                                    const aHandleType:TVkExternalSemaphoreHandleTypeFlagBits;
                                                    const aHandle:PVkVoid);
@@ -42110,7 +42298,9 @@ begin
  handleType:=aHandleType;
  handle:=aHandle;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkSemaphoreGetSciSyncInfoNV.Create(const aSemaphore:TVkSemaphore;
                                                 const aHandleType:TVkExternalSemaphoreHandleTypeFlagBits);
 begin
@@ -42119,7 +42309,9 @@ begin
  semaphore:=aSemaphore;
  handleType:=aHandleType;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkSciSyncAttributesInfoNV.Create(const aClientType:TVkSciSyncClientTypeNV;
                                               const aPrimitiveType:TVkSciSyncPrimitiveTypeNV);
 begin
@@ -42128,7 +42320,9 @@ begin
  clientType:=aClientType;
  primitiveType:=aPrimitiveType;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkPhysicalDeviceExternalSciSyncFeaturesNV.Create(const aSciSyncFence:TVkBool32;
                                                               const aSciSyncSemaphore:TVkBool32;
                                                               const aSciSyncImport:TVkBool32;
@@ -42141,7 +42335,9 @@ begin
  sciSyncImport:=aSciSyncImport;
  sciSyncExport:=aSciSyncExport;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkPhysicalDeviceExternalSciSync2FeaturesNV.Create(const aSciSyncFence:TVkBool32;
                                                                const aSciSyncSemaphore2:TVkBool32;
                                                                const aSciSyncImport:TVkBool32;
@@ -42154,6 +42350,7 @@ begin
  sciSyncImport:=aSciSyncImport;
  sciSyncExport:=aSciSyncExport;
 end;
+{$endif}
 
 {$ifdef NvSci}
 constructor TVkSemaphoreSciSyncPoolCreateInfoNV.Create(const aHandle:TNvSciSyncObj);
@@ -42175,11 +42372,14 @@ begin
 end;
 {$endif}
 
+{$ifdef NvSci}
 constructor TVkDeviceSemaphoreSciSyncPoolReservationCreateInfoNV.Create(const aSemaphoreSciSyncPoolRequestCount:TVkUInt32);
 begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_SEMAPHORE_SCI_SYNC_POOL_RESERVATION_CREATE_INFO_NV;
  pNext:=nil;
  semaphoreSciSyncPoolRequestCount:=aSemaphoreSciSyncPoolRequestCount;
 end;
+{$endif}
 
 constructor TVkPhysicalDeviceMultiviewFeatures.Create(const aMultiview:TVkBool32;
                                                       const aMultiviewGeometryShader:TVkBool32;
@@ -44317,13 +44517,16 @@ begin
  representativeFragmentTestEnable:=aRepresentativeFragmentTestEnable;
 end;
 
+{$ifdef NvSci}
 constructor TVkPhysicalDeviceExclusiveScissorFeaturesNV.Create(const aExclusiveScissor:TVkBool32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV;
  pNext:=nil;
  exclusiveScissor:=aExclusiveScissor;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkPipelineViewportExclusiveScissorStateCreateInfoNV.Create(const aExclusiveScissorCount:TVkUInt32;
                                                                         const aPExclusiveScissors:PVkRect2D);
 begin
@@ -44332,6 +44535,7 @@ begin
  exclusiveScissorCount:=aExclusiveScissorCount;
  pExclusiveScissors:=aPExclusiveScissors;
 end;
+{$endif}
 
 constructor TVkPhysicalDeviceCornerSampledImageFeaturesNV.Create(const aCornerSampledImage:TVkBool32);
 begin
@@ -45559,11 +45763,14 @@ begin
  counterPassIndex:=aCounterPassIndex;
 end;
 
+{$ifdef VulkanSC}
 constructor TVkPerformanceQueryReservationInfoKHR.Create(const aMaxPerformanceQueriesPerPool:TVkUInt32);
 begin
+ sType:=VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_RESERVATION_INFO_KHR;
  pNext:=nil;
  maxPerformanceQueriesPerPool:=aMaxPerformanceQueriesPerPool;
 end;
+{$endif}
 
 constructor TVkHeadlessSurfaceCreateInfoEXT.Create(const aFlags:TVkHeadlessSurfaceCreateFlagsEXT);
 begin
@@ -46948,12 +47155,14 @@ begin
  flags:=aFlags;
 end;
 
+{$ifdef VulkanSC}
 constructor TVkPipelineOfflineCreateInfo.Create(const aPipelineIdentifier:array of TVkUInt8;
                                                 const aMatchControl:TVkPipelineMatchControl;
                                                 const aPoolEntrySize:TVkDeviceSize);
 var ArrayItemCount:TVkInt32;
 begin
  FillChar(self,SizeOf(TVkPipelineOfflineCreateInfo),#0);
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_OFFLINE_CREATE_INFO;
  pNext:=nil;
  ArrayItemCount:=length(aPipelineIdentifier);
  if ArrayItemCount>length(pipelineIdentifier) then begin
@@ -46965,6 +47174,7 @@ begin
  matchControl:=aMatchControl;
  poolEntrySize:=aPoolEntrySize;
 end;
+{$endif}
 
 constructor TVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures.Create(const aShaderZeroInitializeWorkgroupMemory:TVkBool32);
 begin
@@ -47821,6 +48031,7 @@ begin
  identicalMemoryLayout:=aIdenticalMemoryLayout;
 end;
 
+{$ifdef VulkanSC}
 constructor TVkPhysicalDeviceVulkanSC10Properties.Create(const aDeviceNoDynamicHostAllocations:TVkBool32;
                                                          const aDeviceDestroyFreesMemory:TVkBool32;
                                                          const aCommandPoolMultipleCommandBuffersRecording:TVkBool32;
@@ -47840,6 +48051,7 @@ constructor TVkPhysicalDeviceVulkanSC10Properties.Create(const aDeviceNoDynamicH
                                                          const aMaxCommandPoolCommandBuffers:TVkUInt32;
                                                          const aMaxCommandBufferSize:TVkDeviceSize);
 begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_SC_1_0_PROPERTIES;
  pNext:=nil;
  deviceNoDynamicHostAllocations:=aDeviceNoDynamicHostAllocations;
  deviceDestroyFreesMemory:=aDeviceDestroyFreesMemory;
@@ -47860,15 +48072,20 @@ begin
  maxCommandPoolCommandBuffers:=aMaxCommandPoolCommandBuffers;
  maxCommandBufferSize:=aMaxCommandBufferSize;
 end;
+{$endif}
 
+{$ifdef VulkanSC}
 constructor TVkPipelinePoolSize.Create(const aPoolEntrySize:TVkDeviceSize;
                                        const aPoolEntryCount:TVkUInt32);
 begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_POOL_SIZE;
  pNext:=nil;
  poolEntrySize:=aPoolEntrySize;
  poolEntryCount:=aPoolEntryCount;
 end;
+{$endif}
 
+{$ifdef VulkanSC}
 constructor TVkDeviceObjectReservationCreateInfo.Create(const aPipelineCacheCreateInfoCount:TVkUInt32;
                                                         const aPPipelineCacheCreateInfos:PVkPipelineCacheCreateInfo;
                                                         const aPipelinePoolSizeCount:TVkUInt32;
@@ -47911,6 +48128,7 @@ constructor TVkDeviceObjectReservationCreateInfo.Create(const aPipelineCacheCrea
                                                         const aMaxTimestampQueriesPerPool:TVkUInt32;
                                                         const aMaxImmutableSamplersPerDescriptorSetLayout:TVkUInt32);
 begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_OBJECT_RESERVATION_CREATE_INFO;
  pNext:=nil;
  pipelineCacheCreateInfoCount:=aPipelineCacheCreateInfoCount;
  pPipelineCacheCreateInfos:=aPPipelineCacheCreateInfos;
@@ -47954,30 +48172,40 @@ begin
  maxTimestampQueriesPerPool:=aMaxTimestampQueriesPerPool;
  maxImmutableSamplersPerDescriptorSetLayout:=aMaxImmutableSamplersPerDescriptorSetLayout;
 end;
+{$endif}
 
+{$ifdef VulkanSC}
 constructor TVkCommandPoolMemoryReservationCreateInfo.Create(const aCommandPoolReservedSize:TVkDeviceSize;
                                                              const aCommandPoolMaxCommandBuffers:TVkUInt32);
 begin
+ sType:=VK_STRUCTURE_TYPE_COMMAND_POOL_MEMORY_RESERVATION_CREATE_INFO;
  pNext:=nil;
  commandPoolReservedSize:=aCommandPoolReservedSize;
  commandPoolMaxCommandBuffers:=aCommandPoolMaxCommandBuffers;
 end;
+{$endif}
 
+{$ifdef VulkanSC}
 constructor TVkCommandPoolMemoryConsumption.Create(const aCommandPoolAllocated:TVkDeviceSize;
                                                    const aCommandPoolReservedSize:TVkDeviceSize;
                                                    const aCommandBufferAllocated:TVkDeviceSize);
 begin
+ sType:=VK_STRUCTURE_TYPE_COMMAND_POOL_MEMORY_CONSUMPTION;
  pNext:=nil;
  commandPoolAllocated:=aCommandPoolAllocated;
  commandPoolReservedSize:=aCommandPoolReservedSize;
  commandBufferAllocated:=aCommandBufferAllocated;
 end;
+{$endif}
 
+{$ifdef VulkanSC}
 constructor TVkPhysicalDeviceVulkanSC10Features.Create(const aShaderAtomicInstructions:TVkBool32);
 begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_SC_1_0_FEATURES;
  pNext:=nil;
  shaderAtomicInstructions:=aShaderAtomicInstructions;
 end;
+{$endif}
 
 constructor TVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT.Create(const aPrimitivesGeneratedQuery:TVkBool32;
                                                                         const aPrimitivesGeneratedQueryWithRasterizerDiscard:TVkBool32;
@@ -49084,13 +49312,16 @@ begin
 end;
 {$endif}
 
+{$ifdef NvSci}
 constructor TVkPhysicalDeviceInheritedViewportScissorFeaturesNV.Create(const aInheritedViewportScissor2D:TVkBool32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV;
  pNext:=nil;
  inheritedViewportScissor2D:=aInheritedViewportScissor2D;
 end;
+{$endif}
 
+{$ifdef NvSci}
 constructor TVkCommandBufferInheritanceViewportScissorInfoNV.Create(const aViewportScissor2D:TVkBool32;
                                                                     const aViewportDepthCount:TVkUInt32;
                                                                     const aPViewportDepths:PVkViewport);
@@ -49101,6 +49332,7 @@ begin
  viewportDepthCount:=aViewportDepthCount;
  pViewportDepths:=aPViewportDepths;
 end;
+{$endif}
 
 constructor TVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT.Create(const aYcbcr2plane444Formats:TVkBool32);
 begin
@@ -50356,13 +50588,16 @@ begin
  exportObjectType:=aExportObjectType;
 end;
 
+{$ifdef Metal}
 constructor TVkExportMetalDeviceInfoEXT.Create(const aMtlDevice:TMTLDevice_id);
 begin
  sType:=VK_STRUCTURE_TYPE_EXPORT_METAL_DEVICE_INFO_EXT;
  pNext:=nil;
  mtlDevice:=aMtlDevice;
 end;
+{$endif}
 
+{$ifdef Metal}
 constructor TVkExportMetalCommandQueueInfoEXT.Create(const aQueue:TVkQueue;
                                                      const aMtlCommandQueue:TMTLCommandQueue_id);
 begin
@@ -50371,7 +50606,9 @@ begin
  queue:=aQueue;
  mtlCommandQueue:=aMtlCommandQueue;
 end;
+{$endif}
 
+{$ifdef Metal}
 constructor TVkExportMetalBufferInfoEXT.Create(const aMemory:TVkDeviceMemory;
                                                const aMtlBuffer:TMTLBuffer_id);
 begin
@@ -50380,14 +50617,18 @@ begin
  memory:=aMemory;
  mtlBuffer:=aMtlBuffer;
 end;
+{$endif}
 
+{$ifdef Metal}
 constructor TVkImportMetalBufferInfoEXT.Create(const aMtlBuffer:TMTLBuffer_id);
 begin
  sType:=VK_STRUCTURE_TYPE_IMPORT_METAL_BUFFER_INFO_EXT;
  pNext:=nil;
  mtlBuffer:=aMtlBuffer;
 end;
+{$endif}
 
+{$ifdef Metal}
 constructor TVkExportMetalTextureInfoEXT.Create(const aImage:TVkImage;
                                                 const aImageView:TVkImageView;
                                                 const aBufferView:TVkBufferView;
@@ -50402,7 +50643,9 @@ begin
  plane:=aPlane;
  mtlTexture:=aMtlTexture;
 end;
+{$endif}
 
+{$ifdef Metal}
 constructor TVkImportMetalTextureInfoEXT.Create(const aPlane:TVkImageAspectFlagBits;
                                                 const aMtlTexture:TMTLTexture_id);
 begin
@@ -50411,6 +50654,7 @@ begin
  plane:=aPlane;
  mtlTexture:=aMtlTexture;
 end;
+{$endif}
 
 constructor TVkExportMetalIOSurfaceInfoEXT.Create(const aImage:TVkImage;
                                                   const aIoSurface:TIOSurfaceRef);
@@ -50428,6 +50672,7 @@ begin
  ioSurface:=aIoSurface;
 end;
 
+{$ifdef Metal}
 constructor TVkExportMetalSharedEventInfoEXT.Create(const aSemaphore:TVkSemaphore;
                                                     const aEvent:TVkEvent;
                                                     const aMtlSharedEvent:TMTLSharedEvent_id);
@@ -50438,13 +50683,16 @@ begin
  event:=aEvent;
  mtlSharedEvent:=aMtlSharedEvent;
 end;
+{$endif}
 
+{$ifdef Metal}
 constructor TVkImportMetalSharedEventInfoEXT.Create(const aMtlSharedEvent:TMTLSharedEvent_id);
 begin
  sType:=VK_STRUCTURE_TYPE_IMPORT_METAL_SHARED_EVENT_INFO_EXT;
  pNext:=nil;
  mtlSharedEvent:=aMtlSharedEvent;
 end;
+{$endif}
 
 constructor TVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT.Create(const aNonSeamlessCubeMap:TVkBool32);
 begin
@@ -52859,35 +53107,47 @@ begin
  result:=fCommands.ImportFenceFdKHR(device,pImportFenceFdInfo);
 end;
 
+{$ifdef NvSci}
 function TVulkan.GetFenceSciSyncFenceNV(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetFenceSciSyncFenceNV(device,pGetSciSyncHandleInfo,pHandle);
 end;
+{$endif}
 
+{$ifdef NvSci}
 function TVulkan.GetFenceSciSyncObjNV(device:TVkDevice;const pGetSciSyncHandleInfo:PVkFenceGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetFenceSciSyncObjNV(device,pGetSciSyncHandleInfo,pHandle);
 end;
+{$endif}
 
+{$ifdef NvSci}
 function TVulkan.ImportFenceSciSyncFenceNV(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult;
 begin
  result:=fCommands.ImportFenceSciSyncFenceNV(device,pImportFenceSciSyncInfo);
 end;
+{$endif}
 
+{$ifdef NvSci}
 function TVulkan.ImportFenceSciSyncObjNV(device:TVkDevice;const pImportFenceSciSyncInfo:PVkImportFenceSciSyncInfoNV):TVkResult;
 begin
  result:=fCommands.ImportFenceSciSyncObjNV(device,pImportFenceSciSyncInfo);
 end;
+{$endif}
 
+{$ifdef NvSci}
 function TVulkan.GetSemaphoreSciSyncObjNV(device:TVkDevice;const pGetSciSyncInfo:PVkSemaphoreGetSciSyncInfoNV;pHandle:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetSemaphoreSciSyncObjNV(device,pGetSciSyncInfo,pHandle);
 end;
+{$endif}
 
+{$ifdef NvSci}
 function TVulkan.ImportSemaphoreSciSyncObjNV(device:TVkDevice;const pImportSemaphoreSciSyncInfo:PVkImportSemaphoreSciSyncInfoNV):TVkResult;
 begin
  result:=fCommands.ImportSemaphoreSciSyncObjNV(device,pImportSemaphoreSciSyncInfo);
 end;
+{$endif}
 
 {$ifdef NvSci}
 function TVulkan.GetPhysicalDeviceSciSyncAttributesNV(physicalDevice:TVkPhysicalDevice;const pSciSyncAttributesInfo:PVkSciSyncAttributesInfoNV;pAttributes:TNvSciSyncAttrList):TVkResult;
@@ -54561,10 +54821,12 @@ begin
  result:=fCommands.TransitionImageLayoutEXT(device,transitionCount,pTransitions);
 end;
 
+{$ifdef VulkanSC}
 procedure TVulkan.GetCommandPoolMemoryConsumption(device:TVkDevice;commandPool:TVkCommandPool;commandBuffer:TVkCommandBuffer;pConsumption:PVkCommandPoolMemoryConsumption);
 begin
  fCommands.GetCommandPoolMemoryConsumption(device,commandPool,commandBuffer,pConsumption);
 end;
+{$endif}
 
 {$ifdef VkVideo}
 function TVulkan.GetPhysicalDeviceVideoCapabilitiesKHR(physicalDevice:TVkPhysicalDevice;const pVideoProfile:PVkVideoProfileInfoKHR;pCapabilities:PVkVideoCapabilitiesKHR):TVkResult;
