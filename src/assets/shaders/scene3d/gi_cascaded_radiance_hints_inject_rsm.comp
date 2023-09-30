@@ -81,9 +81,24 @@ void main(){
     float lStratumLength = length(lStratum); 
     vec3 lPosition = lGlobalIlluminationVolumeAABBMin + (vec3(lInvocationPosition) * lStratum); 
 
-    vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
+    // Get size of the reflective shadow map in world space
+    vec4 lReflectiveShadowMapMin = uReflectiveShadowMapToWorldMatrix * vec4(-1.0, -1.0, 0.0, 1.0);
+    vec4 lReflectiveShadowMapMax = uReflectiveShadowMapToWorldMatrix * vec4(1.0, 1.0, 0.0, 1.0);
+    lReflectiveShadowMapMin /= lReflectiveShadowMapMin.w;
+    lReflectiveShadowMapMax /= lReflectiveShadowMapMax.w;
+    vec3 lReflectiveShadowMapSize = lReflectiveShadowMapMax.xyz - lReflectiveShadowMapMin.xyz;
+    float lReflectiveShadowMapRadius = length(lReflectiveShadowMapSize) * 0.5;
+
+    /*vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
     vec2 lBaseUV = clamp(vec2((((lBaseUVPos.xy / lBaseUVPos.w) * 0.5) * sign(dot(uLightDirection.xyz, lPosition - uLightPosition.xyz))) + vec2(0.5)), vec2(0.0),vec2(1.0));
-    lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread), vec2(1.0 - (0.499 * uSpread))) - vec2(0.5 * uSpread);
+    lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread), vec2(1.0 - (0.499 * uSpread))) - vec2(0.5 * uSpread);*/
+
+    vec3 lBaseNormal = uLightDirection.xyz;
+    float lOrthoNormalSign = (lBaseNormal.z >= 0.0) ? 1.0 : -1.0;
+    float lOrthoNormalA = 1.0 / (1.0 + abs(lBaseNormal.z));
+    float lOrthoNormalB = (((-lOrthoNormalSign) * lBaseNormal.x) * lBaseNormal.y) * lOrthoNormalA;
+    vec3 lBaseTangent = normalize(vec3(1.0 - lBaseNormal.x * lBaseNormal.x * lOrthoNormalA, lOrthoNormalSign * lOrthoNormalB, -lOrthoNormalSign * lBaseNormal.x));
+    vec3 lBaseBitangent = normalize(vec3(lOrthoNormalB, lOrthoNormalSign - lBaseNormal.y * lBaseNormal.y * lOrthoNormalA * lOrthoNormalSign, -lBaseNormal.y));
     
     float lMinimumDistance = 65536.0, lMaximumDistance = 0.0; 
 
@@ -108,14 +123,18 @@ void main(){
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){
       
 #if defined(USE_3D_ARRAY)
-      vec2 lSampleUV = lBaseUV + (((gGlobalIlluminationTaps2D[lSampleIndex] - vec2(0.5)) * 2.0) * uSpread); 
+      vec2 lSampleUVOffset = fma(gGlobalIlluminationTaps2D[lSampleIndex], vec2(2.0), vec2(-1.0)); 
 #else        
       float lSampleFloatIndex = float(lSampleIndex);
       float lSampleUVTheta = lSampleFloatIndex * 2.399963229728653; // = PI * (3.0 - sqrt(5.0)) (golden angle) 
       float lSampleUVRadius = sqrt((lSampleFloatIndex + 0.5) / float(SAMPLES));        
       vec2 lSampleUVOffset = vec2(cos(lSampleUVTheta), sin(lSampleUVTheta)) * lSampleUVRadius; 
-      vec2 lSampleUV = lBaseUV + (lSampleUVOffset * uSpread); 
 #endif
+      //vec2 lSampleUV = lBaseUV + (lSampleUVOffset * uSpread); 
+      vec4 lSampleUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition +
+                                                                   (((lBaseTangent * lSampleUVOffset.x) + 
+                                                                     (lBaseBitangent * lSampleUVOffset.y)) * uSpread), 1.0); 
+      vec2 lSampleUV = clamp(fma(vec2(lSampleUVPos.xy / lSampleUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0));
 
       vec4 lReflectiveShadowMapNormalUsed = textureLod(uTexReflectiveShadowMapNormal, lSampleUV, 0.0); 
 
