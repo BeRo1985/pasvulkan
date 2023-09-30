@@ -209,6 +209,8 @@ void main(){
       lSphericalHarmonics[8] += vec3(lTSH2.z, vec2(0.0));
 #endif
     }
+
+    return;
     
 #if GI_COMPRESSION == 0
     imageStore(uImageSH[lTexIndexOffset + 0], lVolumePosition, vec4(lSphericalHarmonics[0].xyz, lSphericalHarmonics[1].x));

@@ -3314,7 +3314,7 @@ begin
 
  end;
 
- fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+ //fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
 
  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
@@ -3548,13 +3548,13 @@ begin
 
  BoundingBox:=Renderer.Scene3D.BoundingBox;
 
- BoundingBox.Min.x:=floor(BoundingBox.Min.x/16.0)*16.0;
- BoundingBox.Min.y:=floor(BoundingBox.Min.y/16.0)*16.0;
- BoundingBox.Min.z:=floor(BoundingBox.Min.z/16.0)*16.0;
+ BoundingBox.Min.x:=floor(BoundingBox.Min.x/1.0)*1.0;
+ BoundingBox.Min.y:=floor(BoundingBox.Min.y/1.0)*1.0;
+ BoundingBox.Min.z:=floor(BoundingBox.Min.z/1.0)*1.0;
 
- BoundingBox.Max.x:=ceil(BoundingBox.Max.x/16.0)*16.0;
- BoundingBox.Max.y:=ceil(BoundingBox.Max.y/16.0)*16.0;
- BoundingBox.Max.z:=ceil(BoundingBox.Max.z/16.0)*16.0;
+ BoundingBox.Max.x:=ceil(BoundingBox.Max.x/1.0)*1.0;
+ BoundingBox.Max.y:=ceil(BoundingBox.Max.y/1.0)*1.0;
+ BoundingBox.Max.z:=ceil(BoundingBox.Max.z/1.0)*1.0;
 
  Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
 
