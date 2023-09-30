@@ -3115,6 +3115,30 @@ begin
  end;
 end;
 
+function CheckForVulkanAPI(const aTag:TXMLTag):boolean;
+var i,j:longint;
+    s,t:string;
+begin
+ result:=false;
+ if assigned(aTag) then begin
+  s:=aTag.GetParameter('api','vulkan');
+  while length(s)>0 do begin
+   i:=pos(',',s);
+   if i>0 then begin
+    t:=trim(copy(s,1,i-1));
+    Delete(s,1,i);
+   end else begin
+    t:=trim(s);
+    s:='';
+   end;
+   if t='vulkan' then begin
+    result:=true;
+    break;
+   end;
+  end;
+ end;
+end;
+
 procedure ParseValidityTag(Tag:TXMLTag;const StringList:TStringList);
 var i:longint;
     ChildItem:TXMLItem;
@@ -3152,6 +3176,9 @@ begin
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
    if ChildTag.Name='extension' then begin
+    if not CheckForVulkanAPI(ChildTag) then begin
+     continue;
+    end;
     Extension:=TExtensionOrFeature.Create;
     ExtensionsOrFeatures.Add(Extension);
     Extension.Name:=ChildTag.GetParameter('name','');
@@ -3164,11 +3191,17 @@ begin
      ChildChildItem:=ChildTag.Items[j];
      if ChildChildItem is TXMLTag then begin
       ChildChildTag:=TXMLTag(ChildChildItem);
+      if not CheckForVulkanAPI(ChildChildTag) then begin
+       continue;
+      end;
       if ChildChildTag.Name='require' then begin
        for k:=0 to ChildChildTag.Items.Count-1 do begin
         ChildChildChildItem:=ChildChildTag.Items[k];
         if ChildChildChildItem is TXMLTag then begin
          ChildChildChildTag:=TXMLTag(ChildChildChildItem);
+         if not CheckForVulkanAPI(ChildChildChildTag) then begin
+          continue;
+         end;
          if ChildChildChildTag.Name='enum' then begin
           ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum.Create;
           Extension.Enums.Add(ExtensionOrFeatureEnum);
@@ -3237,6 +3270,9 @@ begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
+   if not CheckForVulkanAPI(ChildTag) then begin
+    continue;
+   end;
    if ChildTag.Name='feature' then begin
     inc(result);
     Feature:=TExtensionOrFeature.Create;
@@ -3251,11 +3287,17 @@ begin
      ChildChildItem:=ChildTag.Items[j];
      if ChildChildItem is TXMLTag then begin
       ChildChildTag:=TXMLTag(ChildChildItem);
+      if not CheckForVulkanAPI(ChildChildTag) then begin
+       continue;
+      end;
       if ChildChildTag.Name='require' then begin
        for k:=0 to ChildChildTag.Items.Count-1 do begin
         ChildChildChildItem:=ChildChildTag.Items[k];
         if ChildChildChildItem is TXMLTag then begin
          ChildChildChildTag:=TXMLTag(ChildChildChildItem);
+         if not CheckForVulkanAPI(ChildChildChildTag) then begin
+          continue;
+         end;
          if ChildChildChildTag.Name='enum' then begin
           ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum.Create;
           Feature.Enums.Add(ExtensionOrFeatureEnum);
@@ -3351,6 +3393,9 @@ begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
+   if not CheckForVulkanAPI(ChildTag) then begin
+    continue;
+   end;
    if ChildTag.Name='vendorid' then begin
     VendorID:=TVendorID.Create;
     VendorIDList.Add(VendorID);
@@ -3373,6 +3418,9 @@ begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
+   if not CheckForVulkanAPI(ChildTag) then begin
+    continue;
+   end;
    if ChildTag.Name='tag' then begin
     ATag:=TTag.Create;
     TagList.Add(ATag);
@@ -3568,6 +3616,9 @@ begin
    ChildItem:=Tag.Items[i];
    if ChildItem is TXMLTag then begin
     ChildTag:=TXMLTag(ChildItem);
+    if not CheckForVulkanAPI(ChildTag) then begin
+     continue;
+    end;
     if ChildTag.Name='type' then begin
      Alias:=ChildTag.GetParameter('alias');
      if length(Alias)>0 then begin
@@ -3740,6 +3791,9 @@ begin
          ChildChildItem:=ChildTag.Items[j];
          if ChildChildItem is TXMLTag then begin
           ChildChildTag:=TXMLTag(ChildChildItem);
+          if not CheckForVulkanAPI(ChildChildTag) then begin
+           continue;
+          end;
           if ChildChildTag.Name='name' then begin
            TypeDefinition^.Name:=ParseText(ChildChildTag,['']);
            if pos('void*',Text)>0 then begin
@@ -3833,6 +3887,10 @@ begin
          TypeDefinition^.Define:='VkStdVideo';
         end else if pos('VkVideo',Name)>0 then begin
          TypeDefinition^.Define:='VkVideo';
+        end else if (pos('NvSci',Name)>0) or (Name='VkSemaphoreSciSyncPoolNV') then begin
+         TypeDefinition^.Define:='NvSci';
+        end else if (Name='VkFaultLevel') or (Name='VkFaultType') or (Name='VkFaultData') then begin
+         TypeDefinition^.Define:='VulkanSC';
         end;
         SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
         TypeDefinition^.CountMembers:=0;
@@ -3840,6 +3898,9 @@ begin
          ChildChildItem:=ChildTag.Items[j];
          if ChildChildItem is TXMLTag then begin
           ChildChildTag:=TXMLTag(ChildChildItem);
+          if not CheckForVulkanAPI(ChildChildTag) then begin
+           continue;
+          end;
           if ChildChildTag.Name='member' then begin
            Comment:='';
            if (j+1)<ChildTag.Items.Count then begin
@@ -3946,6 +4007,10 @@ begin
             TypeDefinition^.Define:='VkStdVideo';
            end else if pos('VkVideo',Type_)>0 then begin
             TypeDefinition^.Define:='VkVideo';
+           end else if (pos('NvSci',Type_)>0) or (Type_='VkSemaphoreSciSyncPoolNV') then begin
+            TypeDefinition^.Define:='NvSci';
+           end else if (Type_='VkFaultLevel') or (Type_='VkFaultType') or (Type_='VkFaultData') then begin
+            TypeDefinition^.Define:='VulkanSC';
            end;
           end;
          end;
@@ -4233,6 +4298,9 @@ begin
     ChildItem:=Tag.Items[i];
     if ChildItem is TXMLTag then begin
      ChildTag:=TXMLTag(ChildItem);
+     if not CheckForVulkanAPI(ChildTag) then begin
+      continue;
+     end;
      if (ChildTag.Name='enum') or (ChildTag.Name='unused') then begin
       ValueItem:=@ValueItems[CountValueItems];
       ValueItem^.IsExtended:=false;
@@ -4507,6 +4575,9 @@ begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
+   if not CheckForVulkanAPI(ChildTag) then begin
+    continue;
+   end;
    if ChildTag.Name='command' then begin
     Alias:=ChildTag.GetParameter('alias','');
     AliasName:='';
@@ -4523,6 +4594,9 @@ begin
          ChildChildItem:=ChildTag.Items[j];
          if ChildChildItem is TXMLTag then begin
           ChildChildTag:=TXMLTag(ChildChildItem);
+          if not CheckForVulkanAPI(ChildChildTag) then begin
+           continue;
+          end;
           if ChildChildTag.Name='proto' then begin
            ProtoName:=ParseText(ChildChildTag.FindTag('name'),['']);
            break;
@@ -4556,6 +4630,9 @@ begin
        ChildChildItem:=ChildTag.Items[j];
        if ChildChildItem is TXMLTag then begin
         ChildChildTag:=TXMLTag(ChildChildItem);
+        if not CheckForVulkanAPI(ChildChildTag) then begin
+         continue;
+        end;
         if ChildChildTag.Name='proto' then begin
          if length(AliasName)>0 then begin
           ProtoName:=AliasName;
@@ -4634,6 +4711,10 @@ begin
           Define:='VkStdVideo';
          end else if pos('VkVideo',ParamType)>0 then begin
           Define:='VkVideo';
+         end else if (pos('NvSci',ParamType)>0) or (ParamType='VkSemaphoreSciSyncPoolNV') then begin
+          Define:='NvSci';
+         end else if (ParamType='VkFaultLevel') or (ParamType='VkFaultType') or (ParamType='VkFaultData') then begin
+          Define:='VulkanSC';
          end;
         end;
        end;
@@ -4765,6 +4846,9 @@ begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
+   if not CheckForVulkanAPI(ChildTag) then begin
+    continue;
+   end;
    if ChildTag.Name='enums' then begin
     ParseEnumsTag(ChildTag);
    end;
@@ -5508,7 +5592,7 @@ begin
   AllDeviceCommands.Free;
  end;
 
- readln;
+ //readln;
 end.
 
 
