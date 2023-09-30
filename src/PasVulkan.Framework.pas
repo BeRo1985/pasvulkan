@@ -310,6 +310,7 @@ type EpvVulkanException=class(Exception);
        fDebugReportCallbackCreateInfoEXT:TVkDebugReportCallbackCreateInfoEXT;
        fDebugReportCallbackEXT:TVkDebugReportCallbackEXT;
        fOnInstanceDebugReportCallback:TpvVulkanInstanceDebugReportCallback;
+       fExtDebugUtilsEnabled:boolean;
        procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
        function GetApplicationName:TpvVulkanCharString;
        procedure SetApplicationName(const NewApplicationName:TpvVulkanCharString);
@@ -357,6 +358,7 @@ type EpvVulkanException=class(Exception);
        property Commands:TVulkan read fInstanceVulkan;
        property PhysicalDevices:TpvVulkanPhysicalDeviceList read fPhysicalDevices;
        property OnInstanceDebugReportCallback:TpvVulkanInstanceDebugReportCallback read fOnInstanceDebugReportCallback write fOnInstanceDebugReportCallback;
+       property ExtDebugUtilsEnabled:boolean read fExtDebugUtilsEnabled;
      end;
 
      TpvVulkanSurface=class;
@@ -7385,6 +7387,8 @@ begin
 
  fShaderPrintfDebugging:=false;
 
+ fExtDebugUtilsEnabled:=false;
+
  fPhysicalDevices:=TpvVulkanPhysicalDeviceList.Create;
  fNeedToEnumeratePhysicalDevices:=false;
 
@@ -7593,6 +7597,8 @@ var i:TpvInt32;
 begin
 
  if fInstanceHandle=VK_NULL_INSTANCE then begin
+
+  fExtDebugUtilsEnabled:=fEnabledExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0;
 
   SetLength(fEnabledLayerNameStrings,fEnabledLayerNames.Count);
   SetLength(fRawEnabledLayerNameStrings,fEnabledLayerNames.Count);

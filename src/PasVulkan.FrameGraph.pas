@@ -3091,7 +3091,8 @@ const LabelInfoColors:array[0..15,0..3] of TVkFloat=
 var LabelInfo:TVkDebugUtilsLabelEXT;
 begin
  fCPUTimeValues[fFrameGraph.fDrawInFlightFrameIndex]:=pvApplication.HighResolutionTimer.GetTime;
- if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
+ if fFrameGraph.fVulkanDevice.Instance.ExtDebugUtilsEnabled and
+    assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
     assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   FillChar(LabelInfo,SizeOf(TVkDebugUtilsLabelEXT),#0);
   LabelInfo.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -3115,7 +3116,8 @@ begin
  if assigned(fFrameGraph.fTimerQueries) and assigned(fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex]) then begin
   fFrameGraph.fTimerQueries[fFrameGraph.fDrawInFlightFrameIndex].Stop(aQueue.fPhysicalQueue,aCommandBuffer);
  end;
- if assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
+ if fFrameGraph.fVulkanDevice.Instance.ExtDebugUtilsEnabled and
+    assigned(aCommandBuffer.Device.Commands.Commands.CmdBeginDebugUtilsLabelEXT) and
     assigned(aCommandBuffer.Device.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   aCommandBuffer.Device.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
  end;
