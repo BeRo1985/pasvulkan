@@ -318,7 +318,7 @@ type { TpvScene3DRendererInstance }
                      fSnapSize:TpvScalar;
                      fOffset:TpvVector3;
                      fBorderCells:TpvInt32;
-                     fDelta:TpvVector4;
+                     fDelta:TIntVector4;
                      fLastAABB:TpvAABB;
                      fLastOffset:TpvVector3;
                     public
@@ -349,6 +349,7 @@ type { TpvScene3DRendererInstance }
               constructor Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject); reintroduce; virtual;
             end;
             THUDRenderPassClass=class of THUDRenderPass;
+            TInFlightFrameMustRenderReflectiveShadowMaps=array[0..MaxInFlightFrames-1] of LongBool;
             TCascadedRadianceHintVolumeImages=array[0..CountGlobalIlluminationRadiantHintCascades-1,0..CountGlobalIlluminationRadiantHintVolumeImages-1] of TpvScene3DRendererImage3D;
             TInFlightFrameCascadedRadianceHintVolumeImages=array[0..MaxInFlightFrames-1] of TCascadedRadianceHintVolumeImages;
             PInFlightFrameCascadedRadianceHintVolumeImages=^TInFlightFrameCascadedRadianceHintVolumeImages;
@@ -409,6 +410,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets;
        fGlobalIlluminationRadianceHintsFirsts:array[0..MaxInFlightFrames-1] of LongBool;
+      private
+       fInFlightFrameMustRenderReflectiveShadowMaps:TInFlightFrameMustRenderReflectiveShadowMaps;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
@@ -514,6 +517,8 @@ type { TpvScene3DRendererInstance }
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
+      public
+       property InFlightFrameMustRenderReflectiveShadowMaps:TInFlightFrameMustRenderReflectiveShadowMaps read fInFlightFrameMustRenderReflectiveShadowMaps;
       public
        property InFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeImages;
        property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
@@ -1194,15 +1199,18 @@ begin
   Cascade.fBorderCells:=BorderCells;
 
   if fFirst then begin
-   Cascade.fDelta:=TpvVector4.InlineableCreate(Infinity,Infinity,Infinity,-1.0);
+   Cascade.fDelta.x:=1000;
+   Cascade.fDelta.y:=1000;
+   Cascade.fDelta.z:=1000;
+   Cascade.fDelta.w:=-1;
   end else begin
-   Cascade.fDelta.x:=floor((Cascade.fAABB.Min.x-Cascade.fLastAABB.Min.x)/CellSize);
-   Cascade.fDelta.y:=floor((Cascade.fAABB.Min.y-Cascade.fLastAABB.Min.y)/CellSize);
-   Cascade.fDelta.z:=floor((Cascade.fAABB.Min.z-Cascade.fLastAABB.Min.z)/CellSize);
-   if (Cascade.fDelta.x<>0.0) or (Cascade.fDelta.y<>0.0) or (Cascade.fDelta.z<>0.0) then begin
-    Cascade.fDelta.w:=1.0;
+   Cascade.fDelta.x:=trunc(floor((Cascade.fAABB.Min.x-Cascade.fLastAABB.Min.x)/CellSize));
+   Cascade.fDelta.y:=trunc(floor((Cascade.fAABB.Min.y-Cascade.fLastAABB.Min.y)/CellSize));
+   Cascade.fDelta.z:=trunc(floor((Cascade.fAABB.Min.z-Cascade.fLastAABB.Min.z)/CellSize));
+   if (Cascade.fDelta.x<>0) or (Cascade.fDelta.y<>0) or (Cascade.fDelta.z<>0) then begin
+    Cascade.fDelta.w:=1;
    end else begin
-    Cascade.fDelta.w:=0.0;
+    Cascade.fDelta.w:=0;
    end;
   end;
 
@@ -3276,6 +3284,8 @@ begin
 
  GlobalIlluminationRadianceHintsUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
 
+ fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=false;
+
  for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
 
   CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
@@ -3289,13 +3299,17 @@ begin
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-(CascadedVolumeCascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-CascadedVolumeCascade.fSnapSize,0.0);
   GlobalIlluminationRadianceHintsUniformBufferData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5)+CascadedVolumeCascade.fOffset,0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=trunc(CascadedVolumeCascade.fDelta.x);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=trunc(CascadedVolumeCascade.fDelta.y);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=trunc(CascadedVolumeCascade.fDelta.z);
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=CascadedVolumeCascade.fDelta.x;
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=CascadedVolumeCascade.fDelta.y;
+  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=CascadedVolumeCascade.fDelta.z;
   if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
+   fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
   end else begin
-   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=trunc(CascadedVolumeCascade.fDelta.w);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=CascadedVolumeCascade.fDelta.w;
+   if GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w<>0 then begin
+    fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
+   end;
   end;
 
  end;
