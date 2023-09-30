@@ -3921,6 +3921,21 @@ begin
  fLuminancePushConstants.MaxLuminance:=exp(LN2*Renderer.MaxLogLuminance);
  fLuminancePushConstants.CountPixels:=fScaledWidth*fScaledHeight*fCountSurfaceViews;
 
+ case Renderer.GlobalIlluminatonMode of
+
+  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+
+{  TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.Enabled:=fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex];
+
+   TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.Enabled:=fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex];}
+
+  end;
+
+  else begin
+  end;
+
+ end;
+
  fFrameGraph.Draw(aSwapChainImageIndex,
                   aInFlightFrameIndex,
                   aFrameCounter,
