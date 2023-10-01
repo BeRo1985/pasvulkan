@@ -22,7 +22,7 @@ layout(set = 0, binding = 1, std430) buffer SphericalHarmonicsBuffer {
 /* clang-format on */
 
 // Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
-const float gFactor = (4.0 * 3.1415926535897932384626433832795) / float(NUM_SAMPLES * NUM_SAMPLES * LOCAL_SIZE * LOCAL_SIZE); 
+const float gFactor = 12.5663706144 / float(NUM_SAMPLES * NUM_SAMPLES * LOCAL_SIZE * LOCAL_SIZE); 
 
 shared vec3 sSphericalHarmonics[NUM_SHARED]; // 8*8*9*4*4 = 9216 bytes (since vec3 can be here actually a vec4 for alignment reasons)
 

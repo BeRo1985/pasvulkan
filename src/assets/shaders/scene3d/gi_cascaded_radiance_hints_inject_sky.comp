@@ -10,7 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 0
-#define SAMPLES 128 
+#define SAMPLES 1024 
 #define USE_3D_ARRAY
 
 #if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
@@ -79,7 +79,19 @@ void main(){
                                       -(1.0 / float(SAMPLES)));              // delta z (1.0 instead 2.0, because hemisphere)
 #endif    
 
-    vec3 lOcculusionSphericalHarmonics[9];
+    vec3 lSkySphericalHarmonics[9] = vec3[9](
+      uSkySphericalHarmonics[0].xyz, 
+      uSkySphericalHarmonics[1].xyz, 
+      uSkySphericalHarmonics[2].xyz, 
+      uSkySphericalHarmonics[3].xyz, 
+      uSkySphericalHarmonics[4].xyz, 
+      uSkySphericalHarmonics[5].xyz, 
+      uSkySphericalHarmonics[6].xyz, 
+      uSkySphericalHarmonics[7].xyz, 
+      uSkySphericalHarmonics[8].xyz
+    );
+
+     vec3 lOcculusionSphericalHarmonics[9];
     lOcculusionSphericalHarmonics[0] = vec3(0.0); 
     lOcculusionSphericalHarmonics[1] = vec3(0.0); 
     lOcculusionSphericalHarmonics[2] = vec3(0.0); 
@@ -89,6 +101,19 @@ void main(){
     lOcculusionSphericalHarmonics[6] = vec3(0.0); 
     lOcculusionSphericalHarmonics[7] = vec3(0.0); 
     lOcculusionSphericalHarmonics[8] = vec3(0.0); 
+
+/*
+    vec3 lSphericalHarmonics[9];
+    lSphericalHarmonics[0] = vec3(0.0); 
+    lSphericalHarmonics[1] = vec3(0.0); 
+    lSphericalHarmonics[2] = vec3(0.0); 
+    lSphericalHarmonics[3] = vec3(0.0); 
+    lSphericalHarmonics[4] = vec3(0.0); 
+    lSphericalHarmonics[5] = vec3(0.0); 
+    lSphericalHarmonics[6] = vec3(0.0); 
+    lSphericalHarmonics[7] = vec3(0.0); 
+    lSphericalHarmonics[8] = vec3(0.0); 
+*/
 
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
@@ -136,13 +161,26 @@ void main(){
       }
 #endif 
 
-      //vec3 skyColor = globalIlluminationCompressedSphericalHarmonicsDecode(direction, uSkySphericalHarmonics);
-    
+/*    vec3 skyColor = globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(direction, lSkySphericalHarmonics);
+      globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(direction, skyColor * lFactor, lSphericalHarmonics);*/
+
       globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(direction, vec3(lFactor), lOcculusionSphericalHarmonics);
 
     } 
 
-    float lTopDownSkyOcclusionMapFactor = (3.1415926535897932384626433832795 * 4.0) / float(SAMPLES);
+    // Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
+    float lTopDownSkyOcclusionMapFactor = 12.5663706144 / float(SAMPLES);
+/*
+    lSphericalHarmonics[0] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[1] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[2] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[3] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[4] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[5] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[6] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[7] *= lTopDownSkyOcclusionMapFactor; 
+    lSphericalHarmonics[8] *= lTopDownSkyOcclusionMapFactor; 
+*/    
 
     lOcculusionSphericalHarmonics[0] *= lTopDownSkyOcclusionMapFactor; 
     lOcculusionSphericalHarmonics[1] *= lTopDownSkyOcclusionMapFactor; 
@@ -153,21 +191,11 @@ void main(){
     lOcculusionSphericalHarmonics[6] *= lTopDownSkyOcclusionMapFactor; 
     lOcculusionSphericalHarmonics[7] *= lTopDownSkyOcclusionMapFactor; 
     lOcculusionSphericalHarmonics[8] *= lTopDownSkyOcclusionMapFactor; 
-    
-    vec3 lSkySphericalHarmonics[9] = vec3[9](
-      uSkySphericalHarmonics[0].xyz, 
-      uSkySphericalHarmonics[1].xyz, 
-      uSkySphericalHarmonics[2].xyz, 
-      uSkySphericalHarmonics[3].xyz, 
-      uSkySphericalHarmonics[4].xyz, 
-      uSkySphericalHarmonics[5].xyz, 
-      uSkySphericalHarmonics[6].xyz, 
-      uSkySphericalHarmonics[7].xyz, 
-      uSkySphericalHarmonics[8].xyz
-    );
-    
+ 
     vec3 lSphericalHarmonics[9];
     globalIlluminationSphericalHarmonicsMultiply(lSphericalHarmonics, lSkySphericalHarmonics, lOcculusionSphericalHarmonics);
+
+    lSphericalHarmonics = lSkySphericalHarmonics;
 
     ivec3 lVolumePosition = lInvocationPosition;
 
