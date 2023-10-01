@@ -273,7 +273,7 @@ void main(){
 
     ivec3 lVolumePosition = lInvocationPosition;
                         
-    float lSHScale = 12.5663706144 / lSumScale;
+    float lSHScale = 12.5663706144 / float(SAMPLES);//lSumScale;
     
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0
