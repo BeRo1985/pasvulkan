@@ -8,12 +8,17 @@
 #            Initialization code            #
 #############################################
 
+# Get the number of logical CPU cores
+countCPUCores=$( ls -d /sys/devices/system/cpu/cpu[[:digit:]]* | wc -w )
+
+# Get our current directory
 originalDirectory="$(pwd)"
 if [ $? -ne 0 ]; then
   echo "Failed to get current directory"
   exit 1
 fi
 
+# Get and create a temporary directory
 tempPath="$(mktemp -d)"
 #tempPath="$(mktemp -d -u -p ${HOME}/.temp/)"
 if [ $? -ne 0 ]; then
@@ -516,6 +521,19 @@ deduplicate_spv_files() {
 
 }
 
+# Wait until there are less than $1 jobs running in parallel
+function pwait() {
+  while [ $(jobs -p -r | wc -l) -ge $1 ]; do
+    sleep 0.01s
+  done
+}
+
+# Wait until there are less than the number of logical CPU cores jobs running in parallel
+function throttleWait() {
+  # A bit less than the number of logical CPU cores to leave some room for other processes
+  pwait $((${countCPUCores}-1)) 
+}
+
 #############################################
 #                Main code                  #
 #############################################
@@ -544,6 +562,7 @@ for index in ${!compileshaderarguments[@]}; do
     fi     
   ) & 
   #pids+=("$!")
+  throttleWait
 done
 
 wait 
@@ -608,36 +627,47 @@ clang ./bin2c.c -o "${tempPath}/bin2c"
 
 # Compile for x86-32 Linux
 clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_linux.o &
+throttleWait
 
 # Compile for x86-64 Linux
 clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o & 
+throttleWait
 
 # Compile for x86-32 Windows
 clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_windows.o &
+throttleWait
 
 # Compile for x86-64 Windows
 clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_windows.o &
+throttleWait
 
 # Compile for AArch64 Windows
 clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_windows.o &
+throttleWait
 
 # Compile for ARM32 Linux
 clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_linux.o &
+throttleWait
 
 # Compile for AArch64 Linux
 clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_linux.o &
+throttleWait
 
 # Compile for x86-32 Android
 clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_android.o &
+throttleWait
 
 # Compile for x86-64 Android
 clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_android.o &
+throttleWait
 
 # Compile for ARM32 Android
 clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_android.o &
+throttleWait
 
 # Compile for AArch64 Android
 clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_android.o &
+throttleWait
 
 # Wait for all compilation jobs to finish
 wait

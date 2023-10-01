@@ -172,7 +172,7 @@ void main(){
         continue;
       }
 #endif        
-      lFactor /= ((lDistance * lDistance) + 1e-2) * 3.14159265359;
+      lFactor /= ((lDistance * lDistance) + 1e-2);// * 3.14159265359;
 
 #if OCCLUSION_SAMPLES > 0
       float lCurrentVisibility;
@@ -205,7 +205,8 @@ void main(){
 
 //  float lInvPDF = 1.0 / ((lSpread.x * lRSMTexSize.x) * (lSpread.y * lRSMTexSize.y));
 //  float lSHScale = lInvPDF / float(SAMPLES);
-    float lSHScale = 1.0 / (float(SAMPLES) * ((uSpread.x * lRSMTexSize.x) * (uSpread.y * lRSMTexSize.y)));
+    float lSHScale = (3.14159265359 * 4.0) / float(SAMPLES);
+     //1.0 / (float(SAMPLES) * ((uSpread.x * lRSMTexSize.x) * (uSpread.y * lRSMTexSize.y)));
     
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0
