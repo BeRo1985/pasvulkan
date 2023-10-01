@@ -172,7 +172,7 @@ void main(){
         continue;
       }
 #endif        
-      lFactor /= ((lDistance * lDistance) + 1e-2);// * 3.14159265359;
+      lFactor /= ((lDistance * lDistance) + 1e-2) * 3.14159265359;
 
 #if OCCLUSION_SAMPLES > 0
       float lCurrentVisibility;
