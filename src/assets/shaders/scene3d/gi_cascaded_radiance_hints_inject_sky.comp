@@ -24,15 +24,12 @@ layout(push_constant) uniform PushConstants {
   mat4 uTopDownSkyOcclusionMapViewProjectionMatrix;
 };
 
-layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = Top-down sky occlusion map, 1 = depth buffer
-layout(set = 0, binding = 1) uniform sampler2DShadow uTexture2DShadowInputs[]; // (aliased) 0 = Top-down sky occlusion map, 1 = depth buffer
-layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
-layout(set = 0, binding = 3, std430) buffer SkySphericalHarmonicsBuffer {
+layout(set = 0, binding = 1) uniform sampler2DShadow uTexTopDownSkyOcclusionMap;
+layout(set = 0, binding = 2) uniform sampler2D uTexDepthBuffer;
+layout(set = 0, binding = 3, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
+layout(set = 0, binding = 4, std430) buffer SkySphericalHarmonicsBuffer {
    vec4 uSkySphericalHarmonics[9];  // The sky spherical harmonics
 };
-
-#define uTexTopDownSkyOcclusionMap uTexture2DShadowInputs[0]
-#define uTexDepthBuffer uTexture2DInputs[1]
 
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 0
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
