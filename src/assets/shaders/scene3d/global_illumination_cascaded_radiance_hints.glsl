@@ -415,7 +415,7 @@ void globalIlluminationSphericalHarmonicsExtractDominantLight(const in vec3 pSph
                                    (dot(sh0l, sh0l) + dot(sh1l, sh1l) + dot(sh2l, sh2l)));
 }
 
-void  globalIlluminationSphericalHarmonicsMultiply(inout vec3 y[9], const in vec3 f[9], const in vec3 g[9]){
+void  globalIlluminationSphericalHarmonicsMultiply(out vec3 y[9], const in vec3 f[9], const in vec3 g[9]){
   vec3 tf, tg, t;
 
   // [0,0]: 0,

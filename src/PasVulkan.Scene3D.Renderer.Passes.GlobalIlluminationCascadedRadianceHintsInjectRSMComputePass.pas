@@ -410,10 +410,17 @@ begin
  UniformBufferData.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
  UniformBufferData.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
  UniformBufferData.LightPosition:=(-UniformBufferData.LightDirection)*65536.0;
- UniformBufferData.Spread:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationRadianceHintsSpread*InFlightFrameState^.ReflectiveShadowMapScale.x,
-                                                       fInstance.Renderer.GlobalIlluminationRadianceHintsSpread*InFlightFrameState^.ReflectiveShadowMapScale.y,
-                                                       0.0,
-                                                       0.0);
+ if fInstance.Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
+  UniformBufferData.Spread:=TpvVector4.InlineableCreate((-fInstance.Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,
+                                                        (-fInstance.Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,
+                                                        0.0,
+                                                        0.0);
+ end else begin
+  UniformBufferData.Spread:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationRadianceHintsSpread,
+                                                        fInstance.Renderer.GlobalIlluminationRadianceHintsSpread,
+                                                        0.0,
+                                                        0.0);
+ end;
  UniformBufferData.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
   //fVulkanUniformBuffers[InFlightFrameIndex]
 
