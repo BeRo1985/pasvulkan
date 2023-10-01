@@ -139,6 +139,7 @@ type { TpvScene3DRendererInstance }
              MainViewProjectionMatrix:TpvMatrix4x4;
 
              ReflectiveShadowMapLightDirection:TpvVector3;
+             ReflectiveShadowMapScale:TpvVector3;
 
              ZNear:TpvFloat;
              ZFar:TpvFloat;
@@ -1145,17 +1146,17 @@ begin
 
  SceneAABB:=fRendererInstance.Renderer.Scene3D.BoundingBox;
 
- SceneAABB.Min.x:=floor(SceneAABB.Min.x/16.0)*16.0;
- SceneAABB.Min.y:=floor(SceneAABB.Min.y/16.0)*16.0;
- SceneAABB.Min.z:=floor(SceneAABB.Min.z/16.0)*16.0;
+ SceneAABB.Min.x:=floor(SceneAABB.Min.x/1.0)*1.0;
+ SceneAABB.Min.y:=floor(SceneAABB.Min.y/1.0)*1.0;
+ SceneAABB.Min.z:=floor(SceneAABB.Min.z/1.0)*1.0;
 
- SceneAABB.Max.x:=ceil((SceneAABB.Max.x+8.0)/16.0)*16.0;
- SceneAABB.Max.y:=ceil((SceneAABB.Max.y+8.0)/16.0)*16.0;
- SceneAABB.Max.z:=ceil((SceneAABB.Max.z+8.0)/16.0)*16.0;
+ SceneAABB.Max.x:=ceil(SceneAABB.Max.x/1.0)*1.0;
+ SceneAABB.Max.y:=ceil(SceneAABB.Max.y/1.0)*1.0;
+ SceneAABB.Max.z:=ceil(SceneAABB.Max.z/1.0)*1.0;
 
  MaxAxisSize:=Max(Max(SceneAABB.Max.x-SceneAABB.Min.x,SceneAABB.Max.y-SceneAABB.Min.y),SceneAABB.Max.z-SceneAABB.Min.z);
 
- MaximumCascadeCellSize:=Max(1.0,MaxAxisSize/fVolumeSize);
+ MaximumCascadeCellSize:=Max(0.015625,MaxAxisSize/fVolumeSize);
 
  for CascadeIndex:=0 to fCountCascades-1 do begin
 
@@ -1164,7 +1165,7 @@ begin
   if CascadeIndex=(fCountCascades-1) then begin
    CellSize:=MaximumCascadeCellSize;
   end else if CascadeIndex=0 then begin
-   CellSize:=1.0;
+   CellSize:=Min(1.0,MaximumCascadeCellSize);
   end else begin
    CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,2.0),1.0),MaximumCascadeCellSize);
   end;
@@ -1608,8 +1609,8 @@ begin
      for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
       for ImageIndex:=0 to CountGlobalIlluminationRadiantHintSHImages-1 do begin
        GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[Index]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
-//                                                                                                       fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
-                                                                                                         fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+                                                                                                         fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+//                                                                                                       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
        inc(Index);
       end;
@@ -3535,7 +3536,9 @@ var Index:TpvSizeInt;
     Origin,
     LightForwardVector,
     LightSideVector,
-    LightUpVector:TpvVector3;
+    LightUpVector,
+    Bounds,
+    Scale:TpvVector3;
     View:TpvScene3D.TView;
     zNear,zFar:TpvScalar;
     BoundingBox:TpvAABB;
@@ -3599,6 +3602,10 @@ begin
                                                                      BoundingBox.Min.z,
                                                                      BoundingBox.Max.z);
 
+ Bounds:=BoundingBox.Max-BoundingBox.Min;
+
+ Scale:=TpvVector3.InlineableCreate(1.0,1.0,1.0)/Bounds;
+
  LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
 
  View.ProjectionMatrix:=LightProjectionMatrix;
@@ -3609,6 +3616,7 @@ begin
 
  InFlightFrameState^.ReflectiveShadowMapMatrix:=LightViewProjectionMatrix;
  InFlightFrameState^.ReflectiveShadowMapLightDirection:=Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
+ InFlightFrameState^.ReflectiveShadowMapScale:=Scale;
 
  InFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews.Add(View);
  InFlightFrameState^.CountReflectiveShadowMapViews:=1;

@@ -85,9 +85,8 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMC
              ModelViewProjectionMatrix:TpvMatrix4x4;
              LightDirection:TpvVector4;
              LightPosition:TpvVector4;
-             LightColor:TpvVector4;
+             Spread:TpvVector4;
              MaximumSamplingDistance:TpvFloat;
-             Spread:TpvFloat;
             end;
             PUniformBufferData=^TUniformBufferData;
       private
@@ -411,10 +410,12 @@ begin
  UniformBufferData.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
  UniformBufferData.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
  UniformBufferData.LightPosition:=(-UniformBufferData.LightDirection)*65536.0;
- UniformBufferData.LightColor:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+ UniformBufferData.Spread:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationRadianceHintsSpread*InFlightFrameState^.ReflectiveShadowMapScale.x,
+                                                       fInstance.Renderer.GlobalIlluminationRadianceHintsSpread*InFlightFrameState^.ReflectiveShadowMapScale.y,
+                                                       0.0,
+                                                       0.0);
  UniformBufferData.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
- UniformBufferData.Spread:=fInstance.Renderer.GlobalIlluminationRadianceHintsSpread;
- //fVulkanUniformBuffers[InFlightFrameIndex]
+  //fVulkanUniformBuffers[InFlightFrameIndex]
 
  aCommandBuffer.CmdUpdateBuffer(fVulkanUniformBuffers[InFlightFrameIndex].Handle,
                                 0,

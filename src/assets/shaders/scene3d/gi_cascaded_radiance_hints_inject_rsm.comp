@@ -28,9 +28,8 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
   mat4 uModelViewProjectionMatrix;
   vec4 uLightDirection;
   vec4 uLightPosition;
-  vec4 uLightColor;
+  vec4 uSpread;
   float uMaximumSamplingDistance;
-  float uSpread;
 };
 
 #define uTexReflectiveShadowMapColor uTexture2DInputs[0]
@@ -73,32 +72,28 @@ void main(){
     vec3 lGlobalIlluminationVolumeAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex].xyz;   
     vec3 lGlobalIlluminationVolumeAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex].xyz;   
       
-    vec3 lResolution = vec3(uGlobalIlluminationVolumeSize);
-    vec3 lInverseResolution = vec3(1.0) / lResolution;
-    vec3 lExtents = lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin; 
-    vec3 lInverseExtents = vec3(1.0) / lExtents; 
-    vec3 lStratum = lExtents / lResolution; 
+    vec3 lStratum = (lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin) / vec3(uGlobalIlluminationVolumeSize); 
     float lStratumLength = length(lStratum); 
     vec3 lPosition = lGlobalIlluminationVolumeAABBMin + (vec3(lInvocationPosition) * lStratum); 
 
     // Get size of the reflective shadow map in world space
-    vec4 lReflectiveShadowMapMin = uReflectiveShadowMapToWorldMatrix * vec4(-1.0, -1.0, 0.0, 1.0);
+  /*vec4 lReflectiveShadowMapMin = uReflectiveShadowMapToWorldMatrix * vec4(-1.0, -1.0, 0.0, 1.0);
     vec4 lReflectiveShadowMapMax = uReflectiveShadowMapToWorldMatrix * vec4(1.0, 1.0, 0.0, 1.0);
     lReflectiveShadowMapMin /= lReflectiveShadowMapMin.w;
     lReflectiveShadowMapMax /= lReflectiveShadowMapMax.w;
     vec3 lReflectiveShadowMapSize = lReflectiveShadowMapMax.xyz - lReflectiveShadowMapMin.xyz;
-    float lReflectiveShadowMapRadius = length(lReflectiveShadowMapSize) * 0.5;
+    float lReflectiveShadowMapRadius = length(lReflectiveShadowMapSize) * 0.5;*/
 
-    /*vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
+    vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
     vec2 lBaseUV = clamp(vec2((((lBaseUVPos.xy / lBaseUVPos.w) * 0.5) * sign(dot(uLightDirection.xyz, lPosition - uLightPosition.xyz))) + vec2(0.5)), vec2(0.0),vec2(1.0));
-    lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread), vec2(1.0 - (0.499 * uSpread))) - vec2(0.5 * uSpread);*/
+    lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread.xy), vec2(1.0 - (0.499 * uSpread.xy))) - vec2(0.5 * uSpread.xy);
 
-    vec3 lBaseNormal = uLightDirection.xyz;
+  /*vec3 lBaseNormal = uLightDirection.xyz;
     float lOrthoNormalSign = (lBaseNormal.z >= 0.0) ? 1.0 : -1.0;
     float lOrthoNormalA = 1.0 / (1.0 + abs(lBaseNormal.z));
     float lOrthoNormalB = (((-lOrthoNormalSign) * lBaseNormal.x) * lBaseNormal.y) * lOrthoNormalA;
     vec3 lBaseTangent = normalize(vec3(1.0 - lBaseNormal.x * lBaseNormal.x * lOrthoNormalA, lOrthoNormalSign * lOrthoNormalB, -lOrthoNormalSign * lBaseNormal.x));
-    vec3 lBaseBitangent = normalize(vec3(lOrthoNormalB, lOrthoNormalSign - lBaseNormal.y * lBaseNormal.y * lOrthoNormalA * lOrthoNormalSign, -lBaseNormal.y));
+    vec3 lBaseBitangent = normalize(vec3(lOrthoNormalB, lOrthoNormalSign - lBaseNormal.y * lBaseNormal.y * lOrthoNormalA * lOrthoNormalSign, -lBaseNormal.y));*/
     
     float lMinimumDistance = 65536.0, lMaximumDistance = 0.0; 
 
@@ -130,11 +125,12 @@ void main(){
       float lSampleUVRadius = sqrt((lSampleFloatIndex + 0.5) / float(SAMPLES));        
       vec2 lSampleUVOffset = vec2(cos(lSampleUVTheta), sin(lSampleUVTheta)) * lSampleUVRadius; 
 #endif
-      //vec2 lSampleUV = lBaseUV + (lSampleUVOffset * uSpread); 
-      vec4 lSampleUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition +
+      vec2 lSampleUV = lBaseUV + (lSampleUVOffset * uSpread.xy); 
+
+/*    vec4 lSampleUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition +
                                                                    (((lBaseTangent * lSampleUVOffset.x) + 
                                                                      (lBaseBitangent * lSampleUVOffset.y)) * uSpread), 1.0); 
-      vec2 lSampleUV = clamp(fma(vec2(lSampleUVPos.xy / lSampleUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0));
+      vec2 lSampleUV = clamp(fma(vec2(lSampleUVPos.xy / lSampleUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0));*/
 
       vec4 lReflectiveShadowMapNormalUsed = textureLod(uTexReflectiveShadowMapNormal, lSampleUV, 0.0); 
 
@@ -155,13 +151,13 @@ void main(){
 
       float lSampleDepth = textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x;
 
-      vec4 lReflectiveShadowMapTempPosition = uReflectiveShadowMapToWorldMatrix * vec4((vec3(lSampleUV.xy, lSampleDepth) * 2.0) - vec3(1.0), 1.0); 
+      vec4 lReflectiveShadowMapTempPosition = uReflectiveShadowMapToWorldMatrix * vec4(fma(vec3(lSampleUV.xy, lSampleDepth), vec3(2.0), vec3(-1.0)), 1.0); 
       vec3 lReflectiveShadowMapPosition = lReflectiveShadowMapTempPosition.xyz / lReflectiveShadowMapTempPosition.w; 
-      vec3 lReflectiveShadowMapColor = textureLod(uTexReflectiveShadowMapColor, lSampleUV, 0.0).xyz * uLightColor.xyz;  
+      vec3 lReflectiveShadowMapColor = textureLod(uTexReflectiveShadowMapColor, lSampleUV, 0.0).xyz;  
       vec3 lReflectiveShadowMapNormal = normalize(lReflectiveShadowMapNormalUsed.xyz - vec3(0.5)); 
 
       float lDistance = distance(lSamplePosition, lReflectiveShadowMapPosition); 
-#if 0
+#if 1
       if(lDistance < lStratumLength){
         continue;
       }
@@ -171,12 +167,12 @@ void main(){
       vec3 lDirection = (lDistance <= 0.007) ? vec3(0.0) : normalize(lSamplePosition - lReflectiveShadowMapPosition);
 
       float lFactor = max(dot(lDirection, lReflectiveShadowMapNormal), 0.0);
-#if 0
+#if 1
       if(lFactor < 0.07){
         continue;
       }
 #endif        
-      lFactor /= (lDistance * lDistance) + 0.01;
+      lFactor /= ((lDistance * lDistance) + 1e-2) * 3.14159265359;
 
 #if OCCLUSION_SAMPLES > 0
       float lCurrentVisibility;
@@ -192,9 +188,9 @@ void main(){
         lDepthVisibility -= ((lTemp.z * lCurrentVisibility) < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * lCurrentVisibility)) ? 0.0 : (1.0 / float(OCCLUSION_SAMPLES)); 
       } 
       lFactor *= clamp(lDepthVisibility, 0.0, 1.0);
-#endif 
-
-      globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(-lDirection, globalIlluminationEncodeColor(max(vec3(0.0), lReflectiveShadowMapColor.xyz * lFactor)), lSphericalHarmonics);
+#endif
+      
+      globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(lDirection, globalIlluminationEncodeColor(max(vec3(0.0), lReflectiveShadowMapColor.xyz * lFactor)), lSphericalHarmonics);
       
       lMinimumDistance = min(lMinimumDistance, lDistance); 
       lMaximumDistance = max(lMaximumDistance, lDistance); 
@@ -205,7 +201,11 @@ void main(){
     vec4 lMetaInfo = imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
     lMetaInfo = vec4(min(lMetaInfo.x, lMinimumDistance), max(lMetaInfo.y, lMaximumDistance), 0.0, 0.0);
 
-    float lSHScale = 1.0 / (3.14159265359 * float(SAMPLES));
+    vec2 lRSMTexSize = vec2(textureSize(uTexReflectiveShadowMapColor, 0).xy);
+
+//  float lInvPDF = 1.0 / ((lSpread.x * lRSMTexSize.x) * (lSpread.y * lRSMTexSize.y));
+//  float lSHScale = lInvPDF / float(SAMPLES);
+    float lSHScale = 1.0 / (float(SAMPLES) * ((uSpread.x * lRSMTexSize.x) * (uSpread.y * lRSMTexSize.y)));
     
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0
