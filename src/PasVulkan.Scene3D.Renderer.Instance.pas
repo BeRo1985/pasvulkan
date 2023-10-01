@@ -1122,7 +1122,7 @@ var CascadeIndex,AxisIndex,BorderCells:TpvSizeInt;
     View:TpvScene3D.PView;
     ViewPosition:TpvVector3;
     ViewDirection:TpvVector3;
-    GridDimensions:TpvVector3;
+    GridCenter:TpvVector3;
     SnappedPosition:TpvVector3;
     GridSize:TpvVector3;
     SceneAABB:TpvAABB;
@@ -1142,13 +1142,13 @@ begin
                                             -View^.InverseViewMatrix.RawComponents[2,1],
                                             -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;
 
- GridDimensions:=TpvVector3.InlineableCreate(fVolumeSize,fVolumeSize,fVolumeSize);
-
  SceneAABB:=fRendererInstance.Renderer.Scene3D.BoundingBox;
 
- ViewPosition.x:=Min(Max(ViewPosition.x,SceneAABB.Min.x),SceneAABB.Max.x);
- ViewPosition.y:=Min(Max(ViewPosition.y,SceneAABB.Min.y),SceneAABB.Max.y);
- ViewPosition.z:=Min(Max(ViewPosition.z,SceneAABB.Min.z),SceneAABB.Max.z);
+ GridCenter:=ViewPosition;//+(ViewDirection/Max(Max(abs(ViewDirection.x),abs(ViewDirection.y)),abs(ViewDirection.z)));
+
+ GridCenter.x:=Min(Max(GridCenter.x,SceneAABB.Min.x),SceneAABB.Max.x);
+ GridCenter.y:=Min(Max(GridCenter.y,SceneAABB.Min.y),SceneAABB.Max.y);
+ GridCenter.z:=Min(Max(GridCenter.z,SceneAABB.Min.z),SceneAABB.Max.z);
 
  SceneAABB.Min.x:=floor(SceneAABB.Min.x/1.0)*1.0;
  SceneAABB.Min.y:=floor(SceneAABB.Min.y/1.0)*1.0;
@@ -1176,16 +1176,16 @@ begin
 
   SnapSize:=CellSize;
 
-  SnappedPosition.x:=floor(ViewPosition.x/SnapSize)*SnapSize;
-  SnappedPosition.y:=floor(ViewPosition.y/SnapSize)*SnapSize;
-  SnappedPosition.z:=floor(ViewPosition.z/SnapSize)*SnapSize;
+  SnappedPosition.x:=round(GridCenter.x/SnapSize)*SnapSize;
+  SnappedPosition.y:=round(GridCenter.y/SnapSize)*SnapSize;
+  SnappedPosition.z:=round(GridCenter.z/SnapSize)*SnapSize;
 
   GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
 
-  BorderCells:=fCountCascades-CascadeIndex;
+  BorderCells:=1;//fCountCascades-CascadeIndex;
 
-{ AABB.Min:=SnappedPosition-(GridSize*0.5);
-  AABB.Max:=SnappedPosition+(GridSize*0.5);}
+  AABB.Min:=SnappedPosition-(GridSize*0.5);
+  AABB.Max:=SnappedPosition+(GridSize*0.5);
 
   for AxisIndex:=0 to 2 do begin
    ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
@@ -1193,14 +1193,14 @@ begin
                       SnappedPosition.xyz[AxisIndex],
                       ViewDirection.xyz[AxisIndex],
                       GridSize.xyz[AxisIndex],
-                      trunc(GridDimensions.xyz[AxisIndex]),
+                      fVolumeSize,
                       BorderCells);
-  end;
+  end;{}
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
   Cascade.fSnapSize:=SnapSize;
-  Cascade.fOffset:=ViewPosition-SnappedPosition;
+  Cascade.fOffset:=GridCenter-SnappedPosition;
   Cascade.fBorderCells:=BorderCells;
 
   if fFirst then begin
