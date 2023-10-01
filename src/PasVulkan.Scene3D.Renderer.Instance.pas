@@ -3319,7 +3319,7 @@ begin
 
  end;
 
- //fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+ fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
 
  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
