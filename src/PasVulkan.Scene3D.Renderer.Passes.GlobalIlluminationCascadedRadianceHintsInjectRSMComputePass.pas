@@ -322,7 +322,7 @@ begin
                                                                    TVkDescriptorImageInfo.Create(fInstance.Renderer.CheckShadowMapSampler.Handle,
                                                                                                  fResourceRSMDepth.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                  fResourceRSMDepth.ResourceTransition.Layout),
-                                                                   TVkDescriptorImageInfo.Create(fInstance.Renderer.CheckShadowMapSampler.Handle,
+                                                                   TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
                                                                                                  fVulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                   [],
