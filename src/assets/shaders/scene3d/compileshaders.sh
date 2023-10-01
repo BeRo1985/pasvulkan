@@ -11,6 +11,15 @@
 # Get the number of logical CPU cores
 countCPUCores=$( ls -d /sys/devices/system/cpu/cpu[[:digit:]]* | wc -w )
 
+# Check if bash version is equal or greater then 4.1 for `wait -n` support
+if [ "${BASH_VERSINFO[0]}" -gt 4 ]; then
+  bashVersionEqualOrGreaterThan4_1=1
+elif [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 1 ]; then
+  bashVersionEqualOrGreaterThan4_1=1
+else
+  bashVersionEqualOrGreaterThan4_1=0  
+fi
+
 # Get our current directory
 originalDirectory="$(pwd)"
 if [ $? -ne 0 ]; then
@@ -523,9 +532,15 @@ deduplicate_spv_files() {
 
 # Wait until there are less than $1 jobs running in parallel
 function pwait() {
-  while [ $(jobs -p -r | wc -l) -ge $1 ]; do
-    sleep 0.01s
-  done
+  if [ ${bashVersionEqualOrGreaterThan4_1} -eq 1 ]; then
+    if [ $(jobs -p -r | wc -l) -ge $1 ]; then
+      wait -n # Wait for any job to finish
+    fi
+  else  
+    while [ $(jobs -p -r | wc -l) -ge $1 ]; do
+      sleep 0.01s
+    done
+  fi
 }
 
 # Wait until there are less than the number of logical CPU cores jobs running in parallel
