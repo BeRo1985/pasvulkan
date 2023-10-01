@@ -20,6 +20,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 #define INJECT_RSM_COMPUTE_SHADER
 
 layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = RSM color, 1 = RSM depth, 2 = RSM depth, 3 = depth buffer
+layout(set = 0, binding = 1) uniform sampler2DShadow uTexture2DShadowInputs[]; // (aliased) 0 = RSM color, 1 = RSM depth, 2 = RSM depth, 3 = depth buffer
 layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 3, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
 layout(set = 0, binding = 4, std140) uniform uMetaData {

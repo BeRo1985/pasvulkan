@@ -169,6 +169,7 @@ type TpvScene3DRenderer=class;
        fLensStar:TpvScene3DRendererLensStar;
        fImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps;
        fShadowMapSampler:TpvVulkanSampler;
+       fCheckShadowMapSampler:TpvVulkanSampler;
        fGeneralSampler:TpvVulkanSampler;
        fClampedSampler:TpvVulkanSampler;
        fClampedNearestSampler:TpvVulkanSampler;
@@ -237,6 +238,7 @@ type TpvScene3DRenderer=class;
        property LensStar:TpvScene3DRendererLensStar read fLensStar write fLensStar;
        property ImageBasedLightingEnvMapCubeMaps:TpvScene3DRendererImageBasedLightingEnvMapCubeMaps read fImageBasedLightingEnvMapCubeMaps;
        property ShadowMapSampler:TpvVulkanSampler read fShadowMapSampler;
+       property CheckShadowMapSampler:TpvVulkanSampler read fCheckShadowMapSampler;
        property GeneralSampler:TpvVulkanSampler read fGeneralSampler;
        property ClampedSampler:TpvVulkanSampler read fClampedSampler;
        property ClampedNearestSampler:TpvVulkanSampler read fClampedNearestSampler;
@@ -940,6 +942,23 @@ begin
 
  end;
 
+ fCheckShadowMapSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                                 TVkFilter.VK_FILTER_LINEAR,
+                                                 TVkFilter.VK_FILTER_LINEAR,
+                                                 TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                 0.0,
+                                                 false,
+                                                 0.0,
+                                                 true,
+                                                 VK_COMPARE_OP_GREATER,
+                                                 0.0,
+                                                 0.0,
+                                                 VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+                                                 false);
+
  fGeneralSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                           TVkFilter.VK_FILTER_LINEAR,
                                           TVkFilter.VK_FILTER_LINEAR,
@@ -1224,6 +1243,8 @@ procedure TpvScene3DRenderer.ReleasePersistentResources;
 begin
 
  FreeAndNil(fShadowMapSampler);
+
+ FreeAndNil(fCheckShadowMapSampler);
 
  FreeAndNil(fSSAOSampler);
 
