@@ -78,7 +78,7 @@ void main(){
     vec4 lSamplePositionSpiral = vec4(0.0,                                   // phi
                                       1.0 - ((2.0 / float(SAMPLES)) * 0.5),  // z
                                       2.399963229728653,                     // delta phi  PI * (3.0 - sqrt(5.0)) (golden angle)  
-                                      -(2.0 / float(SAMPLES)));              // delta z
+                                      -(1.0 / float(SAMPLES)));              // delta z (1.0 instead 2.0, because hemisphere)
 #endif    
 
     vec3 lOcculusionSphericalHarmonics[9];
@@ -97,13 +97,13 @@ void main(){
 #undef USE_PLANE_SAMPLING
 #if defined(USE_3D_ARRAY)
       vec3 lSampleOffset = fma(gGlobalIlluminationTaps3D[lSampleIndex], vec3(0.5), vec3(0.5)); 
+      lSampleOffset.y = abs(lSampleOffset.y); // We only need the upper hemisphere
 #else        
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
       float lSamplePositionThetaSin = sin(lSamplePositionTheta);
-      vec3 lSampleOffset = vec3(lSamplePositionThetaSin * sin(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)); // 1.5707963267948966 = PI * 0.5                                
+      vec3 lSampleOffset = vec3(lSamplePositionThetaSin * sin(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)).xzy; // 1.5707963267948966 = PI * 0.5                                
 #endif
       lSampleOffset = normalize(lSampleOffset); // normalized because we use it as a direction primary
-      lSampleOffset.y = abs(lSampleOffset.y); // We only need the upper hemisphere
       vec3 lSamplePosition = lPosition + (lSampleOffset * lHalfCellSize);    
 
       vec4 lSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
@@ -145,7 +145,7 @@ void main(){
 
     } 
 
-    float lTopDownSkyOcclusionMapFactor = 1.0 / float(SAMPLES);
+    float lTopDownSkyOcclusionMapFactor = (3.1415926535897932384626433832795 * 4.0) / float(SAMPLES);
 
     lOcculusionSphericalHarmonics[0] *= lTopDownSkyOcclusionMapFactor; 
     lOcculusionSphericalHarmonics[1] *= lTopDownSkyOcclusionMapFactor; 
