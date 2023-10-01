@@ -1146,6 +1146,10 @@ begin
 
  SceneAABB:=fRendererInstance.Renderer.Scene3D.BoundingBox;
 
+ ViewPosition.x:=Min(Max(ViewPosition.x,SceneAABB.Min.x),SceneAABB.Max.x);
+ ViewPosition.y:=Min(Max(ViewPosition.y,SceneAABB.Min.y),SceneAABB.Max.y);
+ ViewPosition.z:=Min(Max(ViewPosition.z,SceneAABB.Min.z),SceneAABB.Max.z);
+
  SceneAABB.Min.x:=floor(SceneAABB.Min.x/1.0)*1.0;
  SceneAABB.Min.y:=floor(SceneAABB.Min.y/1.0)*1.0;
  SceneAABB.Min.z:=floor(SceneAABB.Min.z/1.0)*1.0;
