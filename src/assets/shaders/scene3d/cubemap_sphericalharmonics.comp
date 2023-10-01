@@ -21,12 +21,16 @@ layout(set = 0, binding = 1, std430) buffer SphericalHarmonicsBuffer {
 
 /* clang-format on */
 
-const float gDivSamples = 4.0 / 4096.0; // each invocation processes 8x8 with a a work size of 8x8, so 8x8x8x8 = 4096 samples
-//const float gDivSamples = 12.56637062 / 4096.0; // each invocation processes 8x8 with a a work size of 8x8, so 8x8x8x8 = 4096 samples
+// Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
+const float gFactor = (4.0 * 3.1415926535897932384626433832795) / float(NUM_SAMPLES * NUM_SAMPLES * LOCAL_SIZE * LOCAL_SIZE); 
 
 shared vec3 sSphericalHarmonics[NUM_SHARED]; // 8*8*9*4*4 = 9216 bytes (since vec3 can be here actually a vec4 for alignment reasons)
 
 #include "global_illumination_cascaded_radiance_hints.glsl"
+
+/*const float PI = 3.1415926535897932384626433832795;
+const float HalfPI = 1.5707963267948966192313216916398;
+const float TAU = 6.283185307179586476925286766559;*/
 
 void main() {
 
@@ -40,8 +44,10 @@ void main() {
   for(int lY = 0; lY < NUM_SAMPLES; lY++){
     for(int lX = 0; lX < NUM_SAMPLES; lX++){
       vec2 lCoord = vec2(vec2(ivec2((lInvocationPosition * NUM_SAMPLES) + ivec2(lX, lY))) * vec2(1.0 / 64.0));// * vec2(1.0, 0.5); 
-      vec2 lThetaPhi = ((lCoord * 2.0) - vec2(1.0)) * vec2(3.1415926535897932384626433832795, -1.5707963267948966192313216916398);
-      vec3 lRayDirection = normalize(vec3(cos(lThetaPhi.x) * cos(lThetaPhi.y), sin(lThetaPhi.y), sin(lThetaPhi.x) * cos(lThetaPhi.y)));
+	    float y = 1.0 - (2.0 * lCoord.y);
+      vec3 lRayDirection = normalize(vec3(sin(vec2(vec2(6.283185307179586476925286766559 * lCoord.x) + vec2(1.5707963267948966192313216916398, 0.0))) * sqrt(max(0.0, 1.0 - (y * y))), y).xzy);
+/*    vec2 lThetaPhi = ((lCoord * 2.0) - vec2(1.0)) * vec2(3.1415926535897932384626433832795, -1.5707963267948966192313216916398);
+      vec3 lRayDirection = normalize(vec3(cos(lThetaPhi.x) * cos(lThetaPhi.y), sin(lThetaPhi.y), sin(lThetaPhi.x) * cos(lThetaPhi.y)));*/
       vec3 lColor = globalIlluminationEncodeColor(textureLod(uSourceTexture, lRayDirection, 0.0).xyz);
       lSphericalHarmonics[0] += 0.282094792 * lColor;
       lSphericalHarmonics[1] += ((-0.488602512) * lRayDirection.y) * lColor;
@@ -90,7 +96,7 @@ void main() {
   
   if(lInvocationIndex == 0u){
     for(uint lCoefIndex = 0u; lCoefIndex < uint(NUM_COEFS); lCoefIndex++){
-      sphericalHarmonicsBuffer.sphericalHarmonics[lCoefIndex] = vec4(sSphericalHarmonics[lCoefIndex] * gDivSamples, 0.0);
+      sphericalHarmonicsBuffer.sphericalHarmonics[lCoefIndex] = vec4(sSphericalHarmonics[lCoefIndex] * gFactor, 0.0);
     }          
   }    
   
