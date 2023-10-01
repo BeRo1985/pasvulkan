@@ -608,11 +608,47 @@ rm -f scene3dshaders.zip
 # Go to the temporary directory
 cd "${tempPath}"
 
-# Get a sorted list of .spv files
-spv_files=( $(ls *.spv | sort) )
+# Get a sorted list of .spv files and virtualsymlinks.json without their full paths
+toCompressFiles=( $((ls *.spv; echo virtualsymlinks.json) | sort) )
 
-# Create the zip archive with virtualsymlinks.json as the first entry
-zip -m9 scene3dshaders.zip "virtualsymlinks.json" "${spv_files[@]}"
+# Check if zipmerge is installed
+if command -v zipmerge &> /dev/null; then
+
+  # Create another temporary directory for the intermediate zip files
+  zip_temp_dir=$(mktemp -d)
+  if [ $? -ne 0 ]; then
+    echo "Error creating temporary directory. Stopping compilation."
+    exit 1
+  fi
+
+  # Parallel compression of each file in toCompressFiles array
+  for file in "${toCompressFiles[@]}"; do
+    ( 
+      zip -9 "${zip_temp_dir}/${file}.zip" "${file}"
+    ) &
+    throttleWait
+  done
+
+  # Wait for all background jobs to complete
+  wait
+
+  # Get a sorted list of .zip files in zip_temp_dir with their full paths
+  zip_files=( $(find "${zip_temp_dir}" -type f -name "*.zip" | sort) )
+
+   # Create the zip archive using the zip files from zip_temp_dir
+  zipmerge "${tempPath}/scene3dshaders.zip" "${zip_files[@]}"
+
+  # Delete the temporary ZIP directory
+  rm -rf "${zip_temp_dir}"
+
+else
+
+  # Create the zip archive with virtualsymlinks.json as the first entry
+  zip -m9 scene3dshaders.zip "${toCompressFiles[@]}"
+
+fi
+
+cd "${originalDirectory}"
 
 # Delete the old zip archive if it exists
 if [ -f "${originalDirectory}/scene3dshaders.zip" ]; then
@@ -621,15 +657,6 @@ fi
 
 # Copy the zip archive to the current directory
 cp -f "${tempPath}/scene3dshaders.zip" "${originalDirectory}/scene3dshaders.zip"
-
-# Delete all shader binaries, virtualsymlinks.json and the temporary ZIP archive on the temporary directory
-
-rm -f *.spv
-rm -f virtualsymlinks.json
-rm -f scene3dshaders.zip
-
-# Go back to the original directory
-cd "${originalDirectory}"
 
 # Compile bin2c
 
@@ -687,14 +714,8 @@ throttleWait
 # Wait for all compilation jobs to finish
 wait
 
-# Delete the C source file
-rm -f "${tempPath}/scene3dshaders_zip.c"
-
-# Delete the bin2c executable
-rm -f "${tempPath}/bin2c"
-
 # Delete the temporary directory
-rm -rf "${tempPath}" # what actually deletes also the files in it, which we did it already before, but anyway, since it does not hurt.  
+rm -rf "${tempPath}" # what actually deletes also the files in it
 
 # Done!
 
