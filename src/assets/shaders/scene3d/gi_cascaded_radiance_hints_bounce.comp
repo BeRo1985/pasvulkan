@@ -131,7 +131,7 @@ void main(){
     float lUVDistanceDivMeanResolution = lUVDistance / lMeanResolution;
     float lHalfDivMeanResolution = 0.5 / lMeanResolution;
     
-    float lSumScale = 1.0;
+    //float lSumScale = 1.0;
     
 #if !defined(USE_3D_ARRAY)
     vec4 lSamplePositionSpiral = vec4(0.0,                                   // phi
@@ -265,7 +265,7 @@ void main(){
         
         globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(lDirection, globalIlluminationEncodeColor(max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(-lDirection, lSampleSphericalHarmonics) * (lSampleFactor * lSampleWeight)))), lSphericalHarmonics);
 
-        lSumScale += lSampleFactor * lSampleWeight;        
+        //lSumScale += lSampleFactor * lSampleWeight;        
 
       }
       
