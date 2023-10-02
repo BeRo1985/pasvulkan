@@ -169,8 +169,9 @@ void main(){
     } 
 
     // Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
-    float lTopDownSkyOcclusionMapFactor = 4.0 / float(SAMPLES);
-//  float lTopDownSkyOcclusionMapFactor = 12.5663706144 / float(SAMPLES);
+    //float lTopDownSkyOcclusionMapFactor = 4.0 / float(SAMPLES);
+    float lTopDownSkyOcclusionMapFactor = 12.5663706144 / float(SAMPLES);
+    
 /*
     lSphericalHarmonics[0] *= lTopDownSkyOcclusionMapFactor; 
     lSphericalHarmonics[1] *= lTopDownSkyOcclusionMapFactor; 

@@ -10,7 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 4
-#define SAMPLES 32 
+#define SAMPLES 128 
 #define USE_3D_ARRAY
 
 #if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
@@ -144,6 +144,7 @@ void main(){
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
       float lSamplePositionThetaSin = sin(lSamplePositionTheta);
       vec3 lSampleTap = vec3(lSamplePositionThetaSin * sin(vec2(lSamplePositionSpiral.x) + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)).xzy;
+      vec3 lSamplePosition = lPosition + ((lSampleTap * 0.5) * lStratum);
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;     
 #endif
 
@@ -207,8 +208,7 @@ void main(){
      //1.0 / (float(SAMPLES) * ((uSpread.x * lRSMTexSize.x) * (uSpread.y * lRSMTexSize.y)));
     
     // Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
-    float lSHScale = 4.0 / float(SAMPLES);
-//  float lSHScale = 12.5663706144 / float(SAMPLES);
+    float lSHScale = 12.5663706144 / float(SAMPLES);
 
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0
