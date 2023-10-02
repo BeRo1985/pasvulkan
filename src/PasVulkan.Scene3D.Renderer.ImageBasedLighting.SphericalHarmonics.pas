@@ -97,10 +97,10 @@ implementation
 
 constructor TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aSphericalHarmonicsBuffer:TpvVulkanBuffer);
 var Stream:TStream;
-    ComputeQueue:TpvVulkanQueue;
-    ComputeCommandPool:TpvVulkanCommandPool;
-    ComputeCommandBuffer:TpvVulkanCommandBuffer;
-    ComputeFence:TpvVulkanFence;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
     VulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
     VulkanDescriptorPool:TpvVulkanDescriptorPool;
     VulkanDescriptorSet:TpvVulkanDescriptorSet;
@@ -121,28 +121,28 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
- ComputeQueue:=aVulkanDevice.ComputeQueue;
+ UniversalQueue:=aVulkanDevice.UniversalQueue;
 
- ComputeCommandPool:=TpvVulkanCommandPool.Create(aVulkanDevice,
-                                                 aVulkanDevice.ComputeQueueFamilyIndex,
-                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ UniversalCommandPool:=TpvVulkanCommandPool.Create(aVulkanDevice,
+                                                   aVulkanDevice.UniversalQueueFamilyIndex,
+                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  try
 
-  ComputeCommandBuffer:=TpvVulkanCommandBuffer.Create(ComputeCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   try
 
-   ComputeFence:=TpvVulkanFence.Create(aVulkanDevice);
+   UniversalFence:=TpvVulkanFence.Create(aVulkanDevice);
    try
 
     VulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
     try
      VulkanDescriptorSetLayout.AddBinding(0,
-                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                           1,
                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                           []);
      VulkanDescriptorSetLayout.AddBinding(1,
-                                          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                           1,
                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                           []);
@@ -152,8 +152,8 @@ begin
                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                           1);
      try
-      VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
       VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
+      VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
       VulkanDescriptorPool.Initialize;
 
       VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
@@ -162,17 +162,17 @@ begin
       VulkanDescriptorSet.WriteToDescriptorSet(0,
                                                0,
                                                1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                               [aDescriptorImageInfo],
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                [],
+                                               [aSphericalHarmonicsBuffer.DescriptorBufferInfo],
                                                [],
                                                false);
       VulkanDescriptorSet.WriteToDescriptorSet(1,
                                                0,
                                                1,
-                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                               [aDescriptorImageInfo],
                                                [],
-                                               [aSphericalHarmonicsBuffer.DescriptorBufferInfo],
                                                [],
                                                false);
       VulkanDescriptorSet.Flush;
@@ -193,13 +193,33 @@ begin
                                                   0);
         try
 
-         ComputeCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+         UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
-         ComputeCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+         UniversalCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-         ComputeCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
+         UniversalCommandBuffer.CmdFillBuffer(aSphericalHarmonicsBuffer.Handle,0,aSphericalHarmonicsBuffer.Size,0);
 
-         ComputeCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+         BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            fSphericalHarmonicsBuffer.Handle,
+                                                            0,
+                                                            VK_WHOLE_SIZE);
+
+         UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                 TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                                 0,
+                                                 nil,
+                                                 1,
+                                                 @BufferMemoryBarrier,
+                                                 0,
+                                                 nil);
+
+         UniversalCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,Pipeline.Handle);
+
+         UniversalCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                                     PipelineLayout.Handle,
                                                     0,
                                                     1,
@@ -207,7 +227,7 @@ begin
                                                     0,
                                                     nil);
 
-         ComputeCommandBuffer.CmdDispatch(1,
+         UniversalCommandBuffer.CmdDispatch(1,
                                           1,
                                           1);
 
@@ -219,7 +239,7 @@ begin
                                                             0,
                                                             VK_WHOLE_SIZE);
 
-         ComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+         UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                                  TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
                                                  0,
@@ -229,9 +249,9 @@ begin
                                                  0,
                                                  nil);
 
-         ComputeCommandBuffer.EndRecording;
+         UniversalCommandBuffer.EndRecording;
 
-         ComputeCommandBuffer.Execute(ComputeQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),nil,nil,ComputeFence,true);
+         UniversalCommandBuffer.Execute(UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),nil,nil,UniversalFence,true);
 
         finally
          FreeAndNil(Pipeline);
@@ -254,15 +274,15 @@ begin
     end;
 
    finally
-    FreeAndNil(ComputeFence);
+    FreeAndNil(UniversalFence);
    end;
 
   finally
-   FreeAndNil(ComputeCommandBuffer);
+   FreeAndNil(UniversalCommandBuffer);
   end;
 
  finally
-  FreeAndNil(ComputeCommandPool);
+  FreeAndNil(UniversalCommandPool);
  end;
 
 end;

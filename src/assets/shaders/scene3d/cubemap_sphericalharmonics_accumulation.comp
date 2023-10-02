@@ -12,15 +12,15 @@
 /* clang-format off */
 layout(local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) uniform samplerCube uSourceTexture;
-
-layout(set = 0, binding = 1, std430) buffer SphericalHarmonicsBuffer {
+layout(set = 0, binding = 0, std430) buffer SphericalHarmonicsBuffer {
 #ifdef USE_ATOMIC_FLOATS
   float sphericalHarmonics[36]; // 9 * 4
 #else
   uint sphericalHarmonics[36]; // 9 * 4
 #endif
 } sphericalHarmonicsBuffer;
+
+layout(set = 0, binding = 1) uniform samplerCube uSourceTexture;
 
 layout(push_constant) uniform PushConstants {
   int uLODLevel;
