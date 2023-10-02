@@ -213,6 +213,11 @@ compileshaderarguments=(
   "-V resampling.frag -o ${tempPath}/resampling_frag.spv"
    
   "-V cubemap_sphericalharmonics.comp -o ${tempPath}/cubemap_sphericalharmonics_comp.spv"
+  
+  "-V cubemap_sphericalharmonics_accumulation.comp -o ${tempPath}/cubemap_sphericalharmonics_accumulation_comp.spv" 
+  "-V cubemap_sphericalharmonics_accumulation.comp -DUSE_ATOMIC_FLOATS -o ${tempPath}/cubemap_sphericalharmonics_accumulation_atomicfloats_comp.spv"
+  
+  "-V cubemap_sphericalharmonics_normalization.comp -o ${tempPath}/cubemap_sphericalharmonics_normalization_comp.spv"
 
   "-V topdownskyocclusionmap_resolve.frag -o ${tempPath}/topdownskyocclusionmap_resolve_frag.spv"
 
