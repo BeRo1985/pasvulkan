@@ -100,6 +100,10 @@ type { TpvScene3DRendererSkyCubeMap }
 
        property VulkanImageView:TpvVulkanImageView read fVulkanImageView;
 
+       property Width:TpvInt32 read fWidth;
+
+       property Height:TpvInt32 read fHeight;
+
       public
 
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
