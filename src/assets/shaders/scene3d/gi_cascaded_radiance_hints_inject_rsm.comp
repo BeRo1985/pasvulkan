@@ -200,14 +200,7 @@ void main(){
     vec4 lMetaInfo = imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
     lMetaInfo = vec4(min(lMetaInfo.x, lMinimumDistance), max(lMetaInfo.y, lMaximumDistance), 0.0, 0.0);
 
-    vec2 lRSMTexSize = vec2(textureSize(uTexReflectiveShadowMapColor, 0).xy);
-
-//  float lInvPDF = 1.0 / ((lSpread.x * lRSMTexSize.x) * (lSpread.y * lRSMTexSize.y));
-//  float lSHScale = lInvPDF / float(SAMPLES);
-    //float lSHScale = 1.0 / float(SAMPLES);
-     //1.0 / (float(SAMPLES) * ((uSpread.x * lRSMTexSize.x) * (uSpread.y * lRSMTexSize.y)));
-    
-    // Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
+    // Integrating over a sphere so each sample has a weight of (4.0 * PI) / samplecount (uniform solid angle, for each sample)
     float lSHScale = 12.5663706144 / float(SAMPLES);
 
     lSphericalHarmonics[0] *= lSHScale;

@@ -273,8 +273,7 @@ void main(){
 
     ivec3 lVolumePosition = lInvocationPosition;
                         
-    //float lSHScale = 4.0 / float(SAMPLES);//lSumScale;
-    
+    // Integrating over a sphere so each sample has a weight of (4.0 * PI) / samplecount (uniform solid angle, for each sample)
     float lSHScale = 12.5663706144 / float(SAMPLES);//lSumScale;
     
     lSphericalHarmonics[0] *= lSHScale;
