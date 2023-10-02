@@ -143,10 +143,8 @@ void main(){
 #else
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
       float lSamplePositionThetaSin = sin(lSamplePositionTheta);
-      vec3 lSamplePosition = lPosition + ((vec3(lSamplePositionThetaSin * cos(lSamplePositionSpiral.x),
-                                                lSamplePositionThetaSin * sin(lSamplePositionSpiral.x),
-                                                cos(lSamplePositionTheta)) * 0.5) * lStratum);    
-      lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
+      vec3 lSampleTap = vec3(lSamplePositionThetaSin * sin(vec2(lSamplePositionSpiral.x) + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)).xzy;
+      lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;     
 #endif
 
       float lSampleDepth = textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x;
@@ -209,7 +207,8 @@ void main(){
      //1.0 / (float(SAMPLES) * ((uSpread.x * lRSMTexSize.x) * (uSpread.y * lRSMTexSize.y)));
     
     // Integrating over a sphere so each sample has a weight of 4*PI/samplecount (uniform solid angle, for each sample)
-    float lSHScale = 12.5663706144 / float(SAMPLES);
+    float lSHScale = 4.0 / float(SAMPLES);
+//  float lSHScale = 12.5663706144 / float(SAMPLES);
 
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0

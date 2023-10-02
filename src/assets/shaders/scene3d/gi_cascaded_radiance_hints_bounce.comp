@@ -149,7 +149,7 @@ void main(){
 #else
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
       float lSamplePositionThetaSin = sin(lSamplePositionTheta);
-      vec3 lSampleTap = vec3(lSamplePositionThetaSin * cos(lSamplePositionSpiral.x), lSamplePositionThetaSin * sin(lSamplePositionSpiral.x), cos(lSamplePositionTheta));
+      vec3 lSampleTap = vec3(lSamplePositionThetaSin * sin(vec2(lSamplePositionSpiral.x) + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)).xzy;
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
 #endif      
       
@@ -273,7 +273,9 @@ void main(){
 
     ivec3 lVolumePosition = lInvocationPosition;
                         
-    float lSHScale = 12.5663706144 / float(SAMPLES);//lSumScale;
+    float lSHScale = 4.0 / float(SAMPLES);//lSumScale;
+    
+    //float lSHScale = 12.5663706144 / float(SAMPLES);//lSumScale;
     
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0
