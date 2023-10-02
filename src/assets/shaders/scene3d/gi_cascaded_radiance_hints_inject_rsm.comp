@@ -10,7 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 4
-#define SAMPLES 128 
+#define SAMPLES 32 
 #define USE_3D_ARRAY
 
 #if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
