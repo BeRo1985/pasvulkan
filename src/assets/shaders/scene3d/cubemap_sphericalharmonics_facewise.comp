@@ -1,0 +1,43 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#define NUM_COEFS 9
+#define NUM_SAMPLES 8
+#define LOCAL_SIZE 8
+#define NUM_INVOCATIONS (LOCAL_SIZE * LOCAL_SIZE)
+#define NUM_SHARED (NUM_INVOCATIONS * NUM_COEFS)
+
+/* clang-format off */
+layout(local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform samplerCube uSourceTexture;
+
+layout(set = 0, binding = 1, std430) buffer SphericalHarmonicsBuffer {
+  vec4 sphericalHarmonics[9];
+} sphericalHarmonicsBuffer;
+
+float areaIntegral(vec2 v){
+  return atan(v.x * v.y, sqrt(dot(v, v) + 1.0));
+}
+
+float unlerp(float val, float maxVal){
+  return (val + 0.5) / maxVal;
+}
+
+vec2 unlerp(vec2 val, vec2 maxVal){
+  return (val + vec2(0.5)) / maxVal;
+}
+
+float calculateSolidAngle(uvec2 xy, uvec2 wh){
+  vec2 st = fma(unlerp(vec2(xy), vec2(wh)), vec2(2.0), vec2(-1.0));
+  float halfTexelSize = 1.0 / float(wh.x);
+  vec4 xy0xy1 = st.xyxy + vec2(halfTexelSize, -halfTexelSize).xxyy;
+  return ((areaIntegral(xy0xy1.xy) - areaIntegral(xy0xy1.xw)) - areaIntegral(xy0xy1.zy)) + areaIntegral(xy0xy1.zw);
+}
+
+void main(){
+  
+}
