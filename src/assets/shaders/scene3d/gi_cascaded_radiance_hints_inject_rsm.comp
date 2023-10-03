@@ -200,8 +200,28 @@ void main(){
 
     vec2 lTexSize = vec2(textureSize(uTexReflectiveShadowMapColor, 0).xy);
 
+    // The area of the square is given by \(A_{\text{square}} = w \cdot h = w^2\) (since \(w = h\)), and the area of the circle inscribed
+    // within the square is given by \(A_{\text{circle}} = \pi \cdot r^2\), where \(r\) is the radius of the circle.
+    
+    // Since the circle is inscribed within the square, the diameter of the circle is equal to the side length of the square, so
+    // \(r = \frac{w}{2}\).
+    
+    // Substituting this into the formula for the area of the circle gives:
+    // \[A_{\text{circle}} = \pi \cdot \left(\frac{w}{2}\right)^2 = \frac{\pi \cdot w^2}{4}\]
+    
+    // To normalize the sampling area of the circle to match that of the square, you can use the ratio of the areas:
+    // \[ \text{Normalization factor} = \frac{A_{\text{circle}}}{A_{\text{square}}} = \frac{\frac{\pi \cdot w^2}{4}}{w^2} = \frac{\pi}{4} \]
+    // The area of the square is given by \(A_{\text{square}} = w \cdot h = w^2\) (since \(w = h\)), and the area of the circle is given by \(A_{\text{circle}} = \pi \cdot r^2\), where \(r\) is the radius of the circle.
+    const float lCircleAreaToSquareAreaFactor = 0.7853981633974483; // 3.1415926535897932384626433832795 / 4.0; 
+
+    // To normalize the sampling area of the square to match that of the circle, you can use the ratio of the areas:
+    // \[ \text{Normalization factor} = \frac{A_{\text{square}}}{A_{\text{circle}}} = \frac{w^2}{\left(\frac{\pi \cdot w^2}{4}\right)} = \frac{4}{\pi} \]
+    // The area of the square is given by \(A_{\text{square}} = w \cdot h = w^2\) (since \(w = h\)), and the area of the circle is given by \(A_{\text{circle}} = \pi \cdot r^2\), where \(r\) is the radius of the circle.
+    const float lSquareAreaToCircleAreaFactor = 1.2732395447351628; // 4.0 / 3.1415926535897932384626433832795; 
+
     // PDF = 1 / (A * cos(theta) * solid angle)
-    float lInvPDF = lTexSize.x * lTexSize.y * uSpread.x * uSpread.y;
+  //float lInvPDF = (lTexSize.x * lTexSize.y * uSpread.x * uSpread.y) * (lSquareAreaToCircleAreaFactor * 3.1415926535897932384626433832795); // multiply by PI because we are on a circle
+    float lInvPDF = (lTexSize.x * lTexSize.y * uSpread.x * uSpread.y) * 4.0; // because after substiution, we get just 4.0
     float lSHScale = lInvPDF / float(SAMPLES);
 
     // Integrating over a sphere so each sample has a weight of (4.0 * PI) / samplecount (uniform solid angle, for each sample)
