@@ -814,8 +814,32 @@ begin
  end;
 
  if fGlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.Auto then begin
-  fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;//StaticEnvironmentMap;//CameraReflectionProbe;//
-//fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;//CameraReflectionProbe;//
+  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
+   TpvVulkanVendorID.AMD:begin
+    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+    end else begin
+     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+    end;
+   end;
+   TpvVulkanVendorID.NVIDIA:begin
+    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+    end else begin
+     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+    end;
+   end;
+   TpvVulkanVendorID.Intel:begin
+    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
+     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+    end else begin
+     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+    end;
+   end;
+   else begin
+    fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+   end;
+  end;
  end;
 
  case fGlobalIlluminatonMode of
