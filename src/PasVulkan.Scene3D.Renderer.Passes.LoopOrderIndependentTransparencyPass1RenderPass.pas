@@ -519,7 +519,7 @@ begin
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
  case fInstance.Renderer.GlobalIlluminatonMode of
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationRadianceHintsDescriptorSetLayout);
   end;
   else begin
@@ -773,7 +773,7 @@ begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
   case fInstance.Renderer.GlobalIlluminatonMode of
-   TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
     DescriptorSets[0]:=fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
     DescriptorSets[1]:=fInstance.GlobalIlluminationRadianceHintsDescriptorSets[aInFlightFrameIndex].Handle;
     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,

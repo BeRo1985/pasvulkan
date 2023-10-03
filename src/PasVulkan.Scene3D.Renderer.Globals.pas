@@ -135,7 +135,7 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererLensMode=^TpvScene3DRendererLensMode;
 
-     TpvScene3DRendererGlobalIlluminatonMode=
+     TpvScene3DRendererGlobalIlluminationMode=
       (
        Auto=0,
        
@@ -178,7 +178,7 @@ type TpvScene3DRendererAntialiasingMode=
       }
       );
 
-     PpvScene3DRendererGlobalIlluminatonMode=^TpvScene3DRendererGlobalIlluminatonMode;
+     PpvScene3DRendererGlobalIlluminatonMode=^TpvScene3DRendererGlobalIlluminationMode;
 
 var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 

@@ -134,7 +134,7 @@ type TpvScene3DRenderer=class;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fLensMode:TpvScene3DRendererLensMode;
-       fGlobalIlluminatonMode:TpvScene3DRendererGlobalIlluminatonMode;
+       fGlobalIlluminatonMode:TpvScene3DRendererGlobalIlluminationMode;
        fMinLogLuminance:TpvFloat;
        fMaxLogLuminance:TpvFloat;
        fMaxMSAA:TpvInt32;
@@ -203,7 +203,7 @@ type TpvScene3DRenderer=class;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
-       property GlobalIlluminatonMode:TpvScene3DRendererGlobalIlluminatonMode read fGlobalIlluminatonMode write fGlobalIlluminatonMode;
+       property GlobalIlluminatonMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminatonMode write fGlobalIlluminatonMode;
        property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -370,7 +370,7 @@ begin
 
  fLensMode:=TpvScene3DRendererLensMode.Auto;
 
- fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.Auto;
+ fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
 
  fMinLogLuminance:=-8.0;
 
@@ -813,13 +813,13 @@ begin
   end;
  end;
 
- if fGlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.Auto then begin
-  fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints;//StaticEnvironmentMap;//CameraReflectionProbe;//
-//fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminatonMode.StaticEnvironmentMap;//CameraReflectionProbe;//
+ if fGlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.Auto then begin
+  fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;//StaticEnvironmentMap;//CameraReflectionProbe;//
+//fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;//CameraReflectionProbe;//
  end;
 
  case fGlobalIlluminatonMode of
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
   end;
   else begin

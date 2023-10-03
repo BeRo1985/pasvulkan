@@ -1536,7 +1536,7 @@ var AntialiasingFirstPass:TpvFrameGraph.TPass;
 begin
 
  case Renderer.GlobalIlluminatonMode of
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
    fGlobalIlluminationRadianceHintsCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                             GlobalIlluminationRadiantHintVolumeSize,
@@ -2207,7 +2207,7 @@ begin
  end;
 
  case Renderer.GlobalIlluminatonMode of
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass:=TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass.Create(fFrameGraph,self);
    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
@@ -2263,7 +2263,7 @@ begin
 
  case Renderer.GlobalIlluminatonMode of
 
-  TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe:begin
+  TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fReflectionProbeRenderPass:=TpvScene3DRendererPassesReflectionProbeRenderPass.Create(fFrameGraph,self);
    case Renderer.ShadowMode of
@@ -2312,7 +2312,7 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
  end;
  case Renderer.GlobalIlluminatonMode of
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsBounceComputePass);
   end;
   else begin
@@ -2675,7 +2675,7 @@ end;
 procedure TpvScene3DRendererInstance.AcquirePersistentResources;
 begin
  fFrameGraph.AcquirePersistentResources;
- if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe then begin
   fImageBasedLightingReflectionProbeCubeMaps:=TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps.Create(Renderer.VulkanDevice,
                                                                                                                  Max(16,fReflectionProbeWidth),
                                                                                                                  Max(16,fReflectionProbeHeight),
@@ -2827,7 +2827,7 @@ begin
 
      fFrustumClusterGridCountTotalViews:=fCountSurfaceViews; // +6 for local light and reflection probe cubemap
 
-     if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+     if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe then begin
       inc(fFrustumClusterGridCountTotalViews,6); // +6 for local light and reflection probe cubemap
      end;
 
@@ -3747,14 +3747,14 @@ begin
 
  end;
 
- if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CameraReflectionProbe then begin
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.CameraReflectionProbe then begin
   AddCameraReflectionProbeViews(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectionProbeViewIndex:=-1;
   InFlightFrameState^.CountReflectionProbeViews:=0;
  end;
 
- if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints then begin
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints then begin
 
   AddTopDownSkyOcclusionMapView(aInFlightFrameIndex);
 
@@ -3814,7 +3814,7 @@ begin
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
 
- if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints then begin
+ if Renderer.GlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints then begin
   UpdateGlobalIlluminationRadianceHints(aInFlightFrameIndex);
  end;
 
@@ -3937,7 +3937,7 @@ begin
 
  case Renderer.GlobalIlluminatonMode of
 
-  TpvScene3DRendererGlobalIlluminatonMode.CascadedRadianceHints:begin
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
 {  TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.Enabled:=fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex];
 
