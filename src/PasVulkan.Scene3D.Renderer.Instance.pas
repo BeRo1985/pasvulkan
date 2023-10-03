@@ -3827,7 +3827,7 @@ begin
                            fScaledWidth,
                            fScaledHeight,
                            true,
-                           true,
+                           false,
                            false);
  end;
 
@@ -3840,8 +3840,8 @@ begin
                            fReflectionProbeWidth,
                            fReflectionProbeHeight,
                            true,
-                           true,
-                           true);
+                           false,
+                           false);
  end;
 
 
