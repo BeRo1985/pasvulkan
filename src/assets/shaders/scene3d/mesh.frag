@@ -1887,6 +1887,9 @@ void main() {
             }
 #endif
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
+#if defined(REFLECTIVESHADOWMAPOUTPUT)
+              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * baseColor.xyz;
+#else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
                             lightDirection,                                     //
@@ -1905,6 +1908,7 @@ void main() {
                             clearcoatF0,                                        //
                             clearcoatRoughness,                                 //
                             specularWeight);                                    //
+#endif
 #ifdef TRANSMISSION
               if ((flags & (1u << 11u)) != 0u) {
                 // If the light ray travels through the geometry, use the point it exits the geometry again.
