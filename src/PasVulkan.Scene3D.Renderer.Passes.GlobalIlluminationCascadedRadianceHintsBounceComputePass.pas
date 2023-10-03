@@ -80,7 +80,7 @@ uses SysUtils,
 type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass }
      TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass=class(TpvFrameGraph.TComputePass)
       public
-       type TPushConstants=record
+{      type TPushConstants=record
              MaximumSamplingDistance:TpvFloat;
             end;
             PPushConstants=^TPushConstants;//}
@@ -219,9 +219,9 @@ begin
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+{fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
-                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass.TPushConstants));
+                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass.TPushConstants));}
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -390,7 +390,7 @@ end;
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,Index,CascadeIndex,VolumeIndex:TpvInt32;
     ImageMemoryBarriers:array[0..(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages)-1] of TVkImageMemoryBarrier;
-    PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass.TPushConstants;
+//  PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass.TPushConstants;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -432,12 +432,12 @@ begin
                                       0,
                                       nil);
 
- PushConstants.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
+{PushConstants.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  0,
                                  SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass.TPushConstants),
-                                 @PushConstants);
+                                 @PushConstants);}
 
  aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize+7) shr 3,
                             (TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize+7) shr 3,

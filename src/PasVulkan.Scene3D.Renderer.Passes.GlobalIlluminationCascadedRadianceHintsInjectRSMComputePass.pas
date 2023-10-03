@@ -86,7 +86,6 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMC
              LightDirection:TpvVector4;
              LightPosition:TpvVector4;
              Spread:TpvVector4;
-             MaximumSamplingDistance:TpvFloat;
             end;
             PUniformBufferData=^TUniformBufferData;
       private
@@ -421,7 +420,6 @@ begin
                                                         0.0,
                                                         0.0);
  end;
- UniformBufferData.MaximumSamplingDistance:=fInstance.Renderer.GlobalIlluminationRadianceHintsMaximumSamplingDistance;
   //fVulkanUniformBuffers[InFlightFrameIndex]
 
  aCommandBuffer.CmdUpdateBuffer(fVulkanUniformBuffers[InFlightFrameIndex].Handle,

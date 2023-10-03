@@ -155,7 +155,6 @@ type TpvScene3DRenderer=class;
        fCountCascadedShadowMapMSAASamples:TpvSizeInt;
        fSurfaceSampleCountFlagBits:TVkSampleCountFlagBits;
        fCountSurfaceMSAASamples:TpvSizeInt;
-       fGlobalIlluminationRadianceHintsMaximumSamplingDistance:TpvScalar;
        fGlobalIlluminationRadianceHintsSpread:TpvScalar;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
@@ -225,7 +224,6 @@ type TpvScene3DRenderer=class;
        property CountCascadedShadowMapMSAASamples:TpvSizeInt read fCountCascadedShadowMapMSAASamples;
        property SurfaceSampleCountFlagBits:TVkSampleCountFlagBits read fSurfaceSampleCountFlagBits;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
-       property GlobalIlluminationRadianceHintsMaximumSamplingDistance:TpvScalar read fGlobalIlluminationRadianceHintsMaximumSamplingDistance write fGlobalIlluminationRadianceHintsMaximumSamplingDistance;
        property GlobalIlluminationRadianceHintsSpread:TpvScalar read fGlobalIlluminationRadianceHintsSpread write fGlobalIlluminationRadianceHintsSpread;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
@@ -386,8 +384,6 @@ begin
 
  fVirtualRealityHUDWidth:=2048;
  fVirtualRealityHUDHeight:=1152;
-
- fGlobalIlluminationRadianceHintsMaximumSamplingDistance:=512.0;
 
  fGlobalIlluminationRadianceHintsSpread:=-16.0;
 

@@ -10,7 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 4
-#define SAMPLES 32 
+#define SAMPLES 256
 #define USE_3D_ARRAY
 
 #if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
@@ -29,7 +29,6 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
   vec4 uLightDirection;
   vec4 uLightPosition;
   vec4 uSpread;
-  float uMaximumSamplingDistance;
 };
 
 #define uTexReflectiveShadowMapColor uTexture2DInputs[0]
@@ -161,7 +160,6 @@ void main(){
         continue;
       }
 #endif
-      lDistance /= uMaximumSamplingDistance;
       
       vec3 lDirection = (lDistance <= 0.007) ? vec3(0.0) : normalize(lSamplePosition - lReflectiveShadowMapPosition);
 
@@ -200,8 +198,13 @@ void main(){
     vec4 lMetaInfo = imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
     lMetaInfo = vec4(min(lMetaInfo.x, lMinimumDistance), max(lMetaInfo.y, lMaximumDistance), 0.0, 0.0);
 
+    vec2 lTexSize = vec2(textureSize(uTexReflectiveShadowMapColor, 0).xy);
+
+    // PDF = 1 / (A * cos(theta) * solid angle)
+    float lInvPDF = lTexSize.x * lTexSize.y * uSpread.x * uSpread.y;
+
     // Integrating over a sphere so each sample has a weight of (4.0 * PI) / samplecount (uniform solid angle, for each sample)
-    float lSHScale = 12.5663706144 / float(SAMPLES);
+    float lSHScale = (12.5663706144 / float(SAMPLES)) * lInvPDF;
 
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0
