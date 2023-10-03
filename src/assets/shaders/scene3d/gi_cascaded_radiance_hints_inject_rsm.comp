@@ -10,12 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 4
-#define SAMPLES 32
-#define USE_3D_ARRAY
-
-#if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
-  #undef USE_3D_ARRAY
-#endif
+#define SAMPLES 64
 
 #define INJECT_RSM_COMPUTE_SHADER
 
@@ -40,7 +35,6 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 
 #include "global_illumination_cascaded_radiance_hints.glsl"
-#include "global_illumination_sample_taps_array.glsl"
 
 void main(){
 
@@ -75,24 +69,9 @@ void main(){
     float lStratumLength = length(lStratum); 
     vec3 lPosition = lGlobalIlluminationVolumeAABBMin + (vec3(lInvocationPosition) * lStratum); 
 
-    // Get size of the reflective shadow map in world space
-  /*vec4 lReflectiveShadowMapMin = uReflectiveShadowMapToWorldMatrix * vec4(-1.0, -1.0, 0.0, 1.0);
-    vec4 lReflectiveShadowMapMax = uReflectiveShadowMapToWorldMatrix * vec4(1.0, 1.0, 0.0, 1.0);
-    lReflectiveShadowMapMin /= lReflectiveShadowMapMin.w;
-    lReflectiveShadowMapMax /= lReflectiveShadowMapMax.w;
-    vec3 lReflectiveShadowMapSize = lReflectiveShadowMapMax.xyz - lReflectiveShadowMapMin.xyz;
-    float lReflectiveShadowMapRadius = length(lReflectiveShadowMapSize) * 0.5;*/
-
     vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
     vec2 lBaseUV = clamp(vec2((((lBaseUVPos.xy / lBaseUVPos.w) * 0.5) * sign(dot(uLightDirection.xyz, lPosition - uLightPosition.xyz))) + vec2(0.5)), vec2(0.0),vec2(1.0));
     lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread.xy), vec2(1.0 - (0.499 * uSpread.xy))) - vec2(0.5 * uSpread.xy);
-
-  /*vec3 lBaseNormal = uLightDirection.xyz;
-    float lOrthoNormalSign = (lBaseNormal.z >= 0.0) ? 1.0 : -1.0;
-    float lOrthoNormalA = 1.0 / (1.0 + abs(lBaseNormal.z));
-    float lOrthoNormalB = (((-lOrthoNormalSign) * lBaseNormal.x) * lBaseNormal.y) * lOrthoNormalA;
-    vec3 lBaseTangent = normalize(vec3(1.0 - lBaseNormal.x * lBaseNormal.x * lOrthoNormalA, lOrthoNormalSign * lOrthoNormalB, -lOrthoNormalSign * lBaseNormal.x));
-    vec3 lBaseBitangent = normalize(vec3(lOrthoNormalB, lOrthoNormalSign - lBaseNormal.y * lBaseNormal.y * lOrthoNormalA * lOrthoNormalSign, -lBaseNormal.y));*/
     
     float lMinimumDistance = 65536.0, lMaximumDistance = 0.0; 
 
@@ -107,45 +86,24 @@ void main(){
     lSphericalHarmonics[7] = vec3(0.0); 
     lSphericalHarmonics[8] = vec3(0.0); 
     
-#if !defined(USE_3D_ARRAY)
     vec4 lSamplePositionSpiral = vec4(0.0,                                   // phi
                                       1.0 - ((2.0 / float(SAMPLES)) * 0.5),  // z
                                       2.399963229728653,                     // delta phi  PI * (3.0 - sqrt(5.0)) (golden angle)  
                                       -(2.0 / float(SAMPLES)));              // delta z
-#endif    
   
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){
       
-#if defined(USE_3D_ARRAY)
-      vec2 lSampleUVOffset = fma(gGlobalIlluminationTaps2D[lSampleIndex], vec2(2.0), vec2(-1.0)); 
-#else        
-      float lSampleFloatIndex = float(lSampleIndex);
-      float lSampleUVTheta = lSampleFloatIndex * 2.399963229728653; // = PI * (3.0 - sqrt(5.0)) (golden angle) 
-      float lSampleUVRadius = sqrt((lSampleFloatIndex + 0.5) / float(SAMPLES));        
-      vec2 lSampleUVOffset = vec2(cos(lSampleUVTheta), sin(lSampleUVTheta)) * lSampleUVRadius; 
-#endif
-      vec2 lSampleUV = lBaseUV + (lSampleUVOffset * uSpread.xy); 
+      // 2.399963229728653 = PI * (3.0 - sqrt(5.0)) (golden angle) 
+      vec2 lSampleUV = lBaseUV + ((sin(vec2(vec2(float(lSampleIndex) * 2.399963229728653) + vec2(1.5707963267948966, 0.0))) * sqrt((float(lSampleIndex) + 0.5) / float(SAMPLES))) * uSpread.xy); 
 
-/*    vec4 lSampleUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition +
-                                                                   (((lBaseTangent * lSampleUVOffset.x) + 
-                                                                     (lBaseBitangent * lSampleUVOffset.y)) * uSpread), 1.0); 
-      vec2 lSampleUV = clamp(fma(vec2(lSampleUVPos.xy / lSampleUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0));*/
+      float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
+      vec3 lSamplePosition = lPosition + ((vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * 0.5) * lStratum);
+      lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;     
 
       vec4 lReflectiveShadowMapNormalUsed = textureLod(uTexReflectiveShadowMapNormal, lSampleUV, 0.0); 
-
       if(lReflectiveShadowMapNormalUsed.w < 0.5){
         continue;
       }
-      
-#if defined(USE_3D_ARRAY)
-      vec3 lSamplePosition = lPosition + ((gGlobalIlluminationTaps3D[lSampleIndex] - vec3(0.5)) * lStratum);    
-#else
-      float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
-      float lSamplePositionThetaSin = sin(lSamplePositionTheta);
-      vec3 lSampleTap = vec3(lSamplePositionThetaSin * sin(vec2(lSamplePositionSpiral.x) + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)).xzy;
-      vec3 lSamplePosition = lPosition + ((lSampleTap * 0.5) * lStratum);
-      lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;     
-#endif
 
       float lSampleDepth = textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x;
 
@@ -155,20 +113,16 @@ void main(){
       vec3 lReflectiveShadowMapNormal = normalize(lReflectiveShadowMapNormalUsed.xyz - vec3(0.5)); 
 
       float lDistance = distance(lSamplePosition, lReflectiveShadowMapPosition); 
-#if 1
       if(lDistance < lStratumLength){
         continue;
       }
-#endif
       
       vec3 lDirection = (lDistance <= 0.007) ? vec3(0.0) : normalize(lSamplePosition - lReflectiveShadowMapPosition);
 
       float lFactor = max(dot(lDirection, lReflectiveShadowMapNormal), 0.0);
-#if 1
       if(lFactor < 0.07){
         continue;
       }
-#endif        
       lFactor /= (lDistance * lDistance) + 1e-2;
 
 #if OCCLUSION_SAMPLES > 0

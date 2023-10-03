@@ -10,12 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 0
-#define SAMPLES 32 
-#define USE_3D_ARRAY
-
-#if (SAMPLES != 12) && (SAMPLES != 20) && (SAMPLES != 32)
-  #undef USE_3D_ARRAY
-#endif
+#define SAMPLES 64 
 
 #define INJECT_RSM_COMPUTE_SHADER
 
@@ -30,7 +25,6 @@ layout(set = 0, binding = 6) uniform sampler3D uTexMetaInfo[]; // The current gl
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 
 #include "global_illumination_cascaded_radiance_hints.glsl"
-#include "global_illumination_sample_taps_array.glsl"
 
 void main(){
 
@@ -127,25 +121,18 @@ void main(){
     
     //float lSumScale = 1.0;
     
-#if !defined(USE_3D_ARRAY)
     vec4 lSamplePositionSpiral = vec4(0.0,                                   // phi
                                       1.0 - ((2.0 / float(SAMPLES)) * 0.5),  // z
                                       2.399963229728653,                     // delta phi  PI * (3.0 - sqrt(5.0)) (golden angle)  
                                       -(2.0 / float(SAMPLES)));              // delta z
-#endif    
     
     bool lMustReprocessOnMove = false;
     
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){
     
-#if defined(USE_3D_ARRAY)
-      vec3 lSampleTap = fma(gGlobalIlluminationTaps3D[lSampleIndex], vec3(2.0), vec3(-1.0));
-#else
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
-      float lSamplePositionThetaSin = sin(lSamplePositionTheta);
-      vec3 lSampleTap = vec3(lSamplePositionThetaSin * sin(vec2(lSamplePositionSpiral.x) + vec2(1.5707963267948966, 0.0)), cos(lSamplePositionTheta)).xzy;
+      vec3 lSampleTap = vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy;
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
-#endif      
       
       vec3 lDirection = normalize(lSampleTap);
       
