@@ -1154,6 +1154,8 @@ begin
                                            View^.InverseViewMatrix.RawComponents[3,1],
                                            View^.InverseViewMatrix.RawComponents[3,2])/View^.InverseViewMatrix.RawComponents[3,3];
 
+ ViewPosition:=TpvVector3.Null;
+
  ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
                                             -View^.InverseViewMatrix.RawComponents[2,1],
                                             -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;
@@ -1203,7 +1205,7 @@ begin
   AABB.Min:=SnappedPosition-(GridSize*0.5);
   AABB.Max:=SnappedPosition+(GridSize*0.5);
 
-  for AxisIndex:=0 to 2 do begin
+{ for AxisIndex:=0 to 2 do begin
    ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
                       AABB.Max.RawComponents[AxisIndex],
                       SnappedPosition.xyz[AxisIndex],
@@ -1211,7 +1213,7 @@ begin
                       GridSize.xyz[AxisIndex],
                       fVolumeSize,
                       BorderCells);
-  end;{}
+  end;//}
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
@@ -2265,6 +2267,7 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsClearCustomPass);
 
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass:=TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectSkyComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectCachedComputePass);

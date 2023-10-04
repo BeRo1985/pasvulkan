@@ -189,7 +189,7 @@ void main(){
 
     ivec3 lVolumePosition = lInvocationPosition;
 
-    {
+    if(false){
 #if GI_COMPRESSION == 0
       vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
       vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
