@@ -125,7 +125,7 @@ begin
  fResourceTopDownSkyOcclusionMap:=AddImageInput('resourcetype_topdownskyocclusionmap_depth',
                                                 'resource_topdownskyocclusionmap_depth',
                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                                []
                                                );
 
 end;
