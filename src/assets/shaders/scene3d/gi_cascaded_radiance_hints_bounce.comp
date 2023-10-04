@@ -111,10 +111,12 @@ void main(){
     lSphericalHarmonics[8] = vec3(0.0); 
     
     vec3 lResolution = vec3(uGlobalIlluminationVolumeSize);
-    vec3 lExtents = lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin; 
-    vec3 lScale = lExtents / lResolution; 
-    vec3 lPosition = lGlobalIlluminationVolumeAABBMin + ((lInvocationPosition + vec3(0.5)) * lScale); 
-    vec3 lUVW = (lPosition - lGlobalIlluminationVolumeAABBMin) / lExtents;
+
+    vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
+                         globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
+                         (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize));
+
+    vec3 lUVW = (lPosition - lGlobalIlluminationVolumeAABBMin) / (globalIlluminationVolumeAABBMax[lCascadeIndex].xyz - globalIlluminationVolumeAABBMax[lCascadeIndex].xyz);
     
     float lMeanResolution = length(lResolution);
     float lHalfDivMeanResolution = 0.5 / lMeanResolution;
@@ -140,7 +142,9 @@ void main(){
       
       vec3 lSampleUVWC = lUVW + (lResolution * lDirection * lDistance); 
 
-      vec3 lSamplePosition = lGlobalIlluminationVolumeAABBMin + (lSampleUVWC * lExtents);
+      vec3 lSamplePosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
+                                 globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
+                                 lSampleUVWC);
       
       int lSampleCascadeIndex = 0;//lCascadeIndex;
       while(lSampleCascadeIndex < GI_CASCADES){

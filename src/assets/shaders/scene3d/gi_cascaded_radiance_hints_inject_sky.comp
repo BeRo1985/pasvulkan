@@ -57,15 +57,12 @@ void main(){
       }
     }
     
-    vec3 lGlobalIlluminationVolumeAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex].xyz;   
-    vec3 lGlobalIlluminationVolumeAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex].xyz;   
-      
-    vec3 lCellSize = (lGlobalIlluminationVolumeAABBMax - lGlobalIlluminationVolumeAABBMin) / vec3(uGlobalIlluminationVolumeSize);
+    vec3 lHalfCellSize = ((globalIlluminationVolumeAABBMax[lCascadeIndex].xyz - globalIlluminationVolumeAABBMin[lCascadeIndex].xyz) / vec3(uGlobalIlluminationVolumeSize)) * 0.5;
 
-    vec3 lHalfCellSize = lCellSize * 0.5;
-
-    vec3 lPosition = lGlobalIlluminationVolumeAABBMin + ((vec3(lInvocationPosition) + vec3(0.5)) * lCellSize); 
-
+    vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
+                         globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
+                         (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize));
+     
     vec4 lSamplePositionSpiral = vec4(0.0,                                   // phi
                                       1.0 - ((2.0 / float(SAMPLES)) * 0.5),  // z
                                       2.399963229728653,                     // delta phi  PI * (3.0 - sqrt(5.0)) (golden angle)  
