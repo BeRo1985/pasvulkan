@@ -1162,8 +1162,6 @@ begin
                                            View^.InverseViewMatrix.RawComponents[3,1],
                                            View^.InverseViewMatrix.RawComponents[3,2])/View^.InverseViewMatrix.RawComponents[3,3];
 
-//ViewPosition:=TpvVector3.Null;
-
  ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
                                             -View^.InverseViewMatrix.RawComponents[2,1],
                                             -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;
@@ -1172,19 +1170,14 @@ begin
 
  GridCenter:=ViewPosition;//+(ViewDirection/Max(Max(abs(ViewDirection.x),abs(ViewDirection.y)),abs(ViewDirection.z)));
 
- GridCenter.x:=Min(Max(GridCenter.x,SceneAABB.Min.x),SceneAABB.Max.x);
- GridCenter.y:=Min(Max(GridCenter.y,SceneAABB.Min.y),SceneAABB.Max.y);
- GridCenter.z:=Min(Max(GridCenter.z,SceneAABB.Min.z),SceneAABB.Max.z);
+ GridCenter:=(GridCenter.Max(SceneAABB.Min)).Min(SceneAABB.Max);
 
- SceneAABB.Min.x:=floor(SceneAABB.Min.x/1.0)*1.0;
- SceneAABB.Min.y:=floor(SceneAABB.Min.y/1.0)*1.0;
- SceneAABB.Min.z:=floor(SceneAABB.Min.z/1.0)*1.0;
+ SceneAABB.Min:=SceneAABB.Min.Floor;
+ SceneAABB.Max:=SceneAABB.Max.Ceil;
 
- SceneAABB.Max.x:=ceil(SceneAABB.Max.x/1.0)*1.0;
- SceneAABB.Max.y:=ceil(SceneAABB.Max.y/1.0)*1.0;
- SceneAABB.Max.z:=ceil(SceneAABB.Max.z/1.0)*1.0;
-
- MaxAxisSize:=Max(Max(SceneAABB.Max.x-SceneAABB.Min.x,SceneAABB.Max.y-SceneAABB.Min.y),SceneAABB.Max.z-SceneAABB.Min.z);
+ MaxAxisSize:=Max(Max(SceneAABB.Max.x-SceneAABB.Min.x,
+                      SceneAABB.Max.y-SceneAABB.Min.y),
+                  SceneAABB.Max.z-SceneAABB.Min.z);
 
  MaximumCascadeCellSize:=Max(0.015625,MaxAxisSize/fVolumeSize);
 
@@ -1194,26 +1187,24 @@ begin
 
   if CascadeIndex=(fCountCascades-1) then begin
    CellSize:=MaximumCascadeCellSize;
-  end else if CascadeIndex=0 then begin
-   CellSize:=Min(1.0,MaximumCascadeCellSize);
+{ end else if CascadeIndex=0 then begin
+   CellSize:=Min(1.0,MaximumCascadeCellSize);}
   end else begin
-   CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,2.0),1.0),MaximumCascadeCellSize);
+   CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0),0.125),MaximumCascadeCellSize);
   end;
 
   SnapSize:=CellSize;
 
-  SnappedPosition.x:=round(GridCenter.x/SnapSize)*SnapSize;
-  SnappedPosition.y:=round(GridCenter.y/SnapSize)*SnapSize;
-  SnappedPosition.z:=round(GridCenter.z/SnapSize)*SnapSize;
+  SnappedPosition:=(GridCenter/SnapSize).Round*SnapSize;
 
   GridSize:=TpvVector3.InlineableCreate(fVolumeSize*CellSize,fVolumeSize*CellSize,fVolumeSize*CellSize);
 
-  BorderCells:=1;//fCountCascades-CascadeIndex;
+  BorderCells:=fCountCascades-CascadeIndex;
 
-  ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
+{ ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
   ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));
 
-  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);
+  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);//}
 
   AABB.Min:=SnappedPosition-(GridSize*0.5);
   AABB.Max:=SnappedPosition+(GridSize*0.5);
