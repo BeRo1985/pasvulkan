@@ -136,6 +136,7 @@ type { TpvScene3DRendererInstance }
 
              TopDownSkyOcclusionMapViewProjectionMatrix:TpvMatrix4x4;
              ReflectiveShadowMapMatrix:TpvMatrix4x4;
+             MainViewMatrix:TpvMatrix4x4;
              MainViewProjectionMatrix:TpvMatrix4x4;
 
              ReflectiveShadowMapLightDirection:TpvVector3;
@@ -1141,7 +1142,6 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
 var CascadeIndex,BorderCells:TpvSizeInt;
     CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
-    View:TpvScene3D.PView;
     ViewPosition:TpvVector3;
     //ViewDirection:TpvVector3;
     GridCenter:TpvVector3;
@@ -1152,19 +1152,22 @@ var CascadeIndex,BorderCells:TpvSizeInt;
     //ClampedSceneAABB:TpvAABB;
     AABB:TpvAABB;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
+    m:TpvMatrix4x4;
 begin
 
  InFlightFrameState:=@fRendererInstance.fInFlightFrameStates[aInFlightFrameIndex];
 
- View:=@fRendererInstance.Views.Items[InFlightFrameState^.FinalViewIndex];
+ m:=InFlightFrameState^.MainViewMatrix.Inverse;
 
- ViewPosition:=TpvVector3.InlineableCreate(View^.InverseViewMatrix.RawComponents[3,0],
-                                           View^.InverseViewMatrix.RawComponents[3,1],
-                                           View^.InverseViewMatrix.RawComponents[3,2])/View^.InverseViewMatrix.RawComponents[3,3];
+ ViewPosition:=TpvVector3.InlineableCreate(m.RawComponents[3,0],
+                                           m.RawComponents[3,1],
+                                           m.RawComponents[3,2])/m.RawComponents[3,3];
 
-{ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
-                                            -View^.InverseViewMatrix.RawComponents[2,1],
-                                            -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;}
+// ViewPosition:=TpvVector3.Null;
+
+{ViewDirection:=TpvVector3.InlineableCreate(-m.RawComponents[2,0],
+                                            -m.RawComponents[2,1],
+                                            -m.RawComponents[2,2]).Normalize;}
 
  SceneAABB:=fRendererInstance.Renderer.Scene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
 
@@ -3840,6 +3843,8 @@ begin
    InFlightFrameState^.CountHUDViews:=1;
 
   end;
+
+  InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
 
   InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
 
