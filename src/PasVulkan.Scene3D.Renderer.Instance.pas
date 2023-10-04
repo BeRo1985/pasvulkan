@@ -3783,6 +3783,10 @@ begin
    InFlightFrameState^.HUDViewIndex:=fViews.Add([ViewLeft,ViewRight]);
    InFlightFrameState^.CountHUDViews:=2;
 
+   InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
+
+   InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
+
   end else begin
 
    ViewLeft.ViewMatrix:=ViewMatrix;
@@ -3833,6 +3837,10 @@ begin
 
    InFlightFrameState^.FinalViewIndex:=fViews.Add(ViewLeft);
 
+   InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
+
+   InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
+
    fCountRealViews:=fViews.Count;
    InFlightFrameState^.CountFinalViews:=1;
 
@@ -3845,10 +3853,6 @@ begin
    InFlightFrameState^.CountHUDViews:=1;
 
   end;
-
-  InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
-
-  InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
 
  end else begin
 

@@ -201,6 +201,7 @@ begin
  fRenderer.MaxMSAA:=UnitApplication.Application.MaxMSAA;
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
+ fRenderer.GlobalIlluminationCaching:=false;
  fRenderer.Prepare;
 
  fRenderer.AcquirePersistentResources;
