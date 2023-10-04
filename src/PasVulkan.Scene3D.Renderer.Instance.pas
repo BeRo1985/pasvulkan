@@ -3359,7 +3359,7 @@ begin
 
   GlobalIlluminationRadianceHintsUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
 
-  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=false;
+  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=not Renderer.GlobalIlluminationCaching;
 
   for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
 
@@ -3377,21 +3377,20 @@ begin
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=CascadedVolumeCascade.fDelta.x;
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=CascadedVolumeCascade.fDelta.y;
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=CascadedVolumeCascade.fDelta.z;
-   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;{
-   if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
-    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
-    fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
-   end else begin
-    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=CascadedVolumeCascade.fDelta.w;
+   if Renderer.GlobalIlluminationCaching then begin
+    if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
+     GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
+    end else begin
+     GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=CascadedVolumeCascade.fDelta.w;
+    end;
     if GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w<>0 then begin
      fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
     end;
-   end;//}
+   end else begin
+    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
+   end;
 
   end;
-
-//
-  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
 
 { if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
    pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
@@ -3438,7 +3437,9 @@ begin
 
  end;
 
- //fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+ if not Renderer.GlobalIlluminationCaching then begin
+  fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+ end;
 
 end;
 
