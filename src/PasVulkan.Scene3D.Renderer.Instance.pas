@@ -1204,12 +1204,12 @@ begin
 { ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
   ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));
 
-  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);//}
+  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);
 
   AABB.Min:=SnappedPosition-(GridSize*0.5);
-  AABB.Max:=SnappedPosition+(GridSize*0.5);
+  AABB.Max:=SnappedPosition+(GridSize*0.5);//}
 
-//ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
+  ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
