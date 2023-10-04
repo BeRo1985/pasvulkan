@@ -134,12 +134,14 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var Index,CascadeIndex,VolumeIndex:TpvInt32;
+var PreviousInFlightFrameIndex,Index,CascadeIndex,VolumeIndex:TpvInt32;
     ClearValue,MetaInfoClearValue:TVkClearColorValue;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages)-1] of TVkImageMemoryBarrier;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
 
  ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                         0,
@@ -161,12 +163,40 @@ begin
    inc(Index);
   end;
  end;
- aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                   0,
-                                   0,nil,
-                                   0,nil,
-                                   length(ImageMemoryBarriers),@ImageMemoryBarriers[0]);
+ if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fInstance.fGlobalIlluminationRadianceHintsEventReady[PreviousInFlightFrameIndex] then begin
+  fInstance.fGlobalIlluminationRadianceHintsEventReady[PreviousInFlightFrameIndex]:=false;
+  aCommandBuffer.CmdWaitEvents(1,
+                               @fInstance.fGlobalIlluminationRadianceHintsEvents[PreviousInFlightFrameIndex].Handle,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)},
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)},
+                               0,nil,
+                               0,nil,
+                               length(ImageMemoryBarriers),@ImageMemoryBarriers[0]);
+  aCommandBuffer.CmdResetEvent(fInstance.fGlobalIlluminationRadianceHintsEvents[PreviousInFlightFrameIndex].Handle,
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)});
+ end else begin
+  aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    0,nil,
+                                    length(ImageMemoryBarriers),@ImageMemoryBarriers[0]);
+ end;
 
  ClearValue.uint32[0]:=0;
  ClearValue.uint32[1]:=0;

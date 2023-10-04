@@ -425,6 +425,9 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets;
        fGlobalIlluminationRadianceHintsFirsts:array[0..MaxInFlightFrames-1] of LongBool;
+      public
+       fGlobalIlluminationRadianceHintsEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
+       fGlobalIlluminationRadianceHintsEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
        fInFlightFrameMustRenderReflectiveShadowMaps:TInFlightFrameMustRenderReflectiveShadowMaps;
       private
@@ -1377,6 +1380,8 @@ begin
 
  FillChar(fGlobalIlluminationRadianceHintsRSMUniformBuffers,SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBuffers),#0);
 
+ FillChar(fGlobalIlluminationRadianceHintsEvents,SizeOf(fGlobalIlluminationRadianceHintsEvents),#0);
+
  fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
 
  FillChar(fGlobalIlluminationRadianceHintsDescriptorSets,SizeOf(TGlobalIlluminationRadianceHintsDescriptorSets),#0);
@@ -1505,6 +1510,7 @@ begin
   FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationRadianceHintsEvents[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorSetLayout);
@@ -1592,6 +1598,8 @@ begin
                                                                                                   0,
                                                                                                   0,
                                                                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+    fGlobalIlluminationRadianceHintsEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+    fGlobalIlluminationRadianceHintsEventReady[InFlightFrameIndex]:=false;
    end;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin

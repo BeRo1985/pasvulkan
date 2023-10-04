@@ -167,6 +167,18 @@ begin
                                    0,nil,
                                    length(ImageMemoryBarriers),@ImageMemoryBarriers[0]);
 
+ if fInstance.fGlobalIlluminationRadianceHintsEventReady[aInFlightFrameIndex] then begin
+  Assert(false);
+ end;
+ aCommandBuffer.CmdSetEvent(fInstance.fGlobalIlluminationRadianceHintsEvents[aInFlightFrameIndex].Handle,
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)});
+ fInstance.fGlobalIlluminationRadianceHintsEventReady[aInFlightFrameIndex]:=true;
+
 end;
 
 end.
