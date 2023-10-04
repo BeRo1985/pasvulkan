@@ -540,7 +540,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
     vec4 lAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex];
     vec4 lAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex];
-#if 1
+#if 0
 #if GI_COMPRESSION == 0
     int lTexIndexOffset = lCascadeIndex * 7;
 #elif GI_COMPRESSION == 1
