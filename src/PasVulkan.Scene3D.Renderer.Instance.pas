@@ -1121,7 +1121,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFrameIndex:TpvSizeInt);
- procedure ComputeGridExtents(out aAABB:TpvAABB;
+{procedure ComputeGridExtents(out aAABB:TpvAABB;
                               const aPosition:TpvVector3;
                               const aDirection:TpvVector3;
                               const aGridSize:TpvVector3;
@@ -1137,19 +1137,19 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
                  TpvVector3.InlineableCreate(aTotalCells-aBufferCells));
   aAABB.Max:=aPosition+(MaxCell*(aGridSize/aTotalCells));
   aAABB.Min:=aAABB.Max-aGridSize;
- end;
+ end;}
 var CascadeIndex,BorderCells:TpvSizeInt;
     CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
     View:TpvScene3D.PView;
     ViewPosition:TpvVector3;
-    ViewDirection:TpvVector3;
+    //ViewDirection:TpvVector3;
     GridCenter:TpvVector3;
     SnappedPosition:TpvVector3;
     GridSize:TpvVector3;
 //  ClampDelta:TpvVector3;
     SceneAABB:TpvAABB;
-    ClampedSceneAABB:TpvAABB;
+    //ClampedSceneAABB:TpvAABB;
     AABB:TpvAABB;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
 begin
@@ -1162,9 +1162,9 @@ begin
                                            View^.InverseViewMatrix.RawComponents[3,1],
                                            View^.InverseViewMatrix.RawComponents[3,2])/View^.InverseViewMatrix.RawComponents[3,3];
 
- ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
+{ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
                                             -View^.InverseViewMatrix.RawComponents[2,1],
-                                            -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;
+                                            -View^.InverseViewMatrix.RawComponents[2,2]).Normalize;}
 
  SceneAABB:=fRendererInstance.Renderer.Scene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
 
@@ -1204,12 +1204,36 @@ begin
 { ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
   ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));
 
-  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);
+  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);//}
 
   AABB.Min:=SnappedPosition-(GridSize*0.5);
-  AABB.Max:=SnappedPosition+(GridSize*0.5);//}
+  AABB.Max:=SnappedPosition+(GridSize*0.5);
 
-  ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
+  if AABB.Min.x<SceneAABB.Min.x then begin
+   AABB.Max.x:=AABB.Max.x+(SceneAABB.Min.x-AABB.Min.x);
+   AABB.Min.x:=SceneAABB.Min.x;
+  end else if AABB.Max.x>SceneAABB.Max.x then begin
+   AABB.Min.x:=AABB.Min.x-(AABB.Max.x-SceneAABB.Max.x);
+   AABB.Max.x:=SceneAABB.Max.x;
+  end;
+
+  if AABB.Min.y<SceneAABB.Min.y then begin
+   AABB.Max.y:=AABB.Max.y+(SceneAABB.Min.y-AABB.Min.y);
+   AABB.Min.y:=SceneAABB.Min.y;
+  end else if AABB.Max.y>SceneAABB.Max.y then begin
+   AABB.Min.y:=AABB.Min.y-(AABB.Max.y-SceneAABB.Max.y);
+   AABB.Max.y:=SceneAABB.Max.y;
+  end;
+
+  if AABB.Min.z<SceneAABB.Min.z then begin
+   AABB.Max.z:=AABB.Max.z+(SceneAABB.Min.z-AABB.Min.z);
+   AABB.Min.z:=SceneAABB.Min.z;
+  end else if AABB.Max.z>SceneAABB.Max.z then begin
+   AABB.Min.z:=AABB.Min.z-(AABB.Max.z-SceneAABB.Max.z);
+   AABB.Max.z:=SceneAABB.Max.z;
+  end;
+
+  //ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
