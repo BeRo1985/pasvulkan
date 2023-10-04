@@ -209,6 +209,7 @@ type PpvScalar=^TpvScalar;
        class function InlineableCreate(const aX:TpvScalar):TpvVector3; overload; inline; static;
        class function InlineableCreate(const aX,aY,aZ:TpvScalar):TpvVector3; overload; inline; static;
        class function InlineableCreate(const aXY:TpvVector2;const aZ:TpvScalar=0.0):TpvVector3; overload; inline; static;
+       class function InlineableCreate(const aXYZ:TpvVector3):TpvVector3; overload; inline; static;
        class operator Implicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -248,7 +249,13 @@ type PpvScalar=^TpvScalar;
        function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function DistanceTo({$ifdef fpc}constref{$else}const{$endif} aToVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Min(const aWith:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Max(const aWith:TpvVector3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Truncate:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Round:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Floor:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
+       function Ceil:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
        function AngleTo(const aToVector:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend} {$if defined(fpc) and defined(cpuamd64) and not defined(Windows)}ms_abi_default;{$ifend}
@@ -2473,6 +2480,11 @@ begin
  result.z:=aZ;
 end;
 
+class function TpvVector3.InlineableCreate(const aXYZ:TpvVector3):TpvVector3;
+begin
+ result:=aXYZ;
+end;
+
 class operator TpvVector3.Implicit(const a:TpvScalar):TpvVector3;
 begin
  result.x:=a;
@@ -2628,9 +2640,9 @@ end;
 class operator TpvVector3.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
- movss xmm0,dword ptr [a]
- movss xmm1,xmm0
- movss xmm2,xmm0
+ movss xmm0,dword ptr [a+0]
+ movss xmm1,dword ptr [a+4]
+ movss xmm2,dword ptr [a+8]
  mulss xmm0,dword ptr [b+0]
  mulss xmm1,dword ptr [b+4]
  mulss xmm2,dword ptr [b+8]
@@ -2663,9 +2675,9 @@ end;
 class operator TpvVector3.Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
- movss xmm0,dword ptr [a]
- movss xmm1,xmm0
- movss xmm2,xmm0
+ movss xmm0,dword ptr [a+0]
+ movss xmm1,dword ptr [a+4]
+ movss xmm2,dword ptr [a+8]
  divss xmm0,dword ptr [b+0]
  divss xmm1,dword ptr [b+4]
  divss xmm2,dword ptr [b+8]
@@ -2698,9 +2710,9 @@ end;
 class operator TpvVector3.IntDivide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvVector3):TpvVector3;
 {$if defined(SIMD) and (defined(cpu386) or defined(cpux64))}
 asm
- movss xmm0,dword ptr [a]
- movss xmm1,xmm0
- movss xmm2,xmm0
+ movss xmm0,dword ptr [a+0]
+ movss xmm1,dword ptr [a+4]
+ movss xmm2,dword ptr [a+8]
  divss xmm0,dword ptr [b+0]
  divss xmm1,dword ptr [b+4]
  divss xmm2,dword ptr [b+8]
@@ -3094,6 +3106,20 @@ begin
 end;
 {$ifend}
 
+function TpvVector3.Min(const aWith:TpvVector3):TpvVector3;
+begin
+ result.x:=Math.Min(x,aWith.x);
+ result.y:=Math.Min(y,aWith.y);
+ result.z:=Math.Min(z,aWith.z);
+end;
+
+function TpvVector3.Max(const aWith:TpvVector3):TpvVector3;
+begin
+ result.x:=Math.Max(x,aWith.x);
+ result.y:=Math.Max(y,aWith.y);
+ result.z:=Math.Max(z,aWith.z);
+end;
+
 function TpvVector3.Abs:TpvVector3;
 {$if defined(SIMD) and defined(cpu386)}
 asm
@@ -3142,6 +3168,194 @@ begin
  result.x:=System.abs(x);
  result.y:=System.abs(y);
  result.z:=System.abs(z);
+end;
+{$ifend}
+
+function TpvVector3.Truncate:TpvVector3;
+{$if defined(SIMD) and defined(cpu386)}
+asm
+ movss xmm0,dword ptr [eax+0]
+ movss xmm1,dword ptr [eax+4]
+ movss xmm2,dword ptr [eax+8]
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,3
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$elseif defined(SIMD) and defined(cpux64)}
+asm
+//{$ifdef Windows}
+ movss xmm0,dword ptr [rcx+0]
+ movss xmm1,dword ptr [rcx+4]
+ movss xmm2,dword ptr [rcx+8]
+(*{$else}
+ movss xmm0,dword ptr [rdi+0]
+ movss xmm1,dword ptr [rdi+4]
+ movss xmm2,dword ptr [rdi+8]
+{$endif}*)
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,3
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$else}
+begin
+ result.x:=System.trunc(x);
+ result.y:=System.trunc(y);
+ result.z:=System.trunc(z);
+end;
+{$ifend}
+
+function TpvVector3.Round:TpvVector3;
+{$if defined(SIMD) and defined(cpu386)}
+asm
+ movss xmm0,dword ptr [eax+0]
+ movss xmm1,dword ptr [eax+4]
+ movss xmm2,dword ptr [eax+8]
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,0
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$elseif defined(SIMD) and defined(cpux64)}
+asm
+//{$ifdef Windows}
+ movss xmm0,dword ptr [rcx+0]
+ movss xmm1,dword ptr [rcx+4]
+ movss xmm2,dword ptr [rcx+8]
+(*{$else}
+ movss xmm0,dword ptr [rdi+0]
+ movss xmm1,dword ptr [rdi+4]
+ movss xmm2,dword ptr [rdi+8]
+{$endif}*)
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,0
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$else}
+begin
+ result.x:=System.Round(x);
+ result.y:=System.Round(y);
+ result.z:=System.Round(z);
+end;
+{$ifend}
+
+function TpvVector3.Floor:TpvVector3;
+{$if defined(SIMD) and defined(cpu386)}
+asm
+ movss xmm0,dword ptr [eax+0]
+ movss xmm1,dword ptr [eax+4]
+ movss xmm2,dword ptr [eax+8]
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,1
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$elseif defined(SIMD) and defined(cpux64)}
+asm
+//{$ifdef Windows}
+ movss xmm0,dword ptr [rcx+0]
+ movss xmm1,dword ptr [rcx+4]
+ movss xmm2,dword ptr [rcx+8]
+(*{$else}
+ movss xmm0,dword ptr [rdi+0]
+ movss xmm1,dword ptr [rdi+4]
+ movss xmm2,dword ptr [rdi+8]
+{$endif}*)
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,1
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$else}
+begin
+ result.x:=System.Floor(x);
+ result.y:=System.Floor(y);
+ result.z:=System.Floor(z);
+end;
+{$ifend}
+
+function TpvVector3.Ceil:TpvVector3;
+{$if defined(SIMD) and defined(cpu386)}
+asm
+ movss xmm0,dword ptr [eax+0]
+ movss xmm1,dword ptr [eax+4]
+ movss xmm2,dword ptr [eax+8]
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,2
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$elseif defined(SIMD) and defined(cpux64)}
+asm
+//{$ifdef Windows}
+ movss xmm0,dword ptr [rcx+0]
+ movss xmm1,dword ptr [rcx+4]
+ movss xmm2,dword ptr [rcx+8]
+(*{$else}
+ movss xmm0,dword ptr [rdi+0]
+ movss xmm1,dword ptr [rdi+4]
+ movss xmm2,dword ptr [rdi+8]
+{$endif}*)
+ movlhps xmm0,xmm1
+ shufps xmm0,xmm2,$88
+ roundps xmm0,xmm0,2
+ movaps xmm1,xmm0
+ movaps xmm2,xmm0
+ shufps xmm1,xmm1,$55
+ shufps xmm2,xmm2,$aa
+ movss dword ptr [result+0],xmm0
+ movss dword ptr [result+4],xmm1
+ movss dword ptr [result+8],xmm2
+end;
+{$else}
+begin
+ result.x:=System.Ceil(x);
+ result.y:=System.Ceil(y);
+ result.z:=System.Ceil(z);
 end;
 {$ifend}
 

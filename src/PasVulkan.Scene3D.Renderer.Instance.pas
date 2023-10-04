@@ -1121,21 +1121,24 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFrameIndex:TpvSizeInt);
- procedure ComputeGridExtents(out aAABBMin,aAABBMax:TpvScalar;
-                              const aPosition,aDirection,aGridSize:TpvScalar;
-                              const aTotalCells,aBufferCells:TpvInt32);
- var HalfCells,MaxCell:TpvInt32;
-     CellSize:TpvScalar;
+ procedure ComputeGridExtents(out aAABB:TpvAABB;
+                              const aPosition:TpvVector3;
+                              const aDirection:TpvVector3;
+                              const aGridSize:TpvVector3;
+                              const aTotalCells:TpvInt32;
+                              const aBufferCells:TpvInt32);
+ var HalfCells:TpvInt32;
+     MaxCell:TpvVector3;
  begin
   HalfCells:=aTotalCells shr 1;
-  MaxCell:=Min(Max(HalfCells-trunc(aDirection*(aBufferCells-HalfCells)),
-                   aBufferCells),
-                   aTotalCells-aBufferCells);
-  CellSize:=aGridSize/aTotalCells;
-  aAABBMax:=aPosition+(MaxCell*CellSize);
-  aAABBMin:=aAABBMax-aGridSize;
+  MaxCell:=Clamp(TpvVector3.InlineableCreate(HalfCells)-
+                 TpvVector3.InlineableCreate(aDirection*(aBufferCells-HalfCells)).Truncate,
+                 TpvVector3.InlineableCreate(aBufferCells),
+                 TpvVector3.InlineableCreate(aTotalCells-aBufferCells));
+  aAABB.Max:=aPosition+(MaxCell*(aGridSize/aTotalCells));
+  aAABB.Min:=aAABB.Max-aGridSize;
  end;
-var CascadeIndex,AxisIndex,BorderCells:TpvSizeInt;
+var CascadeIndex,BorderCells:TpvSizeInt;
     CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
     View:TpvScene3D.PView;
@@ -1207,43 +1210,15 @@ begin
 
   BorderCells:=1;//fCountCascades-CascadeIndex;
 
-  ClampedSceneAABB.Min.x:=Min(SceneAABB.Min.x+(GridSize.x*0.5),SceneAABB.Max.x-(GridSize.x*0.5));
-  ClampedSceneAABB.Min.y:=Min(SceneAABB.Min.y+(GridSize.y*0.5),SceneAABB.Max.y-(GridSize.y*0.5));
-  ClampedSceneAABB.Min.z:=Min(SceneAABB.Min.z+(GridSize.z*0.5),SceneAABB.Max.z-(GridSize.z*0.5));
+  ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
+  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));
 
-  ClampedSceneAABB.Max.x:=Max(SceneAABB.Min.x+(GridSize.x*0.5),SceneAABB.Max.x-(GridSize.x*0.5));
-  ClampedSceneAABB.Max.y:=Max(SceneAABB.Min.y+(GridSize.y*0.5),SceneAABB.Max.y-(GridSize.y*0.5));
-  ClampedSceneAABB.Max.z:=Max(SceneAABB.Min.z+(GridSize.z*0.5),SceneAABB.Max.z-(GridSize.z*0.5));
-
-  SnappedPosition.x:=Min(Max(SnappedPosition.x,ClampedSceneAABB.Min.x),ClampedSceneAABB.Max.x);
-  SnappedPosition.y:=Min(Max(SnappedPosition.y,ClampedSceneAABB.Min.y),ClampedSceneAABB.Max.y);
-  SnappedPosition.z:=Min(Max(SnappedPosition.z,ClampedSceneAABB.Min.z),ClampedSceneAABB.Max.z);
+  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);
 
   AABB.Min:=SnappedPosition-(GridSize*0.5);
   AABB.Max:=SnappedPosition+(GridSize*0.5);
 
-{}for AxisIndex:=0 to 2 do begin
-   ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
-                      AABB.Max.RawComponents[AxisIndex],
-                      SnappedPosition.xyz[AxisIndex],
-                      ViewDirection.xyz[AxisIndex],
-                      GridSize.xyz[AxisIndex],
-                      fVolumeSize,
-                      BorderCells);
-  end;
-//}
-
-{ for AxisIndex:=0 to 2 do begin
-   if AABB.Min.RawComponents[AxisIndex]<SceneAABB.Min.RawComponents[AxisIndex] then begin
-    ClampDelta.RawComponents[AxisIndex]:=SceneAABB.Min.RawComponents[AxisIndex]-AABB.Min.RawComponents[AxisIndex];
-   end else if AABB.Max.RawComponents[AxisIndex]>SceneAABB.Max.RawComponents[AxisIndex] then begin
-    ClampDelta.RawComponents[AxisIndex]:=AABB.Max.RawComponents[AxisIndex]-SceneAABB.Max.RawComponents[AxisIndex];
-   end else begin
-    ClampDelta.RawComponents[AxisIndex]:=0;
-   end;
-  end;
-  AABB.Min:=AABB.Min+ClampDelta;
-  AABB.Max:=AABB.Max+ClampDelta;{}
+//ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
