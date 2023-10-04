@@ -1144,7 +1144,9 @@ var CascadeIndex,AxisIndex,BorderCells:TpvSizeInt;
     GridCenter:TpvVector3;
     SnappedPosition:TpvVector3;
     GridSize:TpvVector3;
+//  ClampDelta:TpvVector3;
     SceneAABB:TpvAABB;
+    ClampedSceneAABB:TpvAABB;
     AABB:TpvAABB;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
 begin
@@ -1205,10 +1207,22 @@ begin
 
   BorderCells:=1;//fCountCascades-CascadeIndex;
 
+  ClampedSceneAABB.Min.x:=Min(SceneAABB.Min.x+(GridSize.x*0.5),SceneAABB.Max.x-(GridSize.x*0.5));
+  ClampedSceneAABB.Min.y:=Min(SceneAABB.Min.y+(GridSize.y*0.5),SceneAABB.Max.y-(GridSize.y*0.5));
+  ClampedSceneAABB.Min.z:=Min(SceneAABB.Min.z+(GridSize.z*0.5),SceneAABB.Max.z-(GridSize.z*0.5));
+
+  ClampedSceneAABB.Max.x:=Max(SceneAABB.Min.x+(GridSize.x*0.5),SceneAABB.Max.x-(GridSize.x*0.5));
+  ClampedSceneAABB.Max.y:=Max(SceneAABB.Min.y+(GridSize.y*0.5),SceneAABB.Max.y-(GridSize.y*0.5));
+  ClampedSceneAABB.Max.z:=Max(SceneAABB.Min.z+(GridSize.z*0.5),SceneAABB.Max.z-(GridSize.z*0.5));
+
+  SnappedPosition.x:=Min(Max(SnappedPosition.x,ClampedSceneAABB.Min.x),ClampedSceneAABB.Max.x);
+  SnappedPosition.y:=Min(Max(SnappedPosition.y,ClampedSceneAABB.Min.y),ClampedSceneAABB.Max.y);
+  SnappedPosition.z:=Min(Max(SnappedPosition.z,ClampedSceneAABB.Min.z),ClampedSceneAABB.Max.z);
+
   AABB.Min:=SnappedPosition-(GridSize*0.5);
   AABB.Max:=SnappedPosition+(GridSize*0.5);
 
- for AxisIndex:=0 to 2 do begin
+{}for AxisIndex:=0 to 2 do begin
    ComputeGridExtents(AABB.Min.RawComponents[AxisIndex],
                       AABB.Max.RawComponents[AxisIndex],
                       SnappedPosition.xyz[AxisIndex],
@@ -1216,7 +1230,20 @@ begin
                       GridSize.xyz[AxisIndex],
                       fVolumeSize,
                       BorderCells);
-  end;//}
+  end;
+//}
+
+{ for AxisIndex:=0 to 2 do begin
+   if AABB.Min.RawComponents[AxisIndex]<SceneAABB.Min.RawComponents[AxisIndex] then begin
+    ClampDelta.RawComponents[AxisIndex]:=SceneAABB.Min.RawComponents[AxisIndex]-AABB.Min.RawComponents[AxisIndex];
+   end else if AABB.Max.RawComponents[AxisIndex]>SceneAABB.Max.RawComponents[AxisIndex] then begin
+    ClampDelta.RawComponents[AxisIndex]:=AABB.Max.RawComponents[AxisIndex]-SceneAABB.Max.RawComponents[AxisIndex];
+   end else begin
+    ClampDelta.RawComponents[AxisIndex]:=0;
+   end;
+  end;
+  AABB.Min:=AABB.Min+ClampDelta;
+  AABB.Max:=AABB.Max+ClampDelta;{}
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
