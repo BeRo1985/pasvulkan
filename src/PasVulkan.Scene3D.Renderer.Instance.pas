@@ -1209,8 +1209,8 @@ begin
 
   SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);//}
 
-  AABB.Min:=SnappedPosition-(GridSize*0.5);
-  AABB.Max:=SnappedPosition+(GridSize*0.5);
+  AABB.Min:=(TpvVector3.InlineableCreate(SnappedPosition-(GridSize*0.5))/SnapSize).Floor*SnapSize;
+  AABB.Max:=AABB.Min+GridSize;
 
 { if AABB.Min.x<SceneAABB.Min.x then begin
    AABB.Max.x:=AABB.Max.x+(SceneAABB.Min.x-AABB.Min.x);
