@@ -111,6 +111,7 @@ begin
  fForceUseValidationLayers:=false;
  fForceNoVSync:=false;
  VulkanNVIDIAAfterMath:=false;
+ //WaitOnPreviousFrame:=true;
  fMaxMSAA:=0;
  fMaxShadowMSAA:=1;
  fShadowMapSize:=2048;

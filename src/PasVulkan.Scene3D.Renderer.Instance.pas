@@ -1154,7 +1154,7 @@ begin
                                            View^.InverseViewMatrix.RawComponents[3,1],
                                            View^.InverseViewMatrix.RawComponents[3,2])/View^.InverseViewMatrix.RawComponents[3,3];
 
- ViewPosition:=TpvVector3.Null;
+//ViewPosition:=TpvVector3.Null;
 
  ViewDirection:=TpvVector3.InlineableCreate(-View^.InverseViewMatrix.RawComponents[2,0],
                                             -View^.InverseViewMatrix.RawComponents[2,1],

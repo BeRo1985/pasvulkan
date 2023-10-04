@@ -1326,6 +1326,7 @@ type EpvApplication=class(Exception)
        fUseAudio:boolean;
        fBlocking:boolean;
        fWaitOnPreviousFrames:boolean;
+       fWaitOnPreviousFrame:boolean;
        fTerminationWithAltF4:boolean;
        fTerminationOnQuitEvent:boolean;
 
@@ -1504,6 +1505,8 @@ type EpvApplication=class(Exception)
        fDesiredCountInFlightFrames:TpvInt32;
 
        fCountInFlightFrames:TpvInt32;
+
+       fPreviousInFlightFrameIndex:TpvInt32;
 
        fCurrentInFlightFrameIndex:TpvInt32;
 
@@ -1917,6 +1920,8 @@ type EpvApplication=class(Exception)
 
        property WaitOnPreviousFrames:boolean read fWaitOnPreviousFrames write fWaitOnPreviousFrames;
 
+       property WaitOnPreviousFrame:boolean read fWaitOnPreviousFrame write fWaitOnPreviousFrame;
+
        property TerminationWithAltF4:boolean read fTerminationWithAltF4 write fTerminationWithAltF4;
 
        property TerminationOnQuitEvent:boolean read fTerminationOnQuitEvent write fTerminationOnQuitEvent;
@@ -2020,6 +2025,8 @@ type EpvApplication=class(Exception)
        property DesiredCountInFlightFrames:TpvInt32 read fDesiredCountInFlightFrames write SetDesiredCountInFlightFrames;
 
        property CountInFlightFrames:TpvInt32 read fCountInFlightFrames;
+
+       property PreviousInFlightFrameIndex:TpvInt32 read fPreviousInFlightFrameIndex;
 
        property CurrentInFlightFrameIndex:TpvInt32 read fCurrentInFlightFrameIndex;
 
@@ -7020,6 +7027,7 @@ begin
  fUseAudio:=false;
  fBlocking:=true;
  fWaitOnPreviousFrames:=false;
+ fWaitOnPreviousFrame:=false;
  fTerminationWithAltF4:=true;
  fTerminationOnQuitEvent:=true;
 
@@ -7142,6 +7150,8 @@ begin
  fDrawFrameCounter:=0;
 
  SetDesiredCountInFlightFrames(2);
+
+ fPreviousInFlightFrameIndex:=1;
 
  fCurrentInFlightFrameIndex:=0;
 
@@ -9140,6 +9150,7 @@ begin
                                                TimeOut) of
          VK_SUCCESS:begin
           fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=true;
+          fPreviousInFlightFrameIndex:=fCurrentInFlightFrameIndex;
           fCurrentInFlightFrameIndex:=NextInFlightFrameIndex;
           fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
           if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
@@ -9156,6 +9167,7 @@ begin
            continue;
           end else begin
            fVulkanPresentCompleteFencesReady[fSwapChainImageCounterIndex]:=true;
+           fPreviousInFlightFrameIndex:=fCurrentInFlightFrameIndex;
            fCurrentInFlightFrameIndex:=NextInFlightFrameIndex;
            fNextInFlightFrameIndex:=fCurrentInFlightFrameIndex+1;
            if fNextInFlightFrameIndex>=fCountInFlightFrames then begin
@@ -9192,6 +9204,22 @@ begin
       end;
 
       TAcquireVulkanBackBufferState.WaitOnFence:begin
+       if fWaitOnPreviousFrame then begin
+        InFlightFenceIndex:=fVulkanInFlightFenceIndices[fPreviousInFlightFrameIndex];
+        if (InFlightFenceIndex>=0) and
+           fVulkanWaitFencesReady[InFlightFenceIndex] then begin
+         if fVulkanWaitFences[InFlightFenceIndex].GetStatus<>VK_SUCCESS then begin
+          if fBlocking then begin
+           fVulkanWaitFences[InFlightFenceIndex].WaitFor;
+          end else begin
+           break;
+          end;
+         end;
+         fVulkanWaitFences[InFlightFenceIndex].Reset;
+         fVulkanWaitFencesReady[InFlightFenceIndex]:=false;
+         fVulkanInFlightFenceIndices[fPreviousInFlightFrameIndex]:=-1;
+        end;
+       end;
        InFlightFenceIndex:=fVulkanInFlightFenceIndices[fCurrentInFlightFrameIndex];
        if (InFlightFenceIndex>=0) and
           fVulkanWaitFencesReady[InFlightFenceIndex] then begin
@@ -11148,6 +11176,8 @@ begin
 
    fUpdateFrameCounter:=fFrameCounter;
    fDrawFrameCounter:=fFrameCounter;
+
+   fPreviousInFlightFrameIndex:=fCurrentInFlightFrameIndex;
 
    fCurrentInFlightFrameIndex:=fNextInFlightFrameIndex;
 

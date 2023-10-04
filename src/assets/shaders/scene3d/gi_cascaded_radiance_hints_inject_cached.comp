@@ -27,7 +27,7 @@ layout(set = 0, binding = 4) uniform sampler3D uTexLastMetaInfo[]; // The previo
 
 void main(){
 
-  ivec3 lInvocationPosition = (ivec3(gl_WorkGroupID.xyz) * ivec3(gl_WorkGroupSize.xyz)) + ivec3(gl_LocalInvocationID.xyz);
+  ivec3 lInvocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   if(all(greaterThanEqual(lInvocationPosition, ivec3(0))) && all(lessThan(lInvocationPosition, uGlobalIlluminationCascadedVolumeSize))){
     
     int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;
@@ -91,8 +91,8 @@ void main(){
       }
     }
 
-    // Otherwise clear the volume for a new frame (did already with vkCmdClearColorImage, so not needed here)
-/*
+    // Otherwise clear the volume for a new frame
+/*/
 #if GI_COMPRESSION == 0
     imageStore(uImageSH[lTexIndexOffset + 0], lInvocationPosition, vec4(0.0));
     imageStore(uImageSH[lTexIndexOffset + 1], lInvocationPosition, vec4(0.0));
@@ -114,7 +114,7 @@ void main(){
 #endif    
     float infinity = uintBitsToFloat(0x7f800000u);
     imageStore(uImageMetaInfo[lCascadeIndex], lInvocationPosition, vec4(infinity, -infinity, 0.0, 0.0)); // x = minimum distance, y = maximum distance
-*/    
+/**/
 
  }   
 

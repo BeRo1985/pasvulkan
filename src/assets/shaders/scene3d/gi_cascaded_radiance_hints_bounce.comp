@@ -28,7 +28,7 @@ layout(set = 0, binding = 6) uniform sampler3D uTexMetaInfo[]; // The current gl
 
 void main(){
 
-  ivec3 lInvocationPosition = (ivec3(gl_WorkGroupID.xyz) * ivec3(gl_WorkGroupSize.xyz)) + ivec3(gl_LocalInvocationID.xyz);
+  ivec3 lInvocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   if(all(greaterThanEqual(lInvocationPosition, ivec3(0))) && all(lessThan(lInvocationPosition, uGlobalIlluminationCascadedVolumeSize))){
     
     int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;

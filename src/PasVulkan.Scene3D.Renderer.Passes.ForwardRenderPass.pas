@@ -862,7 +862,7 @@ begin
                                          fVulkanPipelineLayout.Handle,
                                          1,
                                          2,
-                                         @DescriptorSets,
+                                         @DescriptorSets[0],
                                          0,
                                          nil);
    end;
@@ -889,14 +889,14 @@ begin
 
  if InFlightFrameState^.Ready then begin
 
+  fOnSetRenderPassResourcesDone:=false;
+
 {}fSkyBox.Draw(aInFlightFrameIndex,
                InFlightFrameState^.FinalViewIndex,
                InFlightFrameState^.CountFinalViews,
                aCommandBuffer);//{}
 
   if true then begin
-
-   fOnSetRenderPassResourcesDone:=false;
 
 (* if fInstance.Renderer.UseDepthPrepass then begin
 

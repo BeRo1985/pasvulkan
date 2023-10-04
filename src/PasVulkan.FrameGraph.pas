@@ -2962,7 +2962,7 @@ begin
  for ExplicitPassNameDependency in fExplicitPassNameDependencies do begin
   Pass:=fFrameGraph.fPassNameHashMap[ExplicitPassNameDependency.fPassName];
   if assigned(Pass) then begin
-  AddExplicitPassDependency(Pass,ExplicitPassNameDependency.fDstStageMask);
+   AddExplicitPassDependency(Pass,ExplicitPassNameDependency.fDstStageMask);
   end else begin
    raise EpvFrameGraphMissingExplicitPassDependency.Create('Missing explicit pass dependency "'+ExplicitPassNameDependency.fPassName+'"');
   end;

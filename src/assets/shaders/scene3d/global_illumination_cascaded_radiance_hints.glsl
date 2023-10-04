@@ -525,7 +525,7 @@ void  globalIlluminationSphericalHarmonicsMultiply(out vec3 y[9], const in vec3 
 }
 
 #ifdef GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
-void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset){
+void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset, const vec3 pNormal){
   vec3 lWorldSpacePosition = pWorldPosition + (pOffset * ((globalIlluminationVolumeAABBMax[0].xyz - globalIlluminationVolumeAABBMin[0].xyz) * uGlobalIlluminationVolumeSizeInvVector));
   int lCascadeIndex = 0;
   while(lCascadeIndex < GI_CASCADES){
@@ -540,6 +540,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
     vec4 lAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex];
     vec4 lAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex];
+#if 1
 #if GI_COMPRESSION == 0
     int lTexIndexOffset = lCascadeIndex * 7;
 #elif GI_COMPRESSION == 1
@@ -549,7 +550,6 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
 #else
     #error "GI_COMPRESSION must be 0, 1 or 2"
 #endif   
-#if 1
     vec3 lVolume3DPosition = clamp(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), vec3(0.0), vec3(1.0));
     vec4 lTSH0 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 0], lVolume3DPosition, 0.0);
     vec4 lTSH1 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 1], lVolume3DPosition, 0.0);
@@ -591,8 +591,8 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     }
 #else
     vec3 lRandom = vec3(0.5);
-    vec3 lTangent = normalize(cross(gNormal, lRandom));
-    vec3 lBitangent = normalize(cross(gNormal, lTangent));
+    vec3 lTangent = normalize(cross(pNormal, lRandom));
+    vec3 lBitangent = normalize(cross(pNormal, lTangent));
     vec3 lD[4];
     for(int lIndex = 0; lIndex < 4; lIndex++){
       float lTheta = ((lRandom.x * 1.5) + float(lIndex)) * (6.2831853072 / 3.0);
@@ -615,8 +615,17 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
       lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
     }
     for(int lIndex = 0; lIndex < 4; lIndex++){
-      vec3 lSampleDirection = (gNormal * lD[lIndex].x) + (lTangent * lD[lIndex].y) + (lBitangent * lD[lIndex].z);
-      vec3 lSampleOffset = (lSampleDirection + (gNormal * 0.5)) * uGlobalIlluminationVolumeSizeInvVector;
+#if GI_COMPRESSION == 0
+      int lTexIndexOffset = lCascadeIndex * 7;
+#elif GI_COMPRESSION == 1
+      int lTexIndexOffset = lCascadeIndex * 5;
+#elif GI_COMPRESSION == 2
+      int lTexIndexOffset = lCascadeIndex * 3;
+#else
+      #error "GI_COMPRESSION must be 0, 1 or 2"
+#endif   
+      vec3 lSampleDirection = (pNormal * lD[lIndex].x) + (lTangent * lD[lIndex].y) + (lBitangent * lD[lIndex].z);
+      vec3 lSampleOffset = (lSampleDirection + (pNormal * 0.5)) * uGlobalIlluminationVolumeSizeInvVector;
       vec3 lVolume3DPosition = clamp(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), vec3(0.0), vec3(1.0));
       vec4 lTTSH0 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 0], lVolume3DPosition, 0.0);
       vec4 lTTSH1 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 1], lVolume3DPosition, 0.0);
@@ -714,12 +723,12 @@ vec3 globalIlluminationGetSpecularColor(const in vec3 pWorldSpacePosition, const
   vec3 lReflectionVector = normalize(reflect(-pViewDirection, pNormal));
   float lReflectionOffset = pow(clamp(1.0 - pMaterialRoughness, 0.0, 1.0), 4.0) * 8.0;
   vec3 lSpecularSphericalHarmonics[9];
-  globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition, lReflectionVector * lReflectionOffset);
+  globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition, lReflectionVector * lReflectionOffset, pNormal);
   vec3 lGlobalIlluminationSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
 #ifdef GI_SPECULAR_MULTIPLE_TAPS
   if(lReflectionOffset > 1.0){
     if(lReflectionOffset > 5.0){
-      globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition, lReflectionVector * (lReflectionOffset * 0.5));
+      globalIlluminationVolumeLookUp(lSpecularSphericalHarmonics, pWorldSpacePosition, lReflectionVector * (lReflectionOffset * 0.5), pNormal);
       vec3 lGlobalIlluminationOtherSpecularColor = globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(lReflectionVector, lSpecularSphericalHarmonics));
       vec2 lGlobalIlluminationSpecularFactors = vec2(dot(lGlobalIlluminationOtherSpecularColor, vec3(0.07475, 0.14675, 0.0285)), dot(lGlobalIlluminationSpecularColor, vec3(0.22425, 0.44025, 0.0855)));
       lGlobalIlluminationSpecularColor = mix(lGlobalIlluminationOtherSpecularColor, lGlobalIlluminationSpecularColor, clamp(lGlobalIlluminationSpecularFactors.y / max(1e-4, lGlobalIlluminationSpecularFactors.x + lGlobalIlluminationSpecularFactors.y), 0.0, 1.0));

@@ -33,7 +33,7 @@ layout(set = 0, binding = 4, std430) buffer SkySphericalHarmonicsBuffer {
 
 void main(){
 
-  ivec3 lInvocationPosition = (ivec3(gl_WorkGroupID.xyz) * ivec3(gl_WorkGroupSize.xyz)) + ivec3(gl_LocalInvocationID.xyz);
+  ivec3 lInvocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   if(all(greaterThanEqual(lInvocationPosition, ivec3(0))) && all(lessThan(lInvocationPosition, uGlobalIlluminationCascadedVolumeSize))){
     
     int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;
@@ -189,7 +189,7 @@ void main(){
 
     ivec3 lVolumePosition = lInvocationPosition;
 
-    if(false){
+    {
 #if GI_COMPRESSION == 0
       vec4 lTSH0 = imageLoad(uImageSH[lTexIndexOffset + 0], lVolumePosition);   
       vec4 lTSH1 = imageLoad(uImageSH[lTexIndexOffset + 1], lVolumePosition);   
