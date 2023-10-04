@@ -255,6 +255,17 @@ type { TpvScene3DRendererInstance }
             PGlobalIlluminationRadianceHintsUniformBufferData=^TGlobalIlluminationRadianceHintsUniformBufferData;
             TGlobalIlluminationRadianceHintsUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsUniformBufferData;
             PGlobalIlluminationRadianceHintsUniformBufferDataArray=^TGlobalIlluminationRadianceHintsUniformBufferDataArray;
+            TGlobalIlluminationRadianceHintsRSMUniformBufferData=record
+             WorldToReflectiveShadowMapMatrix:TpvMatrix4x4;
+             ReflectiveShadowMapToWorldMatrix:TpvMatrix4x4;
+             ModelViewProjectionMatrix:TpvMatrix4x4;
+             LightDirection:TpvVector4;
+             LightPosition:TpvVector4;
+             Spread:TpvVector4;
+            end;
+            PGlobalIlluminationRadianceHintsRSMUniformBufferData=^TGlobalIlluminationRadianceHintsRSMUniformBufferData;
+            TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsRSMUniformBufferData;
+            PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -356,6 +367,7 @@ type { TpvScene3DRendererInstance }
             PInFlightFrameCascadedRadianceHintVolumeImages=^TInFlightFrameCascadedRadianceHintVolumeImages;
             TGlobalIlluminationRadianceHintsUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalIlluminationRadianceHintsDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+            TGlobalIlluminationRadianceHintsRSMUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -406,6 +418,8 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages:TInFlightFrameCascadedRadianceHintVolumeImages;
        fGlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray;
        fGlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers;
+       fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
+       fGlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers;
        fGlobalIlluminationRadianceHintsCascadedVolumes:TCascadedVolumes;
        fGlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -525,6 +539,8 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
        property GlobalIlluminationRadianceHintsUniformBufferDataArray:TGlobalIlluminationRadianceHintsUniformBufferDataArray read fGlobalIlluminationRadianceHintsUniformBufferDataArray;
        property GlobalIlluminationRadianceHintsUniformBuffers:TGlobalIlluminationRadianceHintsUniformBuffers read fGlobalIlluminationRadianceHintsUniformBuffers;
+       property GlobalIlluminationRadianceHintsRSMUniformBufferDataArray:TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray read fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
+       property GlobalIlluminationRadianceHintsRSMUniformBuffers:TGlobalIlluminationRadianceHintsRSMUniformBuffers read fGlobalIlluminationRadianceHintsRSMUniformBuffers;
        property GlobalIlluminationRadianceHintsDescriptorPool:TpvVulkanDescriptorPool read fGlobalIlluminationRadianceHintsDescriptorPool;
        property GlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationRadianceHintsDescriptorSetLayout;
        property GlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets read fGlobalIlluminationRadianceHintsDescriptorSets;
@@ -1357,6 +1373,8 @@ begin
 
  FillChar(fGlobalIlluminationRadianceHintsUniformBuffers,SizeOf(TGlobalIlluminationRadianceHintsUniformBuffers),#0);
 
+ FillChar(fGlobalIlluminationRadianceHintsRSMUniformBuffers,SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBuffers),#0);
+
  fGlobalIlluminationRadianceHintsCascadedVolumes:=nil;
 
  FillChar(fGlobalIlluminationRadianceHintsDescriptorSets,SizeOf(TGlobalIlluminationRadianceHintsDescriptorSets),#0);
@@ -1484,6 +1502,7 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fGlobalIlluminationRadianceHintsDescriptorSetLayout);
@@ -1556,7 +1575,21 @@ begin
                                                                                                0,
                                                                                                0,
                                                                                                0,
-                                                                                               [TpvVulkanBufferFlag.PersistentMapped]);
+                                                                                               [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+    fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                                  SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData),
+                                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                                  [],
+                                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                                  0,
+                                                                                                  0,
+                                                                                                  0,
+                                                                                                  0,
+                                                                                                  0,
+                                                                                                  0,
+                                                                                                  [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
    end;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -3280,56 +3313,96 @@ end;
 
 procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationRadianceHints(const aInFlightFrameIndex:TpvInt32);
 var CascadeIndex:TpvSizeInt;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     GlobalIlluminationRadianceHintsUniformBufferData:PGlobalIlluminationRadianceHintsUniformBufferData;
+    GlobalIlluminationRadianceHintsRSMUniformBufferData:PGlobalIlluminationRadianceHintsRSMUniformBufferData;
     CascadedVolumeCascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     s:TpvScalar;
 begin
 
+ InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
  fGlobalIlluminationRadianceHintsCascadedVolumes.Update(aInFlightFrameIndex);
 
- GlobalIlluminationRadianceHintsUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
+ begin
 
- fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=false;
+  GlobalIlluminationRadianceHintsUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
 
- for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
+  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=false;
 
-  CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
+  for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
 
-  s:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationRadiantHintCascades-1)].fCellSize*2.0;
+   CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
 
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/(CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min),0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBSnappedCenter[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-(CascadedVolumeCascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-CascadedVolumeCascade.fSnapSize,0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5)+CascadedVolumeCascade.fOffset,0.0);
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=CascadedVolumeCascade.fDelta.x;
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=CascadedVolumeCascade.fDelta.y;
-  GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=CascadedVolumeCascade.fDelta.z;
-  //GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
-  if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
-   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
-   fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
-  end else begin
-   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=CascadedVolumeCascade.fDelta.w;
-   if GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w<>0 then begin
+   s:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),CountGlobalIlluminationRadiantHintCascades-1)].fCellSize*2.0;
+
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/(CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min),0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBSnappedCenter[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-(CascadedVolumeCascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-CascadedVolumeCascade.fSnapSize,0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBCenter[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5)+CascadedVolumeCascade.fOffset,0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=CascadedVolumeCascade.fDelta.x;
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=CascadedVolumeCascade.fDelta.y;
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=CascadedVolumeCascade.fDelta.z;
+   //
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;{
+   if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
+    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
     fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
-   end;
+   end else begin
+    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=CascadedVolumeCascade.fDelta.w;
+    if GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w<>0 then begin
+     fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
+    end;
+   end;//}
+
   end;
+
+  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
+  //fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+
+  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                                  Renderer.Scene3D.VulkanStagingFence,
+                                                  GlobalIlluminationRadianceHintsUniformBufferData^,
+                                                  fGlobalIlluminationRadianceHintsUniformBuffers[aInFlightFrameIndex],
+                                                  0,
+                                                  SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData));
 
  end;
 
- //fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
- fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+ begin
 
- pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
-                                                 Renderer.Scene3D.VulkanStagingCommandBuffer,
-                                                 Renderer.Scene3D.VulkanStagingFence,
-                                                 GlobalIlluminationRadianceHintsUniformBufferData^,
-                                                 fGlobalIlluminationRadianceHintsUniformBuffers[aInFlightFrameIndex],
-                                                 0,
-                                                 SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData));
+  GlobalIlluminationRadianceHintsRSMUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
+
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.WorldToReflectiveShadowMapMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightPosition:=(-GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection)*65536.0;
+  if Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.Spread:=TpvVector4.InlineableCreate((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,
+                                                                                            (-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,
+                                                                                            0.0,
+                                                                                            0.0);
+  end else begin
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.Spread:=TpvVector4.InlineableCreate(Renderer.GlobalIlluminationRadianceHintsSpread,
+                                                                                            Renderer.GlobalIlluminationRadianceHintsSpread,
+                                                                                            0.0,
+                                                                                            0.0);
+  end;
+
+  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                                  Renderer.Scene3D.VulkanStagingFence,
+                                                  GlobalIlluminationRadianceHintsRSMUniformBufferData^,
+                                                  fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex],
+                                                  0,
+                                                  SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData));
+
+ end;
 
 end;
 

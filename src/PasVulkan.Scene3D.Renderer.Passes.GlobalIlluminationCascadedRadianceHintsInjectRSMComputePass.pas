@@ -79,15 +79,6 @@ uses SysUtils,
 type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass }
      TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass=class(TpvFrameGraph.TComputePass)
       public
-       type TUniformBufferData=record
-             WorldToReflectiveShadowMapMatrix:TpvMatrix4x4;
-             ReflectiveShadowMapToWorldMatrix:TpvMatrix4x4;
-             ModelViewProjectionMatrix:TpvMatrix4x4;
-             LightDirection:TpvVector4;
-             LightPosition:TpvVector4;
-             Spread:TpvVector4;
-            end;
-            PUniformBufferData=^TUniformBufferData;
       private
        fInstance:TpvScene3DRendererInstance;
        fResourceRSMColor:TpvFrameGraph.TPass.TUsedImageResource;
@@ -101,7 +92,6 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMC
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
        fVulkanImageViews:array[0..MaxInFlightFrames-1] of TpvVulkanImageView;
-       fVulkanUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        //fFirst:Boolean;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -266,21 +256,6 @@ begin
                                                                     1
                                                                    );
 
-   fVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fInstance.Renderer.VulkanDevice,
-                                                                     SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TUniformBufferData),
-                                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                     [],
-                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                     0,
-                                                                     0,
-                                                                     0,
-                                                                     0,
-                                                                     0,
-                                                                     0,
-                                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
-
    SetLength(ImageSHDescriptorImageInfoArray,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages);
    SetLength(ImageMetaInfoDescriptorImageInfoArray,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades);
 
@@ -351,7 +326,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                   [],
-                                                                  [fVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                  [fInstance.GlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                   [],
                                                                   false
                                                                  );
@@ -377,7 +352,6 @@ begin
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fVulkanImageViews[InFlightFrameIndex]);
-  FreeAndNil(fVulkanUniformBuffers[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanDescriptorPool);
@@ -394,7 +368,6 @@ var InFlightFrameIndex,Index,CascadeIndex,VolumeIndex:TpvInt32;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..(TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages)-1] of TVkImageMemoryBarrier;
 //  PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TPushConstants;
-    UniformBufferData:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TUniformBufferData;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
 
@@ -404,38 +377,15 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[InFlightFrameIndex];
 
- UniformBufferData.WorldToReflectiveShadowMapMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix;
- UniformBufferData.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
- UniformBufferData.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
- UniformBufferData.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
- UniformBufferData.LightPosition:=(-UniformBufferData.LightDirection)*65536.0;
- if fInstance.Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
-  UniformBufferData.Spread:=TpvVector4.InlineableCreate((-fInstance.Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,
-                                                        (-fInstance.Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,
-                                                        0.0,
-                                                        0.0);
- end else begin
-  UniformBufferData.Spread:=TpvVector4.InlineableCreate(fInstance.Renderer.GlobalIlluminationRadianceHintsSpread,
-                                                        fInstance.Renderer.GlobalIlluminationRadianceHintsSpread,
-                                                        0.0,
-                                                        0.0);
- end;
-  //fVulkanUniformBuffers[InFlightFrameIndex]
-
- aCommandBuffer.CmdUpdateBuffer(fVulkanUniformBuffers[InFlightFrameIndex].Handle,
-                                0,
-                                SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass.TUniformBufferData),
-                                @UniformBufferData);
-
- BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+ BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                     TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fVulkanUniformBuffers[InFlightFrameIndex].Handle,
+                                                    fInstance.GlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex].Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);
 
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
