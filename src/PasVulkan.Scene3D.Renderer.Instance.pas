@@ -362,7 +362,7 @@ type { TpvScene3DRendererInstance }
               constructor Create(const aFrameGraph:TpvFrameGraph;const aRendererInstance:TpvScene3DRendererInstance;const aParent:TObject); reintroduce; virtual;
             end;
             THUDRenderPassClass=class of THUDRenderPass;
-            TInFlightFrameMustRenderReflectiveShadowMaps=array[0..MaxInFlightFrames-1] of LongBool;
+            TInFlightFrameMustRenderGIMaps=array[0..MaxInFlightFrames-1] of LongBool;
             TCascadedRadianceHintVolumeImages=array[0..CountGlobalIlluminationRadiantHintCascades-1,0..CountGlobalIlluminationRadiantHintVolumeImages-1] of TpvScene3DRendererImage3D;
             TInFlightFrameCascadedRadianceHintVolumeImages=array[0..MaxInFlightFrames-1] of TCascadedRadianceHintVolumeImages;
             PInFlightFrameCascadedRadianceHintVolumeImages=^TInFlightFrameCascadedRadianceHintVolumeImages;
@@ -430,7 +430,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fGlobalIlluminationRadianceHintsEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
-       fInFlightFrameMustRenderReflectiveShadowMaps:TInFlightFrameMustRenderReflectiveShadowMaps;
+       fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
        fDepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers;
@@ -537,7 +537,7 @@ type { TpvScene3DRendererInstance }
       published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
-       property InFlightFrameMustRenderReflectiveShadowMaps:TInFlightFrameMustRenderReflectiveShadowMaps read fInFlightFrameMustRenderReflectiveShadowMaps;
+       property InFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps read fInFlightFrameMustRenderGIMaps;
       public
        property InFlightFrameCascadedRadianceHintVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeImages;
        property InFlightFrameCascadedRadianceHintSecondBounceVolumeImages:TInFlightFrameCascadedRadianceHintVolumeImages read fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages;
@@ -3359,7 +3359,7 @@ begin
 
   GlobalIlluminationRadianceHintsUniformBufferData:=@fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex];
 
-  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=not Renderer.GlobalIlluminationCaching;
+  fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex]:=not Renderer.GlobalIlluminationCaching;
 
   for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
 
@@ -3380,11 +3380,12 @@ begin
    if Renderer.GlobalIlluminationCaching then begin
     if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
      GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
+     fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex]:=true;
     end else begin
      GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=CascadedVolumeCascade.fDelta.w;
-    end;
-    if GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w<>0 then begin
-     fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
+     if GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w<>0 then begin
+      fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex]:=true;
+     end;
     end;
    end else begin
     GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
@@ -3437,7 +3438,7 @@ begin
 
  end;
 
- if not Renderer.GlobalIlluminationCaching then begin
+ if Renderer.GlobalIlluminationCaching then begin
   fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
  end;
 
@@ -4051,9 +4052,9 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
-{  TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.Enabled:=fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex];
+{  TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass.Enabled:=fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex];
 
-   TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.Enabled:=fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex];}
+   TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass.Enabled:=fInFlightFrameMustRenderGIMaps[aInFlightFrameIndex];}
 
   end;
 

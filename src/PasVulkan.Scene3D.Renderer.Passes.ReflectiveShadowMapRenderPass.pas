@@ -814,7 +814,7 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
- if InFlightFrameState^.Ready and fInstance.InFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex] then begin
+ if InFlightFrameState^.Ready and fInstance.InFlightFrameMustRenderGIMaps[aInFlightFrameIndex] then begin
 
 { fSkyBox.Draw(aInFlightFrameIndex,
                InFlightFrameState^.ReflectiveShadowMapViewIndex,

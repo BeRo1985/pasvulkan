@@ -382,18 +382,18 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                           const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+                                                                           const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
- if InFlightFrameState^.Ready then begin
+ if InFlightFrameState^.Ready and fInstance.InFlightFrameMustRenderGIMaps[aInFlightFrameIndex] then begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-  if fInstance.Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None then begin
+  begin
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
