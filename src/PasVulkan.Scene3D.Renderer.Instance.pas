@@ -3374,7 +3374,7 @@ begin
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].x:=CascadedVolumeCascade.fDelta.x;
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].y:=CascadedVolumeCascade.fDelta.y;
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].z:=CascadedVolumeCascade.fDelta.z;
-   //GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;{
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;{
    if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then begin
     GlobalIlluminationRadianceHintsUniformBufferData^.AABBDeltas[CascadeIndex].w:=-1;
     fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
@@ -3387,7 +3387,8 @@ begin
 
   end;
 
-//fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
+//
+  fInFlightFrameMustRenderReflectiveShadowMaps[aInFlightFrameIndex]:=true;
 
 { if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
    pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
@@ -3434,7 +3435,7 @@ begin
 
  end;
 
- fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
+ //fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex]:=false;
 
 end;
 

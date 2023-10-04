@@ -544,7 +544,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     lCascadeIndex = GI_CASCADES - 1;
   } 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
-#if 1
+#if 0
 #if GI_COMPRESSION == 0
     int lTexIndexOffset = lCascadeIndex * 7;
 #elif GI_COMPRESSION == 1

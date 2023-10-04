@@ -1758,6 +1758,7 @@ void main() {
             vec3 lightVector = lightPosition - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
+#if !defined(REFLECTIVESHADOWMAPOUTPUT)
             if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
               switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
@@ -1832,7 +1833,7 @@ void main() {
               }
 #endif
             }
-
+#endif
             float lightAttenuationEx = lightAttenuation;
 #endif
             switch (light.metaData.x) {
