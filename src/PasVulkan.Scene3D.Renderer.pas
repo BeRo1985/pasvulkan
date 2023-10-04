@@ -134,7 +134,7 @@ type TpvScene3DRenderer=class;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fLensMode:TpvScene3DRendererLensMode;
-       fGlobalIlluminatonMode:TpvScene3DRendererGlobalIlluminationMode;
+       fGlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode;
        fMinLogLuminance:TpvFloat;
        fMaxLogLuminance:TpvFloat;
        fMaxMSAA:TpvInt32;
@@ -204,7 +204,7 @@ type TpvScene3DRenderer=class;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
-       property GlobalIlluminatonMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminatonMode write fGlobalIlluminatonMode;
+       property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
        property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -372,7 +372,7 @@ begin
 
  fLensMode:=TpvScene3DRendererLensMode.Auto;
 
- fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
+ fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
 
  fMinLogLuminance:=-8.0;
 
@@ -817,36 +817,36 @@ begin
   end;
  end;
 
- if fGlobalIlluminatonMode=TpvScene3DRendererGlobalIlluminationMode.Auto then begin
+ if fGlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.Auto then begin
   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
    TpvVulkanVendorID.AMD:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
     end else begin
-     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
     end;
    end;
    TpvVulkanVendorID.NVIDIA:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
     end else begin
-     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
     end;
    end;
    TpvVulkanVendorID.Intel:begin
     if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
     end else begin
-     fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
+     fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints;
     end;
    end;
    else begin
-    fGlobalIlluminatonMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
+    fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
    end;
   end;
  end;
 
- case fGlobalIlluminatonMode of
+ case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
   end;

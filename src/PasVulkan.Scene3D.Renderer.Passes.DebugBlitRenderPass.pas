@@ -151,7 +151,7 @@ begin
                                []
                               );
 
- case fInstance.Renderer.GlobalIlluminatonMode of
+ case fInstance.Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fResourceTopDownTopDownSkyOcclusionMapView:=AddImageInput('resourcetype_topdownskyocclusionmap_depth',
                                                              'resource_topdownskyocclusionmap_depth',
@@ -451,7 +451,7 @@ procedure TpvScene3DRendererPassesDebugBlitRenderPass.Execute(const aCommandBuff
 var CountExtraTextures:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- case fInstance.Renderer.GlobalIlluminatonMode of
+ case fInstance.Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    CountExtraTextures:=4;
   end;

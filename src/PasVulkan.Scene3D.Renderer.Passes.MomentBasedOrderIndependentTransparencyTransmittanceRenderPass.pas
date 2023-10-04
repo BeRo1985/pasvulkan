@@ -496,7 +496,7 @@ begin
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
- case fInstance.Renderer.GlobalIlluminatonMode of
+ case fInstance.Renderer.GlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.GlobalIlluminationRadianceHintsDescriptorSetLayout);
   end;
@@ -749,7 +749,7 @@ var DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
-  case fInstance.Renderer.GlobalIlluminatonMode of
+  case fInstance.Renderer.GlobalIlluminationMode of
    TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
     DescriptorSets[0]:=fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
     DescriptorSets[1]:=fInstance.GlobalIlluminationRadianceHintsDescriptorSets[aInFlightFrameIndex].Handle;
