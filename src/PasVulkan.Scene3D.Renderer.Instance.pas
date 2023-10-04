@@ -1209,7 +1209,7 @@ begin
   AABB.Min:=SnappedPosition-(GridSize*0.5);
   AABB.Max:=SnappedPosition+(GridSize*0.5);
 
-  if AABB.Min.x<SceneAABB.Min.x then begin
+{ if AABB.Min.x<SceneAABB.Min.x then begin
    AABB.Max.x:=AABB.Max.x+(SceneAABB.Min.x-AABB.Min.x);
    AABB.Min.x:=SceneAABB.Min.x;
   end else if AABB.Max.x>SceneAABB.Max.x then begin
@@ -1231,7 +1231,7 @@ begin
   end else if AABB.Max.z>SceneAABB.Max.z then begin
    AABB.Min.z:=AABB.Min.z-(AABB.Max.z-SceneAABB.Max.z);
    AABB.Max.z:=SceneAABB.Max.z;
-  end;
+  end;}
 
   //ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
 
