@@ -84,19 +84,25 @@ const vec3 uGlobalIlluminationVolumeSizeInvVector = vec3(1.0) / vec3(GI_MAX_WIDT
 //const vec3 uGlobalIlluminationVolumeSizeExVector = vec3(GI_MAX_WIDTH, GI_MAX_HEIGHT, (GI_MAX_DEPTH + 2) * GI_CASCADES);
 //const vec3 uGlobalIlluminationVolumeSizeExInvVector = vec3(1.0) / uGlobalIlluminationVolumeSizeExVector;
 
-vec3 globalIlluminationHash(vec3 lPosition){
-  lPosition = fract(lPosition * vec3(5.3983, 5.4427, 6.9371));
-  lPosition += dot(lPosition.yzx, lPosition.xyz  + vec3(21.5351, 14.3137, 15.3219));
-	return fract(vec3(lPosition.x * lPosition.z * 95.4337, lPosition.x * lPosition.y * 97.597, lPosition.y * lPosition.z * 93.8365));
+vec3 globalIlluminationHash(vec3 pPosition){
+  pPosition = fract(pPosition * vec3(5.3983, 5.4427, 6.9371));
+  pPosition += dot(pPosition.yzx, pPosition.xyz  + vec3(21.5351, 14.3137, 15.3219));
+	return fract(vec3(pPosition.x * pPosition.z * 95.4337, pPosition.x * pPosition.y * 97.597, pPosition.y * pPosition.z * 93.8365));
 }
 
-vec3 globalIlluminationRandom(vec3 lPosition){
-  return globalIlluminationHash(lPosition * 37.0);
+vec3 globalIlluminationRandom(vec3 pPosition){
+  return globalIlluminationHash(pPosition * 37.0);
 }
 
-vec3 globalIlluminationVolumeGet3DTexturePosition(vec3 pPosition){
-  return clamp(pPosition.xyz, vec3(0.0),vec3(1.0));
+#ifdef GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET
+vec3 globalIlluminationVolumeGet3DTexturePosition(const in vec3 pWorldSpacePosition, const in int pCascadeIndex){ 
+  int lCascadeIndex = (pCascadeIndex < 0) ? 0 : ((pCascadeIndex >= GI_CASCADES) ? (GI_CASCADES - 1) : pCascadeIndex);
+  return clamp((pWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex].xyz) * 
+               globalIlluminationVolumeAABBScale[lCascadeIndex].xyz,
+               vec3(0.0),
+               vec3(1.0));
 }
+#endif
 
 void globalIlluminationSphericalHarmonicsEncode(in vec3 pDirection, in vec3 pC, out vec4 pSphericalHarmonics[9]){
   pSphericalHarmonics[0].xyz = 0.282094792 * pC;
@@ -538,9 +544,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     lCascadeIndex = GI_CASCADES - 1;
   } 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
-    vec4 lAABBMin = globalIlluminationVolumeAABBMin[lCascadeIndex];
-    vec4 lAABBMax = globalIlluminationVolumeAABBMax[lCascadeIndex];
-#if 0
+#if 1
 #if GI_COMPRESSION == 0
     int lTexIndexOffset = lCascadeIndex * 7;
 #elif GI_COMPRESSION == 1
@@ -550,7 +554,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
 #else
     #error "GI_COMPRESSION must be 0, 1 or 2"
 #endif   
-    vec3 lVolume3DPosition = clamp(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), vec3(0.0), vec3(1.0));
+    vec3 lVolume3DPosition = globalIlluminationVolumeGet3DTexturePosition(lWorldSpacePosition, lCascadeIndex);
     vec4 lTSH0 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 0], lVolume3DPosition, 0.0);
     vec4 lTSH1 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 1], lVolume3DPosition, 0.0);
     vec4 lTSH2 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 2], lVolume3DPosition, 0.0);
@@ -566,7 +570,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
       vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lCascadeIndex].xyz, abs(pWorldPosition.xyz - globalIlluminationVolumeAABBCenter[lCascadeIndex].xyz));
       float lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
       if(lAABBFadeFactor > 1e-4){
-        lVolume3DPosition = clamp(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), vec3(0.0), vec3(1.0));
+        lVolume3DPosition = globalIlluminationVolumeGet3DTexturePosition(lWorldSpacePosition, lCascadeIndex + 1);
 #if GI_COMPRESSION == 0
         lTexIndexOffset += 7;
 #elif GI_COMPRESSION == 1
@@ -626,7 +630,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
 #endif   
       vec3 lSampleDirection = (pNormal * lD[lIndex].x) + (lTangent * lD[lIndex].y) + (lBitangent * lD[lIndex].z);
       vec3 lSampleOffset = (lSampleDirection + (pNormal * 0.5)) * uGlobalIlluminationVolumeSizeInvVector;
-      vec3 lVolume3DPosition = clamp(vec3((lWorldSpacePosition - lAABBMin.xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex].xyz), vec3(0.0), vec3(1.0));
+      vec3 lVolume3DPosition = globalIlluminationVolumeGet3DTexturePosition(lWorldSpacePosition + lSampleOffset, lCascadeIndex);
       vec4 lTTSH0 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 0], lVolume3DPosition, 0.0);
       vec4 lTTSH1 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 1], lVolume3DPosition, 0.0);
       vec4 lTTSH2 = textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 2], lVolume3DPosition, 0.0);
@@ -648,7 +652,7 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
 #else
         #error "GI_COMPRESSION must be 0, 1 or 2"
 #endif   
-        lVolume3DPosition = clamp(vec3((lWorldSpacePosition - globalIlluminationVolumeAABBMin[lCascadeIndex + 1].xyz) * globalIlluminationVolumeAABBScale[lCascadeIndex + 1].xyz), vec3(0.0), vec3(1.0));
+        lVolume3DPosition = globalIlluminationVolumeGet3DTexturePosition(lWorldSpacePosition + lSampleOffset, lCascadeIndex + 1);
         lTTSH0 = mix(lTTSH0, textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 0], lVolume3DPosition, 0.0), lAABBFadeFactor);
         lTTSH1 = mix(lTTSH1, textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 1], lVolume3DPosition, 0.0), lAABBFadeFactor);
         lTTSH2 = mix(lTTSH2, textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 2], lVolume3DPosition, 0.0), lAABBFadeFactor);
