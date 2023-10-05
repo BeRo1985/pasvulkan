@@ -41,8 +41,6 @@ void main(){
   ivec3 lInvocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   if(all(greaterThanEqual(lInvocationPosition, ivec3(0))) && all(lessThan(lInvocationPosition, uGlobalIlluminationCascadedVolumeSize))){
     
-    ivec3 lOriginalInvocationPosition = lInvocationPosition;
-
     int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;
     lInvocationPosition.z -= (lCascadeIndex * GI_MAX_DEPTH);
     
@@ -128,6 +126,12 @@ void main(){
 
     vec3 lUVW = (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize);
 
+    vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
+                         globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
+                         lUVW);
+
+    ivec3 lIntPosition = ivec3(floor(lPosition));
+
     float lMeanResolution = length(lResolution);
         
     float lHalfDivMeanResolution = 0.5 / lMeanResolution;
@@ -148,16 +152,16 @@ void main(){
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
       
       vec3 lDirection = normalize(lSampleTap);
-      
-      vec4 lRandom = random(ivec4(lOriginalInvocationPosition, lSampleIndex));
+
+      vec4 lRandom = random(ivec4(lIntPosition, lSampleIndex));
 
       float lDistance = lHalfDivMeanResolution + (lRandom.x * lRandom.x);
       
-      vec3 lSampleUVWC = lUVW + (lResolution * lDirection * lDistance); 
+      vec3 lSampleUVW = lUVW + (lResolution * lDirection * lDistance); 
 
       vec3 lSamplePosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
                                  globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
-                                 lSampleUVWC);
+                                 lSampleUVW);
       
       int lSampleCascadeIndex = lCascadeIndex;
       while(((lSampleCascadeIndex + 1) < GI_CASCADES) &&
