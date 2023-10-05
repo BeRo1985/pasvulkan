@@ -23,7 +23,9 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
   mat4 uModelViewProjectionMatrix;
   vec4 uLightDirection;
   vec4 uLightPosition;
-  vec4 uSpread;
+  vec4 uSpreadExtents; // xy = texture-space spread, zw = world-space extends
+  vec4 uScaleFactors;
+  ivec4 uCountSamples;
 };
 
 #define uTexReflectiveShadowMapColor uTexture2DInputs[0]
@@ -62,8 +64,8 @@ void main(){
       }
     }
     
-    vec3 lStratum = (globalIlluminationVolumeAABBMax[lCascadeIndex].xyz - globalIlluminationVolumeAABBMin[lCascadeIndex].xyz) / vec3(uGlobalIlluminationVolumeSize); 
-    float lStratumLength = length(lStratum); 
+    vec3 lCellSize = (globalIlluminationVolumeAABBMax[lCascadeIndex].xyz - globalIlluminationVolumeAABBMin[lCascadeIndex].xyz) / vec3(uGlobalIlluminationVolumeSize); 
+    float lCellDiagLen = length(lCellSize); 
 
     vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
                          globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
@@ -71,7 +73,7 @@ void main(){
 
     vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
     vec2 lBaseUV = clamp(fma(vec2(lBaseUVPos.xy / lBaseUVPos.w), vec2(0.5) * sign(dot(uLightDirection.xyz, uLightPosition.xyz - lPosition)), vec2(0.5)), vec2(0.0),vec2(1.0));
-    lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread.xy), vec2(1.0 - (0.499 * uSpread.xy))) - vec2(0.5 * uSpread.xy);
+    //lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpreadExtents.xy), vec2(1.0 - (0.499 * uSpreadExtents.xy))); // - vec2(0.5 * uSpreadExtents.xy);
     
     float lMinimumDistance = uintBitsToFloat(0x7f800000u); // +infinity
     float lMaximumDistance = 0.0; 
@@ -86,19 +88,22 @@ void main(){
     lSphericalHarmonics[6] = vec3(0.0); 
     lSphericalHarmonics[7] = vec3(0.0); 
     lSphericalHarmonics[8] = vec3(0.0); 
+
+    int countSamples = uCountSamples.x;
+    int countOcclusionSamples = uCountSamples.y;
     
-    vec4 lSamplePositionSpiral = vec4(0.0,                                   // phi
-                                      1.0 - ((2.0 / float(SAMPLES)) * 0.5),  // z
-                                      2.399963229728653,                     // delta phi  PI * (3.0 - sqrt(5.0)) (golden angle)  
-                                      -(2.0 / float(SAMPLES)));              // delta z
+    vec4 lSamplePositionSpiral = vec4(0.0,                                        // phi
+                                      1.0 - ((2.0 / float(countSamples)) * 0.5),  // z
+                                      2.399963229728653,                          // delta phi  PI * (3.0 - sqrt(5.0)) (golden angle)  
+                                      -(2.0 / float(countSamples)));              // delta z
   
-    for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){
+    for(int lSampleIndex = 0; lSampleIndex < countSamples; lSampleIndex++){
       
       // 2.399963229728653 = PI * (3.0 - sqrt(5.0)) (golden angle) 
-      vec2 lSampleUV = lBaseUV + ((sin(vec2(vec2(float(lSampleIndex) * 2.399963229728653) + vec2(1.5707963267948966, 0.0))) * sqrt((float(lSampleIndex) + 0.5) / float(SAMPLES))) * uSpread.xy); 
+      vec2 lSampleUV = lBaseUV + ((sin(vec2(vec2(float(lSampleIndex) * 2.399963229728653) + vec2(1.5707963267948966, 0.0))) * sqrt((float(lSampleIndex) + 0.5) / float(countSamples))) * uSpreadExtents.xy); 
 
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
-      vec3 lSamplePosition = lPosition + ((vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * 0.5) * lStratum);
+      vec3 lSamplePosition = lPosition + ((vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * 0.5) * lCellSize);
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;     
 
       vec4 lReflectiveShadowMapNormalUsed = textureLod(uTexReflectiveShadowMapNormal, lSampleUV, 0.0); 
@@ -114,7 +119,7 @@ void main(){
       vec3 lReflectiveShadowMapNormal = normalize(lReflectiveShadowMapNormalUsed.xyz - vec3(0.5)); 
 
       float lDistance = distance(lSamplePosition, lReflectiveShadowMapPosition); 
-      if(lDistance < lStratumLength){
+      if(lDistance < lCellDiagLen){
         continue;
       }
       
@@ -126,21 +131,21 @@ void main(){
       }
       lFactor /= (lDistance * lDistance) + 1e-2;
 
-#if OCCLUSION_SAMPLES > 0
-      float lCurrentVisibility;
-      {
-        vec4 lTemp = uModelViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
-        lTemp /= lTemp.w;
-        lCurrentVisibility = (lTemp.z < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * 1.1)) ? 1.0 : -1.0; 
+      if(countOcclusionSamples > 0){
+        float lCurrentVisibility;
+        {
+          vec4 lTemp = uModelViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
+          lTemp /= lTemp.w;
+          lCurrentVisibility = (lTemp.z < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * 1.1)) ? 1.0 : -1.0; 
+        }
+        float lDepthVisibility = 1.0; 
+        for(int lOcclusionSampleIndex = 1; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){ 
+          vec4 lTemp = uModelViewProjectionMatrix * vec4(mix(lReflectiveShadowMapPosition, lPosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples)), 1.0); 
+          lTemp /= lTemp.w;
+          lDepthVisibility -= ((lTemp.z * lCurrentVisibility) < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * lCurrentVisibility)) ? 0.0 : (1.0 / float(OCCLUSION_SAMPLES)); 
+        } 
+        lFactor *= clamp(lDepthVisibility, 0.0, 1.0);
       }
-      float lDepthVisibility = 1.0; 
-      for(int lOcclusionSampleIndex = 1; lOcclusionSampleIndex < OCCLUSION_SAMPLES; lOcclusionSampleIndex++){ 
-        vec4 lTemp = uModelViewProjectionMatrix * vec4(mix(lReflectiveShadowMapPosition, lPosition, float(lOcclusionSampleIndex) / float(OCCLUSION_SAMPLES)), 1.0); 
-        lTemp /= lTemp.w;
-        lDepthVisibility -= ((lTemp.z * lCurrentVisibility) < (((textureLod(uTexDepthBuffer, vec2((lTemp.xy * 0.5) + vec2(0.5)), 0.0).x * 2.0) - 1.0) * lCurrentVisibility)) ? 0.0 : (1.0 / float(OCCLUSION_SAMPLES)); 
-      } 
-      lFactor *= clamp(lDepthVisibility, 0.0, 1.0);
-#endif
       
       globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(-lDirection, globalIlluminationEncodeColor(max(vec3(0.0), lReflectiveShadowMapColor.xyz * lFactor)), lSphericalHarmonics);
       
@@ -153,7 +158,7 @@ void main(){
     vec4 lMetaInfo = imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
     lMetaInfo = vec4(min(lMetaInfo.x, lMinimumDistance), max(lMetaInfo.y, lMaximumDistance), 0.0, 0.0);
 
-    vec2 lTexSize = vec2(textureSize(uTexReflectiveShadowMapColor, 0).xy);
+    // vec2 lTexSize = vec2(textureSize(uTexReflectiveShadowMapColor, 0).xy);
 
     // The area of the square is given by \(A_{\text{square}} = w \cdot h = w^2\) (since \(w = h\)), and the area of the circle inscribed
     // within the square is given by \(A_{\text{circle}} = \pi \cdot r^2\), where \(r\) is the radius of the circle.
@@ -167,20 +172,34 @@ void main(){
     // To normalize the sampling area of the circle to match that of the square, you can use the ratio of the areas:
     // \[ \text{Normalization factor} = \frac{A_{\text{circle}}}{A_{\text{square}}} = \frac{\frac{\pi \cdot w^2}{4}}{w^2} = \frac{\pi}{4} \]
     // The area of the square is given by \(A_{\text{square}} = w \cdot h = w^2\) (since \(w = h\)), and the area of the circle is given by \(A_{\text{circle}} = \pi \cdot r^2\), where \(r\) is the radius of the circle.
-    const float lCircleAreaToSquareAreaFactor = 0.7853981633974483; // 3.1415926535897932384626433832795 / 4.0; 
+    //const float lCircleAreaToSquareAreaFactor = 0.7853981633974483; // 3.1415926535897932384626433832795 / 4.0; 
 
     // To normalize the sampling area of the square to match that of the circle, you can use the ratio of the areas:
     // \[ \text{Normalization factor} = \frac{A_{\text{square}}}{A_{\text{circle}}} = \frac{w^2}{\left(\frac{\pi \cdot w^2}{4}\right)} = \frac{4}{\pi} \]
     // The area of the square is given by \(A_{\text{square}} = w \cdot h = w^2\) (since \(w = h\)), and the area of the circle is given by \(A_{\text{circle}} = \pi \cdot r^2\), where \(r\) is the radius of the circle.
-    const float lSquareAreaToCircleAreaFactor = 1.2732395447351628; // 4.0 / 3.1415926535897932384626433832795; 
+    //const float lSquareAreaToCircleAreaFactor = 1.2732395447351628; // 4.0 / 3.1415926535897932384626433832795; 
 
     // PDF = 1 / (A * cos(theta) * solid angle)
   //float lInvPDF = (lTexSize.x * lTexSize.y * uSpread.x * uSpread.y) * (lSquareAreaToCircleAreaFactor * 3.1415926535897932384626433832795); // multiply by PI because we are on a circle
-    float lInvPDF = (lTexSize.x * lTexSize.y * uSpread.x * uSpread.y) * 4.0; // because after substiution, we get just 4.0
-    float lSHScale = lInvPDF / float(SAMPLES);
+    //float lInvPDF = (lTexSize.x * lTexSize.y * uSpread.x * uSpread.y) * 4.0; // because after substiution, we get just 4.0
+    //float lSHScale = lInvPDF / float(SAMPLES);
 
     // Integrating over a sphere so each sample has a weight of (4.0 * PI) / samplecount (uniform solid angle, for each sample)
 //  float lSHScale = 12.5663706144 / float(SAMPLES);
+
+/*  float lSamplingRectArea = uSpread.z * uSpread.w; // in world-space 
+    float lSamplingCircleArea = lSamplingRectArea * lSquareAreaToCircleAreaFactor; // in world-space
+    float lSHScale = 12.5663706144 / (lSamplingCircleArea * float(SAMPLES));*/
+
+    //float lWorldSpaceSpreadArea = (uSpreadExtents.x * uSpreadExtents.z) * (uSpreadExtents.y * uSpreadExtents.w); // xy = texture-space spread, zw = world-space extends
+
+    //float fWorldSpaceVoxelCellArea = lCellSize.x * lCellSize.z;
+
+    //float lSHScale = (uSpreadExtents.z * uSpreadExtents.w) / float(SAMPLES); // (4.0 / lWorldSpaceSpreadArea);/// / (fWorldSpaceVoxelCellArea);
+
+  //float lSHScale = 1.0 / 3.14159;
+
+    float lSHScale = uScaleFactors[lCascadeIndex];
 
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0

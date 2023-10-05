@@ -389,7 +389,7 @@ begin
 
  fGlobalIlluminationCaching:=true;
 
- fGlobalIlluminationRadianceHintsSpread:=-16.0;
+ fGlobalIlluminationRadianceHintsSpread:=-0.25;
 
  fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
 

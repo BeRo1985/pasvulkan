@@ -141,6 +141,7 @@ type { TpvScene3DRendererInstance }
 
              ReflectiveShadowMapLightDirection:TpvVector3;
              ReflectiveShadowMapScale:TpvVector3;
+             ReflectiveShadowMapExtents:TpvVector3;
 
              ZNear:TpvFloat;
              ZFar:TpvFloat;
@@ -262,7 +263,12 @@ type { TpvScene3DRendererInstance }
              ModelViewProjectionMatrix:TpvMatrix4x4;
              LightDirection:TpvVector4;
              LightPosition:TpvVector4;
-             Spread:TpvVector4;
+             SpreadExtents:TpvVector4;
+             ScaleFactors:TpvVector4;
+             CountSamples:TpvInt32;
+             CountOcclusionSamples:TpvInt32;
+             Unused0:TpvInt32;
+             Unused1:TpvInt32;
             end;
             PGlobalIlluminationRadianceHintsRSMUniformBufferData=^TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsRSMUniformBufferData;
@@ -1182,7 +1188,7 @@ begin
                       SceneAABB.Max.y-SceneAABB.Min.y),
                   SceneAABB.Max.z-SceneAABB.Min.z);
 
- MaximumCascadeCellSize:=ceil(Max(1.0,MaxAxisSize/fVolumeSize));
+ MaximumCascadeCellSize:=Ceil(Max(1.0,MaxAxisSize/fVolumeSize));
 
  for CascadeIndex:=0 to fCountCascades-1 do begin
 
@@ -1190,17 +1196,13 @@ begin
 
   if CascadeIndex=(fCountCascades-1) then begin
    CellSize:=MaximumCascadeCellSize;
-{ end else if CascadeIndex=0 then begin
-   CellSize:=Min(1.0,MaximumCascadeCellSize);}
+  end else if CascadeIndex=0 then begin
+   CellSize:=1.0;
   end else begin
-   CellSize:=Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),0.125),MaximumCascadeCellSize);
+   CellSize:=Ceil(Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),1.0),MaximumCascadeCellSize));
   end;
 
-  if CellSize<1.0 then begin
-   CellSize:=Floor(CellSize/0.125)*0.125;
-  end else begin
-   CellSize:=round(CellSize);
-  end;
+//CellSize:=0.5;
 
   SnapSize:=CellSize;
 
@@ -1689,9 +1691,9 @@ begin
      for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
       for ImageIndex:=0 to CountGlobalIlluminationRadiantHintSHImages-1 do begin
        GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[Index]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
-//fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+//     fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
 //
-    fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
        inc(Index);
       end;
@@ -3429,15 +3431,22 @@ begin
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightPosition:=GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection*(-16777216.0);
   if Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
-   GlobalIlluminationRadianceHintsRSMUniformBufferData^.Spread:=TpvVector4.InlineableCreate((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,
-                                                                                            (-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,
-                                                                                            0.0,
-                                                                                            0.0);
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents:=TpvVector4.InlineableCreate(Min((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,1.0),
+                                                                                                   Min((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,1.0),
+                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.x,
+                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.y);
   end else begin
-   GlobalIlluminationRadianceHintsRSMUniformBufferData^.Spread:=TpvVector4.InlineableCreate(Renderer.GlobalIlluminationRadianceHintsSpread,
-                                                                                            Renderer.GlobalIlluminationRadianceHintsSpread,
-                                                                                            0.0,
-                                                                                            0.0);
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents:=TpvVector4.InlineableCreate(Min(Renderer.GlobalIlluminationRadianceHintsSpread,1.0),
+                                                                                                   Min(Renderer.GlobalIlluminationRadianceHintsSpread,1.0),
+                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.x,
+                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.y);
+  end;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples:=128;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountOcclusionSamples:=4;
+  for CascadeIndex:=0 to 3 do begin
+   CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(1.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
+// GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(4.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/(CascadedVolumeCascade.fCellSize*CascadedVolumeCascade.fCellSize*GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples);
   end;
 
 { if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
@@ -3668,10 +3677,10 @@ var Index:TpvSizeInt;
     LightForwardVector,
     LightSideVector,
     LightUpVector,
-    Bounds,
+    Extents,
     Scale:TpvVector3;
     View:TpvScene3D.TView;
-    zNear,zFar:TpvScalar;
+    zNear,zFar,f:TpvScalar;
     BoundingBox:TpvAABB;
     LightViewMatrix,
     LightProjectionMatrix,
@@ -3726,6 +3735,12 @@ begin
 
  BoundingBox:=BoundingBox.Transform(LightViewMatrix);
 
+{f:=1.0;
+
+ BoundingBox.Min:=BoundingBox.Min*f;
+
+ BoundingBox.Max:=BoundingBox.Max*f;}
+
  LightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(BoundingBox.Min.x,
                                                                      BoundingBox.Max.x,
                                                                      BoundingBox.Min.y,
@@ -3733,9 +3748,9 @@ begin
                                                                      BoundingBox.Min.z,
                                                                      BoundingBox.Max.z);
 
- Bounds:=BoundingBox.Max-BoundingBox.Min;
+ Extents:=BoundingBox.Max-BoundingBox.Min;
 
- Scale:=TpvVector3.InlineableCreate(1.0,1.0,1.0)/Bounds;
+ Scale:=TpvVector3.InlineableCreate(1.0,1.0,1.0)/Extents;
 
  LightViewProjectionMatrix:=LightViewMatrix*LightProjectionMatrix;
 
@@ -3748,6 +3763,7 @@ begin
  InFlightFrameState^.ReflectiveShadowMapMatrix:=LightViewProjectionMatrix;
  InFlightFrameState^.ReflectiveShadowMapLightDirection:=Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
  InFlightFrameState^.ReflectiveShadowMapScale:=Scale;
+ InFlightFrameState^.ReflectiveShadowMapExtents:=Extents;
 
  InFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews.Add(View);
  InFlightFrameState^.CountReflectiveShadowMapViews:=1;
