@@ -533,16 +533,12 @@ void  globalIlluminationSphericalHarmonicsMultiply(out vec3 y[9], const in vec3 
 #ifdef GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
 void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset, const vec3 pNormal){
   vec3 lWorldSpacePosition = pWorldPosition + (pOffset * ((globalIlluminationVolumeAABBMax[0].xyz - globalIlluminationVolumeAABBMin[0].xyz) * uGlobalIlluminationVolumeSizeInvVector));
-  int lCascadeIndex = 0;
-  while(lCascadeIndex < GI_CASCADES){
-    if(all(greaterThanEqual(lWorldSpacePosition, globalIlluminationVolumeAABBMin[lCascadeIndex].xyz)) && all(lessThanEqual(lWorldSpacePosition, globalIlluminationVolumeAABBMax[lCascadeIndex].xyz))){
-       break;
-    }
+  int lCascadeIndex = 0;      
+  while(((lCascadeIndex + 1) < GI_CASCADES) &&
+        (any(lessThan(lWorldSpacePosition, globalIlluminationVolumeAABBMin[lCascadeIndex].xyz)) ||
+         any(greaterThan(lWorldSpacePosition, globalIlluminationVolumeAABBMax[lCascadeIndex].xyz)))){
     lCascadeIndex++;
   }
-  if(lCascadeIndex >= GI_CASCADES){
-    lCascadeIndex = GI_CASCADES - 1;
-  } 
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
 #if 0
 #if GI_COMPRESSION == 0

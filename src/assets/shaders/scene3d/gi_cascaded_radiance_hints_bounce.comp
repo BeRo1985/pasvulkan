@@ -163,18 +163,12 @@ void main(){
                                  globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
                                  lSampleUVW);
       
-      int lSampleCascadeIndex = lCascadeIndex;
+      int lSampleCascadeIndex = lCascadeIndex;      
       while(((lSampleCascadeIndex + 1) < GI_CASCADES) &&
-             (all(greaterThanEqual(lSamplePosition, globalIlluminationVolumeAABBMin[lSampleCascadeIndex + 1].xyz)) && 
-              all(lessThanEqual(lSamplePosition, globalIlluminationVolumeAABBMax[lSampleCascadeIndex + 1].xyz))) &&
-             !((all(greaterThanEqual(lSamplePosition, globalIlluminationVolumeAABBMin[lSampleCascadeIndex].xyz)) && 
-                all(lessThanEqual(lSamplePosition, globalIlluminationVolumeAABBMax[lSampleCascadeIndex].xyz))))){
+            (any(lessThan(lSamplePosition, globalIlluminationVolumeAABBMin[lSampleCascadeIndex].xyz)) ||
+             any(greaterThan(lSamplePosition, globalIlluminationVolumeAABBMax[lSampleCascadeIndex].xyz)))){
         lSampleCascadeIndex++;
       }
-
-      if(lSampleCascadeIndex >= GI_CASCADES){
-        lSampleCascadeIndex = GI_CASCADES - 1;
-      } 
       
       if((lSampleCascadeIndex >= 0) && (lSampleCascadeIndex < GI_CASCADES)){
         lMustReprocessOnMove = (lCascadeIndex < lSampleCascadeIndex) ? true : lMustReprocessOnMove;

@@ -70,8 +70,7 @@ void main(){
                          (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize));
 
     vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
-    vec2 lBaseUV = clamp(fma(vec2(lBaseUVPos.xy / lBaseUVPos.w), vec2(0.5), vec2(0.5)), vec2(0.0),vec2(1.0));
-//  vec2 lBaseUV = clamp(vec2((((lBaseUVPos.xy / lBaseUVPos.w) * 0.5) * sign(dot(uLightDirection.xyz, lPosition - uLightPosition.xyz))) + vec2(0.5)), vec2(0.0),vec2(1.0));
+    vec2 lBaseUV = clamp(fma(vec2(lBaseUVPos.xy / lBaseUVPos.w), vec2(0.5) * sign(dot(uLightDirection.xyz, uLightPosition.xyz - lPosition)), vec2(0.5)), vec2(0.0),vec2(1.0));
     lBaseUV = clamp(lBaseUV, vec2(0.499 * uSpread.xy), vec2(1.0 - (0.499 * uSpread.xy))) - vec2(0.5 * uSpread.xy);
     
     float lMinimumDistance = uintBitsToFloat(0x7f800000u); // +infinity

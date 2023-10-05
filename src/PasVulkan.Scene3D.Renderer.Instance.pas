@@ -3427,7 +3427,7 @@ begin
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ReflectiveShadowMapToWorldMatrix:=InFlightFrameState^.ReflectiveShadowMapMatrix.Inverse;
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
-  GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightPosition:=(-GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection)*65536.0;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightPosition:=GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection*(-16777216.0);
   if Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
    GlobalIlluminationRadianceHintsRSMUniformBufferData^.Spread:=TpvVector4.InlineableCreate((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,
                                                                                             (-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,
