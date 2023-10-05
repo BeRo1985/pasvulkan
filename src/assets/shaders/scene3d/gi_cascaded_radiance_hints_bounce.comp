@@ -142,10 +142,12 @@ void main(){
                                  globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
                                  lSampleUVWC);
       
-      int lSampleCascadeIndex = 0;
+      int lSampleCascadeIndex = lCascadeIndex;
       while(((lSampleCascadeIndex + 1) < GI_CASCADES) &&
              (all(greaterThanEqual(lSamplePosition, globalIlluminationVolumeAABBMin[lSampleCascadeIndex + 1].xyz)) && 
-              all(lessThanEqual(lSamplePosition, globalIlluminationVolumeAABBMax[lSampleCascadeIndex + 1].xyz)))){
+              all(lessThanEqual(lSamplePosition, globalIlluminationVolumeAABBMax[lSampleCascadeIndex + 1].xyz))) &&
+             !((all(greaterThanEqual(lSamplePosition, globalIlluminationVolumeAABBMin[lSampleCascadeIndex].xyz)) && 
+                all(lessThanEqual(lSamplePosition, globalIlluminationVolumeAABBMax[lSampleCascadeIndex].xyz))))){
         lSampleCascadeIndex++;
       }
 
