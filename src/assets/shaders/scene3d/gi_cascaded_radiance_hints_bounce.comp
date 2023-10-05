@@ -117,7 +117,10 @@ void main(){
     vec3 lUVW = (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize);
 
     float lMeanResolution = length(lResolution);
+        
     float lHalfDivMeanResolution = 0.5 / lMeanResolution;
+
+    float lSampleWeightScale = 1.0 / length(globalIlluminationVolumeAABBScale[lCascadeIndex].xyz); // 1.0/CellSizeLength for scaling the sample weight
     
     //float lSumScale = 1.0;
     
@@ -241,7 +244,7 @@ void main(){
 #endif
 
         float lSampleFactor = 1.0 - clamp((lDistance - lSampleMetaInfo.x) / (lSampleMetaInfo.y - lSampleMetaInfo.x), 0.0, 1.0);
-        float lSampleWeight = clamp(1.0 - lSampleMetaInfo.x, 0.0, 1.0); 
+        float lSampleWeight = clamp(1.0 - (lSampleMetaInfo.x * lSampleWeightScale), 0.0, 1.0); 
         
         globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(lDirection, globalIlluminationEncodeColor(max(vec3(0.0), globalIlluminationDecodeColor(globalIlluminationCompressedSphericalHarmonicsDecodeWithCosineLobe(-lDirection, lSampleSphericalHarmonics) * (lSampleFactor * lSampleWeight)))), lSphericalHarmonics);
 
