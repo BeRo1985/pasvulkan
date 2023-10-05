@@ -267,7 +267,7 @@ begin
                                                                              fInstance.InFlightFrameCascadedRadianceHintSecondBounceVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageView,
                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
      TexSHDescriptorImageInfoArray[Index]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
-                                                                         fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageView,
+                                                                         fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,SHTextureIndex].DescriptorImageInfo.imageView,
                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
      inc(Index);
     end;
@@ -278,7 +278,7 @@ begin
                                                                                          fInstance.InFlightFrameCascadedRadianceHintSecondBounceVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     TexMetaInfoDescriptorImageInfoArray[CascadeIndex]:=TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
-                                                                                     fInstance.InFlightFrameCascadedRadianceHintVolumeImages[PreviousInFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
+                                                                                     fInstance.InFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintSHImages].DescriptorImageInfo.imageView,
                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
    end;
 

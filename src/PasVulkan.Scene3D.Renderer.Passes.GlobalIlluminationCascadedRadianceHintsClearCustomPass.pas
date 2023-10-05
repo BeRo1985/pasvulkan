@@ -203,8 +203,8 @@ begin
  ClearValue.uint32[2]:=0;
  ClearValue.uint32[3]:=0;
 
- MetaInfoClearValue.float32[0]:=3.4028234664e+38;
- MetaInfoClearValue.float32[1]:=-3.4028234664e+38;
+ MetaInfoClearValue.float32[0]:=Infinity;
+ MetaInfoClearValue.float32[1]:=0;
  MetaInfoClearValue.float32[2]:=0;
  MetaInfoClearValue.float32[3]:=0;
 

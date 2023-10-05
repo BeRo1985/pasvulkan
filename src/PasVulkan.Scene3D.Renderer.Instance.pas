@@ -1193,7 +1193,13 @@ begin
 { end else if CascadeIndex=0 then begin
    CellSize:=Min(1.0,MaximumCascadeCellSize);}
   end else begin
-   CellSize:=Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),1.0),MaximumCascadeCellSize);
+   CellSize:=Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),0.125),MaximumCascadeCellSize);
+  end;
+
+  if CellSize<1.0 then begin
+   CellSize:=Floor(CellSize/0.125)*0.125;
+  end else begin
+   CellSize:=round(CellSize);
   end;
 
   SnapSize:=CellSize;
@@ -1683,8 +1689,9 @@ begin
      for CascadeIndex:=0 to CountGlobalIlluminationRadiantHintCascades-1 do begin
       for ImageIndex:=0 to CountGlobalIlluminationRadiantHintSHImages-1 do begin
        GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray[Index]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
-//                                                                                                       fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
-                                                                                                         fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+//fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
+//
+    fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,
                                                                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
        inc(Index);
       end;
