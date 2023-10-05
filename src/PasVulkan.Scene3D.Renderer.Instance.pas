@@ -1122,7 +1122,7 @@ begin
 end;
 
 procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFrameIndex:TpvSizeInt);
-{procedure ComputeGridExtents(out aAABB:TpvAABB;
+ procedure ComputeGridExtents(out aAABB:TpvAABB;
                               const aPosition:TpvVector3;
                               const aDirection:TpvVector3;
                               const aGridSize:TpvVector3;
@@ -1138,18 +1138,18 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
                  TpvVector3.InlineableCreate(aTotalCells-aBufferCells));
   aAABB.Max:=aPosition+(MaxCell*(aGridSize/aTotalCells));
   aAABB.Min:=aAABB.Max-aGridSize;
- end;}
+ end;//}
 var CascadeIndex,BorderCells:TpvSizeInt;
     CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
     ViewPosition:TpvVector3;
-    //ViewDirection:TpvVector3;
+    ViewDirection:TpvVector3;
     GridCenter:TpvVector3;
     SnappedPosition:TpvVector3;
     GridSize:TpvVector3;
 //  ClampDelta:TpvVector3;
     SceneAABB:TpvAABB;
-    //ClampedSceneAABB:TpvAABB;
+    ClampedSceneAABB:TpvAABB;
     AABB:TpvAABB;
     Cascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     m:TpvMatrix4x4;
@@ -1165,9 +1165,9 @@ begin
 
 // ViewPosition:=TpvVector3.Null;
 
-{ViewDirection:=TpvVector3.InlineableCreate(-m.RawComponents[2,0],
+ ViewDirection:=TpvVector3.InlineableCreate(-m.RawComponents[2,0],
                                             -m.RawComponents[2,1],
-                                            -m.RawComponents[2,2]).Normalize;}
+                                            -m.RawComponents[2,2]).Normalize;//}
 
  SceneAABB:=fRendererInstance.Renderer.Scene3D.InFlightFrameBoundingBoxes[aInFlightFrameIndex];
 
@@ -1182,7 +1182,7 @@ begin
                       SceneAABB.Max.y-SceneAABB.Min.y),
                   SceneAABB.Max.z-SceneAABB.Min.z);
 
- MaximumCascadeCellSize:=Max(0.015625,MaxAxisSize/fVolumeSize);
+ MaximumCascadeCellSize:=ceil(Max(1.0,MaxAxisSize/fVolumeSize));
 
  for CascadeIndex:=0 to fCountCascades-1 do begin
 
@@ -1193,7 +1193,7 @@ begin
 { end else if CascadeIndex=0 then begin
    CellSize:=Min(1.0,MaximumCascadeCellSize);}
   end else begin
-   CellSize:=Min(Max(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0),0.125),MaximumCascadeCellSize);
+   CellSize:=Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),1.0),MaximumCascadeCellSize);
   end;
 
   SnapSize:=CellSize;
@@ -1204,12 +1204,15 @@ begin
 
   BorderCells:=fCountCascades-CascadeIndex;
 
+  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Max+(GridSize*0.5));
+  ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(ClampedSceneAABB.Max);
+
 { ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
-  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));
+  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));//}
 
   SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);//}
 
-  AABB.Min:=(TpvVector3.InlineableCreate(SnappedPosition-(GridSize*0.5))/SnapSize).Floor*SnapSize;
+  AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/SnapSize).Floor*SnapSize;
   AABB.Max:=AABB.Min+GridSize;
 
 { if AABB.Min.x<SceneAABB.Min.x then begin
@@ -1236,7 +1239,9 @@ begin
    AABB.Max.z:=SceneAABB.Max.z;
   end;}
 
-  //ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
+//ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
+
+//write(AABB.Min.x:6:4,' ',AABB.Min.y:6:4,' ',AABB.Min.z:6:4,' ',(AABB.Max.x-AABB.Min.x):6:4,' ',(AABB.Max.y-AABB.Min.y):6:4,' ',(AABB.Max.z-AABB.Min.z):6:4,' ');
 
   Cascade.fAABB:=AABB;
   Cascade.fCellSize:=CellSize;
@@ -1264,6 +1269,8 @@ begin
   Cascade.fLastOffset:=Cascade.fOffset;
 
  end;
+
+//writeln;
 
  fFirst:=false;
 
