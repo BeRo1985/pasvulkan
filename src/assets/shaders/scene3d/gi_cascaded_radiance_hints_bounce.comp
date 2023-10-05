@@ -26,11 +26,23 @@ layout(set = 0, binding = 6) uniform sampler3D uTexMetaInfo[]; // The current gl
 
 #include "global_illumination_cascaded_radiance_hints.glsl"
 
+vec4 random(ivec4 p){
+  const uint k = 1103515245u;
+  uvec4 v = uvec4(p); 
+  v = ((v >> 8u) ^ v.ywzx) * k;
+  v = ((v >> 8u) ^ v.ywzx) * k;
+  v = ((v >> 8u) ^ v.ywzx) * k;
+  v = ((v >> 8u) ^ v.ywzx) * k;
+  return vec4(uintBitsToFloat(uvec4(uvec4(((v >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
+}
+
 void main(){
 
   ivec3 lInvocationPosition = ivec3(gl_GlobalInvocationID.xyz);
   if(all(greaterThanEqual(lInvocationPosition, ivec3(0))) && all(lessThan(lInvocationPosition, uGlobalIlluminationCascadedVolumeSize))){
     
+    ivec3 lOriginalInvocationPosition = lInvocationPosition;
+
     int lCascadeIndex = lInvocationPosition.z / GI_MAX_DEPTH;
     lInvocationPosition.z -= (lCascadeIndex * GI_MAX_DEPTH);
     
@@ -137,7 +149,9 @@ void main(){
       
       vec3 lDirection = normalize(lSampleTap);
       
-      float lDistance = lHalfDivMeanResolution + (lSampleTap.x * lSampleTap.x);
+      vec4 lRandom = random(ivec4(lOriginalInvocationPosition, lSampleIndex));
+
+      float lDistance = lHalfDivMeanResolution + (lRandom.x * lRandom.x);
       
       vec3 lSampleUVWC = lUVW + (lResolution * lDirection * lDistance); 
 
