@@ -248,6 +248,7 @@ type { TpvScene3DRendererInstance }
              AABBMin:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
              AABBMax:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
              AABBScale:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
+             AABBCellSizes:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
              AABBSnappedCenter:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
              AABBCenter:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
              AABBFadeStart:array[0..CountGlobalIlluminationRadiantHintCascades-1] of TpvVector4;
@@ -1146,7 +1147,8 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
   aAABB.Min:=aAABB.Max-aGridSize;
  end;//}
 var CascadeIndex,BorderCells:TpvSizeInt;
-    CellSize,SnapSize,MaxAxisSize,MaximumCascadeCellSize:TpvDouble;
+    CellSize,MaximumCascadeCellSize:TpvInt32;
+    SnapSize,MaxAxisSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
     ViewPosition:TpvVector3;
     ViewDirection:TpvVector3;
@@ -1190,6 +1192,8 @@ begin
 
  MaximumCascadeCellSize:=Ceil(Max(1.0,MaxAxisSize/fVolumeSize));
 
+ CellSize:=1;
+
  for CascadeIndex:=0 to fCountCascades-1 do begin
 
   Cascade:=fCascades[CascadeIndex];
@@ -1197,10 +1201,19 @@ begin
   if CascadeIndex=(fCountCascades-1) then begin
    CellSize:=MaximumCascadeCellSize;
   end else if CascadeIndex=0 then begin
-   CellSize:=1.0;
+   CellSize:=1;
+  end else begin
+   CellSize:=Min(CellSize shl 2,MaximumCascadeCellSize);
+  end;//}
+{ end else if CascadeIndex=0 then begin
+   CellSize:=1;
   end else begin
    CellSize:=Ceil(Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),1.0),MaximumCascadeCellSize));
-  end;
+  end; //}
+
+{ if (CellSize and 1)<>0 then begin
+   inc(CellSize);
+  end;}
 
 //CellSize:=0.5;
 
@@ -1212,40 +1225,13 @@ begin
 
   BorderCells:=fCountCascades-CascadeIndex;
 
-  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Max+(GridSize*0.5));
+  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Max+(GridSize*0.5)).Max(SceneAABB.Min+(GridSize*0.5));
   ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(ClampedSceneAABB.Max);
 
-{ ClampedSceneAABB.Min:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Min(SceneAABB.Max-(GridSize*0.5));
-  ClampedSceneAABB.Max:=TpvVector3.InlineableCreate(SceneAABB.Min+(GridSize*0.5)).Max(SceneAABB.Max-(GridSize*0.5));//}
-
-  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);//}
+  SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);
 
   AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/SnapSize).Floor*SnapSize;
   AABB.Max:=AABB.Min+GridSize;
-
-{ if AABB.Min.x<SceneAABB.Min.x then begin
-   AABB.Max.x:=AABB.Max.x+(SceneAABB.Min.x-AABB.Min.x);
-   AABB.Min.x:=SceneAABB.Min.x;
-  end else if AABB.Max.x>SceneAABB.Max.x then begin
-   AABB.Min.x:=AABB.Min.x-(AABB.Max.x-SceneAABB.Max.x);
-   AABB.Max.x:=SceneAABB.Max.x;
-  end;
-
-  if AABB.Min.y<SceneAABB.Min.y then begin
-   AABB.Max.y:=AABB.Max.y+(SceneAABB.Min.y-AABB.Min.y);
-   AABB.Min.y:=SceneAABB.Min.y;
-  end else if AABB.Max.y>SceneAABB.Max.y then begin
-   AABB.Min.y:=AABB.Min.y-(AABB.Max.y-SceneAABB.Max.y);
-   AABB.Max.y:=SceneAABB.Max.y;
-  end;
-
-  if AABB.Min.z<SceneAABB.Min.z then begin
-   AABB.Max.z:=AABB.Max.z+(SceneAABB.Min.z-AABB.Min.z);
-   AABB.Min.z:=SceneAABB.Min.z;
-  end else if AABB.Max.z>SceneAABB.Max.z then begin
-   AABB.Min.z:=AABB.Min.z-(AABB.Max.z-SceneAABB.Max.z);
-   AABB.Max.z:=SceneAABB.Max.z;
-  end;}
 
 //ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
 
@@ -3386,6 +3372,7 @@ begin
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBScale[CascadeIndex]:=TpvVector4.InlineableCreate(TpvVector3.InlineableCreate(1.0,1.0,1.0)/(CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min),0.0);
+   GlobalIlluminationRadianceHintsUniformBufferData^.AABBCellSizes[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fCellSize,CascadedVolumeCascade.fCellSize,CascadedVolumeCascade.fCellSize,0.0);
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBSnappedCenter[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,0.0);
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-(CascadedVolumeCascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
    GlobalIlluminationRadianceHintsUniformBufferData^.AABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-CascadedVolumeCascade.fSnapSize,0.0);
@@ -3445,9 +3432,10 @@ begin
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountOcclusionSamples:=4;
   for CascadeIndex:=0 to 3 do begin
    CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
-   s:=sqr(InFlightFrameState^.ReflectiveShadowMapExtents.Length*0.5)/(fReflectiveShadowMapWidth*fReflectiveShadowMapHeight);
-   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(1.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
-// GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(4.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/(CascadedVolumeCascade.fCellSize*CascadedVolumeCascade.fCellSize*GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples);
+// s:=sqr(InFlightFrameState^.ReflectiveShadowMapExtents.Length*0.5)/(fReflectiveShadowMapWidth*fReflectiveShadowMapHeight);
+///GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=4.0/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
+///GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(1.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(4.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/(CascadedVolumeCascade.fCellSize*CascadedVolumeCascade.fCellSize*GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples);
   end;
 
 { if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
@@ -3736,7 +3724,7 @@ begin
 
  BoundingBox:=BoundingBox.Transform(LightViewMatrix);
 
-{f:=1.0;
+{f:=4.0;
 
  BoundingBox.Min:=BoundingBox.Min*f;
 

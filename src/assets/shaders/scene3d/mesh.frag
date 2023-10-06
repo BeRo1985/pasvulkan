@@ -2081,6 +2081,11 @@ void main() {
 #else
       color.xyz += diffuseOutput;
 #endif
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+#if 1
+      color.xyz += globalIlluminationCascadeVisualizationColor(inWorldSpacePosition).xyz;
+#endif
+#endif
       color.xyz += specularOutput;
       color.xyz = fma(color.xyz, vec3(albedoSheenScaling), sheenOutput);
       color.xyz = fma(color.xyz, vec3(1.0 - (clearcoatFactor * clearcoatFresnel)), clearcoatOutput);

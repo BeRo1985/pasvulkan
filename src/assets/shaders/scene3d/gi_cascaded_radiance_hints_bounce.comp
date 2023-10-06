@@ -121,7 +121,7 @@ void main(){
 
     bool lMustReprocessOnMove = false;
 
-#if 1    
+#if 1   
     vec3 lResolution = vec3(uGlobalIlluminationVolumeSize);
 
     vec3 lUVW = (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize);
@@ -136,7 +136,7 @@ void main(){
         
     float lHalfDivMeanResolution = 0.5 / lMeanResolution;
 
-    float lSampleWeightScale = 1.0 / length(globalIlluminationVolumeAABBScale[lCascadeIndex].xyz); // 1.0/CellSizeLength for scaling the sample weight
+    float lSampleWeightScale = 1.0 / length(globalIlluminationVolumeCellSizes[lCascadeIndex].xyz); // 1.0/CellSizeLength for scaling the sample weight
     
     //float lSumScale = 1.0;
     

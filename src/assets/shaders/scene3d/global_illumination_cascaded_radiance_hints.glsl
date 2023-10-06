@@ -69,6 +69,7 @@ layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = GLOBAL_ILLUMINATI
   vec4 globalIlluminationVolumeAABBMin[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBMax[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBScale[GI_CASCADES];
+  vec4 globalIlluminationVolumeCellSizes[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBSnappedCenter[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBCenter[GI_CASCADES];
   vec4 globalIlluminationVolumeAABBFadeStart[GI_CASCADES];
@@ -531,6 +532,46 @@ void  globalIlluminationSphericalHarmonicsMultiply(out vec3 y[9], const in vec3 
 }
 
 #ifdef GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
+vec4 globalIlluminationCascadeVisualizationColor(const vec3 pWorldPosition){
+  int lCascadeIndex = 0;      
+  while(((lCascadeIndex + 1) < GI_CASCADES) &&
+        (any(lessThan(pWorldPosition, globalIlluminationVolumeAABBMin[lCascadeIndex].xyz)) ||
+         any(greaterThan(pWorldPosition, globalIlluminationVolumeAABBMax[lCascadeIndex].xyz)))){
+    lCascadeIndex++;
+  }
+  vec4 lColor = vec4(0.0);
+  if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
+    vec4 lColors[4] = vec4[4](
+      vec4(0.125, 0.0, 0.0, 1.0),
+      vec4(0.0, 0.125, 0.0, 1.0),
+      vec4(0.0, 0.0, 0.125, 1.0),
+      vec4(0.125, 0.125, 0.0, 1.0)      
+    ); 
+    float lCurrent = 1.0;    
+    for(int lCurrentCascadeIndex = lCascadeIndex; lCurrentCascadeIndex < GI_CASCADES; lCurrentCascadeIndex++){
+      if(lCurrentCascadeIndex == (GI_CASCADES - 1)){
+        lColor += lColors[lCurrentCascadeIndex] * lCurrent; 
+        break;
+      }else if(all(greaterThanEqual(pWorldPosition, globalIlluminationVolumeAABBMin[lCurrentCascadeIndex].xyz)) &&
+               all(lessThanEqual(pWorldPosition, globalIlluminationVolumeAABBMax[lCurrentCascadeIndex].xyz))){
+        vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCurrentCascadeIndex].xyz, 
+                                            globalIlluminationVolumeAABBFadeEnd[lCurrentCascadeIndex].xyz, 
+                                            abs(pWorldPosition.xyz - globalIlluminationVolumeAABBCenter[lCurrentCascadeIndex].xyz));
+        float lFactor = 1.0 - clamp(max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z), 0.0, 1.0);
+        lColor += lColors[lCurrentCascadeIndex] * (lCurrent * lFactor); 
+        lCurrent *= 1.0 - lFactor;
+        if(lCurrent < 1e-6){
+          break;
+        }
+      }else{
+        break;
+      }
+    }   
+  }
+  return lColor;
+}
+
+
 void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 pWorldPosition, const vec3 pOffset, const vec3 pNormal){
   vec3 lWorldSpacePosition = pWorldPosition + (pOffset * ((globalIlluminationVolumeAABBMax[0].xyz - globalIlluminationVolumeAABBMin[0].xyz) * uGlobalIlluminationVolumeSizeInvVector));
   int lCascadeIndex = 0;      
@@ -540,7 +581,59 @@ void globalIlluminationVolumeLookUp(out vec3 pSphericalHarmonics[9], const vec3 
     lCascadeIndex++;
   }
   if((lCascadeIndex >= 0) && (lCascadeIndex < GI_CASCADES)){
-#if 0
+#if 1
+    vec4 lTSH0 = vec4(0.0), lTSH1 = vec4(0.0), lTSH2 = vec4(0.0); 
+#if GI_COMPRESSION < 2
+    vec4 lTSH3 = vec4(0.0), lTSH4 = vec4(0.0);
+#endif
+#if GI_COMPRESSION < 3
+    vec4 lTSH5 = vec4(0.0), lTSH6 = vec4(0.0);
+#endif
+    float lCurrent = 1.0;
+    for(int lCurrentCascadeIndex = lCascadeIndex; lCurrentCascadeIndex < GI_CASCADES; lCurrentCascadeIndex++){
+      float lWeight;
+      if(lCurrentCascadeIndex == (GI_CASCADES - 1)){
+        lWeight = lCurrent;
+        lCurrent = 0.0;
+      }else if(all(greaterThanEqual(pWorldPosition, globalIlluminationVolumeAABBMin[lCurrentCascadeIndex].xyz)) &&
+               all(lessThanEqual(pWorldPosition, globalIlluminationVolumeAABBMax[lCurrentCascadeIndex].xyz))){
+        vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lCurrentCascadeIndex].xyz, 
+                                            globalIlluminationVolumeAABBFadeEnd[lCurrentCascadeIndex].xyz, 
+                                            abs(lWorldSpacePosition.xyz - globalIlluminationVolumeAABBCenter[lCurrentCascadeIndex].xyz));
+        float lFactor = 1.0 - clamp(max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z), 0.0, 1.0);
+        lWeight = lCurrent * lFactor;
+        lCurrent *= 1.0 - lFactor;
+      }else{
+        break;
+      }
+      if(lWeight > 1e-6){
+#if GI_COMPRESSION == 0
+        int lTexIndexOffset = lCurrentCascadeIndex * 7;
+#elif GI_COMPRESSION == 1
+        int lTexIndexOffset = lCurrentCascadeIndex * 5;
+#elif GI_COMPRESSION == 2
+        int lTexIndexOffset = lCurrentCascadeIndex * 3;
+#else
+        #error "GI_COMPRESSION must be 0, 1 or 2"
+#endif   
+        vec3 lVolume3DPosition = globalIlluminationVolumeGet3DTexturePosition(lWorldSpacePosition, lCurrentCascadeIndex);
+        lTSH0 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 0], lVolume3DPosition, 0.0) * lWeight;
+        lTSH1 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 1], lVolume3DPosition, 0.0) * lWeight;
+        lTSH2 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 2], lVolume3DPosition, 0.0) * lWeight;
+#if GI_COMPRESSION < 2
+        lTSH3 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 3], lVolume3DPosition, 0.0) * lWeight;
+        lTSH4 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 4], lVolume3DPosition, 0.0) * lWeight;
+#endif
+#if GI_COMPRESSION < 1
+        lTSH5 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 5], lVolume3DPosition, 0.0) * lWeight;
+        lTSH6 += textureLod(uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[lTexIndexOffset + 6], lVolume3DPosition, 0.0) * lWeight;
+#endif
+        if(lCurrent < 1e-6){
+          break;
+        }
+      }
+    }  
+#elif 0
 #if GI_COMPRESSION == 0
     int lTexIndexOffset = lCascadeIndex * 7;
 #elif GI_COMPRESSION == 1
