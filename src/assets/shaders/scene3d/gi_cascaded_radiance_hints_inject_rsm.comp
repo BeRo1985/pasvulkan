@@ -98,7 +98,7 @@ void main(){
     }
     
     vec3 lCellSize = globalIlluminationVolumeCellSizes[lCascadeIndex].xyz; 
-    float lCellDiagLen = length(lCellSize); 
+    float lCellDiagLen = max(1.0, length(lCellSize)); 
 
     vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
                          globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
@@ -153,11 +153,9 @@ void main(){
         continue;
       }
 
-      float lSampleDepth = textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x;
-
-      vec4 lReflectiveShadowMapTempPosition = uReflectiveShadowMapToWorldMatrix * vec4(fma(vec2(lSampleUV.xy), vec2(2.0), vec2(-1.0)), lSampleDepth, 1.0); 
+      vec4 lReflectiveShadowMapTempPosition = uReflectiveShadowMapToWorldMatrix * vec4(fma(vec2(lSampleUV.xy), vec2(2.0), vec2(-1.0)), textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x, 1.0); 
       vec3 lReflectiveShadowMapPosition = lReflectiveShadowMapTempPosition.xyz / lReflectiveShadowMapTempPosition.w; 
-      vec3 lReflectiveShadowMapColor = textureLod(uTexReflectiveShadowMapColor, lSampleUV, 0.0).xyz;  
+      vec3 lReflectiveShadowMapColor = clamp(textureLod(uTexReflectiveShadowMapColor, lSampleUV, 0.0).xyz, vec3(0.0), vec3(1e+4));  
       vec3 lReflectiveShadowMapNormal = normalize(lReflectiveShadowMapNormalUsed.xyz - vec3(0.5)); 
 
       float lDistance = distance(lSamplePosition, lReflectiveShadowMapPosition); 
@@ -171,7 +169,7 @@ void main(){
       if(lFactor < 0.07){
         continue;
       }
-      lFactor /= (lDistance * lDistance) + 1e-2;
+      lFactor /= (lDistance * lDistance * lDistance * lDistance) + 1e-2;
 
       if(countOcclusionSamples > 0){
         float lCurrentVisibility;
@@ -200,8 +198,9 @@ void main(){
     vec4 lMetaInfo = imageLoad(uImageMetaInfo[lCascadeIndex], lVolumePosition);
     lMetaInfo = vec4(min(lMetaInfo.x, lMinimumDistance), max(lMetaInfo.y, lMaximumDistance), 0.0, 0.0);
 
-    float lSHScale = uScaleFactors[lCascadeIndex];// * ((2.0 * lWorldMaxR * lWorldMaxR) / float(countSamples));
-    ///uScaleFactors[lCascadeIndex];
+    //float lSHScale = 1.0 / float(countSamples);
+//  float lSHScale = uScaleFactors[lCascadeIndex];// * ((2.0 * lWorldMaxR * lWorldMaxR) / float(countSamples));
+    float lSHScale = uScaleFactors[lCascadeIndex];
 
     lSphericalHarmonics[0] *= lSHScale;
 #if GI_COMPRESSION == 0

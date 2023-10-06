@@ -1888,7 +1888,7 @@ void main() {
             }
 #endif
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
-#if defined(REFLECTIVESHADOWMAPOUTPUT)
+#if 0 //defined(REFLECTIVESHADOWMAPOUTPUT)
               diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * baseColor.xyz;
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
@@ -2082,7 +2082,7 @@ void main() {
       color.xyz += diffuseOutput;
 #endif
 #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
-#if 1
+#if 0
       color.xyz += globalIlluminationCascadeVisualizationColor(inWorldSpacePosition).xyz;
 #endif
 #endif
