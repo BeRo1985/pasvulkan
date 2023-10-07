@@ -57,7 +57,7 @@ void main(){
       }
     }
     
-    vec3 lHalfCellSize = ((globalIlluminationVolumeAABBMax[lCascadeIndex].xyz - globalIlluminationVolumeAABBMin[lCascadeIndex].xyz) / vec3(uGlobalIlluminationVolumeSize)) * 0.5;
+    vec3 lCellSize = (globalIlluminationVolumeAABBMax[lCascadeIndex].xyz - globalIlluminationVolumeAABBMin[lCascadeIndex].xyz) / vec3(uGlobalIlluminationVolumeSize);
 
     vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
                          globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
@@ -108,7 +108,7 @@ void main(){
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
-      vec3 lSamplePosition = lPosition + (vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * lHalfCellSize);    
+      vec3 lSamplePosition = lPosition + (vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * lCellSize);    
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
 
       vec4 lSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
