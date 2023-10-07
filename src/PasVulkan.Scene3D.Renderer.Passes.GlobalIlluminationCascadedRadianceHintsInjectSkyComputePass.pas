@@ -403,7 +403,7 @@ begin
 
  aCommandBuffer.CmdDispatch((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize+7) shr 3,
                             (TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize+7) shr 3,
-                            ((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades)+7) shr 3);
+                            ((TpvScene3DRendererInstance.GlobalIlluminationRadiantHintVolumeSize*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades)+7) shr 3);//}
 
  Index:=0;
  for CascadeIndex:=0 to TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades-1 do begin

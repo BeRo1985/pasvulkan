@@ -1889,7 +1889,7 @@ void main() {
 #endif
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
-              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * (max(0.0, dot(normal, lightDirection)) * (1.0 / 3.1415926535897932384626433832795));
+              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //

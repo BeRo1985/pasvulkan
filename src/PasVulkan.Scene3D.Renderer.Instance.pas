@@ -3428,12 +3428,18 @@ begin
                                                                                                    InFlightFrameState^.ReflectiveShadowMapExtents.x,
                                                                                                    InFlightFrameState^.ReflectiveShadowMapExtents.y);
   end;
-  GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples:=128;
+  GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples:=32;
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountOcclusionSamples:=4;
   for CascadeIndex:=0 to 3 do begin
    CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
 // s:=sqr(InFlightFrameState^.ReflectiveShadowMapExtents.Length*0.5)/(fReflectiveShadowMapWidth*fReflectiveShadowMapHeight);
-   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(4.0*pi)/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
+   s:=(//(4.0)*
+       (GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.x*
+        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.y*
+        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.z*
+        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.w))/
+      GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
+   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=s;
 // GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(1.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
 //   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(fReflectiveShadowMapWidth*fReflectiveShadowMapHeight)/(CascadedVolumeCascade.fCellSize*CascadedVolumeCascade.fCellSize*GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples);
 // GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(4.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/(CascadedVolumeCascade.fCellSize*CascadedVolumeCascade.fCellSize*GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples);
