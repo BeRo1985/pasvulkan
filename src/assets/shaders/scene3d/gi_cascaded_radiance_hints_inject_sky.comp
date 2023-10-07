@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants {
   mat4 uTopDownSkyOcclusionMapViewProjectionMatrix;
 };
 
-layout(set = 0, binding = 1) uniform sampler2DShadow uTexTopDownSkyOcclusionMap;
+layout(set = 0, binding = 1) uniform sampler2D uTexTopDownSkyOcclusionMap;
 layout(set = 0, binding = 2) uniform sampler2D uTexDepthBuffer;
 layout(set = 0, binding = 3, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 4, std430) buffer SkySphericalHarmonicsBuffer {
@@ -118,7 +118,8 @@ void main(){
       vec3 direction = normalize(lSamplePosition - lPosition);
 
       float lFactor = //max(0.0, direction.y) *
-                      texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      
+                      (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xy, 0.0).x - lSampleUVW.z, 0.0, 1.0));
+//                    texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      
       if(lFactor < 1e-6){
         continue;
       }
