@@ -17,16 +17,6 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 layout(set = 0, binding = 1) uniform sampler2D uTexture2DInputs[]; // 0 = RSM color, 1 = RSM depth, 2 = RSM depth, 3 = depth buffer
 layout(set = 0, binding = 2, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 3, rgba32f) coherent uniform image3D uImageMetaInfo[]; // The global illumination volume meta info image
-layout(set = 0, binding = 4, std140) uniform uMetaData {
-  mat4 uWorldToReflectiveShadowMapMatrix;
-  mat4 uReflectiveShadowMapToWorldMatrix;
-  mat4 uModelViewProjectionMatrix;
-  vec4 uLightDirection;
-  vec4 uLightPosition;
-  vec4 uSpreadExtents; // xy = texture-space spread, zw = world-space extends
-  vec4 uScaleFactors;
-  ivec4 uCountSamples;
-};
 
 #define uTexReflectiveShadowMapColor uTexture2DInputs[0]
 #define uTexReflectiveShadowMapNormal uTexture2DInputs[1]
@@ -38,6 +28,17 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
 
 #include "global_illumination_cascaded_radiance_hints.glsl"
 //#include "global_illumination_sample_taps_array.glsl"
+
+layout(set = 0, binding = 4, std140) uniform uMetaData {
+  mat4 uWorldToReflectiveShadowMapMatrix;
+  mat4 uReflectiveShadowMapToWorldMatrix;
+  mat4 uModelViewProjectionMatrix;
+  vec4 uSpreadExtents[GI_CASCADES]; // xy = texture-space spread, zw = world-space extends
+  vec4 uLightDirection;
+  vec4 uLightPosition;
+  vec4 uScaleFactors;
+  ivec4 uCountSamples;
+};
 
 vec2 hammersley(int index, int samples){
   return vec2(float(index) / float(samples), float(bitfieldReverse(uint(index))) * 2.3283064365386963e-10);
@@ -155,7 +156,7 @@ void main(){
     for(int lSampleIndex = 0; lSampleIndex < countSamples; lSampleIndex++){
       
       // 2.399963229728653 = PI * (3.0 - sqrt(5.0)) (golden angle) 
-      vec2 lSampleUV = lBaseUV + ((sin(vec2(vec2(float(lSampleIndex) * 2.399963229728653) + vec2(1.5707963267948966, 0.0))) * sqrt((float(lSampleIndex) + 0.5) / float(countSamples))) * uSpreadExtents.xy); 
+      vec2 lSampleUV = lBaseUV + ((sin(vec2(vec2(float(lSampleIndex) * 2.399963229728653) + vec2(1.5707963267948966, 0.0))) * sqrt((float(lSampleIndex) + 0.5) / float(countSamples))) * uSpreadExtents[lCascadeIndex].xy); 
       const float lSampleWeight = 1.0;
 
       //vec2 lXI = hammersley(lSampleIndex, countSamples);

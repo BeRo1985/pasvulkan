@@ -262,9 +262,9 @@ type { TpvScene3DRendererInstance }
              WorldToReflectiveShadowMapMatrix:TpvMatrix4x4;
              ReflectiveShadowMapToWorldMatrix:TpvMatrix4x4;
              ModelViewProjectionMatrix:TpvMatrix4x4;
+             SpreadExtents:array[0..3] of TpvVector4;
              LightDirection:TpvVector4;
              LightPosition:TpvVector4;
-             SpreadExtents:TpvVector4;
              ScaleFactors:TpvVector4;
              CountSamples:TpvInt32;
              CountOcclusionSamples:TpvInt32;
@@ -358,6 +358,7 @@ type { TpvScene3DRendererInstance }
               procedure Reset;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
              published
+              property VolumeSize:TpvSizeInt read fVolumeSize;
               property Cascades:TCascades read fCascades;
             end;
             { THUDRenderPass }
@@ -3417,27 +3418,27 @@ begin
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.ModelViewProjectionMatrix:=InFlightFrameState^.MainViewProjectionMatrix;
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection:=TpvVector4.InlineableCreate(InFlightFrameState^.ReflectiveShadowMapLightDirection,0.0);
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightPosition:=GlobalIlluminationRadianceHintsRSMUniformBufferData^.LightDirection*(-16777216.0);
-  if Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
-   GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents:=TpvVector4.InlineableCreate(Min((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,1.0),
-                                                                                                   Min((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,1.0),
-                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.x,
-                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.y);
-  end else begin
-   GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents:=TpvVector4.InlineableCreate(Min(Renderer.GlobalIlluminationRadianceHintsSpread,1.0),
-                                                                                                   Min(Renderer.GlobalIlluminationRadianceHintsSpread,1.0),
-                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.x,
-                                                                                                   InFlightFrameState^.ReflectiveShadowMapExtents.y);
-  end;
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples:=32;
   GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountOcclusionSamples:=4;
   for CascadeIndex:=0 to 3 do begin
    CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
+   if Renderer.GlobalIlluminationRadianceHintsSpread<0.0 then begin
+    GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents[CascadeIndex]:=TpvVector4.InlineableCreate(Min((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.x,1.0),
+                                                                                                                  Min((-Renderer.GlobalIlluminationRadianceHintsSpread)*InFlightFrameState^.ReflectiveShadowMapScale.y,1.0),
+                                                                                                                  InFlightFrameState^.ReflectiveShadowMapExtents.x,
+                                                                                                                  InFlightFrameState^.ReflectiveShadowMapExtents.y);
+   end else begin
+    GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents[CascadeIndex]:=TpvVector4.InlineableCreate(Min(Renderer.GlobalIlluminationRadianceHintsSpread*CascadedVolumeCascade.fCellSize*fGlobalIlluminationRadianceHintsCascadedVolumes.fVolumeSize*InFlightFrameState^.ReflectiveShadowMapScale.x,1.0),
+                                                                                                                  Min(Renderer.GlobalIlluminationRadianceHintsSpread*CascadedVolumeCascade.fCellSize*fGlobalIlluminationRadianceHintsCascadedVolumes.fVolumeSize*InFlightFrameState^.ReflectiveShadowMapScale.y,1.0),
+                                                                                                                  InFlightFrameState^.ReflectiveShadowMapExtents.x,
+                                                                                                                  InFlightFrameState^.ReflectiveShadowMapExtents.y);
+   end;
 // s:=sqr(InFlightFrameState^.ReflectiveShadowMapExtents.Length*0.5)/(fReflectiveShadowMapWidth*fReflectiveShadowMapHeight);
    s:=(//(4.0)*
-       (GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.x*
-        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.y*
-        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.z*
-        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents.w))/
+       (GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents[CascadeIndex].x*
+        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents[CascadeIndex].y*
+        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents[CascadeIndex].z*
+        GlobalIlluminationRadianceHintsRSMUniformBufferData^.SpreadExtents[CascadeIndex].w))/
       GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
    GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=s;
 // GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(1.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples;
