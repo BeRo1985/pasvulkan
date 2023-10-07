@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants {
   mat4 uTopDownSkyOcclusionMapViewProjectionMatrix;
 };
 
-layout(set = 0, binding = 1) uniform sampler2D uTexTopDownSkyOcclusionMap;
+layout(set = 0, binding = 1) uniform sampler2DShadow uTexTopDownSkyOcclusionMap;
 layout(set = 0, binding = 2) uniform sampler2D uTexDepthBuffer;
 layout(set = 0, binding = 3, rgba16f) coherent uniform image3D uImageSH[]; // The global illumination volume images
 layout(set = 0, binding = 4, std430) buffer SkySphericalHarmonicsBuffer {
@@ -108,7 +108,7 @@ void main(){
     for(int lSampleIndex = 0; lSampleIndex < SAMPLES; lSampleIndex++){ 
 
       float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
-      vec3 lSamplePosition = lPosition + (vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * lCellSize);    
+      vec3 lSamplePosition = lPosition + (vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * lCellSize * 2.0);    
       lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;       
 
       vec4 lSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lSamplePosition, 1.0); 
@@ -120,16 +120,18 @@ void main(){
       /*float lFactor = //max(0.0, direction.y) *
                       (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xy, 0.0).x - lSampleUVW.z, 0.0, 1.0));
 //                    texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      */
-      float lFactor = 1.0;
+      float lFactor = 0.0;
       {
-        const int countOcclusionSamples = 4;
+        const int countOcclusionSamples = 16;
         for(int lOcclusionSampleIndex = 0; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){
-          vec3 lOcclusionSamplePosition = mix(fPosition, lSamplePosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples));
+          vec3 lOcclusionSamplePosition = mix(lPosition, lSamplePosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples));
           vec4 lOcclusionSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lOcclusionSamplePosition, 1.0); 
           lOcclusionSampleUVWPosition /= lOcclusionSampleUVWPosition.w;
           vec3 lOcclusionSampleUVW = vec3(clamp(fma(vec2(lOcclusionSampleUVWPosition.xy), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0)), lOcclusionSampleUVWPosition.z);
-          lFactor *= (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xy, 0.0).x - lOcclusionSampleUVW.z, 0.0, 1.0));
+          lFactor += texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xyz);
+//        lFactor *= (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xy, 0.0).x - lOcclusionSampleUVW.z, 0.0, 1.0));
         }
+        lFactor /= float(countOcclusionSamples);
       }
       if(lFactor < 1e-6){
         continue;
