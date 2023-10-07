@@ -117,9 +117,20 @@ void main(){
 
       vec3 direction = normalize(lSamplePosition - lPosition);
 
-      float lFactor = //max(0.0, direction.y) *
+      /*float lFactor = //max(0.0, direction.y) *
                       (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xy, 0.0).x - lSampleUVW.z, 0.0, 1.0));
-//                    texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      
+//                    texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      */
+      float lFactor = 1.0;
+      {
+        const int countOcclusionSamples = 4;
+        for(int lOcclusionSampleIndex = 0; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){
+          vec3 lOcclusionSamplePosition = mix(fPosition, lSamplePosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples));
+          vec4 lOcclusionSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lOcclusionSamplePosition, 1.0); 
+          lOcclusionSampleUVWPosition /= lOcclusionSampleUVWPosition.w;
+          vec3 lOcclusionSampleUVW = vec3(clamp(fma(vec2(lOcclusionSampleUVWPosition.xy), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0)), lOcclusionSampleUVWPosition.z);
+          lFactor *= (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xy, 0.0).x - lOcclusionSampleUVW.z, 0.0, 1.0));
+        }
+      }
       if(lFactor < 1e-6){
         continue;
       }
