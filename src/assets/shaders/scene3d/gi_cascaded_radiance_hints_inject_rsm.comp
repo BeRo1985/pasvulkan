@@ -10,7 +10,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 #define OCCLUSION_SAMPLES 4
-#define SAMPLES 128
+//#define SAMPLES 32
 
 #define INJECT_RSM_COMPUTE_SHADER
 
@@ -37,6 +37,7 @@ layout(set = 0, binding = 4, std140) uniform uMetaData {
 #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
 
 #include "global_illumination_cascaded_radiance_hints.glsl"
+//#include "global_illumination_sample_taps_array.glsl"
 
 vec2 hammersley(int index, int samples){
   return vec2(float(index) / float(samples), float(bitfieldReverse(uint(index))) * 2.3283064365386963e-10);
@@ -56,6 +57,18 @@ float quadraticCircleMappingWeight(float lR, float lMaxR){
 
 float uniformCircleMappingWeight(float lR, float lMaxR){
   return 3.14159265359 * lMaxR * lMaxR;
+}
+
+vec3 getRandomInsideOrOnSpherePosition(ivec4 pSeed){
+  const uint lRandomMulConstant = 1103515245u;
+  uvec4 lRandomState = uvec4(pSeed); 
+  lRandomState = ((lRandomState >> 8u) ^ lRandomState.ywzx) * lRandomMulConstant;
+  lRandomState = ((lRandomState >> 8u) ^ lRandomState.ywzx) * lRandomMulConstant;
+  lRandomState = ((lRandomState >> 8u) ^ lRandomState.ywzx) * lRandomMulConstant;
+  lRandomState = ((lRandomState >> 8u) ^ lRandomState.ywzx) * lRandomMulConstant;
+  vec4 lRandom = vec4(uintBitsToFloat(uvec4(uvec4(((lRandomState >> 9u) & uvec4(0x007fffffu)) | uvec4(0x3f800000u))))) - vec4(1.0);
+  vec4 lSinCosThetaPhi = sin(vec4(vec2(lRandom.x * 6.28318530718, acos(fma(lRandom.y, 2.0, -1.0))).xxyy + vec2(0.0, 1.5707963267948966).xyxy)); // x = sin(theta), y = cos(theta), z = sin(phi), w = cos(phi)
+  return vec3(lSinCosThetaPhi.yx * lSinCosThetaPhi.z, lSinCosThetaPhi.w) * pow(abs(lRandom.z), 1.0 / 3.0);
 }
 
 #if 0
@@ -98,11 +111,16 @@ void main(){
     }
     
     vec3 lCellSize = globalIlluminationVolumeCellSizes[lCascadeIndex].xyz; 
-    float lCellDiagLen = max(1.0, length(lCellSize)); 
+    float lCellMagnitude = length(lCellSize); 
 
-    vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
+    vec3 lCellMin = globalIlluminationVolumeAABBMin[lCascadeIndex].xyz + (vec3(lInvocationPosition) * lCellSize);
+    vec3 lCellMax = lCellMin + lCellSize;
+
+    vec3 lPosition = lCellMin + (lCellSize * 0.5);
+
+/*  vec3 lPosition = mix(globalIlluminationVolumeAABBMin[lCascadeIndex].xyz,
                          globalIlluminationVolumeAABBMax[lCascadeIndex].xyz,
-                         (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize));
+                         (vec3(lInvocationPosition) + vec3(0.5)) / vec3(uGlobalIlluminationVolumeSize));*/
 
     vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition, 1.0); 
     //vec4 lBaseUVPos = uWorldToReflectiveShadowMapMatrix * vec4(lPosition + vec3(0.01), 1.0); 
@@ -144,32 +162,39 @@ void main(){
       //vec2 lSampleUV = lBaseUV + circleMapping(lXI, uSpreadExtents.xy);
       //float lSampleWeight = circleMappingWeight(lXI.x, lWorldMaxR);
 
-      float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
+      /*float lSamplePositionTheta = acos(lSamplePositionSpiral.y);
       vec3 lSamplePosition = lPosition + ((vec3(sin(vec2(lSamplePositionSpiral.xx + vec2(1.5707963267948966, 0.0))) * sin(lSamplePositionTheta), cos(lSamplePositionTheta)).xzy * 0.5) * lCellSize);
-      lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;     
+      lSamplePositionSpiral.xy += lSamplePositionSpiral.zw;  */
 
       vec4 lReflectiveShadowMapNormalUsed = textureLod(uTexReflectiveShadowMapNormal, lSampleUV, 0.0); 
       if(lReflectiveShadowMapNormalUsed.w < 0.5){
         continue;
       }
 
-      vec4 lReflectiveShadowMapTempPosition = uReflectiveShadowMapToWorldMatrix * vec4(fma(vec2(lSampleUV.xy), vec2(2.0), vec2(-1.0)), textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x, 1.0); 
-      vec3 lReflectiveShadowMapPosition = lReflectiveShadowMapTempPosition.xyz / lReflectiveShadowMapTempPosition.w; 
-      vec3 lReflectiveShadowMapColor = clamp(textureLod(uTexReflectiveShadowMapColor, lSampleUV, 0.0).xyz, vec3(0.0), vec3(1e+4));  
-      vec3 lReflectiveShadowMapNormal = normalize(lReflectiveShadowMapNormalUsed.xyz - vec3(0.5)); 
+      vec4 lReflectiveShadowMapPosition = uReflectiveShadowMapToWorldMatrix * vec4(fma(vec2(lSampleUV.xy), vec2(2.0), vec2(-1.0)), 
+                                                                                   textureLod(uTexReflectiveShadowMapDepth, lSampleUV, 0.0).x, 
+                                                                                   1.0); 
+      lReflectiveShadowMapPosition /= lReflectiveShadowMapPosition.w; 
 
-      float lDistance = distance(lSamplePosition, lReflectiveShadowMapPosition); 
-      if(lDistance < lCellDiagLen){
+      // Important: Not just on-sphere, but inside the sphere, because we want to have also random samples inside the sphere, not just on the surface
+      vec3 lSamplePosition = lPosition + (getRandomInsideOrOnSpherePosition(ivec4(ivec3(lPosition), lSampleIndex)) * 0.5 * lCellSize);   
+
+      vec3 lSampleVector = lReflectiveShadowMapPosition.xyz - lSamplePosition;
+
+      float lSampleDistance = length(lSampleVector); 
+      if((lSampleDistance < lCellMagnitude)){// || (all(greaterThanEqual(lSamplePosition, lCellMin)) && all(lessThan(lSamplePosition, lCellMax)))){
         continue;
       }
       
-      vec3 lDirection = (lDistance <= 0.007) ? vec3(0.0) : normalize(lSamplePosition - lReflectiveShadowMapPosition);
+      vec3 lSampleDirection = (lSampleDistance <= 0.007) ? vec3(0.0) : normalize(lSampleVector);
 
-      float lFactor = max(dot(lDirection, lReflectiveShadowMapNormal), 0.0);
-      if(lFactor < 0.07){
+      vec3 lReflectiveShadowMapNormal = normalize(lReflectiveShadowMapNormalUsed.xyz - vec3(0.5)); 
+
+      float lSampleFactor = max(dot(lSampleDirection, lReflectiveShadowMapNormal), 0.0);
+      if(lSampleFactor < 0.07){
         continue;
       }
-      lFactor /= (lDistance * lDistance * lDistance * lDistance) + 1e-2;
+      lSampleFactor /= (lSampleDistance * lSampleDistance) + 1e-2;
 
       if(countOcclusionSamples > 0){
         float lCurrentVisibility;
@@ -180,17 +205,19 @@ void main(){
         }
         int lDepthVisibility = OCCLUSION_SAMPLES; 
         for(int lOcclusionSampleIndex = 1; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){ 
-          vec4 lTemp = uModelViewProjectionMatrix * vec4(mix(lReflectiveShadowMapPosition, lPosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples)), 1.0); 
+          vec4 lTemp = uModelViewProjectionMatrix * vec4(mix(lReflectiveShadowMapPosition.xyz, lPosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples)), 1.0); 
           lTemp /= lTemp.w;
           lDepthVisibility -= ((fma(lTemp.z, 2.0, -1.0) * lCurrentVisibility) < (fma(textureLod(uTexDepthBuffer, vec2(fma(lTemp.xy, vec2(0.5), vec2(0.5))), 0.0).x, 2.0, -1.0) * lCurrentVisibility)) ? 0 : 1; 
         } 
-        lFactor *= clamp(float(lDepthVisibility) / float(OCCLUSION_SAMPLES), 0.0, 1.0);
+        lSampleFactor *= clamp(float(lDepthVisibility) / float(OCCLUSION_SAMPLES), 0.0, 1.0);
       }
       
-      globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(-lDirection, globalIlluminationEncodeColor(max(vec3(0.0), lReflectiveShadowMapColor.xyz * lFactor * lSampleWeight)), lSphericalHarmonics);
+      vec3 lReflectiveShadowMapColor = max(vec3(0.0), textureLod(uTexReflectiveShadowMapColor, lSampleUV, 0.0).xyz);  
+
+      globalIlluminationCompressedSphericalHarmonicsEncodeAndAccumulate(lSampleDirection, globalIlluminationEncodeColor(max(vec3(0.0), lReflectiveShadowMapColor.xyz * lSampleFactor * lSampleWeight)), lSphericalHarmonics);
       
-      lMinimumDistance = min(lMinimumDistance, lDistance); 
-      lMaximumDistance = max(lMaximumDistance, lDistance); 
+      lMinimumDistance = min(lMinimumDistance, lSampleDistance); 
+      lMaximumDistance = max(lMaximumDistance, lSampleDistance); 
     } 
     
     ivec3 lVolumePosition = lInvocationPosition;

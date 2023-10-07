@@ -1,7 +1,7 @@
 #ifndef GLOBAL_ILLUMINATION_SAMPLE_TAP_ARRAYS_GLSL
 #define GLOBAL_ILLUMINATION_SAMPLE_TAP_ARRAYS_GLSL
 
-#if defined(USE_3D_ARRAY)
+#if defined(USE_SAMPLE_TAP_ARRAYS)
 #if SAMPLES == 12
   const vec2 gGlobalIlluminationTaps2D[12] = vec2[](vec2(0.031084, 0.572114),
                                                     vec2(0.040671, 0.95653),
@@ -134,7 +134,7 @@
                                                     vec3(0.0509049, 0.459151, 0.996277),
                                                     vec3(0.0305185, 0.13422, 0.306009));
 #else
-  #undef USE_3D_ARRAY // since SAMPLES is not 12, 20 or 32
+  #undef USE_SAMPLE_TAP_ARRAYS // since SAMPLES is not 12, 20 or 32
 #endif
 #endif
 
