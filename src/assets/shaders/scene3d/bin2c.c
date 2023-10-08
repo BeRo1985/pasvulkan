@@ -81,16 +81,8 @@ int main(int argc, char **argv) {
     for(size_t i = 0; i < readSize; ++i) {
       uint8_t current_byte = buffer[i];
       switch(current_byte){
-        case '\0':{
+/*      case '\0':{
           fprintf(outputFile, "\\0"); 
-          break;
-        }
-        case '\n':{
-          fprintf(outputFile, "\\n"); 
-          break;
-        }
-        case '\t':{
-          fprintf(outputFile, "\\t"); 
           break;
         }
         case '\v':{
@@ -101,16 +93,24 @@ int main(int argc, char **argv) {
           fprintf(outputFile, "\\b"); 
           break;
         }
-        case '\r':{
-          fprintf(outputFile, "\\r"); 
-          break;
-        }
         case '\f':{
           fprintf(outputFile, "\\f"); 
           break;
         }
         case '\a':{
           fprintf(outputFile, "\\a"); 
+          break;
+        }*/
+        /*case '\t':{
+          fprintf(outputFile, "\\t"); 
+          break;
+        }
+        case '\r':{
+          fprintf(outputFile, "\\r"); 
+          break;
+        }
+        case '\n':{
+          fprintf(outputFile, "\\n"); 
           break;
         }
         case '\\':{
@@ -124,18 +124,33 @@ int main(int argc, char **argv) {
         case '\?':{
           fprintf(outputFile, "\\?"); // for avoiding trigraphs 
           break;
-        }
+        }*/
         default:{
-          if ((current_byte >= 0x20) && (current_byte <= 0x7E)) {
+          if (((current_byte >= 0x20) && (current_byte <= 0x7E)) && (current_byte != '"') && (current_byte != '\\') && (current_byte != '\'') && (current_byte != '?')) {
             fprintf(outputFile, "%c", current_byte);
           } else {
             uint8_t next_byte = ((i + 1) < readSize) ? buffer[i + 1] : 0;
             if(((next_byte >= '0') && (next_byte <= '9')) ||
                ((next_byte >= 'a') && (next_byte <= 'f')) ||
                ((next_byte >= 'A') && (next_byte <= 'F'))) {
-              fprintf(outputFile, "\\x%02x\" \"", current_byte);
+              char printable[8];
+              printable[0] = '\\';
+              printable[1] = '0' + ((current_byte >> 6) & 0x7);
+              printable[2] = '0' + ((current_byte >> 3) & 0x7);
+              printable[3] = '0' + ((current_byte >> 0) & 0x7);
+              printable[4] = '"';
+              printable[5] = ' ';
+              printable[6] = '"';
+              printable[7] = 0;
+              fprintf(outputFile, "%s", printable);
             } else {
-              fprintf(outputFile, "\\x%02x", current_byte);
+              char printable[5];
+              printable[0] = '\\';
+              printable[1] = '0' + ((current_byte >> 6) & 0x7);
+              printable[2] = '0' + ((current_byte >> 3) & 0x7);
+              printable[3] = '0' + ((current_byte >> 0) & 0x7);
+              printable[4] = 0;
+              fprintf(outputFile, "%s", printable);
             }
           }
           break;
