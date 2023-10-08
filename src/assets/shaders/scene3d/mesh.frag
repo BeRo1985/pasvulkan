@@ -1594,7 +1594,8 @@ void main() {
   #else      
   #ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
       screenSpaceAmbientOcclusion = texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
-      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : screenSpaceAmbientOcclusion;
+      ambientOcclusion = screenSpaceAmbientOcclusion;
+      //ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : screenSpaceAmbientOcclusion;
   #else
       ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
       screenSpaceAmbientOcclusion = ambientOcclusion;
