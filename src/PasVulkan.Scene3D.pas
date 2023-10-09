@@ -1249,6 +1249,7 @@ type EpvScene3D=class(Exception);
             TDynamicJointBlocks=TpvDynamicArray<TJointBlock>;
             TDynamicMatrices=TpvDynamicArray<TpvMatrix4x4>;
             TDynamicFloats=TpvDynamicArray<TpvFloat>;
+            TVkMultiDrawIndexedInfoEXTDynamicArray=TpvDynamicArray<TVkMultiDrawIndexedInfoEXT>;
             { TDrawChoreographyBatchItem }
             TDrawChoreographyBatchItem=class
              private
@@ -2591,6 +2592,7 @@ type EpvScene3D=class(Exception);
        fVulkanDrawUniqueIndexBufferData:TDynamicIndices;
        fVulkanMorphTargetVertexBufferData:TMorphTargetVertexDynamicArray;
        fVulkanJointBlockBufferData:TDynamicJointBlocks;
+       fVkMultiDrawIndexedInfoEXTDynamicArray:TVkMultiDrawIndexedInfoEXTDynamicArray;
       public
        fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TDynamicMatrices;
       private
@@ -17092,6 +17094,8 @@ begin
  fVulkanMorphTargetVertexBufferData.Initialize;
  fVulkanJointBlockBufferData.Initialize;
 
+ fVkMultiDrawIndexedInfoEXTDynamicArray.Initialize;
+
  for Index:=0 to fCountInFlightFrames-1 do begin
   fVulkanNodeMatricesBufferData[Index].Initialize;
   fVulkanMorphTargetVertexWeightsBufferData[Index].Initialize;
@@ -17632,6 +17636,8 @@ begin
  fVulkanDrawUniqueIndexBufferData.Finalize;
  fVulkanMorphTargetVertexBufferData.Finalize;
  fVulkanJointBlockBufferData.Finalize;
+
+ fVkMultiDrawIndexedInfoEXTDynamicArray.Finalize;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fVulkanNodeMatricesBufferData[Index].Finalize;
@@ -19670,9 +19676,11 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
     IndicesStart,IndicesCount,
     DrawChoreographyBatchItemIndex,
-    CountDrawChoreographyBatchItems:TpvSizeInt;
+    CountDrawChoreographyBatchItems,
+    MultiDrawIndexedInfoEXTIndex:TpvSizeInt;
     VulkanFrameIndirectCommandBufferManager:TVulkanFrameIndirectCommandBufferManager;
     DrawIndexedIndirectCommand:PVkDrawIndexedIndirectCommand;
+    MultiDrawIndexedInfoEXTItem:PVkMultiDrawIndexedInfoEXT;
     First:Boolean;
 begin
 
@@ -19813,7 +19821,23 @@ begin
           end;
 
           if IndicesCount>0 then begin
-           if fUseMultiIndirectDraw then begin
+           if fUseMultiDraw then begin
+            if fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count then begin
+             fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                                    fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                                    @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                                    1,
+                                                                    0,
+                                                                    SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                                    nil);
+             fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+            end;
+            MultiDrawIndexedInfoEXTIndex:=fVkMultiDrawIndexedInfoEXTDynamicArray.AddNew;
+            MultiDrawIndexedInfoEXTItem:=@fVkMultiDrawIndexedInfoEXTDynamicArray.Items[MultiDrawIndexedInfoEXTIndex];
+            MultiDrawIndexedInfoEXTItem^.firstIndex:=IndicesStart;
+            MultiDrawIndexedInfoEXTItem^.indexCount:=IndicesCount;
+            MultiDrawIndexedInfoEXTItem^.vertexOffset:=0;
+           end else if fUseMultiIndirectDraw then begin
             DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
             if assigned(DrawIndexedIndirectCommand) then begin
              DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
@@ -19837,7 +19861,18 @@ begin
 
      end;
 
-     if fUseMultiIndirectDraw then begin
+     if fUseMultiDraw then begin
+      if fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count then begin
+       fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                              fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                              @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                              1,
+                                                              0,
+                                                              SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                              nil);
+       fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+      end;
+     end else if fUseMultiIndirectDraw then begin
       VulkanFrameIndirectCommandBufferManager.Flush;
      end;
 
