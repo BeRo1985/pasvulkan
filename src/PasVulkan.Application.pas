@@ -7516,6 +7516,10 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_MULTI_DRAW_EXTENSION_NAME);
   end;
 
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+  end;
+
   if fVulkanDebugging and
      fVulkanDebuggingEnabled and
      fVulkanValidation and

@@ -5,8 +5,6 @@
 #define CLIPMAP_MASK (CLIPMAP_SIZE - 1)
 #define COUNT_CLIPMAPS CLIPMAP_SIZE
 
-#define COUNT_AXIS 3 // for 3 axis in 3D space
-
 layout(triangles, invocations = COUNT_CLIPMAPS) in;
 layout(triangle_strip, max_vertices = 3) out;
 

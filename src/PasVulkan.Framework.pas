@@ -377,6 +377,7 @@ type EpvVulkanException=class(Exception);
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
+       fConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
@@ -439,6 +440,7 @@ type EpvVulkanException=class(Exception);
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
+       property ConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT read fConservativeRasterizationPropertiesEXT;
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
        property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
@@ -7874,7 +7876,7 @@ begin
  end;
 
  begin
-  FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawPropertiesEXT),#0);
+  FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
   fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
   if AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0 then begin
    fMultiDrawFeaturesEXT.pNext:=fFeatures2KHR.pNext;
@@ -7983,6 +7985,13 @@ begin
  if fMultiDrawFeaturesEXT.multiDraw<>VK_FALSE then begin
   fMultiDrawPropertiesEXT.pNext:=fProperties2KHR.pNext;
   fProperties2KHR.pNext:=@fMultiDrawPropertiesEXT;
+ end;
+
+ FillChar(fConservativeRasterizationPropertiesEXT,SizeOf(TVkPhysicalDeviceConservativeRasterizationPropertiesEXT),#0);
+ fConservativeRasterizationPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
+ if fAvailableExtensionNames.IndexOf(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)>=0 then begin
+  fConservativeRasterizationPropertiesEXT.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fConservativeRasterizationPropertiesEXT;
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
