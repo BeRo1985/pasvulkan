@@ -49,9 +49,7 @@ void main(){
 
     int dominantAxisIndex = (faceNormal.y > faceNormal.x) ? ((faceNormal.y > faceNormal.z) ? 1 : 2) : ((faceNormal.x > faceNormal.z) ? 0 : 2);
 
-    outDominantAxis.dominantAxis[baseIndex + 0] = dominantAxisIndex;
-    outDominantAxis.dominantAxis[baseIndex + 1] = dominantAxisIndex;
-    outDominantAxis.dominantAxis[baseIndex + 2] = dominantAxisIndex;
+    outDominantAxis.dominantAxis[baseIndex / 3] = dominantAxisIndex; // Triangle-wise so divide by 3, for saving memory space
 
   }
 
