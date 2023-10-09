@@ -2476,6 +2476,8 @@ type EpvScene3D=class(Exception);
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
        fBufferStreamingMode:TBufferStreamingMode;
        fDrawBufferStorageMode:TDrawBufferStorageMode;
+       fUseMultiDraw:Boolean;
+       fMaxMultiDrawCount:TpvUInt32;
        fUseMultiIndirectDraw:Boolean;
        fDefaultSampler:TSampler;
        fWhiteImage:TImage;
@@ -2767,6 +2769,8 @@ type EpvScene3D=class(Exception);
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property DrawBufferStorageMode:TDrawBufferStorageMode read fDrawBufferStorageMode write fDrawBufferStorageMode;
+       property UseMultiDraw:boolean read fUseMultiDraw write fUseMultiDraw;
+       property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
        property UseMultiIndirectDraw:boolean read fUseMultiIndirectDraw write fUseMultiIndirectDraw;
        property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
      end;
@@ -17038,15 +17042,22 @@ begin
   TpvVulkanVendorID.Intel:begin
    if fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue>=TpvInt64($80000000) then begin
     fDrawBufferStorageMode:=TDrawBufferStorageMode.CombinedBigBuffers;
+    fUseMultiDraw:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0) and
+                   (fVulkanDevice.PhysicalDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
+    fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
     fUseMultiIndirectDraw:=(fVulkanDevice.PhysicalDevice.Features.multiDrawIndirect<>VK_FALSE) and
                            (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount>=65536);
    end else begin
     fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+    fUseMultiDraw:=false;
+    fMaxMultiDrawCount:=0;
     fUseMultiIndirectDraw:=false;
    end;
   end;
   else begin
    fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+   fUseMultiDraw:=false;
+   fMaxMultiDrawCount:=0;
    fUseMultiIndirectDraw:=false;
   end;
  end;

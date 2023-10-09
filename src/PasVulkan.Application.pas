@@ -7512,6 +7512,10 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
   end;
 
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_MULTI_DRAW_EXTENSION_NAME);
+  end;
+
   if fVulkanDebugging and
      fVulkanDebuggingEnabled and
      fVulkanValidation and

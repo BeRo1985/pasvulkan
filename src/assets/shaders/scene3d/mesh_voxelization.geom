@@ -104,9 +104,7 @@ void main(){
 
     int currentVertexIndex = vertexIndexOrder[vertexIndex];
 
-    vec3 worldSpacePosition = inWorldSpacePosition[currentVertexIndex];
-
-    outWorldSpacePosition = worldSpacePosition;
+    outWorldSpacePosition = inWorldSpacePosition[currentVertexIndex];
         
     outTangent = inTangent[currentVertexIndex];
     outBitangent = inBitangent[currentVertexIndex];

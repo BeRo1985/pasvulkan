@@ -375,6 +375,8 @@ type EpvVulkanException=class(Exception);
        fVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;}
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
+       fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
+       fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
@@ -435,6 +437,8 @@ type EpvVulkanException=class(Exception);
        property Vulkan11Properties:TVkPhysicalDeviceVulkan11Properties read fVulkan11Properties;}
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
+       property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
+       property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
        property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
@@ -630,6 +634,7 @@ type EpvVulkanException=class(Exception);
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
 //     fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
+       fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
@@ -7869,6 +7874,15 @@ begin
  end;
 
  begin
+  FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawPropertiesEXT),#0);
+  fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0 then begin
+   fMultiDrawFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fMultiDrawFeaturesEXT;
+  end;
+ end;
+
+ begin
   FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
   fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
   if AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>0 then begin
@@ -7962,6 +7976,13 @@ begin
 
   end;
 
+ end;
+
+ FillChar(fMultiDrawPropertiesEXT,SizeOf(TVkPhysicalDeviceMultiDrawPropertiesEXT),#0);
+ fMultiDrawPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT;
+ if fMultiDrawFeaturesEXT.multiDraw<>VK_FALSE then begin
+  fMultiDrawPropertiesEXT.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fMultiDrawPropertiesEXT;
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
@@ -9292,6 +9313,15 @@ begin
     fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
     fMultiviewFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fMultiviewFeaturesKHR;
+   end;
+
+   FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
+   fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fMultiDrawFeaturesEXT.multiDraw<>VK_FALSE) then begin
+    fMultiDrawFeaturesEXT.multiDraw:=PhysicalDevice.fMultiDrawFeaturesEXT.multiDraw;
+    fMultiDrawFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fMultiDrawFeaturesEXT;
    end;
 
    FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
