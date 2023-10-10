@@ -2347,6 +2347,8 @@ void main() {
 
       uvec3 anisotropicDirectionOffsets = anisotropicAxisDirectionSideOffsets[anisotropicAxisDirectionSideIndex];
 
+      vec4 anisotropicPremultipliedColor = vec4(finalColor.xyz, 1.0) * finalColor.w;
+
       [[unroll]]            
       for(uint anisotropicAxisDirectionIndex = 0u; anisotropicAxisDirectionIndex < 3u; anisotropicAxisDirectionIndex++){
 
@@ -2358,7 +2360,7 @@ void main() {
 
           uint volumeColorIndex = volumeIndex << 2u;
 
-          vec4 anisotropicAxisDirectionColor = finalColor * anisotropicAxisDirectionWeight;
+          vec4 anisotropicAxisDirectionColor = anisotropicPremultipliedColor * anisotropicAxisDirectionWeight;
 
   #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
           atomicAdd(voxelGridColors.data[volumeColorIndex | 0u], anisotropicAxisDirectionColor.x);
