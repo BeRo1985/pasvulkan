@@ -392,7 +392,7 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
   // of the view direction with this bounding box and using that point to adjust the reflection vector. Here's an approach to do this:
 
   // Calculate the normalized view direction, which is the direction from the camera to the fragment.
-  vec3 viewDirection = normalize(inCameraRelativePosition); //normalize(fragmentWorldPosition - cameraWorldPosition);
+  vec3 viewDirection = normalize(-inCameraRelativePosition); //normalize(fragmentWorldPosition - cameraWorldPosition);
   
   // Compute the offset between the view direction and the original reflection direction.
   // This offset represents how much the reflection direction should be adjusted to account for the viewer's position.
@@ -414,7 +414,7 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
   vec3 normalizedReflectionDirection = normalize(reflectionDirection);
 
   // Compute the view direction, which is the direction from the camera to the fragment
-  vec3 viewDirection = inCameraRelativePosition; //fragmentWorldPosition - cameraWorldPosition;
+  vec3 viewDirection = -inCameraRelativePosition; //fragmentWorldPosition - cameraWorldPosition;
   
   // Create a vector perpendicular to the reflection direction and the view direction.
   vec3 perpendicularVector = cross(normalizedReflectionDirection, viewDirection);
@@ -439,7 +439,7 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
   vec3 normalizedReflectionDirection = normalize(reflectionDirection);
   
   // Compute the view direction, which is the direction from the camera to the fragment
-  vec3 viewDirection = inCameraRelativePosition; //fragmentWorldPosition - cameraWorldPosition;
+  vec3 viewDirection = -inCameraRelativePosition; //fragmentWorldPosition - cameraWorldPosition;
   
   // Calculate the halfway vector between the view direction and the reflection direction.
   // This is often used in shading models, especially for specular reflections.
