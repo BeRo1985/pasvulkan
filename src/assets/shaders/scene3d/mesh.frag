@@ -1883,7 +1883,11 @@ void main() {
                 case 4u: {  // Primary directional
                   imageLightBasedLightDirection = light.directionZFar.xyz;
                   litIntensity = lightAttenuation;
+#ifdef VOXELIZATION
+                  float viewSpaceDepth = 0; // TODO
+#else 
                   float viewSpaceDepth = -inViewSpacePosition.z;
+#endif                  
 #ifdef UseReceiverPlaneDepthBias
                   // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
                   // computeReceiverPlaneDepthBias function can work correctly then, when all cascaded shadow map slice
@@ -1983,6 +1987,8 @@ void main() {
 #endif
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
+              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
+#elif defined(VOXELIZATION)
               diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
