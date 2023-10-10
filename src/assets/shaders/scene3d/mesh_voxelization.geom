@@ -29,6 +29,8 @@ layout(location = 7) out vec3 outModelScale;
 layout(location = 8) flat out uint outMaterialID;
 layout(location = 9) flat out vec3 outAABBMin;
 layout(location = 10) flat out vec3 outAABBMax;
+layout(location = 11) flat out int outClipMapIndex;
+
 /*layout(location = 11) flat out vec3 outVertex0;
 layout(location = 12) flat out vec3 outVertex1;
 layout(location = 13) flat out vec3 outVertex2;*/
@@ -123,6 +125,8 @@ void main(){
     outAABBMin = aabbMin;
 
     outAABBMax = aabbMax;    
+
+    outClipMapIndex = clipMapIndex;
 
   /*outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
     outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];

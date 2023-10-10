@@ -18,6 +18,9 @@
   #extension GL_EXT_demote_to_helper_invocation : enable
 #endif
 #extension GL_EXT_nonuniform_qualifier : enable
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+  #extension GL_EXT_shader_atomic_float : enable
+#endif
 
 #ifndef NOBUFFERREFERENCE
   #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
@@ -62,6 +65,7 @@ layout(location = 7) in vec3 inModelScale;
 layout(location = 8) flat in uint inMaterialID;
 layout(location = 9) flat in vec3 inAABBMin;
 layout(location = 10) flat in vec3 inAABBMax;
+layout(location = 11) flat in int inClipMapIndex; 
 /*layout(location = 11) flat in vec3 inVertex0;
 layout(location = 12) flat in vec3 inVertex1;
 layout(location = 13) flat in vec3 inVertex2;*/
@@ -261,6 +265,43 @@ layout (std430, set = 1, binding = 6) readonly buffer FrustumClusterGridIndexLis
 layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
   uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
 };
+
+#endif
+
+#ifdef VOXELIZATION
+
+// Here i'm using 20.12 bit fixed point, since some current GPUs doesn't still support 32 bit floating point atomic add operations, and a RGBA8 
+// atomic-compare-and-exchange-loop running average is not enough for a good quality voxelization with HDR-ranged colors for my taste, since 
+// RGBA8 has only 8 bits per channel, which is only suitable for LDR colors. In addition to it, i'm using a 32-bit counter per voxel for the 
+// post averaging step.
+
+// The RGBA8 running average approach would also need separate volumes for non-emissive and emissive voxels, because of possible range 
+// overflows, but where this approach doesn't need it, because it uses 32-bit fixed point, which is enough for HDR colors including emissive 
+// colors on top of it. It's just HDR. :-)   
+
+// So:
+
+// 32*(4+1) = 160 bits per voxel, comparing to 32*2=64 bits per voxel (1x non-emission, 1x emission) with the RGBA8 running average approach, but 
+// which supports only LDR colors. Indeed, it needs more memory bandwidth, but it's worth it, because it supports HDR colors, and it doesn't need  
+// separate volumes for non-emissive and emissive voxels.
+
+// 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
+
+layout (std430, set = 1, binding = 6) coherent buffer VoxelGridData {
+  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+} voxelGridData;
+
+layout (std430, set = 1, binding = 6) coherent buffer VoxelGridColors {
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+  float data[]; // 32-bit fixed point
+#else
+  uint data[]; // 32-bit fixed point
+#endif
+} voxelGridColors;
+
+layout (std430, set = 1, binding = 7) coherent buffer VoxelGridCounters {
+  uint data[]; // 32-bit fixed point
+} voxelGridCounters;
 
 #endif
 
@@ -2269,7 +2310,40 @@ void main() {
 #endif
 
 #ifdef VOXELIZATION
+  vec4 clipMap = voxelGridData.clipMaps[inClipMapIndex];
 
+  uint cellSize = uint(clipMap.w);
+
+  uint volumeSize = cellSize * cellSize * cellSize;
+
+  ivec3 volumePosition = ivec3((inWorldSpacePosition - float(clipMap.xyz)) / float(clipMap.w)); 
+
+  if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(clipMap.w)))){
+
+    uint volumeIndex = (((((uint(inClipMapIndex) * cellSize) + uint(volumePosition.z)) * cellSize) + uint(volumePosition.y)) * cellSize) + uint(volumePosition.x);
+
+    uint volumeColorIndex = volumeIndex * 6 * 4; // rgba
+    
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 0], finalColor.x);
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 1], finalColor.y);
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 2], finalColor.z);
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 3], finalColor.w);    
+    // TODO: Antisotropic voxel colors
+#else
+    // 22.12 bit fixed point
+    uvec4 color = uvec4(finalColor * vec4(float(1 << 12))); 
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 0], color.x);
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 1], color.y);
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 2], color.z);
+    atomicAdd(voxelGridColors.data[volumeColorIndex + 3], color.w);
+    // TODO: Antisotropic voxel colors
+#endif
+
+    atomicAdd(voxelGridCounters.data[volumeIndex], 1u); 
+
+  }  
+ 
 #endif
 
 }
