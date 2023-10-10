@@ -354,16 +354,11 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
 #undef TRANSPARENCY_GLOBALS
 
 #ifdef VOXELIZATION
-vec3 cartesianToBarycentric(vec2 p, vec2 a, vec2 b, vec2 c) {
-#if 1
+vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
   vec3 v0 = b - a, v1 = c - a, v2 = p - a;
   float d00 = dot(v0, v0), d01 = dot(v0, v1), d11 = dot(v1, v1), d20 = dot(v2, v0), d21 = dot(v2, v1);
   vec2 vw = vec2((d11 * d20) - (d01 * d21), (d00 * d21) - (d01 * d20)) / vec2((d00 * d11) - (d01 * d01));
   return vec3((1.0 - vw.x) - vw.y, vw.xy);
-#else
-  vec2 vw = vec2(((b.y - c.y) * (p.x - c.x)) + ((c.x - b.x) * (p.y - c.y)), ((c.y - a.y) * (p.x - c.x)) + ((a.x - c.x) * (p.y - c.y))) / vec2(((b.y - c.y) * (a.x - c.x)) + ((c.x - b.x) * (a.y - c.y)));
-  return vec3((1.0 - vw.x) - vw.y, vw.xy);
-#endif
 }
 #endif
 
@@ -1486,6 +1481,11 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 #endif
 
 void main() {
+#ifdef VOXELIZATION
+  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz)))){
+    return;
+  }
+#endif
   {
     float frontFacingSign = gl_FrontFacing ? 1.0 : -1.0;   
     workTangent = inTangent * frontFacingSign;
@@ -2269,13 +2269,7 @@ void main() {
 #endif
 
 #ifdef VOXELIZATION
-  //vec3 uvw = cartesianToBarycentric(inWorldSpacePosition, inVertex0, inVertex1, inVertex2);
-  //if(all(greaterThanEqual(uvw, vec3(0.0))) && all(lessThanEqual(uvw, vec3(1.0)))){
-  //}
 
-  if(all(greaterThanEqual(inWorldSpacePosition.xyz, inAABBMin.xyz)) && all(lessThanEqual(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz)))){
-  }
-  
 #endif
 
 }
