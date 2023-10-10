@@ -231,6 +231,10 @@ compileshaderarguments=(
 
   "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
 
+  "-V mesh_voxelization.geom -o ${tempPath}/mesh_voxelization_geom.spv"
+
+  "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
+
 )
 
 #############################################
@@ -430,6 +434,14 @@ addMeshFragmentReflectiveShadowMapVariants(){
   addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
 }
 
+# Add mesh fragment shader variants with different alpha test techniques (if any)
+addMeshFragmentVoxelizationVariants(){
+  addMeshFragmentShader "$1" "$2"
+  addMeshFragmentShader "${1}_alphatest" "$2 -DALPHATEST"
+  addMeshFragmentShader "${1}_alphatest_demote" "$2 -DALPHATEST -DUSEDEMOTE"
+  addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
+}
+
 # Add mesh fragment shader variants with different pass targets
 addMeshFragmentPassTargetVariants(){
   
@@ -438,6 +450,9 @@ addMeshFragmentPassTargetVariants(){
 
   # The reflective shadow map stuff
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
+
+  # The voxelization stuff
+  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION"  
 
   # The actual shading stuff
   addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS"  

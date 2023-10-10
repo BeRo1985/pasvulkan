@@ -50,6 +50,19 @@
   layout(early_fragment_tests) in;
 #endif
 
+#ifdef VOXELIZATION
+layout(location = 0) in vec3 inWorldSpacePosition;
+layout(location = 1) in vec3 inTangent;
+layout(location = 2) in vec3 inBitangent;
+layout(location = 3) in vec3 inNormal;
+layout(location = 4) in vec2 inTexCoord0;
+layout(location = 5) in vec2 inTexCoord1;
+layout(location = 6) in vec4 inColor0;
+layout(location = 7) in vec3 inModelScale;
+layout(location = 8) flat in uint inMaterialID;
+layout(location = 9) flat in vec3 inAABBMin;
+layout(location = 10) flat in vec3 inAABBMax;
+#else
 layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in vec3 inViewSpacePosition;
 layout(location = 2) in vec3 inCameraRelativePosition;
@@ -70,8 +83,11 @@ layout(location = 15) flat in vec4 inJitter;
 #else
 layout(location = 13) flat in vec2 inJitter;
 #endif
+#endif
 
-#ifdef DEPTHONLY
+#ifdef VOXELIZATION
+  // Nothing in this case, since the fragment shader writes to the voxel grid directly.
+#elif defined(DEPTHONLY)
   #if defined(VELOCITY) && !(defined(MBOIT) && defined(MBOITPASS1))
     layout(location = 0) out vec2 outFragVelocity;
     layout(location = 1) out vec4 outFragNormal;
@@ -1477,10 +1493,12 @@ void main() {
   texCoords_dFdx[1] = dFdxFine(inTexCoord1);
   texCoords_dFdy[0] = dFdyFine(inTexCoord0);
   texCoords_dFdy[1] = dFdyFine(inTexCoord1);
+#if !defined(VOXELIZATION)  
   /*if(!any(notEqual(inJitter.xy, vec2(0.0))))*/{
     texCoords[0] -= (texCoords_dFdx[0] * inJitter.x) + (texCoords_dFdy[0] * inJitter.y);
     texCoords[1] -= (texCoords_dFdx[1] * inJitter.x) + (texCoords_dFdy[1] * inJitter.y);
   }  
+#endif
 #endif
 #ifndef DEPTHONLY
   envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
@@ -1602,7 +1620,9 @@ void main() {
   #endif
   #endif
 
+#if !defined(VOXELIZATION)  
       vec3 viewDirection = normalize(-inCameraRelativePosition);
+#endif
 
       if ((flags & (1u << 10u)) != 0u) {
         iridescenceFresnel = F0;
@@ -1618,7 +1638,11 @@ void main() {
           iridescenceFactor = 0.0;
         }  
         if(iridescenceFactor > 0.0){
+#if defined(VOXELIZATION)  
+          float NdotV = 1.0;
+#else
           float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
+#endif
           iridescenceFresnel = evalIridescence(1.0, iridescenceIor, NdotV, iridescenceThickness, F0);
           iridescenceF0 = Schlick_to_F0(iridescenceFresnel, NdotV);          
         }
@@ -1704,7 +1728,12 @@ void main() {
 #endif
       }
 
+#if defined(VOXELIZATION)  
+      specularOcclusion = 1.0;
+#else
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity * ambientOcclusion, alphaRoughness);
+#endif
+
 
 #ifdef ENABLE_ANISOTROPIC
       if (anisotropyActive = ((flags & (1u << 13u)) != 0u)) {
@@ -1718,8 +1747,13 @@ void main() {
         anisotropyStrength = clamp(ansitropicStrengthAnsitropicRotation.x * anisotropySample.z, 0.0, 1.0);
         alphaRoughnessAnisotropyT = mix(alphaRoughness, 1.0, anisotropyStrength * anisotropyStrength);
         alphaRoughnessAnisotropyB = clamp(alphaRoughness, 1e-3, 1.0);
+#if defined(VOXELIZATION)  
+        anisotropyTdotV = 0.0;
+        anisotropyBdotV = 0.0;   
+#else
         anisotropyTdotV = dot(anisotropyT, viewDirection);
         anisotropyBdotV = dot(anisotropyB, viewDirection);   
+#endif
       }
 #endif
 
@@ -1996,6 +2030,7 @@ void main() {
                       specularWeight);                    //
       }*/
 #elif 1
+#if !defined(VOXELIZATION)  
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
                     vec3(1.0),                          //
                     normalize(-vec3(0.5, -1.0, -1.0)),  //
@@ -2014,6 +2049,7 @@ void main() {
                     clearcoatF0,                        //
                     clearcoatRoughness,                 //
                     specularWeight);                    //
+#endif
 #endif
 #ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
       {
@@ -2045,6 +2081,7 @@ void main() {
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT) 
 #if !defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+#if !defined(VOXELIZATION)  
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight);
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
       if ((flags & (1u << 7u)) != 0u) {
@@ -2054,6 +2091,7 @@ void main() {
         clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
         clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
       }
+#endif
 #endif
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
@@ -2102,7 +2140,7 @@ void main() {
   }
   float alpha = color.w * inColor0.w, outputAlpha = ((flags & 32) != 0) ? (color.w * inColor0.w) : 1.0; // AMD GPUs under Linux doesn't like mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u)))); due to the unsigned int stuff
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
-#if !(defined(WBOIT) || defined(MBOIT))
+#if !(defined(WBOIT) || defined(MBOIT) || defined(VOXELIZATION))
 #ifndef BLEND 
   outFragColor = finalColor;
 #endif
@@ -2112,7 +2150,7 @@ void main() {
 #endif
 #endif
 
-#ifdef ALPHATEST
+#if defined(ALPHATEST)
   #if defined(NODISCARD)  
     float fragDepth;
   #endif
@@ -2187,6 +2225,7 @@ void main() {
   #endif
 #endif
 
+#if !defined(VOXELIZATION)
   const bool additiveBlending = false; // Mesh does never use additive blending currently, so static compile time constant folding is possible here.
    
 #define TRANSPARENCY_IMPLEMENTATION
@@ -2210,6 +2249,11 @@ void main() {
 
   //outFragPosition = inWorldSpacePosition.xyz;
 
+#endif
+#endif
+
+#ifdef VOXELIZATION
+  
 #endif
 
 }
