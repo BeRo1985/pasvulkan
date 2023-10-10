@@ -449,16 +449,16 @@ addMeshFragmentPassTargetVariants(){
   addMeshFragmentDepthOnlyVariants "${1}_depth" "$2 -DDEPTHONLY"  
 
   # The reflective shadow map stuff
-  addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
+  addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
 
   # The voxelization stuff
   addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION"  
 
   # The actual shading stuff
-  addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS"  
+  addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS"  
   
   # The environment map stuff
-  #addMeshFragmentShadingGlobalIlluminationVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DSHADOWS -DENVMAP"
+  #addMeshFragmentShadingGlobalIlluminationVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS -DENVMAP"
 
 }
 

@@ -1758,7 +1758,6 @@ void main() {
 #endif
 
 #ifdef LIGHTS
-#define LIGHTCLUSTERS
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
       if(lights[0].metaData.x == 4u){ // Only the first light is supported for RSMs, and only when it is the primary directional light 
         for(int lightIndex = 0; lightIndex < 1; lightIndex++){
