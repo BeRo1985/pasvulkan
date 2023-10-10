@@ -2320,7 +2320,7 @@ void main() {
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(cellSize)))){
 
-    uint volumeBaseIndex = (((((uint(inClipMapIndex) * cellSize) + uint(volumePosition.z)) * cellSize) + uint(volumePosition.y)) * cellSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = (((((uint(inClipMapIndex) * (cellSize * 6)) + uint(volumePosition.z)) * cellSize) + uint(volumePosition.y)) * cellSize) + uint(volumePosition.x);
 
     uint countAnisotropicAxisDirectionSides;
 
