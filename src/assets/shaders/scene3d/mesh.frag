@@ -62,6 +62,9 @@ layout(location = 7) in vec3 inModelScale;
 layout(location = 8) flat in uint inMaterialID;
 layout(location = 9) flat in vec3 inAABBMin;
 layout(location = 10) flat in vec3 inAABBMax;
+/*layout(location = 11) flat in vec3 inVertex0;
+layout(location = 12) flat in vec3 inVertex1;
+layout(location = 13) flat in vec3 inVertex2;*/
 #else
 layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in vec3 inViewSpacePosition;
@@ -349,6 +352,20 @@ vec4 convertSRGBToLinearRGB(vec4 c) {
 #define TRANSPARENCY_GLOBALS
 #include "transparency.glsl"
 #undef TRANSPARENCY_GLOBALS
+
+#ifdef VOXELIZATION
+vec3 cartesianToBarycentric(vec2 p, vec2 a, vec2 b, vec2 c) {
+#if 1
+  vec3 v0 = b - a, v1 = c - a, v2 = p - a;
+  float d00 = dot(v0, v0), d01 = dot(v0, v1), d11 = dot(v1, v1), d20 = dot(v2, v0), d21 = dot(v2, v1);
+  vec2 vw = vec2((d11 * d20) - (d01 * d21), (d00 * d21) - (d01 * d20)) / vec2((d00 * d11) - (d01 * d01));
+  return vec3((1.0 - vw.x) - vw.y, vw.xy);
+#else
+  vec2 vw = vec2(((b.y - c.y) * (p.x - c.x)) + ((c.x - b.x) * (p.y - c.y)), ((c.y - a.y) * (p.x - c.x)) + ((a.x - c.x) * (p.y - c.y))) / vec2(((b.y - c.y) * (a.x - c.x)) + ((c.x - b.x) * (a.y - c.y)));
+  return vec3((1.0 - vw.x) - vw.y, vw.xy);
+#endif
+}
+#endif
 
 #ifdef DEPTHONLY
 #else
@@ -2252,6 +2269,12 @@ void main() {
 #endif
 
 #ifdef VOXELIZATION
+  //vec3 uvw = cartesianToBarycentric(inWorldSpacePosition, inVertex0, inVertex1, inVertex2);
+  //if(all(greaterThanEqual(uvw, vec3(0.0))) && all(lessThanEqual(uvw, vec3(1.0)))){
+  //}
+
+  if(all(greaterThanEqual(inWorldSpacePosition.xyz, inAABBMin.xyz)) && all(lessThanEqual(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz)))){
+  }
   
 #endif
 
