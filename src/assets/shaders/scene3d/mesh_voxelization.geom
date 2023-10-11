@@ -9,35 +9,40 @@ layout(triangles, invocations = COUNT_CLIPMAPS) in;
 layout(triangle_strip, max_vertices = 3) out;
 
 layout(location = 0) in vec3 inWorldSpacePosition[];
-layout(location = 1) in vec3 inTangent[];
-layout(location = 2) in vec3 inBitangent[];
-layout(location = 3) in vec3 inNormal[];
-layout(location = 4) in vec2 inTexCoord0[];
-layout(location = 5) in vec2 inTexCoord1[];
-layout(location = 6) in vec4 inColor0[];
-layout(location = 7) in vec3 intModelScale[];
-layout(location = 8) flat in uint inMaterialID[];
+layout(location = 1) in vec3 inViewSpacePosition[];
+layout(location = 2) in vec3 inCameraRelativePosition[];
+layout(location = 3) in vec3 inTangent[];
+layout(location = 4) in vec3 inBitangent[];
+layout(location = 5) in vec3 inNormal[];
+layout(location = 6) in vec2 inTexCoord0[];
+layout(location = 7) in vec2 inTexCoord1[];
+layout(location = 8) in vec4 inColor0[];
+layout(location = 9) in vec3 intModelScale[];
+layout(location = 10) flat in uint inMaterialID[];
 
 layout(location = 0) out vec3 outWorldSpacePosition;
-layout(location = 1) out vec3 outTangent;
-layout(location = 2) out vec3 outBitangent;
-layout(location = 3) out vec3 outNormal;
-layout(location = 4) out vec2 outTexCoord0;
-layout(location = 5) out vec2 outTexCoord1;
-layout(location = 6) out vec4 outColor0;
-layout(location = 7) out vec3 outModelScale;
-layout(location = 8) flat out uint outMaterialID;
-layout(location = 9) flat out vec3 outAABBMin;
-layout(location = 10) flat out vec3 outAABBMax;
-layout(location = 11) flat out int outClipMapIndex;
+layout(location = 1) out vec3 outViewSpacePosition;
+layout(location = 2) out vec3 outCameraRelativePosition;
+layout(location = 3) out vec3 outTangent;
+layout(location = 4) out vec3 outBitangent;
+layout(location = 5) out vec3 outNormal;
+layout(location = 6) out vec2 outTexCoord0;
+layout(location = 7) out vec2 outTexCoord1;
+layout(location = 8) out vec4 outColor0;
+layout(location = 9) out vec3 outModelScale;
+layout(location = 10) flat out uint outMaterialID;
+layout(location = 11) flat out vec3 outAABBMin;
+layout(location = 12) flat out vec3 outAABBMax;
+layout(location = 13) flat out int outClipMapIndex;
 
 /*layout(location = 11) flat out vec3 outVertex0;
 layout(location = 12) flat out vec3 outVertex1;
 layout(location = 13) flat out vec3 outVertex2;*/
 
 layout(push_constant) uniform PushConstants {
-  vec4 clipMaps[COUNT_CLIPMAPS]; // xyz = center in world-space, w = extent of a voxel 
+  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
   int hardwareConservativeRasterization; // 0 = false, 1 = true
+  uint viewIndex;
 } pushConstants;
 
 void main(){
@@ -108,6 +113,10 @@ void main(){
     int currentVertexIndex = vertexIndexOrder[vertexIndex];
 
     outWorldSpacePosition = inWorldSpacePosition[currentVertexIndex];
+
+    outViewSpacePosition = inViewSpacePosition[currentVertexIndex];
+
+    outCameraRelativePosition = inCameraRelativePosition[currentVertexIndex];
         
     outTangent = inTangent[currentVertexIndex];
     outBitangent = inBitangent[currentVertexIndex];
@@ -134,7 +143,7 @@ void main(){
 
     gl_Position = projectionVertices[currentVertexIndex];
 
-    gl_ViewportIndex = clipMapIndex;
+    //gl_ViewportIndex = clipMapIndex;
 
     EmitVertex();
 

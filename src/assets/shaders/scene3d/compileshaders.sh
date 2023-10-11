@@ -112,8 +112,8 @@ compileshaderarguments=(
   "-V mesh.comp -DUSE_MATERIAL_ID_MAP -o ${tempPath}/mesh_materialidmap_comp.spv"
 
   "-V mesh.vert -o ${tempPath}/mesh_vert.spv"
-
   "-V mesh.vert -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
+  "-V mesh.vert -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
 
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"

@@ -2,7 +2,9 @@
 
 //#define SHADERDEBUG
 
+#ifndef VOXELIZATION
 #extension GL_EXT_multiview : enable
+#endif
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #if defined(SHADERDEBUG) && !defined(VELOCITY)
@@ -34,6 +36,7 @@ layout(location = 7) out vec2 outTexCoord1;
 layout(location = 8) out vec4 outColor0;
 layout(location = 9) out vec3 outModelScale;
 layout(location = 10) flat out uint outMaterialID;
+#ifndef VOXELIZATION
 layout(location = 11) flat out int outViewIndex;
 layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
@@ -43,8 +46,20 @@ layout(location = 15) flat out vec4 outJitter;
 #else
 layout(location = 13) flat out vec2 outJitter;
 #endif
+#endif
 
 /* clang-format off */
+
+#ifdef VOXELIZATION
+
+layout (push_constant) uniform PushConstants {
+  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  int hardwareConservativeRasterization; // 0 = false, 1 = true
+  uint viewIndex; // for the main primary view (in VR mode just simply the left eye, which will use as the primary view for the lighting for the voxelization then) 
+} pushConstants;
+
+#else
+
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
@@ -52,6 +67,7 @@ layout (push_constant) uniform PushConstants {
   uint frameIndex;
   vec4 jitter;
 } pushConstants;
+#endif
 
 // Global descriptor set
 
@@ -75,7 +91,11 @@ out gl_PerVertex {
 
 void main() {
 
+#ifdef VOXELIZATION
+  uint viewIndex = pushConstants.viewIndex;
+#else
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+#endif
  
   mat3 tangentSpace;
   {
@@ -90,7 +110,7 @@ void main() {
     
   View view = uView.views[viewIndex];
 
-#if defined(SHADERDEBUG) && !defined(VELOCITY)
+#if defined(SHADERDEBUG) && !(defined(VELOCITY) || defined(VOXELIZATION))
   if(gl_VertexIndex == 0){
     mat4 m = /*view.projectionMatrix * view.viewMatrix;*/ view.inverseProjectionMatrix;
     debugPrintfEXT("view-index %i matrix: %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
@@ -113,7 +133,6 @@ void main() {
                    m[3][3]);
   }
 #endif
-
 
 #if 1
   // The actual standard approach
@@ -145,10 +164,14 @@ void main() {
   outColor0 = inColor0;
   outModelScale = inModelScale;
   outMaterialID = inMaterialID;
+#ifndef VOXELIZATION
   outViewIndex = int(viewIndex); 
   outFrameIndex = pushConstants.frameIndex;
+#endif
 
-#ifdef VELOCITY
+#ifdef VOXELIZATION
+  gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // Overrided by geometry shader anyway
+#elif defined(VELOCITY)
   View previousView = uView.views[viewIndex + pushConstants.countAllViews];
   outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inPosition, 1.0);
   if(uint(inGeneration) != uint(inPreviousGeneration)){

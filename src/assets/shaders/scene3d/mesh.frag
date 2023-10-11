@@ -57,17 +57,19 @@
 
 #ifdef VOXELIZATION
 layout(location = 0) in vec3 inWorldSpacePosition;
-layout(location = 1) in vec3 inTangent;
-layout(location = 2) in vec3 inBitangent;
-layout(location = 3) in vec3 inNormal;
-layout(location = 4) in vec2 inTexCoord0;
-layout(location = 5) in vec2 inTexCoord1;
-layout(location = 6) in vec4 inColor0;
-layout(location = 7) in vec3 inModelScale;
-layout(location = 8) flat in uint inMaterialID;
-layout(location = 9) flat in vec3 inAABBMin;
-layout(location = 10) flat in vec3 inAABBMax;
-layout(location = 11) flat in int inClipMapIndex; 
+layout(location = 1) in vec3 inViewSpacePosition;
+layout(location = 2) in vec3 inCameraRelativePosition;
+layout(location = 3) in vec3 inTangent;
+layout(location = 4) in vec3 inBitangent;
+layout(location = 5) in vec3 inNormal;
+layout(location = 6) in vec2 inTexCoord0;
+layout(location = 7) in vec2 inTexCoord1;
+layout(location = 8) in vec4 inColor0;
+layout(location = 9) in vec3 inModelScale;
+layout(location = 10) flat in uint inMaterialID;
+layout(location = 11) flat in vec3 inAABBMin;
+layout(location = 12) flat in vec3 inAABBMax;
+layout(location = 13) flat in int inClipMapIndex; 
 /*layout(location = 11) flat in vec3 inVertex0;
 layout(location = 12) flat in vec3 inVertex1;
 layout(location = 13) flat in vec3 inVertex2;*/
@@ -1680,9 +1682,7 @@ void main() {
   #endif
   #endif
 
-#if !defined(VOXELIZATION)  
       vec3 viewDirection = normalize(-inCameraRelativePosition);
-#endif
 
       if ((flags & (1u << 10u)) != 0u) {
         iridescenceFresnel = F0;
@@ -1698,11 +1698,7 @@ void main() {
           iridescenceFactor = 0.0;
         }  
         if(iridescenceFactor > 0.0){
-#if defined(VOXELIZATION)  
-          float NdotV = 1.0;
-#else
           float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-#endif
           iridescenceFresnel = evalIridescence(1.0, iridescenceIor, NdotV, iridescenceThickness, F0);
           iridescenceF0 = Schlick_to_F0(iridescenceFresnel, NdotV);          
         }
@@ -1788,12 +1784,7 @@ void main() {
 #endif
       }
 
-#if defined(VOXELIZATION)  
-      specularOcclusion = 1.0;
-#else
       specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity * ambientOcclusion, alphaRoughness);
-#endif
-
 
 #ifdef ENABLE_ANISOTROPIC
       if (anisotropyActive = ((flags & (1u << 13u)) != 0u)) {
@@ -1807,13 +1798,8 @@ void main() {
         anisotropyStrength = clamp(ansitropicStrengthAnsitropicRotation.x * anisotropySample.z, 0.0, 1.0);
         alphaRoughnessAnisotropyT = mix(alphaRoughness, 1.0, anisotropyStrength * anisotropyStrength);
         alphaRoughnessAnisotropyB = clamp(alphaRoughness, 1e-3, 1.0);
-#if defined(VOXELIZATION)  
-        anisotropyTdotV = 0.0;
-        anisotropyBdotV = 0.0;   
-#else
         anisotropyTdotV = dot(anisotropyT, viewDirection);
         anisotropyBdotV = dot(anisotropyB, viewDirection);   
-#endif
       }
 #endif
 
@@ -1883,11 +1869,7 @@ void main() {
                 case 4u: {  // Primary directional
                   imageLightBasedLightDirection = light.directionZFar.xyz;
                   litIntensity = lightAttenuation;
-#ifdef VOXELIZATION
-                  float viewSpaceDepth = 0; // TODO
-#else 
                   float viewSpaceDepth = -inViewSpacePosition.z;
-#endif                  
 #ifdef UseReceiverPlaneDepthBias
                   // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
                   // computeReceiverPlaneDepthBias function can work correctly then, when all cascaded shadow map slice
@@ -1988,8 +1970,8 @@ void main() {
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
               diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
-#elif defined(VOXELIZATION)
-              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
+//#elif defined(VOXELIZATION)
+//             diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
@@ -2146,17 +2128,16 @@ void main() {
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT) 
 #if !defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
-#if !defined(VOXELIZATION)  
-      diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight);
-      specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection);
+      float iblWeight = 1.0; // for future sky occulsion 
+      diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
+      specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
       if ((flags & (1u << 7u)) != 0u) {
-        sheenOutput += getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColor);
+        sheenOutput += getIBLRadianceCharlie(normal, viewDirection, sheenRoughness, sheenColor) * iblWeight;
       }
       if ((flags & (1u << 8u)) != 0u) {
-        clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection);
-        clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0));
+        clearcoatOutput += getIBLRadianceGGX(clearcoatNormal, clearcoatRoughness, clearcoatF0.xyz, 1.0, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
+        clearcoatFresnel = F_Schlick(clearcoatF0, clearcoatF90, clamp(dot(clearcoatNormal, viewDirection), 0.0, 1.0)) * iblWeight;
       }
-#endif
 #endif
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
