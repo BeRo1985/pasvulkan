@@ -141,18 +141,18 @@ void main(){
         uImageDestinationVolumeAlpha[clipMapIndex],
         ivec3(volumeDestinationPosition), 
         vec4(
-          (imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 0, 0)).x +
-           imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 0, 0)).x +
+          (
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 0, 0)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 0, 0)).x +
             imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 1, 0)).x +
             imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 1, 0)).x +
             imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 0, 1)).x +
             imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 0, 1)).x +
             imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 1, 1)).x +
-            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 1, 1)).x) * 0.125
-          )
-        );
-      }
-
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 1, 1)).x
+          ) * 0.125
+        )
+      );
     }      
 
   }
