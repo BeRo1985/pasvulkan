@@ -19,9 +19,13 @@ layout(set = 0, binding = 1, r32ui) readonly uniform uimage3D uImageSourceVolume
 
 layout(set = 0, binding = 2, r8) readonly uniform image3D uImageSourceVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
-layout(set = 0, binding = 3, r32ui) writeonly uniform uimage3D uImageDestinationVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+layout(set = 0, binding = 3, r8) writeonly uniform image3D uImageSourceVolumeMonoAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
-layout(set = 0, binding = 4, r8) writeonly uniform image3D uImageDestinationVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+layout(set = 0, binding = 4, r32ui) writeonly uniform uimage3D uImageDestinationVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+
+layout(set = 0, binding = 5, r8) writeonly uniform image3D uImageDestinationVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+
+layout(set = 0, binding = 6, r8) writeonly uniform image3D uImageDestinationMonoVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
 layout(push_constant) uniform PushConstants {
   uint mipMapLevel;
@@ -129,7 +133,27 @@ void main(){
                    (voxels[voxelIndex(1, 1, 1)] + (voxels[voxelIndex(1, 1, 0)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 5], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 5], ivec3(volumeDestinationPosition), vec4(temp.w));
-    }                   
+    }             
+
+    {
+      // Mono alpha
+      imageStore(
+        uImageDestinationVolumeAlpha[clipMapIndex],
+        ivec3(volumeDestinationPosition), 
+        vec4(
+          (imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 0, 0)).x +
+           imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 0, 0)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 1, 0)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 1, 0)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 0, 1)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 0, 1)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(0, 1, 1)).x +
+            imageLoad(uImageSourceVolumeAlpha[clipMapIndex], ivec3(volumeSourcePosition) + ivec3(1, 1, 1)).x) * 0.125
+          )
+        );
+      }
+
+    }      
 
   }
 
