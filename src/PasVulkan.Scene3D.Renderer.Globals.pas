@@ -153,18 +153,19 @@ type TpvScene3DRendererAntialiasingMode=
 
        // The idea of "Radiance hints" is based on reflective shadow maps (RSMs), where but instead of depth, the albedo color is stored in the RSMs. And
        // with cascaded radiance hints, the scene is split into multiple cascades, where each cascade has its own voxel-grid-like state. This technique is
-       // very similar to  cascaded shadow maps (CSMs), only that it is used for global illumination instead of shadows.
-       CascadedRadianceHints
-{
-       // Possible further options on my todo list for the future:
-       
+       // very similar to cascaded shadow maps (CSMs), only that it is used for global illumination instead of shadows.
+       CascadedRadianceHints,
+
        // At Voxel cone tracing, the scene is voxelized and then cone traced in an approximated way with help of mipmaps of the 3D voxel texture. This is 
        // a rather good technique, but it has some drawbacks, for example light leaking artifacts at thin walls. And with cascaded voxel cone tracing, the
        // scene is split into multiple cascades, where each cascade has its own voxel grid map. This technique is very similar to cascaded shadow maps (CSMs),
        // only that it is used for global illumination instead of shadows.
-       CascadedVoxelConeTracing, 
+       CascadedVoxelConeTracing
 
-       // And finally, the most accurate and most expensive way to add global illumination to a scene is to use hardware ray tracing for 1SPP path tracing  
+{
+       // Possible further options on my todo list for the future:
+
+       // And finally, the most accurate and most expensive way to add global illumination to a scene is to use hardware ray tracing for 1SPP path tracing
        // together with temporal denoising. This technique is extremely accurate, but also extremely expensive. But it is also the only way to get the most 
        // accurate global illumination. But sadly it needs hardware support for ray tracing, and this is currently only available on Nvidia RTX graphics cards,
        // newer AMD GPUs and Intel graphics cards. But maybe in the future, ray tracing will be more common and available on all graphics cards, and then it

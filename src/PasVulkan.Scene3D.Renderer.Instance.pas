@@ -438,6 +438,9 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fGlobalIlluminationRadianceHintsEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
+       fGlobalIlluminationVoxelCascadedVolumes:TCascadedVolumes;
+
+      private
        fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
        fNearestFarthestDepthVulkanBuffers:TVulkanBuffers;
@@ -1416,6 +1419,8 @@ begin
   fGlobalIlluminationRadianceHintsFirsts[InFlightFrameIndex]:=true;
  end;
 
+ fGlobalIlluminationVoxelCascadedVolumes:=nil;
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1541,6 +1546,8 @@ begin
 
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 
+ FreeAndNil(fGlobalIlluminationVoxelCascadedVolumes);
+
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
  case Renderer.TransparencyMode of
@@ -1585,6 +1592,7 @@ var AntialiasingFirstPass:TpvFrameGraph.TPass;
 begin
 
  case Renderer.GlobalIlluminationMode of
+
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
    fGlobalIlluminationRadianceHintsCascadedVolumes:=TCascadedVolumes.Create(self,
@@ -1713,6 +1721,12 @@ begin
     end;
 
    end;
+
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+
+   fGlobalIlluminationVoxelCascadedVolumes:=TCascadedVolumes.Create(self,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelCountClipMaps);
 
   end;
 

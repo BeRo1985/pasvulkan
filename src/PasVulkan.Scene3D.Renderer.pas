@@ -157,6 +157,9 @@ type TpvScene3DRenderer=class;
        fCountSurfaceMSAASamples:TpvSizeInt;
        fGlobalIlluminationCaching:Boolean;
        fGlobalIlluminationRadianceHintsSpread:TpvScalar;
+       fGlobalIlluminationVoxelGridSize:TpvInt32;
+       fGlobalIlluminationVoxelCountClipMaps:TpvInt32;
+       fGlobalIlluminationVoxelCountBounces:TpvInt32;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
        fSkySphericalHarmonicsBuffer:TpvVulkanBuffer;
@@ -185,6 +188,9 @@ type TpvScene3DRenderer=class;
        fVulkanFlushCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
        fVulkanFlushCommandBufferFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
        fVulkanFlushSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+       procedure SetGlobalIlluminationVoxelCountBounces(const aValue:TpvInt32);
+       procedure SetGlobalIlluminationVoxelCountClipMaps(const aValue:TpvInt32);
+       procedure SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);
       public
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aCountInFlightFrames:TpvSizeInt=0); reintroduce;
        destructor Destroy; override;
@@ -227,6 +233,9 @@ type TpvScene3DRenderer=class;
        property CountSurfaceMSAASamples:TpvSizeInt read fCountSurfaceMSAASamples;
        property GlobalIlluminationCaching:Boolean read fGlobalIlluminationCaching write fGlobalIlluminationCaching;
        property GlobalIlluminationRadianceHintsSpread:TpvScalar read fGlobalIlluminationRadianceHintsSpread write fGlobalIlluminationRadianceHintsSpread;
+       property GlobalIlluminationVoxelGridSize:TpvInt32 read fGlobalIlluminationVoxelGridSize write SetGlobalIlluminationVoxelGridSize;
+       property GlobalIlluminationVoxelCountClipMaps:TpvInt32 read fGlobalIlluminationVoxelCountClipMaps write SetGlobalIlluminationVoxelCountClipMaps;
+       property GlobalIlluminationVoxelCountBounces:TpvInt32 read fGlobalIlluminationVoxelCountBounces write SetGlobalIlluminationVoxelCountBounces;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
        property SkySphericalHarmonicsBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsBuffer;
@@ -391,6 +400,12 @@ begin
 
  fGlobalIlluminationRadianceHintsSpread:=-0.25;
 
+ fGlobalIlluminationVoxelGridSize:=128;
+
+ fGlobalIlluminationVoxelCountClipMaps:=4;
+
+ fGlobalIlluminationVoxelCountBounces:=2;
+
  fVulkanFlushQueue:=Renderer.VulkanDevice.UniversalQueue;
 
  fVulkanFlushCommandPool:=TpvVulkanCommandPool.Create(Renderer.VulkanDevice,
@@ -423,6 +438,22 @@ begin
 
  inherited Destroy;
 end;
+
+procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelCountBounces(const aValue:TpvInt32);
+begin
+ fGlobalIlluminationVoxelCountBounces:=Min(Max(aValue,1),2);
+end;
+
+procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelCountClipMaps(const aValue:TpvInt32);
+begin
+ fGlobalIlluminationVoxelCountClipMaps:=Min(Max(aValue,1),4);
+end;
+
+procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);
+begin
+ fGlobalIlluminationVoxelGridSize:=RoundUpToPowerOfTwo(Min(Max(aValue,16),256));
+end;
+
 
 class procedure TpvScene3DRenderer.SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice);
 begin
