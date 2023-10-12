@@ -291,11 +291,12 @@ layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
 
 // 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
 
-layout (std430, set = 1, binding = 6) coherent buffer VoxelGridData {
+layout (std430, set = 1, binding = 6) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint countClipMaps; // maximum 4 clipmaps
 } voxelGridData;
 
-layout (std430, set = 1, binding = 6) coherent buffer VoxelGridColors {
+layout (std430, set = 1, binding = 7) coherent buffer VoxelGridColors {
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
   float data[]; // 32-bit fixed point
 #else
@@ -303,7 +304,7 @@ layout (std430, set = 1, binding = 6) coherent buffer VoxelGridColors {
 #endif
 } voxelGridColors;
 
-layout (std430, set = 1, binding = 7) coherent buffer VoxelGridCounters {
+layout (std430, set = 1, binding = 8) coherent buffer VoxelGridCounters {
   uint data[]; // 32-bit fixed point
 } voxelGridCounters;
 
@@ -1527,7 +1528,7 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 
 void main() {
 #ifdef VOXELIZATION
-  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz)))){
+  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz))) || (uint(inClipMapIndex) >= uint(voxelGridData.countClipMaps))){
     return;
   }
 #endif
@@ -2301,19 +2302,19 @@ void main() {
 #ifdef VOXELIZATION
   vec4 clipMap = voxelGridData.clipMaps[inClipMapIndex];
 
-  uint cellSize = uint(clipMap.w);
+  uint voxelGridSize = uint(clipMap.w);
   
   uvec3 volumePosition = ivec3((inWorldSpacePosition - float(clipMap.xyz)) / float(clipMap.w)); 
 
-  if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(cellSize)))){
+  if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize)))){
 
-    uint volumeBaseIndex = (((((uint(inClipMapIndex) * (cellSize * 6)) + uint(volumePosition.z)) * cellSize) + uint(volumePosition.y)) * cellSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = (((((uint(inClipMapIndex) * (voxelGridSize * 6)) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
 
     uint countAnisotropicAxisDirectionSides;
 
     uvec3 anisotropicAxisDirectionSideOffsets[2];
 
-    uint volumeSize = cellSize * cellSize * cellSize;
+    uint volumeSize = voxelGridSize * voxelGridSize * voxelGridSize;
 
     if((flags & (1u << 6u)) != 0u){
       countAnisotropicAxisDirectionSides = 2u; // Double-sided

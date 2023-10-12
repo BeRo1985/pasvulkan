@@ -41,13 +41,18 @@ layout(location = 13) flat out vec3 outVertex2;*/
 
 layout(push_constant) uniform PushConstants {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint countClipMaps; // maximum 4 cascades
   int hardwareConservativeRasterization; // 0 = false, 1 = true
   uint viewIndex;
 } pushConstants;
 
 void main(){
 
-  int clipMapIndex = int(gl_InvocationID);
+  uint clipMapIndex = uint(gl_InvocationID);
+
+  if(clipMapIndex >= pushConstants.countClipMaps){
+    return;
+  }
   
   vec3 clipMapSpacePositions[3] = vec3[3](
     vec3((inWorldSpacePosition[0] - pushConstants.clipMaps[clipMapIndex].xyz) / pushConstants.clipMaps[clipMapIndex].w),
