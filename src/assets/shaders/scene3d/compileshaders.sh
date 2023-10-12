@@ -118,6 +118,8 @@ compileshaderarguments=(
   "-V gi_voxel_transfer.comp -o ${tempPath}/gi_voxel_transfer_comp.spv"
   "-V gi_voxel_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD -o ${tempPath}/gi_voxel_transfer_float_comp.spv"
 
+  "-V gi_voxel_mipmap.comp -o ${tempPath}/gi_voxel_mipmap_comp.spv"
+
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
   "-V wboit_resolve.frag -o ${tempPath}/wboit_resolve_frag.spv"
