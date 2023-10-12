@@ -4,25 +4,30 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
+//#extension GL_EXT_scalar_block_layout : enable
 
 /* clang-format off */
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
-layout (set = 0, binding = 0, std430) readonly uniform VoxelGridData {
+layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
   uint countClipMaps; // maximum 4 clipmaps
 } voxelGridData;
 
 layout (set = 0, binding = 1, std430) readonly buffer VoxelGridColors {
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+  vec4 data[]; // 32bit floating point
+#else
   uvec4 data[]; // 22.12bit fixed point
+#endif
 } voxelGridColors;
 
-layout (set = 0, binding = 2, td430) readonly buffer VoxelGridCounters {
+layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
   uint data[]; // 32-bit fixed point
 } voxelGridCounters;
 
-layout(set = 0, binding = 3, r32ui) coherent uniform image3D uImageVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+layout(set = 0, binding = 3, r32ui) coherent uniform uimage3D uImageVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
 
 layout(set = 0, binding = 4, r8) coherent uniform image3D uImageVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
@@ -38,25 +43,27 @@ void main(){
 
     uint clipMapIndex = invocation.z / voxelGridSize;
 
-    uint volumeSize = voxelGridSize * voxelGridSize * voxelGridSize;
-
     uvec3 volumePosition = uvec3(invocation.xy, invocation.z - (clipMapIndex * voxelGridSize));
 
-    uint volumeBaseIndex = (((((uint(clipMapIndex) * (voxelGridSize * 6)) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = ((((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) * 6;
 
-    for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionSideIndex < 6; anisotropicAxisDirectionSideIndex++){
+    for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionIndex < 6; anisotropicAxisDirectionIndex++){
 
-      uint volumeIndex = volumeBaseIndex + (anisotropicAxisDirectionIndex * volumeSize);
+      uint volumeIndex = volumeBaseIndex + anisotropicAxisDirectionIndex;
 
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+      vec4 volumeCellColorRGBA = voxelGridColors.data[volumeIndex] / max(1u, voxelGridCounters.data[volumeIndex]); // normalization
+#else
       vec4 volumeCellColorRGBA = vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeIndex]) * 4096u); // from 22.12 bit fixed point to floating point, together with normalization 
+#endif
 
       uint volumeCellColorRGB9E5 = encodeRGB9E5(volumeCellColorRGBA.xyz); // from floating point to 9.5 bit fixed point (RGB9E5)
 
-      uint imageIndex = (clipMapIndex * 6) + anisotropicAxisDirectionSideIndex;
+      uint imageIndex = (clipMapIndex * 6) + anisotropicAxisDirectionIndex;
 
-      imageStore(uImageVolumeColor[imageIndex], volumePosition, uvec4(volumeCellColorRGB9E5));
+      imageStore(uImageVolumeColor[imageIndex], ivec3(volumePosition), uvec4(volumeCellColorRGB9E5));
 
-      imageStore(uImageVolumeAlpha[imageIndex], volumePosition, vec4(clamp(volumeCellColorRGBA.w, 0.0, 1.0)));
+      imageStore(uImageVolumeAlpha[imageIndex],  ivec3(volumePosition), vec4(clamp(volumeCellColorRGBA.w, 0.0, 1.0)));
 
     } 
 

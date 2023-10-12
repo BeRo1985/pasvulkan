@@ -17,10 +17,10 @@ uint encodeRGB9E5(vec3 color){
 
 vec3 decodeRGB9E5(uint color){
   return vec3(
-    float(bitfieldExtract(color, 0u, 9u)),
-    float(bitfieldExtract(color, 9u, 9u)),
-    float(bitfieldExtract(color, 18u, 9u))
-  ) * exp2(float(bitfieldExtract(color, 27u, 5u) - 25));
+    float(bitfieldExtract(color, 0, 9)),
+    float(bitfieldExtract(color, 9, 9)),
+    float(bitfieldExtract(color, 18, 9))
+  ) * exp2(float(bitfieldExtract(color, 27, 5) - 25));
 }
 
 #endif

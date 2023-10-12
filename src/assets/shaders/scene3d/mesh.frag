@@ -69,7 +69,7 @@ layout(location = 9) in vec3 inModelScale;
 layout(location = 10) flat in uint inMaterialID;
 layout(location = 11) flat in vec3 inAABBMin;
 layout(location = 12) flat in vec3 inAABBMax;
-layout(location = 13) flat in int inClipMapIndex; 
+layout(location = 13) flat in uint inClipMapIndex; 
 /*layout(location = 11) flat in vec3 inVertex0;
 layout(location = 12) flat in vec3 inVertex1;
 layout(location = 13) flat in vec3 inVertex2;*/
@@ -291,21 +291,21 @@ layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
 
 // 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
 
-layout (std430, set = 1, binding = 6) readonly uniform VoxelGridData {
+layout (std140, set = 1, binding = 6) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
   uint countClipMaps; // maximum 4 clipmaps
 } voxelGridData;
 
 layout (std430, set = 1, binding = 7) coherent buffer VoxelGridColors {
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
-  float data[]; // 32-bit fixed point
+  float data[]; // 32-bit floating point
 #else
-  uint data[]; // 32-bit fixed point
+  uint data[]; // 22.12 bit fixed point
 #endif
 } voxelGridColors;
 
 layout (std430, set = 1, binding = 8) coherent buffer VoxelGridCounters {
-  uint data[]; // 32-bit fixed point
+  uint data[]; // 32-bit unsigned integer
 } voxelGridCounters;
 
 #endif
@@ -2308,25 +2308,23 @@ void main() {
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize)))){
 
-    uint volumeBaseIndex = (((((uint(inClipMapIndex) * (voxelGridSize * 6)) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = ((((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) * 6;
 
     uint countAnisotropicAxisDirectionSides;
 
     uvec3 anisotropicAxisDirectionSideOffsets[2];
 
-    uint volumeSize = voxelGridSize * voxelGridSize * voxelGridSize;
-
     if((flags & (1u << 6u)) != 0u){
       countAnisotropicAxisDirectionSides = 2u; // Double-sided
-      anisotropicAxisDirectionSideOffsets[0] = uvec3(0u, 1u, 2u) * volumeSize;
-      anisotropicAxisDirectionSideOffsets[1] = uvec3(3u, 4u, 5u) * volumeSize;
+      anisotropicAxisDirectionSideOffsets[0] = uvec3(0u, 1u, 2u);
+      anisotropicAxisDirectionSideOffsets[1] = uvec3(3u, 4u, 5u);
     }else{
       countAnisotropicAxisDirectionSides = 1u; // Single-sided
       anisotropicAxisDirectionSideOffsets[0] = uvec3(
         (workNormal.x > 0.0) ? 0u : 3u, 
         (workNormal.y > 0.0) ? 1u : 4u, 
         (workNormal.z > 0.0) ? 2u : 5u
-      ) * volumeSize;
+      );
     } 
 
     vec3 anisotropicDirectionWeights = abs(workNormal);
@@ -2351,6 +2349,7 @@ void main() {
           vec4 anisotropicAxisDirectionColor = anisotropicPremultipliedColor * anisotropicAxisDirectionWeight;
 
   #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+          // 32 bit floating point 
           atomicAdd(voxelGridColors.data[volumeColorIndex | 0u], anisotropicAxisDirectionColor.x);
           atomicAdd(voxelGridColors.data[volumeColorIndex | 1u], anisotropicAxisDirectionColor.y);
           atomicAdd(voxelGridColors.data[volumeColorIndex | 2u], anisotropicAxisDirectionColor.z);

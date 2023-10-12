@@ -33,7 +33,7 @@ layout(location = 9) out vec3 outModelScale;
 layout(location = 10) flat out uint outMaterialID;
 layout(location = 11) flat out vec3 outAABBMin;
 layout(location = 12) flat out vec3 outAABBMax;
-layout(location = 13) flat out int outClipMapIndex;
+layout(location = 13) flat out uint outClipMapIndex;
 
 /*layout(location = 11) flat out vec3 outVertex0;
 layout(location = 12) flat out vec3 outVertex1;

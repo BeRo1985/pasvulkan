@@ -115,6 +115,9 @@ compileshaderarguments=(
   "-V mesh.vert -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
 
+  "-V gi_voxel_transfer.comp -o ${tempPath}/gi_voxel_transfer_comp.spv"
+  "-V gi_voxel_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD -o ${tempPath}/gi_voxel_transfer_float_comp.spv"
+
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
   "-V wboit_resolve.frag -o ${tempPath}/wboit_resolve_frag.spv"
@@ -435,12 +438,18 @@ addMeshFragmentReflectiveShadowMapVariants(){
 }
 
 # Add mesh fragment shader variants with different alpha test techniques (if any)
-addMeshFragmentVoxelizationVariants(){
+addMeshFragmentVoxelizationAlphaVariants(){
   addMeshFragmentShader "$1" "$2"
   addMeshFragmentShader "${1}_alphatest" "$2 -DALPHATEST"
   addMeshFragmentShader "${1}_alphatest_demote" "$2 -DALPHATEST -DUSEDEMOTE"
   addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
 }
+
+# Add mesh fragment shader variants with different temporary voxel storage techniques 
+addMeshFragmentVoxelizationVariants(){  
+  addMeshFragmentVoxelizationAlphaVariants "$1" "$2" # 22.12 bit fixed point  
+  addMeshFragmentVoxelizationAlphaVariants "${1}_float" "$2 -DUSESHADERBUFFERFLOAT32ATOMICADD" # 32-bit floating point 
+}  
 
 # Add mesh fragment shader variants with different pass targets
 addMeshFragmentPassTargetVariants(){
