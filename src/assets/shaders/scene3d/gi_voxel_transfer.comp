@@ -27,9 +27,9 @@ layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
   uint data[]; // 32-bit fixed point
 } voxelGridCounters;
 
-layout(set = 0, binding = 3, r32ui) coherent uniform uimage3D uImageVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+layout(set = 0, binding = 3, r32ui) writeonly uniform uimage3D uImageVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
 
-layout(set = 0, binding = 4, r8) coherent uniform image3D uImageVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+layout(set = 0, binding = 4, r8) writeonly uniform image3D uImageVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
 #include "rgb9e5.glsl"
 
