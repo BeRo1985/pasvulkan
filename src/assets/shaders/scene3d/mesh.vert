@@ -52,6 +52,7 @@ layout(location = 13) flat out vec2 outJitter;
 
 #ifdef VOXELIZATION
 
+// Should be the same as in the geometry shader, since the minimum "maximum-size" of push constants is 128 bytes
 layout (push_constant) uniform PushConstants {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
   int hardwareConservativeRasterization; // 0 = false, 1 = true
