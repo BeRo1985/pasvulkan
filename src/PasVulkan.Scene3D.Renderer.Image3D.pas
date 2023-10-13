@@ -75,11 +75,8 @@ type { TpvScene3DRendererImage3D }
      TpvScene3DRendererImage3D=class
       private
        fVulkanImage:TpvVulkanImage;
-       fVulkanSampler:TpvVulkanSampler;
        fVulkanImageView:TpvVulkanImageView;
-       fVulkanArrayImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
-       fDescriptorImageInfo:TVkDescriptorImageInfo;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fDepth:TpvInt32;
@@ -93,10 +90,6 @@ type { TpvScene3DRendererImage3D }
 
        property VulkanImage:TpvVulkanImage read fVulkanImage;
 
-       property VulkanSampler:TpvVulkanSampler read fVulkanSampler;
-
-       property VulkanArrayImageView:TpvVulkanImageView read fVulkanArrayImageView;
-
        property VulkanImageView:TpvVulkanImageView read fVulkanImageView;
 
        property Width:TpvInt32 read fWidth;
@@ -104,10 +97,6 @@ type { TpvScene3DRendererImage3D }
        property Height:TpvInt32 read fHeight;
 
        property Depth:TpvInt32 read fDepth;
-
-      public
-
-       property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
 
      end;
 
@@ -234,23 +223,6 @@ begin
                            Fence,
                            true);
 
-    fVulkanSampler:=TpvVulkanSampler.Create(pvApplication.VulkanDevice,
-                                            TVkFilter(VK_FILTER_LINEAR),
-                                            TVkFilter(VK_FILTER_LINEAR),
-                                            TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
-                                            TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
-                                            0.0,
-                                            false,
-                                            1.0,
-                                            false,
-                                            TVkCompareOp(VK_COMPARE_OP_NEVER),
-                                            0.0,
-                                            1,
-                                            TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
-                                            false);
-
     fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                                 fVulkanImage,
                                                 ImageViewType,
@@ -264,24 +236,6 @@ begin
                                                 1,
                                                 0,
                                                 1);
-
-    fVulkanArrayImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
-                                                     fVulkanImage,
-                                                     TVkImageViewType(VK_IMAGE_VIEW_TYPE_3D),
-                                                     aFormat,
-                                                     TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                     TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                     TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                     TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                     ImageAspectMask,
-                                                     0,
-                                                     1,
-                                                     0,
-                                                     1);
-
-    fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
-                                                        fVulkanImageView.Handle,
-                                                        aImageLayout);
 
    finally
     FreeAndNil(Fence);
@@ -300,9 +254,7 @@ end;
 destructor TpvScene3DRendererImage3D.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
- FreeAndNil(fVulkanArrayImageView);
  FreeAndNil(fVulkanImageView);
- FreeAndNil(fVulkanSampler);
  FreeAndNil(fVulkanImage);
  inherited Destroy;
 end;
