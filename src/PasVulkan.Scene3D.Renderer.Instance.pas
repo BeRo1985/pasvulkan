@@ -86,6 +86,7 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Array2DImage,
      PasVulkan.Scene3D.Renderer.Image3D,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
+     PasVulkan.Scene3D.Renderer.MipmappedArray3DImage,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyBuffer,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage,
      PasVulkan.Scene3D.Renderer.ImageBasedLighting.ReflectionProbeCubeMaps;
