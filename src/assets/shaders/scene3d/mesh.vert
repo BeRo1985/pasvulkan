@@ -54,9 +54,6 @@ layout(location = 13) flat out vec2 outJitter;
 
 // Should be the same as in the geometry shader, since the minimum "maximum-size" of push constants is 128 bytes
 layout (push_constant) uniform PushConstants {
-  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
-  uint countClipMaps; // maximum 4 cascades
-  int hardwareConservativeRasterization; // 0 = false, 1 = true
   uint viewIndex; // for the main primary view (in VR mode just simply the left eye, which will use as the primary view for the lighting for the voxelization then) 
 } pushConstants;
 
@@ -80,7 +77,7 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(std140, set = 0, binding = 0) uniform uboViews {
+layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 

@@ -45,11 +45,11 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(std430, set = 0, binding = 2) volatile buffer NearestFarthestDepthBuffer {
+layout(set = 0, binding = 2, std430) volatile buffer NearestFarthestDepthBuffer {
   uvec4 nearestFarthestDepthBuffer;
 };
 
-layout(std140, set = 0, binding = 3) uniform uboViews {
+layout(set = 0, binding = 3, std140) uniform uboViews {
   View views[256];
 } uView;
 

@@ -154,7 +154,7 @@ struct Material {
 };
 #endif
 
-layout(std140, set = 0, binding = 0) uniform uboViews {
+layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
@@ -167,7 +167,7 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(std430, set = 0, binding = 1) readonly buffer LightItemData {
+layout(set = 0, binding = 1, std430) readonly buffer LightItemData {
 //uvec4 lightMetaData;
   Light lights[];
 };
@@ -177,7 +177,7 @@ struct LightTreeNode {
   uvec4 aabbMaxUserData;
 };
 
-layout(std430, set = 0, binding = 2) readonly buffer LightTreeNodeData {
+layout(set = 0, binding = 2, std430) readonly buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 
@@ -185,7 +185,7 @@ layout(std430, set = 0, binding = 2) readonly buffer LightTreeNodeData {
 
 #ifdef NOBUFFERREFERENCE
 
-layout(std430, set = 0, binding = 3) readonly buffer Materials {
+layout(set = 0, binding = 3, std430) readonly buffer Materials {
   Material materials[];
 };
 
@@ -206,7 +206,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   mat3x2 textureTransforms[20];
 };
 
-layout(std140, set = 0, binding = 3) uniform Materials {
+layout(set = 0, binding = 3, std140) uniform Materials {
   Material materials;
 } uMaterials;
 
@@ -231,7 +231,7 @@ const uint SHADOWMAP_MODE_DPCF = 3;
 const uint SHADOWMAP_MODE_PCSS = 4;
 const uint SHADOWMAP_MODE_MSM = 5;
 
-layout(std140, set = 1, binding = 2) uniform uboCascadedShadowMaps {
+layout(set = 1, binding = 2, std140) uniform uboCascadedShadowMaps {
   mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
   vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
   vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
@@ -254,7 +254,7 @@ layout(set = 1, binding = 4) uniform sampler2DArray uPassTextures[]; // 0 = SSAO
 #endif
 
 #ifdef FRUSTUMCLUSTERGRID
-layout (std140, set = 1, binding = 5) readonly uniform FrustumClusterGridGlobals {
+layout (set = 1, binding = 5, std140) readonly uniform FrustumClusterGridGlobals {
   uvec4 tileSizeZNearZFar; 
   vec4 viewRect;
   uvec4 countLightsViewIndexSizeOffsetedViewIndex;
@@ -262,11 +262,11 @@ layout (std140, set = 1, binding = 5) readonly uniform FrustumClusterGridGlobals
   vec4 scaleBiasMax;
 } uFrustumClusterGridGlobals;
 
-layout (std430, set = 1, binding = 6) readonly buffer FrustumClusterGridIndexList {
+layout (set = 1, binding = 6, std430) readonly buffer FrustumClusterGridIndexList {
    uint frustumClusterGridIndexList[];
 };
 
-layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
+layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
   uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
 };
 
@@ -291,12 +291,13 @@ layout (std430, set = 1, binding = 7) readonly buffer FrustumClusterGridData {
 
 // 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
 
-layout (std140, set = 1, binding = 6) readonly uniform VoxelGridData {
+layout (set = 1, binding = 6, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
   uint countClipMaps; // maximum 4 clipmaps
+  uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
 
-layout (std430, set = 1, binding = 7) coherent buffer VoxelGridColors {
+layout (set = 1, binding = 7, std430) coherent buffer VoxelGridColors {
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
   float data[]; // 32-bit floating point
 #else
@@ -304,7 +305,7 @@ layout (std430, set = 1, binding = 7) coherent buffer VoxelGridColors {
 #endif
 } voxelGridColors;
 
-layout (std430, set = 1, binding = 8) coherent buffer VoxelGridCounters {
+layout (set = 1, binding = 8, std430) coherent buffer VoxelGridCounters {
   uint data[]; // 32-bit unsigned integer
 } voxelGridCounters;
 

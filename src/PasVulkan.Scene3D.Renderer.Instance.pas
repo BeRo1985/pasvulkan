@@ -274,6 +274,7 @@ type { TpvScene3DRendererInstance }
             PGlobalIlluminationRadianceHintsRSMUniformBufferData=^TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
+            { TGlobalIlluminationVoxelUniformBufferData }
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public

@@ -14,7 +14,7 @@ layout(push_constant) uniform PushConstants {
 
 layout(set = 0, binding = 0) uniform sampler2DArray uTextureInput;
 
-layout(std430, set = 0, binding = 1) readonly buffer BokehShapeTaps {
+layout(set = 0, binding = 1, std430) readonly buffer BokehShapeTaps {
   int countBokehShapeTaps; 
   vec2 bokehShapeTaps[];
 };

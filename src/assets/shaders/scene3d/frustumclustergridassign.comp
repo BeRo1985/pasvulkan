@@ -36,27 +36,27 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(std140, set = 0, binding = 0) uniform uboViews {
+layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(std430, set = 0, binding = 1) buffer FrustumClusterGridAABBs {
+layout(set = 0, binding = 1, std430) buffer FrustumClusterGridAABBs {
   AABB frustumClusterGridAABBs[];
 };
 
-layout(std430, set = 0, binding = 2) buffer LightMetaInfos {
+layout(set = 0, binding = 2, std430) buffer LightMetaInfos {
   LightDecalMetaInfo lightMetaInfos[];
 };
 
-layout (std430, set = 0, binding = 3) buffer FrustumClusterGridIndexList {
+layout (set = 0, binding = 3, std430) buffer FrustumClusterGridIndexList {
   uint frustumClusterGridIndexList[];
 };
 
-layout (std430, set = 0, binding = 4) buffer FrustumClusterGridData {
+layout (set = 0, binding = 4, std430) buffer FrustumClusterGridData {
   uvec4 frustumClusterGridData[];
 };
 
-layout (std430, set = 0, binding = 5) buffer FrustumClusterGridIndexListCounters {
+layout (set = 0, binding = 5, std430) buffer FrustumClusterGridIndexListCounters {
   uint frustumClusterGridIndexListCounter;
 };
 

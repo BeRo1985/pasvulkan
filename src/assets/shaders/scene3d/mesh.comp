@@ -38,19 +38,19 @@ struct MorphTargetVertex {
 // Mesh descriptor set
 
 #ifdef USE_MATERIAL_ID_MAP  
-layout(std430, set = 0, binding = 0) buffer InVertices {
+layout(set = 0, binding = 0, std430) buffer InVertices {
   InPackedVertex inVertices[];
 };
 
-layout(std430, set = 0, binding = 1) buffer OutVertices {
+layout(set = 0, binding = 1, std430) buffer OutVertices {
   OutPackedVertex outVertices[];
 };
 
-layout(std430, set = 0, binding = 2) buffer InIndices {
+layout(set = 0, binding = 2, std430) buffer InIndices {
   uint inIndices[];
 };
 
-layout(std430, set = 0, binding = 3) buffer MorphTargetVertices {
+layout(set = 0, binding = 3, std430) buffer MorphTargetVertices {
   MorphTargetVertex morphTargetVertices[];
 };
 
@@ -59,34 +59,34 @@ struct JointBlock {
   vec4 weights;
 };
 
-layout(std430, set = 0, binding = 4) buffer JointBlocks {
+layout(set = 0, binding = 4, std430) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
-layout(std430, set = 0, binding = 5) buffer NodeMatrices {
+layout(set = 0, binding = 5, std430) buffer NodeMatrices {
   mat4 nodeMatrices[];
 };
 
-layout(std430, set = 0, binding = 6) buffer MorphTargetWeights {
+layout(set = 0, binding = 6, std430) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
-layout(std430, set = 0, binding = 7) buffer MaterialIDMap {
+layout(set = 0, binding = 7, std430) buffer MaterialIDMap {
   uint materialIDMap[];
 };
 #else
 
 // Static descriptor set
 
-layout(std430, set = 0, binding = 0) buffer InVertices {
+layout(set = 0, binding = 0, std430) buffer InVertices {
   InPackedVertex inVertices[];
 };
 
-layout(std430, set = 0, binding = 1) buffer InIndices {
+layout(set = 0, binding = 1, std430) buffer InIndices {
   uint inIndices[];
 };
 
-layout(std430, set = 0, binding = 2) buffer MorphTargetVertices {
+layout(set = 0, binding = 2, std430) buffer MorphTargetVertices {
   MorphTargetVertex morphTargetVertices[];
 };
 
@@ -95,21 +95,21 @@ struct JointBlock {
   vec4 weights;
 };
 
-layout(std430, set = 0, binding = 3) buffer JointBlocks {
+layout(set = 0, binding = 3, std430) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
 // Dynamic descriptor set
 
-layout(std430, set = 1, binding = 0) buffer OutVertices {
+layout(set = 1, binding = 0, std430) buffer OutVertices {
   OutPackedVertex outVertices[];
 };
 
-layout(std430, set = 1, binding = 1) buffer NodeMatrices {
+layout(set = 1, binding = 1, std430) buffer NodeMatrices {
   mat4 nodeMatrices[];
 };
 
-layout(std430, set = 1, binding = 2) buffer MorphTargetWeights {
+layout(set = 1, binding = 2, std430) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 #endif

@@ -79,7 +79,7 @@
   let animationChannel = animation.createChannel(
                           "/materials/" ~ Group.getMaterialID("TestAnimatedMaterial") ~ "/pbrMetallicRoughness/baseColorFactor", // the target, for more information see the KHR_animation_pointer draft extension in the glTF 2.0 specification
                           "linear", // linear, step, cubicspline (for more information see the glTF 2.0 specification)
-                          4 // 1 (float), 2 (vec2), 3 (vec3), 4 (vec4) (the number of components in the data,
+                          4 // 1 (float), 2 (vec2), 3 (vec3), 4 (vec4) (the number of components in the data, 
                         );  // morph weights with bigger number of components are not supported yet with this API)
                             // and cubicspline needs an array of three sub-array of the same size as the data array, which are the
                             // in- and out-tangents for each keyframe ([in-tangent, data, out-tangent] for each keyframe)  

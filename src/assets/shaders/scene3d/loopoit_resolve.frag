@@ -16,7 +16,7 @@ layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInputMS 
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput uSubpassInputTransparent;
 #endif
 
-layout(std140, set = 0, binding = 2) uniform uboOIT {
+layout(set = 0, binding = 2, std140) uniform uboOIT {
   uvec4 oitViewPort;  //
 } uOIT;
 

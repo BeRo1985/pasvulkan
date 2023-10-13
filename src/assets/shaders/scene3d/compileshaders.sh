@@ -120,6 +120,13 @@ compileshaderarguments=(
 
   "-V gi_voxel_mipmap.comp -o ${tempPath}/gi_voxel_mipmap_comp.spv"
 
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/mesh_voxelization_1_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/mesh_voxelization_2_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/mesh_voxelization_3_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/mesh_voxelization_4_geom.spv"
+   
+  "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
+
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
   "-V wboit_resolve.frag -o ${tempPath}/wboit_resolve_frag.spv"
@@ -235,10 +242,6 @@ compileshaderarguments=(
   "-V gi_cascaded_radiance_hints_inject_rsm.comp -o ${tempPath}/gi_cascaded_radiance_hints_inject_rsm_comp.spv"
 
   "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
-
-  "-V mesh_voxelization.geom -o ${tempPath}/mesh_voxelization_geom.spv"
-
-  "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
 
 )
 

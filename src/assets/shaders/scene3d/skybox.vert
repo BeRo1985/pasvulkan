@@ -24,7 +24,7 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(std140, set = 0, binding = 0) uniform uboViews {
+layout(set = 0, binding = 0, std140) uniform uboViews {
    View views[256];
 } uView;
 

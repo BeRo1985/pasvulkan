@@ -20,7 +20,7 @@ layout(set = 0, binding = 2, rgba32ui) uniform coherent uimageBuffer uOITImgABuf
 
 layout(set = 0, binding = 3, r32ui) uniform coherent uimage2DArray uOITImgAux;
 
-layout(std140, set = 0, binding = 4) uniform uboOIT {
+layout(set = 0, binding = 4, std140) uniform uboOIT {
   uvec4 oitViewPort;  //
 } uOIT;
 /* clang-format on */

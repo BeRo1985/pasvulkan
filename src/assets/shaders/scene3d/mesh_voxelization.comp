@@ -15,15 +15,15 @@ struct InPackedVertex {
   uvec4 color0ModelScale;
 };
 
-layout(std430, set = 0, binding = 0) buffer InVertices {
+layout(set = 0, binding = 0, std430) buffer InVertices {
   InPackedVertex vertices[];
 } inVertices;
 
-layout(std430, set = 0, binding = 1) buffer InIndices {
+layout(set = 0, binding = 1, std430) buffer InIndices {
   uint indices[];
 } inIndices;
 
-layout(std430, set = 0, binding = 2) buffer OutDominantAxis {
+layout(set = 0, binding = 2, std430) buffer OutDominantAxis {
   uint dominantAxis[];
 } outDominantAxis;
 

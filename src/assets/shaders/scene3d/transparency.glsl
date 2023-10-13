@@ -36,13 +36,13 @@
 
     #if defined(WBOIT)
 
-      layout(std140, set = 1, binding = 8) uniform uboWBOIT {
+      layout(set = 1, binding = 8, std140) uniform uboWBOIT {
         vec4 wboitZNearZFar;
       } uWBOIT;
 
     #elif defined(MBOIT)
 
-      layout(std140, set = 1, binding = 8) uniform uboMBOIT {
+      layout(set = 1, binding = 8, std140) uniform uboMBOIT {
         vec4 mboitZNearZFar;
       } uMBOIT;
 
@@ -68,12 +68,12 @@
       layout(set = 1, binding = 10, r32ui) uniform coherent uimage2DArray uOITImgAux;
       #ifdef SPINLOCK
         layout(set = 1, binding = 11, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        layout(std140, set = 1, binding = 12) uniform uboOIT {
+        layout(set = 1, binding = 12, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
       #ifdef INTERLOCK
-        layout(std140, set = 1, binding = 11) uniform uboOIT {
+        layout(set = 1, binding = 11, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
@@ -95,19 +95,19 @@
       #endif
       #ifdef SPINLOCK
         layout(set = 1, binding = 13, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        /*layout(std140, set = 1, binding = 14) uniform uboOIT {
+        /*layout(set = 1, binding = 14, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;*/
       #endif
       #ifdef INTERLOCK
-        /*layout(std140, set = 1, binding = 14) uniform uboOIT {
+        /*layout(set = 1, binding = 14, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;*/
       #endif
 
     #elif defined(LOOPOIT)
 
-      layout(std140, set = 1, binding = 8) uniform uboOIT {
+      layout(set = 1, binding = 8, std140) uniform uboOIT {
         ivec4 oitViewPort;
       } uOIT;
       #ifdef MSAA
@@ -131,13 +131,13 @@
 
     #if defined(WBOIT)
 
-      layout(std140, set = 1, binding = 8) uniform uboWBOIT {
+      layout(set = 1, binding = 8, std140) uniform uboWBOIT {
         vec4 wboitZNearZFar;
       } uWBOIT;
 
     #elif defined(MBOIT)
 
-      layout(std140, set = 1, binding = 8) uniform uboMBOIT {
+      layout(set = 1, binding = 8, std140) uniform uboMBOIT {
         vec4 mboitZNearZFar;
       } uMBOIT;
 
@@ -163,12 +163,12 @@
       layout(set = 1, binding = 10, r32ui) uniform coherent uimage2DArray uOITImgAux;
       #ifdef SPINLOCK
         layout(set = 1, binding = 11, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        layout(std140, set = 1, binding = 12) uniform uboOIT {
+        layout(set = 1, binding = 12, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
       #ifdef INTERLOCK
-        layout(std140, set = 1, binding = 11) uniform uboOIT {
+        layout(set = 1, binding = 11, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
@@ -190,19 +190,19 @@
       #endif
       #ifdef SPINLOCK
         layout(set = 1, binding = 13, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        //layout(std140, set = 1, binding = 14) uniform uboOIT {
+        //layout(set = 1, binding = 14, std140) uniform uboOIT {
         //  ivec4 oitViewPort;
         //} uOIT;
       #endif
       #ifdef INTERLOCK
-        //layout(std140, set = 1, binding = 14) uniform uboOIT {
+        //layout(set = 1, binding = 14, std140) uniform uboOIT {
         //  ivec4 oitViewPort;
         //} uOIT;
       #endif
 
     #elif defined(LOOPOIT)
 
-      layout(std140, set = 1, binding = 8) uniform uboOIT {
+      layout(set = 1, binding = 8, std140) uniform uboOIT {
         ivec4 oitViewPort;
       } uOIT;
       #ifdef MSAA
