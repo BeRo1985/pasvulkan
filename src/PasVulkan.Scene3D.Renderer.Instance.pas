@@ -275,6 +275,14 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
             { TGlobalIlluminationVoxelUniformBufferData }
+            TGlobalIlluminationVoxelUniformBufferData=record
+             ClipMaps:array[0..3] of TpvVector4;
+             CountClipMaps:TpvUInt32;
+             HardwareConservativeRasterization:TpvUInt32;
+            end;
+            PGlobalIlluminationVoxelUniformBufferData=^TGlobalIlluminationVoxelUniformBufferData;
+            TGlobalIlluminationVoxelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationVoxelUniformBufferData;
+            PGlobalIlluminationVoxelUniformBufferDataArray=^TGlobalIlluminationVoxelUniformBufferDataArray;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
