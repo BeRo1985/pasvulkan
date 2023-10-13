@@ -451,6 +451,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationVoxelCascadedVolumes:TCascadedVolumes;
        fGlobalIlluminationVoxelUniformBufferDataArray:TGlobalIlluminationVoxelUniformBufferDataArray;
        fGlobalIlluminationVoxelUniformBuffers:TGlobalIlluminationVoxelBuffers;
+       fGlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer;
+       fGlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer;
       private
        fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
@@ -575,6 +577,8 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationVoxelCascadedVolumes:TCascadedVolumes read fGlobalIlluminationVoxelCascadedVolumes;
        property GlobalIlluminationVoxelUniformBufferDataArray:TGlobalIlluminationVoxelUniformBufferDataArray read fGlobalIlluminationVoxelUniformBufferDataArray;
        property GlobalIlluminationVoxelUniformBuffers:TGlobalIlluminationVoxelBuffers read fGlobalIlluminationVoxelUniformBuffers;
+       property GlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer read fGlobalIlluminationVoxelColorBuffer;
+       property GlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer read fGlobalIlluminationVoxelCounterBuffer;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -1441,6 +1445,10 @@ begin
 
  FillChar(fGlobalIlluminationVoxelUniformBuffers,SizeOf(TGlobalIlluminationVoxelBuffers),#0);
 
+ fGlobalIlluminationVoxelColorBuffer:=nil;
+
+ fGlobalIlluminationVoxelCounterBuffer:=nil;
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1571,6 +1579,10 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fGlobalIlluminationVoxelUniformBuffers[InFlightFrameIndex]);
  end;
+
+ FreeAndNil(fGlobalIlluminationVoxelColorBuffer);
+
+ FreeAndNil(fGlobalIlluminationVoxelCounterBuffer);
 
  FreeAndNil(fGlobalIlluminationVoxelCascadedVolumes);
 
@@ -1755,6 +1767,7 @@ begin
    fGlobalIlluminationVoxelCascadedVolumes:=TCascadedVolumes.Create(self,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelCountClipMaps);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
     fGlobalIlluminationVoxelUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                        SizeOf(TGlobalIlluminationVoxelUniformBufferData),
                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -1769,8 +1782,38 @@ begin
                                                                                        0,
                                                                                        0,
                                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+
    end;
 
+   fGlobalIlluminationVoxelColorBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                               (SizeOf(TpvUInt32)*4)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
+                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                               [],
+                                                               0,
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                               0,
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               []);
+
+   fGlobalIlluminationVoxelCounterBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                 SizeOf(TpvUInt32)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
+                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                 [],
+                                                                 0,
+                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                 0,
+                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                 0,
+                                                                 0,
+                                                                 0,
+                                                                 0,
+                                                                 []);
 
 
   end;
