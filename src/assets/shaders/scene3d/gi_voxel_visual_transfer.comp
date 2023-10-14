@@ -55,13 +55,11 @@ void main(){
       uint volumeCellCounter = voxelGridCounters.data[volumeIndex];
 
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
-      vec4 volumeCellColor = vec4(voxelGridColors.data[volumeIndex]);
+      vec4 volumeCellColorRGBA = vec4(voxelGridColors.data[volumeIndex]) / max(1u, volumeCellCounter);
 #else
-      vec4 volumeCellColor = vec4(voxelGridColors.data[volumeIndex]) * (1.0 / 4096.0); // from 22.12 bit fixed point to 32-bit floating point
+      vec4 volumeCellColorRGBA = vec4(voxelGridColors.data[volumeIndex]) / (max(1u, volumeCellCounter) * 4096.0);
 #endif
 
-      vec4 volumeCellColorRGBA = volumeCellColor / max(1u, volumeCellCounter); // normalization 
-      
       uint volumeCellColorRGB9E5 = encodeRGB9E5(volumeCellColorRGBA.xyz); // from floating point to 9.5 bit fixed point (RGB9E5)
 
       uint imageIndex = (clipMapIndex * 6) + anisotropicAxisDirectionIndex;

@@ -74,7 +74,7 @@ void main(){
                    (voxels[voxelIndex(0, 0, 1)] + (voxels[voxelIndex(1, 0, 1)] * (1.0 - voxels[voxelIndex(0, 0, 1)].w))) +
                    (voxels[voxelIndex(0, 1, 1)] + (voxels[voxelIndex(1, 1, 1)] * (1.0 - voxels[voxelIndex(0, 1, 1)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 0], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
-      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 0], ivec3(volumeDestinationPosition), vec4(temp.w));
+      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 0], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
     {
@@ -85,7 +85,7 @@ void main(){
                    (voxels[voxelIndex(0, 0, 1)] + (voxels[voxelIndex(0, 1, 1)] * (1.0 - voxels[voxelIndex(0, 0, 1)].w))) +
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(1, 1, 1)] * (1.0 - voxels[voxelIndex(1, 0, 1)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 1], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
-      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 1], ivec3(volumeDestinationPosition), vec4(temp.w));
+      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 1], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
     {
@@ -96,7 +96,7 @@ void main(){
                    (voxels[voxelIndex(0, 1, 0)] + (voxels[voxelIndex(0, 1, 1)] * (1.0 - voxels[voxelIndex(0, 1, 0)].w))) +
                    (voxels[voxelIndex(1, 1, 0)] + (voxels[voxelIndex(1, 1, 1)] * (1.0 - voxels[voxelIndex(1, 1, 0)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 2], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
-      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 2], ivec3(volumeDestinationPosition), vec4(temp.w));
+      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 2], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
     {
@@ -107,7 +107,7 @@ void main(){
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(0, 0, 1)] * (1.0 - voxels[voxelIndex(1, 0, 1)].w))) +
                    (voxels[voxelIndex(1, 1, 1)] + (voxels[voxelIndex(0, 1, 1)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 3], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
-      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 3], ivec3(volumeDestinationPosition), vec4(temp.w));
+      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 3], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
     {
@@ -118,7 +118,7 @@ void main(){
                    (voxels[voxelIndex(0, 1, 1)] + (voxels[voxelIndex(0, 0, 1)] * (1.0 - voxels[voxelIndex(0, 1, 1)].w))) +
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(1, 0, 1)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 4], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
-      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 4], ivec3(volumeDestinationPosition), vec4(temp.w));
+      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 4], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
 
     {
@@ -129,7 +129,7 @@ void main(){
                    (voxels[voxelIndex(0, 1, 1)] + (voxels[voxelIndex(0, 1, 0)] * (1.0 - voxels[voxelIndex(0, 1, 1)].w))) +
                    (voxels[voxelIndex(1, 1, 1)] + (voxels[voxelIndex(1, 1, 0)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
       imageStore(uImageDestinationVolumeColor[baseImageIndex + 5], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
-      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 5], ivec3(volumeDestinationPosition), vec4(temp.w));
+      imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 5], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }             
 
   }

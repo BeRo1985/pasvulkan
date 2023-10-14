@@ -40,7 +40,7 @@ void main(){
 
     uint volumeIndex = (((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
 
-    float volumeOcclusion = float(voxelGridColors.data[volumeIndex]) / (max(1.0, float(voxelGridCounters.data[volumeIndex])) * 256.0);
+    float volumeOcclusion = clamp(float(voxelGridColors.data[volumeIndex]) / (max(1.0, float(voxelGridCounters.data[volumeIndex])) * 256.0), 0.0, 1.0);
 
     imageStore(uImageVolumeOcclusion[clipMapIndex], ivec3(volumePosition), vec4(volumeOcclusion));
 
