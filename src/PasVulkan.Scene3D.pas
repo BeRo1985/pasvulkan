@@ -19862,7 +19862,7 @@ begin
      end;
 
      if fUseMultiDraw then begin
-      if fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count then begin
+      if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
        fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
                                                               fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
                                                               @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
