@@ -4,6 +4,11 @@
 
 #define NUM_SHADOW_CASCADES 4
 
+#ifdef OCCLUSION_VOXELIZATION
+  #undef LIGHTS
+  #undef SHADOWS
+#endif
+
 #ifdef USE_MATERIAL_BUFFER_REFERENCE
   #undef NOBUFFERREFERENCE
 #elif defined(USE_MATERIAL_SSBO)
@@ -1549,7 +1554,7 @@ void main() {
     material = Material(materialPointer);
   }
 #endif
-#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || !defined(DEPTHONLY)
+#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(OCCLUSION_VOXELIZATION) || !defined(DEPTHONLY)
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
   texCoords[0] = inTexCoord0;
   texCoords[1] = inTexCoord1;
@@ -1564,13 +1569,15 @@ void main() {
   }  
 #endif
 #endif
-#ifndef DEPTHONLY
+#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION))
   envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
   envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
   flags = material.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
-#ifdef DEPTHONLY
+#ifdef OCCLUSION_VOXELIZATION
+  float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
+#elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
 #endif
@@ -2309,6 +2316,17 @@ void main() {
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize)))){
 
+#ifdef OCCLUSION_VOXELIZATION
+
+    uint volumeIndex = (((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+
+    // 22.12 bit fixed point
+    atomicAdd(voxelGridColors.data[volumeIndex], uint(alpha * 4096.0));
+  
+    atomicAdd(voxelGridCounters.data[volumeIndex], 1u); 
+
+#else
+
     uint volumeBaseIndex = ((((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) * 6;
 
     uint countAnisotropicAxisDirectionSides;
@@ -2371,6 +2389,8 @@ void main() {
       }   
 
     }
+
+#endif
 
   }  
  

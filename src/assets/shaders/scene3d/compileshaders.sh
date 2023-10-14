@@ -457,6 +457,7 @@ addMeshFragmentVoxelizationAlphaVariants(){
 addMeshFragmentVoxelizationVariants(){  
   addMeshFragmentVoxelizationAlphaVariants "$1" "$2" # 22.12 bit fixed point  
   addMeshFragmentVoxelizationAlphaVariants "${1}_float" "$2 -DUSESHADERBUFFERFLOAT32ATOMICADD" # 32-bit floating point 
+  addMeshFragmentVoxelizationAlphaVariants "${1}_occlusion" "$2 -DOCCLUSION_VOXELIZATION" # occlusion voxelization
 }  
 
 # Add mesh fragment shader variants with different pass targets
