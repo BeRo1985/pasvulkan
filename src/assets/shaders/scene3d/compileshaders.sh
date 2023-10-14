@@ -115,11 +115,14 @@ compileshaderarguments=(
   "-V mesh.vert -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
 
-  "-V gi_voxel_transfer.comp -o ${tempPath}/gi_voxel_transfer_comp.spv"
-  "-V gi_voxel_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD -o ${tempPath}/gi_voxel_transfer_float_comp.spv"
+  "-V gi_voxel_occlusion_transfer.comp -o ${tempPath}/gi_voxel_occlusion_transfer_comp.spv"
+  "-V gi_voxel_occlusion_mipmap.comp -o ${tempPath}/gi_voxel_occlusion_mipmap_comp.spv"
 
-  "-V gi_voxel_mipmap.comp -o ${tempPath}/gi_voxel_mipmap_comp.spv"
+  "-V gi_voxel_visual_transfer.comp -o ${tempPath}/gi_voxel_visual_transfer_comp.spv"
+  "-V gi_voxel_visual_transfer.comp -DUSESHADERBUFFERFLOAT32ATOMICADD -o ${tempPath}/gi_voxel_visual_transfer_float_comp.spv"
 
+  "-V gi_voxel_visual_mipmap.comp -o ${tempPath}/gi_voxel_visual_mipmap_comp.spv"
+  
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/mesh_voxelization_1_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/mesh_voxelization_2_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/mesh_voxelization_3_geom.spv"

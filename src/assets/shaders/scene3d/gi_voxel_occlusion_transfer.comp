@@ -1,0 +1,50 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+//#extension GL_EXT_scalar_block_layout : enable
+
+/* clang-format off */
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
+  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint countClipMaps; // maximum 4 clipmaps
+  uint hardwareConservativeRasterization; // 0 = false, 1 = true
+} voxelGridData;
+
+layout (set = 0, binding = 1, std430) readonly buffer VoxelGridColors {
+  uvec4 data[]; // 32-bit unsigned integer
+} voxelGridColors;
+
+layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
+  uint data[]; // 32-bit unsigned integer
+} voxelGridCounters;
+
+layout(set = 0, binding = 3, r8) writeonly uniform image3D uImageVolumeOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+
+void main(){
+
+  uint voxelGridSize = uint(voxelGridData.clipMaps[0].w);
+
+  uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
+
+  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelGridSize), voxelGridSize * voxelGridData.countClipMaps)))){
+
+    uint clipMapIndex = invocation.z / voxelGridSize;
+
+    uvec3 volumePosition = uvec3(invocation.xy, invocation.z - (clipMapIndex * voxelGridSize));
+
+    uint volumeIndex = (((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+
+    float volumeOcclusion = float(voxelGridColors.data[volumeIndex]) / max(1.0, float(voxelGridCounters.data[volumeIndex]));
+
+    imageStore(uImageVolumeOcclusion[clipMapIndex], ivec3(volumePosition), vec4(volumeOcclusion));
+
+  }
+
+}
+

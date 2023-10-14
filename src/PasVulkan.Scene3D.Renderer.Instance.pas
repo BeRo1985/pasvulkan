@@ -285,6 +285,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationVoxelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationVoxelUniformBufferData;
             PGlobalIlluminationVoxelUniformBufferDataArray=^TGlobalIlluminationVoxelUniformBufferDataArray;
             TGlobalIlluminationVoxelBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalIlluminationVoxelImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray3DImage;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
