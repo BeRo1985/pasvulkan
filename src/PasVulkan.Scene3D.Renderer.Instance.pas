@@ -455,6 +455,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationVoxelUniformBuffers:TGlobalIlluminationVoxelBuffers;
        fGlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer;
        fGlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer;
+       fGlobalIlluminationVoxelColorImages:TGlobalIlluminationVoxelImages;
+       fGlobalIlluminationVoxelAlphaImages:TGlobalIlluminationVoxelImages;
       private
        fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
