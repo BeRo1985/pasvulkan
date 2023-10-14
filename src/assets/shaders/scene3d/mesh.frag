@@ -2320,8 +2320,8 @@ void main() {
 
     uint volumeIndex = (((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
 
-    // 22.12 bit fixed point
-    atomicAdd(voxelGridColors.data[volumeIndex], uint(alpha * 4096.0));
+    // 24.8 bit fixed point
+    atomicAdd(voxelGridColors.data[volumeIndex], uint(alpha * 256.0));
   
     atomicAdd(voxelGridCounters.data[volumeIndex], 1u); 
 
