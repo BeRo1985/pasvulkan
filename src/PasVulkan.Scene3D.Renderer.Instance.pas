@@ -462,6 +462,7 @@ type { TpvScene3DRendererInstance }
       public
        fGlobalIlluminationCascadedVoxelConeTracingEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fGlobalIlluminationCascadedVoxelConeTracingEventReady:array[0..MaxInFlightFrames-1] of boolean;
+       fGlobalIlluminationCascadedVoxelConeTracingFirst:array[0..MaxInFlightFrames-1] of boolean;
       private
        fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
@@ -1874,6 +1875,8 @@ begin
     fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
 
     fGlobalIlluminationCascadedVoxelConeTracingEventReady[InFlightFrameIndex]:=false;
+
+    fGlobalIlluminationCascadedVoxelConeTracingFirst[InFlightFrameIndex]:=true;
 
    end;
 
