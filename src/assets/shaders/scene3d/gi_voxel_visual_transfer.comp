@@ -29,9 +29,7 @@ layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
   uint data[]; // 32-bit fixed point
 } voxelGridCounters;
 
-layout(set = 0, binding = 3, r11f_g11f_b10f) writeonly uniform image3D uImageVolumeColor[]; 
-
-layout(set = 0, binding = 4, r8) writeonly uniform image3D uImageVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+layout(set = 0, binding = 3, rgba16f) writeonly uniform image3D uImageVolume[]; 
 
 void main(){
 
@@ -51,20 +49,16 @@ void main(){
 
       uint volumeIndex = volumeBaseIndex + anisotropicAxisDirectionIndex;
 
-      uint volumeCellCounter = voxelGridCounters.data[volumeIndex];
-
+      imageStore(
+        uImageVolume[(clipMapIndex * 6) + anisotropicAxisDirectionIndex], 
+        ivec3(volumePosition), 
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
-      vec4 volumeCellColorRGBA = vec4(voxelGridColors.data[volumeIndex]) / max(1u, volumeCellCounter);
+        vec4(vec4(voxelGridColors.data[volumeIndex]) / max(1u, voxelGridCounters.data[volumeIndex]))
 #else
-      vec4 volumeCellColorRGBA = vec4(voxelGridColors.data[volumeIndex]) / (max(1u, volumeCellCounter) * 4096.0);
+        vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeIndex]) * 4096.0))
 #endif
-
-      uint imageIndex = (clipMapIndex * 6) + anisotropicAxisDirectionIndex;
-
-      imageStore(uImageVolumeColor[imageIndex], ivec3(volumePosition), vec4(volumeCellColorRGBA));
-
-      imageStore(uImageVolumeAlpha[imageIndex],  ivec3(volumePosition), vec4(clamp(volumeCellColorRGBA.w, 0.0, 1.0)));
-
+      );
+      
     } 
 
   }
