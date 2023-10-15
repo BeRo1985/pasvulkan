@@ -17,11 +17,11 @@ layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
 
-layout (set = 0, binding = 1, std430) readonly buffer VoxelGridColors {
+layout (set = 0, binding = 1, std430) buffer VoxelGridColors {
   uvec4 data[]; // 32-bit unsigned integer
 } voxelGridColors;
 
-layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
+layout (set = 0, binding = 2, std430) buffer VoxelGridCounters {
   uint data[]; // 32-bit unsigned integer
 } voxelGridCounters;
 
@@ -44,6 +44,10 @@ void main(){
     float volumeOcclusion = clamp(float(voxelGridColors.data[volumeIndex]) / (max(1.0, float(voxelGridCounters.data[volumeIndex])) * 256.0), 0.0, 1.0);
 
     imageStore(uImageVolumeOcclusion[clipMapIndex], ivec3(volumePosition), vec4(volumeOcclusion));
+
+    // Reset voxel grid color and counter for reuse
+    voxelGridColors.data[volumeIndex] = uvec4(0u);
+    voxelGridCounters.data[volumeIndex] = 0u;
 
   }
 

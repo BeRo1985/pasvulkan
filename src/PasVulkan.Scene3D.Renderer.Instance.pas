@@ -275,19 +275,19 @@ type { TpvScene3DRendererInstance }
             PGlobalIlluminationRadianceHintsRSMUniformBufferData=^TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
-            { TGlobalIlluminationVoxelUniformBufferData }
-            TGlobalIlluminationVoxelUniformBufferData=record
+            { TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData }
+            TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
              ClipMaps:array[0..3] of TpvVector4;
              GridSize:TpvUInt32;
              CountClipMaps:TpvUInt32;
              HardwareConservativeRasterization:TpvUInt32;
             end;
-            PGlobalIlluminationVoxelUniformBufferData=^TGlobalIlluminationVoxelUniformBufferData;
-            TGlobalIlluminationVoxelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationVoxelUniformBufferData;
-            PGlobalIlluminationVoxelUniformBufferDataArray=^TGlobalIlluminationVoxelUniformBufferDataArray;
-            TGlobalIlluminationVoxelBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalIlluminationVoxelSideImages=array[0..MaxInFlightFrames-1,0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
-            TGlobalIlluminationVoxelImages=array[0..MaxInFlightFrames-1,0..3] of TpvScene3DRendererMipmappedArray3DImage;
+            PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=^TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
+            TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
+            PGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=^TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray;
+            TGlobalIlluminationCascadedVoxelConeTracingBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalIlluminationCascadedVoxelConeTracingSideImages=array[0..MaxInFlightFrames-1,0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationCascadedVoxelConeTracingImages=array[0..MaxInFlightFrames-1,0..3] of TpvScene3DRendererMipmappedArray3DImage;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -452,13 +452,16 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationRadianceHintsEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fGlobalIlluminationRadianceHintsEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
-       fGlobalIlluminationVoxelCascadedVolumes:TCascadedVolumes;
-       fGlobalIlluminationVoxelUniformBufferDataArray:TGlobalIlluminationVoxelUniformBufferDataArray;
-       fGlobalIlluminationVoxelUniformBuffers:TGlobalIlluminationVoxelBuffers;
-       fGlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer;
-       fGlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer;
-       fGlobalIlluminationVoxelOcclusionImages:TGlobalIlluminationVoxelImages;
-       fGlobalIlluminationVoxelImages:TGlobalIlluminationVoxelSideImages;
+       fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:TCascadedVolumes;
+       fGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray:TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray;
+       fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers:TGlobalIlluminationCascadedVoxelConeTracingBuffers;
+       fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:TpvVulkanBuffer;
+       fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:TpvVulkanBuffer;
+       fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages;
+       fGlobalIlluminationCascadedVoxelConeTracingImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
+      public
+       fGlobalIlluminationCascadedVoxelConeTracingEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
+       fGlobalIlluminationCascadedVoxelConeTracingEventReady:array[0..MaxInFlightFrames-1] of boolean;
       private
        fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
@@ -580,13 +583,13 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationRadianceHintsDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalIlluminationRadianceHintsDescriptorSetLayout;
        property GlobalIlluminationRadianceHintsDescriptorSets:TGlobalIlluminationRadianceHintsDescriptorSets read fGlobalIlluminationRadianceHintsDescriptorSets;
       public
-       property GlobalIlluminationVoxelCascadedVolumes:TCascadedVolumes read fGlobalIlluminationVoxelCascadedVolumes;
-       property GlobalIlluminationVoxelUniformBufferDataArray:TGlobalIlluminationVoxelUniformBufferDataArray read fGlobalIlluminationVoxelUniformBufferDataArray;
-       property GlobalIlluminationVoxelUniformBuffers:TGlobalIlluminationVoxelBuffers read fGlobalIlluminationVoxelUniformBuffers;
-       property GlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer read fGlobalIlluminationVoxelColorBuffer;
-       property GlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer read fGlobalIlluminationVoxelCounterBuffer;
-       property GlobalIlluminationVoxelOcclusionImages:TGlobalIlluminationVoxelImages read fGlobalIlluminationVoxelOcclusionImages;
-       property GlobalIlluminationVoxelImages:TGlobalIlluminationVoxelSideImages read fGlobalIlluminationVoxelImages;
+       property GlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:TCascadedVolumes read fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes;
+       property GlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray:TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray read fGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray;
+       property GlobalIlluminationCascadedVoxelConeTracingUniformBuffers:TGlobalIlluminationCascadedVoxelConeTracingBuffers read fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers;
+       property GlobalIlluminationCascadedVoxelConeTracingColorBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingColorBuffer;
+       property GlobalIlluminationCascadedVoxelConeTracingCounterBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer;
+       property GlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages read fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages;
+       property GlobalIlluminationCascadedVoxelConeTracingImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingImages;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -703,6 +706,8 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectRSMComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingClearCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
@@ -786,6 +791,8 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass;
        fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
+       fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingClearCustomPass;
+       fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
@@ -1447,19 +1454,19 @@ begin
   fGlobalIlluminationRadianceHintsFirsts[InFlightFrameIndex]:=true;
  end;
 
- fGlobalIlluminationVoxelCascadedVolumes:=nil;
+ fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=nil;
 
- FillChar(fGlobalIlluminationVoxelUniformBufferDataArray,SizeOf(TGlobalIlluminationVoxelUniformBufferDataArray),#0);
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray),#0);
 
- FillChar(fGlobalIlluminationVoxelUniformBuffers,SizeOf(TGlobalIlluminationVoxelBuffers),#0);
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingBuffers),#0);
 
- fGlobalIlluminationVoxelColorBuffer:=nil;
+ fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:=nil;
 
- fGlobalIlluminationVoxelCounterBuffer:=nil;
+ fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:=nil;
 
- FillChar(fGlobalIlluminationVoxelOcclusionImages,SizeOf(TGlobalIlluminationVoxelImages),#0);
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
 
- FillChar(fGlobalIlluminationVoxelImages,SizeOf(TGlobalIlluminationVoxelSideImages),#0);
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
@@ -1586,26 +1593,27 @@ begin
 
  FreeAndNil(fGlobalIlluminationRadianceHintsCascadedVolumes);
 
- FreeAndNil(fGlobalIlluminationVoxelCascadedVolumes);
+ FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  FreeAndNil(fGlobalIlluminationVoxelUniformBuffers[InFlightFrameIndex]);
+  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex]);
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   for CascadeIndex:=0 to 3 do begin
-   FreeAndNil(fGlobalIlluminationVoxelOcclusionImages[InFlightFrameIndex,CascadeIndex]);
+   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[InFlightFrameIndex,CascadeIndex]);
    for ImageIndex:=0 to 5 do begin
-    FreeAndNil(fGlobalIlluminationVoxelImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
+    FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
    end;
   end;
+  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]);
  end;
 
- FreeAndNil(fGlobalIlluminationVoxelColorBuffer);
+ FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingColorBuffer);
 
- FreeAndNil(fGlobalIlluminationVoxelCounterBuffer);
+ FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer);
 
- FreeAndNil(fGlobalIlluminationVoxelCascadedVolumes);
+ FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes);
 
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
@@ -1645,6 +1653,7 @@ end;
 procedure TpvScene3DRendererInstance.Prepare;
 var AntialiasingFirstPass:TpvFrameGraph.TPass;
     AntialiasingLastPass:TpvFrameGraph.TPass;
+    LastPass:TpvFrameGraph.TPass;
     InFlightFrameIndex,CascadeIndex,ImageIndex,Index:TpvSizeInt;
     Format:TVkFormat;
     GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
@@ -1785,12 +1794,12 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
 
-   fGlobalIlluminationVoxelCascadedVolumes:=TCascadedVolumes.Create(self,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelCountClipMaps);
+   fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelCountClipMaps);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
-    fGlobalIlluminationVoxelUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                       SizeOf(TGlobalIlluminationVoxelUniformBufferData),
+    fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                       SizeOf(TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData),
                                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                        [],
@@ -1806,7 +1815,7 @@ begin
 
    end;
 
-   fGlobalIlluminationVoxelColorBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+   fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                (SizeOf(TpvUInt32)*4)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -1821,7 +1830,7 @@ begin
                                                                0,
                                                                []);
 
-   fGlobalIlluminationVoxelCounterBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+   fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                  SizeOf(TpvUInt32)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -1837,16 +1846,20 @@ begin
                                                                  []);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
     for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
-     fGlobalIlluminationVoxelOcclusionImages[InFlightFrameIndex,CascadeIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+
+     fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[InFlightFrameIndex,CascadeIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                               Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                               Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                               VK_FORMAT_R8_UNORM,
                                                                                                                               true,
                                                                                                                               TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                                                               TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+
      for ImageIndex:=0 to 5 do begin
-      fGlobalIlluminationVoxelImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+
+      fGlobalIlluminationCascadedVoxelConeTracingImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                                  Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                                  Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                                  VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -1854,10 +1867,14 @@ begin
                                                                                                                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                                                                                                                  TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
      end;
+
     end;
 
-   end;
+    fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
 
+    fGlobalIlluminationCascadedVoxelConeTracingEventReady[InFlightFrameIndex]:=false;
+
+   end;
 
   end;
 
@@ -2417,7 +2434,10 @@ begin
 
  end;
 
+ TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=nil;
+
  case Renderer.GlobalIlluminationMode of
+
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
 
    TpvScene3DRendererInstancePasses(fPasses).fTopDownSkyOcclusionMapRenderPass:=TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass.Create(fFrameGraph,self);
@@ -2461,9 +2481,23 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsBounceComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass);
 
   end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthVelocityNormalsRenderPass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass);
+
+  end;
+
   else begin
    TpvScene3DRendererInstancePasses(fPasses).fReflectiveShadowMapRenderPass:=nil;
   end;
+
  end;
 
  TpvScene3DRendererInstancePasses(fPasses).fSSAORenderPass:=TpvScene3DRendererPassesSSAORenderPass.Create(fFrameGraph,self);
@@ -2552,6 +2586,8 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass:=TpvScene3DRendererPassesForwardRenderMipMapComputePass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass);
 
+ LastPass:=TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass;
+
  case Renderer.TransparencyMode of
 
   TpvScene3DRendererTransparencyMode.Direct:begin
@@ -2562,6 +2598,8 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fDirectTransparencyRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass);
 
    TpvScene3DRendererInstancePasses(fPasses).fDirectTransparencyResolveRenderPass:=TpvScene3DRendererPassesDirectTransparencyResolveRenderPass.Create(fFrameGraph,self);
+
+   LastPass:=TpvScene3DRendererInstancePasses(fPasses).fDirectTransparencyResolveRenderPass;
 
   end;
 
@@ -2581,6 +2619,8 @@ begin
 
    TpvScene3DRendererInstancePasses(fPasses).fLockOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesLockOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
    TpvScene3DRendererInstancePasses(fPasses).fLockOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLockOrderIndependentTransparencyBarrierCustomPass);
+
+   LastPass:=TpvScene3DRendererInstancePasses(fPasses).fLockOrderIndependentTransparencyResolveRenderPass;
 
   end;
 
@@ -2606,6 +2646,8 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fLoopOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesLoopOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
    TpvScene3DRendererInstancePasses(fPasses).fLoopOrderIndependentTransparencyResolveRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fLoopOrderIndependentTransparencyPass2BarrierCustomPass);
 
+   LastPass:=TpvScene3DRendererInstancePasses(fPasses).fLoopOrderIndependentTransparencyResolveRenderPass;
+
   end;
 
   TpvScene3DRendererTransparencyMode.WBOIT:begin
@@ -2616,6 +2658,8 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fWeightBlendedOrderIndependentTransparencyRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fForwardRenderMipMapComputePass);
 
    TpvScene3DRendererInstancePasses(fPasses).fWeightBlendedOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesWeightBlendedOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+
+   LastPass:=TpvScene3DRendererInstancePasses(fPasses).fWeightBlendedOrderIndependentTransparencyResolveRenderPass;
 
   end;
 
@@ -2629,6 +2673,8 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fMomentBasedOrderIndependentTransparencyTransmittanceRenderPass:=TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyTransmittanceRenderPass.Create(fFrameGraph,self);
 
    TpvScene3DRendererInstancePasses(fPasses).fMomentBasedOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesMomentBasedOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
+
+   LastPass:=TpvScene3DRendererInstancePasses(fPasses).fMomentBasedOrderIndependentTransparencyResolveRenderPass;
 
   end;
 
@@ -2645,11 +2691,17 @@ begin
 
    TpvScene3DRendererInstancePasses(fPasses).fDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass:=TpvScene3DRendererPassesDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass.Create(fFrameGraph,self);
 
+   LastPass:=TpvScene3DRendererInstancePasses(fPasses).fDeepAndFastApproximateOrderIndependentTransparencyResolveRenderPass;
+
   end
 
   else begin
   end;
 
+ end;
+
+ if assigned(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.AddExplicitPassDependency(LastPass);
  end;
 
  if assigned(LastOutputResource) and
@@ -3612,35 +3664,35 @@ end;
 procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
 var CascadeIndex:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    GlobalIlluminationVoxelUniformBufferData:PGlobalIlluminationVoxelUniformBufferData;
+    GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
     CascadedVolumeCascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     s:TpvScalar;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
- fGlobalIlluminationVoxelCascadedVolumes.Update(aInFlightFrameIndex);
+ fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Update(aInFlightFrameIndex);
 
- GlobalIlluminationVoxelUniformBufferData:=@fGlobalIlluminationVoxelUniformBufferDataArray[aInFlightFrameIndex];
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:=@fGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray[aInFlightFrameIndex];
 
- for CascadeIndex:=0 to fGlobalIlluminationVoxelCascadedVolumes.fCountCascades-1 do begin
-  CascadedVolumeCascade:=fGlobalIlluminationVoxelCascadedVolumes.Cascades[CascadeIndex];
-  GlobalIlluminationVoxelUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize);
+ for CascadeIndex:=0 to fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1 do begin
+  CascadedVolumeCascade:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex];
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize);
  end;
 
- GlobalIlluminationVoxelUniformBufferData^.GridSize:=fGlobalIlluminationVoxelCascadedVolumes.fVolumeSize;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.GridSize:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
 
- GlobalIlluminationVoxelUniformBufferData^.CountClipMaps:=fGlobalIlluminationVoxelCascadedVolumes.fCountCascades;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CountClipMaps:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades;
 
- GlobalIlluminationVoxelUniformBufferData^.HardwareConservativeRasterization:=VK_FALSE;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_FALSE;
 
  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
                                                  Renderer.Scene3D.VulkanStagingFence,
-                                                 GlobalIlluminationVoxelUniformBufferData^,
-                                                 fGlobalIlluminationVoxelUniformBuffers[aInFlightFrameIndex],
+                                                 GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^,
+                                                 fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[aInFlightFrameIndex],
                                                  0,
-                                                 SizeOf(TGlobalIlluminationVoxelUniformBufferData));
+                                                 SizeOf(TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData));
 
 end;
 

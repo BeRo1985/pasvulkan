@@ -18,7 +18,7 @@ layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
 
-layout (set = 0, binding = 1, std430) readonly buffer VoxelGridColors {
+layout (set = 0, binding = 1, std430) buffer VoxelGridColors {
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
   vec4 data[]; // 32bit floating point
 #else
@@ -26,7 +26,7 @@ layout (set = 0, binding = 1, std430) readonly buffer VoxelGridColors {
 #endif
 } voxelGridColors;
 
-layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
+layout (set = 0, binding = 2, std430) buffer VoxelGridCounters {
   uint data[]; // 32-bit fixed point
 } voxelGridCounters;
 
@@ -60,6 +60,14 @@ void main(){
         vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeIndex]) * 4096.0))
 #endif
       );
+
+      // Reset voxel grid color and counter for reuse
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+      voxelGridColors.data[volumeIndex] = vec4(0.0);
+#else
+      voxelGridColors.data[volumeIndex] = uvec4(0u);
+#endif
+      voxelGridCounters.data[volumeIndex] = 0u; // reset counter
       
     } 
 
