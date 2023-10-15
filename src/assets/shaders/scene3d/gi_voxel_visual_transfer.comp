@@ -45,17 +45,16 @@ void main(){
 
     uint volumeBaseIndex = ((((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) * 6;
 
+    [[unroll]]
     for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionIndex < 6; anisotropicAxisDirectionIndex++){
-
-      uint volumeIndex = volumeBaseIndex + anisotropicAxisDirectionIndex;
 
       imageStore(
         uImageVolume[(clipMapIndex * 6) + anisotropicAxisDirectionIndex], 
         ivec3(volumePosition), 
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
-        vec4(vec4(voxelGridColors.data[volumeIndex]) / max(1u, voxelGridCounters.data[volumeIndex]))
+        vec4(vec4(voxelGridColors.data[volumeIndex]) / max(1u, voxelGridCounters.data[volumeBaseIndex + anisotropicAxisDirectionIndex]))
 #else
-        vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeIndex]) * 4096.0))
+        vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeBaseIndex + anisotropicAxisDirectionIndex]) * 4096.0))
 #endif
       );
       
