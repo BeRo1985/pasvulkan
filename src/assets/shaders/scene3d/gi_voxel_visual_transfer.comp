@@ -4,6 +4,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_control_flow_attributes : enable
 //#extension GL_EXT_scalar_block_layout : enable
 
 /* clang-format off */
@@ -48,13 +49,15 @@ void main(){
     [[unroll]]
     for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionIndex < 6; anisotropicAxisDirectionIndex++){
 
+      uint volumeIndex = volumeBaseIndex + anisotropicAxisDirectionIndex;
+
       imageStore(
         uImageVolume[(clipMapIndex * 6) + anisotropicAxisDirectionIndex], 
         ivec3(volumePosition), 
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
-        vec4(vec4(voxelGridColors.data[volumeIndex]) / max(1u, voxelGridCounters.data[volumeBaseIndex + anisotropicAxisDirectionIndex]))
+        vec4(vec4(voxelGridColors.data[volumeIndex]) / max(1u, voxelGridCounters.data[volumeIndex]))
 #else
-        vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeBaseIndex + anisotropicAxisDirectionIndex]) * 4096.0))
+        vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1u, voxelGridCounters.data[volumeIndex]) * 4096.0))
 #endif
       );
       
