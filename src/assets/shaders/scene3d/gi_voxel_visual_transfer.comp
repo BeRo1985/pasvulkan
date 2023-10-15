@@ -12,6 +12,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
@@ -28,15 +29,13 @@ layout (set = 0, binding = 2, std430) readonly buffer VoxelGridCounters {
   uint data[]; // 32-bit fixed point
 } voxelGridCounters;
 
-layout(set = 0, binding = 3, r32ui) writeonly uniform uimage3D uImageVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+layout(set = 0, binding = 3, r11f_g11f_b10f) writeonly uniform image3D uImageVolumeColor[]; 
 
 layout(set = 0, binding = 4, r8) writeonly uniform image3D uImageVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
-#include "rgb9e5.glsl"
-
 void main(){
 
-  uint voxelGridSize = uint(voxelGridData.clipMaps[0].w);
+  uint voxelGridSize = voxelGridData.gridSize;
 
   uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
 
@@ -60,11 +59,9 @@ void main(){
       vec4 volumeCellColorRGBA = vec4(voxelGridColors.data[volumeIndex]) / (max(1u, volumeCellCounter) * 4096.0);
 #endif
 
-      uint volumeCellColorRGB9E5 = encodeRGB9E5(volumeCellColorRGBA.xyz); // from floating point to 9.5 bit fixed point (RGB9E5)
-
       uint imageIndex = (clipMapIndex * 6) + anisotropicAxisDirectionIndex;
 
-      imageStore(uImageVolumeColor[imageIndex], ivec3(volumePosition), uvec4(volumeCellColorRGB9E5));
+      imageStore(uImageVolumeColor[imageIndex], ivec3(volumePosition), vec4(volumeCellColorRGBA));
 
       imageStore(uImageVolumeAlpha[imageIndex],  ivec3(volumePosition), vec4(clamp(volumeCellColorRGBA.w, 0.0, 1.0)));
 

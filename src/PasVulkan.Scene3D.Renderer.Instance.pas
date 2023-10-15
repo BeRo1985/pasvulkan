@@ -278,6 +278,7 @@ type { TpvScene3DRendererInstance }
             { TGlobalIlluminationVoxelUniformBufferData }
             TGlobalIlluminationVoxelUniformBufferData=record
              ClipMaps:array[0..3] of TpvVector4;
+             GridSize:TpvUInt32;
              CountClipMaps:TpvUInt32;
              HardwareConservativeRasterization:TpvUInt32;
             end;
@@ -285,7 +286,8 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationVoxelUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationVoxelUniformBufferData;
             PGlobalIlluminationVoxelUniformBufferDataArray=^TGlobalIlluminationVoxelUniformBufferDataArray;
             TGlobalIlluminationVoxelBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalIlluminationVoxelImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationVoxelSideImages=array[0..MaxInFlightFrames-1,0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationVoxelImages=array[0..MaxInFlightFrames-1,0..3] of TpvScene3DRendererMipmappedArray3DImage;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -456,8 +458,8 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer;
        fGlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer;
        fGlobalIlluminationVoxelOcclusionImages:TGlobalIlluminationVoxelImages;
-       fGlobalIlluminationVoxelColorImages:TGlobalIlluminationVoxelImages;
-       fGlobalIlluminationVoxelAlphaImages:TGlobalIlluminationVoxelImages;
+       fGlobalIlluminationVoxelColorImages:TGlobalIlluminationVoxelSideImages;
+       fGlobalIlluminationVoxelAlphaImages:TGlobalIlluminationVoxelSideImages;
       private
        fInFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps;
       private
@@ -584,6 +586,9 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationVoxelUniformBuffers:TGlobalIlluminationVoxelBuffers read fGlobalIlluminationVoxelUniformBuffers;
        property GlobalIlluminationVoxelColorBuffer:TpvVulkanBuffer read fGlobalIlluminationVoxelColorBuffer;
        property GlobalIlluminationVoxelCounterBuffer:TpvVulkanBuffer read fGlobalIlluminationVoxelCounterBuffer;
+       property GlobalIlluminationVoxelOcclusionImages:TGlobalIlluminationVoxelImages read fGlobalIlluminationVoxelOcclusionImages;
+       property GlobalIlluminationVoxelColorImages:TGlobalIlluminationVoxelSideImages read fGlobalIlluminationVoxelColorImages;
+       property GlobalIlluminationVoxelAlphaImages:TGlobalIlluminationVoxelSideImages read fGlobalIlluminationVoxelAlphaImages;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -1454,6 +1459,12 @@ begin
 
  fGlobalIlluminationVoxelCounterBuffer:=nil;
 
+ FillChar(fGlobalIlluminationVoxelOcclusionImages,SizeOf(TGlobalIlluminationVoxelImages),#0);
+
+ FillChar(fGlobalIlluminationVoxelColorImages,SizeOf(TGlobalIlluminationVoxelSideImages),#0);
+
+ FillChar(fGlobalIlluminationVoxelAlphaImages,SizeOf(TGlobalIlluminationVoxelSideImages),#0);
+
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                      SizeOf(TCascadedShadowMapUniformBuffer),
@@ -1583,6 +1594,16 @@ begin
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fGlobalIlluminationVoxelUniformBuffers[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  for CascadeIndex:=0 to 3 do begin
+   FreeAndNil(fGlobalIlluminationVoxelOcclusionImages[InFlightFrameIndex,CascadeIndex]);
+   for ImageIndex:=0 to 5 do begin
+    FreeAndNil(fGlobalIlluminationVoxelColorImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
+    FreeAndNil(fGlobalIlluminationVoxelAlphaImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
+   end;
+  end;
  end;
 
  FreeAndNil(fGlobalIlluminationVoxelColorBuffer);
@@ -1819,6 +1840,35 @@ begin
                                                                  0,
                                                                  0,
                                                                  []);
+
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+     fGlobalIlluminationVoxelOcclusionImages[InFlightFrameIndex,CascadeIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                              Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                              Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                              VK_FORMAT_R8_UNORM,
+                                                                                                                              true,
+                                                                                                                              TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                              TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+     for ImageIndex:=0 to 5 do begin
+      fGlobalIlluminationVoxelColorImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+                                                                                                                                      true,
+                                                                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+      fGlobalIlluminationVoxelAlphaImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      VK_FORMAT_R8_UNORM,
+                                                                                                                                      true,
+                                                                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+     end;
+    end;
+
+   end;
 
 
   end;
@@ -3586,9 +3636,11 @@ begin
  GlobalIlluminationVoxelUniformBufferData:=@fGlobalIlluminationVoxelUniformBufferDataArray[aInFlightFrameIndex];
 
  for CascadeIndex:=0 to fGlobalIlluminationVoxelCascadedVolumes.fCountCascades-1 do begin
-  CascadedVolumeCascade:=fGlobalIlluminationRadianceHintsCascadedVolumes.Cascades[CascadeIndex];
-  GlobalIlluminationVoxelUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,fGlobalIlluminationVoxelCascadedVolumes.fVolumeSize);
+  CascadedVolumeCascade:=fGlobalIlluminationVoxelCascadedVolumes.Cascades[CascadeIndex];
+  GlobalIlluminationVoxelUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize);
  end;
+
+ GlobalIlluminationVoxelUniformBufferData^.GridSize:=fGlobalIlluminationVoxelCascadedVolumes.fVolumeSize;
 
  GlobalIlluminationVoxelUniformBufferData^.CountClipMaps:=fGlobalIlluminationVoxelCascadedVolumes.fCountCascades;
 

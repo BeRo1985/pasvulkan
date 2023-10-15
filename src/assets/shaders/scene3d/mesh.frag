@@ -298,6 +298,7 @@ layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
 
 layout (set = 1, binding = 6, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
@@ -2310,7 +2311,7 @@ void main() {
 #ifdef VOXELIZATION
   vec4 clipMap = voxelGridData.clipMaps[inClipMapIndex];
 
-  uint voxelGridSize = uint(clipMap.w);
+  uint voxelGridSize = voxelGridData.gridSize;
   
   uvec3 volumePosition = ivec3((inWorldSpacePosition - float(clipMap.xyz)) / float(clipMap.w)); 
 

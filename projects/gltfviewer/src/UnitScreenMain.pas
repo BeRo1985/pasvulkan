@@ -210,7 +210,7 @@ begin
 
  fRendererInstance.PixelAmountFactor:=1.0;
 
- fRendererInstance.UseDebugBlit:=true;
+ fRendererInstance.UseDebugBlit:=false;
 
  fRendererInstance.Prepare;
 

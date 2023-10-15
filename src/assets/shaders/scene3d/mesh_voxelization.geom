@@ -36,6 +36,7 @@ layout(location = 13) flat out vec3 outVertex2;*/
 
 layout (set = 1, binding = 6, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;

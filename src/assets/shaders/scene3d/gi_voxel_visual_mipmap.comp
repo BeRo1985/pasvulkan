@@ -12,15 +12,16 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
 
-layout(set = 0, binding = 1, r32ui) readonly uniform uimage3D uImageSourceVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+layout(set = 0, binding = 1, r11f_g11f_b10f) readonly uniform image3D uImageSourceVolumeColor[]; 
 
 layout(set = 0, binding = 2, r8) readonly uniform image3D uImageSourceVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
-layout(set = 0, binding = 3, r32ui) writeonly uniform uimage3D uImageDestinationVolumeColor[]; // as 32-bit unsigned integer aliased/casted 9.5 bit fixed point (RGB9E5)
+layout(set = 0, binding = 3, r11f_g11f_b10f) writeonly uniform image3D uImageDestinationVolumeColor[];
 
 layout(set = 0, binding = 4, r8) writeonly uniform image3D uImageDestinationVolumeAlpha[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
@@ -28,26 +29,24 @@ layout(push_constant) uniform PushConstants {
   uint mipMapLevel;
 } pushConstants;
 
-#include "rgb9e5.glsl"
-
 #define voxelIndex(x, y, z) ((((z << 1) + y) << 1) + x)    
 
 void fetchVoxels(out vec4 voxels[8], const in uint index, const in ivec3 pos){
   voxels = vec4[8](
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 0, 0)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 0, 0)).x), // 0
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 0, 0)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 0, 0)).x), // 1
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 1, 0)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 1, 0)).x), // 2
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 1, 0)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 1, 0)).x), // 3
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 0, 1)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 0, 1)).x), // 4
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 0, 1)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 0, 1)).x), // 5
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 1, 1)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 1, 1)).x), // 6
-    vec4(decodeRGB9E5(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 1, 1)).x), imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 1, 1)).x)  // 7
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 0, 0)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 0, 0)).x), // 0
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 0, 0)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 0, 0)).x), // 1
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 1, 0)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 1, 0)).x), // 2
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 1, 0)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 1, 0)).x), // 3
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 0, 1)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 0, 1)).x), // 4
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 0, 1)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 0, 1)).x), // 5
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(0, 1, 1)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(0, 1, 1)).x), // 6
+    vec4(imageLoad(uImageSourceVolumeColor[index], pos + ivec3(1, 1, 1)).xyz, imageLoad(uImageSourceVolumeAlpha[index], pos + ivec3(1, 1, 1)).x)  // 7
   );
 }                        
 
 void main(){
 
-  uint voxelSourceGridSize = uint(voxelGridData.clipMaps[0].w);
+  uint voxelSourceGridSize = voxelGridData.gridSize;
 
   uint voxelDestinationGridSize = voxelSourceGridSize >> pushConstants.mipMapLevel;
 
@@ -73,7 +72,7 @@ void main(){
                    (voxels[voxelIndex(0, 1, 0)] + (voxels[voxelIndex(1, 1, 0)] * (1.0 - voxels[voxelIndex(0, 1, 0)].w))) +
                    (voxels[voxelIndex(0, 0, 1)] + (voxels[voxelIndex(1, 0, 1)] * (1.0 - voxels[voxelIndex(0, 0, 1)].w))) +
                    (voxels[voxelIndex(0, 1, 1)] + (voxels[voxelIndex(1, 1, 1)] * (1.0 - voxels[voxelIndex(0, 1, 1)].w)))) * 0.25;  
-      imageStore(uImageDestinationVolumeColor[baseImageIndex + 0], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
+      imageStore(uImageDestinationVolumeColor[baseImageIndex + 0], ivec3(volumeDestinationPosition), vec4(temp));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 0], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
@@ -84,7 +83,7 @@ void main(){
                    (voxels[voxelIndex(1, 0, 0)] + (voxels[voxelIndex(1, 1, 0)] * (1.0 - voxels[voxelIndex(1, 0, 0)].w))) +
                    (voxels[voxelIndex(0, 0, 1)] + (voxels[voxelIndex(0, 1, 1)] * (1.0 - voxels[voxelIndex(0, 0, 1)].w))) +
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(1, 1, 1)] * (1.0 - voxels[voxelIndex(1, 0, 1)].w)))) * 0.25;  
-      imageStore(uImageDestinationVolumeColor[baseImageIndex + 1], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
+      imageStore(uImageDestinationVolumeColor[baseImageIndex + 1], ivec3(volumeDestinationPosition), vec4(temp));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 1], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
@@ -95,7 +94,7 @@ void main(){
                    (voxels[voxelIndex(1, 0, 0)] + (voxels[voxelIndex(1, 0, 1)] * (1.0 - voxels[voxelIndex(1, 0, 0)].w))) +
                    (voxels[voxelIndex(0, 1, 0)] + (voxels[voxelIndex(0, 1, 1)] * (1.0 - voxels[voxelIndex(0, 1, 0)].w))) +
                    (voxels[voxelIndex(1, 1, 0)] + (voxels[voxelIndex(1, 1, 1)] * (1.0 - voxels[voxelIndex(1, 1, 0)].w)))) * 0.25;  
-      imageStore(uImageDestinationVolumeColor[baseImageIndex + 2], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
+      imageStore(uImageDestinationVolumeColor[baseImageIndex + 2], ivec3(volumeDestinationPosition), vec4(temp));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 2], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
@@ -106,7 +105,7 @@ void main(){
                    (voxels[voxelIndex(1, 1, 0)] + (voxels[voxelIndex(0, 1, 0)] * (1.0 - voxels[voxelIndex(1, 1, 0)].w))) +
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(0, 0, 1)] * (1.0 - voxels[voxelIndex(1, 0, 1)].w))) +
                    (voxels[voxelIndex(1, 1, 1)] + (voxels[voxelIndex(0, 1, 1)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
-      imageStore(uImageDestinationVolumeColor[baseImageIndex + 3], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
+      imageStore(uImageDestinationVolumeColor[baseImageIndex + 3], ivec3(volumeDestinationPosition), vec4(temp));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 3], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
     
@@ -117,7 +116,7 @@ void main(){
                    (voxels[voxelIndex(1, 1, 0)] + (voxels[voxelIndex(1, 0, 0)] * (1.0 - voxels[voxelIndex(1, 1, 0)].w))) +
                    (voxels[voxelIndex(0, 1, 1)] + (voxels[voxelIndex(0, 0, 1)] * (1.0 - voxels[voxelIndex(0, 1, 1)].w))) +
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(1, 0, 1)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
-      imageStore(uImageDestinationVolumeColor[baseImageIndex + 4], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
+      imageStore(uImageDestinationVolumeColor[baseImageIndex + 4], ivec3(volumeDestinationPosition), vec4(temp));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 4], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }
 
@@ -128,7 +127,7 @@ void main(){
                    (voxels[voxelIndex(1, 0, 1)] + (voxels[voxelIndex(1, 0, 0)] * (1.0 - voxels[voxelIndex(1, 0, 1)].w))) +
                    (voxels[voxelIndex(0, 1, 1)] + (voxels[voxelIndex(0, 1, 0)] * (1.0 - voxels[voxelIndex(0, 1, 1)].w))) +
                    (voxels[voxelIndex(1, 1, 1)] + (voxels[voxelIndex(1, 1, 0)] * (1.0 - voxels[voxelIndex(1, 1, 1)].w)))) * 0.25;  
-      imageStore(uImageDestinationVolumeColor[baseImageIndex + 5], ivec3(volumeDestinationPosition), uvec4(encodeRGB9E5(temp.xyz)));
+      imageStore(uImageDestinationVolumeColor[baseImageIndex + 5], ivec3(volumeDestinationPosition), vec4(temp));
       imageStore(uImageDestinationVolumeAlpha[baseImageIndex + 5], ivec3(volumeDestinationPosition), vec4(clamp(temp.w, 0.0, 1.0)));
     }             
 
