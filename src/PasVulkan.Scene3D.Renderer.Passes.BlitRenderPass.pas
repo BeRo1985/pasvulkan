@@ -147,7 +147,7 @@ begin
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment],
-                                   TpvFrameGraph.TResourceInstanceType.Default,
+                                   TpvFrameGraph.TResourceInstanceType.InstancePerInFlightFrame,
                                    fInstance.ExternalOutputImageData
                                   );
  end else begin
@@ -156,7 +156,8 @@ begin
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                    TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                 TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
-                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment],
+                                   TpvFrameGraph.TResourceInstanceType.InstancePerInFlightFrame
                                   );
  end;
 

@@ -287,8 +287,8 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
             PGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=^TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray;
             TGlobalIlluminationCascadedVoxelConeTracingBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalIlluminationCascadedVoxelConeTracingSideImages=array[0..MaxInFlightFrames-1,0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
-            TGlobalIlluminationCascadedVoxelConeTracingImages=array[0..MaxInFlightFrames-1,0..3] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationCascadedVoxelConeTracingSideImages=array[0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationCascadedVoxelConeTracingImages=array[0..3] of TpvScene3DRendererMipmappedArray3DImage;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -1450,7 +1450,7 @@ begin
 
  fHasExternalOutputImage:=(fExternalImageFormat<>VK_FORMAT_UNDEFINED) and not assigned(fVirtualReality);
 
- fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.InstancePerInFlightFrame;
+ fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.SingleInstance;
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
@@ -1629,13 +1629,14 @@ begin
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex]);
  end;
 
- for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  for CascadeIndex:=0 to 3 do begin
-   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[InFlightFrameIndex,CascadeIndex]);
-   for ImageIndex:=0 to 5 do begin
-    FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingImages[InFlightFrameIndex,CascadeIndex,ImageIndex]);
-   end;
+ for CascadeIndex:=0 to 3 do begin
+  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]);
+  for ImageIndex:=0 to 5 do begin
+   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex]);
   end;
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]);
  end;
 
@@ -1880,30 +1881,30 @@ begin
                                                                  0,
                                                                  []);
 
-   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
 
-    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+    fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                             Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                             Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                             VK_FORMAT_R8_UNORM,
+                                                                                                                             true,
+                                                                                                                             TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                             TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
 
-     fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[InFlightFrameIndex,CascadeIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                              Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                              Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                              VK_FORMAT_R8_UNORM,
-                                                                                                                              true,
-                                                                                                                              TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                                                              TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+    for ImageIndex:=0 to 5 do begin
 
-     for ImageIndex:=0 to 5 do begin
-
-      fGlobalIlluminationCascadedVoxelConeTracingImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                                 Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                                 Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                                 VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                 true,
-                                                                                                                                 TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
-     end;
-
+     fGlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                true,
+                                                                                                                                TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                                TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
     end;
+
+   end;
+
+   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
     fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
 

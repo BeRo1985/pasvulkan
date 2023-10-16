@@ -134,8 +134,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var Index,CascadeIndex,VolumeIndex:TpvInt32;
-    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 

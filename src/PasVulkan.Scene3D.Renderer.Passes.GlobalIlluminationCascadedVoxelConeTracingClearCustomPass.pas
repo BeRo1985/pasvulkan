@@ -134,12 +134,57 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PreviousInFlightFrameIndex:TpvInt32;
+var PreviousInFlightFrameIndex,Index,CascadeIndex,ImageIndex,ImageCount:TpvInt32;
+    ImageMemoryBarriers:array[0..(4*(6+1))-1] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    PreviousAccessFlags:TVkAccessFlags;
+    PreviousImageLayout:TVkImageLayout;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
+
+ if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then begin
+  PreviousAccessFlags:=0;
+  PreviousImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+ end else begin
+  PreviousAccessFlags:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+  PreviousImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+ end;
+
+ PreviousAccessFlags:=0;
+ PreviousImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+
+ ImageCount:=0;
+ for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+  ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(PreviousAccessFlags,
+                                                                TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                PreviousImageLayout,
+                                                                VK_IMAGE_LAYOUT_GENERAL,
+                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                VK_QUEUE_FAMILY_IGNORED,
+                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImage.Handle,
+                                                                TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                0,
+                                                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].MipMapLevels,
+                                                                                                0,
+                                                                                                1));
+  for ImageIndex:=0 to 5 do begin
+   ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(PreviousAccessFlags,
+                                                                 TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                 PreviousImageLayout,
+                                                                 VK_IMAGE_LAYOUT_GENERAL,
+                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                 VK_QUEUE_FAMILY_IGNORED,
+                                                                 fInstance.GlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex].VulkanImage.Handle,
+                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                 0,
+                                                                                                 fInstance.GlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex].MipMapLevels,
+                                                                                                 0,
+                                                                                                 1));
+   inc(ImageCount);
+  end;
+ end;
 
  if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then begin
 
@@ -198,7 +243,7 @@ begin
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)},
                                0,nil,
                                length(BufferMemoryBarriers),@BufferMemoryBarriers[0],
-                               0,nil);
+                               ImageCount,@ImageMemoryBarriers[0]);
   aCommandBuffer.CmdResetEvent(fInstance.fGlobalIlluminationCascadedVoxelConeTracingEvents[PreviousInFlightFrameIndex].Handle,
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) or
@@ -207,21 +252,12 @@ begin
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT) or
                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)});
  end else begin
-  if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then begin
-   aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                     0,
-                                     0,nil,
-                                     length(BufferMemoryBarriers),@BufferMemoryBarriers[0],
-                                     0,nil);
-  end else begin
-   aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                     FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                     0,
-                                     0,nil,
-                                     length(BufferMemoryBarriers),@BufferMemoryBarriers[0],
-                                     0,nil);
-  end;
+  aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                    FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    length(BufferMemoryBarriers),@BufferMemoryBarriers[0],
+                                    ImageCount,@ImageMemoryBarriers[0]);
  end;
 
  if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then begin
