@@ -28,7 +28,7 @@ layout(location = 2) out vec4 outColor;
 layout(location = 3) flat out uint outTextureID;
 
 /* clang-format off */
-
+/*
 #ifdef VOXELIZATION
 
 // Should be the same as in the geometry shader, since the minimum "maximum-size" of push constants is 128 bytes
@@ -37,7 +37,7 @@ layout (push_constant) uniform PushConstants {
 } pushConstants;
 
 #else
-
+*/
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
@@ -46,7 +46,7 @@ layout (push_constant) uniform PushConstants {
   vec4 jitter;
 } pushConstants;
 
-#endif
+//#endif
 
 // Global descriptor set
 
@@ -70,7 +70,7 @@ out gl_PerVertex {
 
 void main() {
 #ifdef VOXELIZATION
-  uint viewIndex = pushConstants.viewIndex;
+  uint viewIndex = pushConstants.viewBaseIndex;
 #else 
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 #endif
