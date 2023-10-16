@@ -1236,7 +1236,15 @@ begin
                       SceneAABB.Max.y-SceneAABB.Min.y),
                   SceneAABB.Max.z-SceneAABB.Min.z);
 
- MaximumCascadeCellSize:=Ceil(Max(1e-6,MaxAxisSize/fVolumeSize));
+ if fVoxels then begin
+  MaxAxisSize:=MaxAxisSize*1.25;
+ end;
+
+ MaximumCascadeCellSize:=Max(1e-6,MaxAxisSize/fVolumeSize);
+
+ if not fVoxels then begin
+  MaximumCascadeCellSize:=Ceil(MaximumCascadeCellSize);
+ end;
 
  CellSize:=1;
 
@@ -1286,8 +1294,13 @@ begin
 
   SnappedPosition:=(SnappedPosition.Max(ClampedSceneAABB.Min)).Min(ClampedSceneAABB.Max);
 
-  AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/SnapSize).Floor*SnapSize;
-  AABB.Max:=AABB.Min+GridSize;
+  if fVoxels then begin
+   AABB.Min:=SnappedPosition-(GridSize*0.5);
+   AABB.Max:=AABB.Min+GridSize;
+  end else begin
+   AABB.Min:=TpvVector3.InlineableCreate((SnappedPosition-(GridSize*0.5))/SnapSize).Floor*SnapSize;
+   AABB.Max:=AABB.Min+GridSize;
+  end;
 
 //ComputeGridExtents(AABB,SnappedPosition,ViewDirection,GridSize,fVolumeSize,BorderCells);
 
