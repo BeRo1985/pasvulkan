@@ -132,6 +132,7 @@ type { TpvScene3DRendererInstance }
              ReflectionProbeRenderPassIndex:TpvSizeInt;
              TopDownSkyOcclusionMapRenderPassIndex:TpvSizeInt;
              ReflectiveShadowMapRenderPassIndex:TpvSizeInt;
+             VoxelizationRenderPassIndex:TpvSizeInt;
              ViewRenderPassIndex:TpvSizeInt;
              CascadedShadowMapRenderPassIndex:TpvSizeInt;
 
@@ -4207,6 +4208,12 @@ begin
   InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=-1;
  end;
 
+ if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
+  InFlightFrameState^.VoxelizationRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ end else begin
+  InFlightFrameState^.VoxelizationRenderPassIndex:=-1;
+ end;
+
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
 
@@ -4225,8 +4232,9 @@ begin
 
  end;
 
- // Final viewport(s)
+ // Final viewport(s) (and voxelization viewport)
  if InFlightFrameState^.CountFinalViews>0 then begin
+
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ViewRenderPassIndex,
                            InFlightFrameState^.FinalViewIndex,
@@ -4236,6 +4244,19 @@ begin
                            true,
                            false,
                            false);
+
+  if InFlightFrameState^.VoxelizationRenderPassIndex>=0 then begin
+   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                            InFlightFrameState^.VoxelizationRenderPassIndex,
+                            InFlightFrameState^.FinalViewIndex,
+                            Min(InFlightFrameState^.CountFinalViews,1),
+                            Renderer.GlobalIlluminationVoxelGridSize,
+                            Renderer.GlobalIlluminationVoxelGridSize,
+                            false,
+                            false,
+                            false);
+  end;
+
  end;
 
  // Reflection probe viewport(s)
