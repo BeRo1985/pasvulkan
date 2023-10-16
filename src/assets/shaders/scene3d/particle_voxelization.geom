@@ -16,10 +16,11 @@ layout(location = 3) flat in uint inTextureID[];
 layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out vec2 outTexCoord;
 layout(location = 2) out vec4 outColor;
-layout(location = 3) flat out uint outTextureID;
-layout(location = 4) flat out vec3 outAABBMin;
-layout(location = 5) flat out vec3 outAABBMax;
-layout(location = 6) flat out uint outClipMapIndex;
+layout(location = 3) out vec3 outNormal;
+layout(location = 4) flat out uint outTextureID;
+layout(location = 5) flat out vec3 outAABBMin;
+layout(location = 6) flat out vec3 outAABBMax;
+layout(location = 7) flat out uint outClipMapIndex;
 
 #define VOXELIZATION
 #include "voxelization_globals.glsl"
@@ -98,6 +99,8 @@ void main(){
       outTexCoord = inTexCoord[currentVertexIndex];
       
       outColor = inColor[currentVertexIndex];
+
+      outNormal = faceNormal;
 
       outTextureID = inTextureID[currentVertexIndex];
 

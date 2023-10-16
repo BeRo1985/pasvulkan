@@ -9,6 +9,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
 
 #if defined(LOCKOIT) || defined(DFAOIT)
   #extension GL_ARB_post_depth_coverage : enable
@@ -39,11 +40,14 @@
 #endif
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec4 inColor;
-layout(location = 3) flat in uint inTextureID;
 #ifdef VOXELIZATION
-  layout(location = 4) flat in vec3 inAABBMin;
-  layout(location = 5) flat in vec3 inAABBMax;
-  layout(location = 6) flat in uint inClipMapIndex; 
+  layout(location = 3) in vec3 inNormal;
+  layout(location = 4) flat in uint inTextureID;
+  layout(location = 5) flat in vec3 inAABBMin;
+  layout(location = 6) flat in vec3 inAABBMax;
+  layout(location = 7) flat in uint inClipMapIndex; 
+#else
+  layout(location = 3) flat in uint inTextureID;
 #endif
 
 // Specialization constants are sadly unusable due to dead slow shader stage compilation times with several minutes "per" pipeline, 
@@ -70,6 +74,10 @@ layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 
 ///layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
+#ifdef VOXELIZATION
+  #include "voxelization_globals.glsl" 
+#endif
+
 #ifndef VOXELIZATION
 #define TRANSPARENCY_DECLARATION
 #include "transparency.glsl"
@@ -91,6 +99,8 @@ void main() {
   vec4 finalColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
   float alpha = finalColor.w;
 
+  uint flags = (1u << 6u); // Double-sided
+  vec3 workNormal = inNormal;
   #include "voxelization_fragment.glsl" 
 
 #else

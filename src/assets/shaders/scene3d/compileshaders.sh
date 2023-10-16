@@ -325,10 +325,31 @@ addParticleFragmentZVariants(){
   
   # Reversed Z direction
   addParticleFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ"
+ 
+ 
+}
+
+# Add particle fragment shader variants with different voxelization modes 
+addParticleFragmentVoxelizationVariants(){
+    
+  # Voxelization
+  addParticleFragmentShader "${1}_voxelization" "$2 -DVOXELIZATION"
+
+  # Occlusion voxelization
+  addParticleFragmentShader "${1}_occlusion_voxelization" "$2 -DVOXELIZATION -DOCCLUSION_VOXELIZATION"
+    
+}
+
+# Add particle fragment shader variants with different techniques (if any)
+addParticleFragmentVariants(){
+  
+  addParticleFragmentZVariants "${1}" "$2"
+
+  addParticleFragmentVoxelizationVariants "${1}" "$2"
   
 }
 
-addParticleFragmentZVariants "particle" ""
+addParticleFragmentVariants "particle" ""
 
 #############################################
 #               Mesh shaders                #
