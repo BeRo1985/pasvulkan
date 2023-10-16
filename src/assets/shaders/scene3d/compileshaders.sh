@@ -128,7 +128,22 @@ compileshaderarguments=(
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/mesh_voxelization_3_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/mesh_voxelization_4_geom.spv"
    
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_1_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_2_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_3_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_4_geom.spv"
+   
   "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
+
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/particle_voxelization_1_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/particle_voxelization_2_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/particle_voxelization_3_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/particle_voxelization_4_geom.spv"
+   
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_1_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_2_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_3_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_4_geom.spv"
 
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
@@ -224,6 +239,7 @@ compileshaderarguments=(
   "-V debug_primitive.frag -o ${tempPath}/debug_primitive_frag.spv"
 
   "-V particle.vert -o ${tempPath}/particle_vert.spv"
+  "-V particle.vert -DVOXELIZATION -o ${tempPath}/particle_voxelization_vert.spv"
 
   "-V resampling.frag -o ${tempPath}/resampling_frag.spv"
    

@@ -1,5 +1,10 @@
 #version 450 core
 
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
 layout(triangles, invocations = COUNT_CLIPMAPS) in; // COUNT_CLIPMAPS is defined by the compiling call in the build script 
 layout(triangle_strip, max_vertices = 3) out;
 
@@ -34,12 +39,8 @@ layout(location = 13) flat out uint outClipMapIndex;
 layout(location = 12) flat out vec3 outVertex1;
 layout(location = 13) flat out vec3 outVertex2;*/
 
-layout (set = 1, binding = 6, std140) readonly uniform VoxelGridData {
-  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
-  uint gridSize; // number of voxels in a clipmap in a single dimension
-  uint countClipMaps; // maximum 4 clipmaps
-  uint hardwareConservativeRasterization; // 0 = false, 1 = true
-} voxelGridData;
+#define VOXELIZATION
+#include "voxelization_globals.glsl"
 
 void main(){
 

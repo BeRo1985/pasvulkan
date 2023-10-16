@@ -2,7 +2,9 @@
 
 #define PARTICLE_FRAGMENT_SHADER
 
-#extension GL_EXT_multiview : enable
+#ifndef VOXELIZATION  
+  #extension GL_EXT_multiview : enable
+#endif
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -30,10 +32,19 @@
   layout(early_fragment_tests) in;
 #endif
 
-layout(location = 0) in vec3 inViewSpacePosition;
+#ifdef VOXELIZATION
+  layout(location = 0) in vec3 inWorldSpacePosition;
+#else
+  layout(location = 0) in vec3 inViewSpacePosition;
+#endif
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec4 inColor;
 layout(location = 3) flat in uint inTextureID;
+#ifdef VOXELIZATION
+  layout(location = 4) flat in vec3 inAABBMin;
+  layout(location = 5) flat in vec3 inAABBMax;
+  layout(location = 6) flat in uint inClipMapIndex; 
+#endif
 
 // Specialization constants are sadly unusable due to dead slow shader stage compilation times with several minutes "per" pipeline, 
 // when the validation layers and a debugger (GDB, LLDB, etc.) are active at the same time!
@@ -59,17 +70,30 @@ layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 
 ///layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
+#ifndef VOXELIZATION
 #define TRANSPARENCY_DECLARATION
 #include "transparency.glsl"
 #undef TRANSPARENCY_DECLARATION
+#endif
 
 /* clang-format on */
 
+#ifndef VOXELIZATION
 #define TRANSPARENCY_GLOBALS
 #include "transparency.glsl"
 #undef TRANSPARENCY_GLOBALS
+#endif
 
 void main() {
+
+#ifdef VOXELIZATION
+
+  vec4 finalColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
+  float alpha = finalColor.w;
+
+  #include "voxelization_fragment.glsl" 
+
+#else
 
   bool additiveBlending = (inTextureID & 0x80000000u) != 0; // Reuse the MSB of the texture ID to indicate additive blending
 
@@ -90,6 +114,8 @@ void main() {
 #define TRANSPARENCY_IMPLEMENTATION
 #include "transparency.glsl"
 #undef TRANSPARENCY_IMPLEMENTATION
+
+#endif
 
 }
 
