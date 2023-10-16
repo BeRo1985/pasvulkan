@@ -367,8 +367,9 @@ type { TpvScene3DRendererInstance }
               fCountCascades:TpvSizeInt;
               fCascades:TCascades;
               fFirst:Boolean;
+              fVoxels:Boolean;
              public
-              constructor Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt); reintroduce;
+              constructor Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt;const aVoxels:boolean); reintroduce;
               destructor Destroy; override;
               procedure Reset;
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -1139,7 +1140,7 @@ end;
 
 { TpvScene3DRendererInstance.TCascadedVolumes }
 
-constructor TpvScene3DRendererInstance.TCascadedVolumes.Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt);
+constructor TpvScene3DRendererInstance.TCascadedVolumes.Create(const aRendererInstance:TpvScene3DRendererInstance;const aVolumeSize,aCountCascades:TpvSizeInt;const aVoxels:Boolean);
 var CascadeIndex:TpvSizeInt;
 begin
 
@@ -1150,6 +1151,8 @@ begin
  fVolumeSize:=aVolumeSize;
 
  fCountCascades:=aCountCascades;
+
+ fVoxels:=aVoxels;
 
  fCascades:=TpvScene3DRendererInstance.TCascadedVolumes.TCascades.Create(true);
  for CascadeIndex:=0 to fCountCascades-1 do begin
@@ -1190,7 +1193,7 @@ procedure TpvScene3DRendererInstance.TCascadedVolumes.Update(const aInFlightFram
   aAABB.Min:=aAABB.Max-aGridSize;
  end;//}
 var CascadeIndex,BorderCells:TpvSizeInt;
-    CellSize,MaximumCascadeCellSize:TpvInt32;
+    CellSize,MaximumCascadeCellSize:TpvDouble;
     SnapSize,MaxAxisSize:TpvDouble;
     InFlightFrameState:PInFlightFrameState;
     ViewPosition:TpvVector3;
@@ -1241,18 +1244,28 @@ begin
 
   Cascade:=fCascades[CascadeIndex];
 
-  if CascadeIndex=(fCountCascades-1) then begin
-   CellSize:=MaximumCascadeCellSize;
-  end else if CascadeIndex=0 then begin
-   CellSize:=1;
+  if fVoxels then begin
+   if CascadeIndex=(fCountCascades-1) then begin
+    CellSize:=MaximumCascadeCellSize;
+   end else if CascadeIndex=0 then begin
+    CellSize:=0.1;
+   end else begin
+    CellSize:=Min(CellSize*4,MaximumCascadeCellSize);
+   end;//}
   end else begin
-   CellSize:=Min(CellSize shl 2,MaximumCascadeCellSize);
-  end;//}
-{ end else if CascadeIndex=0 then begin
-   CellSize:=1;
-  end else begin
-   CellSize:=Ceil(Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),1.0),MaximumCascadeCellSize));
-  end; //}
+   if CascadeIndex=(fCountCascades-1) then begin
+    CellSize:=MaximumCascadeCellSize;
+   end else if CascadeIndex=0 then begin
+    CellSize:=1;
+   end else begin
+    CellSize:=Min(CellSize*4,MaximumCascadeCellSize);
+   end;//}
+ { end else if CascadeIndex=0 then begin
+    CellSize:=1;
+   end else begin
+    CellSize:=Ceil(Min(Max(round(MaximumCascadeCellSize*Power((CascadeIndex+1)/fCountCascades,1.0)),1.0),MaximumCascadeCellSize));
+   end; //}
+  end;
 
 { if (CellSize and 1)<>0 then begin
    inc(CellSize);
@@ -1670,7 +1683,8 @@ begin
 
    fGlobalIlluminationRadianceHintsCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                             GlobalIlluminationRadiantHintVolumeSize,
-                                                                            CountGlobalIlluminationRadiantHintCascades);
+                                                                            CountGlobalIlluminationRadiantHintCascades,
+                                                                            false);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
     fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
@@ -1799,7 +1813,10 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
 
-   fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,Renderer.GlobalIlluminationVoxelGridSize,Renderer.GlobalIlluminationVoxelCountClipMaps);
+   fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,
+                                                                                       Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                       Renderer.GlobalIlluminationVoxelCountClipMaps,
+                                                                                       true);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
