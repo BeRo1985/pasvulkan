@@ -75,6 +75,7 @@ layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 ///layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
 #ifdef VOXELIZATION
+  layout(location = 0) out vec4 outFragColor;
   #include "voxelization_globals.glsl" 
 #endif
 

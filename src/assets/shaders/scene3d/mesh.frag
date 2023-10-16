@@ -277,7 +277,8 @@ layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
 #endif
 
 #ifdef VOXELIZATION
-#include "voxelization_globals.glsl"
+  layout(location = 0) out vec4 outFragColor;
+  #include "voxelization_globals.glsl"
 #endif
 
 // Extra global illumination descriptor set (optional, if global illumination is enabled) for more easily sharing the same 
@@ -291,9 +292,11 @@ layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
   #include "global_illumination_cascaded_radiance_hints.glsl"
 #endif
 
-#define TRANSPARENCY_DECLARATION
-#include "transparency.glsl"
-#undef TRANSPARENCY_DECLARATION
+#ifndef VOXELIZATION
+  #define TRANSPARENCY_DECLARATION
+  #include "transparency.glsl"
+  #undef TRANSPARENCY_DECLARATION
+#endif
 
 /* clang-format on */
 

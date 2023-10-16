@@ -19,6 +19,8 @@
   
     atomicAdd(voxelGridCounters.data[volumeIndex], 1u); 
 
+    outFragColor = vec4(alpha);
+
 #else
 
     uint volumeBaseIndex = ((((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) * 6;
@@ -42,11 +44,13 @@
 
     vec3 anisotropicDirectionWeights = abs(workNormal);
 
+    vec4 anisotropicPremultipliedColor = vec4(finalColor.xyz, 1.0) * finalColor.w;
+
+    outFragColor = vec4(finalColor);
+
     for(uint anisotropicAxisDirectionSideIndex = 0u; anisotropicAxisDirectionSideIndex < countAnisotropicAxisDirectionSides; anisotropicAxisDirectionSideIndex++){
 
       uvec3 anisotropicDirectionOffsets = anisotropicAxisDirectionSideOffsets[anisotropicAxisDirectionSideIndex];
-
-      vec4 anisotropicPremultipliedColor = vec4(finalColor.xyz, 1.0) * finalColor.w;
 
       [[unroll]]            
       for(uint anisotropicAxisDirectionIndex = 0u; anisotropicAxisDirectionIndex < 3u; anisotropicAxisDirectionIndex++){

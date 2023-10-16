@@ -1236,7 +1236,7 @@ begin
                       SceneAABB.Max.y-SceneAABB.Min.y),
                   SceneAABB.Max.z-SceneAABB.Min.z);
 
- MaximumCascadeCellSize:=Ceil(Max(1.0,MaxAxisSize/fVolumeSize));
+ MaximumCascadeCellSize:=Ceil(Max(1e-6,MaxAxisSize/fVolumeSize));
 
  CellSize:=1;
 
@@ -1248,7 +1248,7 @@ begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
    end else if CascadeIndex=0 then begin
-    CellSize:=0.1;
+    CellSize:=Min(0.1,MaximumCascadeCellSize);
    end else begin
     CellSize:=Min(CellSize*4,MaximumCascadeCellSize);
    end;//}
@@ -1256,7 +1256,7 @@ begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
    end else if CascadeIndex=0 then begin
-    CellSize:=1;
+    CellSize:=Min(1,MaximumCascadeCellSize);
    end else begin
     CellSize:=Min(CellSize*4,MaximumCascadeCellSize);
    end;//}
