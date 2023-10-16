@@ -96,6 +96,14 @@ void main() {
 
 #ifdef VOXELIZATION
 
+#ifdef OCCLUSION_VOXELIZATION   
+  bool additiveBlending = (inTextureID & 0x80000000u) != 0; // Reuse the MSB of the texture ID to indicate additive blending
+  if(additiveBlending) {
+    discard;
+    return;
+  } 
+#endif 
+
   vec4 finalColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
   float alpha = finalColor.w;
 
