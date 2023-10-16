@@ -223,8 +223,7 @@ layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
 // Pass descriptor set
 
-#ifdef DEPTHONLY
-#else
+#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION))
 layout(set = 1, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
 layout(set = 1, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
@@ -296,14 +295,16 @@ layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
 
 // 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
 
-layout (set = 1, binding = 6, std140) readonly uniform VoxelGridData {
+#if defined(OCCLUSION_VOXELIZATION)
+
+layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
   uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
 
-layout (set = 1, binding = 7, std430) coherent buffer VoxelGridColors {
+layout (set = 1, binding = 1, std430) coherent buffer VoxelGridColors {
 #if defined(USESHADERBUFFERFLOAT32ATOMICADD)
   float data[]; // 32-bit floating point
 #else
@@ -311,9 +312,32 @@ layout (set = 1, binding = 7, std430) coherent buffer VoxelGridColors {
 #endif
 } voxelGridColors;
 
-layout (set = 1, binding = 8, std430) coherent buffer VoxelGridCounters {
+layout (set = 1, binding = 2, std430) coherent buffer VoxelGridCounters {
   uint data[]; // 32-bit unsigned integer
 } voxelGridCounters;
+
+#else
+
+layout (set = 1, binding = 5, std140) readonly uniform VoxelGridData {
+  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  uint gridSize; // number of voxels in a clipmap in a single dimension
+  uint countClipMaps; // maximum 4 clipmaps
+  uint hardwareConservativeRasterization; // 0 = false, 1 = true
+} voxelGridData;
+
+layout (set = 1, binding = 6, std430) coherent buffer VoxelGridColors {
+#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
+  float data[]; // 32-bit floating point
+#else
+  uint data[]; // 22.12 bit fixed point
+#endif
+} voxelGridColors;
+
+layout (set = 1, binding = 7, std430) coherent buffer VoxelGridCounters {
+  uint data[]; // 32-bit unsigned integer
+} voxelGridCounters;
+
+#endif
 
 #endif
 
@@ -415,8 +439,7 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 }
 #endif
 
-#ifdef DEPTHONLY
-#else
+#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION))
 #include "roughness.glsl"
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
