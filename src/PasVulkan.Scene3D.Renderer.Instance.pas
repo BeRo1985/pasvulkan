@@ -3715,7 +3715,7 @@ begin
 
  for CascadeIndex:=0 to fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1 do begin
   CascadedVolumeCascade:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex];
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*0.5);
  end;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.GridSize:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
