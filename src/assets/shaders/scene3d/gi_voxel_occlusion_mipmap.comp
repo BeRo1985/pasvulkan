@@ -18,9 +18,9 @@ layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
 } voxelGridData;
 
-layout(set = 0, binding = 3, r8) readonly uniform image3D uImageSourceVolumeOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+layout(set = 0, binding = 1, r8) readonly uniform image3D uImageSourceVolumeOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
-layout(set = 0, binding = 6, r8) writeonly uniform image3D uImageDestinationOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
+layout(set = 0, binding = 2, r8) writeonly uniform image3D uImageDestinationOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
 layout(push_constant) uniform PushConstants {
   uint mipMapLevel;
