@@ -12,6 +12,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  vec4 cellSizes; // size of a voxel in world-space
   uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
