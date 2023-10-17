@@ -23,7 +23,8 @@
 #if defined(OCCLUSION_VOXELIZATION)
 
 layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
-  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  vec4 clipMaps[4]; // xyz = center in world-space, w = half-extent of a voxel 
+  vec4 cellSizes; // size of a voxel in world-space
   uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
@@ -45,6 +46,7 @@ layout (set = 1, binding = 2, std430) coherent buffer VoxelGridCounters {
 
 layout (set = 1, binding = 5, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
+  vec4 cellSizes; // size of a voxel in world-space
   uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
