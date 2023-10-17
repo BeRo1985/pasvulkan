@@ -136,7 +136,7 @@ begin
 
  fHeight:=aHeight;
 
- fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight)+1));
+ fMipMapLevels:=Max(1,IntLog2(Max(aWidth,aHeight))+1);
 
  fFormat:=aFormat;
 
