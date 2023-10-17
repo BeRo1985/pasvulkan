@@ -566,7 +566,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionVoxelizationRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                            const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+                                                                                                                    const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
