@@ -19,7 +19,7 @@ layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
 } voxelGridData;
 
 layout (set = 0, binding = 1, std430) buffer VoxelGridColors {
-  uvec4 data[]; // 32-bit unsigned integer
+  uint data[]; // 32-bit unsigned integer
 } voxelGridColors;
 
 layout (set = 0, binding = 2, std430) buffer VoxelGridCounters {
@@ -50,7 +50,7 @@ void main(){
 
     // Reset voxel grid color and counter for reuse
     if(count > 0u){
-      voxelGridColors.data[volumeIndex] = uvec4(0u);
+      voxelGridColors.data[volumeIndex] = 0u;
       voxelGridCounters.data[volumeIndex] = 0u;
     }
     
