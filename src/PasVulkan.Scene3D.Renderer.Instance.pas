@@ -718,6 +718,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
      PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
@@ -807,6 +808,7 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass;
+       fGlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass;
        fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass;
        fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
        fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
@@ -1914,12 +1916,12 @@ begin
     for ImageIndex:=0 to 5 do begin
 
      fGlobalIlluminationCascadedVoxelConeTracingVisualImages[CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                                Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                                Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                                                                VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                true,
-                                                                                                                                TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
-                                                                                                                                TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+                                                                                                                                      Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                                                      VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                      true,
+                                                                                                                                      TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                                                      TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
     end;
 
    end;
@@ -2570,8 +2572,11 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass.Create(fFrameGraph,self);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass);
 
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass);
+
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualClearCustomPass);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualVoxelizationRenderPass);
 
   end;
 
