@@ -134,7 +134,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PreviousInFlightFrameIndex,CascadeIndex,ImageIndex,ImageCount:TpvInt32;
+var PreviousInFlightFrameIndex,ClipMapIndex,ImageIndex,ImageCount:TpvInt32;
     Size:TVkDeviceSize;
     ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
@@ -144,17 +144,17 @@ begin
  PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
 
  ImageCount:=0;
- for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+ for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
   ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(0,
                                                                 TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                 VK_IMAGE_LAYOUT_UNDEFINED,
                                                                 VK_IMAGE_LAYOUT_GENERAL,
                                                                 VK_QUEUE_FAMILY_IGNORED,
                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImage.Handle,
+                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[ClipMapIndex].VulkanImage.Handle,
                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                                 0,
-                                                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].MipMapLevels,
+                                                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[ClipMapIndex].MipMapLevels,
                                                                                                 0,
                                                                                                 1));
   inc(ImageCount);
