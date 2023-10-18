@@ -4,7 +4,7 @@
 
 #define NUM_SHADOW_CASCADES 4
 
-#ifdef OCCLUSION_VOXELIZATION
+#if defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION)
   #undef LIGHTS
   #undef SHADOWS
 #endif
@@ -224,7 +224,7 @@ layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
 // Pass descriptor set
 
-#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION))
+#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION))
 layout(set = 1, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
 layout(set = 1, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
@@ -382,7 +382,7 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 }
 #endif
 
-#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION))
+#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION)|| defined(META_VOXELIZATION))
 #include "roughness.glsl"
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
@@ -1499,6 +1499,10 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 
 #endif
 
+#if defined(VOXELIZATION) && defined(META_VOXELIZATION)
+  #include "rgb9e5.glsl"
+#endif
+
 void main() {
 #ifdef VOXELIZATION
   if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz))) || (uint(inClipMapIndex) >= uint(voxelGridData.countClipMaps))){
@@ -1522,7 +1526,7 @@ void main() {
     material = Material(materialPointer);
   }
 #endif
-#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(OCCLUSION_VOXELIZATION) || !defined(DEPTHONLY)
+#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION) || !defined(DEPTHONLY)
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
   texCoords[0] = inTexCoord0;
   texCoords[1] = inTexCoord1;
@@ -1537,13 +1541,39 @@ void main() {
   }  
 #endif
 #endif
-#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION))
+#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION))
   envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
   envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
   flags = material.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
-#ifdef OCCLUSION_VOXELIZATION
+#if defined(META_VOXELIZATION)
+  
+  uint flags = material.alphaCutOffFlagsTex0Tex1.y;
+  
+  // For meta voxelization, a very simple BRDF is used, so the data can be reused for various purposes at the later stages, so that
+  // new costly voxelization passes are not required to be performed for these cases. Hence also the name meta voxelization, as the
+  // voxelization is just performed for to gather meta data, which is then used for various purposes.
+
+  vec4 baseColor = textureFetch(0, vec4(1.0), true) * material.baseColorFactor * inColor0; 
+  
+  vec4 emissionColor = vec4(textureFetch(4, vec4(1.0), true).xyz * material.emissiveFactor.xyz * material.emissiveFactor.w * inColor0.xyz, baseColor.w);
+  
+  float alpha = baseColor.w;
+  
+  vec3 normal;
+  if ((textureFlags.x & (1 << 2)) != 0) {
+    vec4 normalTexture = textureFetch(2, vec2(0.0, 1.0).xxyx, false);
+    normal = normalize(                                                                                                                      //
+        mat3(normalize(workTangent), normalize(workBitangent), normalize(workNormal)) *                                                            //
+        normalize((normalTexture.xyz - vec3(0.5)) * (vec2(material.metallicRoughnessNormalScaleOcclusionStrengthFactor.z, 1.0).xxy * 2.0))  //
+    );
+  } else {
+    normal = normalize(workNormal);
+  }
+  normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+
+#elif defined(OCCLUSION_VOXELIZATION)
   float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
 #elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)

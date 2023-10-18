@@ -423,10 +423,10 @@ begin
                                                                         VK_BLEND_FACTOR_ZERO,
                                                                         VK_BLEND_FACTOR_ZERO,
                                                                         VK_BLEND_OP_ADD,
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                        0{TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT)});
 
     VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;

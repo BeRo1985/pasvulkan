@@ -228,8 +228,8 @@ begin
  fCameraIndex:=-1;
 
  fCameraMatrix:=TpvMatrix4x4.CreateLookAt(Center+(TpvVector3.Create(sin(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0),
-                                                                     sin(-CameraRotationY*PI*2.0),
-                                                                     cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
+                                                                    sin(-CameraRotationY*PI*2.0),
+                                                                    cos(CameraRotationX*PI*2.0)*cos(-CameraRotationY*PI*2.0)).Normalize*
                                                            (Max(Max(Bounds[0],Bounds[1]),Bounds[2])*2.0*1.0)),
                                            Center,
                                            TpvVector3.Create(0.0,1.0,0.0)).SimpleInverse;

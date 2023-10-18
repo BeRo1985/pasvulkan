@@ -94,11 +94,15 @@ layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
 #undef TRANSPARENCY_GLOBALS
 #endif
 
+#if defined(VOXELIZATION) && defined(META_VOXELIZATION)
+  #include "rgb9e5.glsl"
+#endif
+
 void main() {
 
 #ifdef VOXELIZATION
 
-#ifdef OCCLUSION_VOXELIZATION   
+#if defined(OCCLUSION_VOXELIZATION)   
   bool additiveBlending = (inTextureID & 0x80000000u) != 0; // Reuse the MSB of the texture ID to indicate additive blending
   if(additiveBlending) {
     discard;
@@ -106,11 +110,20 @@ void main() {
   } 
 #endif 
 
+#if defined(META_VOXELIZATION)   
+  vec4 baseColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
+  vec4 emissionColor = baseColor ;
+  float alpha = baseColor.w;
+
+  uint flags = (1u << 6u); // Double-sided
+  vec3 normal = inNormal;
+#else
   vec4 finalColor = (any(lessThan(inTexCoord, vec2(0.0))) || any(greaterThan(inTexCoord, vec2(1.0)))) ? vec4(0.0) : (texture(u2DTextures[nonuniformEXT(((inTextureID & 0x3fff) << 1) | (int(1/*sRGB*/) & 1))], inTexCoord) * inColor);
   float alpha = finalColor.w;
 
   uint flags = (1u << 6u); // Double-sided
   vec3 workNormal = inNormal;
+#endif
   #include "voxelization_fragment.glsl" 
 
 #else

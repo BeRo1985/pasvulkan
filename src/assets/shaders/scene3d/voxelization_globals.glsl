@@ -20,7 +20,7 @@
 
 // 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
 
-#if defined(OCCLUSION_VOXELIZATION)
+#if defined(META_VOXELIZATION)
 
 layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
   vec4 clipMaps[4]; // xyz = center in world-space, w = half-extent of a voxel 
@@ -28,6 +28,28 @@ layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
   uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
+  uint maxGlobalFragmentCount; // maximum number of fragments per voxel globally
+  uint maxLocalFragmentCount; // maximum number of fragments per voxel locally
+} voxelGridData;
+
+layout (set = 1, binding = 1, std430) coherent buffer VoxelGridContentData {
+  uvec4 data[];
+} voxelGridContentData;
+
+layout (set = 1, binding = 2, std430) coherent buffer VoxelGridContentMetaData {
+  uint data[];
+} voxelGridContentMetaData;
+
+#elif defined(OCCLUSION_VOXELIZATION)
+
+layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
+  vec4 clipMaps[4]; // xyz = center in world-space, w = half-extent of a voxel 
+  vec4 cellSizes; // size of a voxel in world-space
+  uint gridSize; // number of voxels in a clipmap in a single dimension
+  uint countClipMaps; // maximum 4 clipmaps
+  uint hardwareConservativeRasterization; // 0 = false, 1 = true
+  uint maxGlobalFragmentCount; // maximum number of fragments per voxel globally
+  uint maxLocalFragmentCount; // maximum number of fragments per voxel locally
 } voxelGridData;
 
 layout (set = 1, binding = 1, std430) coherent buffer VoxelGridColors {
@@ -50,6 +72,8 @@ layout (set = 1, binding = 5, std140) readonly uniform VoxelGridData {
   uint gridSize; // number of voxels in a clipmap in a single dimension
   uint countClipMaps; // maximum 4 clipmaps
   uint hardwareConservativeRasterization; // 0 = false, 1 = true
+  uint maxGlobalFragmentCount; // maximum number of fragments per voxel globally
+  uint maxLocalFragmentCount; // maximum number of fragments per voxel locally
 } voxelGridData;
 
 layout (set = 1, binding = 6, std430) coherent buffer VoxelGridColors {

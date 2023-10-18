@@ -283,6 +283,8 @@ type { TpvScene3DRendererInstance }
              GridSize:TpvUInt32;
              CountClipMaps:TpvUInt32;
              HardwareConservativeRasterization:TpvUInt32;
+             MaxGlobalFragmentCount:TpvUInt32;
+             MaxLocalFragmentCount:TpvUInt32;
             end;
             PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=^TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
@@ -464,6 +466,8 @@ type { TpvScene3DRendererInstance }
 //     fGlobalIlluminationCascadedVoxelConeTracingAtomicImages:TGlobalIlluminationCascadedVoxelConeTracingAtomicImages;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages;
        fGlobalIlluminationCascadedVoxelConeTracingVisualImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
+       fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32;
+       fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:TpvUInt32;
       public
        fGlobalIlluminationCascadedVoxelConeTracingEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fGlobalIlluminationCascadedVoxelConeTracingEventReady:array[0..MaxInFlightFrames-1] of boolean;
@@ -597,6 +601,8 @@ type { TpvScene3DRendererInstance }
 //     property GlobalIlluminationCascadedVoxelConeTracingAtomicImages:TGlobalIlluminationCascadedVoxelConeTracingAtomicImages read fGlobalIlluminationCascadedVoxelConeTracingAtomicImages;
        property GlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages read fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages;
        property GlobalIlluminationCascadedVoxelConeTracingVisualImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingVisualImages;
+       property GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
+       property GlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -1845,6 +1851,14 @@ begin
   end;
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+
+   fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:=(((Renderer.GlobalIlluminationVoxelGridSize*
+                                                                         Renderer.GlobalIlluminationVoxelGridSize*
+                                                                         Renderer.GlobalIlluminationVoxelGridSize)*
+                                                                        Renderer.GlobalIlluminationVoxelCountClipMaps)*
+                                                                       64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1));
+
+   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=16;
 
    fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                                        Renderer.GlobalIlluminationVoxelGridSize,
@@ -3801,6 +3815,10 @@ begin
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CountClipMaps:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_FALSE;
+
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxGlobalFragmentCount:=GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
+
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxLocalFragmentCount:=GlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
 
  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,

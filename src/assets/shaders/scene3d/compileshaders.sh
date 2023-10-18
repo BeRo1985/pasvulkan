@@ -133,6 +133,11 @@ compileshaderarguments=(
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_3_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_4_geom.spv"
    
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_1_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_2_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_3_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_4_geom.spv"
+   
   "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
 
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/particle_voxelization_1_geom.spv"
@@ -144,6 +149,11 @@ compileshaderarguments=(
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_2_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_3_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_4_geom.spv"
+
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_1_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_2_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_3_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_4_geom.spv"
 
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
@@ -338,6 +348,9 @@ addParticleFragmentVoxelizationVariants(){
   # Occlusion voxelization
   addParticleFragmentShader "${1}_occlusion_voxelization" "$2 -DVOXELIZATION -DOCCLUSION_VOXELIZATION"
     
+  # Occlusion voxelization
+  addParticleFragmentShader "${1}_meta_voxelization" "$2 -DVOXELIZATION -DMETA_VOXELIZATION"
+    
 }
 
 # Add particle fragment shader variants with different techniques (if any)
@@ -495,6 +508,7 @@ addMeshFragmentVoxelizationVariants(){
   addMeshFragmentVoxelizationAlphaVariants "$1" "$2" # 22.12 bit fixed point  
   addMeshFragmentVoxelizationAlphaVariants "${1}_float" "$2 -DUSESHADERBUFFERFLOAT32ATOMICADD" # 32-bit floating point 
   addMeshFragmentVoxelizationAlphaVariants "${1}_occlusion" "$2 -DOCCLUSION_VOXELIZATION" # occlusion voxelization
+  addMeshFragmentVoxelizationAlphaVariants "${1}_meta" "$2 -DMETA_VOXELIZATION" # occlusion voxelization
 }  
 
 # Add mesh fragment shader variants with different pass targets

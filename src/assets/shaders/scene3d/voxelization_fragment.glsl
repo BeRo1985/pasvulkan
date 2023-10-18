@@ -12,7 +12,67 @@
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize)))){
 
-#ifdef OCCLUSION_VOXELIZATION
+#if defined(META_VOXELIZATION)
+
+    uint volumeBaseIndex = 
+      (
+        (
+          (
+            (
+              (uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)
+            ) * voxelGridSize
+          ) + uint(volumePosition.y)
+        ) * voxelGridSize
+      ) + uint(volumePosition.x);
+
+    uint volumeIndex = volumeBaseIndex << 1u;
+
+    if(atomicAdd(voxelGridContentMetaData.data[volumeIndex + 2], 1u) < voxelGridData.maxLocalFragmentCount){
+
+      uint volumeCellIndex = atomicAdd(voxelGridContentMetaData.data[0], 1u);
+
+      if(volumeCellIndex < voxelGridData.maxGlobalFragmentCount){
+
+#if 1
+        uvec4 data[2] = uvec4[2](
+          uvec4(
+            atomicExchange(voxelGridContentMetaData.data[volumeIndex + 3], volumeCellIndex + 1u), // next cell index (1-based, because 0 is the end of the list)
+            packHalf2x16(vec2(baseColor.xy)), // base color red and green as 16 bit floats
+            packHalf2x16(vec2(baseColor.zw)), // base color blue and alpha as 16 bit floats
+            packHalf2x16(vec2(emissionColor.xy)) // emission color red and green as 16 bit floats
+          ),
+          uvec4(
+            packHalf2x16(vec2(emissionColor.z, normal.x)), // emission color blue and normal x as 16 bit floats
+            packHalf2x16(vec2(normal.yz)), // normal y and z as 16 bit floats
+            0u, // unused
+            0u  // unused
+          )
+        );
+#else
+        uvec4 data[2] = uvec4[2](
+          uvec4(
+            atomicExchange(voxelGridContentMetaData.data[volumeIndex + 3], volumeCellIndex + 1u), // next cell index (1-based, because 0 is the end of the list)
+            encodeRGB9E5(vec2(baseColor.xyz)), // base color as RGB9E5
+            encodeRGB9E5(vec2(emissionColor.xyz)), // emission color as RGB9E5
+            packHalf2x16(vec2(baseColor.w, normal.x)) // base color alpha and normal x as 16 bit floats
+          ),
+          uvec4(
+            packHalf2x16(vec2(normal.yz)), // normal y and z as 16 bit floats
+            0u, // unused
+            0u, // unused
+            0u  // unused
+          )
+        );
+#endif
+
+        voxelGridContentData.data[(volumeCellIndex << 1u) | 0u] = data[0];
+        voxelGridContentData.data[(volumeCellIndex << 1u) | 1u] = data[1];
+    
+      }
+
+    }       
+
+#elif defined(OCCLUSION_VOXELIZATION)
 
     uint volumeIndex = (((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
 
@@ -24,7 +84,7 @@
     outFragColor = vec4(alpha);
 
 #else
-
+/*
     uint volumeBaseIndex = ((((((uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) * 6;
 
     uint countAnisotropicAxisDirectionSides;
@@ -86,9 +146,9 @@
 
         }
 
-      }   
+      }
 
-    }
+    }*/   
 
 #endif
 
