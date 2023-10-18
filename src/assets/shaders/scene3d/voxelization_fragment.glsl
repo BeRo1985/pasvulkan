@@ -6,7 +6,9 @@
 
   uint voxelGridSize = voxelGridData.gridSize;
   
-  uvec3 volumePosition = ivec3((inWorldSpacePosition - vec3(clipMap.xyz)) / float(voxelGridData.cellSizes[inClipMapIndex])); 
+  uvec3 volumePosition = uvec3(inVoxelPosition * float(voxelGridSize)); 
+
+// uvec3 volumePosition = uvec3(ivec3((inWorldSpacePosition - vec3(clipMap.xyz)) / float(voxelGridData.cellSizes[inClipMapIndex]))) + uvec3(voxelGridSize >> 1u); 
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize)))){
 

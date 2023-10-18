@@ -75,6 +75,7 @@ layout(location = 10) flat in uint inMaterialID;
 layout(location = 11) flat in vec3 inAABBMin;
 layout(location = 12) flat in vec3 inAABBMax;
 layout(location = 13) flat in uint inClipMapIndex; 
+layout(location = 14) in vec3 inVoxelPosition;
 /*layout(location = 11) flat in vec3 inVertex0;
 layout(location = 12) flat in vec3 inVertex1;
 layout(location = 13) flat in vec3 inVertex2;*/

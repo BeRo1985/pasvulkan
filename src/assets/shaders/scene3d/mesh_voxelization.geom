@@ -34,6 +34,7 @@ layout(location = 10) flat out uint outMaterialID;
 layout(location = 11) flat out vec3 outAABBMin;
 layout(location = 12) flat out vec3 outAABBMax;
 layout(location = 13) flat out uint outClipMapIndex;
+layout(location = 14) out vec3 outVoxelPosition;
 
 /*layout(location = 11) flat out vec3 outVertex0;
 layout(location = 12) flat out vec3 outVertex1;
@@ -74,23 +75,23 @@ void main(){
       vec4(
         clipMapSpacePositions[0][dominantAxisComponentOrder.x],
         clipMapSpacePositions[0][dominantAxisComponentOrder.y], 
-        0.0, //clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
+        clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
         clipMapSpacePositions[1][dominantAxisComponentOrder.x], 
         clipMapSpacePositions[1][dominantAxisComponentOrder.y], 
-        0.0, //clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
+        clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
         clipMapSpacePositions[2][dominantAxisComponentOrder.x], 
         clipMapSpacePositions[2][dominantAxisComponentOrder.y], 
-        0.0, //clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
+        clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
         1.0
       )
     );
-
+    
     // When using no hardware conservative rasterization, we need to expand the triangle by one texel in each direction manually to avoid holes in the voxelization.
     if(voxelGridData.hardwareConservativeRasterization == 0u){
       vec2 sides[3] = vec2[3](
@@ -136,11 +137,13 @@ void main(){
 
       outClipMapIndex = clipMapIndex;
 
+      outVoxelPosition = fma(clipMapSpacePositions[currentVertexIndex].xyz, vec3(0.5), vec3(0.5));
+
     /*outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
       outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];
       outVertex2 = inWorldSpacePosition[vertexIndexOrder[2]];*/
 
-      gl_Position = projectionVertices[currentVertexIndex];
+      gl_Position = vec4(projectionVertices[currentVertexIndex].xyw, 0.0).xywz; // We need to swap the z and w components here because we are using a 2D projection matrix
 
       //gl_ViewportIndex = clipMapIndex;
 

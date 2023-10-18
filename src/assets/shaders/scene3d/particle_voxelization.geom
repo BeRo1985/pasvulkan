@@ -21,6 +21,7 @@ layout(location = 4) flat out uint outTextureID;
 layout(location = 5) flat out vec3 outAABBMin;
 layout(location = 6) flat out vec3 outAABBMax;
 layout(location = 7) flat out uint outClipMapIndex;
+layout(location = 8) out vec3 outVoxelPosition;
 
 #define VOXELIZATION
 #include "voxelization_globals.glsl"
@@ -57,19 +58,19 @@ void main(){
       vec4(
         clipMapSpacePositions[0][dominantAxisComponentOrder.x],
         clipMapSpacePositions[0][dominantAxisComponentOrder.y], 
-        0.0, //clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
+        clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
         clipMapSpacePositions[1][dominantAxisComponentOrder.x], 
         clipMapSpacePositions[1][dominantAxisComponentOrder.y], 
-        0.0, //clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
+        clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
         clipMapSpacePositions[2][dominantAxisComponentOrder.x], 
         clipMapSpacePositions[2][dominantAxisComponentOrder.y], 
-        0.0, //clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
+        clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
         1.0
       )
     );
@@ -110,7 +111,9 @@ void main(){
 
       outClipMapIndex = clipMapIndex;
 
-      gl_Position = projectionVertices[currentVertexIndex];
+      outVoxelPosition = fma(clipMapSpacePositions[currentVertexIndex].xyz, vec3(0.5), vec3(0.5));
+
+      gl_Position = vec4(projectionVertices[currentVertexIndex].xyw, 0.0).xywz; // We need to swap the z and w components here because we are using a 2D projection matrix
 
       //gl_ViewportIndex = clipMapIndex;
 
