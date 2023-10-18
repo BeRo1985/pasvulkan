@@ -4,7 +4,7 @@
 
 #define NUM_SHADOW_CASCADES 4
 
-#if defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION)
+#if defined(VOXELIZATION)
   #undef LIGHTS
   #undef SHADOWS
 #endif
@@ -224,7 +224,7 @@ layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
 // Pass descriptor set
 
-#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION))
+#if !(defined(DEPTHONLY) || defined(VOXELIZATION))
 layout(set = 1, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
 layout(set = 1, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
@@ -382,7 +382,7 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 }
 #endif
 
-#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION)|| defined(META_VOXELIZATION))
+#if !(defined(DEPTHONLY) || defined(VOXELIZATION))
 #include "roughness.glsl"
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
@@ -1499,7 +1499,7 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 
 #endif
 
-#if defined(VOXELIZATION) && defined(META_VOXELIZATION)
+#if defined(VOXELIZATION)
   #include "rgb9e5.glsl"
 #endif
 
@@ -1526,7 +1526,7 @@ void main() {
     material = Material(materialPointer);
   }
 #endif
-#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION) || !defined(DEPTHONLY)
+#if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(VOXELIZATION) || !defined(DEPTHONLY)
   textureFlags = material.alphaCutOffFlagsTex0Tex1.zw;
   texCoords[0] = inTexCoord0;
   texCoords[1] = inTexCoord1;
@@ -1541,13 +1541,13 @@ void main() {
   }  
 #endif
 #endif
-#if !(defined(DEPTHONLY) || defined(OCCLUSION_VOXELIZATION) || defined(META_VOXELIZATION))
+#if !(defined(DEPTHONLY) || defined(VOXELIZATION))
   envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
   envMapMaxLevelCharlie = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
   flags = material.alphaCutOffFlagsTex0Tex1.y;
   shadingModel = (flags >> 0u) & 0xfu;
 #endif
-#if defined(META_VOXELIZATION)
+#if defined(VOXELIZATION)
   
   uint flags = material.alphaCutOffFlagsTex0Tex1.y;
   
@@ -1573,8 +1573,6 @@ void main() {
   }
   normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 
-#elif defined(OCCLUSION_VOXELIZATION)
-  float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
 #elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
   float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
@@ -1977,8 +1975,6 @@ void main() {
             if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
               diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
-//#elif defined(VOXELIZATION)
-//             diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
@@ -2084,7 +2080,6 @@ void main() {
                       specularWeight);                    //
       }*/
 #elif 1
-#if !defined(VOXELIZATION)  
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
                     vec3(1.0),                          //
                     normalize(-vec3(0.5, -1.0, -1.0)),  //
@@ -2103,7 +2098,6 @@ void main() {
                     clearcoatF0,                        //
                     clearcoatRoughness,                 //
                     specularWeight);                    //
-#endif
 #endif
 #ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
       {
@@ -2306,7 +2300,7 @@ void main() {
 #endif
 
 #ifdef VOXELIZATION
-#include "voxelization_fragment.glsl" 
+  #include "voxelization_fragment.glsl"   
 #endif
 
 }

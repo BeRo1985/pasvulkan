@@ -128,33 +128,13 @@ compileshaderarguments=(
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/mesh_voxelization_3_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/mesh_voxelization_4_geom.spv"
    
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_1_geom.spv"
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_2_geom.spv"
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_3_geom.spv"
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -DOCCLUSION_VOXELIZATION -o ${tempPath}/mesh_occlusion_voxelization_4_geom.spv"
-   
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=1 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_1_geom.spv"
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_2_geom.spv"
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_3_geom.spv"
-  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -DMETA_VOXELIZATION -o ${tempPath}/mesh_meta_voxelization_4_geom.spv"
-   
   "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
 
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -o ${tempPath}/particle_voxelization_1_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/particle_voxelization_2_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/particle_voxelization_3_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/particle_voxelization_4_geom.spv"
-   
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_1_geom.spv"
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_2_geom.spv"
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_3_geom.spv"
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -DOCCLUSION_VOXELIZATION -o ${tempPath}/particle_occlusion_voxelization_4_geom.spv"
-
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=1 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_1_geom.spv"
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_2_geom.spv"
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_3_geom.spv"
-  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -DMETA_VOXELIZATION -o ${tempPath}/particle_meta_voxelization_4_geom.spv"
-
+  
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"
   "-V wboit_resolve.frag -o ${tempPath}/wboit_resolve_frag.spv"
@@ -344,12 +324,6 @@ addParticleFragmentVoxelizationVariants(){
     
   # Voxelization
   addParticleFragmentShader "${1}_voxelization" "$2 -DVOXELIZATION"
-
-  # Occlusion voxelization
-  addParticleFragmentShader "${1}_occlusion_voxelization" "$2 -DVOXELIZATION -DOCCLUSION_VOXELIZATION"
-    
-  # Occlusion voxelization
-  addParticleFragmentShader "${1}_meta_voxelization" "$2 -DVOXELIZATION -DMETA_VOXELIZATION"
     
 }
 
@@ -505,10 +479,7 @@ addMeshFragmentVoxelizationAlphaVariants(){
 
 # Add mesh fragment shader variants with different temporary voxel storage techniques 
 addMeshFragmentVoxelizationVariants(){  
-  addMeshFragmentVoxelizationAlphaVariants "$1" "$2" # 22.12 bit fixed point  
-  addMeshFragmentVoxelizationAlphaVariants "${1}_float" "$2 -DUSESHADERBUFFERFLOAT32ATOMICADD" # 32-bit floating point 
-  addMeshFragmentVoxelizationAlphaVariants "${1}_occlusion" "$2 -DOCCLUSION_VOXELIZATION" # occlusion voxelization
-  addMeshFragmentVoxelizationAlphaVariants "${1}_meta" "$2 -DMETA_VOXELIZATION" # occlusion voxelization
+  addMeshFragmentVoxelizationAlphaVariants "$1" "$2" 
 }  
 
 # Add mesh fragment shader variants with different pass targets
@@ -521,7 +492,7 @@ addMeshFragmentPassTargetVariants(){
   addMeshFragmentReflectiveShadowMapVariants "${1}_rsm" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS -DREFLECTIVESHADOWMAPOUTPUT"  
 
   # The voxelization stuff
-  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION -DLIGHTS -DSHADOWS"  
+  addMeshFragmentVoxelizationVariants "${1}_voxelization" "$2 -DVOXELIZATION"  
 
   # The actual shading stuff
   addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS"  
