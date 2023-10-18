@@ -876,6 +876,7 @@ begin
    end;
   end;
   fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing;
+//fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.StaticEnvironmentMap;
  end;
 
  case fGlobalIlluminationMode of

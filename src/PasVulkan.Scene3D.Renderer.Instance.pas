@@ -290,6 +290,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationCascadedVoxelConeTracingBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalIlluminationCascadedVoxelConeTracingSideImages=array[0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
             TGlobalIlluminationCascadedVoxelConeTracingImages=array[0..3] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationCascadedVoxelConeTracingAtomicImages=array[0..3] of TpvScene3DRendererImage3D;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -460,6 +461,7 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers:TGlobalIlluminationCascadedVoxelConeTracingBuffers;
        fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:TpvVulkanBuffer;
        fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:TpvVulkanBuffer;
+//     fGlobalIlluminationCascadedVoxelConeTracingAtomicImages:TGlobalIlluminationCascadedVoxelConeTracingAtomicImages;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages;
        fGlobalIlluminationCascadedVoxelConeTracingImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
       public
@@ -592,6 +594,7 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationCascadedVoxelConeTracingUniformBuffers:TGlobalIlluminationCascadedVoxelConeTracingBuffers read fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers;
        property GlobalIlluminationCascadedVoxelConeTracingColorBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingColorBuffer;
        property GlobalIlluminationCascadedVoxelConeTracingCounterBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer;
+//     property GlobalIlluminationCascadedVoxelConeTracingAtomicImages:TGlobalIlluminationCascadedVoxelConeTracingAtomicImages read fGlobalIlluminationCascadedVoxelConeTracingAtomicImages;
        property GlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages read fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages;
        property GlobalIlluminationCascadedVoxelConeTracingImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingImages;
       public
@@ -710,7 +713,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectRSMComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedRadianceHintsBounceComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingClearCustomPass,
+     PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionClearCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionVoxelizationRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass,
@@ -798,7 +801,7 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectRSMComputePass;
        fGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsInjectFinalizationCustomPass;
        fGlobalIlluminationCascadedRadianceHintsBounceComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedRadianceHintsBounceComputePass;
-       fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingClearCustomPass;
+       fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionClearCustomPass;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionVoxelizationRenderPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionVoxelizationRenderPass;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass;
@@ -1499,6 +1502,8 @@ begin
 
  fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:=nil;
 
+//FillChar(fGlobalIlluminationCascadedVoxelConeTracingAtomicImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
+
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
 
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
@@ -1635,6 +1640,7 @@ begin
  end;
 
  for CascadeIndex:=0 to 3 do begin
+//FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]);
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]);
   for ImageIndex:=0 to 5 do begin
    FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex]);
@@ -1857,36 +1863,43 @@ begin
    end;
 
    fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                               (SizeOf(TpvUInt32)*4)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
-                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                               [],
-                                                               0,
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                               0,
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               []);
+                                                                                  (SizeOf(TpvUInt32)*4)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                  [],
+                                                                                  0,
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                  0,
+                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  0,
+                                                                                  []);
 
    fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                 SizeOf(TpvUInt32)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
-                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                 [],
-                                                                 0,
-                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                 0,
-                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                 0,
-                                                                 0,
-                                                                 0,
-                                                                 0,
-                                                                 []);
+                                                                                    SizeOf(TpvUInt32)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                    [],
+                                                                                    0,
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                    0,
+                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    []);
 
    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+
+{   fGlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]:=TpvScene3DRendererImage3D.Create(Renderer.GlobalIlluminationVoxelGridSize*6,
+                                                                                                            Renderer.GlobalIlluminationVoxelGridSize,
+                                                                                                            Renderer.GlobalIlluminationVoxelGridSize*5,
+                                                                                                            VK_FORMAT_R32_UINT,
+                                                                                                            TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                                                                                            TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));//}
 
     fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                              Renderer.GlobalIlluminationVoxelGridSize,
@@ -2537,7 +2550,7 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
 
-   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass:=TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionClearCustomPass.Create(fFrameGraph,self);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthVelocityNormalsRenderPass);
    TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingClearCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);

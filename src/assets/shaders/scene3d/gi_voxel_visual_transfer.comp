@@ -63,17 +63,7 @@ void main(){
         vec4(vec4(voxelGridColors.data[volumeIndex]) / (max(1.0, float(count)) * 4096.0))
 #endif
       );
-
-      // Reset voxel grid color and counter for reuse
-      if(count > 0u){
-#if defined(USESHADERBUFFERFLOAT32ATOMICADD)
-        voxelGridColors.data[volumeIndex] = vec4(0.0);
-#else
-        voxelGridColors.data[volumeIndex] = uvec4(0u);
-#endif
-        voxelGridCounters.data[volumeIndex] = 0u; 
-      }
-      
+    
     } 
 
   }

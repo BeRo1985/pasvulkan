@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Downloads\gltf\cornell_box-_original.glb&quot;  --force-use-validation-layers --antialiasing-mode msaa"/>
+        <CommandLineParams Value="&quot;\home\bero\Downloads\gltf\cornell_box-_original.glb&quot;  --force-use-validation-layers --antialiasing-mode msaa --force-no-vsync"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Downloads\gltf\cornell_box-_original.glb&quot;  --force-use-validation-layers --antialiasing-mode msaa"/>
+            <CommandLineParams Value="&quot;\home\bero\Downloads\gltf\cornell_box-_original.glb&quot;  --force-use-validation-layers --antialiasing-mode msaa --force-no-vsync"/>
           </local>
         </Mode0>
       </Modes>
