@@ -10,7 +10,12 @@
 
 // uvec3 volumePosition = uvec3(ivec3((inWorldSpacePosition - vec3(clipMap.xyz)) / float(voxelGridData.cellSizes[inClipMapIndex]))) + uvec3(voxelGridSize >> 1u); 
 
-  if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize)))){
+#if defined(META_VOXELIZATION)
+  if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize))) && (baseColor.w >= 0.00392156862))
+#else
+  if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize))))
+#endif
+  {
 
 #if defined(META_VOXELIZATION)
 
@@ -69,7 +74,7 @@
           ((uint(clamp(baseColor.w * 255.0, 0.0, 255.0)) & 0xffu) << 0u) |
           ((uint((clamp(atan(normal.y, normal.x) * 0.31830988618379067154, -1.0, 1.0) * 2047.0) + 2048.0) & 0xfffu) << 8u) |
           ((uint((clamp(normal.z, -1.0, 1.0) * 2047.0) + 2048.0) & 0xfffu) << 20u) 
-          
+
         );
         
 #endif
