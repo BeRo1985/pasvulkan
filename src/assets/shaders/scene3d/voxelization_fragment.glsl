@@ -33,40 +33,47 @@
 
       if(volumeCellIndex < voxelGridData.maxGlobalFragmentCount){
 
-#if 1
+#if 0
         uvec4 data[2] = uvec4[2](
           uvec4(
             atomicExchange(voxelGridContentMetaData.data[volumeIndex + 3], volumeCellIndex + 1u), // next cell index (1-based, because 0 is the end of the list)
             packHalf2x16(vec2(baseColor.xy)), // base color red and green as 16 bit floats
-            packHalf2x16(vec2(baseColor.zw)), // base color blue and alpha as 16 bit floats
-            packHalf2x16(vec2(emissionColor.xy)) // emission color red and green as 16 bit floats
+            packHalf2x16(vec2(baseColor.z, emissionColor.x)), // base color blue and emission color red as 16 bit floats
+            packHalf2x16(vec2(emissionColor.yz)) // emission color green and blue as 16 bit floats
           ),
           uvec4(
-            packHalf2x16(vec2(emissionColor.z, normal.x)), // emission color blue and normal x as 16 bit floats
-            packHalf2x16(vec2(normal.yz)), // normal y and z as 16 bit floats
+            packSnorm2x16(vec2(baseColor.w, normal.x)), // base color alpha and normal x as 16 bit signed normalized integers
+            packSnorm2x16(vec2(normal.yz)), // normal y and z as 16 bit signed normalized integers
             0u, // unused
             0u  // unused
           )
         );
-#else
-        uvec4 data[2] = uvec4[2](
-          uvec4(
-            atomicExchange(voxelGridContentMetaData.data[volumeIndex + 3], volumeCellIndex + 1u), // next cell index (1-based, because 0 is the end of the list)
-            encodeRGB9E5(vec2(baseColor.xyz)), // base color as RGB9E5
-            encodeRGB9E5(vec2(emissionColor.xyz)), // emission color as RGB9E5
-            packHalf2x16(vec2(baseColor.w, normal.x)) // base color alpha and normal x as 16 bit floats
-          ),
-          uvec4(
-            packHalf2x16(vec2(normal.yz)), // normal y and z as 16 bit floats
-            0u, // unused
-            0u, // unused
-            0u  // unused
-          )
-        );
-#endif
 
         voxelGridContentData.data[(volumeCellIndex << 1u) | 0u] = data[0];
         voxelGridContentData.data[(volumeCellIndex << 1u) | 1u] = data[1];
+
+#else
+
+        voxelGridContentData.data[volumeCellIndex] = uvec4(
+
+          // next cell index (1-based, because 0 is the end of the list)
+          atomicExchange(voxelGridContentMetaData.data[volumeIndex + 3], volumeCellIndex + 1u), 
+
+          // base color as RGB9E5
+          encodeRGB9E5(baseColor.xyz), 
+
+          // emission color as RGB9E5
+          encodeRGB9E5(emissionColor.xyz), 
+          
+          // base color alpha as 8 bit unsigned integer, normal as spherical coordinates with 12 bit normalized integers, for a total of 32 bits    
+          ((uint(clamp(baseColor.w * 255.0, 0.0, 255.0)) & 0xffu) << 0u) |
+          ((uint((clamp(atan(normal.y, normal.x) * 0.31830988618379067154, -1.0, 1.0) * 2047.0) + 2048.0) & 0xfffu) << 8u) |
+          ((uint((clamp(normal.z, -1.0, 1.0) * 2047.0) + 2048.0) & 0xfffu) << 20u) 
+          
+        );
+        
+#endif
+
     
       }
 
