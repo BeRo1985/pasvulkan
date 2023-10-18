@@ -10,21 +10,17 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
-layout (set = 0, binding = 0, std140) readonly uniform VoxelGridData {
-  vec4 clipMaps[4]; // xyz = center in world-space, w = extent of a voxel 
-  vec4 cellSizes; // size of a voxel in world-space
-  uint gridSize; // number of voxels in a clipmap in a single dimension
-  uint countClipMaps; // maximum 4 clipmaps
-  uint hardwareConservativeRasterization; // 0 = false, 1 = true
+layout(set = 0, binding = 0, std140) readonly uniform VoxelGridData {
+  #include "voxelgriddata_uniforms.glsl"
 } voxelGridData;
 
-layout (set = 0, binding = 1, std430) buffer VoxelGridColors {
-  uint data[]; // 32-bit unsigned integer
-} voxelGridColors;
+layout(set = 0, binding = 1, std430) coherent buffer VoxelGridContentData {
+  uvec4 data[];
+} voxelGridContentData;
 
-layout (set = 0, binding = 2, std430) buffer VoxelGridCounters {
-  uint data[]; // 32-bit unsigned integer
-} voxelGridCounters;
+layout(set = 0, binding = 2, std430) coherent buffer VoxelGridContentMetaData {
+  uint data[];
+} voxelGridContentMetaData;
 
 layout(set = 0, binding = 3, r8) writeonly uniform image3D uImageVolumeOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
@@ -40,14 +36,24 @@ void main(){
 
     uvec3 volumePosition = uvec3(invocation.xy, invocation.z - (clipMapIndex * voxelGridSize));
 
-    uint volumeIndex = (((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = (((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
 
-    uint count = voxelGridCounters.data[volumeIndex];
+    uint volumeIndex = volumeBaseIndex << 1u;
 
-    float volumeOcclusion = clamp(float(voxelGridColors.data[volumeIndex]) / (max(1.0, float(count)) * 256.0), 0.0, 1.0);
-
-    imageStore(uImageVolumeOcclusion[clipMapIndex], ivec3(volumePosition), vec4(volumeOcclusion));
+    vec2 volumeOcclusion = vec2(0.0);
+    for(uint voxelFragmentIndex = voxelGridContentMetaData.data[volumeIndex + 3], 
+             voxelFragmentCounter = 0u,
+             countVoxelFragments = min(1024u, voxelGridContentMetaData.data[volumeIndex + 2]); 
+        (voxelFragmentIndex != 0u) && (voxelFragmentCounter < countVoxelFragments); 
+        voxelFragmentCounter++){
+      uvec4 volumeFragment = voxelGridContentData.data[voxelFragmentIndex];
+      volumeOcclusion += vec2(clamp(float(uint(volumeFragment.w & 0xffu)) * (1.0 / 255.0), 0.0, 1.0), 1.0);      
+      voxelFragmentIndex = volumeFragment.x;
+    }
+    volumeOcclusion.x /= volumeOcclusion.y;
     
+    imageStore(uImageVolumeOcclusion[clipMapIndex], ivec3(volumePosition), vec4(volumeOcclusion.xxxx));
+
   }
 
 }
