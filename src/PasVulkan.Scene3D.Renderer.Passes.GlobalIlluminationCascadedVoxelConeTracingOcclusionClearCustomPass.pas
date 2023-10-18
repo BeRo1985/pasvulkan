@@ -134,49 +134,20 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionClearCustomPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PreviousInFlightFrameIndex,Index,CascadeIndex,ImageIndex,ImageCount:TpvInt32;
-    ImageMemoryBarriers:array[0..(4*(6+1+1))-1] of TVkImageMemoryBarrier;
+var PreviousInFlightFrameIndex,CascadeIndex,ImageIndex,ImageCount:TpvInt32;
+    Size:TVkDeviceSize;
+    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
-    PreviousAccessFlags:TVkAccessFlags;
-    PreviousImageLayout:TVkImageLayout;
-    ClearColor:TVkClearColorValue;
-    ImageSubresourceRange:TVkImageSubresourceRange;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
 
-{if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then begin
-  PreviousAccessFlags:=0;
-  PreviousImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
- end else begin
-  PreviousAccessFlags:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
-  PreviousImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
- end;}
-
- PreviousAccessFlags:=0;
- PreviousImageLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-
  ImageCount:=0;
  for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
- {if assigned(fInstance.GlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]) then begin
-   ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                 TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                 VK_IMAGE_LAYOUT_GENERAL,
-                                                                 VK_IMAGE_LAYOUT_GENERAL,
-                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                 fInstance.GlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex].VulkanImage.Handle,
-                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                 0,
-                                                                                                 1,
-                                                                                                 0,
-                                                                                                 1));
-   inc(ImageCount);
-  end;//}
-  ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(PreviousAccessFlags,
+  ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(0,
                                                                 TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                PreviousImageLayout,
+                                                                VK_IMAGE_LAYOUT_UNDEFINED,
                                                                 VK_IMAGE_LAYOUT_GENERAL,
                                                                 VK_QUEUE_FAMILY_IGNORED,
                                                                 VK_QUEUE_FAMILY_IGNORED,
@@ -187,60 +158,23 @@ begin
                                                                                                 0,
                                                                                                 1));
   inc(ImageCount);
-  for ImageIndex:=0 to 5 do begin
-   ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(PreviousAccessFlags,
-                                                                 TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                 PreviousImageLayout,
-                                                                 VK_IMAGE_LAYOUT_GENERAL,
-                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                 fInstance.GlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex].VulkanImage.Handle,
-                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                 0,
-                                                                                                 fInstance.GlobalIlluminationCascadedVoxelConeTracingImages[CascadeIndex,ImageIndex].MipMapLevels,
-                                                                                                 0,
-                                                                                                 1));
-   inc(ImageCount);
-  end;
  end;
 
-{if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then}begin
+ BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fInstance.GlobalIlluminationCascadedVoxelConeTracingColorBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
 
-  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(0,
-                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingColorBuffer.Handle,
-                                                         0,
-                                                         VK_WHOLE_SIZE);
-
-  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(0,
-                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingCounterBuffer.Handle,
-                                                         0,
-                                                         VK_WHOLE_SIZE);
-
-{end else begin
-
-  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingColorBuffer.Handle,
-                                                         0,
-                                                         VK_WHOLE_SIZE);
-
-  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                         fInstance.GlobalIlluminationCascadedVoxelConeTracingCounterBuffer.Handle,
-                                                         0,
-                                                         VK_WHOLE_SIZE);    //}
-
- end;
+ BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(0,
+                                                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fInstance.GlobalIlluminationCascadedVoxelConeTracingCounterBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
 
  if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fInstance.fGlobalIlluminationCascadedVoxelConeTracingEventReady[PreviousInFlightFrameIndex] then begin
   fInstance.fGlobalIlluminationCascadedVoxelConeTracingEventReady[PreviousInFlightFrameIndex]:=false;
@@ -277,33 +211,16 @@ begin
                                     ImageCount,@ImageMemoryBarriers[0]);
  end;
 
- //if fInstance.fGlobalIlluminationCascadedVoxelConeTracingFirst[PreviousInFlightFrameIndex] then
  begin
 
-  aCommandBuffer.CmdFillBuffer(fInstance.GlobalIlluminationCascadedVoxelConeTracingColorBuffer.Handle,0,VK_WHOLE_SIZE,0);
+  Size:=((fInstance.Renderer.GlobalIlluminationVoxelGridSize*
+          fInstance.Renderer.GlobalIlluminationVoxelGridSize*
+          fInstance.Renderer.GlobalIlluminationVoxelGridSize)*
+         fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)*SizeOf(TVkUInt32);
 
-  aCommandBuffer.CmdFillBuffer(fInstance.GlobalIlluminationCascadedVoxelConeTracingCounterBuffer.Handle,0,VK_WHOLE_SIZE,0);
+  aCommandBuffer.CmdFillBuffer(fInstance.GlobalIlluminationCascadedVoxelConeTracingColorBuffer.Handle,0,Size,0);
 
-{ ClearColor.int32[0]:=0;
-  ClearColor.int32[1]:=0;
-  ClearColor.int32[2]:=0;
-  ClearColor.int32[3]:=0;
-
-  ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                         0,
-                                                         1,
-                                                         0,
-                                                         1);
-
-  for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
-   if assigned(fInstance.GlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]) then begin
-    aCommandBuffer.CmdClearColorImage(fInstance.GlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex].VulkanImage.Handle,
-                                      VK_IMAGE_LAYOUT_GENERAL,
-                                      @ClearColor,
-                                      1,
-                                      @ImageSubresourceRange);
-   end;
-  end;}
+  aCommandBuffer.CmdFillBuffer(fInstance.GlobalIlluminationCascadedVoxelConeTracingCounterBuffer.Handle,0,Size,0);
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -321,29 +238,12 @@ begin
                                                          0,
                                                          VK_WHOLE_SIZE);
 
-{ ImageCount:=0;
-  for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
-   ImageMemoryBarriers[ImageCount]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                 TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                 VK_IMAGE_LAYOUT_GENERAL,
-                                                                 VK_IMAGE_LAYOUT_GENERAL,
-                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                 VK_QUEUE_FAMILY_IGNORED,
-                                                                 fInstance.GlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex].VulkanImage.Handle,
-                                                                 TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                                 0,
-                                                                                                 1,
-                                                                                                 0,
-                                                                                                 1));
-   inc(ImageCount);
-  end;//}
-
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                     0,
                                     0,nil,
                                     length(BufferMemoryBarriers),@BufferMemoryBarriers[0],
-                                    0,nil);//ImageCount,@ImageMemoryBarriers[0]);
+                                    0,nil);
 
  end;
 
