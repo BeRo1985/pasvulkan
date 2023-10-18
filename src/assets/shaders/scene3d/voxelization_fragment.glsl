@@ -90,6 +90,8 @@
 
 #endif
 
+  }else{
+    outFragColor = vec4(0.0);
   }  
  
 #endif

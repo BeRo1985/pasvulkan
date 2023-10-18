@@ -1501,6 +1501,7 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 void main() {
 #ifdef VOXELIZATION
   if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz))) || (uint(inClipMapIndex) >= uint(voxelGridData.countClipMaps))){
+    outFragColor = vec4(0.0);
     return;
   }
 #endif
