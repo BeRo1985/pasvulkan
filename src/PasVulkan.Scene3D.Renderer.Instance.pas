@@ -2657,6 +2657,9 @@ begin
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedRadianceHintsBounceComputePass);
   end;
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass);
+  end;
   else begin
   end;
  end;
