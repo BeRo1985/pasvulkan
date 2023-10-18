@@ -74,19 +74,19 @@ void main(){
       vec4(
         clipMapSpacePositions[0][dominantAxisComponentOrder.x],
         clipMapSpacePositions[0][dominantAxisComponentOrder.y], 
-        clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
+        0.0, //clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
         clipMapSpacePositions[1][dominantAxisComponentOrder.x], 
         clipMapSpacePositions[1][dominantAxisComponentOrder.y], 
-        clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
+        0.0, //clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
         clipMapSpacePositions[2][dominantAxisComponentOrder.x], 
         clipMapSpacePositions[2][dominantAxisComponentOrder.y], 
-        clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
+        0.0, //clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
         1.0
       )
     );
