@@ -5,7 +5,7 @@ uint encodeRGB9E5(vec3 color){
   color = clamp(color, 0.0, 65408.0);
   float maxChannel = max(max(color.x, color.y), color.z);
   int sharedExponent = max((int((uint(floatBitsToUint(maxChannel) & 0x7f800000u) >> 23u)) - 127) + 16, -16);
-  float denominator = exp2(float(sharedExponent - 25));  
+  float denominator = exp2(float(sharedExponent - 24));  
   int maximum = int(floor((maxChannel / denominator) + 0.5));
   if(maximum >= 512){
     denominator *= 2.0;
@@ -20,7 +20,7 @@ vec3 decodeRGB9E5(uint color){
     float(bitfieldExtract(color, 0, 9)),
     float(bitfieldExtract(color, 9, 9)),
     float(bitfieldExtract(color, 18, 9))
-  ) * exp2(float(bitfieldExtract(color, 27, 5) - 25));
+  ) * exp2(float(bitfieldExtract(color, 27, 5) - 24));
 }
 
 #endif
