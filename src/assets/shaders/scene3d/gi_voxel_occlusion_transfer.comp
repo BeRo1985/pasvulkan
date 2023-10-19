@@ -50,7 +50,7 @@ void main(){
       volumeOcclusion += vec2(clamp(float(uint(volumeFragment.w & 0xffu)) * (1.0 / 255.0), 0.0, 1.0), 1.0);      
       voxelFragmentIndex = volumeFragment.x;
     }
-    volumeOcclusion.x /= volumeOcclusion.y;
+    volumeOcclusion.x /= max(1.0, volumeOcclusion.y);
     
     imageStore(uImageVolumeOcclusion[clipMapIndex], ivec3(volumePosition), vec4(volumeOcclusion.xxxx));
 
