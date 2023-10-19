@@ -463,9 +463,6 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers:TGlobalIlluminationCascadedVoxelConeTracingBuffers;
        fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffer:TpvVulkanBuffer;
        fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer:TpvVulkanBuffer;
-       fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:TpvVulkanBuffer;
-       fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:TpvVulkanBuffer;
-//     fGlobalIlluminationCascadedVoxelConeTracingAtomicImages:TGlobalIlluminationCascadedVoxelConeTracingAtomicImages;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages;
        fGlobalIlluminationCascadedVoxelConeTracingVisualImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
        fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32;
@@ -600,9 +597,6 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationCascadedVoxelConeTracingUniformBuffers:TGlobalIlluminationCascadedVoxelConeTracingBuffers read fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers;
        property GlobalIlluminationCascadedVoxelConeTracingContentDataBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffer;
        property GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer;
-       property GlobalIlluminationCascadedVoxelConeTracingColorBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingColorBuffer;
-       property GlobalIlluminationCascadedVoxelConeTracingCounterBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer;
-//     property GlobalIlluminationCascadedVoxelConeTracingAtomicImages:TGlobalIlluminationCascadedVoxelConeTracingAtomicImages read fGlobalIlluminationCascadedVoxelConeTracingAtomicImages;
        property GlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages read fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages;
        property GlobalIlluminationCascadedVoxelConeTracingVisualImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingVisualImages;
        property GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
@@ -1516,12 +1510,6 @@ begin
 
  fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer:=nil;
 
- fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:=nil;
-
- fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:=nil;
-
-//FillChar(fGlobalIlluminationCascadedVoxelConeTracingAtomicImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
-
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
 
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingVisualImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
@@ -1672,10 +1660,6 @@ begin
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffer);
 
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer);
-
- FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingColorBuffer);
-
- FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer);
 
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes);
 
@@ -1924,36 +1908,6 @@ begin
                                                                                             0,
                                                                                             0,
                                                                                             []);
-
-   fGlobalIlluminationCascadedVoxelConeTracingColorBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                  (SizeOf(TpvUInt32)*4)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                  [],
-                                                                                  0,
-                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                  0,
-                                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  0,
-                                                                                  []);
-
-   fGlobalIlluminationCascadedVoxelConeTracingCounterBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                    SizeOf(TpvUInt32)*Renderer.GlobalIlluminationVoxelCountClipMaps*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize*Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                                    [],
-                                                                                    0,
-                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                    0,
-                                                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                                    0,
-                                                                                    0,
-                                                                                    0,
-                                                                                    0,
-                                                                                    []);
 
    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
 
