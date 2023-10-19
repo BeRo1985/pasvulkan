@@ -71,9 +71,10 @@ void main(){
         // TODO: Light evaluation
       }
       vec4 color = vec4((baseColor.xyz * lighting.xyz) + emissionColor.xyz, baseColor.w);
-      uvec3 anisotropicAxisDirectionSideIndices = uvec3((normal.x > 0.0) ? 0u : 3u, (normal.y > 0.0) ? 1u : 4u, (normal.z > 0.0) ? 2u : 5u);
-      [[unroll]] for(uint anisotropicAxisDirectionIndexCounter = 0u; anisotropicAxisDirectionIndexCounter < 3u; anisotropicAxisDirectionIndexCounter++){
-        uint anisotropicAxisDirectionIndex = anisotropicAxisDirectionSideIndices[anisotropicAxisDirectionIndexCounter];
+      //uvec3 anisotropicAxisDirectionSideIndices = uvec3((normal.x > 0.0) ? 0u : 3u, (normal.y > 0.0) ? 1u : 4u, (normal.z > 0.0) ? 2u : 5u);
+      //[[unroll]] for(uint anisotropicAxisDirectionIndexCounter = 0u; anisotropicAxisDirectionIndexCounter < 3u; anisotropicAxisDirectionIndexCounter++){
+        //uint anisotropicAxisDirectionIndex = anisotropicAxisDirectionSideIndices[anisotropicAxisDirectionIndexCounter];
+      [[unroll]] for(uint anisotropicAxisDirectionIndex = 0u; anisotropicAxisDirectionIndex < 6u; anisotropicAxisDirectionIndex++){
         float anisotropicAxisDirectionSideWeight = max(0.0, dot(directions[anisotropicAxisDirectionIndex], normal));
         volumeColors[anisotropicAxisDirectionIndex] += color * anisotropicAxisDirectionSideWeight;
         volumeWeights[anisotropicAxisDirectionIndex] += anisotropicAxisDirectionSideWeight;
