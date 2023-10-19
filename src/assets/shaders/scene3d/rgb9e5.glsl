@@ -20,7 +20,7 @@ vec3 decodeRGB9E5(uint color){
     float(bitfieldExtract(color, 0, 9)),
     float(bitfieldExtract(color, 9, 9)),
     float(bitfieldExtract(color, 18, 9))
-  ) * exp2(float(bitfieldExtract(color, 27, 5) - 24));
+  ) * exp2(float(int(bitfieldExtract(color, 27, 5)) - 24));
 }
 
 #endif
