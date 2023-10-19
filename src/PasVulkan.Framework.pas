@@ -2713,6 +2713,7 @@ type EpvVulkanException=class(Exception);
       private
        fRasterizationStateCreateInfo:TVkPipelineRasterizationStateCreateInfo;
        fPointerToRasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo;
+       fPipelineRasterizationConservativeStateCreateInfoEXT:TVkPipelineRasterizationConservativeStateCreateInfoEXT;
        function GetDepthClampEnable:boolean;
        procedure SetDepthClampEnable(const aNewValue:boolean);
        function GetRasterizerDiscardEnable:boolean;
@@ -2747,6 +2748,7 @@ type EpvVulkanException=class(Exception);
                                        const aDepthBiasClamp:TpvFloat;
                                        const aDepthBiasSlopeFactor:TpvFloat;
                                        const aLineWidth:TpvFloat);
+       procedure SetPipelineRasterizationConservativeStateCreateInfoEXT(const aPipelineRasterizationConservativeStateCreateInfoEXT: TVkPipelineRasterizationConservativeStateCreateInfoEXT);
        property RasterizationStateCreateInfo:PVkPipelineRasterizationStateCreateInfo read fPointerToRasterizationStateCreateInfo;
       published
        property DepthClampEnable:boolean read GetDepthClampEnable write SetDepthClampEnable;
@@ -2960,7 +2962,6 @@ type EpvVulkanException=class(Exception);
        fDepthStencilState:TpvVulkanPipelineDepthStencilState;
        fColorBlendState:TpvVulkanPipelineColorBlendState;
        fDynamicState:TpvVulkanPipelineDynamicState;
-       fPipelineRasterizationConservativeStateCreateInfoEXT:TVkPipelineRasterizationConservativeStateCreateInfoEXT;
        fPipelineCache:TVkPipelineCache;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
@@ -3030,7 +3031,6 @@ type EpvVulkanException=class(Exception);
        function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TpvInt32;
        function AddDynamicState(const aDynamicState:TVkDynamicState):TpvInt32;
        function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TpvInt32;
-       procedure SetPipelineRasterizationConservativeStateCreateInfoEXT(const aPipelineRasterizationConservativeStateCreateInfoEXT:TVkPipelineRasterizationConservativeStateCreateInfoEXT);
        procedure Initialize;
        property Stages:TVkPipelineShaderStageCreateInfoArray read fStages;
       published
@@ -3127,7 +3127,6 @@ type EpvVulkanException=class(Exception);
        function AddColorBlendAttachmentStates(const aColorBlendAttachmentStates:array of TVkPipelineColorBlendAttachmentState):TpvInt32;
        function AddDynamicState(const aDynamicState:TVkDynamicState):TpvInt32;
        function AddDynamicStates(const aDynamicStates:array of TVkDynamicState):TpvInt32;
-       procedure SetPipelineRasterizationConservativeStateCreateInfoEXT(const aPipelineRasterizationConservativeStateCreateInfoEXT:TVkPipelineRasterizationConservativeStateCreateInfoEXT);
        procedure Initialize;
        procedure FreeMemory;
       published
@@ -19857,6 +19856,9 @@ begin
 
  fPointerToRasterizationStateCreateInfo:=@fRasterizationStateCreateInfo;
 
+ FillChar(fPipelineRasterizationConservativeStateCreateInfoEXT,SizeOf(TVkPipelineRasterizationConservativeStateCreateInfoEXT),#0);
+ fPipelineRasterizationConservativeStateCreateInfoEXT.sType:=TVkStructureType(0); // No VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT yet, but first at usage
+
 end;
 
 destructor TpvVulkanPipelineRasterizationState.Destroy;
@@ -19867,6 +19869,7 @@ end;
 procedure TpvVulkanPipelineRasterizationState.Assign(const aFrom:TpvVulkanPipelineRasterizationState);
 begin
  fRasterizationStateCreateInfo:=aFrom.fRasterizationStateCreateInfo;
+ fPipelineRasterizationConservativeStateCreateInfoEXT:=aFrom.fPipelineRasterizationConservativeStateCreateInfoEXT;
 end;
 
 function TpvVulkanPipelineRasterizationState.GetDepthClampEnable:boolean;
@@ -19990,6 +19993,11 @@ begin
  fRasterizationStateCreateInfo.depthBiasClamp:=aDepthBiasClamp;
  fRasterizationStateCreateInfo.depthBiasSlopeFactor:=aDepthBiasSlopeFactor;
  fRasterizationStateCreateInfo.lineWidth:=aLineWidth;
+end;
+
+procedure TpvVulkanPipelineRasterizationState.SetPipelineRasterizationConservativeStateCreateInfoEXT(const aPipelineRasterizationConservativeStateCreateInfoEXT: TVkPipelineRasterizationConservativeStateCreateInfoEXT);
+begin
+ fPipelineRasterizationConservativeStateCreateInfoEXT:=aPipelineRasterizationConservativeStateCreateInfoEXT;
 end;
 
 constructor TpvVulkanPipelineMultisampleState.Create;
@@ -20647,9 +20655,6 @@ begin
 
  fDynamicState:=TpvVulkanPipelineDynamicState.Create;
 
- FillChar(fPipelineRasterizationConservativeStateCreateInfoEXT,SizeOf(TVkPipelineRasterizationConservativeStateCreateInfoEXT),#0);
- fPipelineRasterizationConservativeStateCreateInfoEXT.sType:=TVkStructureType(0); // No VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT yet, but first at usage
-
  FillChar(fGraphicsPipelineCreateInfo,SizeOf(TVkGraphicsPipelineCreateInfo),#0);
  fGraphicsPipelineCreateInfo.sType:=VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
  fGraphicsPipelineCreateInfo.pNext:=nil;
@@ -20729,7 +20734,6 @@ begin
  fDepthStencilState.Assign(aFrom.fDepthStencilState);
  fColorBlendState.Assign(aFrom.fColorBlendState);
  fDynamicState.Assign(aFrom.fDynamicState);
- fPipelineRasterizationConservativeStateCreateInfoEXT:=aFrom.fPipelineRasterizationConservativeStateCreateInfoEXT;
 end;
 
 function TpvVulkanGraphicsPipelineConstructor.AddStage(const aStage:TpvVulkanPipelineShaderStage):TpvInt32;
@@ -20956,11 +20960,6 @@ begin
  result:=fDynamicState.AddDynamicStates(aDynamicStates);
 end;
 
-procedure TpvVulkanGraphicsPipelineConstructor.SetPipelineRasterizationConservativeStateCreateInfoEXT(const aPipelineRasterizationConservativeStateCreateInfoEXT: TVkPipelineRasterizationConservativeStateCreateInfoEXT);
-begin
- fPipelineRasterizationConservativeStateCreateInfoEXT:=aPipelineRasterizationConservativeStateCreateInfoEXT;
-end;
-
 procedure TpvVulkanGraphicsPipelineConstructor.Initialize;
 begin
  if fPipelineHandle=VK_NULL_HANDLE then begin
@@ -20991,9 +20990,10 @@ begin
    fGraphicsPipelineCreateInfo.pDynamicState:=@fDynamicState.fDynamicStateCreateInfo;
   end;
 
-  if fPipelineRasterizationConservativeStateCreateInfoEXT.sType=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT then begin
-   fPipelineRasterizationConservativeStateCreateInfoEXT.pNext:=fGraphicsPipelineCreateInfo.pNext;
-   fGraphicsPipelineCreateInfo.pNext:=@fPipelineRasterizationConservativeStateCreateInfoEXT;
+  if (fRasterizationState.fPipelineRasterizationConservativeStateCreateInfoEXT.sType=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT) and
+     assigned(fGraphicsPipelineCreateInfo.pRasterizationState) then begin
+   fRasterizationState.fPipelineRasterizationConservativeStateCreateInfoEXT.pNext:=fGraphicsPipelineCreateInfo.pRasterizationState^.pNext;
+   fGraphicsPipelineCreateInfo.pRasterizationState^.pNext:=@fRasterizationState.fPipelineRasterizationConservativeStateCreateInfoEXT;
   end;
 
   VulkanCheckResult(fDevice.fDeviceVulkan.CreateGraphicsPipelines(fDevice.fDeviceHandle,fPipelineCache,1,@fGraphicsPipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
@@ -21305,12 +21305,6 @@ function TpvVulkanGraphicsPipeline.AddDynamicStates(const aDynamicStates:array o
 begin
  Assert(assigned(fGraphicsPipelineConstructor));
  result:=fGraphicsPipelineConstructor.AddDynamicStates(aDynamicStates);
-end;
-
-procedure TpvVulkanGraphicsPipeline.SetPipelineRasterizationConservativeStateCreateInfoEXT(const aPipelineRasterizationConservativeStateCreateInfoEXT: TVkPipelineRasterizationConservativeStateCreateInfoEXT);
-begin
- Assert(assigned(fGraphicsPipelineConstructor));
- fGraphicsPipelineConstructor.SetPipelineRasterizationConservativeStateCreateInfoEXT(aPipelineRasterizationConservativeStateCreateInfoEXT);
 end;
 
 procedure TpvVulkanGraphicsPipeline.Initialize;

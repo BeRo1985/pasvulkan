@@ -3848,7 +3848,11 @@ begin
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CountClipMaps:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades;
 
- GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_FALSE;
+ if assigned(Renderer.VulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.pNext) then begin
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_TRUE;
+ end else begin
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_FALSE;
+ end;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxGlobalFragmentCount:=GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
 

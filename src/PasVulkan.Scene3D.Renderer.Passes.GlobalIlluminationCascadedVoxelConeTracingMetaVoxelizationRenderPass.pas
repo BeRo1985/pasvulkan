@@ -292,6 +292,7 @@ var InFlightFrameIndex:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+    PipelineRasterizationConservativeStateCreateInfoEXT:TVkPipelineRasterizationConservativeStateCreateInfoEXT;
 begin
 
  inherited AcquireVolatileResources;
@@ -379,6 +380,15 @@ begin
                                                             0);
 
    try
+
+    if assigned(fInstance.Renderer.VulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.pNext) then begin
+     FillChar(PipelineRasterizationConservativeStateCreateInfoEXT,SizeOf(TVkPipelineRasterizationConservativeStateCreateInfoEXT),#0);
+     PipelineRasterizationConservativeStateCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+     PipelineRasterizationConservativeStateCreateInfoEXT.flags:=0;
+     PipelineRasterizationConservativeStateCreateInfoEXT.conservativeRasterizationMode:=VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+     PipelineRasterizationConservativeStateCreateInfoEXT.extraPrimitiveOverestimationSize:=Min(0.75,fInstance.Renderer.VulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.maxExtraPrimitiveOverestimationSize);
+     VulkanGraphicsPipeline.RasterizationState.SetPipelineRasterizationConservativeStateCreateInfoEXT(PipelineRasterizationConservativeStateCreateInfoEXT);
+    end;
 
     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
     VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshGeometry);
