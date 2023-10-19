@@ -232,7 +232,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                   [],
-                                                                  [fInstance.GlobalIlluminationCascadedVoxelConeTracingColorBuffer.DescriptorBufferInfo],
+                                                                  [fInstance.GlobalIlluminationCascadedVoxelConeTracingContentDataBuffer.DescriptorBufferInfo],
                                                                   [],
                                                                   false
                                                                  );
@@ -241,7 +241,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                   [],
-                                                                  [fInstance.GlobalIlluminationCascadedVoxelConeTracingCounterBuffer.DescriptorBufferInfo],
+                                                                  [fInstance.GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer.DescriptorBufferInfo],
                                                                   [],
                                                                   false
                                                                  );
