@@ -53,6 +53,9 @@
 
 #else
 
+        normal /= abs(normal.x) + abs(normal.y) + abs(normal.z);
+        vec2 octNormal = (normal.z >= 0.0) ? normal.xy : ((vec2(1.0) - abs(normal.yx)) * vec2((normal.x >= 0.0) ? 1.0 : -1.0, (normal.y >= 0.0) ? 1.0 : -1.0)); 
+
         voxelGridContentData.data[volumeCellIndex] = uvec4(
 
           // next cell index (1-based, because 0 is the end of the list)
@@ -65,9 +68,9 @@
           encodeRGB9E5(emissionColor.xyz), 
           
           // base color alpha as 8 bit unsigned integer, normal as spherical coordinates with 12 bit normalized integers, for a total of 32 bits    
-          ((uint(clamp(baseColor.w * 255.0, 0.0, 255.0)) & 0xffu) << 0u) |
-          ((uint((clamp(atan(normal.y, normal.x) * 0.31830988618379067154, -1.0, 1.0) * 2047.0) + 2048.0) & 0xfffu) << 8u) |
-          ((uint((clamp(normal.z, -1.0, 1.0) * 2047.0) + 2048.0) & 0xfffu) << 20u) 
+          ((uint(float(clamp(baseColor.w, 0.0, 1.0) * 255.0)) & 0xffu) << 0u) |
+          ((uint(float((clamp(octNormal.x, -1.0, 1.0) * 2047.0) + 2048.0)) & 0xfffu) << 8u) |
+          ((uint(float((clamp(octNormal.y, -1.0, 1.0) * 2047.0) + 2048.0)) & 0xfffu) << 20u) 
 
         );
         
