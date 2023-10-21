@@ -13,6 +13,7 @@ layout(set = 1, binding = 10) uniform sampler3D uVoxelGridRadiance[];
 
 const float CVCT_INDIRECT_DIST_K = 0.01;
 
+// Converts the PBR roughness to a voxel cone tracing aperture angle  
 #define CVCT_ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD 0
 float cvctRoughnessToVoxelConeTracingApertureAngle(float roughness){
   roughness = clamp(roughness, 0.0, 1.0);
@@ -25,6 +26,7 @@ float cvctRoughnessToVoxelConeTracingApertureAngle(float roughness){
 #endif  
 }              
 
+// Calculate the direction weights for a given direction
 #define CVCT_GETDIRECTIONWEIGHTS_METHOD 1
 vec3 cvctGetDirectionWeights(vec3 direction){
 #if CVCT_GETDIRECTIONWEIGHTS_METHOD == 0
@@ -37,16 +39,25 @@ vec3 cvctGetDirectionWeights(vec3 direction){
 #endif
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // Occlusion is isotropic, so we only need to sample one direction
+
+// Fetch a voxel from the voxel grid
 float cvctFetchVoxelOcclusion(const in ivec3 position, const in vec3 direction, const in int mipMapLevel, const in int clipMapIndex){
   return texelFetch(uVoxelGridOcclusion[clipMapIndex], position, mipMapLevel).x;
 }  
 
+// Fetch a voxel from the voxel grid per trilinear interpolation
 float cvctGetTrilinearInterpolatedVoxelOcclusion(const in vec3 position, const in vec3 direction, const in float mipMapLevel, const in int clipMapIndex){
   return textureLod(uVoxelGridOcclusion[clipMapIndex], position, mipMapLevel).x;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // Radiance is anisotropic, so we need to sample 3 directions
+
+// Fetch a voxel from the voxel grid
 vec4 cvctFetchVoxelRadiance(const in ivec3 position, const in vec3 direction, const in int mipMapLevel, const in int clipMapIndex){
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));
   vec3 directionWeights = getDirectionWeights(direction);
@@ -56,7 +67,7 @@ vec4 cvctFetchVoxelRadiance(const in ivec3 position, const in vec3 direction, co
          (texelFetch(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
 }        
 
-
+// Fetch a voxel from the voxel grid per trilinear interpolation
 vec4 cvctGetTrilinearInterpolatedVoxelRadiance(const in vec3 position, const in vec3 direction, const in float mipMapLevel, const in int clipMapIndex){
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));
   vec3 directionWeights = getDirectionWeights(direction);
@@ -66,15 +77,17 @@ vec4 cvctGetTrilinearInterpolatedVoxelRadiance(const in vec3 position, const in 
          (textureLod(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
 }        
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
+// Generate jitter noise for a given position
 vec4 cvctVoxelJitterNoise(vec4 p4){
 	p4 = fract(p4 * vec4(443.897, 441.423, 437.195, 444.129));
   p4 += dot(p4, p4.wzxy + vec4(19.19));
   return fract((p4.xxyz + p4.yzzw) * p4.zywx);
 }               
 
-vec4 cvctTraceRadianceCone(vec3 normal, 
-                           vec3 from, 
-                           vec3 to,
+// Trace a radiance cone for a given position and direction, and return the accumulated occlusion
+vec4 cvctTraceRadianceCone(vec3 from, 
                            vec3 direction,
                            float aperture,
                            float offset,
@@ -191,6 +204,7 @@ vec4 cvctTraceRadianceCone(vec3 normal,
 
 }	
 
+// Trace a cone for a given position and direction, and return the accumulated occlusion
 float cvctTraceShadowCone(vec3 normal, 
                           vec3 from, 
                           vec3 to){
@@ -319,22 +333,24 @@ float cvctTraceShadowCone(vec3 normal,
 
 }	
 
+// Create a rotation matrix from an axis and an angle
 mat3 cvctRotationMatrix(vec3 axis, float angle){
-   axis = normalize(axis);
-   vec2 sc = sin(vec2(angle) + vec2(0.0, 1.57079632679)); // sin and cos
-   float oc = 1.0 - sc.y;    
-   vec3 as = axis * sc.x;
-   return (mat3(axis.x * axis,
-                axis.y * axis,
-                axis.z * axis) * oc) + 
-           mat3(sc.y, -as.z,
-                as.y, as.z,
-                sc.y, -as.x,
-                -as.y, 
-                as.x,
-                sc.y);                
+  axis = normalize(axis);
+  vec2 sc = sin(vec2(angle) + vec2(0.0, 1.57079632679)); // sin and cos
+  float oc = 1.0 - sc.y;    
+  vec3 as = axis * sc.x;
+  return (mat3(axis.x * axis,
+               axis.y * axis,
+               axis.z * axis) * oc) + 
+          mat3(sc.y, -as.z,
+               as.y, as.z,
+               sc.y, -as.x,
+               -as.y, 
+               as.x,
+               sc.y);                
 }                     
 
+// Calculate the radiance for a starting position and a direction
 vec3 cvctIndirectDiffuseLight(vec3 from, 
                               vec3 normal){
 #ifndef NUM_CONES 
@@ -346,7 +362,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
               coneOffset = -0.01,
               aperture = tan(radians(22.5)),
               offset = 4.0 * voxelGridData.cellSizes[0],
-              maxDistance = 1.41421356237;  	
+              maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
 	vec3 u = normalize(normal),
 #if 0
        v = cross(vec3(0.0, 1.0, 0.0), u),
@@ -361,15 +377,15 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
        corner2 = 0.5 * (ortho - ortho2);
   vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cellSizes[0], 
        coneOrigin = from + normalOffset;       
-  return ((traceVoxelCone(coneOrigin + (coneOffset * normal), normal, aperture, offset, maxDistance).xyz * 1.0) +
-           ((traceVoxelCone(coneOrigin + (coneOffset * ortho), mix(normal, ortho, angleMix), aperture, offset, maxDistance).xyz +
-             traceVoxelCone(coneOrigin - (coneOffset * ortho), mix(normal, -ortho, angleMix), aperture, offset, maxDistance).xyz +
-             traceVoxelCone(coneOrigin + (coneOffset * ortho2), mix(normal, ortho2, angleMix), aperture, offset, maxDistance).xyz +
-             traceVoxelCone(coneOrigin - (coneOffset * ortho2), mix(normal, -ortho2, angleMix), aperture, offset, maxDistance).xyz) * 1.0) +
-           ((traceVoxelCone(coneOrigin + (coneOffset * corner), mix(normal, corner, angleMix), aperture, offset, maxDistance).xyz +
-             traceVoxelCone(coneOrigin - (coneOffset * corner), mix(normal, -corner, angleMix), aperture, offset, maxDistance).xyz +
-             traceVoxelCone(coneOrigin + (coneOffset * corner2), mix(normal, corner2, angleMix), aperture, offset, maxDistance).xyz +
-             traceVoxelCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance).xyz) * 1.0)) / 9.0;
+  return ((cvctTraceRadianceCone(coneOrigin + (coneOffset * normal), normal, aperture, offset, maxDistance).xyz * 1.0) +
+           ((cvctTraceRadianceCone(coneOrigin + (coneOffset * ortho), mix(normal, ortho, angleMix), aperture, offset, maxDistance).xyz +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * ortho), mix(normal, -ortho, angleMix), aperture, offset, maxDistance).xyz +
+             cvctTraceRadianceCone(coneOrigin + (coneOffset * ortho2), mix(normal, ortho2, angleMix), aperture, offset, maxDistance).xyz +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * ortho2), mix(normal, -ortho2, angleMix), aperture, offset, maxDistance).xyz) * 1.0) +
+           ((cvctTraceRadianceCone(coneOrigin + (coneOffset * corner), mix(normal, corner, angleMix), aperture, offset, maxDistance).xyz +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * corner), mix(normal, -corner, angleMix), aperture, offset, maxDistance).xyz +
+             cvctTraceRadianceCone(coneOrigin + (coneOffset * corner2), mix(normal, corner2, angleMix), aperture, offset, maxDistance).xyz +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance).xyz) * 1.0)) / 9.0;
 #else
 #if NUM_CONES == 1
 	const vec3 coneDirections[1] = vec3[1](
@@ -553,7 +569,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
 #endif
   const float coneOffset = -0.01,
               offset = 4.0 * voxelGridData.cellSizes[0],
-              maxDistance = 2.0;
+              maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
   normal = normalize(normal);
   vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cellSizes[0], 
        coneOrigin = from + normalOffset,
@@ -573,11 +589,11 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
   [[unroll]] for(int i = 0; i < NUM_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
-      color += vec4(traceVoxelCone(coneOrigin + (coneOffset * direction), 
-                                   direction, 
-                                   coneApertures[i], 
-                                   offset, 
-                                   maxDistance).xyz,
+      color += vec4(cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
+                                          direction, 
+                                          coneApertures[i], 
+                                          offset, 
+                                          maxDistance).xyz,
                      1.0) * 
                 coneWeights[i];
     }
@@ -586,20 +602,21 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
 #endif
 }
 
-vec3 cvctindirectSpecularLight(vec3 from, 
+// Calculate the specular light for a starting position, a normal, the view direction, the aperture angle and the maximal distance
+vec3 cvctIndirectSpecularLight(vec3 from, 
                                vec3 normal, 
                                vec3 viewDirection,
                                float aperture, 
                                float maxDistance){
   normal = normalize(normal);
-  viewDirection = normalize(viewDirection);                         
-	return traceVoxelCone(from + (normal * 2.0 * voxelGridData.cellSizes[0]), 
-                        normalize(reflect(viewDirection, normal)), 
-                        aperture, 
-                        2.0 * voxelGridData.cellSizes[0], 
-                        maxDistance).xyz;
+  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cellSizes[0]), 
+                               normalize(reflect(normalize(viewDirection), normal)), 
+                               aperture, 
+                               2.0 * voxelGridData.cellSizes[0], 
+                               maxDistance).xyz;
 }
 
+// Calculate the refractive light for a starting position, a normal, the view direction, the aperture angle, the index of refraction and the maximal distance
 vec3 cvctIndirectRefractiveLight(vec3 from, 
                                  vec3 normal, 
                                  vec3 viewDirection, 
@@ -607,12 +624,11 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float indexOfRefraction, 
                                  float maxDistance){
   normal = normalize(normal);
-  viewDirection = normalize(viewDirection);                         
-	return traceVoxelCone(from + (normal * voxelGridData.cellSizes[0]), 
-                        normalize(refract(viewDirection, normal, 1.0 / indexOfRefraction)), 
-                        aperture, 
-                        voxelGridData.cellSizes[0], 
-                        maxDistance).xyz;
+	return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
+                               normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
+                               aperture, 
+                               voxelGridData.cellSizes[0], 
+                               maxDistance).xyz;
 }                                   
 
 #endif // GLOBAL_ILLUMINATION_VOXEL_CONE_TRACING_GLSL
