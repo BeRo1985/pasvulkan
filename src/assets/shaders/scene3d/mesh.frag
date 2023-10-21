@@ -225,6 +225,7 @@ layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 // Pass descriptor set
 
 #if !(defined(DEPTHONLY) || defined(VOXELIZATION))
+
 layout(set = 1, binding = 0) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
 
 layout(set = 1, binding = 1) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
@@ -274,6 +275,18 @@ layout (set = 1, binding = 6, std430) readonly buffer FrustumClusterGridIndexLis
 layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
   uvec4 frustumClusterGridData[]; // x = start light index, y = count lights, z = start decal index, w = count decals
 };
+
+#endif
+
+#if defined(CASCADEDVOXELCONETRACING) 
+
+layout (set = 1, binding = 8, std140) readonly uniform VoxelGridData {
+  #include "voxelgriddata_uniforms.glsl"
+} voxelGridData;
+
+layout(set = 1, binding = 9) uniform sampler3D uVoxelGridOcclusion[];
+
+layout(set = 1, binding = 10) uniform sampler3D uVoxelGridRadiance[];
 
 #endif
 
