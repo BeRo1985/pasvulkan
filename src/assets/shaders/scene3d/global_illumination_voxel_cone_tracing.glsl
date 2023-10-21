@@ -433,7 +433,7 @@ float cvctTraceOcclusionCone(vec3 normal,
       // Calculate the texture position
       vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
 
-      // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
+      // Accumulate the occlusion from the isotropic occulsion texture
       accumulator += (1.0 - accumulator) * textureLod(uVoxelGridOcclusion[clipMapIndex], texturePosition, mipMapLevel).x;
 
       // Move the position forward
