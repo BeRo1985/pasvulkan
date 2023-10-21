@@ -238,7 +238,6 @@ float cvctTraceShadowCone(vec3 normal,
   // Initialize the accumulator to zero, since we start at the beginning of the cone
   float accumulator = 0.0;                       
 
-//direction /= maxDistance; // not needed, since we normalize the direction anyway
   direction = normalize(direction);                    
 
   // Setup the texture indices and direction weights
@@ -252,7 +251,6 @@ float cvctTraceShadowCone(vec3 normal,
   // Initialize the starting position
   vec3 position = from + (direction * dist);
 
-  // Find the starting clipmap index 
   // Find the starting clipmap index 
   uint clipMapIndex = 0u;
   bool foundClipMap = false;
@@ -317,6 +315,126 @@ float cvctTraceShadowCone(vec3 normal,
       accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], texturePosition, mipMapLevel).w * directionWeights.x) +
                                             (textureLod(uVoxelGridRadiance[textureIndices.y], texturePosition, mipMapLevel).w * directionWeights.y) +
                                             (textureLod(uVoxelGridRadiance[textureIndices.z], texturePosition, mipMapLevel).w * directionWeights.z));
+
+      // Move the position forward
+      dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex];
+
+      // Get the new position
+      position = from + (direction * dist);
+
+    } 
+
+  }
+
+  // Return the accumulated occlusion
+  return clamp(1.0 - accumulator, 0.0, 1.0);
+
+}	
+
+// Trace a cone for a given position and direction, and return the accumulated occlusion
+float cvctTraceOcclusionCone(vec3 normal, 
+                             vec3 from, 
+                             vec3 to){
+  
+  const float aperture = tan(radians(5.0));
+
+  const float s = 1.0 / 4.0;
+
+  // Load into local variable to avoid multiple memory accesses            
+  vec4 clipMaps[4] = voxelGridData.clipMaps; 
+  float gridSize = float(voxelGridData.gridSize);
+  float halfOverGridSize = 0.5 / gridSize;
+  float oneOverGridSize = 1.0 / gridSize;
+  vec4 clipMapToWorldScaleFactors = voxelGridData.cellSizes * gridSize;  
+  vec4 worldToClipMapScaleFactors = vec4(1.0) / clipMapToWorldScaleFactors;
+  uint countClipMaps = voxelGridData.countClipMaps;
+
+  // Calculate the doubled aperture angle for the cone
+  float doubledAperture = max(1.0 / gridSize, vec4(2.0 * aperture));
+  
+  from += normal * (2.0  * oneOverGridSize * clipMapToWorldScaleFactors[0]);
+  
+  vec3 direction = to - from;
+  
+  // Calculate the maximum distance we can travel
+  float maxDistance = length(direction);
+
+  // Set the starting distance
+  float dist = 2.5 * oneOverGridSize * clipMapToWorldScaleFactors[0];
+  
+  // Initialize the accumulator to zero, since we start at the beginning of the cone
+  float accumulator = 0.0;                       
+
+  direction = normalize(direction);                    
+
+  //maxDistance = min(maxDistance, 1.41421356237);
+  dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, tc.x)).x * s;
+
+  // Initialize the starting position
+  vec3 position = from + (direction * dist);
+
+  // Find the starting clipmap index 
+  uint clipMapIndex = 0u;
+  bool foundClipMap = false;
+  vec3 currentClipMapAAABMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
+  vec3 currentClipMapAAABMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
+  for(uint clipMapIndexCounter = 0u; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
+    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
+       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+      clipMapIndex = clipMapIndexCounter;
+      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
+      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+      foundClipMap = true;
+      break;
+    }
+  }
+
+  // If we found a clipmap, we can start tracing the cone, otherwise we are done
+  if(foundClipMap){
+  
+    // The actual tracing loop
+    while((accumulator < 1.0) && (dist < maxDistance)){
+      
+      // Check if we are still in the current clipmap
+      if(any(lessThan(position, currentClipMapAAABMin)) || any(greaterThan(position, currentClipMapAAABMax))){
+
+        // If not, find the next clipmap
+        bool foundClipMap = false;
+        for(uint clipMapIndexCounter = clipMapIndex + 1; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
+          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
+             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+            clipMapIndex = clipMapIndexCounter;
+            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
+            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+            foundClipMap = true;
+            break;
+          }
+        }
+
+        // If we didn't find a clipmap anymore, we are done and can break out of the loop
+        if(!foundClipMap){
+          break;
+        }
+
+      }else{
+
+        // If we are still in the current clipmap, we can calculate the diameter of the cone at the current position, and 
+        // do nothing in this else branch (dummy else branch, just for this comment, the compiler should optimize this away,
+        // hopefully)
+
+      }
+
+      // Calculate the diameter of the cone at the current position 
+      float diameter = max( halfOverGridSize, doubledAperture * (dist * worldToClipMapScaleFactors[clipMapIndex]));
+
+      // Calculate the mip map level to use for the current position
+      float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
+
+      // Calculate the texture position
+      vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
+
+      // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
+      accumulator += (1.0 - accumulator) * textureLod(uVoxelGridOcclusion[clipMapIndex], texturePosition, mipMapLevel).x;
 
       // Move the position forward
       dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex];
