@@ -279,6 +279,8 @@ type { TpvScene3DRendererInstance }
             { TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
              ClipMaps:array[0..3] of TpvVector4;
+             ClipMapAABBMin:array[0..3] of TpvVector4;
+             ClipMapAABBMax:array[0..3] of TpvVector4;
              CellSizes:TpvVector4;
              GridSize:TpvUInt32;
              CountClipMaps:TpvUInt32;
@@ -3795,6 +3797,8 @@ begin
  for CascadeIndex:=0 to fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1 do begin
   CascadedVolumeCascade:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex];
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*0.5);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CellSizes.RawComponents[CascadeIndex]:=CascadedVolumeCascade.fCellSize;
  end;
 

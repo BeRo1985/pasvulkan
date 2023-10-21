@@ -117,11 +117,11 @@ vec4 cvctTraceRadianceCone(vec3 normal,
   vec3 currentClipMapAAABMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
   vec3 currentClipMapAAABMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
   for(uint clipMapIndexCounter = 0u; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
-    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
-       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
       clipMapIndex = clipMapIndexCounter;
-      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
-      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex].xyz;
+      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex].xyz;
       foundClipMap = true;
       break;
     }
@@ -139,11 +139,11 @@ vec4 cvctTraceRadianceCone(vec3 normal,
         // If not, find the next clipmap
         bool foundClipMap = false;
         for(uint clipMapIndexCounter = clipMapIndex + 1; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
-          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
-             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
             clipMapIndex = clipMapIndexCounter;
-            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
-            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex].xyz;
+            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex].xyz;
             foundClipMap = true;
             break;
           }
