@@ -119,7 +119,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
   ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
   
   //maxDistance = min(maxDistance, 1.41421356237);
-  //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, tc.x)).x * s;
+  //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
 
   // Initialize the starting position
   vec3 position = from + (direction * dist);
@@ -246,7 +246,7 @@ float cvctTraceShadowCone(vec3 normal,
   ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
   
   //maxDistance = min(maxDistance, 1.41421356237);
-  dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, tc.x)).x * s;
+  dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
 
   // Initialize the starting position
   vec3 position = from + (direction * dist);
@@ -361,7 +361,7 @@ float cvctTraceOcclusionCone(vec3 from,
   direction = normalize(direction);                    
 
   //maxDistance = min(maxDistance, 1.41421356237);
-  dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, tc.x)).x * s;
+  //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
 
   // Initialize the starting position
   vec3 position = from + (direction * dist);
@@ -691,7 +691,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
   tangent = safeNormalize(cross(bitangent, normal));      
   mat3 tangentSpace =
 #ifdef CVCT_SKY_LIGHT_OCCLUSION_JITTER
-                      cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal + (vec3(gl_FragCoord.xyz) * 1.0), fract(tc.x * 0.01) * 100.0)).x) *
+                      cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal, 0.0)).x) *
 #endif
                       mat3(tangent, 
                            bitangent, 
@@ -943,7 +943,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
   tangent = safeNormalize(cross(bitangent, normal));      
   mat3 tangentSpace =
 #ifdef CVCT_INDIRECT_DIRECT_LIGHT_JITTER
-                      cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal + (vec3(gl_FragCoord.xyz) * 1.0), fract(tc.x * 0.01) * 100.0)).x) *
+                      cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal, 0.0)).x) *
 #endif
                       mat3(tangent, 
                            bitangent, 
