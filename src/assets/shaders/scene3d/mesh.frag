@@ -288,6 +288,8 @@ layout(set = 1, binding = 9) uniform sampler3D uVoxelGridOcclusion[];
 
 layout(set = 1, binding = 10) uniform sampler3D uVoxelGridRadiance[];
 
+#include "global_illumination_voxel_cone_tracing.glsl"
+
 #endif
 
 #ifdef VOXELIZATION
