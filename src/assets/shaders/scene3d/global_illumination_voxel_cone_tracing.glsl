@@ -317,7 +317,7 @@ float cvctTraceShadowCone(vec3 normal,
                                             (textureLod(uVoxelGridRadiance[textureIndices.z], texturePosition, mipMapLevel).w * directionWeights.z));
 
       // Move the position forward
-      dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex];
+      dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex] * s;
 
       // Get the new position
       position = from + (direction * dist);
@@ -332,14 +332,12 @@ float cvctTraceShadowCone(vec3 normal,
 }	
 
 // Trace a cone for a given position and direction, and return the accumulated occlusion
-float cvctTraceOcclusionCone(vec3 normal, 
-                             vec3 from, 
-                             vec3 to){
-  
-  const float aperture = tan(radians(5.0));
-
-  const float s = 1.0 / 4.0;
-
+float cvctTraceOcclusionCone(vec3 from, 
+                             vec3 direction,
+                             float aperture,
+                             float offset,
+                             float maxDistance){
+    
   // Load into local variable to avoid multiple memory accesses            
   vec4 clipMaps[4] = voxelGridData.clipMaps; 
   float gridSize = float(voxelGridData.gridSize);
@@ -354,13 +352,8 @@ float cvctTraceOcclusionCone(vec3 normal,
   
   from += normal * (2.0  * oneOverGridSize * clipMapToWorldScaleFactors[0]);
   
-  vec3 direction = to - from;
-  
-  // Calculate the maximum distance we can travel
-  float maxDistance = length(direction);
-
   // Set the starting distance
-  float dist = 2.5 * oneOverGridSize * clipMapToWorldScaleFactors[0];
+  float dist = offset;
   
   // Initialize the accumulator to zero, since we start at the beginning of the cone
   float accumulator = 0.0;                       
@@ -468,11 +461,263 @@ mat3 cvctRotationMatrix(vec3 axis, float angle){
                sc.y);                
 }                     
 
+// Calculate the sky light occlusion for a starting position and a direction
+vec3 cvctSkyLightOcclusion(vec3 from, 
+                           vec3 normal){
+#ifndef NUM_SKY_CONES 
+ #define NUM_SKY_CONES 5
+#endif
+//$define indirectDiffuseLightJitter
+#if NUM_SKY_CONES == 9
+	const float angleMix = 0.5, 
+              coneOffset = -0.01,
+              aperture = tan(radians(22.5)),
+              offset = 4.0 * voxelGridData.cellSizes[0],
+              maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
+	vec3 u = normalize(normal),
+#if 0
+       v = cross(vec3(0.0, 1.0, 0.0), u),
+       w = cross(vec3(0.0, 0.0, 1.0), u),
+       ortho = normalize((length(v) < length(w)) ? w : v),
+#else
+       v = normalize(vec3(0.99146, 0.11664, 0.05832)),
+       ortho = normalize((abs(dot(u, v)) > 0.99999) ? cross(vec3(0.0, 1.0, 0.0), u) : cross(v, u)),
+#endif
+       ortho2 = normalize(cross(ortho, normal)),
+       corner = 0.5 * (ortho + ortho2), 
+       corner2 = 0.5 * (ortho - ortho2);
+  vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cellSizes[0], 
+       coneOrigin = from + normalOffset;       
+  return ((cvctTraceOcclusionCone(coneOrigin + (coneOffset * normal), normal, aperture, offset, maxDistance) * 1.0) +
+           ((cvctTraceOcclusionCone(coneOrigin + (coneOffset * ortho), mix(normal, ortho, angleMix), aperture, offset, maxDistance) +
+             cvctTraceOcclusionCone(coneOrigin - (coneOffset * ortho), mix(normal, -ortho, angleMix), aperture, offset, maxDistance) +
+             cvctTraceOcclusionCone(coneOrigin + (coneOffset * ortho2), mix(normal, ortho2, angleMix), aperture, offset, maxDistance) +
+             cvctTraceOcclusionCone(coneOrigin - (coneOffset * ortho2), mix(normal, -ortho2, angleMix), aperture, offset, maxDistance)) * 1.0) +
+           ((cvctTraceOcclusionCone(coneOrigin + (coneOffset * corner), mix(normal, corner, angleMix), aperture, offset, maxDistance) +
+             cvctTraceOcclusionCone(coneOrigin - (coneOffset * corner), mix(normal, -corner, angleMix), aperture, offset, maxDistance) +
+             cvctTraceOcclusionCone(coneOrigin + (coneOffset * corner2), mix(normal, corner2, angleMix), aperture, offset, maxDistance) +
+             cvctTraceOcclusionCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance)) * 1.0)) / 9.0;
+#else
+#if NUM_SKY_CONES == 1
+	const vec3 coneDirections[1] = vec3[1](
+                                   vec3(0.0, 0.0, 1.0)
+                                 );  
+	const float coneWeights[1] = float[1](
+                                 1.0
+                               );  
+	const float coneApertures[1] = float[1]( // tan(63.4349488)
+                                   2.0
+                                 );  
+#elif NUM_SKY_CONES == 5
+	const vec3 coneDirections[5] = vec3[5](
+                                   vec3(0.0, 0.0, 1.0),
+                                   vec3(0.0, 0.707106781, 0.707106781),
+                                   vec3(0.0, -0.707106781, 0.707106781),
+                                   vec3(0.707106781, 0.0, 0.707106781),
+                                   vec3(-0.707106781, 0.0, 0.707106781)
+                                 );  
+	const float coneWeights[5] = float[5](
+                                 0.28, 
+                                 0.18, 
+                                 0.18, 
+                                 0.18, 
+                                 0.18
+                               );  
+	const float coneApertures[5] = float[5]( // tan(45)
+                                   1.0, 
+                                   1.0, 
+                                   1.0, 
+                                   1.0, 
+                                   1.0 
+                                 );  
+#elif NUM_SKY_CONES == 6
+#if 0
+	const vec3 coneDirections[6] = vec3[6](
+                                   normalize(vec3(0.0, 0.0, 1.0)),
+                                   normalize(vec3(-0.794654, 0.607062, 0.000000)),
+                                   normalize(vec3(0.642889, 0.607062, 0.467086)), 
+                                   normalize(vec3(0.642889, 0.607062, -0.467086)),
+                                   normalize(vec3(-0.245562, 0.607062, 0.755761)),
+                                   normalize(vec3(-0.245562, 0.607062, -0.755761))
+                                 );  
+	const float coneWeights[6] = float[6](
+                                 1.0, 
+                                 0.607,
+                                 0.607, 
+                                 0.607, 
+                                 0.607, 
+                                 0.607
+                               );  
+	const float coneApertures[6] = float[6]( 
+                                   0.5, 
+                                   0.549092, 
+                                   0.549092, 
+                                   0.549092, 
+                                   0.549092, 
+                                   0.549092
+                                 );  
+#else
+	const vec3 coneDirections[6] = vec3[6](
+                                   vec3(0.0, 0.0, 1.0),
+                                   vec3(0.0, 0.866025, 0.5),
+                                   vec3(0.823639, 0.267617, 0.5),
+                                   vec3(0.509037, -0.700629, 0.5),
+                                   vec3(-0.509037, -0.700629, 0.5),
+                                   vec3(-0.823639, 0.267617, 0.5)
+                                 );  
+	const float coneWeights[6] = float[6](
+#if 0
+                                 3.14159 * 0.25, 
+                                 (3.14159 * 3.0) / 20.0, 
+                                 (3.14159 * 3.0) / 20.0, 
+                                 (3.14159 * 3.0) / 20.0, 
+                                 (3.14159 * 3.0) / 20.0, 
+                                 (3.14159 * 3.0) / 20.0
+#else
+                                 0.25, 
+                                 0.15,
+                                 0.15, 
+                                 0.15, 
+                                 0.15, 
+                                 0.15
+#endif
+                               );  
+	const float coneApertures[6] = float[6]( // tan(30)
+                                   0.57735026919, 
+                                   0.57735026919, 
+                                   0.57735026919, 
+                                   0.57735026919, 
+                                   0.57735026919, 
+                                   0.57735026919 
+                                 );  
+#endif
+#elif NUM_SKY_CONES == 8
+	const vec3 coneDirections[8] = vec3[8](
+                                    vec3(0.57735, 0.57735, 0.57735),      
+                                    vec3(-0.57735, -0.57735, 0.57735),     
+                                    vec3(-0.903007, 0.182696, 0.388844),    
+                                    vec3(0.903007, -0.182696, 0.388844),     
+                                    vec3(0.388844, -0.903007, 0.182696),      
+                                    vec3(-0.388844, 0.903007, 0.182696),       
+                                    vec3(-0.182696, 0.388844, 0.903007),        
+                                    vec3(0.182696, -0.388844, 0.903007)          
+                                  );  
+	const float coneWeights[8] = float[8](
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0, 
+                                 1.0 / 8.0
+                               );  
+	const float coneApertures[8] = float[8]( 
+                                   0.4363325, 
+                                   0.4363325, 
+                                   0.4363325, 
+                                   0.4363325, 
+                                   0.4363325, 
+                                   0.4363325, 
+                                   0.4363325, 
+                                   0.4363325
+                                 );  
+#elif NUM_SKY_CONES == 16
+	const vec3 coneDirections[16] = vec3[16](
+                                    vec3(0.898904, 0.435512, 0.0479745),
+                                    vec3(0.898904, -0.0479745, 0.435512),
+                                    vec3(-0.898904, -0.435512, 0.0479745),
+                                    vec3(-0.898904, 0.0479745, 0.435512),
+                                    vec3(0.0479745, 0.898904, 0.435512),
+                                    vec3(-0.435512, 0.898904, 0.0479745),
+                                    vec3(-0.0479745, -0.898904, 0.435512),
+                                    vec3(0.435512, -0.898904, 0.0479745),
+                                    vec3(0.435512, 0.0479745, 0.898904),
+                                    vec3(-0.435512, -0.0479745, 0.898904),
+                                    vec3(0.0479745, -0.435512, 0.898904),
+                                    vec3(-0.0479745, 0.435512, 0.898904),
+                                    vec3(0.57735, 0.57735, 0.57735),
+                                    vec3(0.57735, -0.57735, 0.57735),
+                                    vec3(-0.57735, 0.57735, 0.57735),
+                                    vec3(-0.57735, -0.57735, 0.57735)
+                                  );  
+	const float coneWeights[16] = float[16](
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0, 
+                                  1.0 / 16.0
+                                );  
+	const float coneApertures[16] = float[16]( 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595, 
+                                    0.3141595
+                                 );  
+#endif
+  const float coneOffset = -0.01,
+              offset = 4.0 * voxelGridData.cellSizes[0],
+              maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
+  normal = normalize(normal);
+  vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cellSizes[0], 
+       coneOrigin = from + normalOffset,
+       t0 = cross(vec3(0.0, 1.0, 0.0), normal),
+       t1 = cross(vec3(0.0, 0.0, 1.0), normal),
+       tangent = normalize((length(t0) < length(t1)) ? t1 : t0),
+       bitangent = normalize(cross(tangent, normal));
+  tangent = safeNormalize(cross(bitangent, normal));      
+  mat3 tangentSpace =
+#ifdef CVCT_SKY_LIGHT_OCCLUSION_JITTER
+                      cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal + (vec3(gl_FragCoord.xyz) * 1.0), fract(tc.x * 0.01) * 100.0)).x) *
+#endif
+                      mat3(tangent, 
+                           bitangent, 
+                           normal);
+  vec2 occlusion = vec2(0.0);  
+  [[unroll]] for(int i = 0; i < NUM_SKY_CONES; i++){
+    vec3 direction = tangentSpace * coneDirections[i].xyz;
+/*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
+      occlusion += vec2(cvctTraceOcclusionCone(coneOrigin + (coneOffset * direction), 
+                                          direction, 
+                                          coneApertures[i], 
+                                          offset, 
+                                          maxDistance),
+                     1.0) * 
+                coneWeights[i];
+    }
+  }
+  return occlusion.x / max(occlusion.y, 1e-6);
+#endif
+}
+
 // Calculate the radiance for a starting position and a direction
 vec3 cvctIndirectDiffuseLight(vec3 from, 
                               vec3 normal){
 #ifndef NUM_CONES 
- $define NUM_CONES 5
+ #define NUM_CONES 5
 #endif
 //$define indirectDiffuseLightJitter
 #if NUM_CONES == 9
