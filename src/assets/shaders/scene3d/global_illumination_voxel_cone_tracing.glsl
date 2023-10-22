@@ -98,7 +98,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   uint clipMapIndex = 0;
   vec4 clipMap = voxelGridData.clipMaps[clipMapIndex];
-  float voxelSize = clipSize.w * 2.0;
+  float voxelSize = clipMap.w * 2.0;
   float oneOverVoxelSize = 1.0 / voxelSize;
 
   float coneCoefficient = aperture;
@@ -111,7 +111,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
   vec3 directionWeights = cvctGetDirectionWeights(direction);
 
-  while((dist < maxDistance) && (accumlator.w < 1.0) && (clipMapIndex < voxelGridData.countClipMaps)){
+  while((dist < maxDistance) && (accumulator.w < 1.0) && (clipMapIndex < voxelGridData.countClipMaps)){
 
     vec3 position = fma(direction, vec3(dist), startPosition);
 
@@ -127,27 +127,27 @@ vec4 cvctTraceRadianceCone(vec3 from,
       continue;
     }
 
-    vec4 sample;
+    vec4 value;
 
     {
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx) * 6);
-      sample = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
-                (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
-                (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w);
+      value = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
+               (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
+               (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w);
     }
 
     if((clipMapBlend > 0.0) && ((clipMapIndexEx + 1u) < voxelGridData.countClipMaps)){
       vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx + 1u];
       vec3 clipMapPosition = fma((position - clipMap.xyz) / clipMap.w, vec3(0.5), vec3(0.5));
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx + 1u) * 6);
-      sample = mix(sample,
-                   ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
-                    (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
-                    (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w),
-                   clipMapBlend);
+      value = mix(value,
+                  ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
+                   (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
+                   (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w),
+                 clipMapBlend);
     }
 
-    accumulator += sample * (1.0 - accumulator.w);
+    accumulator += value * (1.0 - accumulator.w);
 
     float stepSize = voxelGridData.cellSizes[clipMapIndexEx] * 0.5;
 
@@ -1037,6 +1037,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
       color += vec4(cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
+                                      normal,
                                           direction, 
                                           coneApertures[i], 
                                           offset, 
@@ -1057,6 +1058,7 @@ vec3 cvctIndirectSpecularLight(vec3 from,
                                float maxDistance){
   normal = normalize(normal);
   return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cellSizes[0]), 
+                               normal,  
                                normalize(reflect(normalize(viewDirection), normal)), 
                                aperture, 
                                2.0 * voxelGridData.cellSizes[0], 
@@ -1072,6 +1074,7 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float maxDistance){
   normal = normalize(normal);
   return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
+                               normal,
                                normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
                                aperture, 
                                voxelGridData.cellSizes[0], 
