@@ -60,7 +60,7 @@ float cvctGetTrilinearInterpolatedVoxelOcclusion(const in vec3 position, const i
 // Fetch a voxel from the voxel grid
 vec4 cvctFetchVoxelRadiance(const in ivec3 position, const in vec3 direction, const in int mipMapLevel, const in int clipMapIndex){
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));
-  vec3 directionWeights = getDirectionWeights(direction);
+  vec3 directionWeights = cvctGetDirectionWeights(direction);
   ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
   return (texelFetch(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
          (texelFetch(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
@@ -70,7 +70,7 @@ vec4 cvctFetchVoxelRadiance(const in ivec3 position, const in vec3 direction, co
 // Fetch a voxel from the voxel grid per trilinear interpolation
 vec4 cvctGetTrilinearInterpolatedVoxelRadiance(const in vec3 position, const in vec3 direction, const in float mipMapLevel, const in int clipMapIndex){
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));
-  vec3 directionWeights = getDirectionWeights(direction);
+  vec3 directionWeights = cvctGetDirectionWeights(direction);
   ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
   return (textureLod(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
          (textureLod(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
@@ -103,7 +103,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
   uint countClipMaps = voxelGridData.countClipMaps;
 
   // Calculate the doubled aperture angle for the cone
-  float doubledAperture = max(1.0 / gridSize, vec4(2.0 * aperture));
+  float doubledAperture = max(1.0 / gridSize, 2.0 * aperture);
 
   // Set the starting distance
   float dist = offset;
@@ -115,7 +115,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   // Setup the texture indices and direction weights
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
-  vec3 directionWeights = getDirectionWeights(direction);
+  vec3 directionWeights = cvctGetDirectionWeights(direction);
   
   //maxDistance = min(maxDistance, 1.41421356237);
   //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
@@ -143,7 +143,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
   if(foundClipMap){
 
     // The actual tracing loop
-    while((accumulator < 1.0) && (dist < maxDistance)){
+    while((accumulator.w < 1.0) && (dist < maxDistance)){
       
       // Check if we are still in the current clipmap
       if(any(lessThan(position, currentClipMapAAABMin)) || any(greaterThan(position, currentClipMapAAABMax))){
@@ -184,6 +184,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
       vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
+      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
       accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], texturePosition, mipMapLevel) * directionWeights.x) +
                                             (textureLod(uVoxelGridRadiance[textureIndices.y], texturePosition, mipMapLevel) * directionWeights.y) +
                                             (textureLod(uVoxelGridRadiance[textureIndices.z], texturePosition, mipMapLevel) * directionWeights.z));
@@ -222,8 +223,8 @@ float cvctTraceShadowCone(vec3 normal,
   uint countClipMaps = voxelGridData.countClipMaps;
 
   // Calculate the doubled aperture angle for the cone
-  float doubledAperture = max(1.0 / gridSize, vec4(2.0 * aperture));
-  
+  float doubledAperture = max(1.0 / gridSize, 2.0 * aperture);
+
   from += normal * (2.0  * oneOverGridSize * clipMapToWorldScaleFactors[0]);
   
   vec3 direction = to - from;
@@ -241,7 +242,7 @@ float cvctTraceShadowCone(vec3 normal,
 
   // Setup the texture indices and direction weights
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
-  vec3 directionWeights = getDirectionWeights(direction);
+  vec3 directionWeights = cvctGetDirectionWeights(direction);
   
   //maxDistance = min(maxDistance, 1.41421356237);
   dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
@@ -255,11 +256,11 @@ float cvctTraceShadowCone(vec3 normal,
   vec3 currentClipMapAAABMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
   vec3 currentClipMapAAABMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
   for(uint clipMapIndexCounter = 0u; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
-    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
-       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
       clipMapIndex = clipMapIndexCounter;
-      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
-      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex].xyz;
+      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex].xyz;
       foundClipMap = true;
       break;
     }
@@ -277,11 +278,11 @@ float cvctTraceShadowCone(vec3 normal,
         // If not, find the next clipmap
         bool foundClipMap = false;
         for(uint clipMapIndexCounter = clipMapIndex + 1; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
-          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
-             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
             clipMapIndex = clipMapIndexCounter;
-            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
-            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex].xyz;
+            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex].xyz;
             foundClipMap = true;
             break;
           }
@@ -347,17 +348,17 @@ float cvctTraceOcclusionCone(vec3 from,
   uint countClipMaps = voxelGridData.countClipMaps;
 
   // Calculate the doubled aperture angle for the cone
-  float doubledAperture = max(1.0 / gridSize, vec4(2.0 * aperture));
+  float doubledAperture = max(1.0 / gridSize, 2.0 * aperture);
   
-  from += normal * (2.0  * oneOverGridSize * clipMapToWorldScaleFactors[0]);
+  direction = normalize(direction);                    
+
+  from += direction * (2.0 * oneOverGridSize * clipMapToWorldScaleFactors[0]);
   
   // Set the starting distance
   float dist = offset;
   
   // Initialize the accumulator to zero, since we start at the beginning of the cone
   float accumulator = 0.0;                       
-
-  direction = normalize(direction);                    
 
   //maxDistance = min(maxDistance, 1.41421356237);
   //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
@@ -371,11 +372,11 @@ float cvctTraceOcclusionCone(vec3 from,
   vec3 currentClipMapAAABMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
   vec3 currentClipMapAAABMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
   for(uint clipMapIndexCounter = 0u; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
-    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
-       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
       clipMapIndex = clipMapIndexCounter;
-      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
-      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+      currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex].xyz;
+      currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex].xyz;
       foundClipMap = true;
       break;
     }
@@ -393,11 +394,11 @@ float cvctTraceOcclusionCone(vec3 from,
         // If not, find the next clipmap
         bool foundClipMap = false;
         for(uint clipMapIndexCounter = clipMapIndex + 1; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
-          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter])) && 
-             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter]))){
+          if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+             all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
             clipMapIndex = clipMapIndexCounter;
-            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex];
-            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex];
+            currentClipMapAAABMin = voxelGridData.clipMapAABBMin[clipMapIndex].xyz;
+            currentClipMapAAABMax = voxelGridData.clipMapAABBMax[clipMapIndex].xyz;
             foundClipMap = true;
             break;
           }
@@ -461,7 +462,7 @@ mat3 cvctRotationMatrix(vec3 axis, float angle){
 }                     
 
 // Calculate the sky light occlusion for a starting position and a direction
-vec3 cvctSkyLightOcclusion(vec3 from, 
+float cvctSkyLightOcclusion(vec3 from, 
                            vec3 normal){
 #ifndef NUM_SKY_CONES 
  #define NUM_SKY_CONES 5
@@ -687,7 +688,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
        t1 = cross(vec3(0.0, 0.0, 1.0), normal),
        tangent = normalize((length(t0) < length(t1)) ? t1 : t0),
        bitangent = normalize(cross(tangent, normal));
-  tangent = safeNormalize(cross(bitangent, normal));      
+  tangent = normalize(cross(bitangent, normal));      
   mat3 tangentSpace =
 #ifdef CVCT_SKY_LIGHT_OCCLUSION_JITTER
                       cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal, 0.0)).x) *
@@ -939,7 +940,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
        t1 = cross(vec3(0.0, 0.0, 1.0), normal),
        tangent = normalize((length(t0) < length(t1)) ? t1 : t0),
        bitangent = normalize(cross(tangent, normal));
-  tangent = safeNormalize(cross(bitangent, normal));      
+  tangent = normalize(cross(bitangent, normal));      
   mat3 tangentSpace =
 #ifdef CVCT_INDIRECT_DIRECT_LIGHT_JITTER
                       cvctRotationMatrix(normal, cvctVoxelJitterNoise(vec4(from + normal, 0.0)).x) *

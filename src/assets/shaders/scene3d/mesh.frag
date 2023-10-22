@@ -278,7 +278,7 @@ layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
 
 #endif
 
-#if defined(CASCADEDVOXELCONETRACING) 
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) 
 
 layout (set = 1, binding = 8, std140) readonly uniform VoxelGridData {
   #include "voxelgriddata_uniforms.glsl"
@@ -1692,7 +1692,7 @@ void main() {
   #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(BLEND) || defined(ENVMAP)
       ambientOcclusion = 1.0;
   #else      
-  #ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+  #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
       screenSpaceAmbientOcclusion = texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
       ambientOcclusion = screenSpaceAmbientOcclusion;
       //ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : screenSpaceAmbientOcclusion;
@@ -2114,7 +2114,7 @@ void main() {
                     clearcoatRoughness,                 //
                     specularWeight);                    //
 #endif
-#ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       {
         vec3 volumeSphericalHarmonics[9];
         globalIlluminationVolumeLookUp(volumeSphericalHarmonics, inWorldSpacePosition.xyz, vec3(0.0), normal.xyz);
@@ -2141,9 +2141,18 @@ void main() {
                       clearcoatRoughness,                                 //
                       specularWeight);                                    //
       }
+#elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
+      {
+        if(dot(diffuseColorAlpha.xyz, vec3(1.0)) > 1e-6){
+          diffuseOutput += cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz) * diffuseColorAlpha.xyz;
+        }
+        if(dot(F0, vec3(1.0)) > 1e-6){
+          specularOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0;
+        }
+      }
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT) 
-#if !defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+#if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING))
       float iblWeight = 1.0; // for future sky occulsion 
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;

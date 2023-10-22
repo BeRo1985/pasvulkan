@@ -431,6 +431,9 @@ addMeshFragmentShadingGlobalIlluminationVariants(){
   # Cascaded radiance hints
   addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_radiance_hints" "$2 -DGLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS"
   
+  # Cascaded voxel cone tracing
+  addMeshFragmentShadingAntialiasingVariants "${1}_globalillumination_cascaded_voxel_cone_tracing" "$2 -DGLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING"
+  
 }
 
 # Add mesh fragment shader depth only with different alphatest variants 
