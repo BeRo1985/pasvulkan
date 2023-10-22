@@ -2144,10 +2144,10 @@ void main() {
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
       {
         if(dot(diffuseColorAlpha.xyz, vec3(1.0)) > 1e-6){
-          diffuseOutput += cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz) * diffuseColorAlpha.xyz * screenSpaceAmbientOcclusion * cavity;
+          diffuseOutput += cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz) * diffuseColorAlpha.xyz * screenSpaceAmbientOcclusion * cavity * OneOverPI;
         }
         if(dot(F0, vec3(1.0)) > 1e-6){
-          specularOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0;
+          specularOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0 * cavity * OneOverPI;
         }
       }
 #endif

@@ -50,9 +50,15 @@ void main(){
   if(clipMapIndex < voxelGridData.countClipMaps){ // Just for to be sure alongside the invocations count above
     
     vec3 clipMapSpacePositions[3] = vec3[3](
+#if 0      
+      fma(vec3(voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(inWorldSpacePosition[0].xyz, 1.0)).xyz, vec3(2.0), vec3(-1.0)),
+      fma(vec3(voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(inWorldSpacePosition[1].xyz, 1.0)).xyz, vec3(2.0), vec3(-1.0)),
+      fma(vec3(voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(inWorldSpacePosition[2].xyz, 1.0)).xyz, vec3(2.0), vec3(-1.0))
+#else
       vec3((inWorldSpacePosition[0] - voxelGridData.clipMaps[clipMapIndex].xyz) / voxelGridData.clipMaps[clipMapIndex].w),
       vec3((inWorldSpacePosition[1] - voxelGridData.clipMaps[clipMapIndex].xyz) / voxelGridData.clipMaps[clipMapIndex].w),
       vec3((inWorldSpacePosition[2] - voxelGridData.clipMaps[clipMapIndex].xyz) / voxelGridData.clipMaps[clipMapIndex].w)
+#endif
     );   
 
     vec3 faceNormal = cross(inWorldSpacePosition[1] - inWorldSpacePosition[0], inWorldSpacePosition[2] - inWorldSpacePosition[0]);

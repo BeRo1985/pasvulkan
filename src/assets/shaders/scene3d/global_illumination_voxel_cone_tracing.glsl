@@ -181,7 +181,11 @@ vec4 cvctTraceRadianceCone(vec3 from,
       float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
       // Calculate the texture position
-      vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
+#if 0
+      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
+#else      
+      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
+#endif
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
@@ -308,7 +312,11 @@ float cvctTraceShadowCone(vec3 normal,
       float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
       // Calculate the texture position
-      vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
+#if 0
+      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
+#else      
+      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
+#endif
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
@@ -424,7 +432,11 @@ float cvctTraceOcclusionCone(vec3 from,
       float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
       // Calculate the texture position
-      vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
+#if 0
+      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
+#else      
+      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
+#endif
 
       // Accumulate the occlusion from the isotropic occulsion texture
       accumulator += (1.0 - accumulator) * textureLod(uVoxelGridOcclusion[clipMapIndex], texturePosition, mipMapLevel).x;

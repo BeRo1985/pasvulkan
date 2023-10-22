@@ -278,6 +278,8 @@ type { TpvScene3DRendererInstance }
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
             { TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
+             WorldToVoxelClipMaps:array[0..3] of TpvMatrix4x4;
+             WorldToNormalizedClipMaps:array[0..3] of TpvMatrix4x4;
              ClipMaps:array[0..3] of TpvVector4;
              ClipMapAABBMin:array[0..3] of TpvVector4;
              ClipMapAABBMax:array[0..3] of TpvVector4;
@@ -3903,6 +3905,15 @@ begin
 
  for CascadeIndex:=0 to fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1 do begin
   CascadedVolumeCascade:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex];
+  s:=CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToVoxelClipMaps[CascadeIndex]:=TpvMatrix4x4.Create(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s,0.0,0.0,0.0,
+                                                                                                                       0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s,0.0,0.0,
+                                                                                                                       0.0,0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s,0.0,
+                                                                                                                       -(CascadedVolumeCascade.fAABB.Min.x*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s)),-(CascadedVolumeCascade.fAABB.Min.y*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s)),-(CascadedVolumeCascade.fAABB.Min.z*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s)),1.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToNormalizedClipMaps[CascadeIndex]:=TpvMatrix4x4.Create(1.0/s,0.0,0.0,0.0,
+                                                                                                                            0.0,1.0/s,0.0,0.0,
+                                                                                                                            0.0,0.0,1.0/s,0.0,
+                                                                                                                            -(CascadedVolumeCascade.fAABB.Min.x/s),-(CascadedVolumeCascade.fAABB.Min.y/s),-(CascadedVolumeCascade.fAABB.Min.z/s),1.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*0.5);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
