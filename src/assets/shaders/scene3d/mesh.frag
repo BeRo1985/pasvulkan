@@ -2144,7 +2144,7 @@ void main() {
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
       {
         if(dot(diffuseColorAlpha.xyz, vec3(1.0)) > 1e-6){
-          diffuseOutput += cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz) * diffuseColorAlpha.xyz;
+          diffuseOutput += cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz) * diffuseColorAlpha.xyz * screenSpaceAmbientOcclusion * cavity;
         }
         if(dot(F0, vec3(1.0)) > 1e-6){
           specularOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0;
@@ -2152,8 +2152,12 @@ void main() {
       }
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT) 
-#if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING))
+#if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS))
+#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
+      float iblWeight = cvctSkyLightOcclusion(inWorldSpacePosition.xyz, normal.xyz); 
+#else
       float iblWeight = 1.0; // for future sky occulsion 
+#endif
       diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
       specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
       if ((flags & (1u << 7u)) != 0u) {

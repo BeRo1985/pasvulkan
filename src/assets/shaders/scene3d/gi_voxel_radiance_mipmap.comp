@@ -24,16 +24,24 @@ layout(push_constant) uniform PushConstants {
 
 #define voxelIndex(x, y, z) ((((z << 1) + y) << 1) + x)    
 
+ivec3 maxSourceSize;
+
+vec4 imageLoadEx(const uint index, ivec3 pos){
+  return (all(greaterThanEqual(pos, ivec3(0))) && all(lessThan(pos, maxSourceSize))) ? 
+          imageLoad(uImageSourceVolume[index], pos) : 
+          vec4(0.0);
+}
+
 void fetchVoxels(out vec4 voxels[8], const in uint index, const in ivec3 pos){
   voxels = vec4[8](
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(0, 0, 0))), // 0
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(1, 0, 0))), // 1
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(0, 1, 0))), // 2
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(1, 1, 0))), // 3
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(0, 0, 1))), // 4
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(1, 0, 1))), // 5
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(0, 1, 1))), // 6
-    vec4(imageLoad(uImageSourceVolume[index], pos + ivec3(1, 1, 1)))  // 7
+    vec4(imageLoadEx(index, pos + ivec3(0, 0, 0))), // 0
+    vec4(imageLoadEx(index, pos + ivec3(1, 0, 0))), // 1
+    vec4(imageLoadEx(index, pos + ivec3(0, 1, 0))), // 2
+    vec4(imageLoadEx(index, pos + ivec3(1, 1, 0))), // 3
+    vec4(imageLoadEx(index, pos + ivec3(0, 0, 1))), // 4
+    vec4(imageLoadEx(index, pos + ivec3(1, 0, 1))), // 5
+    vec4(imageLoadEx(index, pos + ivec3(0, 1, 1))), // 6
+    vec4(imageLoadEx(index, pos + ivec3(1, 1, 1)))  // 7
   );
 }                        
 
@@ -43,7 +51,7 @@ void main(){
 
   uint voxelDestinationGridSize = voxelSourceGridSize >> pushConstants.mipMapLevel;
 
-  voxelSourceGridSize >>= (pushConstants.mipMapLevel - 1);
+  voxelSourceGridSize >>= pushConstants.mipMapLevel - 1u;
 
   uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
 
@@ -53,9 +61,11 @@ void main(){
 
     uvec3 volumeDestinationPosition = uvec3(invocation.xy, invocation.z - (clipMapIndex * voxelDestinationGridSize));
 
-    uvec3 volumeSourcePosition = volumeDestinationPosition << 1u;
+    uvec3 volumeSourcePosition = volumeDestinationPosition << uvec3(1u);
 
     uint baseImageIndex = clipMapIndex * 6u;
+
+    maxSourceSize = ivec3(int(voxelSourceGridSize));
 
     vec4 voxels[8];
     {

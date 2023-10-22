@@ -335,7 +335,7 @@ begin
                              ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
                              (((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)*fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)+7) shr 3);
 
-  if (Index+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[0].MipMapLevels then begin
+  if (MipMapIndex+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[0].MipMapLevels then begin
    Index:=0;
    for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
     ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

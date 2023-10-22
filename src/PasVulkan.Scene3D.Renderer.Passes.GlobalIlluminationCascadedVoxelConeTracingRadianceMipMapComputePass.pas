@@ -337,7 +337,7 @@ begin
                              ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
                              (((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)*fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)+7) shr 3);
 
-  if (Index+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[0,0].MipMapLevels then begin
+  if (MipMapIndex+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[0,0].MipMapLevels then begin
    Index:=0;
    for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
     for SideIndex:=0 to 5 do begin
@@ -361,7 +361,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps,@ImageMemoryBarriers[0]);
+                                     fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps*6,@ImageMemoryBarriers[0]);
   end;
 
  end;
