@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass;
+unit PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass }
-     TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass=class(TpvFrameGraph.TComputePass)
+type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass }
+     TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass=class(TpvFrameGraph.TComputePass)
       public
       private
        fInstance:TpvScene3DRendererInstance;
@@ -103,33 +103,33 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualT
 
 implementation
 
-{ TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass }
+{ TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass }
 
-constructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='GlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass';
+ Name:='GlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass';
 
  //fFirst:=true;
 
 end;
 
-destructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.Destroy;
+destructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.AcquirePersistentResources;
 var Stream:TStream;
     Format:string;
 begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_voxel_visual_transfer_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_voxel_radiance_transfer_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -140,14 +140,14 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.AcquireVolatileResources;
 var InFlightFrameIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
     DescriptorImageInfos:TVkDescriptorImageInfoArray;
 begin
@@ -188,7 +188,7 @@ begin
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
 {fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
-                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.TPushConstants));//}
+                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.TPushConstants));//}
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -210,7 +210,7 @@ begin
    for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
     for SideIndex:=0 to 5 do begin
      DescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImageViews[0].Handle,
+                                                                fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImageViews[0].Handle,
                                                                 VK_IMAGE_LAYOUT_GENERAL);
      inc(Index);
     end;
@@ -264,7 +264,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvInt32;
 begin
  FreeAndNil(fPipeline);
@@ -277,12 +277,12 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..(4*6)-1] of TVkImageMemoryBarrier;
@@ -328,10 +328,10 @@ begin
                                                             VK_IMAGE_LAYOUT_GENERAL,
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
+                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
                                                             TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                             0,
-                                                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].MipMapLevels,
+                                                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].MipMapLevels,
                                                                                             0,
                                                                                             1));
    inc(Index);
@@ -360,7 +360,7 @@ begin
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualTransferComputePass.TPushConstants),
+                                 SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.TPushConstants),
                                  @PushConstants);//}
 
  aCommandBuffer.CmdDispatch((fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
@@ -376,7 +376,7 @@ begin
                                                             VK_IMAGE_LAYOUT_GENERAL,
                                                             VK_QUEUE_FAMILY_IGNORED,
                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
+                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
                                                             TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                             0,
                                                                                             1,

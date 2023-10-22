@@ -399,6 +399,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationRadianceHintsUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalIlluminationRadianceHintsDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TGlobalIlluminationRadianceHintsRSMUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -466,9 +467,12 @@ type { TpvScene3DRendererInstance }
        fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffer:TpvVulkanBuffer;
        fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer:TpvVulkanBuffer;
        fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages;
-       fGlobalIlluminationCascadedVoxelConeTracingVisualImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
+       fGlobalIlluminationCascadedVoxelConeTracingRadianceImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages;
        fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32;
        fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:TpvUInt32;
+       fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool:TpvVulkanDescriptorPool;
+       fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets:TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets;
       public
        fGlobalIlluminationCascadedVoxelConeTracingEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fGlobalIlluminationCascadedVoxelConeTracingEventReady:array[0..MaxInFlightFrames-1] of boolean;
@@ -600,9 +604,10 @@ type { TpvScene3DRendererInstance }
        property GlobalIlluminationCascadedVoxelConeTracingContentDataBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingContentDataBuffer;
        property GlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer:TpvVulkanBuffer read fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer;
        property GlobalIlluminationCascadedVoxelConeTracingOcclusionImages:TGlobalIlluminationCascadedVoxelConeTracingImages read fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages;
-       property GlobalIlluminationCascadedVoxelConeTracingVisualImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingVisualImages;
+       property GlobalIlluminationCascadedVoxelConeTracingRadianceImages:TGlobalIlluminationCascadedVoxelConeTracingSideImages read fGlobalIlluminationCascadedVoxelConeTracingRadianceImages;
        property GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
        property GlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:TpvUInt32 read fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount write fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
+       property GlobalIlluminationCascadedVoxelConeTracingDescriptorSets:TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets read fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets;
       public
        property NearestFarthestDepthVulkanBuffers:TVulkanBuffers read fNearestFarthestDepthVulkanBuffers;
        property DepthOfFieldAutoFocusVulkanBuffers:TVulkanBuffers read fDepthOfFieldAutoFocusVulkanBuffers;
@@ -1514,7 +1519,12 @@ begin
 
  FillChar(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingImages),#0);
 
- FillChar(fGlobalIlluminationCascadedVoxelConeTracingVisualImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingSideImages),#0);
+
+ FillChar(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets,SizeOf(TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets),#0);
+
+ fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool:=nil;
+ fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:=nil;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
@@ -1644,6 +1654,7 @@ begin
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex]);
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex]);
  end;
 
@@ -1651,7 +1662,7 @@ begin
 //FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]);
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]);
   for ImageIndex:=0 to 5 do begin
-   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingVisualImages[CascadeIndex,ImageIndex]);
+   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex]);
   end;
  end;
 
@@ -1664,6 +1675,10 @@ begin
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer);
 
  FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes);
+
+ FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool);
+
+ FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout);
 
  FreeAndNil(fImageBasedLightingReflectionProbeCubeMaps);
 
@@ -1708,6 +1723,8 @@ var AntialiasingFirstPass:TpvFrameGraph.TPass;
     InFlightFrameIndex,CascadeIndex,ImageIndex,Index:TpvSizeInt;
     Format:TVkFormat;
     GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
+    GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
+    GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:TVkDescriptorImageInfoArray;
 begin
 
  case Renderer.GlobalIlluminationMode of
@@ -1930,7 +1947,7 @@ begin
 
     for ImageIndex:=0 to 5 do begin
 
-     fGlobalIlluminationCascadedVoxelConeTracingVisualImages[CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
+     fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex]:=TpvScene3DRendererMipmappedArray3DImage.Create(Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                                       Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                                       Renderer.GlobalIlluminationVoxelGridSize,
                                                                                                                                       VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -1941,14 +1958,102 @@ begin
 
    end;
 
-   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool:=TpvVulkanDescriptorPool.Create(Renderer.VulkanDevice,
+                                                                                             TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                                             Renderer.CountInFlightFrames);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*Renderer.GlobalIlluminationVoxelCountClipMaps*(6+1));
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.Initialize;
 
-    fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(0,
+                                                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                             1,
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             []);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(1,
+                                                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                                             Renderer.GlobalIlluminationVoxelCountClipMaps,
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             []);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(2,
+                                                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                                             Renderer.GlobalIlluminationVoxelCountClipMaps*6,
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             []);
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.Initialize;
 
-    fGlobalIlluminationCascadedVoxelConeTracingEventReady[InFlightFrameIndex]:=false;
+   GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:=nil;
+   GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:=nil;
 
-    fGlobalIlluminationCascadedVoxelConeTracingFirst[InFlightFrameIndex]:=true;
+   try
 
+    SetLength(GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountClipMaps);
+    SetLength(GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountClipMaps*6);
+
+    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+
+     GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray[CascadeIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
+                                                                                                                        fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImageView.Handle,
+                                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+
+     for ImageIndex:=0 to 5 do begin
+
+      GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray[(CascadeIndex*6)+ImageIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
+                                                                                                                                       fGlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,ImageIndex].VulkanImageView.Handle,
+                                                                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+
+     end;
+
+    end;
+
+    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+     fGlobalIlluminationCascadedVoxelConeTracingEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+
+     fGlobalIlluminationCascadedVoxelConeTracingEventReady[InFlightFrameIndex]:=false;
+
+     fGlobalIlluminationCascadedVoxelConeTracingFirst[InFlightFrameIndex]:=true;
+
+     fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool,
+                                                                                                                  fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout);
+     fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                                                        0,
+                                                                                                        1,
+                                                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                                                        [],
+                                                                                                        [fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                                                        [],
+                                                                                                        false
+                                                                                                       );
+     fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                                                        0,
+                                                                                                        Renderer.GlobalIlluminationVoxelCountClipMaps,
+                                                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                                        GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray,
+                                                                                                        [],
+                                                                                                        [],
+                                                                                                        false
+                                                                                                       );
+     fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                                                        0,
+                                                                                                        Renderer.GlobalIlluminationVoxelCountClipMaps*6,
+                                                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                                        GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray,
+                                                                                                        [],
+                                                                                                        [],
+                                                                                                        false
+                                                                                                       );
+     fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].Flush;
+
+
+    end;
+
+   finally
+    GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray:=nil;
+    GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray:=nil;
    end;
 
   end;

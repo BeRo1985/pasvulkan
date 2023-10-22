@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass;
+unit PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -76,8 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
 
-type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass }
-     TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass=class(TpvFrameGraph.TComputePass)
+type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass }
+     TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass=class(TpvFrameGraph.TComputePass)
       public
        type TPushConstants=record
              MipMapLevel:TpvInt32;
@@ -106,33 +106,33 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualM
 
 implementation
 
-{ TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass }
+{ TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass }
 
-constructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='GlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass';
+ Name:='GlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass';
 
  //fFirst:=true;
 
 end;
 
-destructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.Destroy;
+destructor TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.AcquirePersistentResources;
 var Stream:TStream;
     Format:string;
 begin
 
  inherited AcquirePersistentResources;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_voxel_visual_mipmap_comp.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('gi_voxel_radiance_mipmap_comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -143,14 +143,14 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.AcquireVolatileResources;
 var InFlightFrameIndex,MipMapIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
     SourceDescriptorImageInfos,DestinationDescriptorImageInfos:TVkDescriptorImageInfoArray;
 begin
@@ -185,7 +185,7 @@ begin
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
-                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.TPushConstants));
+                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.TPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -201,7 +201,7 @@ begin
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
 
-  for MipMapIndex:=1 to fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[0,0].MipMapLevels-1 do begin
+  for MipMapIndex:=1 to fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[0,0].MipMapLevels-1 do begin
 
    SourceDescriptorImageInfos:=nil;
    DestinationDescriptorImageInfos:=nil;
@@ -213,10 +213,10 @@ begin
     for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
      for SideIndex:=0 to 5 do begin
       SourceDescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                       fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImageViews[MipMapIndex-1].Handle,
+                                                                       fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImageViews[MipMapIndex-1].Handle,
                                                                        VK_IMAGE_LAYOUT_GENERAL);
       DestinationDescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImageViews[MipMapIndex].Handle,
+                                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImageViews[MipMapIndex].Handle,
                                                                             VK_IMAGE_LAYOUT_GENERAL);
       inc(Index);
      end;
@@ -264,7 +264,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.ReleaseVolatileResources;
 var InFlightFrameIndex,MipMapIndex:TpvInt32;
 begin
  FreeAndNil(fPipeline);
@@ -279,17 +279,17 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,MipMapIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..(4*6)-1] of TVkImageMemoryBarrier;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.TPushConstants;
+    PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.TPushConstants;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -315,7 +315,7 @@ begin
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
- for MipMapIndex:=1 to fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[0,0].MipMapLevels-1 do begin
+ for MipMapIndex:=1 to fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[0,0].MipMapLevels-1 do begin
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                        fPipelineLayout.Handle,
@@ -330,14 +330,14 @@ begin
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   0,
-                                  SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingVisualMipMapComputePass.TPushConstants),
+                                  SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.TPushConstants),
                                   @PushConstants);
 
   aCommandBuffer.CmdDispatch(((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
                              ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
                              (((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)*fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)+7) shr 3);
 
-  if (Index+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[0,0].MipMapLevels then begin
+  if (Index+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[0,0].MipMapLevels then begin
    Index:=0;
    for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
     for SideIndex:=0 to 5 do begin
@@ -347,7 +347,7 @@ begin
                                                               VK_IMAGE_LAYOUT_GENERAL,
                                                               VK_QUEUE_FAMILY_IGNORED,
                                                               VK_QUEUE_FAMILY_IGNORED,
-                                                              fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
+                                                              fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                               MipMapIndex,
                                                                                               1,
@@ -377,10 +377,10 @@ begin
                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                              VK_QUEUE_FAMILY_IGNORED,
                                                              VK_QUEUE_FAMILY_IGNORED,
-                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
+                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
                                                              TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                              0,
-                                                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingVisualImages[ClipMapIndex,SideIndex].MipMapLevels,
+                                                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].MipMapLevels,
                                                                                              0,
                                                                                              1));
     inc(Index);
