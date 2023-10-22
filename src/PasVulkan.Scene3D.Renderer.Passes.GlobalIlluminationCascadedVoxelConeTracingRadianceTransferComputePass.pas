@@ -322,7 +322,7 @@ begin
  Index:=0;
  for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
   for SideIndex:=0 to 5 do begin
-   ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(0,
+   ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_NONE),
                                                             TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                             VK_IMAGE_LAYOUT_UNDEFINED,
                                                             VK_IMAGE_LAYOUT_GENERAL,

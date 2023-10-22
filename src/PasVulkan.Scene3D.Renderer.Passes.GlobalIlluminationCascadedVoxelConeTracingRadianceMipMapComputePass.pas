@@ -392,7 +392,7 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps,@ImageMemoryBarriers[0]);
+                                    fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps*6,@ImageMemoryBarriers[0]);
 
  end;
 

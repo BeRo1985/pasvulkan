@@ -283,9 +283,9 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var InFlightFrameIndex,MipMapIndex,Index,ClipMapIndex:TpvInt32;
+var InFlightFrameIndex,MipMapIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
-    ImageMemoryBarriers:array[0..3] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..(4*6)-1] of TVkImageMemoryBarrier;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass.TPushConstants;
 begin
@@ -362,7 +362,7 @@ begin
 
  end;
 
- begin
+{begin
 
   Index:=0;
   for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
@@ -388,7 +388,31 @@ begin
                                     0,nil,
                                     fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps,@ImageMemoryBarriers[0]);
 
+ end;}
+
+ Index:=0;
+ for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+  ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           VK_QUEUE_FAMILY_IGNORED,
+                                                           fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[ClipMapIndex].VulkanImage.Handle,
+                                                           TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                           0,
+                                                                                           fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[ClipMapIndex].MipMapLevels,
+                                                                                           0,
+                                                                                           1));
+  inc(Index);
  end;
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps,@ImageMemoryBarriers[0]);
+
 
 end;
 
