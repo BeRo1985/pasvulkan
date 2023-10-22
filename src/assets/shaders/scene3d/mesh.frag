@@ -2142,9 +2142,12 @@ void main() {
                       specularWeight);                                    //
       }
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
+      float iblWeight = 1.0; 
       {
         if(dot(diffuseColorAlpha.xyz, vec3(1.0)) > 1e-6){
-          diffuseOutput += cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz) * diffuseColorAlpha.xyz * screenSpaceAmbientOcclusion * cavity * OneOverPI;
+          vec4 c = cvctIndirectDiffuseLight(inWorldSpacePosition.xyz, normal.xyz);
+          diffuseOutput += c.xyz * diffuseColorAlpha.xyz * screenSpaceAmbientOcclusion * cavity * OneOverPI;
+          iblWeight = clamp(1.0 - c.w, 0.0, 1.0);
         }
         if(dot(F0, vec3(1.0)) > 1e-6){
           specularOutput += cvctIndirectSpecularLight(inWorldSpacePosition.xyz, normal.xyz, viewDirection, cvctRoughnessToVoxelConeTracingApertureAngle(perceptualRoughness), 1e+24) * F0 * cavity * OneOverPI;
@@ -2154,7 +2157,7 @@ void main() {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT) 
 #if !(defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS))
 #if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
-      float iblWeight = cvctSkyLightOcclusion(inWorldSpacePosition.xyz, normal.xyz); 
+//    float iblWeight = 1.0; 
 #else
       float iblWeight = 1.0; // for future sky occulsion 
 #endif

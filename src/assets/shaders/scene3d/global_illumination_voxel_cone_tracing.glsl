@@ -798,7 +798,7 @@ float cvctSkyLightOcclusion(vec3 from,
 }
 
 // Calculate the radiance for a starting position and a direction
-vec3 cvctIndirectDiffuseLight(vec3 from, 
+vec4 cvctIndirectDiffuseLight(vec3 from, 
                               vec3 normal){
 #ifndef NUM_CONES 
  #define NUM_CONES 5
@@ -824,15 +824,15 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
        corner2 = 0.5 * (ortho - ortho2);
   vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cellSizes[0], 
        coneOrigin = from + normalOffset;       
-  return ((cvctTraceRadianceCone(coneOrigin + (coneOffset * normal), normal, aperture, offset, maxDistance).xyz * 1.0) +
-           ((cvctTraceRadianceCone(coneOrigin + (coneOffset * ortho), mix(normal, ortho, angleMix), aperture, offset, maxDistance).xyz +
-             cvctTraceRadianceCone(coneOrigin - (coneOffset * ortho), mix(normal, -ortho, angleMix), aperture, offset, maxDistance).xyz +
-             cvctTraceRadianceCone(coneOrigin + (coneOffset * ortho2), mix(normal, ortho2, angleMix), aperture, offset, maxDistance).xyz +
-             cvctTraceRadianceCone(coneOrigin - (coneOffset * ortho2), mix(normal, -ortho2, angleMix), aperture, offset, maxDistance).xyz) * 1.0) +
-           ((cvctTraceRadianceCone(coneOrigin + (coneOffset * corner), mix(normal, corner, angleMix), aperture, offset, maxDistance).xyz +
-             cvctTraceRadianceCone(coneOrigin - (coneOffset * corner), mix(normal, -corner, angleMix), aperture, offset, maxDistance).xyz +
-             cvctTraceRadianceCone(coneOrigin + (coneOffset * corner2), mix(normal, corner2, angleMix), aperture, offset, maxDistance).xyz +
-             cvctTraceRadianceCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance).xyz) * 1.0)) / 9.0;
+  return ((cvctTraceRadianceCone(coneOrigin + (coneOffset * normal), normal, aperture, offset, maxDistance) * 1.0) +
+           ((cvctTraceRadianceCone(coneOrigin + (coneOffset * ortho), mix(normal, ortho, angleMix), aperture, offset, maxDistance) +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * ortho), mix(normal, -ortho, angleMix), aperture, offset, maxDistance) +
+             cvctTraceRadianceCone(coneOrigin + (coneOffset * ortho2), mix(normal, ortho2, angleMix), aperture, offset, maxDistance) +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * ortho2), mix(normal, -ortho2, angleMix), aperture, offset, maxDistance)) * 1.0) +
+           ((cvctTraceRadianceCone(coneOrigin + (coneOffset * corner), mix(normal, corner, angleMix), aperture, offset, maxDistance) +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * corner), mix(normal, -corner, angleMix), aperture, offset, maxDistance) +
+             cvctTraceRadianceCone(coneOrigin + (coneOffset * corner2), mix(normal, corner2, angleMix), aperture, offset, maxDistance) +
+             cvctTraceRadianceCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance)) * 1.0)) / 9.0;
 #else
 #if NUM_CONES == 1
   const vec3 coneDirections[1] = vec3[1](
@@ -1033,20 +1033,20 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                            bitangent, 
                            normal);
   vec4 color = vec4(0.0);
+  float weightSum = 0.0;
   [[unroll]] for(int i = 0; i < NUM_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
-      color += vec4(cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
+      color += cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
                                       normal,
                                           direction, 
                                           coneApertures[i], 
                                           offset, 
-                                          maxDistance).xyz,
-                     1.0) * 
-                coneWeights[i];
+                                          maxDistance) * coneWeights[i];
+      weightSum += coneWeights[i]; 
     }
   }
-  return color.xyz / max(color.w, 1e-6);
+  return color / max(weightSum, 1e-6);
 #endif
 }
 
