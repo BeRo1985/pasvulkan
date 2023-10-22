@@ -1282,11 +1282,9 @@ begin
   if fVoxels then begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
-   end else if CascadeIndex=0 then begin
-    CellSize:=Min(0.1,MaximumCascadeCellSize);
    end else begin
-    CellSize:=Min(CellSize*4,MaximumCascadeCellSize);
-   end;//}
+    CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));
+   end;
   end else begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
@@ -3913,7 +3911,8 @@ begin
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToNormalizedClipMaps[CascadeIndex]:=TpvMatrix4x4.Create(1.0/s,0.0,0.0,0.0,
                                                                                                                             0.0,1.0/s,0.0,0.0,
                                                                                                                             0.0,0.0,1.0/s,0.0,
-                                                                                                                            -(CascadedVolumeCascade.fAABB.Min.x/s),-(CascadedVolumeCascade.fAABB.Min.y/s),-(CascadedVolumeCascade.fAABB.Min.z/s),1.0);
+                                                                                                                            -(CascadedVolumeCascade.fAABB.Min.x/s),-(CascadedVolumeCascade.fAABB.Min.y/s
+                                                                                                                            ),-(CascadedVolumeCascade.fAABB.Min.z/s),1.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*0.5);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);

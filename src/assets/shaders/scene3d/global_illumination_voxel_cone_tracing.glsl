@@ -88,6 +88,78 @@ vec4 cvctVoxelJitterNoise(vec4 p4){
 
 // Trace a radiance cone for a given position and direction, and return the accumulated occlusion
 vec4 cvctTraceRadianceCone(vec3 from, 
+                           vec3 normal,  
+                           vec3 direction,
+                           float aperture,
+                           float offset,
+                           float maxDistance){
+  
+  vec4 accumulator = vec4(0.0);
+
+  uint clipMapIndex = 0;
+  vec4 clipMap = voxelGridData.clipMaps[clipMapIndex];
+  float voxelSize = clipSize.w * 2.0;
+  float oneOverVoxelSize = 1.0 / voxelSize;
+
+  float coneCoefficient = aperture;
+
+  float dist = voxelSize;
+  float stepDist = dist;
+
+  vec3 startPosition = fma(normal, vec3(voxelSize), from);
+
+  bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
+  vec3 directionWeights = cvctGetDirectionWeights(direction);
+
+  while((dist < maxDistance) && (accumlator.w < 1.0) && (clipMapIndex < voxelGridData.countClipMaps)){
+
+    vec3 position = fma(direction, vec3(dist), startPosition);
+
+    float diameter = max(voxelSize, coneCoefficient * dist);
+    float clipMapLOD = clamp(log2(diameter * oneOverVoxelSize), clipMapIndex, float(voxelGridData.countClipMaps - 1u));
+    uint clipMapIndexEx = uint(floor(clipMapLOD));
+    float clipMapBlend = fract(clipMapLOD); 
+
+    vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx];
+    vec3 clipMapPosition = fma((position - clipMap.xyz) / clipMap.w, vec3(0.5), vec3(0.5));
+    if(any(lessThan(clipMapPosition, vec3(0.0))) || any(greaterThan(clipMapPosition, vec3(1.0)))){
+      clipMapIndex++;
+      continue;
+    }
+
+    vec4 sample;
+
+    {
+      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx) * 6);
+      sample = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
+                (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
+                (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w);
+    }
+
+    if((clipMapBlend > 0.0) && ((clipMapIndexEx + 1u) < voxelGridData.countClipMaps)){
+      vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx + 1u];
+      vec3 clipMapPosition = fma((position - clipMap.xyz) / clipMap.w, vec3(0.5), vec3(0.5));
+      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx + 1u) * 6);
+      sample = mix(sample,
+                   ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
+                    (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
+                    (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w),
+                   clipMapBlend);
+    }
+
+    accumulator += sample * (1.0 - accumulator.w);
+
+    float stepSize = voxelGridData.cellSizes[clipMapIndexEx] * 0.5;
+
+    dist += (stepDist = stepSize * diameter); 
+
+  }
+
+  return accumulator;
+   
+}
+
+vec4 cvctTraceRadianceCone(vec3 from, 
                            vec3 direction,
                            float aperture,
                            float offset,
