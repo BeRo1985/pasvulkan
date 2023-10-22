@@ -278,20 +278,6 @@ layout (set = 1, binding = 7, std430) readonly buffer FrustumClusterGridData {
 
 #endif
 
-#if defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) 
-
-layout (set = 1, binding = 8, std140) readonly uniform VoxelGridData {
-  #include "voxelgriddata_uniforms.glsl"
-} voxelGridData;
-
-layout(set = 1, binding = 9) uniform sampler3D uVoxelGridOcclusion[];
-
-layout(set = 1, binding = 10) uniform sampler3D uVoxelGridRadiance[];
-
-#include "global_illumination_voxel_cone_tracing.glsl"
-
-#endif
-
 #ifdef VOXELIZATION
   layout(location = 0) out vec4 outFragColor;
   #include "voxelization_globals.glsl"
@@ -300,12 +286,26 @@ layout(set = 1, binding = 10) uniform sampler3D uVoxelGridRadiance[];
 // Extra global illumination descriptor set (optional, if global illumination is enabled) for more easily sharing the same 
 // global illumination data between multiple passes (e.g. opaque and transparent passes).
 
-#ifdef GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS
+#if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
+
   #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET 2
   #define GLOBAL_ILLUMINATION_VOLUME_UNIFORM_BINDING 0
   layout(set = GLOBAL_ILLUMINATION_VOLUME_UNIFORM_SET, binding = 1) uniform sampler3D uTexGlobalIlluminationCascadedRadianceHintsSHVolumes[];
   #define GLOBAL_ILLUMINATION_VOLUME_MESH_FRAGMENT
   #include "global_illumination_cascaded_radiance_hints.glsl"
+
+#elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING) 
+
+  layout (set = 2, binding = 0, std140) readonly uniform VoxelGridData {
+    #include "voxelgriddata_uniforms.glsl"
+  } voxelGridData;
+
+  layout(set = 2, binding = 1) uniform sampler3D uVoxelGridOcclusion[];
+
+  layout(set = 2, binding = 2) uniform sampler3D uVoxelGridRadiance[];
+
+  #include "global_illumination_voxel_cone_tracing.glsl"
+
 #endif
 
 #ifndef VOXELIZATION
