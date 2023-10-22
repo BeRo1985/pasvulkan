@@ -2200,7 +2200,7 @@ void main() {
       color.xyz += globalIlluminationCascadeVisualizationColor(inWorldSpacePosition).xyz;
 #endif
 #elif defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
-#if 1
+#if 0
       color.xyz += cvctCascadeVisualizationColor(inWorldSpacePosition).xyz;
 #endif
 #endif
