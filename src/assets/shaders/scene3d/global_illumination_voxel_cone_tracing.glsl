@@ -18,9 +18,9 @@ const float CVCT_INDIRECT_DIST_K = 0.01;
 float cvctRoughnessToVoxelConeTracingApertureAngle(float roughness){
   roughness = clamp(roughness, 0.0, 1.0);
 #if ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD == 0
-	return tan(0.0003474660443456835 + (roughness * (1.3331290497744692 - (roughness * 0.5040552688878546))));
+  return tan(0.0003474660443456835 + (roughness * (1.3331290497744692 - (roughness * 0.5040552688878546))));
 #elif ROUGHNESSTOVOXELCONETRACINGAPERTUREANGLE_METHOD == 1
-	return tan(acos(pow(0.244, 1.0 / (clamp(2.0 / max(1e-4, (roughness * roughness)) - 2.0, 4.0, 1024.0 * 16.0) + 1.0))));
+  return tan(acos(pow(0.244, 1.0 / (clamp(2.0 / max(1e-4, (roughness * roughness)) - 2.0, 4.0, 1024.0 * 16.0) + 1.0))));
 #else
   return clamp(tan((PI * (0.5 * 0.75)) * max(0.0, roughness)), 0.00174533102, 3.14159265359);
 #endif  
@@ -81,7 +81,7 @@ vec4 cvctGetTrilinearInterpolatedVoxelRadiance(const in vec3 position, const in 
 
 // Generate jitter noise for a given position
 vec4 cvctVoxelJitterNoise(vec4 p4){
-	p4 = fract(p4 * vec4(443.897, 441.423, 437.195, 444.129));
+  p4 = fract(p4 * vec4(443.897, 441.423, 437.195, 444.129));
   p4 += dot(p4, p4.wzxy + vec4(19.19));
   return fract((p4.xxyz + p4.yzzw) * p4.zywx);
 }               
@@ -468,12 +468,12 @@ vec3 cvctSkyLightOcclusion(vec3 from,
 #endif
 //$define indirectDiffuseLightJitter
 #if NUM_SKY_CONES == 9
-	const float angleMix = 0.5, 
+  const float angleMix = 0.5, 
               coneOffset = -0.01,
               aperture = tan(radians(22.5)),
               offset = 4.0 * voxelGridData.cellSizes[0],
               maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
-	vec3 u = normalize(normal),
+  vec3 u = normalize(normal),
 #if 0
        v = cross(vec3(0.0, 1.0, 0.0), u),
        w = cross(vec3(0.0, 0.0, 1.0), u),
@@ -498,31 +498,31 @@ vec3 cvctSkyLightOcclusion(vec3 from,
              cvctTraceOcclusionCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance)) * 1.0)) / 9.0;
 #else
 #if NUM_SKY_CONES == 1
-	const vec3 coneDirections[1] = vec3[1](
+  const vec3 coneDirections[1] = vec3[1](
                                    vec3(0.0, 0.0, 1.0)
                                  );  
-	const float coneWeights[1] = float[1](
+  const float coneWeights[1] = float[1](
                                  1.0
                                );  
-	const float coneApertures[1] = float[1]( // tan(63.4349488)
+  const float coneApertures[1] = float[1]( // tan(63.4349488)
                                    2.0
                                  );  
 #elif NUM_SKY_CONES == 5
-	const vec3 coneDirections[5] = vec3[5](
+  const vec3 coneDirections[5] = vec3[5](
                                    vec3(0.0, 0.0, 1.0),
                                    vec3(0.0, 0.707106781, 0.707106781),
                                    vec3(0.0, -0.707106781, 0.707106781),
                                    vec3(0.707106781, 0.0, 0.707106781),
                                    vec3(-0.707106781, 0.0, 0.707106781)
                                  );  
-	const float coneWeights[5] = float[5](
+  const float coneWeights[5] = float[5](
                                  0.28, 
                                  0.18, 
                                  0.18, 
                                  0.18, 
                                  0.18
                                );  
-	const float coneApertures[5] = float[5]( // tan(45)
+  const float coneApertures[5] = float[5]( // tan(45)
                                    1.0, 
                                    1.0, 
                                    1.0, 
@@ -531,7 +531,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                  );  
 #elif NUM_SKY_CONES == 6
 #if 0
-	const vec3 coneDirections[6] = vec3[6](
+  const vec3 coneDirections[6] = vec3[6](
                                    normalize(vec3(0.0, 0.0, 1.0)),
                                    normalize(vec3(-0.794654, 0.607062, 0.000000)),
                                    normalize(vec3(0.642889, 0.607062, 0.467086)), 
@@ -539,7 +539,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                    normalize(vec3(-0.245562, 0.607062, 0.755761)),
                                    normalize(vec3(-0.245562, 0.607062, -0.755761))
                                  );  
-	const float coneWeights[6] = float[6](
+  const float coneWeights[6] = float[6](
                                  1.0, 
                                  0.607,
                                  0.607, 
@@ -547,7 +547,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                  0.607, 
                                  0.607
                                );  
-	const float coneApertures[6] = float[6]( 
+  const float coneApertures[6] = float[6]( 
                                    0.5, 
                                    0.549092, 
                                    0.549092, 
@@ -556,7 +556,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                    0.549092
                                  );  
 #else
-	const vec3 coneDirections[6] = vec3[6](
+  const vec3 coneDirections[6] = vec3[6](
                                    vec3(0.0, 0.0, 1.0),
                                    vec3(0.0, 0.866025, 0.5),
                                    vec3(0.823639, 0.267617, 0.5),
@@ -564,7 +564,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                    vec3(-0.509037, -0.700629, 0.5),
                                    vec3(-0.823639, 0.267617, 0.5)
                                  );  
-	const float coneWeights[6] = float[6](
+  const float coneWeights[6] = float[6](
 #if 0
                                  3.14159 * 0.25, 
                                  (3.14159 * 3.0) / 20.0, 
@@ -581,7 +581,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                  0.15
 #endif
                                );  
-	const float coneApertures[6] = float[6]( // tan(30)
+  const float coneApertures[6] = float[6]( // tan(30)
                                    0.57735026919, 
                                    0.57735026919, 
                                    0.57735026919, 
@@ -591,7 +591,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                  );  
 #endif
 #elif NUM_SKY_CONES == 8
-	const vec3 coneDirections[8] = vec3[8](
+  const vec3 coneDirections[8] = vec3[8](
                                     vec3(0.57735, 0.57735, 0.57735),      
                                     vec3(-0.57735, -0.57735, 0.57735),     
                                     vec3(-0.903007, 0.182696, 0.388844),    
@@ -601,7 +601,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                     vec3(-0.182696, 0.388844, 0.903007),        
                                     vec3(0.182696, -0.388844, 0.903007)          
                                   );  
-	const float coneWeights[8] = float[8](
+  const float coneWeights[8] = float[8](
                                  1.0 / 8.0, 
                                  1.0 / 8.0, 
                                  1.0 / 8.0, 
@@ -611,7 +611,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                  1.0 / 8.0, 
                                  1.0 / 8.0
                                );  
-	const float coneApertures[8] = float[8]( 
+  const float coneApertures[8] = float[8]( 
                                    0.4363325, 
                                    0.4363325, 
                                    0.4363325, 
@@ -622,7 +622,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                    0.4363325
                                  );  
 #elif NUM_SKY_CONES == 16
-	const vec3 coneDirections[16] = vec3[16](
+  const vec3 coneDirections[16] = vec3[16](
                                     vec3(0.898904, 0.435512, 0.0479745),
                                     vec3(0.898904, -0.0479745, 0.435512),
                                     vec3(-0.898904, -0.435512, 0.0479745),
@@ -640,7 +640,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                     vec3(-0.57735, 0.57735, 0.57735),
                                     vec3(-0.57735, -0.57735, 0.57735)
                                   );  
-	const float coneWeights[16] = float[16](
+  const float coneWeights[16] = float[16](
                                   1.0 / 16.0, 
                                   1.0 / 16.0, 
                                   1.0 / 16.0, 
@@ -658,7 +658,7 @@ vec3 cvctSkyLightOcclusion(vec3 from,
                                   1.0 / 16.0, 
                                   1.0 / 16.0
                                 );  
-	const float coneApertures[16] = float[16]( 
+  const float coneApertures[16] = float[16]( 
                                     0.3141595, 
                                     0.3141595, 
                                     0.3141595, 
@@ -720,12 +720,12 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
 #endif
 //$define indirectDiffuseLightJitter
 #if NUM_CONES == 9
-	const float angleMix = 0.5, 
+  const float angleMix = 0.5, 
               coneOffset = -0.01,
               aperture = tan(radians(22.5)),
               offset = 4.0 * voxelGridData.cellSizes[0],
               maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
-	vec3 u = normalize(normal),
+  vec3 u = normalize(normal),
 #if 0
        v = cross(vec3(0.0, 1.0, 0.0), u),
        w = cross(vec3(0.0, 0.0, 1.0), u),
@@ -750,31 +750,31 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
              cvctTraceRadianceCone(coneOrigin - (coneOffset * corner2), mix(normal, -corner2, angleMix), aperture, offset, maxDistance).xyz) * 1.0)) / 9.0;
 #else
 #if NUM_CONES == 1
-	const vec3 coneDirections[1] = vec3[1](
+  const vec3 coneDirections[1] = vec3[1](
                                    vec3(0.0, 0.0, 1.0)
                                  );  
-	const float coneWeights[1] = float[1](
+  const float coneWeights[1] = float[1](
                                  1.0
                                );  
-	const float coneApertures[1] = float[1]( // tan(63.4349488)
+  const float coneApertures[1] = float[1]( // tan(63.4349488)
                                    2.0
                                  );  
 #elif NUM_CONES == 5
-	const vec3 coneDirections[5] = vec3[5](
+  const vec3 coneDirections[5] = vec3[5](
                                    vec3(0.0, 0.0, 1.0),
                                    vec3(0.0, 0.707106781, 0.707106781),
                                    vec3(0.0, -0.707106781, 0.707106781),
                                    vec3(0.707106781, 0.0, 0.707106781),
                                    vec3(-0.707106781, 0.0, 0.707106781)
                                  );  
-	const float coneWeights[5] = float[5](
+  const float coneWeights[5] = float[5](
                                  0.28, 
                                  0.18, 
                                  0.18, 
                                  0.18, 
                                  0.18
                                );  
-	const float coneApertures[5] = float[5]( // tan(45)
+  const float coneApertures[5] = float[5]( // tan(45)
                                    1.0, 
                                    1.0, 
                                    1.0, 
@@ -783,7 +783,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                  );  
 #elif NUM_CONES == 6
 #if 0
-	const vec3 coneDirections[6] = vec3[6](
+  const vec3 coneDirections[6] = vec3[6](
                                    normalize(vec3(0.0, 0.0, 1.0)),
                                    normalize(vec3(-0.794654, 0.607062, 0.000000)),
                                    normalize(vec3(0.642889, 0.607062, 0.467086)), 
@@ -791,7 +791,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                    normalize(vec3(-0.245562, 0.607062, 0.755761)),
                                    normalize(vec3(-0.245562, 0.607062, -0.755761))
                                  );  
-	const float coneWeights[6] = float[6](
+  const float coneWeights[6] = float[6](
                                  1.0, 
                                  0.607,
                                  0.607, 
@@ -799,7 +799,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                  0.607, 
                                  0.607
                                );  
-	const float coneApertures[6] = float[6]( 
+  const float coneApertures[6] = float[6]( 
                                    0.5, 
                                    0.549092, 
                                    0.549092, 
@@ -808,7 +808,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                    0.549092
                                  );  
 #else
-	const vec3 coneDirections[6] = vec3[6](
+  const vec3 coneDirections[6] = vec3[6](
                                    vec3(0.0, 0.0, 1.0),
                                    vec3(0.0, 0.866025, 0.5),
                                    vec3(0.823639, 0.267617, 0.5),
@@ -816,7 +816,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                    vec3(-0.509037, -0.700629, 0.5),
                                    vec3(-0.823639, 0.267617, 0.5)
                                  );  
-	const float coneWeights[6] = float[6](
+  const float coneWeights[6] = float[6](
 #if 0
                                  3.14159 * 0.25, 
                                  (3.14159 * 3.0) / 20.0, 
@@ -833,7 +833,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                  0.15
 #endif
                                );  
-	const float coneApertures[6] = float[6]( // tan(30)
+  const float coneApertures[6] = float[6]( // tan(30)
                                    0.57735026919, 
                                    0.57735026919, 
                                    0.57735026919, 
@@ -843,7 +843,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                  );  
 #endif
 #elif NUM_CONES == 8
-	const vec3 coneDirections[8] = vec3[8](
+  const vec3 coneDirections[8] = vec3[8](
                                     vec3(0.57735, 0.57735, 0.57735),      
                                     vec3(-0.57735, -0.57735, 0.57735),     
                                     vec3(-0.903007, 0.182696, 0.388844),    
@@ -853,7 +853,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                     vec3(-0.182696, 0.388844, 0.903007),        
                                     vec3(0.182696, -0.388844, 0.903007)          
                                   );  
-	const float coneWeights[8] = float[8](
+  const float coneWeights[8] = float[8](
                                  1.0 / 8.0, 
                                  1.0 / 8.0, 
                                  1.0 / 8.0, 
@@ -863,7 +863,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                  1.0 / 8.0, 
                                  1.0 / 8.0
                                );  
-	const float coneApertures[8] = float[8]( 
+  const float coneApertures[8] = float[8]( 
                                    0.4363325, 
                                    0.4363325, 
                                    0.4363325, 
@@ -874,7 +874,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                    0.4363325
                                  );  
 #elif NUM_CONES == 16
-	const vec3 coneDirections[16] = vec3[16](
+  const vec3 coneDirections[16] = vec3[16](
                                     vec3(0.898904, 0.435512, 0.0479745),
                                     vec3(0.898904, -0.0479745, 0.435512),
                                     vec3(-0.898904, -0.435512, 0.0479745),
@@ -892,7 +892,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                     vec3(-0.57735, 0.57735, 0.57735),
                                     vec3(-0.57735, -0.57735, 0.57735)
                                   );  
-	const float coneWeights[16] = float[16](
+  const float coneWeights[16] = float[16](
                                   1.0 / 16.0, 
                                   1.0 / 16.0, 
                                   1.0 / 16.0, 
@@ -910,7 +910,7 @@ vec3 cvctIndirectDiffuseLight(vec3 from,
                                   1.0 / 16.0, 
                                   1.0 / 16.0
                                 );  
-	const float coneApertures[16] = float[16]( 
+  const float coneApertures[16] = float[16]( 
                                     0.3141595, 
                                     0.3141595, 
                                     0.3141595, 
@@ -986,7 +986,7 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float indexOfRefraction, 
                                  float maxDistance){
   normal = normalize(normal);
-	return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
+  return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
                                normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
                                aperture, 
                                voxelGridData.cellSizes[0], 
