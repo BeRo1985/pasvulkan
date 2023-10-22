@@ -116,7 +116,6 @@ vec4 cvctTraceRadianceCone(vec3 from,
   // Setup the texture indices and direction weights
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
   vec3 directionWeights = getDirectionWeights(direction);
-  ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
   
   //maxDistance = min(maxDistance, 1.41421356237);
   //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
@@ -243,7 +242,6 @@ float cvctTraceShadowCone(vec3 normal,
   // Setup the texture indices and direction weights
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
   vec3 directionWeights = getDirectionWeights(direction);
-  ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
   
   //maxDistance = min(maxDistance, 1.41421356237);
   dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
@@ -312,6 +310,7 @@ float cvctTraceShadowCone(vec3 normal,
       vec3 texturePosition = (position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w;
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
+      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
       accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], texturePosition, mipMapLevel).w * directionWeights.x) +
                                             (textureLod(uVoxelGridRadiance[textureIndices.y], texturePosition, mipMapLevel).w * directionWeights.y) +
                                             (textureLod(uVoxelGridRadiance[textureIndices.z], texturePosition, mipMapLevel).w * directionWeights.z));
