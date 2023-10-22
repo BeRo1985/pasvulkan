@@ -463,7 +463,7 @@ mat3 cvctRotationMatrix(vec3 axis, float angle){
 
 // Calculate the sky light occlusion for a starting position and a direction
 float cvctSkyLightOcclusion(vec3 from, 
-                           vec3 normal){
+                            vec3 normal){
 #ifndef NUM_SKY_CONES 
  #define NUM_SKY_CONES 5
 #endif
@@ -993,5 +993,23 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                voxelGridData.cellSizes[0], 
                                maxDistance).xyz;
 }                                   
+
+vec4 cvctCascadeVisualizationColor(const vec3 position){
+  uint clipMapIndex = 0u;
+  for(uint clipMapIndexCounter = 0u, countClipMaps = voxelGridData.countClipMaps; clipMapIndexCounter < countClipMaps; clipMapIndexCounter++){
+    if(all(greaterThanEqual(position, voxelGridData.clipMapAABBMin[clipMapIndexCounter].xyz)) && 
+       all(lessThanEqual(position, voxelGridData.clipMapAABBMax[clipMapIndexCounter].xyz))){
+      clipMapIndex = clipMapIndexCounter;
+      break;
+    }
+  }
+  vec4 colors[4] = vec4[4](
+    vec4(0.125, 0.0, 0.0, 1.0),
+    vec4(0.0, 0.125, 0.0, 1.0),
+    vec4(0.0, 0.0, 0.125, 1.0),
+    vec4(0.125, 0.125, 0.0, 1.0)      
+  );
+  return colors[clipMapIndex];
+}
 
 #endif // GLOBAL_ILLUMINATION_VOXEL_CONE_TRACING_GLSL
