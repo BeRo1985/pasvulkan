@@ -41,6 +41,21 @@ vec3 cvctGetDirectionWeights(vec3 direction){
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+// Calculate the voxel grid position for a given world position in clip space
+vec3 cvctWorldToClipSpace(const in vec3 position, const in uint clipMapIndex){
+  vec4 clipMap = voxelGridData.clipMaps[clipMapIndex];
+  return (position - clipMap.xyz) / clipMap.w;
+}
+
+// Calculate the voxel grid position for a given world position in texture space
+vec3 cvctWorldToTextureSpace(const in vec3 position, const in uint clipMapIndex){
+  vec4 clipMap = voxelGridData.clipMaps[clipMapIndex];
+  return fma((position - clipMap.xyz) / clipMap.w, vec3(0.5), vec3(0.5));
+//return (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // Occlusion is isotropic, so we only need to sample one direction
 
 // Fetch a voxel from the voxel grid
@@ -111,8 +126,9 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   vec3 startPosition = fma(normal, vec3(voxelSize), from);
 
-  bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
   vec3 directionWeights = cvctGetDirectionWeights(direction);
+  bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
+  ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4);
 
   while((dist < maxDistance) && (accumulator.w < 1.0) && (clipMapIndex < voxelGridData.countClipMaps)){
 
@@ -123,8 +139,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
     uint clipMapIndexEx = uint(floor(clipMapLOD));
     float clipMapBlend = fract(clipMapLOD); 
 
-    vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx];
-    vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, 1.0).xyx, vec3(0.5), vec3(0.5));
+    vec3 clipMapPosition = cvctWorldToTextureSpace(position, clipMapIndexEx);
     if(any(lessThan(clipMapPosition, vec3(0.0))) || any(greaterThan(clipMapPosition, vec3(1.0)))){
       clipMapIndex++;
       continue;
@@ -133,22 +148,21 @@ vec4 cvctTraceRadianceCone(vec3 from,
     vec4 value;
 
     {
-      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx) * 6);
+      int textureIndexOffset = int(clipMapIndexEx) * 6;
       float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx] * voxelGridData.gridSize) + 1.0));   
-      value = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
-               (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
-               (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w);
+      value = ((textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
+               (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
+               (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w);
     }
 
     if((clipMapBlend > 0.0) && ((clipMapIndexEx + 1u) < voxelGridData.countClipMaps)){
-      vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx + 1u];
-      vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, 1.0).xyx, vec3(0.5), vec3(0.5));
-      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx + 1u) * 6);
+      vec3 clipMapPosition = cvctWorldToTextureSpace(position, clipMapIndexEx + 1u);
+      int textureIndexOffset = int(clipMapIndexEx + 1u) * 6;
       float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx + 1u] * voxelGridData.gridSize) + 1.0));   
       value = mix(value,
-                  ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
-                   (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
-                   (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w),
+                  ((textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
+                   (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
+                   (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w),
                  clipMapBlend);
     }
 
@@ -258,17 +272,13 @@ vec4 cvctTraceRadianceCone(vec3 from,
       float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
       // Calculate the texture position
-#if 0
-      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
-#else      
-      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
-#endif
+      vec3 clipMapPosition = cvctWorldToTextureSpace(position, clipMapIndex);
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
-      accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], texturePosition, mipMapLevel) * directionWeights.x) +
-                                            (textureLod(uVoxelGridRadiance[textureIndices.y], texturePosition, mipMapLevel) * directionWeights.y) +
-                                            (textureLod(uVoxelGridRadiance[textureIndices.z], texturePosition, mipMapLevel) * directionWeights.z));
+      accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
+                                            (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
+                                            (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z));
 
       // Move the position forward
       dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex];
@@ -389,17 +399,13 @@ float cvctTraceShadowCone(vec3 normal,
       float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
       // Calculate the texture position
-#if 0
-      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
-#else      
-      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
-#endif
+      vec3 clipMapPosition = cvctWorldToTextureSpace(position, clipMapIndex);
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(clipMapIndex * 6);
-      accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], texturePosition, mipMapLevel).w * directionWeights.x) +
-                                            (textureLod(uVoxelGridRadiance[textureIndices.y], texturePosition, mipMapLevel).w * directionWeights.y) +
-                                            (textureLod(uVoxelGridRadiance[textureIndices.z], texturePosition, mipMapLevel).w * directionWeights.z));
+      accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel).w * directionWeights.x) +
+                                            (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel).w * directionWeights.y) +
+                                            (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel).w * directionWeights.z));
 
       // Move the position forward
       dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex] * s;
@@ -509,14 +515,10 @@ float cvctTraceOcclusionCone(vec3 from,
       float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
       // Calculate the texture position
-#if 0
-      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz * vec2(1.0, -1.0).xyx; 
-#else      
-      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5)) * vec2(1.0, -1.0).xyx;
-#endif
+      vec3 clipMapPosition = cvctWorldToTextureSpace(position, clipMapIndex);
 
       // Accumulate the occlusion from the isotropic occulsion texture
-      accumulator += (1.0 - accumulator) * textureLod(uVoxelGridOcclusion[clipMapIndex], texturePosition, mipMapLevel).x;
+      accumulator += (1.0 - accumulator) * textureLod(uVoxelGridOcclusion[clipMapIndex], clipMapPosition, mipMapLevel).x;
 
       // Move the position forward
       dist += max(diameter, oneOverGridSize) * clipMapToWorldScaleFactors[clipMapIndex];
