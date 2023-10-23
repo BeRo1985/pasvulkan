@@ -96,12 +96,15 @@ vec4 cvctTraceRadianceCone(vec3 from,
   
   vec4 accumulator = vec4(0.0);
 
+  vec4 clipMapToWorldScaleFactors = voxelGridData.cellSizes * voxelGridData.gridSize;  
+  vec4 worldToClipMapScaleFactors = vec4(1.0) / clipMapToWorldScaleFactors;
+
   uint clipMapIndex = 0;
   vec4 clipMap = voxelGridData.clipMaps[clipMapIndex];
   float voxelSize = clipMap.w * 2.0;
   float oneOverVoxelSize = 1.0 / voxelSize;
 
-  float coneCoefficient = aperture;
+  float doubledAperture = 2.0 * aperture;
 
   float dist = voxelSize;
   float stepDist = dist;
@@ -115,13 +118,13 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
     vec3 position = fma(direction, vec3(dist), startPosition);
 
-    float diameter = max(voxelSize, coneCoefficient * dist);
+    float diameter = max(voxelSize, doubledAperture * dist);
     float clipMapLOD = clamp(log2(diameter * oneOverVoxelSize), clipMapIndex, float(voxelGridData.countClipMaps - 1u));
     uint clipMapIndexEx = uint(floor(clipMapLOD));
     float clipMapBlend = fract(clipMapLOD); 
 
     vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx];
-    vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, -1.0).xyx, vec3(0.5), vec3(0.5));
+    vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, 1.0).xyx, vec3(0.5), vec3(0.5));
     if(any(lessThan(clipMapPosition, vec3(0.0))) || any(greaterThan(clipMapPosition, vec3(1.0)))){
       clipMapIndex++;
       continue;
@@ -131,19 +134,21 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
     {
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx) * 6);
-      value = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
-               (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
-               (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w);
+      float mipMapLevel = max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx] * voxelGridData.gridSize) + 1.0));   
+      value = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
+               (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
+               (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w);
     }
 
     if((clipMapBlend > 0.0) && ((clipMapIndexEx + 1u) < voxelGridData.countClipMaps)){
       vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx + 1u];
-      vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, -1.0).xyx, vec3(0.5), vec3(0.5));
+      vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, 1.0).xyx, vec3(0.5), vec3(0.5));
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx + 1u) * 6);
+      float mipMapLevel = max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx + 1u] * voxelGridData.gridSize) + 1.0));   
       value = mix(value,
-                  ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, 0) * directionWeights.x) +
-                   (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, 0) * directionWeights.y) +
-                   (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, 0) * directionWeights.z)) * (stepDist / clipMap.w),
+                  ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
+                   (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
+                   (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w),
                  clipMapBlend);
     }
 
@@ -254,9 +259,9 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
       // Calculate the texture position
 #if 0
-      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz * vec2(1.0, -1.0).xyx; 
+      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
 #else      
-      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5)) * vec2(1.0, -1.0).xyx;
+      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
 #endif
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
@@ -385,9 +390,9 @@ float cvctTraceShadowCone(vec3 normal,
 
       // Calculate the texture position
 #if 0
-      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz * vec2(1.0, -1.0).xyx; 
+      vec3 texturePosition = (voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(position.xyz, 1.0)).xyz; 
 #else      
-      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5)) * vec2(1.0, -1.0).xyx;
+      vec3 texturePosition = fma((position - clipMaps[clipMapIndex].xyz) / clipMaps[clipMapIndex].w, vec3(0.5), vec3(0.5));
 #endif
 
       // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
@@ -1019,7 +1024,7 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
               maxDistance = 2.0 * voxelGridData.cellSizes[voxelGridData.countClipMaps - 1] * float(voxelGridData.gridSize);
   normal = normalize(normal);
   vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cellSizes[0], 
-       coneOrigin = from + normalOffset,
+       coneOrigin = from, // + normalOffset,
        t0 = cross(vec3(0.0, 1.0, 0.0), normal),
        t1 = cross(vec3(0.0, 0.0, 1.0), normal),
        tangent = normalize((length(t0) < length(t1)) ? t1 : t0),
@@ -1037,12 +1042,12 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
   [[unroll]] for(int i = 0; i < NUM_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
-      color += cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
-                                      normal,
-                                          direction, 
-                                          coneApertures[i], 
-                                          offset, 
-                                          maxDistance) * coneWeights[i];
+      color += cvctTraceRadianceCone(coneOrigin, // + (coneOffset * direction), 
+                                     normal,
+                                     direction, 
+                                     coneApertures[i], 
+                                     offset, 
+                                     maxDistance) * coneWeights[i];
       weightSum += coneWeights[i]; 
     }
   }
