@@ -1282,6 +1282,10 @@ begin
   if fVoxels then begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
+{  end else if CascadeIndex=0 then begin
+    CellSize:=Min(0.1,MaximumCascadeCellSize);
+   end else begin
+    CellSize:=Min(CellSize*2,MaximumCascadeCellSize);}
    end else begin
     CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));
    end;

@@ -1062,7 +1062,7 @@ vec3 cvctIndirectSpecularLight(vec3 from,
                                float aperture, 
                                float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from, + (normal * 2.0 * voxelGridData.cellSizes[0]), 
+  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cellSizes[0]), 
                                //normal,  
                                normalize(reflect(normalize(viewDirection), normal)), 
                                aperture, 
@@ -1079,7 +1079,7 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float maxDistance){
   normal = normalize(normal);
   return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
-                              // normal,
+                               normal,
                                normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
                                aperture, 
                                voxelGridData.cellSizes[0], 
