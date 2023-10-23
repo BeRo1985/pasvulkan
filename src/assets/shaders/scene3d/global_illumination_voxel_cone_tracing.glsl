@@ -1044,11 +1044,11 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
   [[unroll]] for(int i = 0; i < NUM_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
-      color += cvctTraceRadianceCone(coneOrigin, // + (coneOffset * direction), 
-                                     normal,
+      color += cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
+                                     //normal,
                                      direction, 
                                      coneApertures[i], 
-                                     0.0, //offset, 
+                                     offset, 
                                      maxDistance) * coneWeights[i];
       weightSum += coneWeights[i]; 
     }
@@ -1064,11 +1064,11 @@ vec3 cvctIndirectSpecularLight(vec3 from,
                                float aperture, 
                                float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from, // + (normal * 2.0 * voxelGridData.cellSizes[0]), 
-                               normal,  
+  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cellSizes[0]), 
+                               //normal,  
                                normalize(reflect(normalize(viewDirection), normal)), 
                                aperture, 
-                               0.0, //2.0 * voxelGridData.cellSizes[0], 
+                               2.0 * voxelGridData.cellSizes[0], 
                                maxDistance).xyz;
 }
 
@@ -1080,11 +1080,11 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float indexOfRefraction, 
                                  float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from, // + (normal * voxelGridData.cellSizes[0]), 
-                               normal,
+  return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
+                               //normal,
                                normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
                                aperture, 
-                               0.0, //voxelGridData.cellSizes[0], 
+                               voxelGridData.cellSizes[0], 
                                maxDistance).xyz;
 }                                   
 
