@@ -1310,7 +1310,11 @@ begin
 
 //CellSize:=0.5;
 
-  SnapSize:=ceil(CellSize);
+  if fVoxels then begin
+   SnapSize:=1.0;
+  end else begin
+   SnapSize:=CellSize;
+  end;
 
   SnappedPosition:=(GridCenter/SnapSize).Round*SnapSize;
 
