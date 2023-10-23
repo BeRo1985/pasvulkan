@@ -280,8 +280,8 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   } 
 
-  // Return the accumulated occlusion
-  return clamp(1.0 - accumulator, 0.0, 1.0);
+  // Return the accumulated value
+  return accumulator;
 
 }	
 
@@ -1042,8 +1042,8 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
   [[unroll]] for(int i = 0; i < NUM_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
-      color += cvctTraceRadianceCone(coneOrigin, // + (coneOffset * direction), 
-                                     normal,
+      color += cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
+                                     //normal,
                                      direction, 
                                      coneApertures[i], 
                                      offset, 
@@ -1062,8 +1062,8 @@ vec3 cvctIndirectSpecularLight(vec3 from,
                                float aperture, 
                                float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cellSizes[0]), 
-                               normal,  
+  return cvctTraceRadianceCone(from, + (normal * 2.0 * voxelGridData.cellSizes[0]), 
+                               //normal,  
                                normalize(reflect(normalize(viewDirection), normal)), 
                                aperture, 
                                2.0 * voxelGridData.cellSizes[0], 
@@ -1079,7 +1079,7 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float maxDistance){
   normal = normalize(normal);
   return cvctTraceRadianceCone(from + (normal * voxelGridData.cellSizes[0]), 
-                               normal,
+                              // normal,
                                normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
                                aperture, 
                                voxelGridData.cellSizes[0], 
