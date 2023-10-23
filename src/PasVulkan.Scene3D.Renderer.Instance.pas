@@ -1310,7 +1310,7 @@ begin
 
 //CellSize:=0.5;
 
-  SnapSize:=CellSize;
+  SnapSize:=ceil(CellSize);
 
   SnappedPosition:=(GridCenter/SnapSize).Round*SnapSize;
 
