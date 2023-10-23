@@ -134,7 +134,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
     {
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx) * 6);
-      float mipMapLevel = max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx] * voxelGridData.gridSize) + 1.0));   
+      float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx] * voxelGridData.gridSize) + 1.0));   
       value = ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
                (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
                (textureLod(uVoxelGridRadiance[textureIndices.z], clipMapPosition, mipMapLevel) * directionWeights.z)) * (stepDist / clipMap.w);
@@ -144,7 +144,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
       vec4 clipMap = voxelGridData.clipMaps[clipMapIndexEx + 1u];
       vec3 clipMapPosition = fma(((position - clipMap.xyz) / clipMap.w) * vec2(1.0, 1.0).xyx, vec3(0.5), vec3(0.5));
       ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(int(clipMapIndexEx + 1u) * 6);
-      float mipMapLevel = max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx + 1u] * voxelGridData.gridSize) + 1.0));   
+      float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToClipMapScaleFactors[clipMapIndexEx + 1u] * voxelGridData.gridSize) + 1.0));   
       value = mix(value,
                   ((textureLod(uVoxelGridRadiance[textureIndices.x], clipMapPosition, mipMapLevel) * directionWeights.x) +
                    (textureLod(uVoxelGridRadiance[textureIndices.y], clipMapPosition, mipMapLevel) * directionWeights.y) +
