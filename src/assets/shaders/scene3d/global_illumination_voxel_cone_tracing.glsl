@@ -1277,8 +1277,8 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
 vec4 cvctGlobalIlluminationCascadeVisualizationColor(const vec3 worldPosition){
   uint cascadeIndex = 0u, countCascades = voxelGridData.countCascades;      
   while(((cascadeIndex + 1u) < countCascades) &&
-        (any(lessThan(worldPosition, globalIlluminationVolumeAABBMin[cascadeIndex].xyz)) ||
-         any(greaterThan(worldPosition, globalIlluminationVolumeAABBMax[cascadeIndex].xyz)))){
+        (any(lessThan(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex].xyz)) ||
+         any(greaterThan(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex].xyz)))){
     cascadeIndex++;
   }
   vec4 color = vec4(0.0);
@@ -1295,7 +1295,7 @@ vec4 cvctGlobalIlluminationCascadeVisualizationColor(const vec3 worldPosition){
         color += colors[currentCascadeIndex] * current; 
         break;
       }else if(all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[currentCascadeIndex].xyz)) &&
-               all(lessThanEqual(worldPosition,voxelGridData.cascadeAABBMin[currentCascadeIndex].xyz))){
+               all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[currentCascadeIndex].xyz))){
         vec3 aabbFadeDistances = smoothstep(voxelGridData.cascadeAABBFadeStart[currentCascadeIndex].xyz, 
                                             voxelGridData.cascadeAABBFadeEnd[currentCascadeIndex].xyz, 
                                             abs(worldPosition.xyz - voxelGridData.cascadeCenterHalfExtents[currentCascadeIndex].xyz));
