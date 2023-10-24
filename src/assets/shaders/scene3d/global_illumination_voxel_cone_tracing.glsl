@@ -375,8 +375,8 @@ vec4 cvctTraceRadianceCone(vec3 from,
   float gridSize = float(voxelGridData.gridSize);
   float halfOverGridSize = 0.5 / gridSize;
   float oneOverGridSize = 1.0 / gridSize;
-  vec4 cascadeToWorldScaleFactors = voxelGridData.cascadeCellSizes * gridSize;  
-  vec4 worldToCascadeScaleFactors = vec4(1.0) / cascadeToWorldScaleFactors;
+  vec4 cascadeToWorldScaleFactors = voxelGridData.cascadeToWorldScales;
+  vec4 worldToCascadeScaleFactors = voxelGridData.worldToCascadeScales;
   uint countCascades = voxelGridData.countCascades;
 
   // Calculate the doubled aperture angle for the cone
@@ -397,82 +397,56 @@ vec4 cvctTraceRadianceCone(vec3 from,
   //maxDistance = min(maxDistance, 1.41421356237);
   //dist += cvctVoxelJitterNoise(vec4(from.xyz + to.xyz + normal.xyz, 0.0)).x * s;
 
-  // Initialize the starting position
-  vec3 position = from + (direction * dist);
-
-  // Find the starting clipmap index 
-  uint cascadeIndex = 0u;
-  bool foundCascade = false;
   vec3 currentCascadeAAABMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
   vec3 currentCascadeAAABMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
-  for(uint cascadeIndexCounter = 0u; cascadeIndexCounter < countCascades; cascadeIndexCounter++){
-    if(all(greaterThanEqual(position, voxelGridData.cascadeAABBMin[cascadeIndexCounter].xyz)) && 
-       all(lessThanEqual(position, voxelGridData.cascadeAABBMax[cascadeIndexCounter].xyz))){
-      cascadeIndex = cascadeIndexCounter;
-      currentCascadeAAABMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
-      currentCascadeAAABMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
-      foundCascade = true;
-      break;
-    }
-  }
 
-  // If we found a clipmap, we can start tracing the cone, otherwise we are done
-  if(foundCascade){
+  int cascadeIndex = -1;
 
-    // The actual tracing loop
-    while((accumulator.w < 1.0) && (dist < maxDistance)){
-      
-      // Check if we are still in the current clipmap
-      if(any(lessThan(position, currentCascadeAAABMin)) || any(greaterThan(position, currentCascadeAAABMax))){
+  // The actual tracing loop
+  while((accumulator.w < 1.0) && (dist < maxDistance)){
+    
+    // Get the new position
+    vec3 position = from + (direction * dist);
 
-        // If not, find the next clipmap
-        bool foundCascade = false;
-        for(uint cascadeIndexCounter = cascadeIndex + 1; cascadeIndexCounter < countCascades; cascadeIndexCounter++){
-          if(all(greaterThanEqual(position, voxelGridData.cascadeAABBMin[cascadeIndexCounter].xyz)) && 
-             all(lessThanEqual(position, voxelGridData.cascadeAABBMax[cascadeIndexCounter].xyz))){
-            cascadeIndex = cascadeIndexCounter;
-            currentCascadeAAABMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
-            currentCascadeAAABMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
-            foundCascade = true;
-            break;
-          }
-        }
+    // Check if we are still in the current clipmap
+    if((cascadeIndex < 0) || any(lessThan(position, currentCascadeAAABMin)) || any(greaterThan(position, currentCascadeAAABMax))){
 
-        // If we didn't find a clipmap anymore, we are done and can break out of the loop
-        if(!foundCascade){
+      // If not, find the next clipmap
+      cascadeIndex = -1;
+      for(uint cascadeIndexCounter = 0; cascadeIndexCounter < countCascades; cascadeIndexCounter++){
+        if(all(greaterThanEqual(position, voxelGridData.cascadeAABBMin[cascadeIndexCounter].xyz)) && 
+           all(lessThanEqual(position, voxelGridData.cascadeAABBMax[cascadeIndexCounter].xyz))){
+          cascadeIndex = int(cascadeIndexCounter);
+          currentCascadeAAABMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
+          currentCascadeAAABMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
           break;
         }
-
-      }else{
-
-        // If we are still in the current clipmap, we can calculate the diameter of the cone at the current position, and 
-        // do nothing in this else branch (dummy else branch, just for this comment, the compiler should optimize this away,
-        // hopefully)
-
       }
 
-      // Calculate the diameter of the cone at the current position 
-      float diameter = max( halfOverGridSize, doubledAperture * (dist * worldToCascadeScaleFactors[cascadeIndex]));
+      // If we didn't find a clipmap anymore, we are done and can break out of the loop
+      if(cascadeIndex < 0){
+        break;
+      }
 
-      // Calculate the mip map level to use for the current position
-      float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
+    }
 
-      // Calculate the texture position
-      vec3 cascadePosition = cvctWorldToTextureSpace(position, cascadeIndex);
+    // Calculate the diameter of the cone at the current position 
+    float diameter = max( halfOverGridSize, doubledAperture * (dist * worldToCascadeScaleFactors[cascadeIndex]));
 
-      // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
-      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
-      accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
-                                            (textureLod(uVoxelGridRadiance[textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
-                                            (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));
+    // Calculate the mip map level to use for the current position
+    float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
 
-      // Move the position forward
-      dist += max(diameter, oneOverGridSize) * cascadeToWorldScaleFactors[cascadeIndex];
+    // Calculate the texture position
+    vec3 cascadePosition = cvctWorldToTextureSpace(position, uint(cascadeIndex));
 
-      // Get the new position
-      position = from + (direction * dist);
+    // Accumulate the occlusion from the ansitropic radiance texture, where the ansitropic occlusion is stored in the alpha channel
+    ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+    accumulator += (1.0 - accumulator) * ((textureLod(uVoxelGridRadiance[textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
+                                          (textureLod(uVoxelGridRadiance[textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
+                                          (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));
 
-    } 
+    // Move the position forward
+    dist += max(diameter, oneOverGridSize) * cascadeToWorldScaleFactors[cascadeIndex];
 
   } 
 
