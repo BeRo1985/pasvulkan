@@ -369,25 +369,13 @@ vec4 cvctTraceRadianceCone(vec3 from,
                            float aperture,
                            float offset,
                            float maxDistance){
-  
-  // Load into local variable to avoid multiple memory accesses            
-  vec4 cascades[4] = voxelGridData.cascadeCenterHalfExtents; 
-  float gridSize = float(voxelGridData.gridSize);
-  float halfOverGridSize = 0.5 / gridSize;
-  float oneOverGridSize = 1.0 / gridSize;
-  vec4 cascadeToWorldScaleFactors = voxelGridData.cascadeToWorldScales;
-  vec4 worldToCascadeScaleFactors = voxelGridData.worldToCascadeScales;
-  uint countCascades = voxelGridData.countCascades;
-
+ 
   // Calculate the doubled aperture angle for the cone
-  float doubledAperture = max(1.0 / gridSize, 2.0 * aperture);
+  float doubledAperture = max(voxelGridData.oneOverGridSize, 2.0 * aperture);
 
   // Set the starting distance
   float dist = offset;
   
-  // Initialize the accumulator to zero, since we start at the beginning of the cone
-  vec4 accumulator = vec4(0.0);                       
-
   direction = normalize(direction);                    
 
   // Setup the texture indices and direction weights
@@ -402,6 +390,9 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   int cascadeIndex = -1;
 
+  // Initialize the accumulator to zero, since we start at the beginning of the cone
+  vec4 accumulator = vec4(0.0);                       
+
   // The actual tracing loop
   while((accumulator.w < 1.0) && (dist < maxDistance)){
     
@@ -413,7 +404,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
       // If not, find the next clipmap
       cascadeIndex = -1;
-      for(uint cascadeIndexCounter = 0; cascadeIndexCounter < countCascades; cascadeIndexCounter++){
+      for(uint cascadeIndexCounter = 0, countCascades = voxelGridData.countCascades; cascadeIndexCounter < countCascades; cascadeIndexCounter++){
         if(all(greaterThanEqual(position, voxelGridData.cascadeAABBMin[cascadeIndexCounter].xyz)) && 
            all(lessThanEqual(position, voxelGridData.cascadeAABBMax[cascadeIndexCounter].xyz))){
           cascadeIndex = int(cascadeIndexCounter);
@@ -431,10 +422,10 @@ vec4 cvctTraceRadianceCone(vec3 from,
     }
 
     // Calculate the diameter of the cone at the current position 
-    float diameter = max( halfOverGridSize, doubledAperture * (dist * worldToCascadeScaleFactors[cascadeIndex]));
+    float diameter = max(voxelGridData.oneOverGridSize * 0.5, doubledAperture * (dist * voxelGridData.worldToCascadeScales[cascadeIndex]));
 
     // Calculate the mip map level to use for the current position
-    float mipMapLevel = max(0.0, log2((diameter * gridSize) + 1.0));   
+    float mipMapLevel = max(0.0, log2((diameter * voxelGridData.gridSize) + 1.0));   
 
     // Calculate the texture position
     vec3 cascadePosition = cvctWorldToTextureSpace(position, uint(cascadeIndex));
@@ -446,7 +437,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
                                           (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));
 
     // Move the position forward
-    dist += max(diameter, oneOverGridSize) * cascadeToWorldScaleFactors[cascadeIndex];
+    dist += max(diameter, voxelGridData.oneOverGridSize) * voxelGridData.cascadeToWorldScales[cascadeIndex];
 
   } 
 
@@ -465,7 +456,6 @@ float cvctTraceShadowCone(vec3 normal,
   const float s = 1.0 / 4.0;
 
   // Load into local variable to avoid multiple memory accesses            
-  vec4 cascades[4] = voxelGridData.cascadeCenterHalfExtents; 
   float gridSize = float(voxelGridData.gridSize);
   float halfOverGridSize = 0.5 / gridSize;
   float oneOverGridSize = 1.0 / gridSize;

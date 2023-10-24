@@ -8,6 +8,7 @@
   vec4 worldToCascadeScales; // a world-to-cascade-scale component per cascade
   vec4 cascadeToWorldScales; // a cascade-to-world-scale component per cascade
   vec4 cascadeCellSizes; // size of a voxel in world-space
+  float oneOverGridSize; // 1.0 / gridSize
   uint gridSize; // number of voxels in a cascade in a single dimension
   uint countCascades; // maximum 4 cascades
   uint hardwareConservativeRasterization; // 0 = false, 1 = true

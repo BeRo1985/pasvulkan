@@ -288,6 +288,7 @@ type { TpvScene3DRendererInstance }
              WorldToCascadeScales:TpvVector4;
              CascadeToWorldScales:TpvVector4;
              CascadeCellSizes:TpvVector4;
+             OneOverGridSize:TpvFloat;
              GridSize:TpvUInt32;
              CountCascades:TpvUInt32;
              HardwareConservativeRasterization:TpvUInt32;
@@ -3944,6 +3945,8 @@ begin
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeToWorldScales.RawComponents[CascadeIndex]:=VolumeDimensionSize;
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCellSizes.RawComponents[CascadeIndex]:=CascadedVolumeCascade.fCellSize;
  end;
+
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.OneOverGridSize:=1.0/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.GridSize:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
 
