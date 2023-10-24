@@ -282,8 +282,8 @@ type { TpvScene3DRendererInstance }
              WorldToCascadeNormalizedMatrices:array[0..3] of TpvMatrix4x4;
              CascadeAABBMin:array[0..3] of TpvVector4;
              CascadeAABBMax:array[0..3] of TpvVector4;
-             CascadeVolumeSpaceAABBMin:array[0..3] of TpvVector4;
-             CascadeVolumeSpaceAABBMax:array[0..3] of TpvVector4;
+             CascadeAABBFadeStart:array[0..3] of TpvVector4;
+             CascadeAABBFadeEnd:array[0..3] of TpvVector4;
              CascadeCenterHalfExtents:array[0..3] of TpvVector4;
              WorldToCascadeScales:TpvVector4;
              CascadeToWorldScales:TpvVector4;

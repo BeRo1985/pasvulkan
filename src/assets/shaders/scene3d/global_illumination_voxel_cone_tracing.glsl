@@ -1274,22 +1274,43 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                maxDistance).xyz;
 }                                   
 
-vec4 cvctCascadeVisualizationColor(const vec3 position){
-  uint cascadeIndex = 0u;
-  for(uint cascadeIndexCounter = 0u, countCascades = voxelGridData.countCascades; cascadeIndexCounter < countCascades; cascadeIndexCounter++){
-    if(all(greaterThanEqual(position, voxelGridData.cascadeAABBMin[cascadeIndexCounter].xyz)) && 
-       all(lessThanEqual(position, voxelGridData.cascadeAABBMax[cascadeIndexCounter].xyz))){
-      cascadeIndex = cascadeIndexCounter;
-      break;
-    }
+vec4 cvctGlobalIlluminationCascadeVisualizationColor(const vec3 worldPosition){
+  uint cascadeIndex = 0u, countCascades = voxelGridData.countCascades;      
+  while(((cascadeIndex + 1u) < countCascades) &&
+        (any(lessThan(worldPosition, globalIlluminationVolumeAABBMin[cascadeIndex].xyz)) ||
+         any(greaterThan(worldPosition, globalIlluminationVolumeAABBMax[cascadeIndex].xyz)))){
+    cascadeIndex++;
   }
-  vec4 colors[4] = vec4[4](
-    vec4(0.125, 0.0, 0.0, 1.0),
-    vec4(0.0, 0.125, 0.0, 1.0),
-    vec4(0.0, 0.0, 0.125, 1.0),
-    vec4(0.125, 0.125, 0.0, 1.0)      
-  );
-  return colors[cascadeIndex];
+  vec4 color = vec4(0.0);
+  if((cascadeIndex >= 0u) && (cascadeIndex < countCascades)){
+    vec4 colors[4] = vec4[4](
+      vec4(0.125, 0.0, 0.0, 1.0),
+      vec4(0.0, 0.125, 0.0, 1.0),
+      vec4(0.0, 0.0, 0.125, 1.0),
+      vec4(0.125, 0.125, 0.0, 1.0)      
+    ); 
+    float current = 1.0;    
+    for(uint currentCascadeIndex = cascadeIndex; currentCascadeIndex < countCascades; currentCascadeIndex++){
+      if(currentCascadeIndex == (countCascades - 1u)){
+        color += colors[currentCascadeIndex] * current; 
+        break;
+      }else if(all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[currentCascadeIndex].xyz)) &&
+               all(lessThanEqual(worldPosition,voxelGridData.cascadeAABBMin[currentCascadeIndex].xyz))){
+        vec3 aabbFadeDistances = smoothstep(voxelGridData.cascadeAABBFadeStart[currentCascadeIndex].xyz, 
+                                            voxelGridData.cascadeAABBFadeEnd[currentCascadeIndex].xyz, 
+                                            abs(worldPosition.xyz - voxelGridData.cascadeCenterHalfExtents[currentCascadeIndex].xyz));
+        float factor = 1.0 - clamp(max(max(aabbFadeDistances.x, aabbFadeDistances.y), aabbFadeDistances.z), 0.0, 1.0);
+        color += colors[currentCascadeIndex] * (current * factor); 
+        current *= 1.0 - factor;
+        if(current < 1e-6){
+          break;
+        }
+      }else{
+        break;
+      }
+    }   
+  }
+  return color;
 }
 
 #endif // GLOBAL_ILLUMINATION_VOXEL_CONE_TRACING_GLSL
