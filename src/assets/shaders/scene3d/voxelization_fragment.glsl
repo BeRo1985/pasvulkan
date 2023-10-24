@@ -2,13 +2,13 @@
 #define VOXELIZATION_FRAGMENT_GLSL
 
 #ifdef VOXELIZATION
-  vec4 clipMap = voxelGridData.clipMaps[inClipMapIndex];
+  vec4 cascade = voxelGridData.cascadeCenterHalfExtents[inCascadeIndex];
 
   uint voxelGridSize = voxelGridData.gridSize;
   
   uvec3 volumePosition = uvec3(inVoxelPosition * float(voxelGridSize)); 
 
-// uvec3 volumePosition = uvec3(ivec3((inWorldSpacePosition - vec3(clipMap.xyz)) / float(voxelGridData.cellSizes[inClipMapIndex]))) + uvec3(voxelGridSize >> 1u); 
+// uvec3 volumePosition = uvec3(ivec3((inWorldSpacePosition - vec3(cascade.xyz)) / float(voxelGridData.cellSizes[inCascadeIndex]))) + uvec3(voxelGridSize >> 1u); 
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) && all(lessThan(volumePosition, ivec3(voxelGridSize))) && (baseColor.w >= 0.00392156862)){
 
@@ -17,7 +17,7 @@
         (
           (
             (
-              (uint(inClipMapIndex) * voxelGridSize) + uint(volumePosition.z)
+              (uint(inCascadeIndex) * voxelGridSize) + uint(volumePosition.z)
             ) * voxelGridSize
           ) + uint(volumePosition.y)
         ) * voxelGridSize

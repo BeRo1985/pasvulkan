@@ -33,7 +33,7 @@ layout(location = 9) out vec3 outModelScale;
 layout(location = 10) flat out uint outMaterialID;
 layout(location = 11) flat out vec3 outAABBMin;
 layout(location = 12) flat out vec3 outAABBMax;
-layout(location = 13) flat out uint outClipMapIndex;
+layout(location = 13) flat out uint outCascadeIndex;
 layout(location = 14) out vec3 outVoxelPosition;
 
 /*layout(location = 11) flat out vec3 outVertex0;
@@ -45,19 +45,19 @@ layout(location = 13) flat out vec3 outVertex2;*/
 
 void main(){
 
-  uint clipMapIndex = uint(gl_InvocationID);
+  uint cascadeIndex = uint(gl_InvocationID);
 
-  if(clipMapIndex < voxelGridData.countClipMaps){ // Just for to be sure alongside the invocations count above
+  if(cascadeIndex < voxelGridData.countCascades){ // Just for to be sure alongside the invocations count above
     
-    vec3 clipMapSpacePositions[3] = vec3[3](
-#if 0      
-      fma(vec3(voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(inWorldSpacePosition[0].xyz, 1.0)).xyz, vec3(2.0), vec3(-1.0)),
-      fma(vec3(voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(inWorldSpacePosition[1].xyz, 1.0)).xyz, vec3(2.0), vec3(-1.0)),
-      fma(vec3(voxelGridData.worldToNormalizedClipMaps[clipMapIndex] * vec4(inWorldSpacePosition[2].xyz, 1.0)).xyz, vec3(2.0), vec3(-1.0))
+    vec3 cascadeSpacePositions[3] = vec3[3](
+#if 1      
+      vec3(voxelGridData.worldToCascadeClipSpaceMatrices[cascadeIndex] * vec4(inWorldSpacePosition[0].xyz, 1.0)).xyz,
+      vec3(voxelGridData.worldToCascadeClipSpaceMatrices[cascadeIndex] * vec4(inWorldSpacePosition[1].xyz, 1.0)).xyz,
+      vec3(voxelGridData.worldToCascadeClipSpaceMatrices[cascadeIndex] * vec4(inWorldSpacePosition[2].xyz, 1.0)).xyz
 #else
-      vec3((inWorldSpacePosition[0] - voxelGridData.clipMaps[clipMapIndex].xyz) / voxelGridData.clipMaps[clipMapIndex].w),
-      vec3((inWorldSpacePosition[1] - voxelGridData.clipMaps[clipMapIndex].xyz) / voxelGridData.clipMaps[clipMapIndex].w),
-      vec3((inWorldSpacePosition[2] - voxelGridData.clipMaps[clipMapIndex].xyz) / voxelGridData.clipMaps[clipMapIndex].w)
+      vec3((inWorldSpacePosition[0] - voxelGridData.cascadeCenterHalfExtents[cascadeIndex].xyz) / voxelGridData.cascadeCenterHalfExtents[cascadeIndex].w),
+      vec3((inWorldSpacePosition[1] - voxelGridData.cascadeCenterHalfExtents[cascadeIndex].xyz) / voxelGridData.cascadeCenterHalfExtents[cascadeIndex].w),
+      vec3((inWorldSpacePosition[2] - voxelGridData.cascadeCenterHalfExtents[cascadeIndex].xyz) / voxelGridData.cascadeCenterHalfExtents[cascadeIndex].w)
 #endif
     );   
 
@@ -79,21 +79,21 @@ void main(){
 
     vec4 projectionVertices[3] = vec4[3](
       vec4(
-        clipMapSpacePositions[0][dominantAxisComponentOrder.x],
-        clipMapSpacePositions[0][dominantAxisComponentOrder.y], 
-        clipMapSpacePositions[0][dominantAxisComponentOrder.z], 
+        cascadeSpacePositions[0][dominantAxisComponentOrder.x],
+        cascadeSpacePositions[0][dominantAxisComponentOrder.y], 
+        cascadeSpacePositions[0][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
-        clipMapSpacePositions[1][dominantAxisComponentOrder.x], 
-        clipMapSpacePositions[1][dominantAxisComponentOrder.y], 
-        clipMapSpacePositions[1][dominantAxisComponentOrder.z], 
+        cascadeSpacePositions[1][dominantAxisComponentOrder.x], 
+        cascadeSpacePositions[1][dominantAxisComponentOrder.y], 
+        cascadeSpacePositions[1][dominantAxisComponentOrder.z], 
         1.0
       ),
       vec4(
-        clipMapSpacePositions[2][dominantAxisComponentOrder.x], 
-        clipMapSpacePositions[2][dominantAxisComponentOrder.y], 
-        clipMapSpacePositions[2][dominantAxisComponentOrder.z], 
+        cascadeSpacePositions[2][dominantAxisComponentOrder.x], 
+        cascadeSpacePositions[2][dominantAxisComponentOrder.y], 
+        cascadeSpacePositions[2][dominantAxisComponentOrder.z], 
         1.0
       )
     );
@@ -105,7 +105,7 @@ void main(){
         vec2(normalize(projectionVertices[vertexIndexOrder[2]].xy - projectionVertices[vertexIndexOrder[1]].xy)),
         vec2(normalize(projectionVertices[vertexIndexOrder[0]].xy - projectionVertices[vertexIndexOrder[2]].xy))
       );
-      float texelSize = 1.41421356237 / voxelGridData.clipMaps[clipMapIndex].w;
+      float texelSize = 1.41421356237 / voxelGridData.cascadeCenterHalfExtents[cascadeIndex].w;
       projectionVertices[vertexIndexOrder[0]].xy += normalize(sides[2] - sides[0]) * texelSize;
       projectionVertices[vertexIndexOrder[1]].xy += normalize(sides[0] - sides[1]) * texelSize;
       projectionVertices[vertexIndexOrder[2]].xy += normalize(sides[1] - sides[2]) * texelSize;
@@ -141,9 +141,9 @@ void main(){
 
       outAABBMax = aabbMax;    
 
-      outClipMapIndex = clipMapIndex;
+      outCascadeIndex = cascadeIndex;
 
-      outVoxelPosition = fma(clipMapSpacePositions[currentVertexIndex].xyz, vec3(0.5), vec3(0.5));
+      outVoxelPosition = fma(cascadeSpacePositions[currentVertexIndex].xyz, vec3(0.5), vec3(0.5));
 
     /*outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
       outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];
@@ -151,7 +151,7 @@ void main(){
 
       gl_Position = vec4(projectionVertices[currentVertexIndex].xyw, 0.0).xywz; // We need to swap the z and w components here because we are using a 2D projection matrix
 
-      //gl_ViewportIndex = clipMapIndex;
+      //gl_ViewportIndex = cascadeIndex;
 
       EmitVertex();
 

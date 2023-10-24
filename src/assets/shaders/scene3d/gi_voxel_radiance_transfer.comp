@@ -54,13 +54,13 @@ void main(){
 
   uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
 
-  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelGridSize), voxelGridSize * voxelGridData.countClipMaps)))){
+  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelGridSize), voxelGridSize * voxelGridData.countCascades)))){
 
-    uint clipMapIndex = invocation.z / voxelGridSize;
+    uint cascadeIndex = invocation.z / voxelGridSize;
 
-    uvec3 volumePosition = uvec3(invocation.xy, invocation.z - (clipMapIndex * voxelGridSize));
+    uvec3 volumePosition = uvec3(invocation.xy, invocation.z - (cascadeIndex * voxelGridSize));
 
-    uint volumeBaseIndex = (((((uint(clipMapIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = (((((uint(cascadeIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
 
     uint volumeIndex = volumeBaseIndex << 1u;
 
@@ -96,11 +96,11 @@ void main(){
     
     if(count > 0.0){
       [[unroll]] for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionIndex < 6; anisotropicAxisDirectionIndex++){
-        imageStore(uImageVolume[(clipMapIndex * 6) + anisotropicAxisDirectionIndex], ivec3(volumePosition), volumeColors[anisotropicAxisDirectionIndex] / count);
+        imageStore(uImageVolume[(cascadeIndex * 6) + anisotropicAxisDirectionIndex], ivec3(volumePosition), volumeColors[anisotropicAxisDirectionIndex] / count);
       } 
     }else{
       [[unroll]] for(uint anisotropicAxisDirectionIndex = 0; anisotropicAxisDirectionIndex < 6; anisotropicAxisDirectionIndex++){
-        imageStore(uImageVolume[(clipMapIndex * 6) + anisotropicAxisDirectionIndex], ivec3(volumePosition), vec4(0.0));
+        imageStore(uImageVolume[(cascadeIndex * 6) + anisotropicAxisDirectionIndex], ivec3(volumePosition), vec4(0.0));
       }
     }
 

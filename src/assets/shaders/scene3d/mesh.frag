@@ -74,8 +74,8 @@ layout(location = 9) in vec3 inModelScale;
 layout(location = 10) flat in uint inMaterialID;
 layout(location = 11) flat in vec3 inAABBMin;
 layout(location = 12) flat in vec3 inAABBMax;
-layout(location = 13) flat in uint inClipMapIndex; 
-layout(location = 14) in vec3 inVoxelPosition;
+layout(location = 13) flat in uint inCascadeIndex; 
+layout(location = 14) in vec3 inVoxelPosition; 
 /*layout(location = 11) flat in vec3 inVertex0;
 layout(location = 12) flat in vec3 inVertex1;
 layout(location = 13) flat in vec3 inVertex2;*/
@@ -1520,7 +1520,7 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 
 void main() {
 #ifdef VOXELIZATION
-  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz))) || (uint(inClipMapIndex) >= uint(voxelGridData.countClipMaps))){
+  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz))) || (uint(inCascadeIndex) >= uint(voxelGridData.countCascades))){
     outFragColor = vec4(0.0);
     return;
   }

@@ -278,14 +278,18 @@ type { TpvScene3DRendererInstance }
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
             { TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
-             WorldToVoxelClipMaps:array[0..3] of TpvMatrix4x4;
-             WorldToNormalizedClipMaps:array[0..3] of TpvMatrix4x4;
-             ClipMaps:array[0..3] of TpvVector4;
-             ClipMapAABBMin:array[0..3] of TpvVector4;
-             ClipMapAABBMax:array[0..3] of TpvVector4;
-             CellSizes:TpvVector4;
+             WorldToCascadeClipSpaceMatrices:array[0..3] of TpvMatrix4x4;
+             WorldToCascadeNormalizedMatrices:array[0..3] of TpvMatrix4x4;
+             CascadeAABBMin:array[0..3] of TpvVector4;
+             CascadeAABBMax:array[0..3] of TpvVector4;
+             CascadeVolumeSpaceAABBMin:array[0..3] of TpvVector4;
+             CascadeVolumeSpaceAABBMax:array[0..3] of TpvVector4;
+             CascadeCenterHalfExtents:array[0..3] of TpvVector4;
+             WorldToCascadeScales:TpvVector4;
+             CascadeToWorldScales:TpvVector4;
+             CascadeCellSizes:TpvVector4;
              GridSize:TpvUInt32;
-             CountClipMaps:TpvUInt32;
+             CountCascades:TpvUInt32;
              HardwareConservativeRasterization:TpvUInt32;
              MaxGlobalFragmentCount:TpvUInt32;
              MaxLocalFragmentCount:TpvUInt32;
@@ -1876,14 +1880,14 @@ begin
    fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:=(((Renderer.GlobalIlluminationVoxelGridSize*
                                                                          Renderer.GlobalIlluminationVoxelGridSize*
                                                                          Renderer.GlobalIlluminationVoxelGridSize)*
-                                                                        Renderer.GlobalIlluminationVoxelCountClipMaps)*
+                                                                        Renderer.GlobalIlluminationVoxelCountCascades)*
                                                                        64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1));
 
    fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=16;
 
    fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                                        Renderer.GlobalIlluminationVoxelGridSize,
-                                                                                       Renderer.GlobalIlluminationVoxelCountClipMaps,
+                                                                                       Renderer.GlobalIlluminationVoxelCountCascades,
                                                                                        true);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -1921,7 +1925,7 @@ begin
                                                                                         []);
 
    fGlobalIlluminationCascadedVoxelConeTracingContentMetaDataBuffer:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                            ((Renderer.GlobalIlluminationVoxelCountClipMaps*
+                                                                                            ((Renderer.GlobalIlluminationVoxelCountCascades*
                                                                                               (Renderer.GlobalIlluminationVoxelGridSize*
                                                                                                Renderer.GlobalIlluminationVoxelGridSize*
                                                                                                Renderer.GlobalIlluminationVoxelGridSize))+1)*(SizeOf(TpvUInt32)*2),
@@ -1938,7 +1942,7 @@ begin
                                                                                             0,
                                                                                             []);
 
-   for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+   for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
 
 {   fGlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]:=TpvScene3DRendererImage3D.Create(Renderer.GlobalIlluminationVoxelGridSize*6,
                                                                                                             Renderer.GlobalIlluminationVoxelGridSize,
@@ -1972,7 +1976,7 @@ begin
                                                                                              TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                                              Renderer.CountInFlightFrames);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
-   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*Renderer.GlobalIlluminationVoxelCountClipMaps*(6+1));
+   fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*Renderer.GlobalIlluminationVoxelCountCascades*(6+1));
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorPool.Initialize;
 
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
@@ -1983,12 +1987,12 @@ begin
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(1,
                                                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                                             Renderer.GlobalIlluminationVoxelCountClipMaps,
+                                                                             Renderer.GlobalIlluminationVoxelCountCascades,
                                                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(2,
                                                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                                             Renderer.GlobalIlluminationVoxelCountClipMaps*6,
+                                                                             Renderer.GlobalIlluminationVoxelCountCascades*6,
                                                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.Initialize;
@@ -1998,10 +2002,10 @@ begin
 
    try
 
-    SetLength(GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountClipMaps);
-    SetLength(GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountClipMaps*6);
+    SetLength(GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountCascades);
+    SetLength(GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray,Renderer.GlobalIlluminationVoxelCountCascades*6);
 
-    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+    for CascadeIndex:=0 to Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
 
      GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray[CascadeIndex]:=TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
                                                                                                                         fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex].VulkanImageView.Handle,
@@ -2040,7 +2044,7 @@ begin
                                                                                                        );
      fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                                                         0,
-                                                                                                        Renderer.GlobalIlluminationVoxelCountClipMaps,
+                                                                                                        Renderer.GlobalIlluminationVoxelCountCascades,
                                                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                                         GlobalIlluminationVoxelConeTracingOcclusionTextureDescriptorInfoArray,
                                                                                                         [],
@@ -2049,7 +2053,7 @@ begin
                                                                                                        );
      fGlobalIlluminationCascadedVoxelConeTracingDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                                                         0,
-                                                                                                        Renderer.GlobalIlluminationVoxelCountClipMaps*6,
+                                                                                                        Renderer.GlobalIlluminationVoxelCountCascades*6,
                                                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                                         GlobalIlluminationVoxelConeTracingRadianceTextureDescriptorInfoArray,
                                                                                                         [],
@@ -3900,7 +3904,7 @@ var CascadeIndex:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
     CascadedVolumeCascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
-    s:TpvScalar;
+    VolumeDimensionSize:TpvScalar;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
@@ -3911,25 +3915,36 @@ begin
 
  for CascadeIndex:=0 to fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1 do begin
   CascadedVolumeCascade:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex];
-  s:=CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToVoxelClipMaps[CascadeIndex]:=TpvMatrix4x4.Create(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s,0.0,0.0,0.0,
-                                                                                                                       0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s,0.0,0.0,
-                                                                                                                       0.0,0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s,0.0,
-                                                                                                                       -(CascadedVolumeCascade.fAABB.Min.x*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s)),-(CascadedVolumeCascade.fAABB.Min.y*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s)),-(CascadedVolumeCascade.fAABB.Min.z*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/s)),1.0);
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToNormalizedClipMaps[CascadeIndex]:=TpvMatrix4x4.Create(1.0/s,0.0,0.0,0.0,
-                                                                                                                            0.0,1.0/s,0.0,0.0,
-                                                                                                                            0.0,0.0,1.0/s,0.0,
-                                                                                                                            -(CascadedVolumeCascade.fAABB.Min.x/s),-(CascadedVolumeCascade.fAABB.Min.y/s
-                                                                                                                            ),-(CascadedVolumeCascade.fAABB.Min.z/s),1.0);
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMaps[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*0.5);
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.ClipMapAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CellSizes.RawComponents[CascadeIndex]:=CascadedVolumeCascade.fCellSize;
+  VolumeDimensionSize:=CascadedVolumeCascade.fCellSize*fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
+{ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeClipSpaceMatrices[CascadeIndex]:=TpvMatrix4x4.Create(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize,0.0,0.0,0.0,
+                                                                                                                                  0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize,0.0,0.0,
+                                                                                                                                  0.0,0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize,0.0,
+                                                                                                                                  -(CascadedVolumeCascade.fAABB.Min.x*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize)),-(CascadedVolumeCascade.fAABB.Min.y*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize)),-(CascadedVolumeCascade.fAABB.Min.z*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize)),1.0);}
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeClipSpaceMatrices[CascadeIndex]:=TpvMatrix4x4.Create(2.0/VolumeDimensionSize,0.0,0.0,0.0,
+                                                                                                                                  0.0,2.0/VolumeDimensionSize,0.0,0.0,
+                                                                                                                                  0.0,0.0,2.0/VolumeDimensionSize,0.0,
+                                                                                                                                  -(1.0+(CascadedVolumeCascade.fAABB.Min.x*(2.0/VolumeDimensionSize))),
+                                                                                                                                  -(1.0+(CascadedVolumeCascade.fAABB.Min.y*(2.0/VolumeDimensionSize))),
+                                                                                                                                  -(1.0+(CascadedVolumeCascade.fAABB.Min.z*(2.0/VolumeDimensionSize))),
+                                                                                                                                  1.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeNormalizedMatrices[CascadeIndex]:=TpvMatrix4x4.Create(1.0/VolumeDimensionSize,0.0,0.0,0.0,
+                                                                                                                                   0.0,1.0/VolumeDimensionSize,0.0,0.0,
+                                                                                                                                   0.0,0.0,1.0/VolumeDimensionSize,0.0,
+                                                                                                                                   -(CascadedVolumeCascade.fAABB.Min.x/VolumeDimensionSize),
+                                                                                                                                   -(CascadedVolumeCascade.fAABB.Min.y/VolumeDimensionSize),
+                                                                                                                                   -(CascadedVolumeCascade.fAABB.Min.z/VolumeDimensionSize),
+                                                                                                                                   1.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCenterHalfExtents[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,VolumeDimensionSize*0.5);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeScales.RawComponents[CascadeIndex]:=1.0/VolumeDimensionSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeToWorldScales.RawComponents[CascadeIndex]:=VolumeDimensionSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCellSizes.RawComponents[CascadeIndex]:=CascadedVolumeCascade.fCellSize;
  end;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.GridSize:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
 
- GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CountClipMaps:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CountCascades:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades;
 
  if assigned(Renderer.VulkanDevice.PhysicalDevice.ConservativeRasterizationPropertiesEXT.pNext) then begin
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_TRUE;

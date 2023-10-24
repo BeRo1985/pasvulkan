@@ -55,15 +55,15 @@ void main(){
 
   uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
 
-  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelDestinationGridSize), voxelDestinationGridSize * voxelGridData.countClipMaps)))){
+  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelDestinationGridSize), voxelDestinationGridSize * voxelGridData.countCascades)))){
 
-    uint clipMapIndex = invocation.z / voxelDestinationGridSize;
+    uint cascadeIndex = invocation.z / voxelDestinationGridSize;
 
-    uvec3 volumeDestinationPosition = uvec3(invocation.xy, invocation.z - (clipMapIndex * voxelDestinationGridSize));
+    uvec3 volumeDestinationPosition = uvec3(invocation.xy, invocation.z - (cascadeIndex * voxelDestinationGridSize));
 
     uvec3 volumeSourcePosition = volumeDestinationPosition << uvec3(1u);
 
-    uint baseImageIndex = clipMapIndex * 6u;
+    uint baseImageIndex = cascadeIndex * 6u;
 
     maxSourceSize = ivec3(int(voxelSourceGridSize));
 

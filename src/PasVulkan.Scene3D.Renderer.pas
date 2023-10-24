@@ -158,7 +158,7 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationCaching:Boolean;
        fGlobalIlluminationRadianceHintsSpread:TpvScalar;
        fGlobalIlluminationVoxelGridSize:TpvInt32;
-       fGlobalIlluminationVoxelCountClipMaps:TpvInt32;
+       fGlobalIlluminationVoxelCountCascades:TpvInt32;
        fGlobalIlluminationVoxelCountBounces:TpvInt32;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
@@ -189,7 +189,7 @@ type TpvScene3DRenderer=class;
        fVulkanFlushCommandBufferFences:array[0..MaxInFlightFrames-1] of TpvVulkanFence;
        fVulkanFlushSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        procedure SetGlobalIlluminationVoxelCountBounces(const aValue:TpvInt32);
-       procedure SetGlobalIlluminationVoxelCountClipMaps(const aValue:TpvInt32);
+       procedure SetGlobalIlluminationVoxelCountCascades(const aValue:TpvInt32);
        procedure SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);
       public
        constructor Create(const aScene3D:TpvScene3D;const aVulkanDevice:TpvVulkanDevice=nil;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil;const aCountInFlightFrames:TpvSizeInt=0); reintroduce;
@@ -234,7 +234,7 @@ type TpvScene3DRenderer=class;
        property GlobalIlluminationCaching:Boolean read fGlobalIlluminationCaching write fGlobalIlluminationCaching;
        property GlobalIlluminationRadianceHintsSpread:TpvScalar read fGlobalIlluminationRadianceHintsSpread write fGlobalIlluminationRadianceHintsSpread;
        property GlobalIlluminationVoxelGridSize:TpvInt32 read fGlobalIlluminationVoxelGridSize write SetGlobalIlluminationVoxelGridSize;
-       property GlobalIlluminationVoxelCountClipMaps:TpvInt32 read fGlobalIlluminationVoxelCountClipMaps write SetGlobalIlluminationVoxelCountClipMaps;
+       property GlobalIlluminationVoxelCountCascades:TpvInt32 read fGlobalIlluminationVoxelCountCascades write SetGlobalIlluminationVoxelCountCascades;
        property GlobalIlluminationVoxelCountBounces:TpvInt32 read fGlobalIlluminationVoxelCountBounces write SetGlobalIlluminationVoxelCountBounces;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
@@ -402,7 +402,7 @@ begin
 
  fGlobalIlluminationVoxelGridSize:=128;
 
- fGlobalIlluminationVoxelCountClipMaps:=4;
+ fGlobalIlluminationVoxelCountCascades:=4;
 
  fGlobalIlluminationVoxelCountBounces:=2;
 
@@ -444,9 +444,9 @@ begin
  fGlobalIlluminationVoxelCountBounces:=Min(Max(aValue,1),2);
 end;
 
-procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelCountClipMaps(const aValue:TpvInt32);
+procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelCountCascades(const aValue:TpvInt32);
 begin
- fGlobalIlluminationVoxelCountClipMaps:=Min(Max(aValue,1),4);
+ fGlobalIlluminationVoxelCountCascades:=Min(Max(aValue,1),4);
 end;
 
 procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);

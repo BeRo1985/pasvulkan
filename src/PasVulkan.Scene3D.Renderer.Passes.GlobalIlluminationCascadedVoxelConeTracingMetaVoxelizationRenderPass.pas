@@ -176,7 +176,7 @@ begin
   Stream.Free;
  end;
 
- case fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps of
+ case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
   1:begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_1_geom.spv');
   end;
@@ -219,7 +219,7 @@ begin
   Stream.Free;
  end;
 
- case fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps of
+ case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
   1:begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_1_geom.spv');
   end;

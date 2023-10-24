@@ -151,7 +151,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.AcquireVolatileResources;
-var InFlightFrameIndex,MipMapIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
+var InFlightFrameIndex,MipMapIndex,Index,CascadeIndex,SideIndex:TpvInt32;
     SourceDescriptorImageInfos,DestinationDescriptorImageInfos:TVkDescriptorImageInfoArray;
 begin
 
@@ -161,7 +161,7 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames*16);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames*1*16);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*Max(1,fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)*4*2*16);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*Max(1,fInstance.Renderer.GlobalIlluminationVoxelCountCascades)*4*2*16);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -172,12 +172,12 @@ begin
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(1,
                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                       Max(1,fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)*6,
+                                       Max(1,fInstance.Renderer.GlobalIlluminationVoxelCountCascades)*6,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(2,
                                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                       Max(1,fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)*6,
+                                       Max(1,fInstance.Renderer.GlobalIlluminationVoxelCountCascades)*6,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                        []);
  fVulkanDescriptorSetLayout.Initialize;
@@ -207,16 +207,16 @@ begin
    DestinationDescriptorImageInfos:=nil;
    try
 
-    SetLength(SourceDescriptorImageInfos,fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps*6);
-    SetLength(DestinationDescriptorImageInfos,fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps*6);
+    SetLength(SourceDescriptorImageInfos,fInstance.Renderer.GlobalIlluminationVoxelCountCascades*6);
+    SetLength(DestinationDescriptorImageInfos,fInstance.Renderer.GlobalIlluminationVoxelCountCascades*6);
     Index:=0;
-    for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+    for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
      for SideIndex:=0 to 5 do begin
       SourceDescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                       fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImageViews[MipMapIndex-1].Handle,
+                                                                       fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,SideIndex].VulkanImageViews[MipMapIndex-1].Handle,
                                                                        VK_IMAGE_LAYOUT_GENERAL);
       DestinationDescriptorImageInfos[Index]:=TVkDescriptorImageInfo.Create(VK_NULL_HANDLE,
-                                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImageViews[MipMapIndex].Handle,
+                                                                            fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,SideIndex].VulkanImageViews[MipMapIndex].Handle,
                                                                             VK_IMAGE_LAYOUT_GENERAL);
       inc(Index);
      end;
@@ -285,7 +285,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var InFlightFrameIndex,MipMapIndex,Index,ClipMapIndex,SideIndex:TpvInt32;
+var InFlightFrameIndex,MipMapIndex,Index,CascadeIndex,SideIndex:TpvInt32;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     ImageMemoryBarriers:array[0..(4*6)-1] of TVkImageMemoryBarrier;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
@@ -335,11 +335,11 @@ begin
 
   aCommandBuffer.CmdDispatch(((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
                              ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
-                             (((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)*fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps)+7) shr 3);
+                             (((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)*fInstance.Renderer.GlobalIlluminationVoxelCountCascades)+7) shr 3);
 
   if (MipMapIndex+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[0,0].MipMapLevels then begin
    Index:=0;
-   for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+   for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
     for SideIndex:=0 to 5 do begin
      ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -347,7 +347,7 @@ begin
                                                               VK_IMAGE_LAYOUT_GENERAL,
                                                               VK_QUEUE_FAMILY_IGNORED,
                                                               VK_QUEUE_FAMILY_IGNORED,
-                                                              fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
+                                                              fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,SideIndex].VulkanImage.Handle,
                                                               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                               MipMapIndex,
                                                                                               1,
@@ -361,7 +361,7 @@ begin
                                      0,
                                      0,nil,
                                      0,nil,
-                                     fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps*6,@ImageMemoryBarriers[0]);
+                                     fInstance.Renderer.GlobalIlluminationVoxelCountCascades*6,@ImageMemoryBarriers[0]);
   end;
 
  end;
@@ -369,7 +369,7 @@ begin
  begin
 
   Index:=0;
-  for ClipMapIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps-1 do begin
+  for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
    for SideIndex:=0 to 5 do begin
     ImageMemoryBarriers[Index]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                              TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
@@ -377,10 +377,10 @@ begin
                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                              VK_QUEUE_FAMILY_IGNORED,
                                                              VK_QUEUE_FAMILY_IGNORED,
-                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].VulkanImage.Handle,
+                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,SideIndex].VulkanImage.Handle,
                                                              TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                                              0,
-                                                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[ClipMapIndex,SideIndex].MipMapLevels,
+                                                                                             fInstance.GlobalIlluminationCascadedVoxelConeTracingRadianceImages[CascadeIndex,SideIndex].MipMapLevels,
                                                                                              0,
                                                                                              1));
     inc(Index);
@@ -392,7 +392,7 @@ begin
                                     0,
                                     0,nil,
                                     0,nil,
-                                    fInstance.Renderer.GlobalIlluminationVoxelCountClipMaps*6,@ImageMemoryBarriers[0]);
+                                    fInstance.Renderer.GlobalIlluminationVoxelCountCascades*6,@ImageMemoryBarriers[0]);
 
  end;
 
