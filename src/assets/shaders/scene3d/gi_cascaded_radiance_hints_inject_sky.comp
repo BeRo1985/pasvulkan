@@ -121,7 +121,7 @@ void main(){
                       (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xy, 0.0).x - lSampleUVW.z, 0.0, 1.0));
 //                    texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      */
       float lFactor = 1.0;
-      {
+     /*{
         const int countOcclusionSamples = 8;
         for(int lOcclusionSampleIndex = 0; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){
           vec3 lOcclusionSamplePosition = mix(lPosition, lSamplePosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples));
@@ -132,7 +132,7 @@ void main(){
           float lOcclusionSample = texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xyz);
           lFactor *= lOcclusionSample;
         }
-      }
+      }*/
       if(lFactor < 1e-6){
         continue;
       }
