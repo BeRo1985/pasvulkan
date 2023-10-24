@@ -1287,20 +1287,20 @@ begin
   if fVoxels then begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
-{  end else if CascadeIndex=0 then begin
-    CellSize:=Min(0.1,MaximumCascadeCellSize);
+   end else if CascadeIndex=0 then begin
+    CellSize:=Min(0.125,MaximumCascadeCellSize);
    end else begin
-    CellSize:=Min(CellSize*2,MaximumCascadeCellSize);}
-   end else begin
-    CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));
+    CellSize:=Min(CellSize*2.0,MaximumCascadeCellSize);//}
+{  end else begin
+    CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));//}
    end;
   end else begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
    end else if CascadeIndex=0 then begin
-    CellSize:=Min(1,MaximumCascadeCellSize);
+    CellSize:=Min(1.0,MaximumCascadeCellSize);
    end else begin
-    CellSize:=Min(CellSize*4,MaximumCascadeCellSize);
+    CellSize:=Min(CellSize*4.0,MaximumCascadeCellSize);
    end;//}
  { end else if CascadeIndex=0 then begin
     CellSize:=1;
@@ -1316,7 +1316,7 @@ begin
 //CellSize:=0.5;
 
   if fVoxels then begin
-   SnapSize:=1.0;
+   SnapSize:=CellSize*2.0;
   end else begin
    SnapSize:=CellSize;
   end;

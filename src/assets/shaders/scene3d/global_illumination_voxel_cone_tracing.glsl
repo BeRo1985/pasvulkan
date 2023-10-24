@@ -109,14 +109,9 @@ vec4 cvctTraceRadianceCone(vec3 from,
                            float offset,
                            float maxDistance){
   
-  vec4 accumulator = vec4(0.0);
-
-  vec4 cascadeToWorldScaleFactors = voxelGridData.cascadeCellSizes * voxelGridData.gridSize;  
-  vec4 worldToCascadeScaleFactors = vec4(1.0) / cascadeToWorldScaleFactors;
-
   uint cascadeIndex = 0;
-  vec4 cascade = voxelGridData.cascadeCenterHalfExtents[cascadeIndex];
-  float voxelSize = cascade.w * 2.0;
+
+  float voxelSize = voxelGridData.cascadeCellSizes[cascadeIndex];
   float oneOverVoxelSize = 1.0 / voxelSize;
 
   float doubledAperture = 2.0 * aperture;
@@ -130,6 +125,8 @@ vec4 cvctTraceRadianceCone(vec3 from,
   bvec3 negativeDirection = lessThan(direction, vec3(0.0));  
   ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4);
 
+  vec4 accumulator = vec4(0.0);
+
   while((dist < maxDistance) && (accumulator.w < 1.0) && (cascadeIndex < voxelGridData.countCascades)){
 
     vec3 position = fma(direction, vec3(dist), startPosition);
@@ -139,7 +136,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
     uint cascadeIndexEx = uint(floor(cascadeLOD));
     float cascadeBlend = fract(cascadeLOD); 
 
-    vec3 cascadePosition = cvctWorldToTextureSpace(position, cascadeIndexEx);
+    vec3 cascadePosition = (voxelGridData.worldToCascadeNormalizedMatrices[cascadeIndexEx] * vec4(position.xyz, 1.0)).xyz;
     if(any(lessThan(cascadePosition, vec3(0.0))) || any(greaterThan(cascadePosition, vec3(1.0)))){
       cascadeIndex++;
       continue;
@@ -152,25 +149,23 @@ vec4 cvctTraceRadianceCone(vec3 from,
       float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToCascadeScaleFactors[cascadeIndexEx] * voxelGridData.gridSize) + 1.0));   
       value = ((textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
                (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
-               (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)) * (stepDist / cascade.w);
+               (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)) * (stepDist / voxelSize);
     }
 
     if((cascadeBlend > 0.0) && ((cascadeIndexEx + 1u) < voxelGridData.countCascades)){
-      vec3 cascadePosition = cvctWorldToTextureSpace(position, cascadeIndexEx + 1u);
+      vec3 cascadePosition = (voxelGridData.worldToCascadeNormalizedMatrices[cascadeIndexEx + 1u] * vec4(position.xyz, 1.0)).xyz;
       int textureIndexOffset = int(cascadeIndexEx + 1u) * 6;
       float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToCascadeScaleFactors[cascadeIndexEx + 1u] * voxelGridData.gridSize) + 1.0));   
       value = mix(value,
                   ((textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
                    (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
-                   (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)) * (stepDist / cascade.w),
+                   (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)) * (stepDist / voxelSize),
                  cascadeBlend);
     }
 
     accumulator += value * (1.0 - accumulator.w);
 
-    float stepSize = voxelGridData.cascadeCellSizes[cascadeIndexEx] * 0.5;
-
-    dist += (stepDist = stepSize * diameter); 
+    dist += (stepDist = ((voxelGridData.cascadeCellSizes[cascadeIndexEx] * 0.5) * diameter)); 
 
   }
 
@@ -178,17 +173,14 @@ vec4 cvctTraceRadianceCone(vec3 from,
    
 }
 
-vec4 cvctTraceCacadeCone(uint cascadeIndex,
-                         vec3 coneOrigin, 
-                         vec3 coneDirection,
-                         vec3 normal,    
-                         float aperture,
-                         float offset,
-                         float maxDistance){
+vec4 cvctTraceCascadeCone(uint cascadeIndex,
+                          vec3 coneOrigin, 
+                          vec3 coneDirection,
+                          float aperture,
+                          float offset,
+                          float maxDistance){
   
   coneDirection = normalize(coneDirection);                    
-
-  normal = normalize(normal);
 
   coneOrigin = (voxelGridData.worldToCascadeNormalizedMatrices[cascadeIndex] * vec4(coneOrigin, 1.0)).xyz;
 
@@ -425,7 +417,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
     float diameter = max(voxelGridData.oneOverGridSize * 0.5, doubledAperture * (dist * voxelGridData.worldToCascadeScales[cascadeIndex]));
 
     // Calculate the mip map level to use for the current position
-    float mipMapLevel = max(0.0, log2((diameter * voxelGridData.gridSize) + 1.0));   
+    float mipMapLevel = max(0.0, log2((diameter * voxelGridData.gridSize)));   
 
     // Calculate the texture position
     vec3 cascadePosition = cvctWorldToTextureSpace(position, uint(cascadeIndex));
@@ -1172,11 +1164,11 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
                                  );  
 #endif
   const float coneOffset = -0.01,
-              offset = 4.0 * voxelGridData.cascadeCellSizes[0],
+              offset = 1.0 * voxelGridData.cascadeCellSizes[0],
               maxDistance = 2.0 * voxelGridData.cascadeCellSizes[voxelGridData.countCascades - 1] * float(voxelGridData.gridSize);
   normal = normalize(normal);
-  vec3 normalOffset = normal * (1.0 + (4.0 * 0.70710678118)) * voxelGridData.cascadeCellSizes[0], 
-       coneOrigin = from, // + normalOffset,
+  vec3 normalOffset = normal * (1.0 + (1.0 * 0.70710678118)) * voxelGridData.cascadeCellSizes[0], 
+       coneOrigin = from + normalOffset,
        t0 = cross(vec3(0.0, 1.0, 0.0), normal),
        t1 = cross(vec3(0.0, 0.0, 1.0), normal),
        tangent = normalize((length(t0) < length(t1)) ? t1 : t0),
