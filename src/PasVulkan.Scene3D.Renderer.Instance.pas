@@ -1884,7 +1884,7 @@ begin
                                                                         Renderer.GlobalIlluminationVoxelCountCascades)*
                                                                        64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1));
 
-   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=16;
+   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=64;
 
    fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                                        Renderer.GlobalIlluminationVoxelGridSize,
@@ -3958,9 +3958,9 @@ begin
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.HardwareConservativeRasterization:=VK_FALSE;
  end;
 
- GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxGlobalFragmentCount:=GlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxGlobalFragmentCount:=fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;
 
- GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxLocalFragmentCount:=GlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
+ GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.MaxLocalFragmentCount:=fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount;
 
  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
