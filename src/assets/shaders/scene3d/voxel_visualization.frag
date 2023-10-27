@@ -1,0 +1,178 @@
+#version 450 core
+
+#extension GL_EXT_multiview : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
+#if defined(USEDEMOTE)
+  #extension GL_EXT_demote_to_helper_invocation : enable
+#endif
+
+layout(location = 0) in vec3 inRayOrigin;
+layout(location = 1) in vec3 inRayDirection;
+
+layout(location = 0) out vec4 outFragColor;
+
+layout (set = 0, binding = 1, std140) readonly uniform VoxelGridData {
+  #include "voxelgriddata_uniforms.glsl"
+} voxelGridData;
+
+ layout(set = 0, binding = 2) uniform sampler3D uVoxelGridOcclusion[];
+
+ layout(set = 0, binding = 3) uniform sampler3D uVoxelGridRadiance[];
+
+struct Intersection {
+   float dist;
+   vec4 voxel;
+   //vec3 position;
+};
+
+#ifdef DebugRayGrid 
+vec4 debugColor = vec4(0.0);
+#endif               
+
+bool voxelTrace(in int cascadeIndex,
+                in vec3 rayOrigin, 
+                in vec3 rayDirection,
+                inout Intersection intersection){
+  
+  bool hit = false; //traceGeometry(rayOrigin, rayDirection, intersection);
+  
+  const int maxSteps = int(2 * ceil(length(vec3(float(voxelGridData.gridSize)))));
+ 
+  const vec3 cascadeSize = vec3(voxelGridData.cascadeToWorldScales[cascadeIndex]);
+
+  const vec3 cascadeMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
+  const vec3 cascadeMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
+
+  const float timeScale = cascadeSize.x / float(voxelGridData.gridSize); // Assuming that all the cascade grid bound axes are equally-sized
+
+  const vec3 cascadeToGridScale = vec3(float(voxelGridData.gridSize)) / cascadeSize,
+             gridToCascadeScale = cascadeSize / vec3(float(voxelGridData.gridSize));
+             
+  const mat4 cascadeToGridMatrix = mat4(
+                                     vec4(cascadeToGridScale.x, 0.0, 0.0, 0.0),
+                                     vec4(0.0, cascadeToGridScale.y, 0.0, 0.0),
+                                     vec4(0.0, 0.0, cascadeToGridScale.z, 0.0),
+                                     vec4(-(cascadeMin * cascadeToGridScale), 1.0)
+                                   ),
+             gridToCascadeMatrix = mat4(
+                                     vec4(gridToCascadeScale.x, 0.0, 0.0, 0.0),
+                                     vec4(0.0, gridToCascadeScale.y, 0.0, 0.0),
+                                     vec4(0.0, 0.0, gridToCascadeScale.z, 0.0),
+                                     vec4(cascadeMin, 1.0)
+                                   );   
+  
+  vec3 inversedRayDirection = abs(vec3(length(rayDirection)) / rayDirection) * sign(rayDirection),
+       omin = (min(cascadeMin, cascadeMax) - rayOrigin) * inversedRayDirection,
+       omax = (max(cascadeMin, cascadeMax) - rayOrigin) * inversedRayDirection,
+       vmin = min(omin, omax),
+       vmax = max(omin, omax),
+       r = vec3(max(vmin.x, max(vmin.y, vmin.z)),
+                min(vmax.x, min(vmax.y, vmax.z)),
+                0.0);
+  
+  if((r.x <= r.y) && (r.y >= 0.0) && (r.x <= intersection.dist)){
+               
+    r.x = max(0.0, r.x);
+    
+    intersection.dist = clamp(intersection.dist, r.x, r.y);
+    
+    rayOrigin = (cascadeToGridMatrix * vec4(rayOrigin + (rayDirection * r.x), 1.0)).xyz;
+
+    ivec3 position = ivec3(floor(clamp(rayOrigin, vec3(0.0), vec3(float(voxelGridData.gridSize) - 1.0)))),
+          positionStep = ivec3(sign(inversedRayDirection));
+          
+    vec3 sideDistanceStep = inversedRayDirection * positionStep,
+         sideDistance = ((position - rayOrigin) + vec3(0.5) + (positionStep * 0.5)) * inversedRayDirection;   
+        
+    for(int stepIndex = 0; stepIndex < maxSteps; stepIndex++){      
+         
+      vec3 times = (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)) * inversedRayDirection;
+                   
+      float time = max(times.x, max(times.y, times.z));
+      
+      uvec3 positionUnsigned = uvec3(position);
+      
+      if((((time * timeScale) + r.x) > intersection.dist) ||
+         any(greaterThanEqual(positionUnsigned, uvec3(voxelGridData.gridSize)))){
+        break;
+      }
+
+      vec4 voxel;
+      {
+        int mipMapLevel = 0;
+        ivec3 position = ivec3(positionUnsigned) >> mipMapLevel;
+        bvec3 negativeDirection = lessThan(rayDirection, vec3(0.0));
+        vec3 directionWeights = abs(rayDirection);
+        ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+        voxel = (texelFetch(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
+                (texelFetch(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
+                (texelFetch(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
+      }
+
+      if(length(voxel) > 0.0){
+#ifdef DebugRayGrid 
+        debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
+#endif
+        intersection.dist = (time * timeScale) + r.x;
+        intersection.voxel = voxel / voxel.w;
+        //intersection.position = (gridToCascadeMatrix * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
+        hit = true;
+        break;
+      }
+         
+      ivec3 mask = ivec3(lessThanEqual(sideDistance.xyz, min(sideDistance.yzx, sideDistance.zxy)));
+		  sideDistance += sideDistanceStep * mask;
+      position += positionStep * mask; 
+              
+    }
+   
+#ifdef DebugRayGrid 
+    debugColor = max(debugColor, vec4(1.0, 1.0, 1.0, 0.9));
+#endif
+   
+  }
+  
+	return hit;    
+}
+
+
+void main(){
+
+  vec3 rayOrigin = inRayOrigin;
+
+  // This normalization is necessary because the vertex shader outputs cubic coordinates which are not normalized. By normalizing the ray direction, 
+  // the cubic to spherical conversion is compatible with any projection matrix, independent of the near and far planes and their Z-directions 
+  // (e.g. 0 to 1, -1 to 1, 1 to -1 or even 1 to 0) and of perspective or orthographic projection.
+  vec3 rayDirection = normalize(inRayDirection);
+
+  const float infinity = uintBitsToFloat(0x7f800000u); // +infinity
+
+  bool hasBestIntersection = false;
+
+  Intersection bestIntersection = { infinity, vec4(0.0)/*, vec3(0.0)*/ };
+
+  for(uint cascadeIndex = 0u, countCascades = voxelGridData.countCascades; cascadeIndex < countCascades; cascadeIndex++){
+    Intersection intersection =  { infinity, vec4(0.0)/*, vec3(0.0)*/ };
+    if(voxelTrace(int(cascadeIndex), rayOrigin, rayDirection, intersection)){
+      if((!hasBestIntersection) || (intersection.dist < bestIntersection.dist)){
+        hasBestIntersection = true;
+        bestIntersection = intersection;
+      }
+    }
+  }
+
+  if(hasBestIntersection){
+    outFragColor = bestIntersection.voxel;
+  }else{
+#if defined(USEDEMOTE)
+    demote;
+#else
+    discard;  
+#endif
+  } 
+  
+}

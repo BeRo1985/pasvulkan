@@ -1884,7 +1884,7 @@ begin
                                                                         Renderer.GlobalIlluminationVoxelCountCascades)*
                                                                        64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1));
 
-   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=64;
+   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;//64;
 
    fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                                        Renderer.GlobalIlluminationVoxelGridSize,

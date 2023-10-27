@@ -252,6 +252,9 @@ compileshaderarguments=(
 
   "-V gi_cascaded_radiance_hints_bounce.comp -o ${tempPath}/gi_cascaded_radiance_hints_bounce_comp.spv"
 
+  "-V voxel_visualization.vert -o ${tempPath}/voxel_visualization_vert.spv"
+  "-V voxel_visualization.frag -o ${tempPath}/voxel_visualization_frag.spv"
+
 )
 
 #############################################
