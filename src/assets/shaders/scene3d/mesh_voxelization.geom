@@ -35,6 +35,9 @@ layout(location = 11) flat out vec3 outAABBMin;
 layout(location = 12) flat out vec3 outAABBMax;
 layout(location = 13) flat out uint outCascadeIndex;
 layout(location = 14) out vec3 outVoxelPosition;
+layout(location = 15) flat out vec3 outVertex0;
+layout(location = 16) flat out vec3 outVertex1;
+layout(location = 17) flat out vec3 outVertex2;
 
 /*layout(location = 11) flat out vec3 outVertex0;
 layout(location = 12) flat out vec3 outVertex1;
@@ -114,6 +117,10 @@ void main(){
     vec3 aabbMin = min(min(inWorldSpacePosition[0], inWorldSpacePosition[1]), inWorldSpacePosition[2]);
     vec3 aabbMax = max(max(inWorldSpacePosition[0], inWorldSpacePosition[1]), inWorldSpacePosition[2]);
     
+    outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
+    outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];
+    outVertex2 = inWorldSpacePosition[vertexIndexOrder[2]];
+
     for(int vertexIndex = 0; vertexIndex < 3; vertexIndex++){
 
       int currentVertexIndex = vertexIndexOrder[vertexIndex];

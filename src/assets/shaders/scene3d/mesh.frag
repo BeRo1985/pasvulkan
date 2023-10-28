@@ -76,9 +76,9 @@ layout(location = 11) flat in vec3 inAABBMin;
 layout(location = 12) flat in vec3 inAABBMax;
 layout(location = 13) flat in uint inCascadeIndex; 
 layout(location = 14) in vec3 inVoxelPosition; 
-/*layout(location = 11) flat in vec3 inVertex0;
-layout(location = 12) flat in vec3 inVertex1;
-layout(location = 13) flat in vec3 inVertex2;*/
+layout(location = 15) flat in vec3 inVertex0;
+layout(location = 16) flat in vec3 inVertex1;
+layout(location = 17) flat in vec3 inVertex2;
 #else
 layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in vec3 inViewSpacePosition;
@@ -1520,7 +1520,9 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
 
 void main() {
 #ifdef VOXELIZATION
-  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || any(greaterThan(inWorldSpacePosition.xyz, vec3(inAABBMax.xyz))) || (uint(inCascadeIndex) >= uint(voxelGridData.countCascades))){
+  if(any(lessThan(inWorldSpacePosition.xyz, inAABBMin.xyz)) || 
+     any(greaterThan(inWorldSpacePosition.xyz, inAABBMax.xyz)) || 
+     (uint(inCascadeIndex) >= uint(voxelGridData.countCascades))){
     outFragColor = vec4(0.0);
     return;
   }

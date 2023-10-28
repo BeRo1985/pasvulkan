@@ -32,6 +32,65 @@ layout (set = 1, binding = 2, std430) coherent buffer VoxelGridContentMetaData {
   uint data[];
 } voxelGridContentMetaData;
 
+bool aabbTriangleIntersection(vec3 aabbMin, vec3 aabbMax, vec3 v0, vec3 v1, vec3 v2){
+
+	if(!(all(greaterThanEqual(aabbMax, min(v0, min(v1, v2)))) && 
+       all(lessThanEqual(aabbMin, max(v0, max(v1, v2)))))){
+    return false;
+  }
+
+  vec3 e0 = v1 - v0,
+       e1 = v2 - v1,
+       e2 = v0 - v2,
+       n = normalize(cross(e0, e1)),
+       dp = aabbMax - aabbMin,
+       c = vec3(
+             (n.x > 0.0) ? dp.x : 0.0,
+             (n.y > 0.0) ? dp.y : 0.0,
+             (n.z > 0.0) ? dp.z : 0.0
+           );
+
+  if(((dot(n, aabbMin) + dot(n, c - v0)) * (dot(n, aabbMin) + dot(n, (dp - c) - v0))) > 0.0){
+    return false;
+  }
+
+ 
+  {
+    float s = sign(n.z);
+    vec2 ne0 = vec2(-e0.y, e0.x) * s,
+         ne1 = vec2(-e1.y, e1.x) * s,
+         ne2 = vec2(-e2.y, e2.x) * s;
+    if(((dot(ne0, aabbMin.xy) + ((max(0.0, dp.x * ne0.x) + max(0.0, dp.y * ne0.y)) - dot(ne0, v0.xy))) < 0.0) ||
+       ((dot(ne1, aabbMin.xy) + ((max(0.0, dp.x * ne1.x) + max(0.0, dp.y * ne1.y)) - dot(ne1, v1.xy))) < 0.0) ||
+       ((dot(ne2, aabbMin.xy) + ((max(0.0, dp.x * ne2.x) + max(0.0, dp.y * ne2.y)) - dot(ne2, v2.xy))) < 0.0)){
+      return false;
+    }
+  }
+
+  {
+    float s = sign(n.y);
+    vec2 ne0 = vec2(-e0.x, e0.z) * s,
+         ne1 = vec2(-e1.x, e1.z) * s,
+         ne2 = vec2(-e2.x, e2.z) * s;
+    if(((dot(ne0, aabbMin.zx) + ((max(0.0, dp.z * ne0.x) + max(0.0, dp.x * ne0.y)) - dot(ne0, v0.zx))) < 0.0) ||
+       ((dot(ne1, aabbMin.zx) + ((max(0.0, dp.z * ne1.x) + max(0.0, dp.x * ne1.y)) - dot(ne1, v1.zx))) < 0.0) ||
+       ((dot(ne2, aabbMin.zx) + ((max(0.0, dp.z * ne2.x) + max(0.0, dp.x * ne2.y)) - dot(ne2, v2.zx))) < 0.0)){
+      return false;
+    }
+  }  
+
+  {
+    float s = sign(n.x);
+    vec2 ne0 = vec2(-e0.z, e0.y) * s,
+         ne1 = vec2(-e1.z, e1.y) * s,
+         ne2 = vec2(-e2.z, e2.y) * s;
+    return !(((dot(ne0, aabbMin.yz) + ((max(0.0, dp.y * ne0.x) + max(0.0, dp.z * ne0.y)) - dot(ne0, v0.yz))) < 0.0) ||
+             ((dot(ne1, aabbMin.yz) + ((max(0.0, dp.y * ne1.x) + max(0.0, dp.z * ne1.y)) - dot(ne1, v1.yz))) < 0.0) ||
+             ((dot(ne2, aabbMin.yz) + ((max(0.0, dp.y * ne2.x) + max(0.0, dp.z * ne2.y)) - dot(ne2, v2.yz))) < 0.0));
+  }
+  
+}                
+
 #endif
 
 #endif

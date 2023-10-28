@@ -22,6 +22,9 @@ layout(location = 5) flat out vec3 outAABBMin;
 layout(location = 6) flat out vec3 outAABBMax;
 layout(location = 7) flat out uint outCascadeIndex;
 layout(location = 8) out vec3 outVoxelPosition;
+layout(location = 9) flat out vec3 outVertex0;
+layout(location = 10) flat out vec3 outVertex1;
+layout(location = 11) flat out vec3 outVertex2;
 
 #define VOXELIZATION
 #include "voxelization_globals.glsl"
@@ -96,6 +99,10 @@ void main(){
 
     vec3 aabbMin = min(min(inWorldSpacePosition[0], inWorldSpacePosition[1]), inWorldSpacePosition[2]);
     vec3 aabbMax = max(max(inWorldSpacePosition[0], inWorldSpacePosition[1]), inWorldSpacePosition[2]);
+
+    outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
+    outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];
+    outVertex2 = inWorldSpacePosition[vertexIndexOrder[2]];
     
     for(int vertexIndex = 0; vertexIndex < 3; vertexIndex++){
 

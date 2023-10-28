@@ -47,6 +47,9 @@ layout(location = 2) in vec4 inColor;
   layout(location = 6) flat in vec3 inAABBMax;
   layout(location = 7) flat in uint inCascadeIndex; 
   layout(location = 8) in vec3 inVoxelPosition;
+  layout(location = 9) flat in vec3 inVertex0;
+  layout(location = 10) flat in vec3 inVertex1;
+  layout(location = 11) flat in vec3 inVertex2;
 #else
   layout(location = 3) flat in uint inTextureID;
 #endif
