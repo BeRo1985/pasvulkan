@@ -1289,13 +1289,13 @@ begin
   Cascade:=fCascades[CascadeIndex];
 
   if fVoxels then begin
-   if CascadeIndex=(fCountCascades-1) then begin
+{  if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
-{  end else if CascadeIndex=0 then begin
+   end else}if CascadeIndex=0 then begin
     CellSize:=Min(0.125,MaximumCascadeCellSize);
    end else begin
     CellSize:=Min(CellSize*2.0,MaximumCascadeCellSize);//}
-   end else begin
+{  end else begin
     CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));//}
    end;
   end else begin
@@ -1888,7 +1888,7 @@ begin
                                                                         Renderer.GlobalIlluminationVoxelCountCascades)*
                                                                        64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1));
 
-   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount;//64;
+   fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=16;
 
    fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes:=TCascadedVolumes.Create(self,
                                                                                        Renderer.GlobalIlluminationVoxelGridSize,

@@ -1,15 +1,15 @@
-  mat4 worldToCascadeClipSpaceMatrices[4]; // world-to-cascade matrices (in clip space)
-  mat4 worldToCascadeNormalizedMatrices[4]; // world-to-cascade matrices (normalized to [0, 1] in x, y and z)
-  mat4 worldToCascadeGridMatrices[4]; // world-to-cascade matrices in grid space
-  mat4 cascadeGridToWorldMatrices[4]; // cascade-to-world matrices (in world space)
-  vec4 cascadeAABBMin[4]; // in world-space
-  vec4 cascadeAABBMax[4]; // in world-space
-  vec4 cascadeAABBFadeStart[4];
-  vec4 cascadeAABBFadeEnd[4];
-  vec4 cascadeCenterHalfExtents[4]; // xyz = center in world-space, w = half-extent of a voxel 
-  vec4 worldToCascadeScales; // a world-to-cascade-scale component per cascade
-  vec4 cascadeToWorldScales; // a cascade-to-world-scale component per cascade
-  vec4 cascadeCellSizes; // size of a voxel in world-space
+  mat4 worldToCascadeClipSpaceMatrices[8]; // world-to-cascade matrices (in clip space)
+  mat4 worldToCascadeNormalizedMatrices[8]; // world-to-cascade matrices (normalized to [0, 1] in x, y and z)
+  mat4 worldToCascadeGridMatrices[8]; // world-to-cascade matrices in grid space
+  mat4 cascadeGridToWorldMatrices[8]; // cascade-to-world matrices (in world space)
+  vec4 cascadeAABBMin[8]; // in world-space
+  vec4 cascadeAABBMax[8]; // in world-space
+  vec4 cascadeAABBFadeStart[8];
+  vec4 cascadeAABBFadeEnd[8];
+  vec4 cascadeCenterHalfExtents[8]; // xyz = center in world-space, w = half-extent of a voxel 
+  float worldToCascadeScales[8]; // a world-to-cascade-scale component per cascade
+  float cascadeToWorldScales[8]; // a cascade-to-world-scale component per cascade
+  float cascadeCellSizes[8]; // size of a voxel in world-space
   float oneOverGridSize; // 1.0 / gridSize
   uint gridSize; // number of voxels in a cascade in a single dimension
   uint countCascades; // maximum 4 cascades
