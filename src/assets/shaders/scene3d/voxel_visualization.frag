@@ -155,7 +155,7 @@ void main(){
 
   Intersection bestIntersection = { infinity, vec4(0.0)/*, vec3(0.0)*/ };
 
-  for(uint cascadeIndex = 0u, countCascades = voxelGridData.countCascades; cascadeIndex < countCascades; cascadeIndex++){
+  for(int cascadeIndex = int(voxelGridData.countCascades) - 1; cascadeIndex >= 0; cascadeIndex--){
     Intersection intersection =  { infinity, vec4(0.0)/*, vec3(0.0)*/ };
     if(voxelTrace(int(cascadeIndex), rayOrigin, rayDirection, intersection)){
       if((!hasBestIntersection) || (intersection.dist < bestIntersection.dist)){
