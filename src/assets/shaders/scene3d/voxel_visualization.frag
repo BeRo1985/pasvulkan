@@ -42,28 +42,10 @@ bool voxelTrace(in int cascadeIndex,
   
   const int maxSteps = int(2 * ceil(length(vec3(float(voxelGridData.gridSize)))));
  
-  const vec3 cascadeSize = vec3(voxelGridData.cascadeToWorldScales[cascadeIndex]);
-
   const vec3 cascadeMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
   const vec3 cascadeMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
 
-  const float timeScale = cascadeSize.x / float(voxelGridData.gridSize); // Assuming that all the cascade grid bound axes are equally-sized
-
-  const vec3 cascadeToGridScale = vec3(float(voxelGridData.gridSize)) / cascadeSize,
-             gridToCascadeScale = cascadeSize / vec3(float(voxelGridData.gridSize));
-             
-  const mat4 cascadeToGridMatrix = mat4(
-                                     vec4(cascadeToGridScale.x, 0.0, 0.0, 0.0),
-                                     vec4(0.0, cascadeToGridScale.y, 0.0, 0.0),
-                                     vec4(0.0, 0.0, cascadeToGridScale.z, 0.0),
-                                     vec4(-(cascadeMin * cascadeToGridScale), 1.0)
-                                   ),
-             gridToCascadeMatrix = mat4(
-                                     vec4(gridToCascadeScale.x, 0.0, 0.0, 0.0),
-                                     vec4(0.0, gridToCascadeScale.y, 0.0, 0.0),
-                                     vec4(0.0, 0.0, gridToCascadeScale.z, 0.0),
-                                     vec4(cascadeMin, 1.0)
-                                   );   
+  const float timeScale = voxelGridData.cascadeToWorldScales[cascadeIndex] / float(voxelGridData.gridSize); // Assuming that all the cascade grid bound axes are equally-sized
   
   vec3 inversedRayDirection = abs(vec3(length(rayDirection)) / rayDirection) * sign(rayDirection),
        omin = (min(cascadeMin, cascadeMax) - rayOrigin) * inversedRayDirection,
@@ -80,7 +62,7 @@ bool voxelTrace(in int cascadeIndex,
     
     intersection.dist = clamp(intersection.dist, r.x, r.y);
     
-    rayOrigin = (cascadeToGridMatrix * vec4(rayOrigin + (rayDirection * r.x), 1.0)).xyz;
+    rayOrigin = (voxelGridData.worldToCascadeGridMatrices[cascadeIndex] * vec4(rayOrigin + (rayDirection * r.x), 1.0)).xyz;
 
     ivec3 position = ivec3(floor(clamp(rayOrigin, vec3(0.0), vec3(float(voxelGridData.gridSize) - 1.0)))),
           positionStep = ivec3(sign(inversedRayDirection));
@@ -119,7 +101,7 @@ bool voxelTrace(in int cascadeIndex,
 #endif
         intersection.dist = (time * timeScale) + r.x;
         intersection.voxel = voxel / voxel.w;
-        //intersection.position = (gridToCascadeMatrix * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
+        //intersection.position = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
         hit = true;
         break;
       }

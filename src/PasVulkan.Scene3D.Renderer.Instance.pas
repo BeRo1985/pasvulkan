@@ -280,6 +280,8 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
              WorldToCascadeClipSpaceMatrices:array[0..3] of TpvMatrix4x4;
              WorldToCascadeNormalizedMatrices:array[0..3] of TpvMatrix4x4;
+             WorldToCascadeGridMatrices:array[0..3] of TpvMatrix4x4;
+             CascadeGridToWorldMatrices:array[0..3] of TpvMatrix4x4;
              CascadeAABBMin:array[0..3] of TpvVector4;
              CascadeAABBMax:array[0..3] of TpvVector4;
              CascadeAABBFadeStart:array[0..3] of TpvVector4;
@@ -3935,6 +3937,20 @@ begin
                                                                                                                                    -(CascadedVolumeCascade.fAABB.Min.y/VolumeDimensionSize),
                                                                                                                                    -(CascadedVolumeCascade.fAABB.Min.z/VolumeDimensionSize),
                                                                                                                                    1.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeGridMatrices[CascadeIndex]:=TpvMatrix4x4.Create(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize,0.0,0.0,0.0,
+                                                                                                                             0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize,0.0,0.0,
+                                                                                                                             0.0,0.0,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize,0.0,
+                                                                                                                             -(CascadedVolumeCascade.fAABB.Min.x*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize)),
+                                                                                                                             -(CascadedVolumeCascade.fAABB.Min.y*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize)),
+                                                                                                                             -(CascadedVolumeCascade.fAABB.Min.z*(fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize/VolumeDimensionSize)),
+                                                                                                                             1.0);
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeGridToWorldMatrices[CascadeIndex]:=TpvMatrix4x4.Create(VolumeDimensionSize/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize,0.0,0.0,0.0,
+                                                                                                                             0.0,VolumeDimensionSize/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize,0.0,0.0,
+                                                                                                                             0.0,0.0,VolumeDimensionSize/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize,0.0,
+                                                                                                                             CascadedVolumeCascade.fAABB.Min.x,
+                                                                                                                             CascadedVolumeCascade.fAABB.Min.y,
+                                                                                                                             CascadedVolumeCascade.fAABB.Min.z,
+                                                                                                                             1.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
   s:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1)].fCellSize*2.0;

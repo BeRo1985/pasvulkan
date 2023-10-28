@@ -1,5 +1,7 @@
   mat4 worldToCascadeClipSpaceMatrices[4]; // world-to-cascade matrices (in clip space)
   mat4 worldToCascadeNormalizedMatrices[4]; // world-to-cascade matrices (normalized to [0, 1] in x, y and z)
+  mat4 worldToCascadeGridMatrices[4]; // world-to-cascade matrices in grid space
+  mat4 cascadeGridToWorldMatrices[4]; // cascade-to-world matrices (in world space)
   vec4 cascadeAABBMin[4]; // in world-space
   vec4 cascadeAABBMax[4]; // in world-space
   vec4 cascadeAABBFadeStart[4];
