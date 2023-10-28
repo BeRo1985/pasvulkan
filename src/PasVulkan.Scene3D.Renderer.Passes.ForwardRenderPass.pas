@@ -1020,7 +1020,7 @@ begin
   end;
 
   if assigned(fVoxelVisualization) then begin
- {}fVoxelVisualization.Draw(aInFlightFrameIndex,
+ { fVoxelVisualization.Draw(aInFlightFrameIndex,
                             InFlightFrameState^.FinalViewIndex,
                             InFlightFrameState^.CountFinalViews,
                             aCommandBuffer);//{}
