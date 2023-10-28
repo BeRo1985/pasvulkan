@@ -402,7 +402,7 @@ begin
 
  fGlobalIlluminationVoxelGridSize:=128;
 
- fGlobalIlluminationVoxelCountCascades:=8;
+ fGlobalIlluminationVoxelCountCascades:=4;
 
  fGlobalIlluminationVoxelCountBounces:=2;
 
