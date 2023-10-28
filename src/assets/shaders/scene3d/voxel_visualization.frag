@@ -83,7 +83,7 @@ bool voxelTrace(in int cascadeIndex,
         break;
       }
 
-      vec4 voxel;
+      vec4 voxel = vec4(0.0);
       {
         int mipMapLevel = 0;
         ivec3 position = ivec3(positionUnsigned) >> mipMapLevel;
@@ -96,14 +96,25 @@ bool voxelTrace(in int cascadeIndex,
       }
 
       if(length(voxel) > 0.0){
+        vec3 worldPosition = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
+        if(!((cascadeIndex > 0) && 
+             ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 1].xyz)) && 
+               all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 1].xyz))) ||
+              (cascadeIndex > 1) && 
+               ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 2].xyz)) && 
+                 all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 2].xyz))) ||
+                 (cascadeIndex > 2) && 
+                 ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 3].xyz)) && 
+                   all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 3].xyz)))))))){
 #ifdef DebugRayGrid 
-        debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
+          debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
 #endif
-        intersection.dist = (time * timeScale) + r.x;
-        intersection.voxel = voxel / voxel.w;
-        //intersection.position = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
-        hit = true;
-        break;
+          intersection.dist = (time * timeScale) + r.x;
+          intersection.voxel = voxel / voxel.w;
+          //intersection.position = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
+          hit = true;
+          break;
+        }
       }
          
       ivec3 mask = ivec3(lessThanEqual(sideDistance.xyz, min(sideDistance.yzx, sideDistance.zxy)));

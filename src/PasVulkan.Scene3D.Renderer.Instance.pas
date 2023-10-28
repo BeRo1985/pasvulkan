@@ -1276,7 +1276,9 @@ begin
 
  MaximumCascadeCellSize:=Max(1e-6,MaxAxisSize/fVolumeSize);
 
- if not fVoxels then begin
+ if fVoxels then begin
+  MaximumCascadeCellSize:=Ceil(MaximumCascadeCellSize/(1 shl fCountCascades))*(1 shl fCountCascades);
+ end else begin
   MaximumCascadeCellSize:=Ceil(MaximumCascadeCellSize);
  end;
 
@@ -1289,11 +1291,11 @@ begin
   if fVoxels then begin
    if CascadeIndex=(fCountCascades-1) then begin
     CellSize:=MaximumCascadeCellSize;
-   end else if CascadeIndex=0 then begin
+{  end else if CascadeIndex=0 then begin
     CellSize:=Min(0.125,MaximumCascadeCellSize);
    end else begin
     CellSize:=Min(CellSize*2.0,MaximumCascadeCellSize);//}
-{  end else begin
+   end else begin
     CellSize:=MaximumCascadeCellSize/Power(2.0,fCountCascades-(CascadeIndex+1));//}
    end;
   end else begin
