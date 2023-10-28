@@ -14,7 +14,6 @@ layout(location = 1) out vec3 outRayDirection; // <= needs to be normalized in t
 layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;  //
   uint countViews;     //
-  float skyBoxBrightnessFactor; //
 } pushConstants;
 
 struct View {
