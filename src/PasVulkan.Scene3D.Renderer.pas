@@ -400,9 +400,9 @@ begin
 
  fGlobalIlluminationRadianceHintsSpread:=-0.25;
 
- fGlobalIlluminationVoxelGridSize:=128;
+ fGlobalIlluminationVoxelGridSize:=64;
 
- fGlobalIlluminationVoxelCountCascades:=4;
+ fGlobalIlluminationVoxelCountCascades:=8;
 
  fGlobalIlluminationVoxelCountBounces:=2;
 
