@@ -56,7 +56,7 @@ bool voxelTrace(const in int cascadeIndex,
         positionStep = ivec3(sign(rayDirection));
 
   vec3 sideDistanceStep = vec3(1.0) / abs(rayDirection),
-        sideDistance = (((vec3(position) - rayOrigin) * sign(rayDirection)) + (sign(rayDirection) * 0.5) + vec3(0.5)) * sideDistanceStep;   
+       sideDistance = (((vec3(position) - rayOrigin) * sign(rayDirection)) + (sign(rayDirection) * 0.5) + vec3(0.5)) * sideDistanceStep;   
       
   const uint gridSize = voxelGridData.gridSizes[cascadeIndex >> 2][cascadeIndex & 3];
 
