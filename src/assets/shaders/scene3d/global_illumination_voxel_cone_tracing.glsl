@@ -186,7 +186,7 @@ vec4 cvctTraceCascadeCone(uint cascadeIndex,
 
   float worldToCascadeScale = voxelGridData.worldToCascadeScales[cascadeIndex >> 2u][cascadeIndex & 3u];
 
-  float voxelVolumeSize = float(voxelGridData.gridSize);
+  float voxelVolumeSize = float(voxelGridData.gridSizes[cascadeIndex >> 2u][cascadeIndex & 3u]); 
 
   float voxelVolumeInverseSize = 1.0 / voxelVolumeSize;
 
@@ -363,7 +363,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
                            float maxDistance){
  
   // Calculate the doubled aperture angle for the cone
-  float doubledAperture = max(voxelGridData.oneOverGridSize, 2.0 * aperture);
+  float doubledAperture = max(voxelGridData.oneOverGridSizes[0][0], 2.0 * aperture);
 
   // Set the starting distance
   float dist = offset;
@@ -414,10 +414,10 @@ vec4 cvctTraceRadianceCone(vec3 from,
     }
 
     // Calculate the diameter of the cone at the current position 
-    float diameter = max(voxelGridData.oneOverGridSize * 0.5, doubledAperture * (dist * voxelGridData.worldToCascadeScales[cascadeIndex >> 2u][cascadeIndex & 3u]));
+    float diameter = max(voxelGridData.oneOverGridSizes[cascadeIndex >> 2u][cascadeIndex & 3u] * 0.5, doubledAperture * (dist * voxelGridData.worldToCascadeScales[cascadeIndex >> 2u][cascadeIndex & 3u]));
 
     // Calculate the mip map level to use for the current position
-    float mipMapLevel = max(0.0, log2((diameter * voxelGridData.gridSize)));   
+    float mipMapLevel = max(0.0, log2((diameter * voxelGridData.gridSizes[cascadeIndex >> 2u][cascadeIndex & 3u])));   
 
     // Calculate the texture position
     vec3 cascadePosition = cvctWorldToTextureSpace(position, uint(cascadeIndex));
@@ -429,7 +429,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
                                           (textureLod(uVoxelGridRadiance[textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));
 
     // Move the position forward
-    dist += max(diameter, voxelGridData.oneOverGridSize) * voxelGridData.cascadeToWorldScales[cascadeIndex >> 2u][cascadeIndex & 3u];
+    dist += max(diameter, voxelGridData.oneOverGridSizes[cascadeIndex >> 2u][cascadeIndex & 3u]) * voxelGridData.cascadeToWorldScales[cascadeIndex >> 2u][cascadeIndex & 3u];
 
   } 
 
@@ -960,7 +960,7 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
               coneOffset = -0.01,
               aperture = tan(radians(22.5)),
               offset = 4.0 * voxelGridData.cascadeCellSizes[0][0],
-              maxDistance = 2.0 * voxelGridData.cellSizes[(voxelGridData.cascadeCountCascades - 1) >> 2][(voxelGridData.cascadeCountCascades - 1) & 3] * float(voxelGridData.gridSize);
+              maxDistance = 2.0 * voxelGridData.cellSizes[(voxelGridData.cascadeCountCascades - 1) >> 2][(voxelGridData.cascadeCountCascades - 1) & 3] * float(voxelGridData.gridSizes[(voxelGridData.cascadeCountCascades - 1) >> 2][(voxelGridData.cascadeCountCascades - 1) & 3]);
   vec3 u = normalize(normal),
 #if 0
        v = cross(vec3(0.0, 1.0, 0.0), u),
@@ -1167,7 +1167,7 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
 #endif
   const float coneOffset = -0.01,
               offset = 1.0 * voxelGridData.cascadeCellSizes[0][0],
-              maxDistance = 2.0 * voxelGridData.cascadeCellSizes[(voxelGridData.countCascades - 1) >> 2][(voxelGridData.countCascades - 1) & 3] * float(voxelGridData.gridSize);
+              maxDistance = 2.0 * voxelGridData.cascadeCellSizes[(voxelGridData.countCascades - 1) >> 2][(voxelGridData.countCascades - 1) & 3] * float(voxelGridData.gridSizes[(voxelGridData.countCascades - 1) >> 2][(voxelGridData.countCascades - 1) & 3]);
   normal = normalize(normal);
   vec3 normalOffset = normal * (1.0 + (1.0 * 0.70710678118)) * voxelGridData.cascadeCellSizes[0][0], 
        coneOrigin = from + normalOffset,

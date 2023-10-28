@@ -24,19 +24,23 @@ layout(set = 0, binding = 2, std430) coherent buffer VoxelGridContentMetaData {
 
 layout(set = 0, binding = 3, r8) writeonly uniform image3D uImageVolumeOcclusion[]; // 0.0 .. 1.0 scaled 8-bit unsigned integer (R8_unorm)
 
+layout(push_constant) uniform PushConstants {
+  uint cascadeIndex;
+} pushConstants;
+
 void main(){
 
-  uint voxelGridSize = voxelGridData.gridSize;
+  uint cascadeIndex = pushConstants.cascadeIndex;
+
+  uint voxelGridSize = voxelGridData.gridSizes[cascadeIndex >> 2u][cascadeIndex & 0x3u];
 
   uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
 
-  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelGridSize), voxelGridSize * voxelGridData.countCascades)))){
+  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelGridSize), voxelGridSize)))){
 
-    uint cascadeIndex = invocation.z / voxelGridSize;
+    uvec3 volumePosition = uvec3(invocation);
 
-    uvec3 volumePosition = uvec3(invocation.xy, invocation.z - (cascadeIndex * voxelGridSize));
-
-    uint volumeBaseIndex = (((((uint(cascadeIndex) * voxelGridSize) + uint(volumePosition.z)) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x);
+    uint volumeBaseIndex = ((((uint(volumePosition.z) * voxelGridSize) + uint(volumePosition.y)) * voxelGridSize) + uint(volumePosition.x)) + voxelGridData.dataOffsets[cascadeIndex >> 2u][cascadeIndex & 3u];
 
     uint volumeIndex = volumeBaseIndex << 1u;
 

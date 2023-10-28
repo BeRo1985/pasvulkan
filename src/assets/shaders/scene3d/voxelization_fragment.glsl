@@ -4,7 +4,7 @@
 #ifdef VOXELIZATION
   vec4 cascade = voxelGridData.cascadeCenterHalfExtents[inCascadeIndex];
 
-  uint voxelGridSize = voxelGridData.gridSize;
+  uint voxelGridSize = voxelGridData.gridSizes[inCascadeIndex >> 2u][inCascadeIndex & 3u];
   
   uvec3 volumePosition = uvec3(inVoxelPosition * float(voxelGridSize)); 
 
@@ -15,18 +15,18 @@
   if(all(greaterThanEqual(volumePosition, ivec3(0))) &&
     all(lessThan(volumePosition, ivec3(voxelGridSize))) &&
     (baseColor.w >= 0.00392156862) &&
-    aabbTriangleIntersection((gridToWorldMatrix * vec4(volumePosition, 1.0)).xyz,  (gridToWorldMatrix * vec4(volumePosition + vec3(1.0), 1.0)).xyz, inVertex0, inVertex1, inVertex2)){ 
+    aabbTriangleIntersection((gridToWorldMatrix * vec4(volumePosition, 1.0)).xyz, (gridToWorldMatrix * vec4(volumePosition + vec3(1.0), 1.0)).xyz, inVertex0, inVertex1, inVertex2)){ 
 
     uint volumeBaseIndex = 
       (
         (
           (
             (
-              (uint(inCascadeIndex) * voxelGridSize) + uint(volumePosition.z)
-            ) * voxelGridSize
-          ) + uint(volumePosition.y)
-        ) * voxelGridSize
-      ) + uint(volumePosition.x);
+              uint(volumePosition.z) * voxelGridSize
+            ) + uint(volumePosition.y)
+          ) * voxelGridSize
+        ) + uint(volumePosition.x) 
+      ) + voxelGridData.dataOffsets[inCascadeIndex >> 2u][inCascadeIndex & 3u];
 
     uint volumeIndex = volumeBaseIndex << 1u;
 

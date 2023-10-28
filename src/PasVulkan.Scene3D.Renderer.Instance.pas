@@ -290,8 +290,9 @@ type { TpvScene3DRendererInstance }
              WorldToCascadeScales:array[0..7] of TpvFloat;
              CascadeToWorldScales:array[0..7] of TpvFloat;
              CascadeCellSizes:array[0..7] of TpvFloat;
-             OneOverGridSize:TpvFloat;
-             GridSize:TpvUInt32;
+             OneOverGridSizes:array[0..7] of TpvFloat;
+             GridSizes:array[0..7] of TpvUInt32;
+             DataOffsets:array[0..7] of TpvUInt32;
              CountCascades:TpvUInt32;
              HardwareConservativeRasterization:TpvUInt32;
              MaxGlobalFragmentCount:TpvUInt32;
@@ -3910,6 +3911,7 @@ var CascadeIndex:TpvSizeInt;
     GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
     CascadedVolumeCascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     VolumeDimensionSize,s:TpvScalar;
+    DataOffset:TpvUInt32;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
@@ -3917,6 +3919,8 @@ begin
  fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Update(aInFlightFrameIndex);
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:=@fGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray[aInFlightFrameIndex];
+
+ DataOffset:=0;
 
  for CascadeIndex:=0 to fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1 do begin
   CascadedVolumeCascade:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex];
@@ -3962,11 +3966,14 @@ begin
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeScales[CascadeIndex]:=1.0/VolumeDimensionSize;
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeToWorldScales[CascadeIndex]:=VolumeDimensionSize;
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCellSizes[CascadeIndex]:=CascadedVolumeCascade.fCellSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.OneOverGridSizes[CascadeIndex]:=1.0/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.GridSizes[CascadeIndex]:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.DataOffsets[CascadeIndex]:=DataOffset;
+  inc(DataOffset,fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*
+                 fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize*
+                 fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize);
  end;
 
- GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.OneOverGridSize:=1.0/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
-
- GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.GridSize:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CountCascades:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades;
 

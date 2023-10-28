@@ -186,9 +186,9 @@ begin
  fVulkanDescriptorSetLayout.Initialize;
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
-{fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                       0,
-                                      SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass.TPushConstants));//}
+                                      SizeOf(TpvUInt32));//}
  fPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fPipelineLayout.Initialize;
 
@@ -351,17 +351,19 @@ begin
                                       0,
                                       nil);
 
-{PushConstants.TopDownRSMOcclusionMapViewProjectionMatrix:=fInstance.InFlightFrameStates^[InFlightFrameIndex].TopDownRSMOcclusionMapViewProjectionMatrix;
+ for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
 
- aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                 0,
-                                 SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionTransferComputePass.TPushConstants),
-                                 @PushConstants);//}
+  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  0,
+                                  SizeOf(TpvUInt32),
+                                  @CascadeIndex);
 
- aCommandBuffer.CmdDispatch((fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
-                            (fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
-                            ((fInstance.Renderer.GlobalIlluminationVoxelGridSize*fInstance.Renderer.GlobalIlluminationVoxelCountCascades)+7) shr 3);
+  aCommandBuffer.CmdDispatch((fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
+                             (fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3,
+                             (fInstance.Renderer.GlobalIlluminationVoxelGridSize+7) shr 3);
+
+ end;
 
  Index:=0;
  for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin

@@ -81,6 +81,7 @@ type { TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusi
       public
        type TPushConstants=record
              MipMapLevel:TpvInt32;
+             CascadeIndex:TpvInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -325,15 +326,21 @@ begin
 
   PushConstants.MipMapLevel:=MipMapIndex;
 
-  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                  0,
-                                  SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass.TPushConstants),
-                                  @PushConstants);
+  for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
 
-  aCommandBuffer.CmdDispatch(((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
-                             ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
-                             (((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)*fInstance.Renderer.GlobalIlluminationVoxelCountCascades)+7) shr 3);
+   PushConstants.CascadeIndex:=CascadeIndex;
+
+   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                   0,
+                                   SizeOf(TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass.TPushConstants),
+                                   @PushConstants);
+
+   aCommandBuffer.CmdDispatch(((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
+                              ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3,
+                              ((fInstance.Renderer.GlobalIlluminationVoxelGridSize shr MipMapIndex)+7) shr 3);
+
+  end;
 
   if (MipMapIndex+1)<fInstance.GlobalIlluminationCascadedVoxelConeTracingOcclusionImages[0].MipMapLevels then begin
    Index:=0;

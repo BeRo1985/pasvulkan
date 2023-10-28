@@ -20,6 +20,7 @@ layout(set = 0, binding = 2, rgba16f) writeonly uniform image3D uImageDestinatio
 
 layout(push_constant) uniform PushConstants {
   uint mipMapLevel;
+  uint cascadeIndex;
 } pushConstants;
 
 #define voxelIndex(x, y, z) ((((z << 1) + y) << 1) + x)    
@@ -47,7 +48,9 @@ void fetchVoxels(out vec4 voxels[8], const in uint index, const in ivec3 pos){
 
 void main(){
 
-  uint voxelSourceGridSize = voxelGridData.gridSize;
+  uint cascadeIndex = pushConstants.cascadeIndex;
+
+  uint voxelSourceGridSize = voxelGridData.gridSizes[cascadeIndex >> 2u][cascadeIndex & 3u];
 
   uint voxelDestinationGridSize = voxelSourceGridSize >> pushConstants.mipMapLevel;
 
@@ -55,11 +58,9 @@ void main(){
 
   uvec3 invocation = uvec3(gl_GlobalInvocationID.xyz);
 
-  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelDestinationGridSize), voxelDestinationGridSize * voxelGridData.countCascades)))){
+  if(all(greaterThanEqual(invocation, uvec3(0))) && all(lessThan(invocation, uvec3(uvec2(voxelDestinationGridSize), voxelDestinationGridSize)))){
 
-    uint cascadeIndex = invocation.z / voxelDestinationGridSize;
-
-    uvec3 volumeDestinationPosition = uvec3(invocation.xy, invocation.z - (cascadeIndex * voxelDestinationGridSize));
+    uvec3 volumeDestinationPosition = uvec3(invocation);
 
     uvec3 volumeSourcePosition = volumeDestinationPosition << uvec3(1u);
 
