@@ -1023,7 +1023,7 @@ begin
  { fVoxelVisualization.Draw(aInFlightFrameIndex,
                             InFlightFrameState^.FinalViewIndex,
                             InFlightFrameState^.CountFinalViews,
-                            aCommandBuffer);//{}
+                            aCommandBuffer);//}
   end;
 
  end;

@@ -149,7 +149,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
       float mipMapLevel = 0.0; //max(0.0, log2((diameter * worldToCascadeScaleFactors[cascadeIndexEx] * voxelGridData.gridSize) + 1.0));   
       value = ((textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
                (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
-               (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)) * (stepDist / voxelSize);
+               (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z));// * (stepDist / voxelSize);
     }
 
     if((cascadeBlend > 0.0) && ((cascadeIndexEx + 1u) < voxelGridData.countCascades)){
@@ -159,7 +159,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
       value = mix(value,
                   ((textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.x], cascadePosition, mipMapLevel) * directionWeights.x) +
                    (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.y], cascadePosition, mipMapLevel) * directionWeights.y) +
-                   (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)) * (stepDist / voxelSize),
+                   (textureLod(uVoxelGridRadiance[textureIndexOffset + textureIndices.z], cascadePosition, mipMapLevel) * directionWeights.z)),// * (stepDist / voxelSize),
                  cascadeBlend);
     }
 
@@ -169,7 +169,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 
   }
 
-  return accumulator;
+	return max(vec4(0.0), accumulator);
    
 }
 
@@ -575,11 +575,11 @@ vec4 cvctIndirectDiffuseLight(vec3 from,
   [[unroll]] for(int i = 0; i < NUM_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
 /*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
-      color += cvctTraceRadianceCone(coneOrigin, // + (coneOffset * direction), 
-                                     normal,
+      color += cvctTraceRadianceCone(coneOrigin + (coneOffset * direction), 
+                                     //normal,
                                      direction, 
                                      coneApertures[i], 
-                                     0.0, //offset, 
+                                     offset, 
                                      maxDistance) * coneWeights[i];
       weightSum += coneWeights[i]; 
     }
@@ -595,11 +595,11 @@ vec3 cvctIndirectSpecularLight(vec3 from,
                                float aperture, 
                                float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from, // + (normal * 2.0 * voxelGridData.cascadeCellSizes[0][0]), 
-                               normal,  
+  return cvctTraceRadianceCone(from + (normal * 2.0 * voxelGridData.cascadeCellSizes[0][0]), 
+                               //normal,  
                                normalize(reflect(normalize(viewDirection), normal)), 
                                aperture, 
-                               0.0, //2.0 * voxelGridData.cascadeCellSizes[0][0], 
+                               2.0 * voxelGridData.cascadeCellSizes[0][0], 
                                maxDistance).xyz;
 }
 
@@ -611,11 +611,11 @@ vec3 cvctIndirectRefractiveLight(vec3 from,
                                  float indexOfRefraction, 
                                  float maxDistance){
   normal = normalize(normal);
-  return cvctTraceRadianceCone(from, // + (normal * voxelGridData.cascadeCellSizes[0][0]), 
-                               normal,
+  return cvctTraceRadianceCone(from + (normal * voxelGridData.cascadeCellSizes[0][0]), 
+                               //normal,
                                normalize(refract(normalize(viewDirection), normal, 1.0 / indexOfRefraction)), 
                                aperture, 
-                               0.0,//voxelGridData.cascadeCellSizes[0][0], 
+                               voxelGridData.cascadeCellSizes[0][0], 
                                maxDistance).xyz;
 }                                   
 
