@@ -46,7 +46,7 @@ bool voxelTrace(in int cascadeIndex,
   const vec3 cascadeMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
   const vec3 cascadeMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
 
-  const float timeScale = voxelGridData.cascadeToWorldScales[cascadeIndex] / float(voxelGridData.gridSize); // Assuming that all the cascade grid bound axes are equally-sized
+  const float timeScale = voxelGridData.cascadeToWorldScales[cascadeIndex >> 2][cascadeIndex & 3] / float(voxelGridData.gridSize); // Assuming that all the cascade grid bound axes are equally-sized
   
   vec3 inversedRayDirection = abs(vec3(length(rayDirection)) / rayDirection) * sign(rayDirection),
        omin = (min(cascadeMin, cascadeMax) - rayOrigin) * inversedRayDirection,

@@ -7,9 +7,9 @@
   vec4 cascadeAABBFadeStart[8];
   vec4 cascadeAABBFadeEnd[8];
   vec4 cascadeCenterHalfExtents[8]; // xyz = center in world-space, w = half-extent of a voxel 
-  float worldToCascadeScales[8]; // a world-to-cascade-scale component per cascade
-  float cascadeToWorldScales[8]; // a cascade-to-world-scale component per cascade
-  float cascadeCellSizes[8]; // size of a voxel in world-space
+  vec4 worldToCascadeScales[2]; // a world-to-cascade-scale component per cascade
+  vec4 cascadeToWorldScales[2]; // a cascade-to-world-scale component per cascade
+  vec4 cascadeCellSizes[2]; // size of a voxel in world-space
   float oneOverGridSize; // 1.0 / gridSize
   uint gridSize; // number of voxels in a cascade in a single dimension
   uint countCascades; // maximum 4 cascades
