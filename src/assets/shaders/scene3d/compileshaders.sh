@@ -127,6 +127,10 @@ compileshaderarguments=(
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/mesh_voxelization_2_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/mesh_voxelization_3_geom.spv"
   "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/mesh_voxelization_4_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=5 -o ${tempPath}/mesh_voxelization_5_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=6 -o ${tempPath}/mesh_voxelization_6_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=7 -o ${tempPath}/mesh_voxelization_7_geom.spv"
+  "-V mesh_voxelization.geom -DCOUNT_CLIPMAPS=8 -o ${tempPath}/mesh_voxelization_8_geom.spv"
    
   "-V mesh_voxelization.comp -o ${tempPath}/mesh_voxelization_comp.spv"
 
@@ -134,6 +138,10 @@ compileshaderarguments=(
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=2 -o ${tempPath}/particle_voxelization_2_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=3 -o ${tempPath}/particle_voxelization_3_geom.spv"
   "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=4 -o ${tempPath}/particle_voxelization_4_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=5 -o ${tempPath}/particle_voxelization_5_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=6 -o ${tempPath}/particle_voxelization_6_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=7 -o ${tempPath}/particle_voxelization_7_geom.spv"
+  "-V particle_voxelization.geom -DCOUNT_CLIPMAPS=8 -o ${tempPath}/particle_voxelization_8_geom.spv"
   
   "-V mboit_resolve.frag -o ${tempPath}/mboit_resolve_frag.spv"
   "-V mboit_resolve.frag -DMSAA -o ${tempPath}/mboit_resolve_msaa_frag.spv"

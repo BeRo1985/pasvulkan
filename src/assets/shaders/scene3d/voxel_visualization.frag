@@ -27,6 +27,7 @@ struct Intersection {
    float dist;
    vec4 voxel;
    //vec3 position;
+   bool inside;
 };
 
 #ifdef DebugRayGrid 
@@ -58,6 +59,8 @@ bool voxelTrace(in int cascadeIndex,
   
   if((r.x <= r.y) && (r.y >= 0.0) && (r.x <= intersection.dist)){
                
+    intersection.inside = (r.x < 0.0) ? true : false;
+
     r.x = max(0.0, r.x);
     
     intersection.dist = clamp(intersection.dist, r.x, r.y);
@@ -99,13 +102,7 @@ bool voxelTrace(in int cascadeIndex,
         vec3 worldPosition = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
         if(!((cascadeIndex > 0) && 
              ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 1].xyz)) && 
-               all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 1].xyz))) ||
-              (cascadeIndex > 1) && 
-               ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 2].xyz)) && 
-                 all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 2].xyz))) ||
-                 (cascadeIndex > 2) && 
-                 ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 3].xyz)) && 
-                   all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 3].xyz)))))))){
+               all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 1].xyz)))))){
 #ifdef DebugRayGrid 
           debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
 #endif
@@ -146,14 +143,17 @@ void main(){
 
   bool hasBestIntersection = false;
 
-  Intersection bestIntersection = { infinity, vec4(0.0)/*, vec3(0.0)*/ };
+  Intersection bestIntersection = { infinity, vec4(0.0)/*, vec3(0.0)*/, false };
 
-  for(int cascadeIndex = int(voxelGridData.countCascades) - 1; cascadeIndex >= 0; cascadeIndex--){
-    Intersection intersection =  { infinity, vec4(0.0)/*, vec3(0.0)*/ };
+  for(uint cascadeIndex = 0u; cascadeIndex < voxelGridData.countCascades; cascadeIndex++){
+    Intersection intersection = { infinity, vec4(0.0)/*, vec3(0.0)*/, false };
     if(voxelTrace(int(cascadeIndex), rayOrigin, rayDirection, intersection)){
       if((!hasBestIntersection) || (intersection.dist < bestIntersection.dist)){
         hasBestIntersection = true;
         bestIntersection = intersection;
+        if(intersection.inside){ 
+          break;
+        }
       }
     }
   }

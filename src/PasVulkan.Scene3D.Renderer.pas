@@ -402,7 +402,7 @@ begin
 
  fGlobalIlluminationVoxelGridSize:=128;
 
- fGlobalIlluminationVoxelCountCascades:=4;
+ fGlobalIlluminationVoxelCountCascades:=8;
 
  fGlobalIlluminationVoxelCountBounces:=2;
 
@@ -446,7 +446,7 @@ end;
 
 procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelCountCascades(const aValue:TpvInt32);
 begin
- fGlobalIlluminationVoxelCountCascades:=Min(Max(aValue,1),4);
+ fGlobalIlluminationVoxelCountCascades:=Min(Max(aValue,1),8);
 end;
 
 procedure TpvScene3DRenderer.SetGlobalIlluminationVoxelGridSize(const aValue:TpvInt32);

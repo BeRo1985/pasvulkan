@@ -285,7 +285,7 @@ end;
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,Index,CascadeIndex,SideIndex:TpvInt32;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
-    ImageMemoryBarriers:array[0..(4*6)-1] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..(16*6)-1] of TVkImageMemoryBarrier;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
 

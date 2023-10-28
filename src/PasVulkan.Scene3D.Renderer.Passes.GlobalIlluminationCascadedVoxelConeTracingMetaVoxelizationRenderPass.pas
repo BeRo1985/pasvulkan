@@ -186,8 +186,20 @@ begin
   3:begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_3_geom.spv');
   end;
-  else begin
+  4:begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_4_geom.spv');
+  end;
+  5:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_5_geom.spv');
+  end;
+  6:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_6_geom.spv');
+  end;
+  7:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_7_geom.spv');
+  end;
+  else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_voxelization_8_geom.spv');
   end;
  end;
  try
@@ -229,8 +241,20 @@ begin
   3:begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_3_geom.spv');
   end;
-  else begin
+  4:begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_4_geom.spv');
+  end;
+  5:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_5_geom.spv');
+  end;
+  6:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_6_geom.spv');
+  end;
+  7:begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_7_geom.spv');
+  end;
+  else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_8_geom.spv');
   end;
  end;
  try

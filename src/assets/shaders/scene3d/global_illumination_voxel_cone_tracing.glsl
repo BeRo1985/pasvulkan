@@ -439,7 +439,7 @@ vec4 cvctTraceRadianceCone(vec3 from,
 }	
 
 // Trace a cone for a given position and direction, and return the accumulated occlusion
-float cvctTraceShadowCone(vec3 normal, 
+/*float cvctTraceShadowCone(vec3 normal, 
                           vec3 from, 
                           vec3 to){
   
@@ -675,7 +675,7 @@ float cvctTraceOcclusionCone(vec3 from,
   // Return the accumulated occlusion
   return clamp(1.0 - accumulator, 0.0, 1.0);
 
-}	
+}	*/
 
 // Create a rotation matrix from an axis and an angle
 mat3 cvctRotationMatrix(vec3 axis, float angle){
@@ -694,6 +694,7 @@ mat3 cvctRotationMatrix(vec3 axis, float angle){
                sc.y);                
 }                     
 
+/*
 // Calculate the sky light occlusion for a starting position and a direction
 float cvctSkyLightOcclusion(vec3 from, 
                             vec3 normal){
@@ -932,7 +933,7 @@ float cvctSkyLightOcclusion(vec3 from,
   vec2 occlusion = vec2(0.0);  
   [[unroll]] for(int i = 0; i < NUM_SKY_CONES; i++){
     vec3 direction = tangentSpace * coneDirections[i].xyz;
-/*  if(dot(direction, tangentSpace[2]) >= 0.0)*/{
+/*  if(dot(direction, tangentSpace[2]) >= 0.0)/{
       occlusion += vec2(cvctTraceOcclusionCone(coneOrigin + (coneOffset * direction), 
                                           direction, 
                                           coneApertures[i], 
@@ -945,6 +946,7 @@ float cvctSkyLightOcclusion(vec3 from,
   return occlusion.x / max(occlusion.y, 1e-6);
 #endif
 }
+*/
 
 // Calculate the radiance for a starting position and a direction
 vec4 cvctIndirectDiffuseLight(vec3 from, 

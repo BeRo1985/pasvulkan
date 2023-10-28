@@ -278,18 +278,18 @@ type { TpvScene3DRendererInstance }
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
             { TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
-             WorldToCascadeClipSpaceMatrices:array[0..3] of TpvMatrix4x4;
-             WorldToCascadeNormalizedMatrices:array[0..3] of TpvMatrix4x4;
-             WorldToCascadeGridMatrices:array[0..3] of TpvMatrix4x4;
-             CascadeGridToWorldMatrices:array[0..3] of TpvMatrix4x4;
-             CascadeAABBMin:array[0..3] of TpvVector4;
-             CascadeAABBMax:array[0..3] of TpvVector4;
-             CascadeAABBFadeStart:array[0..3] of TpvVector4;
-             CascadeAABBFadeEnd:array[0..3] of TpvVector4;
-             CascadeCenterHalfExtents:array[0..3] of TpvVector4;
-             WorldToCascadeScales:TpvVector4;
-             CascadeToWorldScales:TpvVector4;
-             CascadeCellSizes:TpvVector4;
+             WorldToCascadeClipSpaceMatrices:array[0..7] of TpvMatrix4x4;
+             WorldToCascadeNormalizedMatrices:array[0..7] of TpvMatrix4x4;
+             WorldToCascadeGridMatrices:array[0..7] of TpvMatrix4x4;
+             CascadeGridToWorldMatrices:array[0..7] of TpvMatrix4x4;
+             CascadeAABBMin:array[0..7] of TpvVector4;
+             CascadeAABBMax:array[0..7] of TpvVector4;
+             CascadeAABBFadeStart:array[0..7] of TpvVector4;
+             CascadeAABBFadeEnd:array[0..7] of TpvVector4;
+             CascadeCenterHalfExtents:array[0..7] of TpvVector4;
+             WorldToCascadeScales:array[0..7,0..3] of TpvFloat;
+             CascadeToWorldScales:array[0..7,0..3] of TpvFloat;
+             CascadeCellSizes:array[0..7,0..3] of TpvFloat;
              OneOverGridSize:TpvFloat;
              GridSize:TpvUInt32;
              CountCascades:TpvUInt32;
@@ -301,9 +301,9 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
             PGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray=^TGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray;
             TGlobalIlluminationCascadedVoxelConeTracingBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TGlobalIlluminationCascadedVoxelConeTracingSideImages=array[0..3,0..5] of TpvScene3DRendererMipmappedArray3DImage;
-            TGlobalIlluminationCascadedVoxelConeTracingImages=array[0..3] of TpvScene3DRendererMipmappedArray3DImage;
-            TGlobalIlluminationCascadedVoxelConeTracingAtomicImages=array[0..3] of TpvScene3DRendererImage3D;
+            TGlobalIlluminationCascadedVoxelConeTracingSideImages=array[0..7,0..5] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationCascadedVoxelConeTracingImages=array[0..7] of TpvScene3DRendererMipmappedArray3DImage;
+            TGlobalIlluminationCascadedVoxelConeTracingAtomicImages=array[0..7] of TpvScene3DRendererImage3D;
             { TMeshFragmentSpecializationConstants }
             TMeshFragmentSpecializationConstants=record
              public
@@ -3959,9 +3959,9 @@ begin
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBFadeStart[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-(CascadedVolumeCascade.fSnapSize+TpvVector3.InlineableCreate(s,s,s)),0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBFadeEnd[CascadeIndex]:=TpvVector4.InlineableCreate(((CascadedVolumeCascade.fAABB.Max-CascadedVolumeCascade.fAABB.Min)*0.5)-CascadedVolumeCascade.fSnapSize,0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCenterHalfExtents[CascadeIndex]:=TpvVector4.InlineableCreate((CascadedVolumeCascade.fAABB.Min+CascadedVolumeCascade.fAABB.Max)*0.5,VolumeDimensionSize*0.5);
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeScales.RawComponents[CascadeIndex]:=1.0/VolumeDimensionSize;
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeToWorldScales.RawComponents[CascadeIndex]:=VolumeDimensionSize;
-  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCellSizes.RawComponents[CascadeIndex]:=CascadedVolumeCascade.fCellSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.WorldToCascadeScales[CascadeIndex,0]:=1.0/VolumeDimensionSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeToWorldScales[CascadeIndex,0]:=VolumeDimensionSize;
+  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeCellSizes[CascadeIndex,0]:=CascadedVolumeCascade.fCellSize;
  end;
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.OneOverGridSize:=1.0/fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fVolumeSize;

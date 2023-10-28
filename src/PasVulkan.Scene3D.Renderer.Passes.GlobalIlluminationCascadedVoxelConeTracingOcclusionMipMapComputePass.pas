@@ -285,7 +285,7 @@ end;
 procedure TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameIndex,MipMapIndex,Index,CascadeIndex,SideIndex:TpvInt32;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
-    ImageMemoryBarriers:array[0..(4*6)-1] of TVkImageMemoryBarrier;
+    ImageMemoryBarriers:array[0..15] of TVkImageMemoryBarrier;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     PushConstants:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingOcclusionMipMapComputePass.TPushConstants;
 begin
