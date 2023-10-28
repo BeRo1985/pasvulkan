@@ -277,11 +277,13 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=array[0..MaxInFlightFrames-1] of TGlobalIlluminationRadianceHintsRSMUniformBufferData;
             PGlobalIlluminationRadianceHintsRSMUniformBufferDataArray=^TGlobalIlluminationRadianceHintsRSMUniformBufferDataArray;
             { TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData }
-            TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=record
+            TGlobalIlluminationCascadedVoxelConeTracingUniformBufferData=packed record
              WorldToCascadeClipSpaceMatrices:array[0..7] of TpvMatrix4x4;
              WorldToCascadeNormalizedMatrices:array[0..7] of TpvMatrix4x4;
              WorldToCascadeGridMatrices:array[0..7] of TpvMatrix4x4;
              CascadeGridToWorldMatrices:array[0..7] of TpvMatrix4x4;
+             CascadeAvoidAABBGridMin:array[0..7,0..3] of TpvInt32;
+             CascadeAvoidAABBGridMax:array[0..7,0..3] of TpvInt32;
              CascadeAABBMin:array[0..7] of TpvVector4;
              CascadeAABBMax:array[0..7] of TpvVector4;
              CascadeAABBFadeStart:array[0..7] of TpvVector4;
@@ -3912,6 +3914,7 @@ var CascadeIndex:TpvSizeInt;
     CascadedVolumeCascade:TpvScene3DRendererInstance.TCascadedVolumes.TCascade;
     VolumeDimensionSize,s:TpvScalar;
     DataOffset:TpvUInt32;
+    AABB:TpvAABB;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
@@ -3957,6 +3960,26 @@ begin
                                                                                                                              CascadedVolumeCascade.fAABB.Min.y,
                                                                                                                              CascadedVolumeCascade.fAABB.Min.z,
                                                                                                                              1.0);
+  if CascadeIndex>0 then begin
+   AABB:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[CascadeIndex-1].fAABB;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,0]:=floor((AABB.Min.x-CascadedVolumeCascade.fAABB.Min.x)/CascadedVolumeCascade.fCellSize);
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,1]:=floor((AABB.Min.y-CascadedVolumeCascade.fAABB.Min.y)/CascadedVolumeCascade.fCellSize);
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,2]:=floor((AABB.Min.z-CascadedVolumeCascade.fAABB.Min.z)/CascadedVolumeCascade.fCellSize);
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,3]:=0;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,0]:=ceil((AABB.Max.x-CascadedVolumeCascade.fAABB.Min.x)/CascadedVolumeCascade.fCellSize);
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,1]:=ceil((AABB.Max.y-CascadedVolumeCascade.fAABB.Min.y)/CascadedVolumeCascade.fCellSize);
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,2]:=ceil((AABB.Max.z-CascadedVolumeCascade.fAABB.Min.z)/CascadedVolumeCascade.fCellSize);
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,3]:=0;
+  end else begin
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,0]:=$7fffffff;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,1]:=$7fffffff;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,2]:=$7fffffff;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMin[CascadeIndex,3]:=0;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,0]:=-$80000000;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,1]:=-$80000000;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,2]:=-$80000000;
+   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAvoidAABBGridMax[CascadeIndex,3]:=0;
+  end;
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBMin[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Min,0.0);
   GlobalIlluminationCascadedVoxelConeTracingUniformBufferData^.CascadeAABBMax[CascadeIndex]:=TpvVector4.InlineableCreate(CascadedVolumeCascade.fAABB.Max,0.0);
   s:=fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Cascades[Min(Max(CascadeIndex+1,0),fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.fCountCascades-1)].fCellSize*2.0;

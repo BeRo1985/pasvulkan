@@ -2,6 +2,8 @@
   mat4 worldToCascadeNormalizedMatrices[8]; // world-to-cascade matrices (normalized to [0, 1] in x, y and z)
   mat4 worldToCascadeGridMatrices[8]; // world-to-cascade matrices in grid space
   mat4 cascadeGridToWorldMatrices[8]; // cascade-to-world matrices (in world space)
+  ivec4 cascadeAvoidAABBGridMin[8]; // in grid-space
+  ivec4 cascadeAvoidAABBGridMax[8]; // in grid-space
   vec4 cascadeAABBMin[8]; // in world-space
   vec4 cascadeAABBMax[8]; // in world-space
   vec4 cascadeAABBFadeStart[8];

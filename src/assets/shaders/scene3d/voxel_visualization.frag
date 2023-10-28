@@ -43,10 +43,10 @@ bool voxelTrace(in int cascadeIndex,
   
   uint gridSize = voxelGridData.gridSizes[cascadeIndex >> 2][cascadeIndex & 3];
 
-  const int maxSteps = int(2 * ceil(length(vec3(float(gridSize)))));
- 
   const vec3 cascadeMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
   const vec3 cascadeMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
+
+  const int maxSteps = int(2 * ceil(length(vec3(float(gridSize))))); 
 
   const float timeScale = voxelGridData.cascadeToWorldScales[cascadeIndex >> 2][cascadeIndex & 3] / float(gridSize); // Assuming that all the cascade grid bound axes are equally-sized
   
@@ -73,25 +73,29 @@ bool voxelTrace(in int cascadeIndex,
           positionStep = ivec3(sign(inversedRayDirection));
           
     vec3 sideDistanceStep = inversedRayDirection * positionStep,
-         sideDistance = ((position - rayOrigin) + vec3(0.5) + (positionStep * 0.5)) * inversedRayDirection;   
+        sideDistance = ((position - rayOrigin) + vec3(0.5) + (positionStep * 0.5)) * inversedRayDirection;   
         
     for(int stepIndex = 0; stepIndex < maxSteps; stepIndex++){      
-         
+        
       vec3 times = (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)) * inversedRayDirection;
-                   
+                  
       float time = max(times.x, max(times.y, times.z));
       
-      uvec3 positionUnsigned = uvec3(position);
-      
-      if((((time * timeScale) + r.x) > intersection.dist) ||
-         any(greaterThanEqual(positionUnsigned, uvec3(gridSize)))){
+      ivec3 positionInt = ivec3(position);
+
+      float worldTime = (time * timeScale) + r.x;
+
+      if((worldTime > intersection.dist) ||
+        any(greaterThanEqual(uvec3(positionInt), uvec3(gridSize)))){
         break;
       }
 
       vec4 voxel = vec4(0.0);
-      {
+      if((cascadeIndex == 0) || // First cascade is always the highest resolution cascade, so no further check is needed here
+         !(all(greaterThanEqual(positionInt, voxelGridData.cascadeAvoidAABBGridMin[cascadeIndex].xyz)) &&
+           all(lessThan(positionInt, voxelGridData.cascadeAvoidAABBGridMax[cascadeIndex].xyz)))){
         int mipMapLevel = 0;
-        ivec3 position = ivec3(positionUnsigned) >> mipMapLevel;
+        ivec3 position = positionInt >> mipMapLevel;
         bvec3 negativeDirection = lessThan(rayDirection, vec3(0.0));
         vec3 directionWeights = abs(rayDirection);
         ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
@@ -102,32 +106,28 @@ bool voxelTrace(in int cascadeIndex,
 
       if(length(voxel) > 0.0){
         vec3 worldPosition = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
-        if(!((cascadeIndex > 0) && 
-             ((all(greaterThanEqual(worldPosition, voxelGridData.cascadeAABBMin[cascadeIndex - 1].xyz)) && 
-               all(lessThanEqual(worldPosition, voxelGridData.cascadeAABBMax[cascadeIndex - 1].xyz)))))){
 #ifdef DebugRayGrid 
-          debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
+        debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
 #endif
-          intersection.dist = (time * timeScale) + r.x;
-          intersection.voxel = voxel / voxel.w;
-          //intersection.position = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
-          hit = true;
-          break;
-        }
+        intersection.dist = (time * timeScale) + r.x;
+        intersection.voxel = voxel / voxel.w;
+        //intersection.position = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
+        hit = true;
+        break;
       }
-         
+        
       ivec3 mask = ivec3(lessThanEqual(sideDistance.xyz, min(sideDistance.yzx, sideDistance.zxy)));
-		  sideDistance += sideDistanceStep * mask;
+      sideDistance += sideDistanceStep * mask;
       position += positionStep * mask; 
               
     }
-   
+  
 #ifdef DebugRayGrid 
     debugColor = max(debugColor, vec4(1.0, 1.0, 1.0, 0.9));
 #endif
-   
-  }
   
+  }
+
 	return hit;    
 }
 
@@ -153,7 +153,7 @@ void main(){
       if((!hasBestIntersection) || (intersection.dist < bestIntersection.dist)){
         hasBestIntersection = true;
         bestIntersection = intersection;
-        if(intersection.inside){ 
+        if(intersection.inside){           
           break;
         }
       }
