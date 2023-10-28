@@ -26,109 +26,81 @@ layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
 struct Intersection {
    float dist;
    vec4 voxel;
-   //vec3 position;
-   bool inside;
 };
 
-#ifdef DebugRayGrid 
-vec4 debugColor = vec4(0.0);
-#endif               
-
-bool voxelTrace(in int cascadeIndex,
+bool voxelTrace(const in int cascadeIndex,
                 in vec3 rayOrigin, 
                 in vec3 rayDirection,
                 inout Intersection intersection){
-  
-  bool hit = false; //traceGeometry(rayOrigin, rayDirection, intersection);
-  
-  uint gridSize = voxelGridData.gridSizes[cascadeIndex >> 2][cascadeIndex & 3];
+ 
+  rayDirection = normalize(rayDirection);
 
-  const vec3 cascadeMin = voxelGridData.cascadeAABBMin[cascadeIndex].xyz;
-  const vec3 cascadeMax = voxelGridData.cascadeAABBMax[cascadeIndex].xyz;
+  vec3 inversedRayDirection = vec3(1.0) / rayDirection;
 
-  const int maxSteps = int(2 * ceil(length(vec3(float(gridSize))))); 
+  vec3 t0 = (voxelGridData.cascadeAABBMin[cascadeIndex].xyz - rayOrigin) / rayDirection;
+  vec3 t1 = (voxelGridData.cascadeAABBMax[cascadeIndex].xyz - rayOrigin) / rayDirection;
+  vec3 tMin = min(t0, t1);
+  vec3 tMax = max(t0, t1);
+  vec2 tNearFar = vec2(max(max(tMin.x, tMin.y), tMin.z), min(min(tMax.x, tMax.y), tMax.z));
+  if((tNearFar.x > tNearFar.y) || (tNearFar.y < 0.0) || (tNearFar.x > intersection.dist)){
+    return false;
+  }
+    
+  tNearFar.x = max(0.0, tNearFar.x);
+  
+  intersection.dist = clamp(intersection.dist, tNearFar.x, tNearFar.y);
+  
+  rayOrigin = (voxelGridData.worldToCascadeGridMatrices[cascadeIndex] * vec4(fma(rayDirection, tNearFar.xxx, rayOrigin), 1.0)).xyz;
+
+  ivec3 position = ivec3(floor(rayOrigin)),
+        positionStep = ivec3(sign(rayDirection));
+
+  vec3 sideDistanceStep = vec3(1.0) / abs(rayDirection),
+        sideDistance = (((vec3(position) - rayOrigin) * sign(rayDirection)) + (sign(rayDirection) * 0.5) + vec3(0.5)) * sideDistanceStep;   
+      
+  const uint gridSize = voxelGridData.gridSizes[cascadeIndex >> 2][cascadeIndex & 3];
 
   const float timeScale = voxelGridData.cascadeToWorldScales[cascadeIndex >> 2][cascadeIndex & 3] / float(gridSize); // Assuming that all the cascade grid bound axes are equally-sized
-  
-  vec3 inversedRayDirection = abs(vec3(length(rayDirection)) / rayDirection) * sign(rayDirection),
-       omin = (min(cascadeMin, cascadeMax) - rayOrigin) * inversedRayDirection,
-       omax = (max(cascadeMin, cascadeMax) - rayOrigin) * inversedRayDirection,
-       vmin = min(omin, omax),
-       vmax = max(omin, omax),
-       r = vec3(max(vmin.x, max(vmin.y, vmin.z)),
-                min(vmax.x, min(vmax.y, vmax.z)),
-                0.0);
-  
-  if((r.x <= r.y) && (r.y >= 0.0) && (r.x <= intersection.dist)){
-               
-    intersection.inside = (r.x < 0.0) ? true : false;
 
-    r.x = max(0.0, r.x);
-    
-    intersection.dist = clamp(intersection.dist, r.x, r.y);
-    
-    rayOrigin = (voxelGridData.worldToCascadeGridMatrices[cascadeIndex] * vec4(rayOrigin + (rayDirection * r.x), 1.0)).xyz;
+  const int maxSteps = int(2 * ceil(length(vec3(float(gridSize)))));
 
-    ivec3 position = ivec3(floor(clamp(rayOrigin, vec3(0.0), vec3(float(gridSize) - 1.0)))),
-          positionStep = ivec3(sign(inversedRayDirection));
-          
-    vec3 sideDistanceStep = inversedRayDirection * positionStep,
-        sideDistance = ((position - rayOrigin) + vec3(0.5) + (positionStep * 0.5)) * inversedRayDirection;   
-        
-    for(int stepIndex = 0; stepIndex < maxSteps; stepIndex++){      
-        
-      vec3 times = (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)) * inversedRayDirection;
-                  
-      float time = max(times.x, max(times.y, times.z));
+  float time = 0.0;
+
+  for(int stepIndex = 0; (stepIndex < maxSteps) && (time <= intersection.dist); stepIndex++){      
       
-      ivec3 positionInt = ivec3(position);
+    vec4 voxel = vec4(0.0);
+    if((cascadeIndex == 0) || // First cascade is always the highest resolution cascade, so no further check is needed here
+        !(all(greaterThanEqual(position, voxelGridData.cascadeAvoidAABBGridMin[cascadeIndex].xyz)) &&
+          all(lessThan(position, voxelGridData.cascadeAvoidAABBGridMax[cascadeIndex].xyz)))){
 
-      float worldTime = (time * timeScale) + r.x;
-
-      if((worldTime > intersection.dist) ||
-        any(greaterThanEqual(uvec3(positionInt), uvec3(gridSize)))){
-        break;
-      }
-
-      vec4 voxel = vec4(0.0);
-      if((cascadeIndex == 0) || // First cascade is always the highest resolution cascade, so no further check is needed here
-         !(all(greaterThanEqual(positionInt, voxelGridData.cascadeAvoidAABBGridMin[cascadeIndex].xyz)) &&
-           all(lessThan(positionInt, voxelGridData.cascadeAvoidAABBGridMax[cascadeIndex].xyz)))){
-        int mipMapLevel = 0;
-        ivec3 position = positionInt >> mipMapLevel;
-        bvec3 negativeDirection = lessThan(rayDirection, vec3(0.0));
-        vec3 directionWeights = abs(rayDirection);
-        ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
-        voxel = (texelFetch(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
-                (texelFetch(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
-                (texelFetch(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
-      }
+      int mipMapLevel = 0;
+      ivec3 samplePosition = position >> mipMapLevel;
+      bvec3 negativeDirection = lessThan(rayDirection, vec3(0.0));
+      vec3 directionWeights = abs(rayDirection);
+      ivec3 textureIndices = ivec3(negativeDirection.x ? 1 : 0, negativeDirection.y ? 3 : 2, negativeDirection.z ? 5 : 4) + ivec3(cascadeIndex * 6);
+      voxel = (texelFetch(uVoxelGridRadiance[textureIndices.x], position, mipMapLevel) * directionWeights.x) +
+              (texelFetch(uVoxelGridRadiance[textureIndices.y], position, mipMapLevel) * directionWeights.y) +
+              (texelFetch(uVoxelGridRadiance[textureIndices.z], position, mipMapLevel) * directionWeights.z);
 
       if(length(voxel) > 0.0){
-        vec3 worldPosition = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
-#ifdef DebugRayGrid 
-        debugColor = max(debugColor, vec4(0.0, 0.0, 0.5, 0.9));
-#endif
-        intersection.dist = (time * timeScale) + r.x;
+        intersection.dist = time;
         intersection.voxel = voxel / voxel.w;
-        //intersection.position = (voxelGridData.cascadeGridToWorldMatrices[cascadeIndex] * vec4(rayOrigin + (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)), 1.0)).xyz;
-        hit = true;
-        break;
+        return true;
       }
-        
-      ivec3 mask = ivec3(lessThanEqual(sideDistance.xyz, min(sideDistance.yzx, sideDistance.zxy)));
-      sideDistance += sideDistanceStep * mask;
-      position += positionStep * mask; 
-              
-    }
-  
-#ifdef DebugRayGrid 
-    debugColor = max(debugColor, vec4(1.0, 1.0, 1.0, 0.9));
-#endif
-  
-  }
 
-	return hit;    
+    }
+      
+    ivec3 mask = ivec3(lessThanEqual(sideDistance.xyz, min(sideDistance.yzx, sideDistance.zxy)));
+    sideDistance += sideDistanceStep * mask;
+    position += positionStep * mask; 
+
+    vec3 times = (((position - rayOrigin) + vec3(0.5)) - (positionStep * 0.5)) * inversedRayDirection;
+    time = fma(max(times.x, max(times.y, times.z)), timeScale, tNearFar.x);
+      
+  }
+ 
+	return false;    
+
 }
 
 
@@ -145,19 +117,16 @@ void main(){
 
   bool hasBestIntersection = false;
 
-  Intersection bestIntersection = { infinity, vec4(0.0)/*, vec3(0.0)*/, false };
+  Intersection bestIntersection = { infinity, vec4(0.0) };
 
   for(uint cascadeIndex = 0u; cascadeIndex < voxelGridData.countCascades; cascadeIndex++){
-    Intersection intersection = { infinity, vec4(0.0)/*, vec3(0.0)*/, false };
+    Intersection intersection = { infinity, vec4(0.0) };
     if(voxelTrace(int(cascadeIndex), rayOrigin, rayDirection, intersection)){
       if((!hasBestIntersection) || (intersection.dist < bestIntersection.dist)){
         hasBestIntersection = true;
         bestIntersection = intersection;
-        if(intersection.inside){           
-          break;
-        }
       }
-    }
+    }    
   }
 
   if(hasBestIntersection){

@@ -14,8 +14,8 @@
 
   if(all(greaterThanEqual(volumePosition, ivec3(0))) &&
     all(lessThan(volumePosition, ivec3(voxelGridSize))) &&
-    (baseColor.w >= 0.00392156862) &&
-    aabbTriangleIntersection((gridToWorldMatrix * vec4(volumePosition, 1.0)).xyz, (gridToWorldMatrix * vec4(volumePosition + vec3(1.0), 1.0)).xyz, inVertex0, inVertex1, inVertex2)){ 
+    (baseColor.w >= 0.00392156862) /*/&&
+    aabbTriangleIntersection((gridToWorldMatrix * vec4(volumePosition, 1.0)).xyz, (gridToWorldMatrix * vec4(volumePosition + vec3(1.0), 1.0)).xyz, inVertex0, inVertex1, inVertex2)/**/){ 
 
     uint volumeBaseIndex = 
       (

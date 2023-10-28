@@ -100,10 +100,6 @@ void main(){
     vec3 aabbMin = min(min(inWorldSpacePosition[0], inWorldSpacePosition[1]), inWorldSpacePosition[2]);
     vec3 aabbMax = max(max(inWorldSpacePosition[0], inWorldSpacePosition[1]), inWorldSpacePosition[2]);
 
-    outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
-    outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];
-    outVertex2 = inWorldSpacePosition[vertexIndexOrder[2]];
-    
     for(int vertexIndex = 0; vertexIndex < 3; vertexIndex++){
 
       int currentVertexIndex = vertexIndexOrder[vertexIndex];
@@ -126,7 +122,11 @@ void main(){
 
       outVoxelPosition = fma(cascadeSpacePositions[currentVertexIndex].xyz, vec3(0.5), vec3(0.5));
 
-      gl_Position = vec4(projectionVertices[currentVertexIndex].xyw, 0.0).xywz; // We need to swap the z and w components here because we are using a 2D projection matrix
+      outVertex0 = inWorldSpacePosition[vertexIndexOrder[0]];
+      outVertex1 = inWorldSpacePosition[vertexIndexOrder[1]];
+      outVertex2 = inWorldSpacePosition[vertexIndexOrder[2]];
+
+      gl_Position = vec4(projectionVertices[currentVertexIndex].xy, fma(projectionVertices[currentVertexIndex].z, 0.5, 0.5), 1.0);
 
       //gl_ViewportIndex = cascadeIndex;
 

@@ -1885,11 +1885,12 @@ begin
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
 
-   fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:=(((Renderer.GlobalIlluminationVoxelGridSize*
-                                                                         Renderer.GlobalIlluminationVoxelGridSize*
-                                                                         Renderer.GlobalIlluminationVoxelGridSize)*
-                                                                        Renderer.GlobalIlluminationVoxelCountCascades)*
-                                                                       64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1));
+   fGlobalIlluminationCascadedVoxelConeTracingMaxGlobalFragmentCount:=((((Renderer.GlobalIlluminationVoxelGridSize*
+                                                                          Renderer.GlobalIlluminationVoxelGridSize*
+                                                                          Renderer.GlobalIlluminationVoxelGridSize)*
+                                                                         Renderer.GlobalIlluminationVoxelCountCascades)*
+                                                                        64) div (Renderer.GlobalIlluminationVoxelGridSize+(Renderer.GlobalIlluminationVoxelGridSize and 1)));
+
 
    fGlobalIlluminationCascadedVoxelConeTracingMaxLocalFragmentCount:=16;
 
