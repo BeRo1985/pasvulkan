@@ -1680,7 +1680,7 @@ begin
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingUniformBuffers[InFlightFrameIndex]);
  end;
 
- for CascadeIndex:=0 to 3 do begin
+ for CascadeIndex:=0 to 7 do begin
 //FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingAtomicImages[CascadeIndex]);
   FreeAndNil(fGlobalIlluminationCascadedVoxelConeTracingOcclusionImages[CascadeIndex]);
   for ImageIndex:=0 to 5 do begin
