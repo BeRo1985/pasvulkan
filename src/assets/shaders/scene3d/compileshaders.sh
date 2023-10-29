@@ -265,6 +265,7 @@ compileshaderarguments=(
   "-V voxel_visualization.frag -DUSEDEMOTE -o ${tempPath}/voxel_visualization_demote_frag.spv"
 
   "-V voxel_mesh_visualization.vert -o ${tempPath}/voxel_mesh_visualization_vert.spv"
+  "-V voxel_mesh_visualization.vert -DUSEGEOMETRYSHADER -o ${tempPath}/voxel_mesh_visualization_geometry_vert.spv"
   "-V voxel_mesh_visualization.geom -o ${tempPath}/voxel_mesh_visualization_geom.spv"
   "-V voxel_mesh_visualization.frag -o ${tempPath}/voxel_mesh_visualization_frag.spv"
 

@@ -80,14 +80,18 @@ type { TpvScene3DRendererVoxelMeshVisualization }
        type TPushConstants=record
              ViewBaseIndex:TpvUInt32;
              CountViews:TpvUInt32;
+             GridSizeBits:TpvUInt32;
+             CascadeIndex:TpvUInt32;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
        fRenderer:TpvScene3DRenderer;
        fScene3D:TpvScene3D;
        fVertexShaderModule:TpvVulkanShaderModule;
+       //fGeometryShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
+       //fVulkanPipelineShaderStageGeometry:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageFragment:TpvVulkanPipelineShaderStage;
        fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorPool:TpvVulkanDescriptorPool;
@@ -134,6 +138,13 @@ begin
   Stream.Free;
  end;
 
+{Stream:=pvScene3DShaderVirtualFileSystem.GetFile('voxel_mesh_visualization_geom.spv');
+ try
+  fGeometryShaderModule:=TpvVulkanShaderModule.Create(fRenderer.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;}
+
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('voxel_mesh_visualization_frag.spv');
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(fRenderer.VulkanDevice,Stream);
@@ -142,6 +153,8 @@ begin
  end;
 
  fVulkanPipelineShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
+
+//fVulkanPipelineShaderStageGeometry:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fGeometryShaderModule,'main');
 
  fVulkanPipelineShaderStageFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
 
@@ -189,16 +202,18 @@ begin
  FreeAndNil(fVulkanDescriptorPool);
  FreeAndNil(fVulkanDescriptorSetLayout);
  FreeAndNil(fVulkanPipelineShaderStageVertex);
+//FreeAndNil(fVulkanPipelineShaderStageGeometry);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
  FreeAndNil(fVertexShaderModule);
+//FreeAndNil(fGeometryShaderModule);
  FreeAndNil(fFragmentShaderModule);
  inherited Destroy;
 end;
 
 procedure TpvScene3DRendererVoxelMeshVisualization.AllocateResources(const aRenderPass:TpvVulkanRenderPass;
-                                                     const aWidth:TpvInt32;
-                                                     const aHeight:TpvInt32;
-                                                     const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+                                                                     const aWidth:TpvInt32;
+                                                                     const aHeight:TpvInt32;
+                                                                     const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 begin
 
  fVulkanPipeline:=TpvVulkanGraphicsPipeline.Create(fRenderer.VulkanDevice,
@@ -212,6 +227,7 @@ begin
                                                    0);
 
  fVulkanPipeline.AddStage(fVulkanPipelineShaderStageVertex);
+//fVulkanPipeline.AddStage(fVulkanPipelineShaderStageGeometry);
  fVulkanPipeline.AddStage(fVulkanPipelineShaderStageFragment);
 
  fVulkanPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -274,17 +290,17 @@ begin
 end;
 
 procedure TpvScene3DRendererVoxelMeshVisualization.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
-var PushConstants:TpvScene3DRendererVoxelMeshVisualization.TPushConstants;
+var CascadeIndex:TpvInt32;
+    PushConstants:TpvScene3DRendererVoxelMeshVisualization.TPushConstants;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
+
  PushConstants.ViewBaseIndex:=aViewBaseIndex;
  PushConstants.CountViews:=aCountViews;
+ PushConstants.GridSizeBits:=IntLog2(fInstance.Renderer.GlobalIlluminationVoxelGridSize);
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
- aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
-                                 0,
-                                 SizeOf(TpvScene3DRendererVoxelMeshVisualization.TPushConstants),
-                                 @PushConstants);
+
  DescriptorSets[0]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
  DescriptorSets[1]:=fInstance.GlobalIlluminationCascadedVoxelConeTracingDescriptorSets[aInFlightFrameIndex].Handle;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -294,7 +310,22 @@ begin
                                       @DescriptorSets[0],
                                       0,
                                       nil);
- aCommandBuffer.CmdDraw(36,1,0,0);
+
+ for CascadeIndex:=0 to fInstance.Renderer.GlobalIlluminationVoxelCountCascades-1 do begin
+  PushConstants.CascadeIndex:=CascadeIndex;
+  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
+                                  0,
+                                  SizeOf(TpvScene3DRendererVoxelMeshVisualization.TPushConstants),
+                                  @PushConstants);
+  aCommandBuffer.CmdDraw(fInstance.Renderer.GlobalIlluminationVoxelGridSize*
+                         fInstance.Renderer.GlobalIlluminationVoxelGridSize*
+                         fInstance.Renderer.GlobalIlluminationVoxelGridSize*(6*2*3),
+                         1,
+                         0,
+                         0);
+ end;
+
 end;
 
 end.

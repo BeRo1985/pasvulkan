@@ -76,7 +76,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox,
-     PasVulkan.Scene3D.Renderer.VoxelVisualization;
+     PasVulkan.Scene3D.Renderer.VoxelVisualization,
+     PasVulkan.Scene3D.Renderer.VoxelMeshVisualization;
 
 type { TpvScene3DRendererPassesForwardRenderPass }
      TpvScene3DRendererPassesForwardRenderPass=class(TpvFrameGraph.TRenderPass)
@@ -116,6 +117,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fSkyBox:TpvScene3DRendererSkyBox;
        fVoxelVisualization:TpvScene3DRendererVoxelVisualization;
+       fVoxelMeshVisualization:TpvScene3DRendererVoxelMeshVisualization;
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
@@ -354,8 +356,12 @@ begin
   fVoxelVisualization:=TpvScene3DRendererVoxelVisualization.Create(fInstance,
                                                                    fInstance.Renderer,
                                                                    fInstance.Renderer.Scene3D);
+  fVoxelMeshVisualization:=TpvScene3DRendererVoxelMeshVisualization.Create(fInstance,
+                                                                           fInstance.Renderer,
+                                                                           fInstance.Renderer.Scene3D);
  end else begin
   fVoxelVisualization:=nil;
+  fVoxelMeshVisualization:=nil;
  end;
 
 end;
@@ -364,6 +370,8 @@ procedure TpvScene3DRendererPassesForwardRenderPass.ReleasePersistentResources;
 begin
 
  FreeAndNil(fVoxelVisualization);
+
+ FreeAndNil(fVoxelMeshVisualization);
 
  FreeAndNil(fSkyBox);
 
@@ -833,6 +841,13 @@ begin
                                         fInstance.Renderer.SurfaceSampleCountFlagBits);
  end;
 
+ if assigned(fVoxelMeshVisualization) then begin
+  fVoxelMeshVisualization.AllocateResources(fVulkanRenderPass,
+                                            fInstance.ScaledWidth,
+                                            fInstance.ScaledHeight,
+                                            fInstance.Renderer.SurfaceSampleCountFlagBits);
+ end;
+
 end;
 
 procedure TpvScene3DRendererPassesForwardRenderPass.ReleaseVolatileResources;
@@ -844,6 +859,9 @@ var Index:TpvSizeInt;
 begin
  if assigned(fVoxelVisualization) then begin
   fVoxelVisualization.ReleaseResources;
+ end;
+ if assigned(fVoxelMeshVisualization) then begin
+  fVoxelMeshVisualization.ReleaseResources;
  end;
  fSkyBox.ReleaseResources;
  FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
@@ -1024,6 +1042,13 @@ begin
                             InFlightFrameState^.FinalViewIndex,
                             InFlightFrameState^.CountFinalViews,
                             aCommandBuffer);//}
+  end;
+
+  if assigned(fVoxelMeshVisualization) then begin
+   fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
+                                InFlightFrameState^.FinalViewIndex,
+                                InFlightFrameState^.CountFinalViews,
+                                aCommandBuffer);//}
   end;
 
  end;
