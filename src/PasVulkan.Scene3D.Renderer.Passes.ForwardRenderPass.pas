@@ -950,17 +950,19 @@ begin
                InFlightFrameState^.CountFinalViews,
                aCommandBuffer);//{}
 
-  if assigned(fVoxelMeshVisualization) then begin
-   fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
-                                InFlightFrameState^.FinalViewIndex,
-                                InFlightFrameState^.CountFinalViews,
-                                aCommandBuffer);
-  end else if assigned(fVoxelVisualization) then begin
-   fVoxelVisualization.Draw(aInFlightFrameIndex,
-                            InFlightFrameState^.FinalViewIndex,
-                            InFlightFrameState^.CountFinalViews,
-                            aCommandBuffer);
-  end else if true then begin
+  if fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
+   if assigned(fVoxelMeshVisualization) then begin
+    fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
+                                 InFlightFrameState^.FinalViewIndex,
+                                 InFlightFrameState^.CountFinalViews,
+                                 aCommandBuffer);
+   end else if assigned(fVoxelVisualization) then begin
+    fVoxelVisualization.Draw(aInFlightFrameIndex,
+                             InFlightFrameState^.FinalViewIndex,
+                             InFlightFrameState^.CountFinalViews,
+                             aCommandBuffer);
+   end;
+  end else begin
 
 (* if fInstance.Renderer.UseDepthPrepass then begin
 
