@@ -31,8 +31,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 /* clang-format on */
 
 void main() {
-  View view = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)];
   outPosition = vec3(ivec3((ivec3(int(gl_VertexIndex)) >> (ivec3(0, 1, 2) * ivec3(pushConstants.gridSizeBits))) & ivec3(int((1 << pushConstants.gridSizeBits) - 1))));
   outCascadeIndex = int(pushConstants.cascadeIndex);
-  outViewProjectionMatrix = view.projectionMatrix * view.viewMatrix;
+  outViewProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].projectionMatrix * uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].viewMatrix;
 }
