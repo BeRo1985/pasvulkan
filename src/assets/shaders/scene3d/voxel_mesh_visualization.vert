@@ -32,7 +32,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 
 void main() {
   View view = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)];
-  outPosition = vec3(ivec3((ivec3(int(gl_VertexIndex)) >> ivec3(0, pushConstants.gridSizeBits, pushConstants.gridSizeBits << 1)) & ivec3(int((1 << pushConstants.gridSizeBits) - 1))));
+  outPosition = vec3(ivec3((ivec3(int(gl_VertexIndex)) >> (ivec3(0, 1, 2) * ivec3(pushConstants.gridSizeBits))) & ivec3(int((1 << pushConstants.gridSizeBits) - 1))));
   outCascadeIndex = int(pushConstants.cascadeIndex);
   outViewProjectionMatrix = view.projectionMatrix * view.viewMatrix;
 }
