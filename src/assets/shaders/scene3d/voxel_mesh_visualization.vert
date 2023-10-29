@@ -4,7 +4,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(location = 0) out vec3 outPosition; // xyz = position, w = cascade index
+layout(location = 0) out vec3 outPosition; 
 layout(location = 1) flat out int outCascadeIndex;
 layout(location = 2) flat out mat4 outViewProjectionMatrix;
 
