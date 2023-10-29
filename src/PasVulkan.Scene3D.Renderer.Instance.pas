@@ -1992,17 +1992,17 @@ begin
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(0,
                                                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                                              1,
-                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(1,
                                                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                                              Renderer.GlobalIlluminationVoxelCountCascades,
-                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.AddBinding(2,
                                                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                                              Renderer.GlobalIlluminationVoxelCountCascades*6,
-                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                                              []);
    fGlobalIlluminationCascadedVoxelConeTracingDescriptorSetLayout.Initialize;
 
