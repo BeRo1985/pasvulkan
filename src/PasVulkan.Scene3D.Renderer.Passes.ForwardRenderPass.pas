@@ -353,12 +353,14 @@ begin
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);
 
  if fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
-  fVoxelVisualization:=TpvScene3DRendererVoxelVisualization.Create(fInstance,
+{ fVoxelVisualization:=TpvScene3DRendererVoxelVisualization.Create(fInstance,
                                                                    fInstance.Renderer,
                                                                    fInstance.Renderer.Scene3D);
   fVoxelMeshVisualization:=TpvScene3DRendererVoxelMeshVisualization.Create(fInstance,
                                                                            fInstance.Renderer,
-                                                                           fInstance.Renderer.Scene3D);
+                                                                           fInstance.Renderer.Scene3D);}
+  fVoxelVisualization:=nil;
+  fVoxelMeshVisualization:=nil;
  end else begin
   fVoxelVisualization:=nil;
   fVoxelMeshVisualization:=nil;
@@ -1045,7 +1047,7 @@ begin
   end;
 
   if assigned(fVoxelMeshVisualization) then begin
-   fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
+{  fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
                                 InFlightFrameState^.FinalViewIndex,
                                 InFlightFrameState^.CountFinalViews,
                                 aCommandBuffer);//}

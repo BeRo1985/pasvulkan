@@ -51,7 +51,7 @@ void main() {
 
   outPosition = vec3(ivec3((ivec3(int(gl_VertexIndex)) >> (ivec3(0, 1, 2) * ivec3(int(pushConstants.gridSizeBits)))) & ivec3(int(uint((1u << pushConstants.gridSizeBits) - 1u)))));
   outCascadeIndex = int(pushConstants.cascadeIndex);
-  outViewProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].viewMatrix * uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].projectionMatrix;
+  outViewProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].projectionMatrix * uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].viewMatrix;
 
 #else
 
@@ -71,7 +71,7 @@ void main() {
   uint cubeIndex = cubeFaceIndex / 6u;
   uint cubeSideIndex = cubeFaceIndex - (cubeIndex * 6u);
 
-  ivec3 voxelPosition = ivec3(uvec3(uvec3(uvec3(cubeIndex) >> (uvec3(0u, 1u, 2u) * uint(pushConstants.gridSizeBits))) & uvec3(uint((1u << pushConstants.gridSizeBits) - 1u))));
+  ivec3 voxelPosition = ivec3(uvec3(uvec3(uvec3(cubeIndex) >> (uvec3(0u, 1u, 2u) * uint(pushConstants.gridSizeBits))) & uvec3(gridMask)));
 
   bool valid = ((cascadeIndex == 0u) || // First cascade is always the highest resolution cascade, so no further check is needed here
                 !(all(greaterThanEqual(voxelPosition, voxelGridData.cascadeAvoidAABBGridMin[cascadeIndex].xyz)) &&
@@ -108,9 +108,9 @@ void main() {
       ivec3(0, 2, 3)
     );
 
-    gl_Position = (uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].viewMatrix * 
-                   uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].projectionMatrix) * 
-                   vec4(fma(vec3(ivec3(vertices[quadIndicesArray[cubeSideIndex][quadTriangleIndices[cubeFaceTriangleIndex][triangleVertexIndex]]])), 
+    gl_Position = (uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].projectionMatrix * 
+                   uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].viewMatrix) * 
+                   vec4(fma(vec3(ivec3(voxelPosition + vertices[quadIndicesArray[cubeSideIndex][quadTriangleIndices[cubeFaceTriangleIndex][triangleVertexIndex]]])), 
                             vec3(voxelGridData.cascadeCellSizes[cascadeIndex >> 2u][cascadeIndex & 3u]), 
                             voxelGridData.cascadeAABBMin[cascadeIndex].xyz), 
                         1.0);

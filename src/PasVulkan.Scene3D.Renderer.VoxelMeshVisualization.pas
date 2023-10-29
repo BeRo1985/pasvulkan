@@ -272,9 +272,13 @@ begin
                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                               TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
 
- fVulkanPipeline.DepthStencilState.DepthTestEnable:=false;
- fVulkanPipeline.DepthStencilState.DepthWriteEnable:=false;
- fVulkanPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+ fVulkanPipeline.DepthStencilState.DepthTestEnable:=true;
+ fVulkanPipeline.DepthStencilState.DepthWriteEnable:=true;
+ if fInstance.ZFar<0.0 then begin
+  fVulkanPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+ end else begin
+  fVulkanPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+ end;
  fVulkanPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
  fVulkanPipeline.DepthStencilState.StencilTestEnable:=false;
 
