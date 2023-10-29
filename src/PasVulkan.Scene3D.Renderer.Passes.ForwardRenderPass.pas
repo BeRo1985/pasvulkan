@@ -352,18 +352,16 @@ begin
                                           fInstance.Renderer.Scene3D,
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);
 
+ fVoxelVisualization:=nil;
+ fVoxelMeshVisualization:=nil;
+
  if fInstance.Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
 { fVoxelVisualization:=TpvScene3DRendererVoxelVisualization.Create(fInstance,
                                                                    fInstance.Renderer,
-                                                                   fInstance.Renderer.Scene3D);
+                                                                   fInstance.Renderer.Scene3D);//}
   fVoxelMeshVisualization:=TpvScene3DRendererVoxelMeshVisualization.Create(fInstance,
                                                                            fInstance.Renderer,
-                                                                           fInstance.Renderer.Scene3D);}
-  fVoxelVisualization:=nil;
-  fVoxelMeshVisualization:=nil;
- end else begin
-  fVoxelVisualization:=nil;
-  fVoxelMeshVisualization:=nil;
+                                                                           fInstance.Renderer.Scene3D);//}
  end;
 
 end;
@@ -952,7 +950,17 @@ begin
                InFlightFrameState^.CountFinalViews,
                aCommandBuffer);//{}
 
-  if true then begin
+  if assigned(fVoxelMeshVisualization) then begin
+   fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
+                                InFlightFrameState^.FinalViewIndex,
+                                InFlightFrameState^.CountFinalViews,
+                                aCommandBuffer);
+  end else if assigned(fVoxelVisualization) then begin
+   fVoxelVisualization.Draw(aInFlightFrameIndex,
+                            InFlightFrameState^.FinalViewIndex,
+                            InFlightFrameState^.CountFinalViews,
+                            aCommandBuffer);
+  end else if true then begin
 
 (* if fInstance.Renderer.UseDepthPrepass then begin
 
@@ -1037,20 +1045,6 @@ begin
                                                   fVulkanPipelineLayout,
                                                   OnSetRenderPassResources);
 
-  end;
-
-  if assigned(fVoxelVisualization) then begin
- { fVoxelVisualization.Draw(aInFlightFrameIndex,
-                            InFlightFrameState^.FinalViewIndex,
-                            InFlightFrameState^.CountFinalViews,
-                            aCommandBuffer);//}
-  end;
-
-  if assigned(fVoxelMeshVisualization) then begin
-{  fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
-                                InFlightFrameState^.FinalViewIndex,
-                                InFlightFrameState^.CountFinalViews,
-                                aCommandBuffer);//}
   end;
 
  end;
