@@ -324,7 +324,7 @@ begin
                                   @PushConstants);
   aCommandBuffer.CmdDraw(fInstance.Renderer.GlobalIlluminationVoxelGridSize*
                          fInstance.Renderer.GlobalIlluminationVoxelGridSize*
-                         fInstance.Renderer.GlobalIlluminationVoxelGridSize*(6*2*3),
+                         fInstance.Renderer.GlobalIlluminationVoxelGridSize*36,
                          1,
                          0,
                          0);

@@ -56,61 +56,52 @@ void main() {
 #else
 
   uint cascadeIndex = pushConstants.cascadeIndex;
-
-  uint gridSize = 1u << pushConstants.gridSizeBits;
-  uint gridMask = gridSize - 1u;
-
+ 
   uint vertexIndex = uint(gl_VertexIndex);
 
-  uint triangleIndex = vertexIndex / 3u;
-  uint triangleVertexIndex = vertexIndex - (triangleIndex * 3u);
+  // 6 vertices per quad of a cube side of a voxel with two triangles per quad, where each triangle has 3 vertices      
+  uint quadIndex = vertexIndex / 6u;
+  uint quadVertexIndex = (uint[6](0, 1, 2, 0, 2, 3))[vertexIndex - (quadIndex * 6u)];
+  
+  // 6 cube sides per voxel
+  uint cubeIndex = quadIndex / 6u;
+  uint cubeSideIndex = quadIndex - (cubeIndex * 6u);
 
-  uint cubeFaceIndex = triangleIndex >> 1u;
-  uint cubeFaceTriangleIndex = triangleIndex & 1u; 
+  ivec3 voxelPosition = ivec3(uvec3(uvec3(uvec3(cubeIndex) >> (uvec3(0u, 1u, 2u) * uint(pushConstants.gridSizeBits))) & uvec3(uint((1u << pushConstants.gridSizeBits) - 1u))));
 
-  uint cubeIndex = cubeFaceIndex / 6u;
-  uint cubeSideIndex = cubeFaceIndex - (cubeIndex * 6u);
-
-  ivec3 voxelPosition = ivec3(uvec3(uvec3(uvec3(cubeIndex) >> (uvec3(0u, 1u, 2u) * uint(pushConstants.gridSizeBits))) & uvec3(gridMask)));
-
-  bool valid = ((cascadeIndex == 0u) || // First cascade is always the highest resolution cascade, so no further check is needed here
+  vec4 voxel = ((cascadeIndex == 0u) || // First cascade is always the highest resolution cascade, so no further check is needed here
                 !(all(greaterThanEqual(voxelPosition, voxelGridData.cascadeAvoidAABBGridMin[cascadeIndex].xyz)) &&
-                  all(lessThan(voxelPosition, voxelGridData.cascadeAvoidAABBGridMax[cascadeIndex].xyz))));
-
-  vec4 voxel = valid ? texelFetch(uVoxelGridRadiance[(cascadeIndex * 6) + cubeSideIndex], voxelPosition, 0) : vec4(0.0);
+                  all(lessThan(voxelPosition, voxelGridData.cascadeAvoidAABBGridMax[cascadeIndex].xyz)))) ?
+                   texelFetch(uVoxelGridRadiance[(cascadeIndex * 6u) + cubeSideIndex], voxelPosition, 0) : 
+                   vec4(0.0);
 
   if(dot(voxel, voxel) > 0.0){
 
     outColor = voxel;
 
     const ivec3 vertices[8] = ivec3[8](
-      ivec3(0, 0, 0),
-      ivec3(1, 0, 0),
-      ivec3(0, 1, 0),
-      ivec3(1, 1, 0),
-      ivec3(0, 0, 1),
-      ivec3(1, 0, 1),
-      ivec3(0, 1, 1),
-      ivec3(1, 1, 1)
+      ivec3(0, 0, 0), // -1 -1 -1
+      ivec3(1, 0, 0), // +1 -1 -1 
+      ivec3(0, 1, 0), // -1 +1 -1
+      ivec3(1, 1, 0), // +1 +1 -1
+      ivec3(0, 0, 1), // -1 -1 +1
+      ivec3(1, 0, 1), // +1 -1 +1
+      ivec3(0, 1, 1), // -1 +1 +1
+      ivec3(1, 1, 1)  // +1 +1 +1
     );
 
     const ivec4 quadIndicesArray[6] = ivec4[6](
-      ivec4(0, 2, 6, 4), // -X
       ivec4(1, 5, 7, 3), // +X
-      ivec4(0, 4, 5, 1), // -Y
       ivec4(2, 3, 7, 6), // +Y
-      ivec4(0, 1, 3, 2), // -Z
-      ivec4(4, 6, 7, 5)  // +Z
-    );
-
-    const ivec3 quadTriangleIndices[2] = ivec3[2](
-      ivec3(0, 1, 2),
-      ivec3(0, 2, 3)
+      ivec4(4, 6, 7, 5), // +Z
+      ivec4(0, 2, 6, 4), // -X
+      ivec4(0, 4, 5, 1), // -Y
+      ivec4(0, 1, 3, 2)  // -Z
     );
 
     gl_Position = (uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].projectionMatrix * 
                    uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)].viewMatrix) * 
-                   vec4(fma(vec3(ivec3(voxelPosition + vertices[quadIndicesArray[cubeSideIndex][quadTriangleIndices[cubeFaceTriangleIndex][triangleVertexIndex]]])), 
+                   vec4(fma(vec3(ivec3(voxelPosition + vertices[quadIndicesArray[cubeSideIndex][quadVertexIndex]])), 
                             vec3(voxelGridData.cascadeCellSizes[cascadeIndex >> 2u][cascadeIndex & 3u]), 
                             voxelGridData.cascadeAABBMin[cascadeIndex].xyz), 
                         1.0);

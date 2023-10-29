@@ -62,12 +62,12 @@ void main(){
     );
 
     const ivec4 quadIndicesArray[6] = ivec4[6](
-      ivec4(0, 2, 6, 4), // -X
       ivec4(1, 5, 7, 3), // +X
-      ivec4(0, 4, 5, 1), // -Y
       ivec4(2, 3, 7, 6), // +Y
-      ivec4(0, 1, 3, 2), // -Z
-      ivec4(4, 6, 7, 5)  // +Z
+      ivec4(4, 6, 7, 5), // +Z
+      ivec4(0, 2, 6, 4), // -X
+      ivec4(0, 4, 5, 1), // -Y
+      ivec4(0, 1, 3, 2)  // -Z
     );
 
     [[unroll]] for(int quadIndexCounter = 0; quadIndexCounter < 6; quadIndexCounter++){
