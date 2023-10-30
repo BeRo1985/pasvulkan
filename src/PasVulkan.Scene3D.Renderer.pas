@@ -503,6 +503,9 @@ begin
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>=0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
  end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME);
+ end;
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)>=0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
  end;

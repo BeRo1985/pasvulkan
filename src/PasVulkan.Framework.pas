@@ -386,6 +386,7 @@ type EpvVulkanException=class(Exception);
        fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
        fRayTracingPipelinePropertiesKHR:TVkPhysicalDeviceRayTracingPipelinePropertiesKHR;
        fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
+       fRayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
@@ -452,6 +453,7 @@ type EpvVulkanException=class(Exception);
        property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR;
        property RayTracingPipelinePropertiesKHR:TVkPhysicalDeviceRayTracingPipelinePropertiesKHR read fRayTracingPipelinePropertiesKHR;
        property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR;
+       property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR;
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
@@ -648,6 +650,7 @@ type EpvVulkanException=class(Exception);
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
        fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
        fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
+       fRayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
       protected
@@ -706,6 +709,17 @@ type EpvVulkanException=class(Exception);
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
        property PresentIDSupport:boolean read fPresentIDSupport;
        property PresentWaitSupport:boolean read fPresentWaitSupport;
+      public
+       property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
+       property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
+       property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
+       property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
+       property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
+       property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
+       property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
+       property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR;
+       property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR;
+       property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -7960,6 +7974,15 @@ begin
  end;
 
  begin
+  FillChar(fRayTracingMaintenance1FeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR),#0);
+  fRayTracingMaintenance1FeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>0 then begin
+   fRayTracingMaintenance1FeaturesKHR.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fRayTracingMaintenance1FeaturesKHR;
+  end;
+ end;
+
+ begin
   FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIdFeaturesKHR),#0);
   fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
   if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0 then begin
@@ -9448,6 +9471,18 @@ begin
      fRayQueryFeaturesKHR.rayQuery:=PhysicalDevice.fRayQueryFeaturesKHR.rayQuery;
      fRayQueryFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
      DeviceCreateInfo.pNext:=@fRayQueryFeaturesKHR;
+    end;
+   end;
+
+   begin
+    FillChar(fRayTracingMaintenance1FeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR),#0);
+    fRayTracingMaintenance1FeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR;
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>0) and
+       (PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1<>VK_FALSE) then begin
+     fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1;
+     fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2;
+     fRayTracingMaintenance1FeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fRayTracingMaintenance1FeaturesKHR;
     end;
    end;
 
