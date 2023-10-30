@@ -454,7 +454,6 @@ begin
  fGlobalIlluminationVoxelGridSize:=RoundUpToPowerOfTwo(Min(Max(aValue,16),256));
 end;
 
-
 class procedure TpvScene3DRenderer.SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice);
 begin
  if (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.descriptorBindingPartiallyBound=VK_FALSE) or
@@ -494,6 +493,21 @@ begin
  end;
  if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>=0 then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+ end;
+ if aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)>=0 then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
  end;
  if ((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
     (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_SPIRV_1_4_EXTENSION_NAME)>=0) then begin

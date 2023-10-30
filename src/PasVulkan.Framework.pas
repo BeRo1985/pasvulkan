@@ -383,6 +383,9 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+       fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
+       fRayTracingPipelinePropertiesKHR:TVkPhysicalDeviceRayTracingPipelinePropertiesKHR;
+       fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
        fFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
@@ -446,6 +449,9 @@ type EpvVulkanException=class(Exception);
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
        property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
+       property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR;
+       property RayTracingPipelinePropertiesKHR:TVkPhysicalDeviceRayTracingPipelinePropertiesKHR read fRayTracingPipelinePropertiesKHR;
+       property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR;
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures;
        property Features2KHR:TVkPhysicalDeviceFeatures2KHR read fFeatures2KHR;
@@ -640,6 +646,8 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+       fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
+       fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
       protected
@@ -7934,6 +7942,24 @@ begin
  end;
 
  begin
+  FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
+  fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0 then begin
+   fRayTracingPipelineFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fRayTracingPipelineFeaturesKHR;
+  end;
+ end;
+
+ begin
+  FillChar(fRayQueryFeaturesKHR,SizeOf(TVkPhysicalDeviceRayQueryFeaturesKHR),#0);
+  fRayQueryFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>0 then begin
+   fRayQueryFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fRayQueryFeaturesKHR;
+  end;
+ end;
+
+ begin
   FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIdFeaturesKHR),#0);
   fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
   if AvailableExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0 then begin
@@ -7996,6 +8022,13 @@ begin
  if fAvailableExtensionNames.IndexOf(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)>=0 then begin
   fConservativeRasterizationPropertiesEXT.pNext:=fProperties2KHR.pNext;
   fProperties2KHR.pNext:=@fConservativeRasterizationPropertiesEXT;
+ end;
+
+ FillChar(fRayTracingPipelinePropertiesKHR,SizeOf(TVkPhysicalDeviceConservativeRasterizationPropertiesEXT),#0);
+ fRayTracingPipelinePropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+ if fAvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0 then begin
+  fRayTracingPipelinePropertiesKHR.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fRayTracingPipelinePropertiesKHR;
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
@@ -9389,6 +9422,32 @@ begin
      fHostQueryResetFeaturesEXT.hostQueryReset:=PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset;
      fHostQueryResetFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
      DeviceCreateInfo.pNext:=@fHostQueryResetFeaturesEXT;
+    end;
+   end;
+
+   begin
+    FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
+    fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0) and
+       (PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) then begin
+     fRayTracingPipelineFeaturesKHR.rayTracingPipeline:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline;
+     fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay;
+     fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplayMixed:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplayMixed;
+     fRayTracingPipelineFeaturesKHR.rayTracingPipelineTraceRaysIndirect:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineTraceRaysIndirect;
+     fRayTracingPipelineFeaturesKHR.rayTraversalPrimitiveCulling:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTraversalPrimitiveCulling;
+     fRayTracingPipelineFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fRayTracingPipelineFeaturesKHR;
+    end;
+   end;
+
+   begin
+    FillChar(fRayQueryFeaturesKHR,SizeOf(TVkPhysicalDeviceRayQueryFeaturesKHR),#0);
+    fRayQueryFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>0) and
+       (PhysicalDevice.fRayQueryFeaturesKHR.rayQuery<>VK_FALSE) then begin
+     fRayQueryFeaturesKHR.rayQuery:=PhysicalDevice.fRayQueryFeaturesKHR.rayQuery;
+     fRayQueryFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fRayQueryFeaturesKHR;
     end;
    end;
 
