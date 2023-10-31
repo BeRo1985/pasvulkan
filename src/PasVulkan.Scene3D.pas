@@ -229,6 +229,10 @@ type EpvScene3D=class(Exception);
                     Color0=6;
                     ModelScaleDummy=7;
             end;
+            TCachedRaytracingVertexAttributeBindingLocations=class
+             public
+              const Position=0;
+            end;
             TVkPrimitiveTopologySet=set of TVkPrimitiveTopology;
             TUInt32Vector4=array[0..3] of TpvUInt32;
             TUInt16Vector4=array[0..3] of TpvUInt16;
@@ -361,6 +365,18 @@ type EpvScene3D=class(Exception);
             end;
             PCachedVertex=^TCachedVertex;
             TCachedVertices=array of TCachedVertex;
+            TCachedRaytracingVertex=packed record    // Minimum required cached vertex structure for raytracing data structures
+             case boolean of
+              false:(
+               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
+               Reversed:TpvUInt32;                   // + 4 = 16 (unsigned 32-bit material ID)
+              );                                     //  ==   ==
+              true:(                                 //  16  16 per vertex
+               Padding:array[0..15] of TpvUInt8;
+              );
+            end;
+            PCachedRaytracingVertex=^TCachedRaytracingVertex;
+            TCachedRaytracingVertices=array of TCachedRaytracingVertex;
             { TDebugPrimitiveVertex }
             TDebugPrimitiveVertex=packed record
              public
@@ -1332,6 +1348,7 @@ type EpvScene3D=class(Exception);
               fSceneInstance:TpvScene3D;
               fInFlightFrameIndex:TpvSizeInt;
               fVulkanCachedVertexBuffer:TpvVulkanBuffer;
+              fVulkanCachedRaytracingVertexBuffer:TpvVulkanBuffer;
               fVulkanNodeMatricesBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
               fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
@@ -2177,6 +2194,7 @@ type EpvScene3D=class(Exception);
                      fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
                      fVulkanComputeDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
                      fVulkanCachedVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+                     fVulkanCachedRaytracingVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
                      fSetGroupInstanceResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
                      fActiveScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
@@ -7644,6 +7662,7 @@ begin
  fSceneInstance:=aSceneInstance;
  fInFlightFrameIndex:=aInFlightFrameIndex;
  fVulkanCachedVertexBuffer:=nil;
+ fVulkanCachedRaytracingVertexBuffer:=nil;
  fVulkanNodeMatricesBuffer:=nil;
  fVulkanMorphTargetVertexWeightsBuffer:=nil;
  fVulkanComputeDescriptorPool:=nil;
@@ -7655,6 +7674,7 @@ begin
  FreeAndNil(fVulkanComputeDescriptorSet);
  FreeAndNil(fVulkanComputeDescriptorPool);
  FreeAndNil(fVulkanCachedVertexBuffer);
+ FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
  FreeAndNil(fVulkanNodeMatricesBuffer);
  FreeAndNil(fVulkanMorphTargetVertexWeightsBuffer);
  inherited Destroy;
@@ -7670,6 +7690,7 @@ begin
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
 
   if ((not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex)))) or
+     (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex))))) or
      ((not assigned(fVulkanNodeMatricesBuffer)) or (fVulkanNodeMatricesBuffer.Size<(Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4)))) or
      ((not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat)))) then begin
 
@@ -7709,6 +7730,25 @@ begin
                                                       0,
                                                       []
                                                      );
+   end;
+
+   if fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex)))) then begin
+    FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
+    fVulkanCachedRaytracingVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                                Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex),
+                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                [],
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                0,
+                                                                0,
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                []
+                                                               );
    end;
 
    if (not assigned(fVulkanNodeMatricesBuffer)) or (fVulkanNodeMatricesBuffer.Size<(Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4))) then begin
@@ -7822,7 +7862,11 @@ begin
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                  1);
-    fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3);
+    if fSceneInstance.fHardwareRaytracingSupport then begin
+     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
+    end else begin
+     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3);
+    end;
     fVulkanComputeDescriptorPool.Initialize;
 
     fVulkanComputeDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanComputeDescriptorPool,
@@ -7852,6 +7896,16 @@ begin
                                                       [fVulkanMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
                                                       [],
                                                       false);
+     if fSceneInstance.fHardwareRaytracingSupport then begin
+      fVulkanComputeDescriptorSet.WriteToDescriptorSet(3,
+                                                       0,
+                                                       1,
+                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                       [],
+                                                       [fVulkanCachedRaytracingVertexBuffer.DescriptorBufferInfo],
+                                                       [],
+                                                       false);
+     end;
     finally
      fVulkanComputeDescriptorSet.Flush;
     end;
@@ -12202,30 +12256,54 @@ begin
   if fCachedVerticesUpdated then begin
    case fSceneInstance.fDrawBufferStorageMode of
     TDrawBufferStorageMode.SeparateBuffers:begin
-     if length(fCachedVertexBufferMemoryBarriers)<fInstances.Count then begin
-      SetLength(fCachedVertexBufferMemoryBarriers,fInstances.Count*2);
+     if fSceneInstance.fHardwareRaytracingSupport then begin
+      if length(fCachedVertexBufferMemoryBarriers)<(fInstances.Count*2) then begin
+       SetLength(fCachedVertexBufferMemoryBarriers,fInstances.Count*4);
+      end;
+     end else begin
+      if length(fCachedVertexBufferMemoryBarriers)<fInstances.Count then begin
+       SetLength(fCachedVertexBufferMemoryBarriers,fInstances.Count*2);
+      end;
      end;
      Count:=0;
      for Instance in fInstances do begin
       if Instance.fCachedVerticesUpdated then begin
-       BufferMemoryBarrier:=@fCachedVertexBufferMemoryBarriers[Count];
-       FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
-       BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-       BufferMemoryBarrier^.pNext:=nil;
-       BufferMemoryBarrier^.buffer:=Instance.fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle;
-       BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-       BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
-       BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-       BufferMemoryBarrier^.offset:=0;
-       BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
+       begin
+        BufferMemoryBarrier:=@fCachedVertexBufferMemoryBarriers[Count];
+        inc(Count);
+        FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
+        BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        BufferMemoryBarrier^.pNext:=nil;
+        BufferMemoryBarrier^.buffer:=Instance.fVulkanCachedVertexBuffers[aInFlightFrameIndex].Handle;
+        BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+        BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        BufferMemoryBarrier^.offset:=0;
+        BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
+       end;
+       if fSceneInstance.fHardwareRaytracingSupport then begin
+        BufferMemoryBarrier:=@fCachedVertexBufferMemoryBarriers[Count];
+        inc(Count);
+        FillChar(BufferMemoryBarrier^,SizeOf(TVkBufferMemoryBarrier),#0);
+        BufferMemoryBarrier^.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        BufferMemoryBarrier^.pNext:=nil;
+        BufferMemoryBarrier^.buffer:=Instance.fVulkanCachedRaytracingVertexBuffers[aInFlightFrameIndex].Handle;
+        BufferMemoryBarrier^.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+        BufferMemoryBarrier^.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+        BufferMemoryBarrier^.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        BufferMemoryBarrier^.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+        BufferMemoryBarrier^.offset:=0;
+        BufferMemoryBarrier^.size:=VK_WHOLE_SIZE;
+       end;
       end;
      end;
      if Count>0 then begin
       aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                        IfThen(fSceneInstance.fHardwareRaytracingSupport,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),0),
                                         0,
                                         0,nil,
                                         Count,@fCachedVertexBufferMemoryBarriers[0],
@@ -13862,6 +13940,7 @@ begin
                                                    TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);//}
 
              for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+
               fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                         fGroup.fVertices.Count*SizeOf(TCachedVertex),
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -13883,6 +13962,34 @@ begin
                                                               fVulkanCachedVertexBuffers[Index],
                                                               0,
                                                               fGroup.fVertices.Count*SizeOf(TCachedVertex));
+
+              if fSceneInstance.fHardwareRaytracingSupport then begin
+
+               fVulkanCachedRaytracingVertexBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                                                   fGroup.fVertices.Count*SizeOf(TCachedRaytracingVertex),
+                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                   [],
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   0,
+                                                                                   []
+                                                                                  );
+               fSceneInstance.fVulkanDevice.MemoryStaging.Zero(UniversalQueue,
+                                                               UniversalCommandBuffer,
+                                                               UniversalFence,
+                                                               fVulkanCachedRaytracingVertexBuffers[Index],
+                                                               0,
+                                                               fGroup.fVertices.Count*SizeOf(TCachedRaytracingVertex));
+
+
+              end;
+
            {  fVulkanCachedVertexBuffers[Index].ClearData(UniversalQueue,
                                                           UniversalCommandBuffer,
                                                           UniversalFence,
@@ -13906,7 +14013,11 @@ begin
          fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                       length(fVulkanComputeDescriptorSets));
-         fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanComputeDescriptorSets)*8);
+         if fSceneInstance.fHardwareRaytracingSupport then begin
+          fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanComputeDescriptorSets)*9);
+         end else begin
+          fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fVulkanComputeDescriptorSets)*8);
+         end;
          fVulkanComputeDescriptorPool.Initialize;
 
          for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
@@ -13978,6 +14089,16 @@ begin
                                               [fVulkanMaterialIDMapBuffer.DescriptorBufferInfo],
                                               [],
                                               false);
+           if fSceneInstance.fHardwareRaytracingSupport then begin
+            DescriptorSet.WriteToDescriptorSet(8,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               [],
+                                               [fVulkanCachedRaytracingVertexBuffers[Index].DescriptorBufferInfo],
+                                               [],
+                                               false);
+           end;
            DescriptorSet.Flush;
           finally
            fVulkanComputeDescriptorSets[Index]:=DescriptorSet;
@@ -14021,6 +14142,9 @@ begin
         for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
          FreeAndNil(fVulkanComputeDescriptorSets[Index]);
          FreeAndNil(fVulkanCachedVertexBuffers[Index]);
+         if fSceneInstance.fHardwareRaytracingSupport then begin
+          FreeAndNil(fVulkanCachedRaytracingVertexBuffers[Index]);
+         end;
         end;
         FreeAndNil(fVulkanComputeDescriptorPool);
         FreeAndNil(fVulkanMaterialIDMapBuffer);
@@ -17340,6 +17464,15 @@ begin
                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                     []);
 
+  if fHardwareRaytracingSupport then begin
+   // Group - Cached raytracing vertices
+   fMeshComputeVulkanDescriptorSet1Layout.AddBinding(3,
+                                                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                     1,
+                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                     []);
+  end;
+
   fMeshComputeVulkanDescriptorSet1Layout.Initialize;
 
   //////
@@ -17348,59 +17481,68 @@ begin
 
   // Group - Vertices
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(0,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Group - Cached vertices
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(1,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Group - Indices
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(2,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Group - Morph target vertices
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(3,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Group - Joint blocks
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(4,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Instance - Node matrices
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(5,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Instance - Morph target weights
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(6,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
 
   // Instance - Material ID map
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(7,
-                                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                   1,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   []);
+                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                              1,
+                                                              TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                              []);
+
+  if fHardwareRaytracingSupport then begin
+   // Group - Cached raytracing vertices
+   fMeshMaterialMapComputeVulkanDescriptorSetLayout.AddBinding(8,
+                                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                               1,
+                                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                               []);
+  end;
 
   fMeshMaterialMapComputeVulkanDescriptorSetLayout.Initialize;
 
@@ -19436,10 +19578,10 @@ procedure TpvScene3D.UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
                                           const aInFlightFrameIndex:TpvSizeInt;
                                           const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout);
-var Index,OtherIndex:TpvSizeInt;
+var Index,OtherIndex,Count:TpvSizeInt;
     Group:TpvScene3D.TGroup;
     Current,Next:PCachedVertexRange;
-    BufferMemoryBarrier:TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
 begin
 
@@ -19523,24 +19665,42 @@ begin
 
    end;
 
-   FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-   BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-   BufferMemoryBarrier.pNext:=nil;
-   BufferMemoryBarrier.buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle;
-   BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-   BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
-   BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-   BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-   BufferMemoryBarrier.offset:=0;
-   BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
+   FillChar(BufferMemoryBarriers[0],SizeOf(TVkBufferMemoryBarrier),#0);
+   BufferMemoryBarriers[0].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+   BufferMemoryBarriers[0].pNext:=nil;
+   BufferMemoryBarriers[0].buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle;
+   BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+   BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   BufferMemoryBarriers[0].offset:=0;
+   BufferMemoryBarriers[0].size:=VK_WHOLE_SIZE;
+   Count:=1;
+
+   if fHardwareRaytracingSupport then begin
+
+    FillChar(BufferMemoryBarriers[1],SizeOf(TVkBufferMemoryBarrier),#0);
+    BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    BufferMemoryBarriers[1].pNext:=nil;
+    BufferMemoryBarriers[1].buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedRaytracingVertexBuffer.Handle;
+    BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+    BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+    BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    BufferMemoryBarriers[1].offset:=0;
+    BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
+    inc(Count);
+
+   end;
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                     IfThen(fHardwareRaytracingSupport,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),0),
                                      0,
                                      0,nil,
-                                     1,@BufferMemoryBarrier,
+                                     Count,@BufferMemoryBarriers[0],
                                      0,nil);
 
   end;
