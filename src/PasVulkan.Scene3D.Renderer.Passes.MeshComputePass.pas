@@ -138,6 +138,7 @@ begin
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DRendererPassesMeshComputePass.fComputeShaderModule');
  finally
   Stream.Free;
  end;
@@ -175,6 +176,8 @@ begin
   end;
  end;
 
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesMeshComputePass.fPipelineLayout');
+
  fPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                             fInstance.Renderer.VulkanPipelineCache,
                                             0,
@@ -182,9 +185,11 @@ begin
                                             fPipelineLayout,
                                             nil,
                                             0);
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshComputePass.fPipeline');
 
  for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
   fEvents[Index]:=TpvVulkanEvent.Create(fInstance.Renderer.VulkanDevice);
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fEvents[Index].Handle,VK_OBJECT_TYPE_EVENT,'TpvScene3DRendererPassesMeshComputePass.fEvents['+IntToStr(Index)+']');
   fEventReady[Index]:=false;
  end;
 
