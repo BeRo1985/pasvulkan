@@ -411,14 +411,18 @@ begin
  fVulkanFlushCommandPool:=TpvVulkanCommandPool.Create(Renderer.VulkanDevice,
                                                       Renderer.VulkanDevice.UniversalQueueFamilyIndex,
                                                       TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fVulkanDevice.DebugUtils.SetObjectName(fVulkanFlushCommandPool.Handle,VK_OBJECT_TYPE_COMMAND_POOL,'TpvScene3DRenderer.fVulkanFlushCommandPool');
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
   fVulkanFlushCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fVulkanFlushCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fVulkanDevice.DebugUtils.SetObjectName(fVulkanFlushCommandBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_COMMAND_BUFFER,'TpvScene3DRenderer.fVulkanFlushCommandBuffers['+IntToStr(InFlightFrameIndex)+']');
 
   fVulkanFlushCommandBufferFences[InFlightFrameIndex]:=TpvVulkanFence.Create(Renderer.VulkanDevice);
+  fVulkanDevice.DebugUtils.SetObjectName(fVulkanFlushCommandBufferFences[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_FENCE,'TpvScene3DRenderer.fVulkanFlushCommandBufferFences['+IntToStr(InFlightFrameIndex)+']');
 
   fVulkanFlushSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice);
+  fVulkanDevice.DebugUtils.SetObjectName(fVulkanFlushSemaphores[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_SEMAPHORE,'TpvScene3DRenderer.fVulkanFlushSemaphores['+IntToStr(InFlightFrameIndex)+']');
 
  end;
 
@@ -920,6 +924,8 @@ var Stream:TStream;
 begin
 
  fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat);
+ fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyCubeMap.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyCubeMap.ImageView');
 
  fSkySphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                       SizeOf(TSphericalHarmonicsBufferData),
@@ -936,20 +942,33 @@ begin
                                                       0,
                                                       []
                                                      );
+ fVulkanDevice.DebugUtils.SetObjectName(fSkySphericalHarmonicsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer');
 
  fSkySphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fSkySphericalHarmonicsBuffer,fSkyCubeMap.Width,fSkyCubeMap.Height,true);
 
  fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
+ fVulkanDevice.DebugUtils.SetObjectName(fGGXBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fGGXBRDF.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fGGXBRDF.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fGGXBRDF.ImageView');
 
  fCharlieBRDF:=TpvScene3DRendererCharlieBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
+ fVulkanDevice.DebugUtils.SetObjectName(fCharlieBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fCharlieBRDF.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fCharlieBRDF.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fCharlieBRDF.ImageView');
 
  fSheenEBRDF:=TpvScene3DRendererSheenEBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
+ fVulkanDevice.DebugUtils.SetObjectName(fSheenEBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSheenEBRDF.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fSheenEBRDF.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSheenEBRDF.ImageView');
 
  fLensColor:=TpvScene3DRendererLensColor.Create(fVulkanDevice,fVulkanPipelineCache);
+ fVulkanDevice.DebugUtils.SetObjectName(fLensColor.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fLensColor.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fLensColor.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fLensColor.ImageView');
 
  fLensDirt:=TpvScene3DRendererLensDirt.Create(fVulkanDevice,fVulkanPipelineCache);
+ fVulkanDevice.DebugUtils.SetObjectName(fLensDirt.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fLensDirt.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fLensDirt.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fLensDirt.ImageView');
 
  fLensStar:=TpvScene3DRendererLensStar.Create(fVulkanDevice,fVulkanPipelineCache);
+ fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fLensStar.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fLensStar.ImageView');
 
  fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
 
@@ -974,6 +993,8 @@ begin
                                               VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
                                               false);
 
+   fVulkanDevice.DebugUtils.SetObjectName(fShadowMapSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fShadowMapSampler');
+
   end;
 
   TpvScene3DRendererShadowMode.PCF:begin
@@ -995,6 +1016,8 @@ begin
                                               VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
                                               false);
 
+   fVulkanDevice.DebugUtils.SetObjectName(fShadowMapSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fShadowMapSampler');
+
   end;
 
   else begin
@@ -1015,6 +1038,9 @@ begin
                                               0.0,
                                               VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
                                               false);
+
+   fVulkanDevice.DebugUtils.SetObjectName(fShadowMapSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fShadowMapSampler');
+
   end;
 
  end;
@@ -1035,6 +1061,7 @@ begin
                                                  0.0,
                                                  VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
                                                  false);
+ fVulkanDevice.DebugUtils.SetObjectName(fCheckShadowMapSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fCheckShadowMapSampler');
 
  fGeneralSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                           TVkFilter.VK_FILTER_LINEAR,
@@ -1052,6 +1079,7 @@ begin
                                           0.0,
                                           VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                           false);
+ fVulkanDevice.DebugUtils.SetObjectName(fGeneralSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fGeneralSampler');
 
  fClampedSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                           TVkFilter.VK_FILTER_LINEAR,
@@ -1069,6 +1097,7 @@ begin
                                           0.0,
                                           VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                           false);
+ fVulkanDevice.DebugUtils.SetObjectName(fClampedSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedSampler');
 
  fClampedNearestSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                                  TVkFilter.VK_FILTER_NEAREST,
@@ -1086,6 +1115,7 @@ begin
                                                  0.0,
                                                  VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                                  false);
+ fVulkanDevice.DebugUtils.SetObjectName(fClampedNearestSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedNearestSampler');
 
  fSSAOSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                        TVkFilter.VK_FILTER_LINEAR,
@@ -1103,6 +1133,7 @@ begin
                                        0.0,
                                        VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
                                        false);
+ fVulkanDevice.DebugUtils.SetObjectName(fSSAOSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fSSAOSampler');
 
  UniversalQueue:=fVulkanDevice.UniversalQueue;
  try
@@ -1150,6 +1181,8 @@ begin
                                                            0,
                                                            true,
                                                            false);
+       fVulkanDevice.DebugUtils.SetObjectName(fSMAAAreaTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSMAAAreaTexture.Image');
+       fVulkanDevice.DebugUtils.SetObjectName(fSMAAAreaTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSMAAAreaTexture.ImageView');
 
        fSMAASearchTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                              UniversalQueue,
@@ -1177,7 +1210,8 @@ begin
                                                              0,
                                                              true,
                                                              false);
-
+       fVulkanDevice.DebugUtils.SetObjectName(fSMAASearchTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSMAASearchTexture.Image');
+       fVulkanDevice.DebugUtils.SetObjectName(fSMAASearchTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSMAASearchTexture.ImageView');
 
       end;
       else begin
@@ -1214,6 +1248,8 @@ begin
                                                            0,
                                                            true,
                                                            false);
+      fVulkanDevice.DebugUtils.SetObjectName(fEmptySSAOTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEmptySSAOTexture.Image');
+      fVulkanDevice.DebugUtils.SetObjectName(fEmptySSAOTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEmptySSAOTexture.ImageView');
      finally
       EmptySSAOCubeMapTextureData:=nil;
      end;
