@@ -782,6 +782,13 @@ type EpvVulkanException=class(Exception);
                                    const aLabelName:TpvRawByteString;
                                    const aColor:array of TVkFloat);
        procedure CmdBufLabelEnd(const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure QueueLabelBegin(const aQueue:TpvVulkanQueue;
+                                 const aLabelName:TpvRawByteString;
+                                 const aColor:array of TVkFloat);
+       procedure QueueLabelInsert(const aQueue:TpvVulkanQueue;
+                                  const aLabelName:TpvRawByteString;
+                                  const aColor:array of TVkFloat);
+       procedure QueueLabelEnd(const aQueue:TpvVulkanQueue);
      end;
 
      TpvVulkanDeviceQueueCreateInfo=class(TpvVulkanObject)
@@ -9123,6 +9130,79 @@ procedure TpvVulkanDeviceDebugUtils.CmdBufLabelEnd(const aCommandBuffer:TpvVulka
 begin
  if fEnabled and assigned(fDevice.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
   fDevice.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.QueueLabelBegin(const aQueue:TpvVulkanQueue;
+                                                    const aLabelName:TpvRawByteString;
+                                                    const aColor:array of TVkFloat);
+var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.QueueBeginDebugUtilsLabelEXT) then begin
+  FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
+  DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
+  if length(aColor)<1 then begin
+   DebugUtilsLabelEXT.color[0]:=aColor[0];
+  end else begin
+   DebugUtilsLabelEXT.color[0]:=1.0;
+  end;
+  if length(aColor)<2 then begin
+   DebugUtilsLabelEXT.color[1]:=aColor[1];
+  end else begin
+   DebugUtilsLabelEXT.color[1]:=1.0;
+  end;
+  if length(aColor)<3 then begin
+   DebugUtilsLabelEXT.color[2]:=aColor[2];
+  end else begin
+   DebugUtilsLabelEXT.color[2]:=1.0;
+  end;
+  if length(aColor)<4 then begin
+   DebugUtilsLabelEXT.color[3]:=aColor[3];
+  end else begin
+   DebugUtilsLabelEXT.color[3]:=1.0;
+  end;
+  fDevice.Commands.QueueBeginDebugUtilsLabelEXT(aQueue.Handle,@DebugUtilsLabelEXT);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.QueueLabelInsert(const aQueue:TpvVulkanQueue;
+                                                     const aLabelName:TpvRawByteString;
+                                                     const aColor:array of TVkFloat);
+var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.QueueInsertDebugUtilsLabelEXT) then begin
+  FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
+  DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
+  if length(aColor)<1 then begin
+   DebugUtilsLabelEXT.color[0]:=aColor[0];
+  end else begin
+   DebugUtilsLabelEXT.color[0]:=1.0;
+  end;
+  if length(aColor)<2 then begin
+   DebugUtilsLabelEXT.color[1]:=aColor[1];
+  end else begin
+   DebugUtilsLabelEXT.color[1]:=1.0;
+  end;
+  if length(aColor)<3 then begin
+   DebugUtilsLabelEXT.color[2]:=aColor[2];
+  end else begin
+   DebugUtilsLabelEXT.color[2]:=1.0;
+  end;
+  if length(aColor)<4 then begin
+   DebugUtilsLabelEXT.color[3]:=aColor[3];
+  end else begin
+   DebugUtilsLabelEXT.color[3]:=1.0;
+  end;
+  fDevice.Commands.QueueInsertDebugUtilsLabelEXT(aQueue.Handle,@DebugUtilsLabelEXT);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.QueueLabelEnd(const aQueue:TpvVulkanQueue);
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.QueueEndDebugUtilsLabelEXT) then begin
+  fDevice.Commands.QueueEndDebugUtilsLabelEXT(aQueue.Handle);
  end;
 end;
 
