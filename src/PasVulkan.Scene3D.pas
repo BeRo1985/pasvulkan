@@ -4660,10 +4660,10 @@ begin
                             UniversalCommandBuffer,
                             UniversalFence);
             if assigned(fTexture.Image) then begin
-             fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3D.TImage["'+fName+'"].Image');
+             fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3D.TImage["'+trim(fName)+'"].Image');
             end;
             if assigned(fTexture.ImageView) then begin
-             fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3D.TImage["'+fName+'"].ImageView');
+             fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3D.TImage["'+trim(fName)+'"].ImageView');
             end;
            finally
             FreeAndNil(UniversalFence);
@@ -4973,7 +4973,7 @@ begin
                                           VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                                           false);
         if fSampler.Handle<>VK_NULL_HANDLE then begin
-         fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.TSampler["'+fName+'"]');
+         fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.TSampler["'+trim(fName)+'"]');
         end;
        end;
       finally
