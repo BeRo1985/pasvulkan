@@ -1562,6 +1562,7 @@ var InFlightFrameIndex:TpvSizeInt;
 begin
  for InFlightFrameIndex:=0 to fQueue.fFrameGraph.fCountInFlightFrames-1 do begin
   fCommandBuffers[InFlightFrameIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandBufferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fQueue.fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fCommandBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_COMMAND_BUFFER,'FrameGraph.Queue.CommandBuffers['+IntToStr(InFlightFrameIndex)+']');
   fSignallingSemaphores[InFlightFrameIndex].Clear;
  end;
 end;
@@ -1595,6 +1596,7 @@ begin
  fCommandPool:=TpvVulkanCommandPool.Create(fFrameGraph.fVulkanDevice,
                                            fPhysicalQueue.QueueFamilyIndex,
                                            TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fCommandPool.Handle,TVkObjectType.VK_OBJECT_TYPE_COMMAND_POOL,'FrameGraph.Queue.CommandPool');
 
  fCommandBufferCommandPool:=nil;
 
@@ -1640,6 +1642,7 @@ begin
  fCommandBufferCommandPool:=TpvVulkanCommandPool.Create(fFrameGraph.fVulkanDevice,
                                                         fPhysicalQueue.QueueFamilyIndex,
                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fCommandBufferCommandPool.Handle,TVkObjectType.VK_OBJECT_TYPE_COMMAND_POOL,'FrameGraph.Queue.CommandBufferCommandPool');
  for CommandBuffer in fCommandBuffers do begin
   CommandBuffer.AcquireVolatileResources;
  end;
@@ -2032,6 +2035,7 @@ begin
                                                                     fCountMipMaps,
                                                                     0,
                                                                     fCountArrayLayers);
+   fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanImageViews[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW,fResourceType.Name+'['+IntToStr(InFlightFrameIndex)+']');
    fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=fVulkanImageViews[InFlightFrameIndex];
   end;
 
@@ -2057,6 +2061,7 @@ begin
                                                                             fCountMipMaps,
                                                                             0,
                                                                             fCountArrayLayers);
+   fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanSurfaceImageViews[SwapChainImageIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW,fResourceType.Name+'['+IntToStr(SwapChainImageIndex)+']');
   end;
 
   for InFlightFrameIndex:=0 to Min(Max(fFrameGraph.fCountInFlightFrames,1),MaxInFlightFrames)-1 do begin
@@ -2113,6 +2118,7 @@ begin
                                                              @fFrameGraph.fQueueFamilyIndices.Items[0],
                                                              VK_IMAGE_LAYOUT_UNDEFINED,
                                                              fAdditionalFormat);
+    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanImages[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_IMAGE,fResourceType.Name+'['+IntToStr(InFlightFrameIndex)+']');
 
     MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImages[InFlightFrameIndex].Handle,
                                                                                            RequiresDedicatedAllocation,
@@ -2172,6 +2178,7 @@ begin
                                                                       fCountMipMaps,
                                                                       0,
                                                                       fCountArrayLayers);
+    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanImageViews[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW,fResourceType.Name+'['+IntToStr(InFlightFrameIndex)+']');
 
     if (fAdditionalFormat<>VK_FORMAT_UNDEFINED) and (fAdditionalFormat<>fFormat) then begin
      fVulkanAdditionalFormatImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
@@ -2383,19 +2390,20 @@ begin
     fVulkanBuffers[InFlightFrameIndex]:=fVulkanBuffers[0];
    end else begin
     fVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
-                                                                fSize,
-                                                                fUsage,
-                                                                VK_SHARING_MODE_EXCLUSIVE,
-                                                                fFrameGraph.fQueueFamilyIndices.Items,
-                                                                fMemoryRequiredPropertyFlags,
-                                                                fMemoryPreferredPropertyFlags,
-                                                                fMemoryAvoidPropertyFlags,
-                                                                fMemoryPreferredNotPropertyFlags,
-                                                                fMemoryRequiredHeapFlags,
-                                                                fMemoryPreferredHeapFlags,
-                                                                fMemoryAvoidHeapFlags,
-                                                                fMemoryPreferredNotHeapFlags,
-                                                                fBufferFlags);
+                                                               fSize,
+                                                               fUsage,
+                                                               VK_SHARING_MODE_EXCLUSIVE,
+                                                               fFrameGraph.fQueueFamilyIndices.Items,
+                                                               fMemoryRequiredPropertyFlags,
+                                                               fMemoryPreferredPropertyFlags,
+                                                               fMemoryAvoidPropertyFlags,
+                                                               fMemoryPreferredNotPropertyFlags,
+                                                               fMemoryRequiredHeapFlags,
+                                                               fMemoryPreferredHeapFlags,
+                                                               fMemoryAvoidHeapFlags,
+                                                               fMemoryPreferredNotHeapFlags,
+                                                               fBufferFlags);
+    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_BUFFER,fResourceType.Name+'['+IntToStr(InFlightFrameIndex)+']');
    end;
   end;
  end;
@@ -3473,6 +3481,7 @@ begin
   for PhysicalPass in fFromPhysicalPasses do begin
    if not assigned(PhysicalPass.fEvents[InFlightFrameIndex]) then begin
     PhysicalPass.fEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(fFrameGraph.fVulkanDevice);
+    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(PhysicalPass.fEvents[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_EVENT,PhysicalPass.ClassName+'['+IntToStr(InFlightFrameIndex)+']');
    end;
    fWorkFromPhysicalPassesEventHandles[InFlightFrameIndex].Add(PhysicalPass.fEvents[InFlightFrameIndex].Handle);
   end;
@@ -4108,6 +4117,10 @@ begin
 
 //fFrameGraph.fVulkanDevice.DebugMarker.SetObjectName(fVulkanRenderPass.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT,fSubpasses[0].fRenderPass.Name);
 
+ if fSubpasses.Count>0 then begin
+  fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanRenderPass.Handle,TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS,fSubpasses[0].fRenderPass.Name);
+ end;
+
  for AttachmentIndex:=0 to fAttachments.Count-1 do begin
   Attachment:=@fAttachments.Items[AttachmentIndex];
   fVulkanRenderPass.ClearValues[AttachmentIndex]^:=Attachment^.ClearValue;
@@ -4155,6 +4168,9 @@ begin
      end;
     end;
     fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].Initialize;
+    if fSubpasses.Count>0 then begin
+     fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanSurfaceFrameBuffers[InFlightFrameIndex,SurfaceIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fSubpasses[0].fRenderPass.Name+'.SurfaceFrameBuffer['+IntToStr(InFlightFrameIndex)+','+IntToStr(SurfaceIndex)+']');
+    end;
    end;
   end;
 
@@ -4178,6 +4194,9 @@ begin
                                                                                                 false));
    end;
    fVulkanFrameBuffers[InFlightFrameIndex].Initialize;
+   if fSubpasses.Count>0 then begin
+    fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanFrameBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER,fSubpasses[0].fRenderPass.Name+'.FrameBuffer['+IntToStr(InFlightFrameIndex)+']');
+   end;
   end;
 
  end;
@@ -4388,8 +4407,10 @@ begin
 
  fVulkanUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fUniversalQueue.fCommandPool,
                                                                    VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+ fVulkanDevice.DebugUtils.SetObjectName(fVulkanUniversalQueueCommandBuffer.Handle,TVkObjectType.VK_OBJECT_TYPE_COMMAND_BUFFER,'FrameGraph.VulkanUniversalQueueCommandBuffer');
 
  fVulkanUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
+ fVulkanDevice.DebugUtils.SetObjectName(fVulkanUniversalQueueCommandBufferFence.Handle,TVkObjectType.VK_OBJECT_TYPE_FENCE,'FrameGraph.VulkanUniversalQueueCommandBufferFence');
 
  for InFlightFrameIndex:=0 to fCountInFlightFrames-1 do begin
   begin
@@ -6872,6 +6893,7 @@ begin
    for WaitingSemaphoreIndex:=0 to CommandBuffer.fWaitingSemaphores.Count-1 do begin
     WaitingSemaphore:=@CommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanDevice.DebugUtils.SetObjectName(Semaphore.Handle,TVkObjectType.VK_OBJECT_TYPE_SEMAPHORE,'FrameGraphSemaphore');
     if assigned(WaitingSemaphore^.SignallingCommandBuffer) then begin
      WaitingSemaphore^.SignallingCommandBuffer.fSignallingSemaphores[InFlightFrameIndex].Add(Semaphore);
      WaitingSemaphore^.SignallingCommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
@@ -6908,6 +6930,7 @@ begin
    if fDoSignalSemaphore and
       (CommandBuffer=CommandBuffer.fQueue.fCommandBuffers[CommandBuffer.fQueue.fCommandBuffers.Count-1]) then begin
     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanDevice.DebugUtils.SetObjectName(Semaphore.Handle,TVkObjectType.VK_OBJECT_TYPE_SEMAPHORE,'FrameGraphSemaphore');
     CommandBuffer.fSignallingSemaphores[InFlightFrameIndex].Add(Semaphore);
     CommandBuffer.fSignallingSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
     fDrawToSignalSemaphoreHandles[InFlightFrameIndex].Add(Semaphore.Handle);
