@@ -8042,6 +8042,8 @@ begin
    if fVulkanDebuggingEnabled then begin
     case fVulkanDebugExtensionMode of
      TpvApplicationVulkanDebugExtensionMode.DebugUtils:begin
+      fVulkanInstance.OnInstanceDebugUtilsMessengerCallback:=VulkanOnDebugUtilsMessengerCallback;
+      fVulkanInstance.InstallDebugUtilsMessengerCallback;
      end;
      TpvApplicationVulkanDebugExtensionMode.DebugReportMarker:begin
       fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;

@@ -283,6 +283,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TpvInt32;const aLayerPrefix,aMessage:TpvUTF8String):TVkBool32 of object;
 
+     TpvVulkanInstanceDebugUtilsMessengerCallback=function(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32 of object;
+
      TpvVulkanInstance=class(TpvVulkanObject)
       private    
        fVulkan:TVulkan;
@@ -310,6 +312,9 @@ type EpvVulkanException=class(Exception);
        fDebugReportCallbackCreateInfoEXT:TVkDebugReportCallbackCreateInfoEXT;
        fDebugReportCallbackEXT:TVkDebugReportCallbackEXT;
        fOnInstanceDebugReportCallback:TpvVulkanInstanceDebugReportCallback;
+       fDebugUtilsMessengerCreateInfoEXT:TVkDebugUtilsMessengerCreateInfoEXT;
+       fDebugUtilsMessengerEXT:TVkDebugUtilsMessengerEXT;
+       fOnInstanceDebugUtilsMessengerCallback:TpvVulkanInstanceDebugUtilsMessengerCallback;
        fExtDebugUtilsEnabled:boolean;
        procedure SetApplicationInfo(const NewApplicationInfo:TVkApplicationInfo);
        function GetApplicationName:TpvVulkanCharString;
@@ -325,6 +330,7 @@ type EpvVulkanException=class(Exception);
        procedure EnumeratePhysicalDevices;
       protected
        function DebugReportCallback(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TpvInt32;const aLayerPrefix:TpvVulkanCharString;const aMessage:TpvVulkanCharString):TVkBool32; virtual;
+       function DebugUtilsMessengerCallback(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32;
       public
        constructor Create(const aApplicationName:TpvVulkanCharString='Vulkan application';
                           const aApplicationVersion:TpvUInt32=1;
@@ -336,6 +342,7 @@ type EpvVulkanException=class(Exception);
        destructor Destroy; override;
        procedure Initialize;
        procedure InstallDebugReportCallback;
+       procedure InstallDebugUtilsMessengerCallback;
        function GetAPIVersionString:TpvRawByteString;
       public
        property AllocationCallbacks:PVkAllocationCallbacks read fAllocationCallbacks;
@@ -358,6 +365,7 @@ type EpvVulkanException=class(Exception);
        property Commands:TVulkan read fInstanceVulkan;
        property PhysicalDevices:TpvVulkanPhysicalDeviceList read fPhysicalDevices;
        property OnInstanceDebugReportCallback:TpvVulkanInstanceDebugReportCallback read fOnInstanceDebugReportCallback write fOnInstanceDebugReportCallback;
+       property OnInstanceDebugUtilsMessengerCallback:TpvVulkanInstanceDebugUtilsMessengerCallback read fOnInstanceDebugUtilsMessengerCallback write fOnInstanceDebugUtilsMessengerCallback;
        property ExtDebugUtilsEnabled:boolean read fExtDebugUtilsEnabled;
      end;
 
@@ -7584,7 +7592,11 @@ begin
 
  fDebugReportCallbackEXT:=VK_NULL_HANDLE;
 
+ fDebugUtilsMessengerEXT:=VK_NULL_HANDLE;
+
  fOnInstanceDebugReportCallback:=nil;
+
+ fOnInstanceDebugUtilsMessengerCallback:=nil;
 
  fInstanceVulkan:=nil;
 
@@ -7701,6 +7713,10 @@ begin
  if fDebugReportCallbackEXT<>VK_NULL_HANDLE then begin
   fInstanceVulkan.DestroyDebugReportCallbackEXT(fInstanceHandle,fDebugReportCallbackEXT,fAllocationCallbacks);
   fDebugReportCallbackEXT:=VK_NULL_HANDLE;
+ end;
+ if fDebugUtilsMessengerEXT<>VK_NULL_HANDLE then begin
+  fInstanceVulkan.DestroyDebugUtilsMessengerEXT(fInstanceHandle,fDebugUtilsMessengerEXT,fAllocationCallbacks);
+  fDebugUtilsMessengerEXT:=VK_NULL_HANDLE;
  end;
  fPhysicalDevices.Free;
  if fInstanceHandle<>VK_NULL_INSTANCE then begin
@@ -7933,6 +7949,39 @@ begin
   fDebugReportCallbackCreateInfoEXT.pfnCallback:=@TpvVulkanInstanceDebugReportCallbackFunction;
   fDebugReportCallbackCreateInfoEXT.pUserData:=self;
   VulkanCheckResult(fInstanceVulkan.CreateDebugReportCallbackEXT(fInstanceHandle,@fDebugReportCallbackCreateInfoEXT,fAllocationCallbacks,@fDebugReportCallbackEXT));
+ end;
+end;
+
+function TpvVulkanInstanceDebugUtilsMessengerCallbackFunction(aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;aUserData:pointer):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+begin
+ result:=TpvVulkanInstance(aUserData).DebugUtilsMessengerCallback(aMessageSeverity,aMessageTypes,aCallbackData,aUserData);
+end;
+
+function TpvVulkanInstance.DebugUtilsMessengerCallback(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32;
+begin
+ if assigned(fOnInstanceDebugUtilsMessengerCallback) then begin
+  result:=fOnInstanceDebugUtilsMessengerCallback(aMessageSeverity,aMessageTypes,aCallbackData,aUserData);
+ end else begin
+  result:=VK_FALSE;
+ end;
+end;
+
+procedure TpvVulkanInstance.InstallDebugUtilsMessengerCallback;
+begin
+ if (fDebugUtilsMessengerEXT=VK_NULL_HANDLE) and assigned(fInstanceVulkan.Commands.CreateDebugUtilsMessengerEXT) then begin
+  FillChar(fDebugUtilsMessengerCreateInfoEXT,SizeOf(TVkDebugUtilsMessengerCreateInfoEXT),#0);
+  fDebugUtilsMessengerCreateInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  fDebugUtilsMessengerCreateInfoEXT.messageSeverity:=TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) or
+                                                     TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) or
+                                                     TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) or
+                                                     TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT);
+  fDebugUtilsMessengerCreateInfoEXT.messageType:=TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) or
+                                                 TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) or
+                                                 TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) or
+                                                 TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT);
+  fDebugUtilsMessengerCreateInfoEXT.pfnUserCallback:=@TpvVulkanInstanceDebugUtilsMessengerCallbackFunction;
+  fDebugUtilsMessengerCreateInfoEXT.pUserData:=self;
+  VulkanCheckResult(fInstanceVulkan.CreateDebugUtilsMessengerEXT(fInstanceHandle,@fDebugUtilsMessengerCreateInfoEXT,fAllocationCallbacks,@fDebugUtilsMessengerEXT));
  end;
 end;
 
