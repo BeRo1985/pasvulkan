@@ -1567,6 +1567,7 @@ begin
                                                                                      0,
                                                                                      0,
                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fCascadedShadowMapVulkanUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
  end;
 
  case Renderer.TransparencyMode of
@@ -1586,7 +1587,7 @@ begin
                                                                                0,
                                                                                0,
                                                                                []);
-
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparentUniformVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fLockOrderIndependentTransparentUniformVulkanBuffer');
   end;
   TpvScene3DRendererTransparencyMode.LOOPOIT:begin
    fLoopOrderIndependentTransparentUniformVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -1603,7 +1604,7 @@ begin
                                                                                0,
                                                                                0,
                                                                                []);
-
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fLoopOrderIndependentTransparentUniformVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fLoopOrderIndependentTransparentUniformVulkanBuffer');
   end;
   TpvScene3DRendererTransparencyMode.WBOIT,
   TpvScene3DRendererTransparencyMode.MBOIT:begin
@@ -1621,6 +1622,7 @@ begin
                                                                                         0,
                                                                                         0,
                                                                                         []);
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fApproximationOrderIndependentTransparentUniformVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fApproximationOrderIndependentTransparentUniformVulkanBuffer');
   end;
   else begin
   end;
@@ -1763,6 +1765,7 @@ begin
                                                                             false);
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
     fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData),
                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -1777,6 +1780,8 @@ begin
                                                                                                0,
                                                                                                0,
                                                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
+
     fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                   SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData),
                                                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
@@ -1791,8 +1796,13 @@ begin
                                                                                                   0,
                                                                                                   0,
                                                                                                   [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsRSMUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsRSMUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
+
     fGlobalIlluminationRadianceHintsEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsEvents[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_EVENT,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsEvents['+IntToStr(InFlightFrameIndex)+']');
+
     fGlobalIlluminationRadianceHintsEventReady[InFlightFrameIndex]:=false;
+
    end;
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -1809,12 +1819,16 @@ begin
                                                                                                                                    Format,
                                                                                                                                    VK_SAMPLE_COUNT_1_BIT,
                                                                                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fInFlightFrameCascadedRadianceHintVolumeImages['+IntToStr(InFlightFrameIndex)+','+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].Image');
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fInFlightFrameCascadedRadianceHintVolumeImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fInFlightFrameCascadedRadianceHintVolumeImages['+IntToStr(InFlightFrameIndex)+','+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].ImageView');
       fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex]:=TpvScene3DRendererImage3D.Create(GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                GlobalIlluminationRadiantHintVolumeSize,
                                                                                                                                                Format,
                                                                                                                                                VK_SAMPLE_COUNT_1_BIT,
                                                                                                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages['+IntToStr(InFlightFrameIndex)+','+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].Image');
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages[InFlightFrameIndex,CascadeIndex,ImageIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fInFlightFrameCascadedRadianceHintVolumeSecondBounceImages['+IntToStr(InFlightFrameIndex)+','+IntToStr(CascadeIndex)+','+IntToStr(ImageIndex)+'].ImageView');
      end;
     end;
    end;
@@ -1825,6 +1839,7 @@ begin
    fGlobalIlluminationRadianceHintsDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
    fGlobalIlluminationRadianceHintsDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintCascades*TpvScene3DRendererInstance.CountGlobalIlluminationRadiantHintVolumeImages);
    fGlobalIlluminationRadianceHintsDescriptorPool.Initialize;
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsDescriptorPool');
 
    fGlobalIlluminationRadianceHintsDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
    fGlobalIlluminationRadianceHintsDescriptorSetLayout.AddBinding(0,
@@ -1838,6 +1853,7 @@ begin
                                                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                                   []);
    fGlobalIlluminationRadianceHintsDescriptorSetLayout.Initialize;
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsDescriptorSetLayout');
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
@@ -1878,6 +1894,7 @@ begin
                                                                                              false
                                                                                             );
      fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex].Flush;
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fGlobalIlluminationRadianceHintsDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fGlobalIlluminationRadianceHintsDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
 
     finally
      GlobalIlluminationRadianceHintsSHTextureDescriptorInfoArray:=nil;
