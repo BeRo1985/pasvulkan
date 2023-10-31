@@ -601,6 +601,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceDebugMarker=class;
 
+     TpvVulkanDeviceDebugUtils=class;
+
      TpvVulkanDevice=class(TpvVulkanObject)
       private
        fInstance:TpvVulkanInstance;
@@ -640,6 +642,7 @@ type EpvVulkanException=class(Exception);
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fMemoryStaging:TpvVulkanDeviceMemoryStaging;
        fDebugMarker:TpvVulkanDeviceDebugMarker;
+       fDebugUtils:TpvVulkanDeviceDebugUtils;
        fCanvasCommon:TObject;
        fImageFormatList:boolean;
        fUseNVIDIADeviceDiagnostics:boolean;
@@ -710,6 +713,7 @@ type EpvVulkanException=class(Exception);
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property MemoryStaging:TpvVulkanDeviceMemoryStaging read fMemoryStaging;
        property DebugMarker:TpvVulkanDeviceDebugMarker read fDebugMarker;
+       property DebugUtils:TpvVulkanDeviceDebugUtils read fDebugUtils;
        property CanvasCommon:TObject read fCanvasCommon write fCanvasCommon;
        property ImageFormatList:boolean read fImageFormatList;
        property UseNVIDIADeviceDiagnostics:boolean read fUseNVIDIADeviceDiagnostics write fUseNVIDIADeviceDiagnostics;
@@ -753,6 +757,31 @@ type EpvVulkanException=class(Exception);
                         const aMarkerName:TpvRawByteString;
                         const aColor:array of TVkFloat);
        procedure EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer);
+     end;
+
+     TpvVulkanDeviceDebugUtils=class
+      private
+       fDevice:TpvVulkanDevice;
+       fEnabled:boolean;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+       procedure Initialize;
+       procedure SetObjectName(const aObject:TVkUInt64;
+                               const aObjectType:TVkObjectType;
+                               const aName:TpvRawByteString); overload;
+       procedure SetObjectTag(const aObject:TVkUInt64;
+                              const aObjectType:TVkObjectType;
+                              const aTagName:TVkUInt64;
+                              const aTagSize:TVkSize;
+                              const aTagData:pointer); overload;
+       procedure CmdBufLabelBegin(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                  const aLabelName:TpvRawByteString;
+                                  const aColor:array of TVkFloat);
+       procedure CmdBufLabelInsert(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aLabelName:TpvRawByteString;
+                                   const aColor:array of TVkFloat);
+       procedure CmdBufLabelEnd(const aCommandBuffer:TpvVulkanCommandBuffer);
      end;
 
      TpvVulkanDeviceQueueCreateInfo=class(TpvVulkanObject)
@@ -8973,6 +9002,130 @@ begin
  end;
 end;
 
+constructor TpvVulkanDeviceDebugUtils.Create(const aDevice:TpvVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=aDevice;
+ fEnabled:=fDevice.fInstance.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0;
+end;
+
+destructor TpvVulkanDeviceDebugUtils.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.Initialize;
+begin
+ fEnabled:=fDevice.fInstance.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.SetObjectName(const aObject:TVkUInt64;
+                                                  const aObjectType:TVkObjectType;
+                                                  const aName:TpvRawByteString);
+var DebugUtilsObjectNameInfoEXT:TVkDebugUtilsObjectNameInfoEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.SetDebugUtilsObjectNameEXT) then begin
+  FillChar(DebugUtilsObjectNameInfoEXT,SizeOf(TVkDebugUtilsObjectNameInfoEXT),#0);
+  DebugUtilsObjectNameInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+  DebugUtilsObjectNameInfoEXT.objectType:=aObjectType;
+  DebugUtilsObjectNameInfoEXT.objectHandle:=aObject;
+  DebugUtilsObjectNameInfoEXT.pObjectName:=PAnsiChar(aName);
+  VulkanCheckResult(fDevice.Commands.SetDebugUtilsObjectNameEXT(fDevice.Handle,@DebugUtilsObjectNameInfoEXT));
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.SetObjectTag(const aObject:TVkUInt64;
+                                                 const aObjectType:TVkObjectType;
+                                                 const aTagName:TVkUInt64;
+                                                 const aTagSize:TVkSize;
+                                                 const aTagData:pointer);
+var DebugUtilsObjectTagInfoEXT:TVkDebugUtilsObjectTagInfoEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.DebugMarkerSetObjectTagEXT) then begin
+  FillChar(DebugUtilsObjectTagInfoEXT,SizeOf(TVkDebugUtilsObjectTagInfoEXT),#0);
+  DebugUtilsObjectTagInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT;
+  DebugUtilsObjectTagInfoEXT.objectType:=aObjectType;
+  DebugUtilsObjectTagInfoEXT.objectHandle:=aObject;
+  DebugUtilsObjectTagInfoEXT.tagName:=aTagName;
+  DebugUtilsObjectTagInfoEXT.tagSize:=aTagSize;
+  DebugUtilsObjectTagInfoEXT.pTag:=aTagData;
+  VulkanCheckResult(fDevice.Commands.DebugMarkerSetObjectTagEXT(fDevice.Handle,@DebugUtilsObjectTagInfoEXT));
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.CmdBufLabelBegin(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                     const aLabelName:TpvRawByteString;
+                                                     const aColor:array of TVkFloat);
+var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.CmdBeginDebugUtilsLabelEXT) then begin
+  FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
+  DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
+  if length(aColor)<1 then begin
+   DebugUtilsLabelEXT.color[0]:=aColor[0];
+  end else begin
+   DebugUtilsLabelEXT.color[0]:=1.0;
+  end;
+  if length(aColor)<2 then begin
+   DebugUtilsLabelEXT.color[1]:=aColor[1];
+  end else begin
+   DebugUtilsLabelEXT.color[1]:=1.0;
+  end;
+  if length(aColor)<3 then begin
+   DebugUtilsLabelEXT.color[2]:=aColor[2];
+  end else begin
+   DebugUtilsLabelEXT.color[2]:=1.0;
+  end;
+  if length(aColor)<4 then begin
+   DebugUtilsLabelEXT.color[3]:=aColor[3];
+  end else begin
+   DebugUtilsLabelEXT.color[3]:=1.0;
+  end;
+  fDevice.Commands.CmdBeginDebugUtilsLabelEXT(aCommandBuffer.Handle,@DebugUtilsLabelEXT);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.CmdBufLabelInsert(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                      const aLabelName:TpvRawByteString;
+                                                      const aColor:array of TVkFloat);
+var DebugUtilsLabelEXT:TVkDebugUtilsLabelEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.CmdInsertDebugUtilsLabelEXT) then begin
+  FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
+  DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+  DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
+  if length(aColor)<1 then begin
+   DebugUtilsLabelEXT.color[0]:=aColor[0];
+  end else begin
+   DebugUtilsLabelEXT.color[0]:=1.0;
+  end;
+  if length(aColor)<2 then begin
+   DebugUtilsLabelEXT.color[1]:=aColor[1];
+  end else begin
+   DebugUtilsLabelEXT.color[1]:=1.0;
+  end;
+  if length(aColor)<3 then begin
+   DebugUtilsLabelEXT.color[2]:=aColor[2];
+  end else begin
+   DebugUtilsLabelEXT.color[2]:=1.0;
+  end;
+  if length(aColor)<4 then begin
+   DebugUtilsLabelEXT.color[3]:=aColor[3];
+  end else begin
+   DebugUtilsLabelEXT.color[3]:=1.0;
+  end;
+  fDevice.Commands.CmdInsertDebugUtilsLabelEXT(aCommandBuffer.Handle,@DebugUtilsLabelEXT);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugUtils.CmdBufLabelEnd(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.CmdEndDebugUtilsLabelEXT) then begin
+  fDevice.Commands.CmdEndDebugUtilsLabelEXT(aCommandBuffer.Handle);
+ end;
+end;
+
 constructor TpvVulkanDevice.Create(const aInstance:TpvVulkanInstance;
                                    const aPhysicalDevice:TpvVulkanPhysicalDevice=nil;
                                    const aSurface:TpvVulkanSurface=nil;
@@ -9176,6 +9329,8 @@ begin
 
  fDebugMarker:=TpvVulkanDeviceDebugMarker.Create(self);
 
+ fDebugUtils:=TpvVulkanDeviceDebugUtils.Create(self);
+
  fCanvasCommon:=nil;
 
 end;
@@ -9198,6 +9353,7 @@ begin
  fTransferQueues:=nil;
  FreeAndNil(fMemoryStaging);
  FreeAndNil(fMemoryManager);
+ FreeAndNil(fDebugUtils);
  FreeAndNil(fDebugMarker);
  FreeAndNil(fDeviceVulkan);
  if fDeviceHandle<>VK_NULL_HANDLE then begin
@@ -9836,6 +9992,8 @@ begin
   fMemoryStaging.Initialize;
 
   fDebugMarker.Initialize;
+
+  fDebugUtils.Initialize;
 
   fImageFormatList:=((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) or
                     (fEnabledExtensionNames.IndexOf(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME)>=0);
