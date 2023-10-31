@@ -732,12 +732,12 @@ type EpvVulkanException=class(Exception);
        procedure Initialize;
        procedure SetObjectName(const aObject:TVkUInt64;
                                const aObjectType:TVkDebugReportObjectTypeEXT;
-                               const aName:TpvRawByteString);
+                               const aName:TpvRawByteString); overload;
        procedure SetObjectTag(const aObject:TVkUInt64;
                               const aObjectType:TVkDebugReportObjectTypeEXT;
                               const aTagName:TVkUInt64;
                               const aTagSize:TVkSize;
-                              const aTagData:pointer);
+                              const aTagData:pointer); overload;
        procedure BeginRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
                              const aMarkerName:TpvRawByteString;
                              const aColor:array of TVkFloat);
@@ -3566,6 +3566,8 @@ function VulkanGetFormatFromOpenGLInternalFormat(const aInternalFormat:TpvUInt32
 function VulkanGetFormatSize(const aFormat:TVkFormat):TpvVulkanFormatSize;
 
 function VulkanRoundUpToPowerOfTwo(Value:TVkSize):TVkSize;
+
+function VulkanObjectTypeToString(const aObjectType:TVkObjectType):TpvVulkanCharString;
 
 function VulkanErrorToString(const ErrorCode:TVkResult):TpvVulkanCharString;
 
@@ -6891,6 +6893,174 @@ begin
  result:=TpvUInt32(TpvUInt64(r xor (r shr 22)));
  if result=0 then begin
   result:=$ffffffff;
+ end;
+end;
+
+function VulkanObjectTypeToString(const aObjectType:TVkObjectType):TpvVulkanCharString;
+begin
+ case aObjectType of
+  TVkObjectType.VK_OBJECT_TYPE_UNKNOWN:begin
+   result:='VK_OBJECT_TYPE_UNKNOWN';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_INSTANCE:begin
+   result:='VK_OBJECT_TYPE_INSTANCE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PHYSICAL_DEVICE:begin
+   result:='VK_OBJECT_TYPE_PHYSICAL_DEVICE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DEVICE:begin
+   result:='VK_OBJECT_TYPE_DEVICE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_QUEUE:begin
+   result:='VK_OBJECT_TYPE_QUEUE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SEMAPHORE:begin
+   result:='VK_OBJECT_TYPE_SEMAPHORE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_COMMAND_BUFFER:begin
+   result:='VK_OBJECT_TYPE_COMMAND_BUFFER';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_FENCE:begin
+   result:='VK_OBJECT_TYPE_FENCE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DEVICE_MEMORY:begin
+   result:='VK_OBJECT_TYPE_DEVICE_MEMORY';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_BUFFER:begin
+   result:='VK_OBJECT_TYPE_BUFFER';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_IMAGE:begin
+   result:='VK_OBJECT_TYPE_IMAGE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_EVENT:begin
+   result:='VK_OBJECT_TYPE_EVENT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_QUERY_POOL:begin
+   result:='VK_OBJECT_TYPE_QUERY_POOL';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_BUFFER_VIEW:begin
+   result:='VK_OBJECT_TYPE_BUFFER_VIEW';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_IMAGE_VIEW:begin
+   result:='VK_OBJECT_TYPE_IMAGE_VIEW';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SHADER_MODULE:begin
+   result:='VK_OBJECT_TYPE_SHADER_MODULE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PIPELINE_CACHE:begin
+   result:='VK_OBJECT_TYPE_PIPELINE_CACHE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PIPELINE_LAYOUT:begin
+   result:='VK_OBJECT_TYPE_PIPELINE_LAYOUT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_RENDER_PASS:begin
+   result:='VK_OBJECT_TYPE_RENDER_PASS';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PIPELINE:begin
+   result:='VK_OBJECT_TYPE_PIPELINE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:begin
+   result:='VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SAMPLER:begin
+   result:='VK_OBJECT_TYPE_SAMPLER';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DESCRIPTOR_POOL:begin
+   result:='VK_OBJECT_TYPE_DESCRIPTOR_POOL';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DESCRIPTOR_SET:begin
+   result:='VK_OBJECT_TYPE_DESCRIPTOR_SET';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_FRAMEBUFFER:begin
+   result:='VK_OBJECT_TYPE_FRAMEBUFFER';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_COMMAND_POOL:begin
+   result:='VK_OBJECT_TYPE_COMMAND_POOL';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SURFACE_KHR:begin
+   result:='VK_OBJECT_TYPE_SURFACE_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SWAPCHAIN_KHR:begin
+   result:='VK_OBJECT_TYPE_SWAPCHAIN_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DISPLAY_KHR:begin
+   result:='VK_OBJECT_TYPE_DISPLAY_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DISPLAY_MODE_KHR:begin
+   result:='VK_OBJECT_TYPE_DISPLAY_MODE_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:begin
+   result:='VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_VIDEO_SESSION_KHR:begin
+   result:='VK_OBJECT_TYPE_VIDEO_SESSION_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_VIDEO_SESSION_PARAMETERS_KHR:begin
+   result:='VK_OBJECT_TYPE_VIDEO_SESSION_PARAMETERS_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_CU_MODULE_NVX:begin
+   result:='VK_OBJECT_TYPE_CU_MODULE_NVX';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_CU_FUNCTION_NVX:begin
+   result:='VK_OBJECT_TYPE_CU_FUNCTION_NVX';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:begin
+   result:='VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:begin
+   result:='VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:begin
+   result:='VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:begin
+   result:='VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:begin
+   result:='VK_OBJECT_TYPE_VALIDATION_CACHE_EXT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:begin
+   result:='VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL:begin
+   result:='VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR:begin
+   result:='VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV:begin
+   result:='VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PRIVATE_DATA_SLOT:begin
+   result:='VK_OBJECT_TYPE_PRIVATE_DATA_SLOT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA:begin
+   result:='VK_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_MICROMAP_EXT:begin
+   result:='VK_OBJECT_TYPE_MICROMAP_EXT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_OPTICAL_FLOW_SESSION_NV:begin
+   result:='VK_OBJECT_TYPE_OPTICAL_FLOW_SESSION_NV';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SHADER_EXT:begin
+   result:='VK_OBJECT_TYPE_SHADER_EXT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SEMAPHORE_SCI_SYNC_POOL_NV:begin
+   result:='VK_OBJECT_TYPE_SEMAPHORE_SCI_SYNC_POOL_NV';
+  end;
+{ TVkObjectType.VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR:begin
+   result:='VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT:begin
+   result:='VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT';
+  end;
+  TVkObjectType.VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR:begin
+   result:='VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR';
+  end;}
+  else begin
+   result:='Unknown ('+IntToStr(TpvUInt64(aObjectType))+')';
+  end;
  end;
 end;
 

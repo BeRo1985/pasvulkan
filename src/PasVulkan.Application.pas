@@ -1208,6 +1208,13 @@ type EpvApplication=class(Exception)
        CombinedWait=3
       );
 
+     TpvApplicationVulkanDebugExtensionMode=
+      (
+       None=-1,
+       DebugReportMarker=0,
+       DebugUtils=1
+      );
+
      { TpvApplication }
 
      TpvApplication=class
@@ -1401,6 +1408,8 @@ type EpvApplication=class(Exception)
        fVulkanNoUniqueObjectsValidation:boolean;
 
        fVulkanDebuggingEnabled:boolean;
+
+       fVulkanDebugExtensionMode:TpvApplicationVulkanDebugExtensionMode;
 
        fVulkanPreferDedicatedGPUs:boolean;
 
@@ -1692,6 +1701,8 @@ type EpvApplication=class(Exception)
        class procedure VulkanDebugLn(const What:TpvUTF8String); static;
 
        function VulkanOnDebugReportCallback(const aFlags:TVkDebugReportFlagsEXT;const aObjectType:TVkDebugReportObjectTypeEXT;const aObject:TpvUInt64;const aLocation:TVkSize;aMessageCode:TpvInt32;const aLayerPrefix,aMessage:TpvUTF8String):TVkBool32;
+
+       function VulkanOnDebugUtilsMessengerCallback(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32;
 
        procedure VulkanWaitIdle;
 
@@ -2090,7 +2101,7 @@ procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedStat
 
 implementation
 
-uses PasVulkan.Utils;
+uses PasVulkan.Utils,PasDblStrUtils;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -7373,6 +7384,136 @@ begin
  end;
 end;
 
+function TpvApplication.VulkanOnDebugUtilsMessengerCallback(const aMessageSeverity:TVkDebugUtilsMessageSeverityFlagsEXT;const aMessageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const aCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;const aUserData:pointer):TVkBool32;
+const NewLine={$if defined(Windows)}#13#10{$else}#10{$ifend};
+      Tab=#8;
+var Index:TpvSizeInt;
+    Message,MessageIDName,MessageTypes,MessageSeverityTypes,Objects,QueueLabels,CmdBufLabels,Whole:TpvUTF8String;
+    pObjects:PVkDebugUtilsObjectNameInfoEXT;
+    pLabels:PVkDebugUtilsLabelEXT;
+begin
+
+ try
+
+ if assigned(aCallbackData) then begin
+
+   Message:=aCallbackData^.pMessage;
+
+   MessageIDName:=aCallbackData^.pMessageIdName;
+
+   if (pos('Mapping an image with layout',Message)>0) and (pos('can result in undefined behavior if this memory is used by the device',Message)>0) then begin
+    // Ignore because the AMD allocator will mix up memory types on IGP processors.
+   end else if pos('Invalid SPIR-V binary version 1.3',Message)>0 then begin
+    // Ignore because the validator is wrong here.
+   end else if pos('Shader requires flag',Message)>0 then begin
+    // Ignore because the validator is wrong here.
+   end else if (pos('SPIR-V module not valid: Pointer operand',Message)>0) and (pos('must be a memory object',Message)>0) then begin
+    // Ignore because the validator is wrong here.
+   end else if pos('UNASSIGNED-CoreValidation-DrawState-ClearCmdBeforeDraw',MessageIDName)>0 then begin
+    // Ignore
+   end else begin
+
+    MessageSeverityTypes:='';
+    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))<>0 then begin
+     if length(MessageSeverityTypes)>0 then begin
+      MessageSeverityTypes:=MessageSeverityTypes+'|';
+     end;
+     MessageSeverityTypes:=MessageSeverityTypes+'VERBOSE';
+    end;
+    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))<>0 then begin
+     if length(MessageSeverityTypes)>0 then begin
+      MessageSeverityTypes:=MessageSeverityTypes+'|';
+     end;
+     MessageSeverityTypes:=MessageSeverityTypes+'INFORMATION';
+    end;
+    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))<>0 then begin
+     if length(MessageSeverityTypes)>0 then begin
+      MessageSeverityTypes:=MessageSeverityTypes+'|';
+     end;
+     MessageSeverityTypes:=MessageSeverityTypes+'WARNING';
+    end;
+    if (aMessageSeverity and TVkDebugUtilsMessageSeverityFlagsEXT(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))<>0 then begin
+     if length(MessageSeverityTypes)>0 then begin
+      MessageSeverityTypes:=MessageSeverityTypes+'|';
+     end;
+     MessageSeverityTypes:=MessageSeverityTypes+'ERROR';
+    end;
+
+    MessageTypes:='';
+    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT))<>0 then begin
+     if length(MessageTypes)>0 then begin
+      MessageTypes:=MessageTypes+'|';
+     end;
+     MessageTypes:=MessageTypes+'GENERAL';
+    end;
+    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT))<>0 then begin
+     if length(MessageTypes)>0 then begin
+      MessageTypes:=MessageTypes+'|';
+     end;
+     MessageTypes:=MessageTypes+'VALIDATION';
+    end;
+    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT))<>0 then begin
+     if length(MessageTypes)>0 then begin
+      MessageTypes:=MessageTypes+'|';
+     end;
+     MessageTypes:=MessageTypes+'PERFORMANCE';
+    end;
+    if (aMessageTypes and TVkDebugUtilsMessageTypeFlagsEXT(VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT))<>0 then begin
+     if length(MessageTypes)>0 then begin
+      MessageTypes:=MessageTypes+'|';
+     end;
+     MessageTypes:=MessageTypes+'DEVICE_ADDRESS_BINDING';
+    end;
+
+    Objects:='';
+    if aCallbackData^.objectCount>0 then begin
+     Objects:=NewLine+Tab+'Objects - '+IntToStr(aCallbackData^.objectCount);
+     pObjects:=aCallbackData^.pObjects;
+     for Index:=0 to TpvSizeInt(aCallbackData^.objectCount)-1 do begin
+      Objects:=Objects+NewLine+Tab+Tab+'Object['+IntToStr(Index)+'] - '+
+               VulkanObjectTypeToString(pObjects^.objectType)+', '+
+               'Handle '+UIntToStr(TpvUInt64(pObjects^.objectHandle));
+      if assigned(pObjects^.pObjectName) and (length(pObjects^.pObjectName)>0) then begin
+       Objects:=Objects+', Name '+TpvUTF8String(pObjects^.pObjectName);
+      end;
+      inc(pObjects);
+     end;
+    end;
+
+    QueueLabels:='';
+    if aCallbackData^.QueueLabelCount>0 then begin
+     QueueLabels:=NewLine+Tab+'Queue labels - '+IntToStr(aCallbackData^.QueueLabelCount);
+     pLabels:=aCallbackData^.pQueueLabels;
+     for Index:=0 to TpvSizeInt(aCallbackData^.QueueLabelCount)-1 do begin
+      QueueLabels:=QueueLabels+NewLine+Tab+Tab+'Label['+IntToStr(Index)+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+ConvertDoubleToString(pLabels^.color[0])+', '+ConvertDoubleToString(pLabels^.color[1])+', '+ConvertDoubleToString(pLabels^.color[2])+', '+ConvertDoubleToString(pLabels^.color[3])+' }';
+      inc(pLabels);
+     end;
+    end;
+
+    CmdBufLabels:='';
+    if aCallbackData^.cmdBufLabelCount>0 then begin
+     CmdBufLabels:=NewLine+Tab+'Command buffer labels - '+IntToStr(aCallbackData^.cmdBufLabelCount);
+     pLabels:=aCallbackData^.pCmdBufLabels;
+     for Index:=0 to TpvSizeInt(aCallbackData^.cmdBufLabelCount)-1 do begin
+      CmdBufLabels:=CmdBufLabels+NewLine+Tab+Tab+'Label['+IntToStr(Index)+'] - '+TpvUTF8String(pLabels^.pLabelName)+'{ '+ConvertDoubleToString(pLabels^.color[0])+', '+ConvertDoubleToString(pLabels^.color[1])+', '+ConvertDoubleToString(pLabels^.color[2])+', '+ConvertDoubleToString(pLabels^.color[3])+' }';
+      inc(pLabels);
+     end;
+    end;
+
+    Whole:='[Debug] '+MessageSeverityTypes+': '+MessageTypes+' - Message ID number: '+IntToStr(aCallbackData^.messageIdNumber)+' - Message ID name: '+MessageIDName+NewLine+Tab+Message+Objects+QueueLabels+CmdBufLabels;
+
+    VulkanDebugLn(Whole);
+
+   end;
+
+  end;
+
+ finally
+  result:=VK_FALSE;
+ end;
+
+end;
+
 procedure TpvApplication.VulkanWaitIdle;
 var Index,SubIndex:TpvInt32;
 begin
@@ -7523,7 +7664,8 @@ begin
   if fVulkanDebugging and
      fVulkanDebuggingEnabled and
      fVulkanValidation and
-     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0) then begin
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0) and
+     (fVulkanDevice.Instance.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)<0) then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
@@ -7715,20 +7857,24 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanInstance;
-{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+{$if (defined(PasVulkanUseSDL2) or defined(Windows)) and not defined(PasVulkanHeadless)}
 type TExtensions=array of PAnsiChar;
-var i:TpvInt32;
+var Index:TpvInt32;
+{$if defined(PasVulkanUseSDL2)}
     SDL_SysWMinfo:TSDL_SysWMinfo;
+{$ifend}
     CountExtensions:TSDLInt32;
     Extensions:TExtensions;
+    DebugExtensionName:TpvUTF8String;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanInstance');
 {$ifend}
  if not assigned(fVulkanInstance) then begin
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   SDL_VERSION(SDL_SysWMinfo.version);
   if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
-     (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then begin
+     (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then{$endif}begin
    fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
                                              Version,
                                              'PasVulkanApplication',
@@ -7737,12 +7883,13 @@ begin
                                              false,
                                              nil);
    VulkanDebugLn('Instance Vulkan API version: '+TpvUTF8String(fVulkanInstance.GetAPIVersionString));
-   for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
-    VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
+   for Index:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
+    VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[Index]));
    end;
-   for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
-    VulkanDebugLn('Instance extension: '+TpvUTF8String(fVulkanInstance.AvailableExtensionNames[i]));
+   for Index:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
+    VulkanDebugLn('Instance extension: '+TpvUTF8String(fVulkanInstance.AvailableExtensionNames[Index]));
    end;
+{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin
     if not SDL_Vulkan_GetInstanceExtensions(fSurfaceWindow,@CountExtensions,nil) then begin
@@ -7754,8 +7901,8 @@ begin
      if not SDL_Vulkan_GetInstanceExtensions(fSurfaceWindow,@CountExtensions,@Extensions[0]) then begin
       raise EpvVulkanException.Create('Vulkan initialization failure at SDL_Vulkan_GetInstanceExtensions: '+String(SDL_GetError));
      end;
-     for i:=0 to CountExtensions-1 do begin
-      fVulkanInstance.EnabledExtensionNames.Add(String(Extensions[i]));
+     for Index:=0 to CountExtensions-1 do begin
+      fVulkanInstance.EnabledExtensionNames.Add(String(Extensions[Index]));
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
       VulkanDebugLn('Instance SDL2 extension: '+TpvUTF8String(Extensions[i]));
 {$ifend}
@@ -7795,9 +7942,22 @@ begin
      end;
     end;
    end;
+{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
+   begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+   end;
+{$ifend}
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
+    DebugExtensionName:=VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    fVulkanDebugExtensionMode:=TpvApplicationVulkanDebugExtensionMode.DebugUtils;
+   end else begin
+    DebugExtensionName:=VK_EXT_DEBUG_REPORT_EXTENSION_NAME;
+    fVulkanDebugExtensionMode:=TpvApplicationVulkanDebugExtensionMode.DebugReportMarker;
+   end;
    if fVulkanDebugging and
-      (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)>=0) then begin
-    fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+      (fVulkanInstance.AvailableExtensionNames.IndexOf(DebugExtensionName)>=0) then begin
+    fVulkanInstance.EnabledExtensionNames.Add(DebugExtensionName);
     fVulkanDebuggingEnabled:=true;
     if fVulkanValidation then begin
 {$if defined(Android)}
@@ -7856,10 +8016,10 @@ begin
       end;
      end;
 {$ifend}
-     if {$ifdef Android}(fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)<0) and{$endif}
+(*   if {$ifdef Android}(fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)<0) and{$endif}
         (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0) then begin
       fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-     end;
+     end;*)
     end;
    end else begin
     fVulkanDebuggingEnabled:=false;
@@ -7880,96 +8040,17 @@ begin
    VulkanDebugLn('Called TpvVulkanInstance.Initialize() . . .');
 {$ifend}
    if fVulkanDebuggingEnabled then begin
-    fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
-    fVulkanInstance.InstallDebugReportCallback;
-   end;
-  end;
- end;
-{$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanInstance');
-{$ifend}
-end;
-{$elseif defined(Windows) and not defined(PasVulkanHeadless)}
-type TExtensions=array of PAnsiChar;
-var i:TpvInt32;
-    CountExtensions:TpvInt32;
-    Extensions:TExtensions;
-begin
-{$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanInstance');
-{$ifend}
- if not assigned(fVulkanInstance) then begin
-  begin
-   fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
-                                             Version,
-                                             'PasVulkanApplication',
-                                             $0100,
-                                             fVulkanAPIVersion,
-                                             false,
-                                             nil);
-   VulkanDebugLn('Instance Vulkan API version: '+TpvUTF8String(fVulkanInstance.GetAPIVersionString));
-   for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
-    VulkanDebugLn('Instance layer: '+TpvUTF8String(fVulkanInstance.AvailableLayerNames[i]));
-   end;
-   for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
-    VulkanDebugLn('Instance extension: '+TpvUTF8String(fVulkanInstance.AvailableExtensionNames[i]));
-   end;
-   begin
-    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
-    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-   end;
-   if fVulkanDebugging and
-      (fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)>=0) then begin
-    fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-    fVulkanDebuggingEnabled:=true;
-    if fVulkanValidation then begin
-     if fVulkanNoUniqueObjectsValidation then begin
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
-      end;
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
-      end;
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
-      end;
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
-      end;
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
-      end;
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
-      end;
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
-      end;
-     end else begin
-      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_KHRONOS_validation')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_KHRONOS_validation');
-      end else if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
-       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
-      end;
+    case fVulkanDebugExtensionMode of
+     TpvApplicationVulkanDebugExtensionMode.DebugUtils:begin
      end;
-     if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)>=0 then begin
-      fVulkanInstance.EnabledExtensionNames.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+     TpvApplicationVulkanDebugExtensionMode.DebugReportMarker:begin
+      fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
+      fVulkanInstance.InstallDebugReportCallback;
+     end;
+     else begin
+      Assert(false);
      end;
     end;
-   end else begin
-    fVulkanDebuggingEnabled:=false;
-   end;
-   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
-    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-   end;
-   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)>=0 then begin
-    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
-   end;
-   SetupVulkanInstance(fVulkanInstance);
-   fVulkanInstance.Initialize;
-   if fVulkanDebuggingEnabled then begin
-    fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
-    fVulkanInstance.InstallDebugReportCallback;
    end;
   end;
  end;
