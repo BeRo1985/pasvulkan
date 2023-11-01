@@ -1595,10 +1595,15 @@ void main() {
   float alpha = textureFetch(0, vec4(1.0), true).w * material.baseColorFactor.w * inColor0.w;
 #endif
 #else
+  
   vec4 color = vec4(0.0);
 #ifdef EXTRAEMISSIONOUTPUT
   vec4 emissionColor = vec4(0.0);
 #endif
+#if 0
+   // Just for debugging purposes
+   color = textureFetch(0, vec4(1.0), true) * material.baseColorFactor;
+#else
   float litIntensity = 1.0;
   switch (shadingModel) {
     case smPBRMetallicRoughness:
@@ -2227,6 +2232,7 @@ void main() {
       break;
     }
   }
+#endif
   float alpha = color.w * inColor0.w, outputAlpha = ((flags & 32) != 0) ? (color.w * inColor0.w) : 1.0; // AMD GPUs under Linux doesn't like mix(1.0, color.w * inColor0.w, float(int(uint((flags >> 5u) & 1u)))); due to the unsigned int stuff
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
 #if !(defined(WBOIT) || defined(MBOIT) || defined(VOXELIZATION))
