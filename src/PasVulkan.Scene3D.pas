@@ -13209,7 +13209,7 @@ begin
                                                     0,
                                                     []
                                                    );
-        fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fNodeMatricesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fNodeMatricesBuffer');
+        fInstance.fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fNodeMatricesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fNodeMatricesBuffer');
 
         fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(fInstance.fSceneInstance.fVulkanDevice,
                                                                 length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
@@ -13226,7 +13226,7 @@ begin
                                                                 0,
                                                                 []
                                                                );
-        fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fMorphTargetVertexWeightsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fMorphTargetVertexWeightsBuffer');
+        fInstance.fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fMorphTargetVertexWeightsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fMorphTargetVertexWeightsBuffer');
 
        end;
 
