@@ -245,9 +245,9 @@ begin
   end;
  end else begin
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'blend_alphatest_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_blend_alphatest_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'blend_alphatest_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_blend_alphatest_frag.spv');
   end;
  end;
  try
