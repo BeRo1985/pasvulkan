@@ -481,7 +481,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
  end;
  function BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS):boolean;
  const ExecutableFileExtension={$ifdef Windows}'.exe'{$else}''{$endif};
-       SourcePaths:array[0..7] of String=
+       SourcePaths:array[0..9] of String=
         (
          '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'src',
          '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'pasmp'+DirectorySeparator+'src',
@@ -490,6 +490,8 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
          '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'pasgltf'+DirectorySeparator+'src',
          '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'kraft'+DirectorySeparator+'src',
          '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'rnl'+DirectorySeparator+'src',
+         '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'poca'+DirectorySeparator+'src',
+         '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'flre'+DirectorySeparator+'src',
          '.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'externals'+DirectorySeparator+'pasdblstrutils'+DirectorySeparator+'src'
         );
  var Index:Int32;
