@@ -3306,9 +3306,9 @@ asm
 end;
 {$else}
 begin
- result.x:=System.Floor(x);
- result.y:=System.Floor(y);
- result.z:=System.Floor(z);
+ result.x:=Math.Floor(x);
+ result.y:=Math.Floor(y);
+ result.z:=Math.Floor(z);
 end;
 {$ifend}
 
@@ -3353,9 +3353,9 @@ asm
 end;
 {$else}
 begin
- result.x:=System.Ceil(x);
- result.y:=System.Ceil(y);
- result.z:=System.Ceil(z);
+ result.x:=Math.Ceil(x);
+ result.y:=Math.Ceil(y);
+ result.z:=Math.Ceil(z);
 end;
 {$ifend}
 
