@@ -94,6 +94,8 @@ type { TpvVirtualFileSystem }
 
 implementation
 
+uses PasVulkan.Application;
+
 { TpvVirtualFileSystem }
 
 constructor TpvVirtualFileSystem.Create(const aData:pointer;const aDataSize:TpvSizeInt;const aFileName:string);
@@ -178,6 +180,11 @@ function TpvVirtualFileSystem.GetFile(const aFileName:string):TStream;
 var ZIPEntry:TpvArchiveZIPEntry;
     FileName:string;
 begin
+{$ifdef Android}
+ if assigned(pvApplication) then begin
+  pvApplication.Log(LOG_DEBUG,'TpvVirtualFileSystem.GetFile',aFileName);
+ end;
+{$endif}
  if fVirtualSymLinkHashMap.TryGet(aFileName,FileName) then begin
   ZIPEntry:=fArchiveZIP.Entries.Find(FileName);
  end else begin
