@@ -4346,7 +4346,11 @@ begin
 
  fDoSignalSemaphore:=false;
 
+{$if defined(Android) or defined(iOS)}
+ fTryToMergeSubpasses:=true;
+{$else}
  fTryToMergeSubpasses:=false;
+{$ifend}
 
  fDefaultResourceInstanceType:=TResourceInstanceType.InstancePerInFlightFrame;
 
