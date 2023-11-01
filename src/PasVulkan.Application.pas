@@ -6607,7 +6607,7 @@ begin
     AAssetDir_close(AssetDir);
    end;
   end else begin
-   if aRaiseExceptionOnNonExistentDierectory then begin
+   if aRaiseExceptionOnNonExistentDirectory then begin
     raise Exception.Create('Asset directory "'+String(aPath)+'" not found');
    end;
   end;
@@ -7904,7 +7904,7 @@ begin
      for Index:=0 to CountExtensions-1 do begin
       fVulkanInstance.EnabledExtensionNames.Add(String(Extensions[Index]));
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-      VulkanDebugLn('Instance SDL2 extension: '+TpvUTF8String(Extensions[i]));
+      VulkanDebugLn('Instance SDL2 extension: '+TpvUTF8String(Extensions[Index]));
 {$ifend}
      end;
     finally
