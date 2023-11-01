@@ -632,11 +632,7 @@ begin
     end;
    end;
    else begin
-    if fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU then begin
-     fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.DSAA;
-    end else begin
-     fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.FXAA;
-    end;
+    fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.None;
    end;
   end;
   //fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
