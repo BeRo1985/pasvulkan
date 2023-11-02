@@ -336,10 +336,6 @@ type EpvScene3D=class(Exception);
                CountJointBlocks:TpvUInt16;           // + 2 = 58 (unsigned 16-bit count of joint blocks)
                Flags:TpvUInt16;                      // + 2 = 60 (unsigned 16-bit flags)
                MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 24-bit material ID)
-               RootNode:TpvUInt32;                   // + 4 = 68 (unsigned 32-bit root node)
-               Generation:TpvUInt32;                 // + 4 = 72 (unsigned 32-bit generation)
-               Unused0:TpvUInt32;                    // + 4 = 76 (unsigned 32-bit)
-               Unused1:TpvUInt32;                    // + 4 = 80 (unsigned 32-bit)
               );                                     //  ==   ==
               true:(                                 //  80   80 per vertex
                Padding:array[0..63] of TpvUInt8;
@@ -9045,16 +9041,11 @@ var PrimitiveIndex,
     OldVertex:TVertex;
     MorphTargetVertex:PMorphTargetVertex;
     MorphTargetVertexIndex,
-    MaterialID,
-    Generation:TpvUInt32;
+    MaterialID:TpvUInt32;
 begin
 
  result:=fNodeMeshInstances;
  inc(fNodeMeshInstances);
-
- repeat
-  Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
- until (Generation and $fff)<>0;
 
  fReferencedByNodes.Add(aNodeIndex);
 
@@ -9077,8 +9068,6 @@ begin
     Vertex:=@fGroup.fVertices.Items[VertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     Vertex^.MaterialID:=MaterialID;
-    Vertex^.Generation:=Generation;
-    Vertex^.RootNode:=0;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -9137,8 +9126,6 @@ begin
     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
     Vertex^.NodeIndex:=aNodeIndex+1;
     Vertex^.MaterialID:=MaterialID;
-    Vertex^.Generation:=Generation;
-    Vertex^.RootNode:=0;
     if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
      WeightIndex:=0;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -9243,12 +9230,7 @@ var Index,
     DestinationMeshPrimitiveIndices:TpvUInt32DynamicArray;
     MaxJointBlocks:PMaxJointBlocks;
     MaxJointBlocksHashMap:TMaxJointBlocksHashMap;
-    Generation:TpvUInt32;
 begin
-
- repeat
-  Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
- until (Generation and $fff)<>0;
 
  GetMem(MaxJointBlocks,SizeOf(TMaxJointBlocks));
  try
@@ -9620,8 +9602,6 @@ begin
         FillChar(Vertex^,SizeOf(TVertex),#0);
         Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
         Vertex^.NodeIndex:=TpvUInt32($ffffffff);
-        Vertex^.Generation:=Generation;
-        Vertex^.RootNode:=0;
 
         if VertexIndex<length(TemporaryNormals) then begin
          TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
@@ -13721,7 +13701,7 @@ begin
 
   repeat
    Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
-  until (Generation and $fff)<>0;
+  until Generation<>0;
 
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
@@ -14082,6 +14062,7 @@ var Index:TpvSizeInt;
     SrcVertex:PVertex;
     DstDynamicVertex:PGPUDynamicVertex;
     DstStaticVertex:PGPUStaticVertex;
+    Generation:TpvUInt32;
 begin
 
  if not fInUpload then begin
@@ -14162,6 +14143,10 @@ begin
                                                               );
              fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanStaticVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fGroup.fName)+'"].TInstance.fVulkanStaticVertexBuffer');
 
+             repeat
+              Generation:=TPasMPInterlocked.Increment(fSceneInstance.fMeshGenerationCounter);
+             until Generation<>0;
+
              DynamicVertices:=nil;
              try
 
@@ -14194,7 +14179,7 @@ begin
                 DstDynamicVertex^.Normal:=SrcVertex^.Normal;
                 DstDynamicVertex^.Tangent:=SrcVertex^.Tangent;
                 DstDynamicVertex^.Flags:=SrcVertex^.Flags;
-                DstDynamicVertex^.Generation:=0;
+                DstDynamicVertex^.Generation:=Generation;
 
                 DstStaticVertex:=@StaticVertices[Index];
                 DstStaticVertex^.TexCoord0:=SrcVertex^.TexCoord0;
