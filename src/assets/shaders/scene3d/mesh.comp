@@ -76,13 +76,9 @@ layout(set = 0, binding = 6, std430) buffer NodeMatrices {
 layout(set = 0, binding = 7, std430) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
-
-layout(set = 0, binding = 8, std430) buffer MaterialIDMap {
-  uint materialIDMap[];
-};
-
+ 
 #ifdef RAYTRACING
-layout(set = 0, binding = 9, std430) buffer OutRayTracingVertices {
+layout(set = 0, binding = 8, std430) buffer OutRayTracingVertices {
   OutRayTracingVertex outRayTracingVertices[];
 };
 #endif
