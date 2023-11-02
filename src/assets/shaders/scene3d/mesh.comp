@@ -13,22 +13,6 @@ layout(push_constant) uniform PushConstants {
   uint countIndices;
 } pushConstants;
 
-#ifdef USE_MATERIAL_ID_MAP  
-struct InPackedVertex {
-  uvec4 positionNodeIndex;
-  uvec4 normalTangentTexCoord0;
-  uvec4 texCoord1Color0;
-  uvec4 morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID;
-  uvec4 rootNodeGeneration;
-};
-
-struct OutPackedVertex {
-  uvec4 positionMaterialID;
-  uvec4 normalSignTangentGeneration;
-  uvec4 texCoord0TexCoord1;
-  uvec4 color0ModelScale;
-};
-#else
 struct InPackedVertex {
   uvec4 positionMorphTargetVertexBaseIndex; // xyz = position, w = morphTargetVertexBaseIndex
   uvec4 jointBlockBaseIndexCountJointBlocksRootNodeNodeIndex; // x = jointBlockBaseIndex, y = countJointBlocks, z = rootNode, w = nodeIndex
@@ -39,7 +23,6 @@ struct OutPackedVertex {
   uvec4 positionNormalXY; // xyz = position (32-bit float), w = normal x y (16-bit signed normalized)
   uvec4 normalZSignTangentXYZModelScaleXYZ; // x = normal z + sign of tangent z (16-bit signed normalized), y = tangent x y (16-bit signed normalized), z = tangent z + model scale x (16-bit float), w = model scale y z (16-bit float)
 };
-#endif
 
 #ifdef RAYTRACING
 struct OutRayTracingVertex {
@@ -56,7 +39,7 @@ struct MorphTargetVertex {
 
 // Mesh descriptor set
 
-#ifdef USE_MATERIAL_ID_MAP  
+#ifdef SEPARATEBUFFERS    
 layout(set = 0, binding = 0, std430) buffer InVertices {
   InPackedVertex inVertices[];
 };
@@ -65,11 +48,15 @@ layout(set = 0, binding = 1, std430) buffer OutVertices {
   OutPackedVertex outVertices[];
 };
 
-layout(set = 0, binding = 2, std430) buffer InIndices {
+layout(set = 0, binding = 2, std430) buffer OutGenerations {
+  uint outGenerations[];
+};
+
+layout(set = 0, binding = 3, std430) buffer InIndices {
   uint inIndices[];
 };
 
-layout(set = 0, binding = 3, std430) buffer MorphTargetVertices {
+layout(set = 0, binding = 4, std430) buffer MorphTargetVertices {
   MorphTargetVertex morphTargetVertices[];
 };
 
@@ -78,24 +65,24 @@ struct JointBlock {
   vec4 weights;
 };
 
-layout(set = 0, binding = 4, std430) buffer JointBlocks {
+layout(set = 0, binding = 5, std430) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
-layout(set = 0, binding = 5, std430) buffer NodeMatrices {
+layout(set = 0, binding = 6, std430) buffer NodeMatrices {
   mat4 nodeMatrices[];
 };
 
-layout(set = 0, binding = 6, std430) buffer MorphTargetWeights {
+layout(set = 0, binding = 7, std430) buffer MorphTargetWeights {
   float morphTargetWeights[];
 };
 
-layout(set = 0, binding = 7, std430) buffer MaterialIDMap {
+layout(set = 0, binding = 8, std430) buffer MaterialIDMap {
   uint materialIDMap[];
 };
 
 #ifdef RAYTRACING
-layout(set = 0, binding = 8, std430) buffer OutRayTracingVertices {
+layout(set = 0, binding = 9, std430) buffer OutRayTracingVertices {
   OutRayTracingVertex outRayTracingVertices[];
 };
 #endif
@@ -165,122 +152,12 @@ void main() {
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);
   if (vertexIndex < pushConstants.countIndices) {
+
     vertexIndex = inIndices[vertexIndex + pushConstants.indexOffset];
+
     {
+
       InPackedVertex inPackedVertex = inVertices[vertexIndex];
-#ifdef USE_MATERIAL_ID_MAP  
-      vec3 inPosition = uintBitsToFloat(inPackedVertex.positionNodeIndex.xyz);
-      uint inNodeIndex = inPackedVertex.positionNodeIndex.w;
-      vec2 inNormal = unpackSnorm2x16(inPackedVertex.normalTangentTexCoord0.x);
-      vec2 inTangent = unpackSnorm2x16(inPackedVertex.normalTangentTexCoord0.y);
-      // vec2 inTexCoord0 = uintBitsToFloat(inPackedVertex.normalTangentTexCoord0.zw);
-      // vec2 inTexCoord1 = uintBitsToFloat(inPackedVertex.texCoord1Color0.xy);
-      // vec4 inColor0 = vec4(unpackHalf2x16(inPackedVertex.texCoord1Color0.z), unpackHalf2x16(inPackedVertex.texCoord1Color0.w));
-      uint inMorphTargetVertexBaseIndex = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.x;
-      uint inJointBlockBaseIndex = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.y;
-      uint inCountJointBlocks = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.z & 0xffffu;
-      uint inFlagsGeneration = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.z >> 16u;
-      uint inMaterialID = inPackedVertex.morphTargetVertexBaseIndexJointBlockBaseIndexFlagsMaterialID.w;
-
-      mat4 nodeMatrix = nodeMatrices[inNodeIndex];
-
-      mat4 modelNodeMatrix = nodeMatrices[inPackedVertex.rootNodeGeneration.x] * nodeMatrix;
-	  
-      vec3 position = inPosition;
-
-      mat3 tangentSpace;
-      {
-        vec3 tangent = octDecode(inTangent);
-        vec3 normal = octDecode(inNormal);
-        tangentSpace = mat3(tangent, normalize(cross(normal, tangent)) * (((inFlagsGeneration & (1u << 0)) != 0) ? -1.0 : 1.0), normal);
-      }
-      // mat3 tangentSpace = mat3(inTangent.xyz, cross(inTangent.xyz, inNormal) * inTangent.w, inNormal);
-
-      if (inMorphTargetVertexBaseIndex != 0xffffffffu) {
-        vec4 normal = vec4(tangentSpace[2], 0.0f);
-        vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
-        uint morphTargetVertexIndex = inMorphTargetVertexBaseIndex;
-        uint protectionCounter = 0x0ffffu;
-        while ((morphTargetVertexIndex != 0xffffffffu) && (protectionCounter-- > 0u)) {
-          MorphTargetVertex morphTargetVertex = morphTargetVertices[morphTargetVertexIndex];
-          float weight = morphTargetWeights[morphTargetVertex.metaData.x];
-          position += morphTargetVertex.position.xyz * weight;
-          normal += vec4(morphTargetVertex.normal.xyz, 1.0) * weight;
-          tangent.xyz += morphTargetVertex.tangent.xyz * weight;
-          morphTargetVertexIndex = morphTargetVertex.metaData.y;
-        }
-        normal.xyz = normalize(normal.xyz);
-        tangent.xyz = normalize(tangent.xyz);
-        tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
-      }
-
-      if (inCountJointBlocks > 0u) {
-        mat4 inverseNodeMatrix = inverse(nodeMatrix);
-        mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-        for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
-             jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
-             jointBlockBaseIndex++) {
-          JointBlock jointBlock = jointBlocks[jointBlockBaseIndex];
-          skinMatrix += ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.x]) * jointBlock.weights.x) +  //
-                        ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.y]) * jointBlock.weights.y) +  //
-                        ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.z]) * jointBlock.weights.z) +  //
-                        ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.w]) * jointBlock.weights.w);
-        }
-#ifdef RAYTRACING
-        nodeMatrix *= skinMatrix;
-#endif
-        modelNodeMatrix *= skinMatrix;
-      }
-
-      mat3 normalMatrix = transpose(inverse(mat3(modelNodeMatrix)));
-
-      tangentSpace = normalMatrix * tangentSpace;
-
-      vec4 p = modelNodeMatrix * vec4(position.xyz, 1.0);
-      position = p.xyz / p.w;
-
-      {
-	  
-        vec3 tangent = normalize(tangentSpace[0]);
-        vec3 bitangent = normalize(tangentSpace[1]);
-        vec3 normal = normalize(tangentSpace[2]);
-
-        float tbnSign = (dot(normalize(cross(normal, tangent)), bitangent) < 0.0) ? -1.0 : 1.0;
-
-        vec3 modelScale = vec3(length(modelNodeMatrix[0].xyz), length(modelNodeMatrix[1].xyz), length(modelNodeMatrix[2].xyz));
-
-        uint generation = inFlagsGeneration >> 4u;
-
-        OutPackedVertex outPackedVertex;
-        outPackedVertex.positionMaterialID = uvec4(uvec3(floatBitsToUint(position.xyz)), 
-#ifdef USE_MATERIAL_ID_MAP  
-                                                   materialIDMap[inMaterialID]
-#else
-                                                   inMaterialID
-#endif                                                   
-                                                  );
-        outPackedVertex.normalSignTangentGeneration = uvec4(packSnorm2x16(normal.xy), packSnorm2x16(vec2(normal.z, tbnSign)),  //
-                                                            packSnorm2x16(tangent.xy), (packSnorm2x16(vec2(tangent.z, 0.0)) & 0xffffu) | (uint(inPackedVertex.rootNodeGeneration.y & 0xffffu) << 16u));
-        outPackedVertex.texCoord0TexCoord1 = uvec4(inPackedVertex.normalTangentTexCoord0.zw /*uvec2(floatBitsToUint(texCoord0.xy))*/,  //
-                                                   inPackedVertex.texCoord1Color0.xy /* uvec2(floatBitsToUint(texCoord1.xy)) */);
-        outPackedVertex.color0ModelScale = uvec4(inPackedVertex.texCoord1Color0.zw /*uvec2(packHalf2x16(color.xy), packHalf2x16(color.zw))*/,  //
-                                                 vec2(packHalf2x16(modelScale.xy), packHalf2x16(vec2(modelScale.z, 0.0))));                    //
-        outVertices[vertexIndex] = outPackedVertex;
-      }
-
-#ifdef RAYTRACING
-      {
-        // For ray tracing we need the position in model space, not world space, since BLAS references have transform matrices in model space already, so
-        // we can't transform them again with modelNodeMatrix, which includes also the world space model transform, nodeMatrix is without that.
-        vec4 p = nodeMatrix * vec4(position.xyz, 1.0);
-        position = p.xyz / p.w;
-        OutRayTracingVertex outRayTracingVertex;
-        outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(position.xyz)), 0u);
-        outRayTracingVertices[vertexIndex] = outRayTracingVertex;
-      }
-#endif
-
-#else
       const vec3 inPosition = uintBitsToFloat(inPackedVertex.positionMorphTargetVertexBaseIndex.xyz);
       const uint inMorphTargetVertexBaseIndex = inPackedVertex.positionMorphTargetVertexBaseIndex.w;
       const uint inJointBlockBaseIndex = inPackedVertex.jointBlockBaseIndexCountJointBlocksRootNodeNodeIndex.x;
@@ -386,7 +263,6 @@ void main() {
         outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(position.xyz)), 0u);
         outRayTracingVertices[vertexIndex] = outRayTracingVertex;
       }
-#endif
 #endif
 
     }

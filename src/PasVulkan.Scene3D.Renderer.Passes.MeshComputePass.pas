@@ -123,9 +123,9 @@ begin
  case fInstance.Renderer.Scene3D.DrawBufferStorageMode of
   TpvScene3D.TDrawBufferStorageMode.SeparateBuffers:begin
    if fInstance.Renderer.Scene3D.HardwareRaytracingSupport then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_materialidmap_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_separatebuffers_comp.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_materialidmap_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_separatebuffers_comp.spv');
    end;
   end;
   else {TpvScene3D.TDrawBufferStorageMode.CombinedBigBuffers:}begin
