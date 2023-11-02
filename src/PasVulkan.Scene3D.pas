@@ -20390,7 +20390,7 @@ begin
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,1,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.TexCoord0)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,1,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.TexCoord1)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,1,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.Color0)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX[3])));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX[3])));
   if aWithPreviousPosition then begin
    aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,2,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
    aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,3,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertexGeneration(nil)^.Generation)));
