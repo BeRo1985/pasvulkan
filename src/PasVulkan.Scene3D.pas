@@ -338,8 +338,8 @@ type EpvScene3D=class(Exception);
                MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 24-bit material ID)
                RootNode:TpvUInt32;                   // + 4 = 68 (unsigned 32-bit root node)
                Generation:TpvUInt32;                 // + 4 = 72 (unsigned 32-bit generation)
-               Unused1:TpvUInt32;                    // + 4 = 76 (unsigned 32-bit)
-               Unused2:TpvUInt32;                    // + 4 = 80 (unsigned 32-bit)
+               Unused0:TpvUInt32;                    // + 4 = 76 (unsigned 32-bit)
+               Unused1:TpvUInt32;                    // + 4 = 80 (unsigned 32-bit)
               );                                     //  ==   ==
               true:(                                 //  80   80 per vertex
                Padding:array[0..63] of TpvUInt8;
@@ -347,7 +347,45 @@ type EpvScene3D=class(Exception);
             end;
             PVertex=^TVertex;
             TVertices=array of TVertex;
-            TCachedVertex=packed record              // Minimum required cached vertex structure for to be GLTF 2.0 conformant
+            TGPUDynamicVertex=packed record
+             case boolean of
+              false:(
+               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
+               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 16 (unsigned 32-bit morph target vertex base index)
+
+               JointBlockBaseIndex:TpvUInt32;        // + 4 = 20 (unsigned 32-bit joint block base index)
+               CountJointBlocks:TpvUInt32;           // + 4 = 24 (unsigned 16-bit count of joint blocks)
+               RootNode:TpvUInt32;                   // + 4 = 44 (unsigned 32-bit root node)
+               NodeIndex:TpvUInt32;                  // + 4 = 32 (unsigned 32-bit node index)
+
+               Normal:TInt16Vector2;                 // + 4 = 36 (signed 16-bit oct-encoded normal)
+               Tangent:TInt16Vector2;                // + 4 = 40 (signed 16-bit oct-encoded tangent)
+               Flags:TpvUInt32;                      // + 4 = 44 (unsigned 32-bit flags)
+               Generation:TpvUInt32;                 // + 4 = 48 (unsigned 32-bit generation)
+
+              );                                     //  ==   ==
+              true:(                                 //  48   48 per vertex
+               Padding:array[0..47] of TpvUInt8;
+              );
+            end;
+            PGPUDynamicVertex=^TGPUDynamicVertex;
+            TGPUDynamicVertices=array of TGPUDynamicVertex;
+            TGPUStaticVertex=packed record              // Minimum required vertex structure for static data for to be GLTF 2.0 conformant
+             case boolean of
+              false:(
+               TexCoord0:TpvVector2;                 //   8 = 8 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               TexCoord1:TpvVector2;                 // + 8 = 16 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+               Color0:TpvHalfFloatVector4;           // + 8 = 24 (must be at least half-float for HDR)
+               MaterialID:TpvUInt32;                 // + 4 = 28 (unsigned 32-bit material ID)
+               Unused0:TpvUInt32;                    // + 4 = 32
+              );                                     //  ==   ==
+              true:(                                 //  32   32 per vertex
+               Padding:array[0..31] of TpvUInt8;
+              );
+            end;
+            PGPUStaticVertex=^TGPUStaticVertex;
+            TGPUStaticVertices=array of TGPUStaticVertex;
+            TCachedOldVertex=packed record              // Minimum required cached vertex structure for to be GLTF 2.0 conformant
              case boolean of
               false:(
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
@@ -363,15 +401,40 @@ type EpvScene3D=class(Exception);
                Padding:array[0..63] of TpvUInt8;
               );
             end;
+            PCachedOldVertex=^TCachedOldVertex;
+            TCachedOldVertices=array of TCachedOldVertex;
+            TCachedVertex=packed record              // Minimum required cached vertex structure for to be GLTF 2.0 conformant
+             case boolean of
+              false:(
+               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
+               NormalSign:TInt16Vector4;             // + 8 = 20 (signed 16-bit Normal + TBN sign)
+               TangentXYZModelScaleX:TInt16Vector4;  // + 8 = 28 (signed 16-bit Tangent + model scale xy)
+               ModelScaleYZ:TpvHalfFloatVector2;     // + 4 = 32 (model scale yz)
+              );                                     //  ==   ==
+              true:(                                 //  32   32 per vertex
+               Padding:array[0..31] of TpvUInt8;
+              );
+            end;
             PCachedVertex=^TCachedVertex;
             TCachedVertices=array of TCachedVertex;
-            TCachedRaytracingVertex=packed record    // Minimum required cached vertex structure for raytracing data structures
+            TCachedVertexGeneration=packed record
+             case boolean of
+              false:(
+               Generation:TpvUInt32;                 //  4 = 4 (unsigned 32-bit geeration)
+              );                                     //  =   =
+              true:(                                 //  4   4 per vertex
+               Padding:array[0..3] of TpvUInt8;
+              );
+            end;
+            PCachedVertexGeneration=^TCachedVertexGeneration;
+            TCachedVertexGenerations=array of TCachedVertexGeneration;
+            TCachedRaytracingVertex=packed record
              case boolean of
               false:(
                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                Reversed:TpvUInt32;                   // + 4 = 16 (unsigned 32-bit material ID)
               );                                     //  ==   ==
-              true:(                                 //  16  16 per vertex
+              true:(                                 //  16   16 per vertex
                Padding:array[0..15] of TpvUInt8;
               );
             end;
@@ -1241,7 +1304,9 @@ type EpvScene3D=class(Exception);
               property ViewSpacePosition:TpvVector3 read fViewSpacePosition write fViewSpacePosition;
             end;
             TLights=TpvObjectGenericList<TpvScene3D.TLight>;
-            TDynamicVertices=TpvDynamicArray<TVertex>;
+            TVertexDynamicArray=TpvDynamicArray<TVertex>;
+            TGPUDynamicVertexDynamicArray=TpvDynamicArray<TGPUDynamicVertex>;
+            TGPUStaticVertexDynamicArray=TpvDynamicArray<TGPUStaticVertex>;
             TMorphTargetVertex=packed record
              case boolean of
               false:(
@@ -1261,10 +1326,10 @@ type EpvScene3D=class(Exception);
             end;
             PMorphTargetVertex=^TMorphTargetVertex;
             TMorphTargetVertexDynamicArray=TpvDynamicArray<TMorphTargetVertex>;
-            TDynamicIndices=TpvDynamicArray<TVkUInt32>;
-            TDynamicJointBlocks=TpvDynamicArray<TJointBlock>;
-            TDynamicMatrices=TpvDynamicArray<TpvMatrix4x4>;
-            TDynamicFloats=TpvDynamicArray<TpvFloat>;
+            TIndicesDynamicArray=TpvDynamicArray<TVkUInt32>;
+            TJointBlocksDynamicArray=TpvDynamicArray<TJointBlock>;
+            TMatricesDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
+            TFloatsDynamicArray=TpvDynamicArray<TpvFloat>;
             TVkMultiDrawIndexedInfoEXTDynamicArray=TpvDynamicArray<TVkMultiDrawIndexedInfoEXT>;
             { TDrawChoreographyBatchItem }
             TDrawChoreographyBatchItem=class
@@ -1312,7 +1377,8 @@ type EpvScene3D=class(Exception);
             TVulkanLongTermStaticBufferData=class
              private
               fSceneInstance:TpvScene3D;
-              fVulkanVertexBuffer:TpvVulkanBuffer;
+              fVulkanDynamicVertexBuffer:TpvVulkanBuffer;
+              fVulkanStaticVertexBuffer:TpvVulkanBuffer;
               fVulkanDrawIndexBuffer:TpvVulkanBuffer;
               fVulkanDrawUniqueIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
@@ -1348,6 +1414,7 @@ type EpvScene3D=class(Exception);
               fSceneInstance:TpvScene3D;
               fInFlightFrameIndex:TpvSizeInt;
               fVulkanCachedVertexBuffer:TpvVulkanBuffer;
+              fVulkanCachedVertexGenerationBuffer:TpvVulkanBuffer;
               fVulkanCachedRaytracingVertexBuffer:TpvVulkanBuffer;
               fVulkanNodeMatricesBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexWeightsBuffer:TpvVulkanBuffer;
@@ -2607,16 +2674,17 @@ type EpvScene3D=class(Exception);
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
-       fVulkanVertexBufferData:TDynamicVertices;
-       fVulkanDrawIndexBufferData:TDynamicIndices;
-       fVulkanDrawUniqueIndexBufferData:TDynamicIndices;
+       fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
+       fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
+       fVulkanDrawIndexBufferData:TIndicesDynamicArray;
+       fVulkanDrawUniqueIndexBufferData:TIndicesDynamicArray;
        fVulkanMorphTargetVertexBufferData:TMorphTargetVertexDynamicArray;
-       fVulkanJointBlockBufferData:TDynamicJointBlocks;
+       fVulkanJointBlockBufferData:TJointBlocksDynamicArray;
        fVkMultiDrawIndexedInfoEXTDynamicArray:TVkMultiDrawIndexedInfoEXTDynamicArray;
       public
-       fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TDynamicMatrices;
+       fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TMatricesDynamicArray;
       private
-       fVulkanMorphTargetVertexWeightsBufferData:array[0..MaxInFlightFrames-1] of TDynamicFloats;
+       fVulkanMorphTargetVertexWeightsBufferData:array[0..MaxInFlightFrames-1] of TFloatsDynamicArray;
        fVulkanVertexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawIndexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawUniqueIndexBufferRangeAllocator:TpvBufferRangeAllocator;
@@ -7284,7 +7352,8 @@ constructor TpvScene3D.TVulkanLongTermStaticBufferData.Create(const aSceneInstan
 begin
  inherited Create;
  fSceneInstance:=aSceneInstance;
- fVulkanVertexBuffer:=nil;
+ fVulkanDynamicVertexBuffer:=nil;
+ fVulkanStaticVertexBuffer:=nil;
  fVulkanDrawIndexBuffer:=nil;
  fVulkanDrawUniqueIndexBuffer:=nil;
  fVulkanMorphTargetVertexBuffer:=nil;
@@ -7297,7 +7366,8 @@ destructor TpvScene3D.TVulkanLongTermStaticBufferData.Destroy;
 begin
  FreeAndNil(fVulkanComputeDescriptorSet);
  FreeAndNil(fVulkanComputeDescriptorPool);
- FreeAndNil(fVulkanVertexBuffer);
+ FreeAndNil(fVulkanDynamicVertexBuffer);
+ FreeAndNil(fVulkanStaticVertexBuffer);
  FreeAndNil(fVulkanDrawIndexBuffer);
  FreeAndNil(fVulkanDrawUniqueIndexBuffer);
  FreeAndNil(fVulkanMorphTargetVertexBuffer);
@@ -7307,12 +7377,14 @@ end;
 
 function TpvScene3D.TVulkanLongTermStaticBufferData.Check:Boolean;
 begin
- result:=((not assigned(fVulkanVertexBuffer)) and
+ result:=((not assigned(fVulkanDynamicVertexBuffer)) and
+          (not assigned(fVulkanStaticVertexBuffer)) and
           (not assigned(fVulkanDrawIndexBuffer)) and
           (not assigned(fVulkanDrawUniqueIndexBuffer)) and
           (not assigned(fVulkanMorphTargetVertexBuffer)) and
           (not assigned(fVulkanJointBlockBuffer))) or
-         ((assigned(fVulkanVertexBuffer) and ((Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))<=fVulkanVertexBuffer.Size)) and
+         ((assigned(fVulkanDynamicVertexBuffer) and ((Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))<=fVulkanDynamicVertexBuffer.Size)) and
+          (assigned(fVulkanStaticVertexBuffer) and ((Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))<=fVulkanStaticVertexBuffer.Size)) and
           (assigned(fVulkanDrawIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawIndexBuffer.Size)) and
           (assigned(fVulkanDrawUniqueIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawUniqueIndexBuffer.Size)) and
           (assigned(fVulkanMorphTargetVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))<=fVulkanMorphTargetVertexBuffer.Size)) and
@@ -7325,7 +7397,8 @@ begin
 
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
 
-  if ((not assigned(fVulkanVertexBuffer)) or (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex)))) or
+  if ((not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) or
+     ((not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) or
      ((not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
@@ -7337,33 +7410,62 @@ begin
    FreeAndNil(fVulkanComputeDescriptorSet);
    FreeAndNil(fVulkanComputeDescriptorPool);
 
-   if (not assigned(fVulkanVertexBuffer)) or (fVulkanVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex))) then begin
-    FreeAndNil(fVulkanVertexBuffer);
-    fVulkanVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TVertex),
-                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
-                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                [],
-                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                0,
-                                                0,
-                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                0,
-                                                0,
-                                                0,
-                                                0,
-                                                []
-                                               );
-    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanVertexBuffer');
+   if (not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))) then begin
+    FreeAndNil(fVulkanDynamicVertexBuffer);
+    fVulkanDynamicVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                       Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex),
+                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                       [],
+                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                       0,
+                                                       0,
+                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       []
+                                                      );
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDynamicVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanDynamicVertexBuffer');
    end;
-   if fSceneInstance.fVulkanVertexBufferData.Count>0 then begin
+   if fSceneInstance.fVulkanDynamicVertexBufferData.Count>0 then begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                       fSceneInstance.fVulkanStagingCommandBuffer,
                                                       fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanVertexBufferData.Items[0],
-                                                      fVulkanVertexBuffer,
+                                                      fSceneInstance.fVulkanDynamicVertexBufferData.Items[0],
+                                                      fVulkanDynamicVertexBuffer,
                                                       0,
-                                                      fSceneInstance.fVulkanVertexBufferData.Count*SizeOf(TVertex));
+                                                      fSceneInstance.fVulkanDynamicVertexBufferData.Count*SizeOf(TGPUDynamicVertex));
+   end;
+
+   if (not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))) then begin
+    FreeAndNil(fVulkanStaticVertexBuffer);
+    fVulkanStaticVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                      Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      []
+                                                     );
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanStaticVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanLongTermStaticBufferData.fVulkanStaticVertexBuffer');
+   end;
+   if fSceneInstance.fVulkanStaticVertexBufferData.Count>0 then begin
+    fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                      fSceneInstance.fVulkanStagingCommandBuffer,
+                                                      fSceneInstance.fVulkanStagingFence,
+                                                      fSceneInstance.fVulkanStaticVertexBufferData.Items[0],
+                                                      fVulkanStaticVertexBuffer,
+                                                      0,
+                                                      fSceneInstance.fVulkanStaticVertexBufferData.Count*SizeOf(TGPUStaticVertex));
    end;
 
    if (not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
@@ -7512,7 +7614,7 @@ begin
                                                       1,
                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                       [],
-                                                      [fVulkanVertexBuffer.DescriptorBufferInfo],
+                                                      [{fVulkanVertexBuffer}fVulkanDynamicVertexBuffer.DescriptorBufferInfo],
                                                       [],
                                                       false);
      fVulkanComputeDescriptorSet.WriteToDescriptorSet(1,
@@ -7558,13 +7660,23 @@ begin
       if TPasMPInterlocked.CompareExchange(GroupInstance.fIsNewInstance,TPasMPBool32(false),TPasMPBool32(true)) then begin
 
        if GroupInstance.fVulkanVertexBufferCount>0 then begin
+
         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                           fSceneInstance.fVulkanStagingCommandBuffer,
                                                           fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
-                                                          fVulkanVertexBuffer,
-                                                          GroupInstance.fVulkanVertexBufferOffset*SizeOf(TVertex),
-                                                          GroupInstance.fVulkanVertexBufferCount*SizeOf(TVertex));
+                                                          fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
+                                                          fVulkanDynamicVertexBuffer,
+                                                          GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUDynamicVertex),
+                                                          GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUDynamicVertex));
+
+        fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                          fSceneInstance.fVulkanStagingCommandBuffer,
+                                                          fSceneInstance.fVulkanStagingFence,
+                                                          fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
+                                                          fVulkanStaticVertexBuffer,
+                                                          GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUStaticVertex),
+                                                          GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUStaticVertex));
+
        end;
 
        if GroupInstance.fVulkanDrawIndexBufferCount>0 then begin
@@ -7633,7 +7745,8 @@ begin
   dec(fReleaseFrameCounter);
   if fReleaseFrameCounter=0 then begin
    // The buffers are no longer in use by the GPU, so we can free it safely
-   FreeAndNil(fVulkanVertexBuffer);
+   FreeAndNil(fVulkanDynamicVertexBuffer);
+   FreeAndNil(fVulkanStaticVertexBuffer);
    FreeAndNil(fVulkanDrawIndexBuffer);
    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
    FreeAndNil(fVulkanMorphTargetVertexBuffer);
@@ -7691,6 +7804,7 @@ begin
  fSceneInstance:=aSceneInstance;
  fInFlightFrameIndex:=aInFlightFrameIndex;
  fVulkanCachedVertexBuffer:=nil;
+ fVulkanCachedVertexGenerationBuffer:=nil;
  fVulkanCachedRaytracingVertexBuffer:=nil;
  fVulkanNodeMatricesBuffer:=nil;
  fVulkanMorphTargetVertexWeightsBuffer:=nil;
@@ -7703,6 +7817,7 @@ begin
  FreeAndNil(fVulkanComputeDescriptorSet);
  FreeAndNil(fVulkanComputeDescriptorPool);
  FreeAndNil(fVulkanCachedVertexBuffer);
+ FreeAndNil(fVulkanCachedVertexGenerationBuffer);
  FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
  FreeAndNil(fVulkanNodeMatricesBuffer);
  FreeAndNil(fVulkanMorphTargetVertexWeightsBuffer);
@@ -7718,8 +7833,9 @@ begin
 
  if assigned(fSceneInstance) and assigned(fSceneInstance.fVulkanDevice) then begin
 
-  if ((not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex)))) or
-     (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex))))) or
+  if ((not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedVertex)))) or
+     ((not assigned(fVulkanCachedVertexGenerationBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedVertexGeneration)))) or
+     (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex))))) or
      ((not assigned(fVulkanNodeMatricesBuffer)) or (fVulkanNodeMatricesBuffer.Size<(Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4)))) or
      ((not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat)))) then begin
 
@@ -7742,10 +7858,10 @@ begin
     end;
    end;
 
-   if (not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex))) then begin
+   if (not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedVertex))) then begin
     FreeAndNil(fVulkanCachedVertexBuffer);
     fVulkanCachedVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                      Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedVertex),
+                                                      Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedVertex),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                       [],
@@ -7762,10 +7878,30 @@ begin
     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanCachedVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer');
    end;
 
-   if fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex)))) then begin
+   if (not assigned(fVulkanCachedVertexGenerationBuffer)) or (fVulkanCachedVertexGenerationBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedVertexGeneration))) then begin
+    FreeAndNil(fVulkanCachedVertexGenerationBuffer);
+    fVulkanCachedVertexGenerationBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                                Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedVertexGeneration),
+                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                [],
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                0,
+                                                                0,
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                0,
+                                                                []
+                                                               );
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanCachedVertexGenerationBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanShortTermDynamicBufferData.fVulkanCachedVertexBufferGeneration');
+   end;
+
+   if fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex)))) then begin
     FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
     fVulkanCachedRaytracingVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                                Max(1,fSceneInstance.fVulkanVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex),
+                                                                Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TCachedRaytracingVertex),
                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                 [],
@@ -7896,9 +8032,9 @@ begin
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                  1);
     if fSceneInstance.fHardwareRaytracingSupport then begin
-     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
+     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,5);
     end else begin
-     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,3);
+     fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
     end;
     fVulkanComputeDescriptorPool.Initialize;
     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanComputeDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3D.TVulkanShortTermDynamicBufferData.fVulkanComputeDescriptorPool');
@@ -7919,10 +8055,18 @@ begin
                                                       1,
                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                       [],
-                                                      [fVulkanNodeMatricesBuffer.DescriptorBufferInfo],
+                                                      [fVulkanCachedVertexGenerationBuffer.DescriptorBufferInfo],
                                                       [],
                                                       false);
      fVulkanComputeDescriptorSet.WriteToDescriptorSet(2,
+                                                      0,
+                                                      1,
+                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                      [],
+                                                      [fVulkanNodeMatricesBuffer.DescriptorBufferInfo],
+                                                      [],
+                                                      false);
+     fVulkanComputeDescriptorSet.WriteToDescriptorSet(3,
                                                       0,
                                                       1,
                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -7931,7 +8075,7 @@ begin
                                                       [],
                                                       false);
      if fSceneInstance.fHardwareRaytracingSupport then begin
-      fVulkanComputeDescriptorSet.WriteToDescriptorSet(3,
+      fVulkanComputeDescriptorSet.WriteToDescriptorSet(4,
                                                        0,
                                                        1,
                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -9060,6 +9204,7 @@ begin
   end;
 
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TMesh.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
@@ -9486,12 +9631,14 @@ begin
        // Generate vertex array buffer
        SetLength(DestinationMeshPrimitiveVertices,length(TemporaryPositions));
        for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
+
         Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
         FillChar(Vertex^,SizeOf(TVertex),#0);
         Vertex^.Position:=TpvVector3(pointer(@TemporaryPositions[VertexIndex])^);
         Vertex^.NodeIndex:=TpvUInt32($ffffffff);
         Vertex^.Generation:=Generation;
         Vertex^.RootNode:=0;
+
         if VertexIndex<length(TemporaryNormals) then begin
          TangentSpaceMatrix.Normal:=TpvVector3(pointer(@TemporaryNormals[VertexIndex])^);
         end else begin
@@ -9507,8 +9654,10 @@ begin
         end else begin
          TangentSpaceMatrix.Bitangent:=TpvVector3.YAxis;
         end;
+
         Vertex^.Normal:=OctEncode(TangentSpaceMatrix.Normal);
         Vertex^.Tangent:=OctEncode(TangentSpaceMatrix.Tangent);
+
 {$if true}
         if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(TangentSpaceMatrix.Bitangent)<0.0 then begin
          Vertex^.Flags:=Vertex^.Flags or (1 shl 0);
@@ -13171,7 +13320,7 @@ begin
                                                     0,
                                                     [TpvVulkanBufferFlag.PersistentMapped]
                                                    );
-        fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fNodeMatricesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fNodeMatricesBuffer');
+        fInstance.fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fNodeMatricesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fNodeMatricesBuffer');
 
         fMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(fInstance.fSceneInstance.fVulkanDevice,
                                                                 length(fInstance.fMorphTargetVertexWeights)*SizeOf(TpvFloat),
@@ -13188,7 +13337,7 @@ begin
                                                                 0,
                                                                 [TpvVulkanBufferFlag.PersistentMapped]
                                                                );
-        fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fMorphTargetVertexWeightsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fMorphTargetVertexWeightsBuffer');
+        fInstance.fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fMorphTargetVertexWeightsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup["'+trim(fInstance.fGroup.fName)+'"].TInstance.fMorphTargetVertexWeightsBuffer');
 
        end;
 
@@ -13378,6 +13527,8 @@ var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     MaterialIDMapArray:TpvScene3D.TGroup.TMaterialIDMapArray;
     Generation:TpvUInt32;
     SrcVertex,DstVertex:PVertex;
+    DstDynamicVertex:PGPUDynamicVertex;
+    DstStaticVertex:PGPUStaticVertex;
     SrcMorphTargetVertex,DstMorphTargetVertex:PMorphTargetVertex;
     SrcJointBlock,DstJointBlock:PJointBlock;
 begin
@@ -13606,8 +13757,12 @@ begin
    fVulkanMorphTargetVertexWeightsBufferCount:=length(fMorphTargetVertexWeights);
    fVulkanMorphTargetVertexWeightsBufferOffset:=fSceneInstance.fVulkanMorphTargetVertexWeightsBufferRangeAllocator.Allocate(fVulkanMorphTargetVertexWeightsBufferCount);
 
-   if fSceneInstance.fVulkanVertexBufferData.Count<(fVulkanVertexBufferOffset+fVulkanVertexBufferCount) then begin
-    fSceneInstance.fVulkanVertexBufferData.Resize(fVulkanVertexBufferOffset+fVulkanVertexBufferCount);
+   if fSceneInstance.fVulkanDynamicVertexBufferData.Count<(fVulkanVertexBufferOffset+fVulkanVertexBufferCount) then begin
+    fSceneInstance.fVulkanDynamicVertexBufferData.Resize(fVulkanVertexBufferOffset+fVulkanVertexBufferCount);
+   end;
+
+   if fSceneInstance.fVulkanStaticVertexBufferData.Count<(fVulkanVertexBufferOffset+fVulkanVertexBufferCount) then begin
+    fSceneInstance.fVulkanStaticVertexBufferData.Resize(fVulkanVertexBufferOffset+fVulkanVertexBufferCount);
    end;
 
    if fSceneInstance.fVulkanDrawIndexBufferData.Count<(fVulkanDrawIndexBufferOffset+fVulkanDrawIndexBufferCount) then begin
@@ -13639,19 +13794,37 @@ begin
    end;
 
    for Index:=0 to fGroup.fVertices.Count-1 do begin
+
     SrcVertex:=@fGroup.fVertices.Items[Index];
-    DstVertex:=@fSceneInstance.fVulkanVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
-    DstVertex^:=SrcVertex^;
-    DstVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
-    if (DstVertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (DstVertex^.CountJointBlocks>0) then begin
-     inc(DstVertex^.JointBlockBaseIndex,fVulkanJointBlockBufferOffset);
+
+    DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
+    DstDynamicVertex^.Position:=SrcVertex^.Position;
+    if SrcVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
+     DstDynamicVertex^.MorphTargetVertexBaseIndex:=SrcVertex^.MorphTargetVertexBaseIndex+fVulkanMorphTargetVertexBufferOffset;
+    end else begin
+     DstDynamicVertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
     end;
-    if DstVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
-     inc(DstVertex^.MorphTargetVertexBaseIndex,fVulkanMorphTargetVertexBufferOffset);
+    if (SrcVertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (SrcVertex^.CountJointBlocks>0) then begin
+     DstDynamicVertex^.JointBlockBaseIndex:=SrcVertex^.JointBlockBaseIndex+fVulkanJointBlockBufferOffset;
+     DstDynamicVertex^.CountJointBlocks:=SrcVertex^.CountJointBlocks;
+    end else begin
+     DstDynamicVertex^.JointBlockBaseIndex:=TpvUInt32($ffffffff);
+     DstDynamicVertex^.CountJointBlocks:=0;
     end;
-    inc(DstVertex^.NodeIndex,fVulkanNodeMatricesBufferOffset);
-    DstVertex^.RootNode:=fVulkanNodeMatricesBufferOffset;
-    DstVertex^.Generation:=Generation;
+    DstDynamicVertex^.RootNode:=fVulkanNodeMatricesBufferOffset;
+    DstDynamicVertex^.NodeIndex:=SrcVertex^.NodeIndex+fVulkanNodeMatricesBufferOffset;
+    DstDynamicVertex^.Normal:=SrcVertex^.Normal;
+    DstDynamicVertex^.Tangent:=SrcVertex^.Tangent;
+    DstDynamicVertex^.Flags:=SrcVertex^.Flags;
+    DstDynamicVertex^.Generation:=Generation;
+
+    DstStaticVertex:=@fSceneInstance.fVulkanStaticVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
+    DstStaticVertex^.TexCoord0:=SrcVertex^.TexCoord0;
+    DstStaticVertex^.TexCoord1:=SrcVertex^.TexCoord1;
+    DstStaticVertex^.Color0:=SrcVertex^.Color0;
+    DstStaticVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
+    DstStaticVertex^.Unused0:=0;
+
    end;
 
    for Index:=0 to fGroup.fDrawChoreographyBatchCondensedIndices.Count-1 do begin
@@ -13995,7 +14168,7 @@ begin
              for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
 
               fVulkanCachedVertexBuffers[Index]:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
-                                                                        fGroup.fVertices.Count*SizeOf(TCachedVertex),
+                                                                        fGroup.fVertices.Count*SizeOf(TCachedOldVertex),
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                         [],
@@ -14015,7 +14188,7 @@ begin
                                                               UniversalFence,
                                                               fVulkanCachedVertexBuffers[Index],
                                                               0,
-                                                              fGroup.fVertices.Count*SizeOf(TCachedVertex));
+                                                              fGroup.fVertices.Count*SizeOf(TCachedOldVertex));
 
               if fSceneInstance.fHardwareRaytracingSupport then begin
 
@@ -17223,34 +17396,21 @@ begin
   fBufferStreamingMode:=TBufferStreamingMode.Staging;
  end;
 
- case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
-  TpvVulkanVendorID.NVIDIA,
-  TpvVulkanVendorID.AMD,
-  TpvVulkanVendorID.Intel:begin
-   if fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue>=TpvInt64($80000000) then begin
-    fDrawBufferStorageMode:=TDrawBufferStorageMode.CombinedBigBuffers;
-    fUseMultiDraw:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0) and
-                   (fVulkanDevice.PhysicalDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
-    fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
-    fUseMultiIndirectDraw:=(fVulkanDevice.PhysicalDevice.Features.multiDrawIndirect<>VK_FALSE) and
-                           (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount>=65536);
-    fHardwareRaytracingSupport:=(fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
-                                (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
-   end else begin
-    fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
-    fUseMultiDraw:=false;
-    fMaxMultiDrawCount:=0;
-    fUseMultiIndirectDraw:=false;
-    fHardwareRaytracingSupport:=false;
-   end;
-  end;
-  else begin
-   fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
-   fUseMultiDraw:=false;
-   fMaxMultiDrawCount:=0;
-   fUseMultiIndirectDraw:=false;
-   fHardwareRaytracingSupport:=false;
-  end;
+ if fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue>=TpvInt64($80000000) then begin
+  fDrawBufferStorageMode:=TDrawBufferStorageMode.CombinedBigBuffers;
+  fUseMultiDraw:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0) and
+                 (fVulkanDevice.PhysicalDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
+  fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
+  fUseMultiIndirectDraw:=(fVulkanDevice.PhysicalDevice.Features.multiDrawIndirect<>VK_FALSE) and
+                         (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount>=65536);
+  fHardwareRaytracingSupport:=(fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
+                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
+ end else begin
+  fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
+  fUseMultiDraw:=false;
+  fMaxMultiDrawCount:=0;
+  fUseMultiIndirectDraw:=false;
+  fHardwareRaytracingSupport:=false;
  end;
 
  if fHardwareRaytracingSupport then begin
@@ -17284,7 +17444,8 @@ begin
 
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
- fVulkanVertexBufferData.Initialize;
+ fVulkanDynamicVertexBufferData.Initialize;
+ fVulkanStaticVertexBufferData.Initialize;
  fVulkanDrawIndexBufferData.Initialize;
  fVulkanDrawUniqueIndexBufferData.Initialize;
  fVulkanMorphTargetVertexBufferData.Initialize;
@@ -17508,15 +17669,22 @@ begin
                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                     []);
 
-  // Instance - Node matrices
+  // Group - Cached vertex generations
   fMeshComputeVulkanDescriptorSet1Layout.AddBinding(1,
                                                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                     1,
                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                     []);
 
-  // Instance - Morph target weights
+  // Instance - Node matrices
   fMeshComputeVulkanDescriptorSet1Layout.AddBinding(2,
+                                                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                    1,
+                                                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                    []);
+
+  // Instance - Morph target weights
+  fMeshComputeVulkanDescriptorSet1Layout.AddBinding(3,
                                                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                     1,
                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -17524,7 +17692,7 @@ begin
 
   if fHardwareRaytracingSupport then begin
    // Group - Cached raytracing vertices
-   fMeshComputeVulkanDescriptorSet1Layout.AddBinding(3,
+   fMeshComputeVulkanDescriptorSet1Layout.AddBinding(4,
                                                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                      1,
                                                      TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -17849,7 +18017,8 @@ begin
 
  FreeAndNil(fLoadLock);
 
- fVulkanVertexBufferData.Finalize;
+ fVulkanDynamicVertexBufferData.Finalize;
+ fVulkanStaticVertexBufferData.Finalize;
  fVulkanDrawIndexBufferData.Finalize;
  fVulkanDrawUniqueIndexBufferData.Finalize;
  fVulkanMorphTargetVertexBufferData.Finalize;
@@ -19592,17 +19761,21 @@ procedure TpvScene3D.SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuf
                                         const aRenderPassIndex:TpvSizeInt;
                                         const aPreviousInFlightFrameIndex:TpvSizeInt;
                                         const aInFlightFrameIndex:TpvSizeInt);
-const Offsets:TVkDeviceSize=0;
+const Offsets:array[0..4] of TVkDeviceSize=(0,0,0,0,0);
+var BufferHandles:array[0..4] of TVkBuffer;
+    Count:TpvSizeInt;
 begin
 
  if not fSetGlobalResourcesDone[aRenderPassIndex] then begin
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=true;
+
   aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
                                   0,
                                   SizeOf(TpvScene3D.TVertexStagePushConstants),
                                   @fVertexStagePushConstants[aRenderPassIndex]);
+
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        aPipelineLayout.Handle,
                                        0,
@@ -19613,15 +19786,28 @@ begin
 
   if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
 
-   aCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
+   BufferHandles[0]:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle;
+   BufferHandles[1]:=fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanStaticVertexBuffer.Handle;
    if aPreviousInFlightFrameIndex>=0 then begin
     if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer) and
        (fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Size>=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Size) then begin
-     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
+     BufferHandles[2]:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle;
     end else begin
-     aCommandBuffer.CmdBindVertexBuffers(1,1,@fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle,@Offsets);
+     BufferHandles[2]:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle;
     end;
+    BufferHandles[3]:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Handle;
+    if assigned(fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer) and
+       (fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Size>=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Size) then begin
+     BufferHandles[4]:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aPreviousInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Handle;
+    end else begin
+     BufferHandles[4]:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Handle;
+    end;
+    Count:=5;
+   end else begin
+    Count:=2;
    end;
+   aCommandBuffer.CmdBindVertexBuffers(0,Count,@BufferHandles[0],@Offsets[0]);
+
    aCommandBuffer.CmdBindIndexBuffer(fVulkanLongTermStaticBuffers.fBufferDataArray[fVulkanLongTermStaticBuffers.fCurrentIndex].fVulkanDrawIndexBuffer.Handle,0,TVkIndexType.VK_INDEX_TYPE_UINT32);
 
   end;
@@ -19642,7 +19828,7 @@ procedure TpvScene3D.UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
 var Index,OtherIndex,Count:TpvSizeInt;
     Group:TpvScene3D.TGroup;
     Current,Next:PCachedVertexRange;
-    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
     MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
 begin
 
@@ -19738,18 +19924,30 @@ begin
    BufferMemoryBarriers[0].size:=VK_WHOLE_SIZE;
    Count:=1;
 
+   FillChar(BufferMemoryBarriers[1],SizeOf(TVkBufferMemoryBarrier),#0);
+   BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+   BufferMemoryBarriers[1].pNext:=nil;
+   BufferMemoryBarriers[1].buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexGenerationBuffer.Handle;
+   BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+   BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   BufferMemoryBarriers[1].offset:=0;
+   BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
+   Count:=2;
+
    if fHardwareRaytracingSupport then begin
 
-    FillChar(BufferMemoryBarriers[1],SizeOf(TVkBufferMemoryBarrier),#0);
-    BufferMemoryBarriers[1].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    BufferMemoryBarriers[1].pNext:=nil;
-    BufferMemoryBarriers[1].buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedRaytracingVertexBuffer.Handle;
-    BufferMemoryBarriers[1].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-    BufferMemoryBarriers[1].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
-    BufferMemoryBarriers[1].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-    BufferMemoryBarriers[1].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-    BufferMemoryBarriers[1].offset:=0;
-    BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
+    FillChar(BufferMemoryBarriers[2],SizeOf(TVkBufferMemoryBarrier),#0);
+    BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    BufferMemoryBarriers[2].pNext:=nil;
+    BufferMemoryBarriers[2].buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedRaytracingVertexBuffer.Handle;
+    BufferMemoryBarriers[2].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+    BufferMemoryBarriers[2].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+    BufferMemoryBarriers[2].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    BufferMemoryBarriers[2].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    BufferMemoryBarriers[2].offset:=0;
+    BufferMemoryBarriers[2].size:=VK_WHOLE_SIZE;
     inc(Count);
 
    end;
@@ -20177,22 +20375,45 @@ end;
 
 procedure TpvScene3D.InitializeGraphicsPipeline(const aPipeline:TpvVulkanGraphicsPipeline;const aWithPreviousPosition:boolean=false);
 begin
- aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- if aWithPreviousPosition then begin
-  aPipeline.VertexInputState.AddVertexInputBindingDescription(1,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
- end;
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.MaterialID)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentGeneration)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord0)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TexCoord1)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Color0)));
- aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.ModelScaleDummy)));
- if aWithPreviousPosition then begin
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,1,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentGeneration[3])));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,1,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentGeneration[3])));
+ if fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers then begin
+  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+  aPipeline.VertexInputState.AddVertexInputBindingDescription(1,SizeOf(TpvScene3D.TGPUStaticVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+  if aWithPreviousPosition then begin
+   aPipeline.VertexInputState.AddVertexInputBindingDescription(2,SizeOf(TpvScene3D.TCachedVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+   aPipeline.VertexInputState.AddVertexInputBindingDescription(3,SizeOf(TpvScene3D.TCachedVertexGeneration),VK_VERTEX_INPUT_RATE_VERTEX);
+   aPipeline.VertexInputState.AddVertexInputBindingDescription(4,SizeOf(TpvScene3D.TCachedVertexGeneration),VK_VERTEX_INPUT_RATE_VERTEX);
+  end;
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,1,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.MaterialID)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,1,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.TexCoord0)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,1,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.TexCoord1)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,1,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.Color0)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX[3])));
+  if aWithPreviousPosition then begin
+   aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,2,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
+   aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,3,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertexGeneration(nil)^.Generation)));
+   aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,4,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertexGeneration(nil)^.Generation)));
+  end;
+ end else begin
+  aPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3D.TCachedOldVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+  if aWithPreviousPosition then begin
+   aPipeline.VertexInputState.AddVertexInputBindingDescription(1,SizeOf(TpvScene3D.TCachedOldVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+  end;
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.Position)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.MaterialID)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.NormalSign)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TangentGeneration)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TexCoord0)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TexCoord1)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.Color0)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.ModelScaleDummy)));
+  if aWithPreviousPosition then begin
+   aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,1,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.Position)));
+   aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TangentGeneration[3])));
+   aPipeline.VertexInputState.AddVertexInputAttributeDescription(10,1,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TangentGeneration[3])));
+  end;
  end;
 end;
 
