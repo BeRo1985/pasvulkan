@@ -251,7 +251,7 @@ void main() {
 
 #ifdef RAYTRACING
       {
-        // For ray tracing we need the position in model space, not world space, since BLAS references have transform matrices in model space already, so
+        // For ray tracing we need the position in model space, not world space, since BLAS references have transform matrices already, so
         // we can't transform them again with modelNodeMatrix, which includes also the world space model transform, nodeMatrix is without that.
         vec4 p = nodeMatrix * vec4(position.xyz, 1.0);
         position = p.xyz / p.w;
