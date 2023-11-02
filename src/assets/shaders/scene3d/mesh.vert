@@ -12,13 +12,13 @@
 #endif
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in uint inMaterialID;
-layout(location = 2) in vec4 inNormalSign;
-layout(location = 3) in vec3 inTangent;
+layout(location = 1) in vec4 inNormalSign;
+layout(location = 2) in vec3 inTangent;
+layout(location = 3) in vec3 inModelScale;
 layout(location = 4) in vec2 inTexCoord0;
 layout(location = 5) in vec2 inTexCoord1;
 layout(location = 6) in vec4 inColor0;
-layout(location = 7) in vec3 inModelScale;
+layout(location = 7) in uint inMaterialID;
 #ifdef VELOCITY
 layout(location = 8) in vec3 inPreviousPosition;
 layout(location = 9) in uint inGeneration;

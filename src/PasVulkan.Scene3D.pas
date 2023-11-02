@@ -20384,13 +20384,13 @@ begin
    aPipeline.VertexInputState.AddVertexInputBindingDescription(4,SizeOf(TpvScene3D.TCachedVertexGeneration),VK_VERTEX_INPUT_RATE_VERTEX);
   end;
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,1,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.MaterialID)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.NormalSign)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX[3])));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,1,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.TexCoord0)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,1,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.TexCoord1)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,1,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.Color0)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.TangentXYZModelScaleX[3])));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,1,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PGPUStaticVertex(nil)^.MaterialID)));
   if aWithPreviousPosition then begin
    aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,2,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertex(nil)^.Position)));
    aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,3,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedVertexGeneration(nil)^.Generation)));
@@ -20402,13 +20402,13 @@ begin
    aPipeline.VertexInputState.AddVertexInputBindingDescription(1,SizeOf(TpvScene3D.TCachedOldVertex),VK_VERTEX_INPUT_RATE_VERTEX);
   end;
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.Position)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.MaterialID)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.NormalSign)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TangentGeneration)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.NormalSign)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16B16_SNORM,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TangentGeneration)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.ModelScaleDummy)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TexCoord0)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TexCoord1)));
   aPipeline.VertexInputState.AddVertexInputAttributeDescription(6,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.Color0)));
-  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R16G16B16A16_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.ModelScaleDummy)));
+  aPipeline.VertexInputState.AddVertexInputAttributeDescription(7,0,VK_FORMAT_R32_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.MaterialID)));
   if aWithPreviousPosition then begin
    aPipeline.VertexInputState.AddVertexInputAttributeDescription(8,1,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.Position)));
    aPipeline.VertexInputState.AddVertexInputAttributeDescription(9,0,VK_FORMAT_R16_UINT,TVkPtrUInt(pointer(@TpvScene3D.PCachedOldVertex(nil)^.TangentGeneration[3])));
