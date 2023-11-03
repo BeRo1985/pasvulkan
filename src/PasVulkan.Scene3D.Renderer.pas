@@ -1109,11 +1109,11 @@ begin
                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                           0.0,
                                           false,
-                                          0.0,
+                                          1.0,
                                           false,
                                           VK_COMPARE_OP_ALWAYS,
                                           0.0,
-                                          0.0,
+                                          16.0,
                                           VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                           false);
  fVulkanDevice.DebugUtils.SetObjectName(fClampedSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedSampler');
@@ -1127,11 +1127,11 @@ begin
                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                                  0.0,
                                                  false,
-                                                 0.0,
+                                                 1.0,
                                                  false,
                                                  VK_COMPARE_OP_ALWAYS,
                                                  0.0,
-                                                 0.0,
+                                                 16.0,
                                                  VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                                  false);
  fVulkanDevice.DebugUtils.SetObjectName(fClampedNearestSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedNearestSampler');
