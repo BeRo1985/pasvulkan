@@ -74,7 +74,7 @@ layout(std140, set = 0, binding = 0) uniform uboViews {
   View views[256];
 } uView;
 
-layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
+layout(set = 0, binding = 5) uniform sampler2D u2DTextures[];
 
 ///layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 

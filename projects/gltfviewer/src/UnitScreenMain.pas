@@ -590,6 +590,8 @@ begin
 
  fScene3D.UpdateViews(InFlightFrameIndex);
 
+ fScene3D.UpdateInstances(InFlightFrameIndex);
+
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
  fRendererInstance.Draw(pvApplication.SwapChainImageIndex,

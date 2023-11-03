@@ -164,6 +164,10 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
+layout(set = 0, binding = 1, std430) readonly buffer InstanceMatrices {
+  mat4 instanceMatrices[];
+};
+
 #ifdef LIGHTS
 struct Light {
   uvec4 metaData;
@@ -173,7 +177,7 @@ struct Light {
   mat4 shadowMapMatrix;
 };
 
-layout(set = 0, binding = 1, std430) readonly buffer LightItemData {
+layout(set = 0, binding = 2, std430) readonly buffer LightItemData {
 //uvec4 lightMetaData;
   Light lights[];
 };
@@ -183,7 +187,7 @@ struct LightTreeNode {
   uvec4 aabbMaxUserData;
 };
 
-layout(set = 0, binding = 2, std430) readonly buffer LightTreeNodeData {
+layout(set = 0, binding = 3, std430) readonly buffer LightTreeNodeData {
   LightTreeNode lightTreeNodes[];
 };
 
@@ -191,7 +195,7 @@ layout(set = 0, binding = 2, std430) readonly buffer LightTreeNodeData {
 
 #ifdef NOBUFFERREFERENCE
 
-layout(set = 0, binding = 3, std430) readonly buffer Materials {
+layout(set = 0, binding = 4, std430) readonly buffer Materials {
   Material materials[];
 };
 
@@ -212,15 +216,15 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ma
   mat3x2 textureTransforms[20];
 };
 
-layout(set = 0, binding = 3, std140) uniform Materials {
+layout(set = 0, binding = 4, std140) uniform Materials {
   Material materials;
 } uMaterials;
 
 #endif
 
-layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
+layout(set = 0, binding = 5) uniform sampler2D u2DTextures[];
 
-layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
+layout(set = 0, binding = 5) uniform samplerCube uCubeTextures[];
 
 // Pass descriptor set
 

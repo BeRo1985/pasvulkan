@@ -23,21 +23,6 @@ layout(location = 7) in uint inMaterialID;
 layout(location = 8) in vec3 inPreviousPosition;
 layout(location = 9) in uint inGeneration;
 layout(location = 10) in uint inPreviousGeneration;
-#ifdef INSTANCING
-// mat4 as four vec4's since vertex attributes aren't allowed to be mat4
-layout(location = 11) in vec4 inInstanceMatrix0;
-layout(location = 12) in vec4 inInstanceMatrix1;
-layout(location = 13) in vec4 inInstanceMatrix2;
-layout(location = 14) in vec4 inInstanceMatrix3;
-#endif
-#else
-#ifdef INSTANCING
-// mat4 as four vec4's since vertex attributes aren't allowed to be mat4
-layout(location = 8) in vec4 inInstanceMatrix0;
-layout(location = 9) in vec4 inInstanceMatrix1;
-layout(location = 10) in vec4 inInstanceMatrix2;
-layout(location = 11) in vec4 inInstanceMatrix3;
-#endif
 #endif
 
 layout(location = 0) out vec3 outWorldSpacePosition;
@@ -97,6 +82,10 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
+layout(set = 0, binding = 1, std430) readonly buffer InstanceMatrices {
+  mat4 instanceMatrices[];
+};
+
 out gl_PerVertex {
 	vec4 gl_Position;
 	float gl_PointSize;
@@ -112,12 +101,6 @@ void main() {
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 #endif
  
-#ifdef INSTANCING
-  // Reconstruction of the instance matrix from the four vec4's
-  mat4 instanceMatrix = mat4(inInstanceMatrix0, inInstanceMatrix1, inInstanceMatrix2, inInstanceMatrix3);  
-  mat3 tangentSpaceTransform = transpose(inverse(mat3(instanceMatrix))); 
-#endif
-
   mat3 tangentSpace;
   {
     vec3 tangent = inTangent.xyz;
@@ -128,10 +111,6 @@ void main() {
   tangentSpace[0] = normalize(tangentSpace[0]);
   tangentSpace[1] = normalize(tangentSpace[1]);
   tangentSpace[2] = normalize(tangentSpace[2]);
-
-#ifdef INSTANCING
-  tangentSpace = tangentSpaceTransform * tangentSpace;   
-#endif
 
   View view = uView.views[viewIndex];
 
@@ -169,9 +148,16 @@ void main() {
 
   vec3 position = inPosition;
 
-#ifdef INSTANCING
-  position = (instanceMatrix * vec4(position, 1.0)).xyz;
-#endif 
+  // gl_InstanceIndex is always 0 for non-instanced rendering, where we don't need to do this anyway then, and skip the transformations 
+  // for to save some cycles and memory bandwidth, given the branch is always not taken in the current thread warp on the GPU.
+  if(gl_InstanceIndex > 0){  
+    // The base mesh data is assumed to be non-pretransformed by its origin. If it is pretransformed by its origin, it will be treated
+    // as a delta transformation. It is because the mesh vertices are pretransformed by a compute shader, but this was originally only 
+    // for non-instanced meshes. Therefore, the original to-be-instanced mesh data should be non-pretransformed by its origin.
+    mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex]; 
+    position = (instanceMatrix * vec4(position, 1.0)).xyz;
+    tangentSpace = transpose(inverse(mat3(instanceMatrix))) * tangentSpace;   
+  }
 
   vec3 worldSpacePosition = position;
 
