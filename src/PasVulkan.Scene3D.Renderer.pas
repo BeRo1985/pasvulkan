@@ -174,6 +174,7 @@ type TpvScene3DRenderer=class;
        fShadowMapSampler:TpvVulkanSampler;
        fCheckShadowMapSampler:TpvVulkanSampler;
        fGeneralSampler:TpvVulkanSampler;
+       fOrderIndependentTransparencySampler:TpvVulkanSampler;
        fClampedSampler:TpvVulkanSampler;
        fClampedNearestSampler:TpvVulkanSampler;
        fSSAOSampler:TpvVulkanSampler;
@@ -249,6 +250,7 @@ type TpvScene3DRenderer=class;
        property ShadowMapSampler:TpvVulkanSampler read fShadowMapSampler;
        property CheckShadowMapSampler:TpvVulkanSampler read fCheckShadowMapSampler;
        property GeneralSampler:TpvVulkanSampler read fGeneralSampler;
+       property OrderIndependentTransparencySampler:TpvVulkanSampler read fOrderIndependentTransparencySampler;
        property ClampedSampler:TpvVulkanSampler read fClampedSampler;
        property ClampedNearestSampler:TpvVulkanSampler read fClampedNearestSampler;
        property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
@@ -1080,6 +1082,24 @@ begin
                                           false);
  fVulkanDevice.DebugUtils.SetObjectName(fGeneralSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fGeneralSampler');
 
+ fOrderIndependentTransparencySampler:=TpvVulkanSampler.Create(VulkanDevice,
+                                                               TVkFilter(VK_FILTER_LINEAR),
+                                                               TVkFilter(VK_FILTER_LINEAR),
+                                                               TVkSamplerMipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR),
+                                                               TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                               TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                               TVkSamplerAddressMode(VK_SAMPLER_ADDRESS_MODE_REPEAT),
+                                                               0.0,
+                                                               false,
+                                                               1.0,
+                                                               false,
+                                                               TVkCompareOp(VK_COMPARE_OP_NEVER),
+                                                               0.0,
+                                                               1,
+                                                               TVkBorderColor(VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK),
+                                                               false);
+ fVulkanDevice.DebugUtils.SetObjectName(fOrderIndependentTransparencySampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fOrderIndependentTransparencySampler');
+
  fClampedSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                           TVkFilter.VK_FILTER_LINEAR,
                                           TVkFilter.VK_FILTER_LINEAR,
@@ -1363,6 +1383,8 @@ begin
  FreeAndNil(fClampedNearestSampler);
 
  FreeAndNil(fClampedSampler);
+
+ FreeAndNil(fOrderIndependentTransparencySampler);
 
  FreeAndNil(fGeneralSampler);
 
