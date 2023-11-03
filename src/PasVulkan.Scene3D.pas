@@ -17446,124 +17446,128 @@ begin
   FirstInstance:=fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex];
   InstancesCount:=fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex];
 
-  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+  if InstancesCount>0 then begin
 
-  fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
+   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
 
-  Culling:=fGroup.fCulling;
+   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
 
-  Scene:=fActiveScenes[aInFlightFrameIndex];
+   Culling:=fGroup.fCulling;
 
-  if assigned(Scene) then begin
+   Scene:=fActiveScenes[aInFlightFrameIndex];
 
-   FirstFlush:=true;
+   if assigned(Scene) then begin
 
-   InverseFrontFaces:=false;
+    FirstFlush:=true;
 
-   IndicesStart:=0;
-   IndicesCount:=0;
+    InverseFrontFaces:=false;
 
-   DrawChoreographyBatchItemIndex:=0;
-   CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchItems.Count;
+    IndicesStart:=0;
+    IndicesCount:=0;
 
-   while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+    DrawChoreographyBatchItemIndex:=0;
+    CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchItems.Count;
 
-    DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-    inc(DrawChoreographyBatchItemIndex);
+    while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
 
-    if DrawChoreographyBatchItem.fMaterial.fVisible and
-       (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-       (DrawChoreographyBatchItem.fCountIndices>0) then begin
+     DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+     inc(DrawChoreographyBatchItemIndex);
 
-     InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
+     if DrawChoreographyBatchItem.fMaterial.fVisible and
+        (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+        (DrawChoreographyBatchItem.fCountIndices>0) then begin
 
-     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) and
-        (Culling or
-         ((not Culling) and
-          ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-          ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-          ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) then begin
+      InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
 
-      IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
-      IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
+      if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) and
+         (Culling or
+          ((not Culling) and
+           ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
+           ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
+           ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) then begin
 
-      PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
+       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
+       IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
 
-      DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
+       PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
 
-      InverseFrontFaces:=InstanceNode^.InverseFrontFaces;
+       DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
 
-      while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+       InverseFrontFaces:=InstanceNode^.InverseFrontFaces;
 
-       DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+       while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
 
-       if DrawChoreographyBatchItem.fMaterial.fVisible and
-          (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-          (DrawChoreographyBatchItem.fCountIndices>0) then begin
+        DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
 
-        InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
+        if DrawChoreographyBatchItem.fMaterial.fVisible and
+           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+           (DrawChoreographyBatchItem.fCountIndices>0) then begin
 
-        if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
-           (Culling or
-            ((not Culling) and
-             ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-             ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-             ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) and
-           (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
-           (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
-           (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
-           ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
+         InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
 
-         inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
-         inc(DrawChoreographyBatchItemIndex);
+         if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
+            (Culling or
+             ((not Culling) and
+              ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
+              ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
+              ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) and
+            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
+            (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
+            (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
+            ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
 
-         continue;
+          inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+          inc(DrawChoreographyBatchItemIndex);
 
-        end;
+          continue;
 
-       end;
-
-       break;
-
-      end;
-
-      if IndicesCount>0 then begin
-
-       Pipeline:=aGraphicsPipelines[PrimitiveTopology,DoubleSidedFaceCullingModes[DoubleSided,InverseFrontFaces]];
-       if aPipeline<>Pipeline then begin
-        aPipeline:=Pipeline;
-        if assigned(Pipeline) then begin
-         aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-        end;
-       end;
-
-       if FirstFlush then begin
-
-        FirstFlush:=false;
-
-        fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-        SetGroupInstanceResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-        fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-        if assigned(aOnSetRenderPassResources) then begin
-         aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-        end;
-
-       end;
-
-       if assigned(aPipeline) then begin
-
-        case fSceneInstance.fDrawBufferStorageMode of
-
-         TDrawBufferStorageMode.SeparateBuffers:begin
-          aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,IndicesStart,0,FirstInstance);
          end;
 
-         else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-          aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,fVulkanDrawIndexBufferOffset+IndicesStart,0,FirstInstance);
+        end;
+
+        break;
+
+       end;
+
+       if IndicesCount>0 then begin
+
+        Pipeline:=aGraphicsPipelines[PrimitiveTopology,DoubleSidedFaceCullingModes[DoubleSided,InverseFrontFaces]];
+        if aPipeline<>Pipeline then begin
+         aPipeline:=Pipeline;
+         if assigned(Pipeline) then begin
+          aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+         end;
+        end;
+
+        if FirstFlush then begin
+
+         FirstFlush:=false;
+
+         fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+         SetGroupInstanceResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+         fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+         if assigned(aOnSetRenderPassResources) then begin
+          aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+         end;
+
+        end;
+
+        if assigned(aPipeline) then begin
+
+         case fSceneInstance.fDrawBufferStorageMode of
+
+          TDrawBufferStorageMode.SeparateBuffers:begin
+           aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,IndicesStart,0,FirstInstance);
+          end;
+
+          else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
+           aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,fVulkanDrawIndexBufferOffset+IndicesStart,0,FirstInstance);
+          end;
+
          end;
 
         end;
@@ -17601,7 +17605,7 @@ begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and not fHeadless then begin
+ if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and (fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]>0) and not fHeadless then begin
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
