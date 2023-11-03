@@ -1328,6 +1328,7 @@ type EpvScene3D=class(Exception);
               fStartIndex:TpvSizeInt;
               fCountIndices:TpvSizeInt;
              public
+              constructor Create; reintroduce;
               function Clone:TDrawChoreographyBatchItem;
               class function CompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
               class function IndexOrderCompareTo(const aCurrent,aOther:TpvScene3D.TDrawChoreographyBatchItem):TpvInt32; static;
@@ -2258,6 +2259,8 @@ type EpvScene3D=class(Exception);
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
                      fRenderInstances:TRenderInstances;
+                     fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+                     fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                      fVulkanDatas:TVulkanDatas;
                      fVulkanData:TVulkanData;
                      fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
@@ -2690,6 +2693,8 @@ type EpvScene3D=class(Exception);
        fVulkanMorphTargetVertexBufferData:TMorphTargetVertexDynamicArray;
        fVulkanJointBlockBufferData:TJointBlocksDynamicArray;
        fVkMultiDrawIndexedInfoEXTDynamicArray:TVkMultiDrawIndexedInfoEXTDynamicArray;
+       fVkMultiDrawIndexedInfoEXTFirstInstance:TpvSizeInt;
+       fVkMultiDrawIndexedInfoEXTInstancesCount:TpvSizeInt;
       public
        fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TMatricesDynamicArray;
       private
@@ -7261,6 +7266,11 @@ begin
 end;
 
 { TpvScene3D.TDrawChoreographyBatchItem }
+
+constructor TpvScene3D.TDrawChoreographyBatchItem.Create;
+begin
+ inherited Create;
+end;
 
 function TpvScene3D.TDrawChoreographyBatchItem.Clone:TDrawChoreographyBatchItem;
 begin
@@ -13640,6 +13650,10 @@ begin
  fRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create;
  fRenderInstances.OwnsObjects:=true;
 
+ FillChar(fVulkanPerInFlightFrameFirstInstances,SizeOf(fVulkanPerInFlightFrameFirstInstances),#0);
+
+ FillChar(fVulkanPerInFlightFrameInstancesCounts,SizeOf(fVulkanPerInFlightFrameInstancesCounts),#0);
+
  fAnimations:=nil;
 
  begin
@@ -16398,6 +16412,8 @@ var Index:TPasGLTFSizeInt;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     AABB:TpvAABB;
     HasMaterialUpdate,Dirty:boolean;
+    GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
 
  if aInFlightFrameIndex>=0 then begin
@@ -16446,6 +16462,22 @@ begin
    end;
 
    if aInFlightFrameIndex>=0 then begin
+
+    if fRenderInstances.Count>0 then begin
+     GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
+     fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=GlobalVulkanInstanceMatrixDynamicArray^.Count;
+     fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=0;
+     for Index:=0 to fRenderInstances.Count-1 do begin
+      RenderInstance:=fRenderInstances[Index];
+      if RenderInstance.fActive then begin
+       GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
+       inc(fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]);
+      end;
+     end;
+    end else begin
+     fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=0;
+     fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=1;
+    end;
 
     for Index:=0 to fLights.Count-1 do begin
      fLights[Index].Update;
@@ -17084,6 +17116,27 @@ var VisibleBit:TpvUInt32;
    end;
   end;
  end;
+ procedure ProcessNodeEx(const aNodeIndex:TpvSizeInt);
+ var NodeIndex:TpvSizeInt;
+     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     Node:TpvScene3D.TGroup.TNode;
+     OK:boolean;
+ begin
+  if aNodeIndex>=0 then begin
+   InstanceNode:=@fNodes[aNodeIndex];
+   Node:=fGroup.fNodes[aNodeIndex];
+   OK:=((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+       ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+       ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode));
+   if OK then begin
+    TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+    Node:=fGroup.fNodes[aNodeIndex];
+    for NodeIndex:=0 to Node.fChildren.Count-1 do begin
+     ProcessNodeEx(Node.fChildren[NodeIndex].fIndex);
+    end;
+   end;
+  end;
+ end;
 var NodeIndex,ViewIndex:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     Scene:TpvScene3D.TGroup.TScene;
@@ -17091,45 +17144,67 @@ var NodeIndex,ViewIndex:TpvSizeInt;
 begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
-  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
-  if (length(aFrustums)>0) or
-     aPotentiallyVisibleSetCulling or
-     assigned(fOnNodeFilter) or
-     assigned(GroupOnNodeFilter) or
-     assigned(GlobalOnNodeFilter) then begin
-   for NodeIndex:=0 to length(fNodes)-1 do begin
-    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
-   end;
-   Scene:=fActiveScenes[aInFlightFrameIndex];
-   if assigned(Scene) then begin
-    if aPotentiallyVisibleSetCulling then begin
-     PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-     if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-      OK:=true;
-     end else begin
-      OK:=false;
-      for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-       ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
-       if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-          fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-        OK:=true;
-        break;
-       end;
-      end;
-     end;
-    end else begin
-     OK:=true;
+  if fRenderInstances.Count>0 then begin
+   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+   if assigned(fOnNodeFilter) or
+      assigned(GroupOnNodeFilter) or
+      assigned(GlobalOnNodeFilter) then begin
+    for NodeIndex:=0 to length(fNodes)-1 do begin
+     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
     end;
-    if OK then begin
+    Scene:=fActiveScenes[aInFlightFrameIndex];
+    if assigned(Scene) then begin
      for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
-      ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
+      ProcessNodeEx(Scene.fNodes[NodeIndex].fIndex);
      end;
+    end;
+   end else begin
+    for NodeIndex:=0 to length(fNodes)-1 do begin
+     TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
     end;
    end;
   end else begin
-   for NodeIndex:=0 to length(fNodes)-1 do begin
-    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
+   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+   if (length(aFrustums)>0) or
+      aPotentiallyVisibleSetCulling or
+      assigned(fOnNodeFilter) or
+      assigned(GroupOnNodeFilter) or
+      assigned(GlobalOnNodeFilter) then begin
+    for NodeIndex:=0 to length(fNodes)-1 do begin
+     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+    end;
+    Scene:=fActiveScenes[aInFlightFrameIndex];
+    if assigned(Scene) then begin
+     if aPotentiallyVisibleSetCulling then begin
+      PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+      if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+       OK:=true;
+      end else begin
+       OK:=false;
+       for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+        ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+        if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+         OK:=true;
+         break;
+        end;
+       end;
+      end;
+     end else begin
+      OK:=true;
+     end;
+     if OK then begin
+      for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
+       ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
+      end;
+     end;
+    end;
+   end else begin
+    for NodeIndex:=0 to length(fNodes)-1 do begin
+     TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
+    end;
    end;
   end;
  end else begin
@@ -17339,7 +17414,9 @@ procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.T
                                            const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var IndicesStart,IndicesCount,
     DrawChoreographyBatchItemIndex,
-    CountDrawChoreographyBatchItems:TpvSizeInt;
+    CountDrawChoreographyBatchItems,
+    FirstInstance,
+    InstancesCount:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -17353,6 +17430,9 @@ begin
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
  if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and not fHeadless then begin
+
+  FirstInstance:=fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex];
+  InstancesCount:=fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex];
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
@@ -17467,11 +17547,11 @@ begin
         case fSceneInstance.fDrawBufferStorageMode of
 
          TDrawBufferStorageMode.SeparateBuffers:begin
-          aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
+          aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,IndicesStart,0,FirstInstance);
          end;
 
          else {TDrawBufferStorageMode.CombinedBigBuffers:}begin
-          aCommandBuffer.CmdDrawIndexed(IndicesCount,1,fVulkanDrawIndexBufferOffset+IndicesStart,0,0);
+          aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,fVulkanDrawIndexBufferOffset+IndicesStart,0,FirstInstance);
          end;
 
         end;
@@ -17665,6 +17745,8 @@ begin
  fVulkanJointBlockBufferData.Initialize;
 
  fVkMultiDrawIndexedInfoEXTDynamicArray.Initialize;
+ fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+ fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fVulkanNodeMatricesBufferData[Index].Initialize;
@@ -19123,9 +19205,16 @@ var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     LightBuffer:TpvScene3D.TLightBuffer;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
+    GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
+
+ GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
+ if GlobalVulkanInstanceMatrixDynamicArray^.Count=0 then begin
+  GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
+ end;
+ GlobalVulkanInstanceMatrixDynamicArray^.Count:=1;
 
  for Group in fGroups do begin
   Group.Update(aInFlightFrameIndex);
@@ -20480,6 +20569,7 @@ var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
     DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
     IndicesStart,IndicesCount,
+    FirstInstance,InstancesCount,
     DrawChoreographyBatchItemIndex,
     CountDrawChoreographyBatchItems,
     MultiDrawIndexedInfoEXTIndex:TpvSizeInt;
@@ -20614,46 +20704,61 @@ begin
           IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
           IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
 
-          while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
-           DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-           if (IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex then begin
-            inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
-            inc(DrawChoreographyBatchItemIndex);
-            continue;
-           end else begin
-            break;
-           end;
-          end;
+          FirstInstance:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex];
+          InstancesCount:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex];
 
-          if IndicesCount>0 then begin
-           if fUseMultiDraw then begin
-            if fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count then begin
-             fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
-                                                                    fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
-                                                                    @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
-                                                                    1,
-                                                                    0,
-                                                                    SizeOf(TVkMultiDrawIndexedInfoEXT),
-                                                                    nil);
-             fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+          if InstancesCount>0 then begin
+
+           while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+            DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+            if ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) and
+               (FirstInstance=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]) and
+               (InstancesCount=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]) then begin
+             inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+             inc(DrawChoreographyBatchItemIndex);
+             continue;
+            end else begin
+             break;
             end;
-            MultiDrawIndexedInfoEXTIndex:=fVkMultiDrawIndexedInfoEXTDynamicArray.AddNew;
-            MultiDrawIndexedInfoEXTItem:=@fVkMultiDrawIndexedInfoEXTDynamicArray.Items[MultiDrawIndexedInfoEXTIndex];
-            MultiDrawIndexedInfoEXTItem^.firstIndex:=IndicesStart;
-            MultiDrawIndexedInfoEXTItem^.indexCount:=IndicesCount;
-            MultiDrawIndexedInfoEXTItem^.vertexOffset:=0;
-           end else if fUseMultiIndirectDraw then begin
-            DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
-            if assigned(DrawIndexedIndirectCommand) then begin
-             DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
-             DrawIndexedIndirectCommand^.instanceCount:=1;
-             DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
-             DrawIndexedIndirectCommand^.vertexOffset:=0;
-             DrawIndexedIndirectCommand^.firstInstance:=0;
-            end;
-           end else begin
-            aCommandBuffer.CmdDrawIndexed(IndicesCount,1,IndicesStart,0,0);
            end;
+
+           if IndicesCount>0 then begin
+            if fUseMultiDraw then begin
+             if (fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count) or
+                (fVkMultiDrawIndexedInfoEXTFirstInstance<>FirstInstance) or
+                (fVkMultiDrawIndexedInfoEXTInstancesCount<>InstancesCount) then begin
+              if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
+               fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                                      fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                                      @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                                      fVkMultiDrawIndexedInfoEXTInstancesCount,
+                                                                      fVkMultiDrawIndexedInfoEXTFirstInstance,
+                                                                      SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                                      nil);
+              end;
+              fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+              fVkMultiDrawIndexedInfoEXTFirstInstance:=FirstInstance;
+              fVkMultiDrawIndexedInfoEXTInstancesCount:=InstancesCount;
+             end;
+             MultiDrawIndexedInfoEXTIndex:=fVkMultiDrawIndexedInfoEXTDynamicArray.AddNew;
+             MultiDrawIndexedInfoEXTItem:=@fVkMultiDrawIndexedInfoEXTDynamicArray.Items[MultiDrawIndexedInfoEXTIndex];
+             MultiDrawIndexedInfoEXTItem^.firstIndex:=IndicesStart;
+             MultiDrawIndexedInfoEXTItem^.indexCount:=IndicesCount;
+             MultiDrawIndexedInfoEXTItem^.vertexOffset:=0;
+            end else if fUseMultiIndirectDraw then begin
+             DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
+             if assigned(DrawIndexedIndirectCommand) then begin
+              DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
+              DrawIndexedIndirectCommand^.instanceCount:=InstancesCount;
+              DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
+              DrawIndexedIndirectCommand^.vertexOffset:=0;
+              DrawIndexedIndirectCommand^.firstInstance:=FirstInstance;
+             end;
+            end else begin
+             aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,IndicesStart,0,FirstInstance);
+            end;
+           end;
+
           end;
 
          end;
@@ -20671,11 +20776,13 @@ begin
        fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
                                                               fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
                                                               @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
-                                                              1,
-                                                              0,
+                                                              fVkMultiDrawIndexedInfoEXTInstancesCount,
+                                                              fVkMultiDrawIndexedInfoEXTFirstInstance,
                                                               SizeOf(TVkMultiDrawIndexedInfoEXT),
                                                               nil);
        fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+       fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+       fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
       end;
      end else if fUseMultiIndirectDraw then begin
       VulkanFrameIndirectCommandBufferManager.Flush;
