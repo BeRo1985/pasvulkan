@@ -2181,6 +2181,25 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                           end;
                           TScenes=TpvObjectGenericList<TpvScene3D.TGroup.TInstance.TScene>;
+                          { TRenderInstance }
+                          TRenderInstance=class
+                           private
+                            fInstance:TpvScene3D.TGroup.TInstance;
+                            fActive:Boolean;
+                            fIndex:TpvSizeInt;
+                            fModelMatrix:TpvMatrix4x4;
+                           public
+                            constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
+                            destructor Destroy; override;
+                            procedure AfterConstruction; override;
+                            procedure BeforeDestruction; override;
+                            procedure Remove;
+                           public
+                            property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+                           published
+                            property Active:Boolean read fActive write fActive;
+                          end;
+                          TRenderInstances=TpvObjectGenericList<TRenderInstance>;
                           { TVulkanData }
                           TVulkanData=class
                            private
@@ -2235,6 +2254,8 @@ type EpvScene3D=class(Exception);
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
+                     fRenderInstanceLock:TpvInt32;
+                     fRenderInstances:TRenderInstances;
                      fVulkanDatas:TVulkanDatas;
                      fVulkanData:TVulkanData;
                      fVulkanComputeDescriptorPool:TpvVulkanDescriptorPool;
@@ -2341,6 +2362,7 @@ type EpvScene3D=class(Exception);
                                         const aZFar:PpvFloat=nil;
                                         const aAspectRatio:TpvFloat=0.0):boolean;
                      procedure SetDirty;
+                     function CreateRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
@@ -2352,6 +2374,7 @@ type EpvScene3D=class(Exception);
                      property Skins:TpvScene3D.TGroup.TInstance.TSkins read fSkins;
                      property UserData:pointer read fUserData write fUserData;
                      property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
+                     property RenderInstances:TRenderInstances read fRenderInstances;
                     published
                      property VulkanData:TVulkanData read fVulkanData;
                     public
@@ -13242,6 +13265,74 @@ begin
  inherited Destroy;
 end;
 
+{ TpvScene3D.TGroup.TInstance.TRenderInstance }
+
+constructor TpvScene3D.TGroup.TInstance.TRenderInstance.Create(const aInstance:TpvScene3D.TGroup.TInstance);
+begin
+ inherited Create;
+ fInstance:=aInstance;
+ fActive:=true;
+ fIndex:=-1;
+ fModelMatrix:=TpvMatrix4x4.Identity;
+end;
+
+destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fInstance) then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fInstance.fRenderInstanceLock);
+  try
+   if assigned(fInstance.fRenderInstances) then begin
+    fIndex:=fInstance.fRenderInstances.Add(self);
+   end else begin
+    fIndex:=-1;
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fInstance.fRenderInstanceLock);
+  end;
+ end;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.BeforeDestruction;
+var LastIndex:TpvSizeInt;
+    OtherRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+begin
+ if (fIndex>=0) and assigned(fInstance) then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fInstance.fRenderInstanceLock);
+  try
+   try
+    if assigned(fInstance.fRenderInstances) then begin
+     if fInstance.fRenderInstances.Count>1 then begin
+      LastIndex:=fInstance.fRenderInstances.Count-1;
+      if fIndex<>LastIndex then begin
+       OtherRenderInstance:=fInstance.fRenderInstances[LastIndex];
+       fInstance.fRenderInstances.Exchange(fIndex,LastIndex);
+       OtherRenderInstance.fIndex:=fIndex;
+       fIndex:=LastIndex;
+      end;
+     end;
+     fInstance.fRenderInstances.ExtractIndex(fIndex);
+    end;
+   finally
+    fIndex:=-1;
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fInstance.fRenderInstanceLock);
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvScene3D.TGroup.TInstance.TRenderInstance.Remove;
+begin
+ Free;
+end;
+
 { TpvScene3D.TGroup.TInstance.TVulkanData }
 
 constructor TpvScene3D.TGroup.TInstance.TVulkanData.Create(const aInstance:TGroup.TInstance);
@@ -13541,6 +13632,11 @@ begin
 
  fDuplicatedMaterials:=TpvScene3D.TMaterials.Create;
  fDuplicatedMaterials.OwnsObjects:=false;
+
+ fRenderInstanceLock:=0;
+
+ fRenderInstances:=TpvScene3D.TGroup.TInstance.TRenderInstances.Create;
+ fRenderInstances.OwnsObjects:=true;
 
  fAnimations:=nil;
 
@@ -13865,8 +13961,28 @@ end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
 var Index:TPasGLTFSizeInt;
+    RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  Unload;
+ if assigned(fRenderInstances) then begin
+  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fRenderInstanceLock);
+  try
+   try
+    while fRenderInstances.Count>0 do begin
+     RenderInstance:=fRenderInstances.ExtractIndex(fRenderInstances.Count-1);
+     try
+      RenderInstance.fIndex:=-1;
+     finally
+      FreeAndNil(RenderInstance);
+     end;
+    end;
+   finally
+    FreeAndNil(fRenderInstances);
+   end;
+  finally
+   TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fRenderInstanceLock);
+  end;
+ end;
  if assigned(fSceneInstance) and
     (fSceneInstance.fDrawBufferStorageMode=TDrawBufferStorageMode.CombinedBigBuffers) and
     not fHeadless then begin
@@ -16880,6 +16996,11 @@ end;
 procedure TpvScene3D.TGroup.TInstance.SetDirty;
 begin
  fDirtyCounter:=fGroup.fSceneInstance.fCountInFlightFrames+1;
+end;
+
+function TpvScene3D.TGroup.TInstance.CreateRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+begin
+ result:=TpvScene3D.TGroup.TInstance.TRenderInstance.Create(self);
 end;
 
 procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
