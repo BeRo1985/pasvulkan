@@ -2189,8 +2189,10 @@ type EpvScene3D=class(Exception);
                            private
                             fInstance:TpvScene3D.TGroup.TInstance;
                             fActive:Boolean;
+                            fFirst:Boolean;
                             fIndex:TpvSizeInt;
                             fModelMatrix:TpvMatrix4x4;
+                            fPreviousModelMatrix:TpvMatrix4x4;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -13284,6 +13286,7 @@ begin
  inherited Create;
  fInstance:=aInstance;
  fActive:=true;
+ fFirst:=true;
  fIndex:=-1;
  fModelMatrix:=TpvMatrix4x4.Identity;
 end;
@@ -16465,13 +16468,22 @@ begin
 
     if fRenderInstances.Count>0 then begin
      GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
-     fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=GlobalVulkanInstanceMatrixDynamicArray^.Count;
+     fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
      fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=0;
      for Index:=0 to fRenderInstances.Count-1 do begin
       RenderInstance:=fRenderInstances[Index];
       if RenderInstance.fActive then begin
        GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
+       if RenderInstance.fFirst then begin
+        RenderInstance.fFirst:=false;
+        GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
+       end else begin
+        GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fPreviousModelMatrix);
+       end;
+       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
        inc(fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]);
+      end else begin
+       RenderInstance.fFirst:=true;
       end;
      end;
     end else begin
@@ -17734,6 +17746,7 @@ begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Initialize;
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Resize(65536);
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Count:=0;
+  fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Add(TpvMatrix4x4.Identity);
  end;
 
@@ -19211,10 +19224,12 @@ begin
  fCountLights[aInFlightFrameIndex]:=0;
 
  GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
- if GlobalVulkanInstanceMatrixDynamicArray^.Count=0 then begin
+ if GlobalVulkanInstanceMatrixDynamicArray^.Count<2 then begin
+  GlobalVulkanInstanceMatrixDynamicArray^.Count:=0;
+  GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
   GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
  end;
- GlobalVulkanInstanceMatrixDynamicArray^.Count:=1;
+ GlobalVulkanInstanceMatrixDynamicArray^.Count:=2;
 
  for Group in fGroups do begin
   Group.Update(aInFlightFrameIndex);
@@ -20656,6 +20671,11 @@ begin
       VulkanFrameIndirectCommandBufferManager.fCommandBuffer:=aCommandBuffer;
      end else begin
       VulkanFrameIndirectCommandBufferManager:=nil;
+     end;
+
+     if fUseMultiDraw then begin
+      fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+      fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
      end;
 
      for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin

@@ -83,7 +83,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 } uView;
 
 layout(set = 0, binding = 1, std430) readonly buffer InstanceMatrices {
-  mat4 instanceMatrices[];
+  mat4 instanceMatrices[]; // pair-wise: 0 = base, 1 = previous (for velocity)
 };
 
 out gl_PerVertex {
@@ -147,6 +147,9 @@ void main() {
 #endif
 
   vec3 position = inPosition;
+#ifdef VELOCITY  
+  vec3 previousPosition = inPreviousPosition;
+#endif
 
   // gl_InstanceIndex is always 0 for non-instanced rendering, where we don't need to do this anyway then, and skip the transformations 
   // for to save some cycles and memory bandwidth, given the branch is always not taken in the current thread warp on the GPU.
@@ -154,9 +157,12 @@ void main() {
     // The base mesh data is assumed to be non-pretransformed by its origin. If it is pretransformed by its origin, it will be treated
     // as a delta transformation. It is because the mesh vertices are pretransformed by a compute shader, but this was originally only 
     // for non-instanced meshes. Therefore, the original to-be-instanced mesh data should be non-pretransformed by its origin.
-    mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex]; 
+    mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex << 1]; 
     position = (instanceMatrix * vec4(position, 1.0)).xyz;
     tangentSpace = transpose(inverse(mat3(instanceMatrix))) * tangentSpace;   
+#ifdef VELOCITY  
+    previousPosition = (instanceMatrices[(gl_InstanceIndex << 1) | 1]* vec4(previousPosition, 1.0)).xyz;
+#endif
   }
 
   vec3 worldSpacePosition = position;
@@ -187,18 +193,26 @@ void main() {
 #ifdef VOXELIZATION
   gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // Overrided by geometry shader anyway
 #elif defined(VELOCITY)
+
+  outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+
   View previousView = uView.views[viewIndex + pushConstants.countAllViews];
-  outCurrentClipSpace = (view.projectionMatrix * view.viewMatrix) * vec4(inPosition, 1.0);
   if(uint(inGeneration) != uint(inPreviousGeneration)){
     outPreviousClipSpace = outCurrentClipSpace;
   }else{  
-    outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(inPreviousPosition, 1.0);
+    outPreviousClipSpace = (previousView.projectionMatrix * previousView.viewMatrix) * vec4(previousPosition, 1.0);
   }
+
   gl_Position = outCurrentClipSpace;
+
   outJitter = pushConstants.jitter;
+
 #else
+  
   gl_Position = (view.projectionMatrix * view.viewMatrix) * vec4(position, 1.0);
+  
   outJitter = pushConstants.jitter.xy;
+
 #endif
 
   gl_PointSize = 1.0;
