@@ -23,6 +23,21 @@ layout(location = 7) in uint inMaterialID;
 layout(location = 8) in vec3 inPreviousPosition;
 layout(location = 9) in uint inGeneration;
 layout(location = 10) in uint inPreviousGeneration;
+#ifdef INSTANCING
+// mat4 as four vec4's since vertex attributes aren't allowed to be mat4
+layout(location = 11) in vec4 inInstanceMatrix0;
+layout(location = 12) in vec4 inInstanceMatrix1;
+layout(location = 13) in vec4 inInstanceMatrix2;
+layout(location = 14) in vec4 inInstanceMatrix3;
+#endif
+#else
+#ifdef INSTANCING
+// mat4 as four vec4's since vertex attributes aren't allowed to be mat4
+layout(location = 8) in vec4 inInstanceMatrix0;
+layout(location = 9) in vec4 inInstanceMatrix1;
+layout(location = 10) in vec4 inInstanceMatrix2;
+layout(location = 11) in vec4 inInstanceMatrix3;
+#endif
 #endif
 
 layout(location = 0) out vec3 outWorldSpacePosition;
@@ -97,6 +112,12 @@ void main() {
   uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 #endif
  
+#ifdef INSTANCING
+  // Reconstruction of the instance matrix from the four vec4's
+  mat4 instanceMatrix = mat4(inInstanceMatrix0, inInstanceMatrix1, inInstanceMatrix2, inInstanceMatrix3);  
+  mat3 tangentSpaceTransform = transpose(inverse(mat3(instanceMatrix))); 
+#endif
+
   mat3 tangentSpace;
   {
     vec3 tangent = inTangent.xyz;
@@ -107,7 +128,11 @@ void main() {
   tangentSpace[0] = normalize(tangentSpace[0]);
   tangentSpace[1] = normalize(tangentSpace[1]);
   tangentSpace[2] = normalize(tangentSpace[2]);
-    
+
+#ifdef INSTANCING
+  tangentSpace = tangentSpaceTransform * tangentSpace;   
+#endif
+
   View view = uView.views[viewIndex];
 
 #if defined(SHADERDEBUG) && !(defined(VELOCITY) || defined(VOXELIZATION))
@@ -143,6 +168,10 @@ void main() {
 #endif
 
   vec3 position = inPosition;
+
+#ifdef INSTANCING
+  position = (instanceMatrix * vec4(position, 1.0)).xyz;
+#endif 
 
   vec3 worldSpacePosition = position;
 
