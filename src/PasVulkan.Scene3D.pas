@@ -15536,10 +15536,12 @@ begin
   end;
 
   if aInFlightFrameIndex>=0 then begin
-   if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
-      ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-       ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
-        fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(fBoundingBox))) then begin
+   if fRenderInstances.Count>0 then begin
+    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+   end else if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
+               ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+                ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+                 fSceneInstance.fPotentiallyVisibleSet.fNodes[fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]].fAABB.Intersect(fBoundingBox))) then begin
     fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(fBoundingBox);
    end;
   end;
@@ -15547,7 +15549,11 @@ begin
   if fAABBTreeProxy<0 then begin
    fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
-   fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
+   if fRenderInstances.Count>0 then begin
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(TpvVector3.InlineableCreate(-65536.0,-65536.0,-65536.0),TpvVector3.InlineableCreate(65536.0,65536.0,65536.0)),TpvVector3.Create(1.0,1.0,1.0));
+   end else begin
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
+   end;
   end;
 
   fPreviousActive:=true;
