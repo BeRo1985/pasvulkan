@@ -120,21 +120,10 @@ begin
 
  inherited AcquirePersistentResources;
 
- case fInstance.Renderer.Scene3D.DrawBufferStorageMode of
-  TpvScene3D.TDrawBufferStorageMode.SeparateBuffers:begin
-   if fInstance.Renderer.Scene3D.HardwareRaytracingSupport then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_separatebuffers_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_separatebuffers_comp.spv');
-   end;
-  end;
-  else {TpvScene3D.TDrawBufferStorageMode.CombinedBigBuffers:}begin
-   if fInstance.Renderer.Scene3D.HardwareRaytracingSupport then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
-   end;
-  end;
+ if fInstance.Renderer.Scene3D.HardwareRaytracingSupport then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_comp.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -160,21 +149,11 @@ begin
 
  inherited AcquireVolatileResources;
 
- case fInstance.Renderer.Scene3D.DrawBufferStorageMode of
-  TpvScene3D.TDrawBufferStorageMode.SeparateBuffers:begin
-   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
-   fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
-   fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshMaterialMapComputeVulkanDescriptorSetLayout);
-   fPipelineLayout.Initialize;
-  end;
-  else {TpvScene3D.TDrawBufferStorageMode.CombinedBigBuffers:}begin
-   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
-   fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
-   fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshComputeVulkanDescriptorSet0Layout);
-   fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshComputeVulkanDescriptorSet1Layout);
-   fPipelineLayout.Initialize;
-  end;
- end;
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3D.TMeshComputeStagePushConstants));
+ fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshComputeVulkanDescriptorSet0Layout);
+ fPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.MeshComputeVulkanDescriptorSet1Layout);
+ fPipelineLayout.Initialize;
 
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DRendererPassesMeshComputePass.fPipelineLayout');
 
