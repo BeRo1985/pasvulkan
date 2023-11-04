@@ -2281,15 +2281,6 @@ type EpvScene3D=class(Exception);
                                                          const aRenderPassIndex:TpvSizeInt;
                                                          const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                          const aInFlightFrameIndex:TpvSizeInt);
-                     procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                                    const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                    const aInFlightFrameIndex:TpvSizeInt;
-                                    const aRenderPassIndex:TpvSizeInt;
-                                    const aCommandBuffer:TpvVulkanCommandBuffer;
-                                    var aPipeline:TpvVulkanPipeline;
-                                    const aPipelineLayout:TpvVulkanPipelineLayout;
-                                    const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                                    const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                      procedure BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
                                          const aRenderPassIndex:TpvSizeInt;
                                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -2420,15 +2411,6 @@ type EpvScene3D=class(Exception);
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
               procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
-              procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                             const aPreviousInFlightFrameIndex:TpvSizeInt;
-                             const aInFlightFrameIndex:TpvSizeInt;
-                             const aRenderPassIndex:TpvSizeInt;
-                             const aCommandBuffer:TpvVulkanCommandBuffer;
-                             var aPipeline:TpvVulkanPipeline;
-                             const aPipelineLayout:TpvVulkanPipelineLayout;
-                             const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                             const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
               procedure BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
                                   const aRenderPassIndex:TpvSizeInt;
                                   const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -12096,33 +12078,6 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                                 const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                 const aInFlightFrameIndex:TpvSizeInt;
-                                 const aRenderPassIndex:TpvSizeInt;
-                                 const aCommandBuffer:TpvVulkanCommandBuffer;
-                                 var aPipeline:TpvVulkanPipeline;
-                                 const aPipelineLayout:TpvVulkanPipelineLayout;
-                                 const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var Instance:TpvScene3D.TGroup.TInstance;
-begin
- fSetGroupResourcesDone[aRenderPassIndex]:=false;
- if not fHeadless then begin
-  for Instance in fInstances do begin
-   Instance.Draw(aGraphicsPipelines,
-                 aPreviousInFlightFrameIndex,
-                 aInFlightFrameIndex,
-                 aRenderPassIndex,
-                 aCommandBuffer,
-                 aPipeline,
-                 aPipelineLayout,
-                 aOnSetRenderPassResources,
-                 aMaterialAlphaModes);
-  end;
- end;
-end;
-
 procedure TpvScene3D.TGroup.BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
                                       const aRenderPassIndex:TpvSizeInt;
                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
@@ -16116,76 +16071,115 @@ var NodeIndex,ViewIndex:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     OK:boolean;
 begin
+
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
-  if fRenderInstances.Count>0 then begin
-   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+
+ GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+
+ GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+
+ if fActives[aInFlightFrameIndex] and
+    ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+
+  if (fRenderInstances.Count>0) or not fGroup.fCulling then begin
+
    if assigned(fOnNodeFilter) or
       assigned(GroupOnNodeFilter) or
       assigned(GlobalOnNodeFilter) then begin
+
     for NodeIndex:=0 to length(fNodes)-1 do begin
      TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
     end;
+
     Scene:=fActiveScenes[aInFlightFrameIndex];
+
     if assigned(Scene) then begin
      for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
       ProcessNodeEx(Scene.fNodes[NodeIndex].fIndex);
      end;
     end;
+
    end else begin
+
     for NodeIndex:=0 to length(fNodes)-1 do begin
      TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
     end;
+
    end;
+
   end else begin
+
    GroupOnNodeFilter:=fGroup.fOnNodeFilter;
    GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+
    if (length(aFrustums)>0) or
       aPotentiallyVisibleSetCulling or
       assigned(fOnNodeFilter) or
       assigned(GroupOnNodeFilter) or
       assigned(GlobalOnNodeFilter) then begin
+
     for NodeIndex:=0 to length(fNodes)-1 do begin
      TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
     end;
+
     Scene:=fActiveScenes[aInFlightFrameIndex];
+
     if assigned(Scene) then begin
+
      if aPotentiallyVisibleSetCulling then begin
+
       PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+
       if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+
        OK:=true;
+
       end else begin
+
        OK:=false;
+
        for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+
         ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+
         if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
            fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
          OK:=true;
          break;
         end;
+
        end;
+
       end;
+
      end else begin
       OK:=true;
      end;
+
      if OK then begin
       for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
        ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
       end;
      end;
+
     end;
+
    end else begin
+
     for NodeIndex:=0 to length(fNodes)-1 do begin
      TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
     end;
+
    end;
+
   end;
+
  end else begin
   for NodeIndex:=0 to length(fNodes)-1 do begin
    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
   end;
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
@@ -16301,169 +16295,6 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
-                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                           const aInFlightFrameIndex:TpvSizeInt;
-                                           const aRenderPassIndex:TpvSizeInt;
-                                           const aCommandBuffer:TpvVulkanCommandBuffer;
-                                           var aPipeline:TpvVulkanPipeline;
-                                           const aPipelineLayout:TpvVulkanPipelineLayout;
-                                           const aOnSetRenderPassResources:TOnSetRenderPassResources;
-                                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var IndicesStart,IndicesCount,
-    DrawChoreographyBatchItemIndex,
-    CountDrawChoreographyBatchItems,
-    FirstInstance,
-    InstancesCount:TpvSizeInt;
-    Scene:TpvScene3D.TGroup.TScene;
-    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    DoubleSided,InverseFrontFaces,Culling,FirstFlush:boolean;
-    VisibleBit:TpvUInt32;
-    DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
-    Pipeline:TpvVulkanPipeline;
-    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
-begin
-
- VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
-
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and not fHeadless then begin
-
-  FirstInstance:=fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex];
-  InstancesCount:=fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex];
-
-  if InstancesCount>0 then begin
-
-   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
-
-   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
-
-   Culling:=fGroup.fCulling;
-
-   Scene:=fActiveScenes[aInFlightFrameIndex];
-
-   if assigned(Scene) then begin
-
-    FirstFlush:=true;
-
-    InverseFrontFaces:=false;
-
-    IndicesStart:=0;
-    IndicesCount:=0;
-
-    DrawChoreographyBatchItemIndex:=0;
-    CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchItems.Count;
-
-    while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
-
-     DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-     inc(DrawChoreographyBatchItemIndex);
-
-     if DrawChoreographyBatchItem.fMaterial.fVisible and
-        (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-        (DrawChoreographyBatchItem.fCountIndices>0) then begin
-
-      InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
-
-      if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) and
-         (Culling or
-          ((not Culling) and
-           ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-           ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-           ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) then begin
-
-       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
-       IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
-
-       PrimitiveTopology:=DrawChoreographyBatchItem.fPrimitiveTopology;
-
-       DoubleSided:=DrawChoreographyBatchItem.fDoubleSided;
-
-       InverseFrontFaces:=InstanceNode^.InverseFrontFaces;
-
-       while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
-
-        DrawChoreographyBatchItem:=Scene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-
-        if DrawChoreographyBatchItem.fMaterial.fVisible and
-           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-           (DrawChoreographyBatchItem.fCountIndices>0) then begin
-
-         InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
-
-         if ((not Culling) or ((InstanceNode.VisibleBitmap and VisibleBit)<>0)) and
-            (Culling or
-             ((not Culling) and
-              ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-              ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-              ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) and
-            (DrawChoreographyBatchItem.fPrimitiveTopology=PrimitiveTopology) and
-            (DrawChoreographyBatchItem.fDoubleSided=DoubleSided) and
-            (DoubleSided or (InstanceNode^.InverseFrontFaces=InverseFrontFaces)) and
-            ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) then begin
-
-          inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
-          inc(DrawChoreographyBatchItemIndex);
-
-          continue;
-
-         end;
-
-        end;
-
-        break;
-
-       end;
-
-       if IndicesCount>0 then begin
-
-        Pipeline:=aGraphicsPipelines[PrimitiveTopology,DoubleSidedFaceCullingModes[DoubleSided,InverseFrontFaces]];
-        if aPipeline<>Pipeline then begin
-         aPipeline:=Pipeline;
-         if assigned(Pipeline) then begin
-          aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-         end;
-        end;
-
-        if FirstFlush then begin
-
-         FirstFlush:=false;
-
-         fSceneInstance.SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-         SetGroupInstanceResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-         fGroup.SetGroupResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-
-         if assigned(aOnSetRenderPassResources) then begin
-          aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
-         end;
-
-        end;
-
-        if assigned(aPipeline) then begin
-
-         aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,fVulkanDrawIndexBufferOffset+IndicesStart,0,FirstInstance);
-
-        end;
-
-       end;
-
-      end;
-
-     end;
-
-    end;
-
-   end;
-
-  end;
-
- end;
-
-end;
-
 procedure TpvScene3D.TGroup.TInstance.BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
                                                 const aRenderPassIndex:TpvSizeInt;
                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
@@ -16472,23 +16303,19 @@ var DrawChoreographyBatchItemIndex,
     Scene:TpvScene3D.TGroup.TScene;
     InstanceScene:TpvScene3D.TGroup.TInstance.TScene;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-    Culling:boolean;
     VisibleBit:TpvUInt32;
     DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
-    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
     DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
 begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- if fActives[aInFlightFrameIndex] and ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and (fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]>0) and not fHeadless then begin
-
-  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
+ if fActives[aInFlightFrameIndex] and
+    ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and
+    (fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]>0) and
+    not fHeadless then begin
 
   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
-
-  Culling:=fGroup.fCulling;
 
   Scene:=fActiveScenes[aInFlightFrameIndex];
 
@@ -16510,12 +16337,7 @@ begin
 
      InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
 
-     if ((not Culling) or ((InstanceNode^.VisibleBitmap and VisibleBit)<>0)) and
-        (Culling or
-         ((not Culling) and
-          ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-          ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)) and
-          ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Group.Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex],InstanceNode)))) then begin
+     if (InstanceNode^.VisibleBitmap and VisibleBit)<>0 then begin
 
       DrawChoreographyBatchItems:=fSceneInstance.fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,DrawChoreographyBatchItem.fPrimitiveTopology,DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,InstanceNode^.InverseFrontFaces]];
       DrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
@@ -19424,137 +19246,133 @@ begin
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;
 
+  First:=true;
+
+  for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
+   for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
+    fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,PrimitiveTopology,FaceCullingMode].ClearNoFree;
+   end;
+  end;
+
+  for Group in fGroups do begin
+   if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+    Group.BatchDraw(aInFlightFrameIndex,
+                    aRenderPassIndex,
+                    aMaterialAlphaModes);
+   end;
+  end;
+
   if fUseMultiIndirectDraw then begin
+   VulkanFrameIndirectCommandBufferManager:=fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex];
+   VulkanFrameIndirectCommandBufferManager.fCommandBuffer:=aCommandBuffer;
+  end else begin
+   VulkanFrameIndirectCommandBufferManager:=nil;
+  end;
 
-   First:=true;
+  if fUseMultiDraw then begin
+   fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+   fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
+  end;
 
-   for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
-    for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
-     fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,PrimitiveTopology,FaceCullingMode].ClearNoFree;
-    end;
-   end;
+  for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
 
-   for Group in fGroups do begin
-    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
-     Group.BatchDraw(aInFlightFrameIndex,
-                     aRenderPassIndex,
-                     aMaterialAlphaModes);
-    end;
-   end;
+   for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
 
-   if fUseMultiIndirectDraw then begin
-    VulkanFrameIndirectCommandBufferManager:=fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex];
-    VulkanFrameIndirectCommandBufferManager.fCommandBuffer:=aCommandBuffer;
-   end else begin
-    VulkanFrameIndirectCommandBufferManager:=nil;
-   end;
+    DrawChoreographyBatchItems:=fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,PrimitiveTopology,FaceCullingMode];
 
-   if fUseMultiDraw then begin
-    fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
-    fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
-   end;
+    if DrawChoreographyBatchItems.Count>0 then begin
 
-   for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
+     DrawChoreographyBatchItems.IndexOrderSort;
 
-    for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
+     NewPipeline:=aGraphicsPipelines[PrimitiveTopology,FaceCullingMode];
+     if Pipeline<>NewPipeline then begin
+      if fUseMultiIndirectDraw and assigned(Pipeline) then begin
+       VulkanFrameIndirectCommandBufferManager.Flush;
+      end;
+      Pipeline:=NewPipeline;
+      if assigned(Pipeline) then begin
+       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
+      end;
+     end;
 
-     DrawChoreographyBatchItems:=fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,PrimitiveTopology,FaceCullingMode];
+     if assigned(Pipeline) then begin
 
-     if DrawChoreographyBatchItems.Count>0 then begin
+      if First then begin
 
-      DrawChoreographyBatchItems.IndexOrderSort;
+       First:=false;
 
-      NewPipeline:=aGraphicsPipelines[PrimitiveTopology,FaceCullingMode];
-      if Pipeline<>NewPipeline then begin
-       if fUseMultiIndirectDraw and assigned(Pipeline) then begin
-        VulkanFrameIndirectCommandBufferManager.Flush;
+       SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+
+       if assigned(aOnSetRenderPassResources) then begin
+        aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
        end;
-       Pipeline:=NewPipeline;
-       if assigned(Pipeline) then begin
-        aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,Pipeline.Handle);
-       end;
+
       end;
 
-      if assigned(Pipeline) then begin
+      DrawChoreographyBatchItemIndex:=0;
+      CountDrawChoreographyBatchItems:=DrawChoreographyBatchItems.Count;
 
-       if First then begin
+      while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
 
-        First:=false;
+       DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+       inc(DrawChoreographyBatchItemIndex);
 
-        SetGlobalResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+       IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
+       IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
 
-        if assigned(aOnSetRenderPassResources) then begin
-         aOnSetRenderPassResources(aCommandBuffer,aPipelineLayout,aRenderPassIndex,aPreviousInFlightFrameIndex,aInFlightFrameIndex);
+       FirstInstance:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex];
+       InstancesCount:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex];
+
+       if InstancesCount>0 then begin
+
+        while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
+         DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+         if ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) and
+            (FirstInstance=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]) and
+            (InstancesCount=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]) then begin
+          inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
+          inc(DrawChoreographyBatchItemIndex);
+          continue;
+         end else begin
+          break;
+         end;
         end;
 
-       end;
-
-       DrawChoreographyBatchItemIndex:=0;
-       CountDrawChoreographyBatchItems:=DrawChoreographyBatchItems.Count;
-
-       while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
-
-        DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-        inc(DrawChoreographyBatchItemIndex);
-
-        IndicesStart:=DrawChoreographyBatchItem.fStartIndex;
-        IndicesCount:=DrawChoreographyBatchItem.fCountIndices;
-
-        FirstInstance:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex];
-        InstancesCount:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex];
-
-        if InstancesCount>0 then begin
-
-         while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
-          DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-          if ((IndicesStart+IndicesCount)=DrawChoreographyBatchItem.fStartIndex) and
-             (FirstInstance=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]) and
-             (InstancesCount=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]) then begin
-           inc(IndicesCount,DrawChoreographyBatchItem.fCountIndices);
-           inc(DrawChoreographyBatchItemIndex);
-           continue;
-          end else begin
-           break;
-          end;
-         end;
-
-         if IndicesCount>0 then begin
-          if fUseMultiDraw then begin
-           if (fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count) or
-              (fVkMultiDrawIndexedInfoEXTFirstInstance<>FirstInstance) or
-              (fVkMultiDrawIndexedInfoEXTInstancesCount<>InstancesCount) then begin
-            if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
-             fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
-                                                                    fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
-                                                                    @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
-                                                                    fVkMultiDrawIndexedInfoEXTInstancesCount,
-                                                                    fVkMultiDrawIndexedInfoEXTFirstInstance,
-                                                                    SizeOf(TVkMultiDrawIndexedInfoEXT),
-                                                                    nil);
-            end;
-            fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
-            fVkMultiDrawIndexedInfoEXTFirstInstance:=FirstInstance;
-            fVkMultiDrawIndexedInfoEXTInstancesCount:=InstancesCount;
+        if IndicesCount>0 then begin
+         if fUseMultiDraw then begin
+          if (fMaxMultiDrawCount>=fVkMultiDrawIndexedInfoEXTDynamicArray.Count) or
+             (fVkMultiDrawIndexedInfoEXTFirstInstance<>FirstInstance) or
+             (fVkMultiDrawIndexedInfoEXTInstancesCount<>InstancesCount) then begin
+           if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
+            fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                                   fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                                   @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                                   fVkMultiDrawIndexedInfoEXTInstancesCount,
+                                                                   fVkMultiDrawIndexedInfoEXTFirstInstance,
+                                                                   SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                                   nil);
            end;
-           MultiDrawIndexedInfoEXTIndex:=fVkMultiDrawIndexedInfoEXTDynamicArray.AddNew;
-           MultiDrawIndexedInfoEXTItem:=@fVkMultiDrawIndexedInfoEXTDynamicArray.Items[MultiDrawIndexedInfoEXTIndex];
-           MultiDrawIndexedInfoEXTItem^.firstIndex:=IndicesStart;
-           MultiDrawIndexedInfoEXTItem^.indexCount:=IndicesCount;
-           MultiDrawIndexedInfoEXTItem^.vertexOffset:=0;
-          end else if fUseMultiIndirectDraw then begin
-           DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
-           if assigned(DrawIndexedIndirectCommand) then begin
-            DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
-            DrawIndexedIndirectCommand^.instanceCount:=InstancesCount;
-            DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
-            DrawIndexedIndirectCommand^.vertexOffset:=0;
-            DrawIndexedIndirectCommand^.firstInstance:=FirstInstance;
-           end;
-          end else begin
-           aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,IndicesStart,0,FirstInstance);
+           fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+           fVkMultiDrawIndexedInfoEXTFirstInstance:=FirstInstance;
+           fVkMultiDrawIndexedInfoEXTInstancesCount:=InstancesCount;
           end;
+          MultiDrawIndexedInfoEXTIndex:=fVkMultiDrawIndexedInfoEXTDynamicArray.AddNew;
+          MultiDrawIndexedInfoEXTItem:=@fVkMultiDrawIndexedInfoEXTDynamicArray.Items[MultiDrawIndexedInfoEXTIndex];
+          MultiDrawIndexedInfoEXTItem^.firstIndex:=IndicesStart;
+          MultiDrawIndexedInfoEXTItem^.indexCount:=IndicesCount;
+          MultiDrawIndexedInfoEXTItem^.vertexOffset:=0;
+         end else if fUseMultiIndirectDraw then begin
+          DrawIndexedIndirectCommand:=VulkanFrameIndirectCommandBufferManager.IndirectAdd;
+          if assigned(DrawIndexedIndirectCommand) then begin
+           DrawIndexedIndirectCommand^.indexCount:=IndicesCount;
+           DrawIndexedIndirectCommand^.instanceCount:=InstancesCount;
+           DrawIndexedIndirectCommand^.firstIndex:=IndicesStart;
+           DrawIndexedIndirectCommand^.vertexOffset:=0;
+           DrawIndexedIndirectCommand^.firstInstance:=FirstInstance;
+          end;
+         end else begin
+          aCommandBuffer.CmdDrawIndexed(IndicesCount,InstancesCount,IndicesStart,0,FirstInstance);
          end;
-
         end;
 
        end;
@@ -19567,39 +19385,23 @@ begin
 
    end;
 
-   if fUseMultiDraw then begin
-    if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
-     fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
-                                                            fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
-                                                            @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
-                                                            fVkMultiDrawIndexedInfoEXTInstancesCount,
-                                                            fVkMultiDrawIndexedInfoEXTFirstInstance,
-                                                            SizeOf(TVkMultiDrawIndexedInfoEXT),
-                                                            nil);
-     fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
-     fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
-     fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
-    end;
-   end else if fUseMultiIndirectDraw then begin
-    VulkanFrameIndirectCommandBufferManager.Flush;
+  end;
+
+  if fUseMultiDraw then begin
+   if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
+    fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                           fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                           @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                           fVkMultiDrawIndexedInfoEXTInstancesCount,
+                                                           fVkMultiDrawIndexedInfoEXTFirstInstance,
+                                                           SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                           nil);
+    fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+    fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+    fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
    end;
-
-  end else begin
-
-   for Group in fGroups do begin
-    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
-     Group.Draw(aGraphicsPipelines,
-                aPreviousInFlightFrameIndex,
-                aInFlightFrameIndex,
-                aRenderPassIndex,
-                aCommandBuffer,
-                Pipeline,
-                aPipelineLayout,
-                aOnSetRenderPassResources,
-                aMaterialAlphaModes);
-    end;
-   end;
-
+  end else if fUseMultiIndirectDraw then begin
+   VulkanFrameIndirectCommandBufferManager.Flush;
   end;
 
  end;
