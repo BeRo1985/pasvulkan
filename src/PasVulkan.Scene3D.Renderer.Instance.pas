@@ -4661,8 +4661,8 @@ begin
                            fScaledWidth,
                            fScaledHeight,
                            true,
-                           false,
-                           false);
+                           true,
+                           true);
 
   if InFlightFrameState^.VoxelizationRenderPassIndex>=0 then begin
    Renderer.Scene3D.Prepare(aInFlightFrameIndex,
