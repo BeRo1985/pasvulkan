@@ -58,6 +58,7 @@ unit PasVulkan.Frustum;
   {$ifend}
  {$endif}
 {$endif}
+{$scopedenums on}
 
 interface
 
@@ -74,14 +75,22 @@ type { TpvFrustum }
        const COMPLETE_OUT=0;
              PARTIALLY_IN=1;
              COMPLETE_IN=2;
-       type TFrustumSide=
+       type TFlag=
              (
-              Left,
-              Right,
-              Top,
-              Bottom,
-              Near_,
-              Far_
+              ReverseZ,
+              InfiniteFarPlane
+             );
+            PFlag=^TFlag;
+            TFlags=set of TFlag;
+            PFlags=^TFlags;
+            TFrustumSide=
+             (
+              Left=0,
+              Right=1,
+              Bottom=2,
+              Top=3,
+              Near_=4,
+              Far_=5
              );
             TPlanes=array[TFrustumSide] of TpvPlane;
             TAbsoluteNormals=array[TFrustumSide] of TpvVector3;
@@ -89,6 +98,9 @@ type { TpvFrustum }
       private
        fPlanes:TPlanes;
        fAbsoluteNormals:TAbsoluteNormals;
+       fWorldSpaceCorners:TCorners;
+       fFlags:TFlags;
+       fMaximumPlaneSide:TFrustumSide;
       public
        procedure Init(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
        class function ExtractFrustumSphere(const aZNear,aZFar,aFOV,aAspectRatio:TpvScalar;const aPosition,aDirection:TpvVector3):TpvSphere; static;
@@ -107,39 +119,129 @@ type { TpvFrustum }
 
 implementation
 
-function IntersectionPoint(const a,b,c:TpvPlane):TpvVector3;
-begin
- result:=((b.Normal.Cross(c.Normal)*a.Distance)+
-          (c.Normal.Cross(a.Normal)*b.Distance)+
-          (a.Normal.Cross(b.Normal)*c.Distance))/(-a.Normal.Dot(b.Normal.Cross(c.Normal)));
-end;
-
 procedure TpvFrustum.Init(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
+const LeftRight=0;
+      LeftBottom=1;
+      LeftTop=2;
+      LeftNear=3;
+      LeftFar=4;
+      RightBottom=5;
+      RightTop=6;
+      RightNear=7;
+      RightFar=8;
+      BottomTop=9;
+      BottomNear=10;
+      BottomFar=11;
+      TopNear=12;
+      TopFar=13;
+      NearFar=14;
 var FrustumSide:TFrustumSide;
     ViewProjectionMatrix:TpvMatrix4x4;
+    Crosses:array[0..14] of TpvVector3;
 begin
 
- ViewProjectionMatrix:=aViewMatrix*aProjectionMatrix;
+ fFlags:=[];
 
- fPlanes[TFrustumSide.Left]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]+ViewProjectionMatrix.Rows[0]).Normalize;
- fPlanes[TFrustumSide.Right]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]-ViewProjectionMatrix.Rows[0]).Normalize;
- fPlanes[TFrustumSide.Top]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]-ViewProjectionMatrix.Rows[1]).Normalize;
- fPlanes[TFrustumSide.Bottom]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]+ViewProjectionMatrix.Rows[1]).Normalize;
- fPlanes[TFrustumSide.Near_]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]+ViewProjectionMatrix.Rows[2]).Normalize;
- fPlanes[TFrustumSide.Far_]:=TpvPlane.Create(ViewProjectionMatrix.Rows[3]-ViewProjectionMatrix.Rows[2]).Normalize;
+ if aProjectionMatrix.RawComponents[2,3]<(-1e-7) then begin
+  Include(fFlags,TpvFrustum.TFlag.ReverseZ);
+  if IsZero(aProjectionMatrix.RawComponents[2,2]) and not IsZero(aProjectionMatrix.RawComponents[3,2]) then begin
+   Include(fFlags,TpvFrustum.TFlag.InfiniteFarPlane);
+  end;
+ end;
+
+ if TpvFrustum.TFlag.InfiniteFarPlane in fFlags then begin
+  fMaximumPlaneSide:=TFrustumSide.Near_;
+ end else begin
+  fMaximumPlaneSide:=TFrustumSide.Far_;
+ end;
+
+ ViewProjectionMatrix:=(aViewMatrix*aProjectionMatrix).Transpose;
+
+ fPlanes[TFrustumSide.Left]:=TpvPlane.Create(ViewProjectionMatrix.RawVectors[3]+ViewProjectionMatrix.RawVectors[0]).Normalize;
+ fPlanes[TFrustumSide.Right]:=TpvPlane.Create(ViewProjectionMatrix.RawVectors[3]-ViewProjectionMatrix.RawVectors[0]).Normalize;
+ fPlanes[TFrustumSide.Bottom]:=TpvPlane.Create(ViewProjectionMatrix.RawVectors[3]+ViewProjectionMatrix.RawVectors[1]).Normalize;
+ fPlanes[TFrustumSide.Top]:=TpvPlane.Create(ViewProjectionMatrix.RawVectors[3]-ViewProjectionMatrix.RawVectors[1]).Normalize;
+ if TpvFrustum.TFlag.ReverseZ in fFlags then begin
+  fPlanes[TFrustumSide.Near_]:=TpvPlane.Create(ViewProjectionMatrix.RawVectors[3]-ViewProjectionMatrix.RawVectors[2]).Normalize;
+  fPlanes[TFrustumSide.Far_]:=TpvPlane.Create({ViewProjectionMatrix.RawVectors[3]+}ViewProjectionMatrix.RawVectors[2]).Normalize;
+ end else begin
+  fPlanes[TFrustumSide.Near_]:=TpvPlane.Create({ViewProjectionMatrix.RawVectors[3]+}ViewProjectionMatrix.RawVectors[2]).Normalize;
+  fPlanes[TFrustumSide.Far_]:=TpvPlane.Create(ViewProjectionMatrix.RawVectors[3]-ViewProjectionMatrix.RawVectors[2]).Normalize;
+ end;
+
+ Crosses[LeftRight]:=fPlanes[TFrustumSide.Left].Normal.Cross(fPlanes[TFrustumSide.Right].Normal);
+ Crosses[LeftBottom]:=fPlanes[TFrustumSide.Left].Normal.Cross(fPlanes[TFrustumSide.Bottom].Normal);
+ Crosses[LeftTop]:=fPlanes[TFrustumSide.Left].Normal.Cross(fPlanes[TFrustumSide.Top].Normal);
+ Crosses[LeftNear]:=fPlanes[TFrustumSide.Left].Normal.Cross(fPlanes[TFrustumSide.Near_].Normal);
+ Crosses[LeftFar]:=fPlanes[TFrustumSide.Left].Normal.Cross(fPlanes[TFrustumSide.Far_].Normal);
+ Crosses[RightBottom]:=fPlanes[TFrustumSide.Right].Normal.Cross(fPlanes[TFrustumSide.Bottom].Normal);
+ Crosses[RightTop]:=fPlanes[TFrustumSide.Right].Normal.Cross(fPlanes[TFrustumSide.Top].Normal);
+ Crosses[RightNear]:=fPlanes[TFrustumSide.Right].Normal.Cross(fPlanes[TFrustumSide.Near_].Normal);
+ Crosses[RightFar]:=fPlanes[TFrustumSide.Right].Normal.Cross(fPlanes[TFrustumSide.Far_].Normal);
+ Crosses[BottomTop]:=fPlanes[TFrustumSide.Bottom].Normal.Cross(fPlanes[TFrustumSide.Top].Normal);
+ Crosses[BottomNear]:=fPlanes[TFrustumSide.Bottom].Normal.Cross(fPlanes[TFrustumSide.Near_].Normal);
+ Crosses[BottomFar]:=fPlanes[TFrustumSide.Bottom].Normal.Cross(fPlanes[TFrustumSide.Far_].Normal);
+ Crosses[TopNear]:=fPlanes[TFrustumSide.Top].Normal.Cross(fPlanes[TFrustumSide.Near_].Normal);
+ Crosses[TopFar]:=fPlanes[TFrustumSide.Top].Normal.Cross(fPlanes[TFrustumSide.Far_].Normal);
+ Crosses[NearFar]:=fPlanes[TFrustumSide.Near_].Normal.Cross(fPlanes[TFrustumSide.Far_].Normal);
 
  for FrustumSide:=Low(TFrustumSide) to High(TFrustumSide) do begin
   fAbsoluteNormals[FrustumSide]:=fPlanes[FrustumSide].Normal.Abs;
  end;
 
-{fWorldSpaceCorners[0]:=IntersectionPoint(fPlanes[TFrustumSide.Near_],fPlanes[TFrustumSide.Left],fPlanes[TFrustumSide.Top]);
- fWorldSpaceCorners[1]:=IntersectionPoint(fPlanes[TFrustumSide.Near_],fPlanes[TFrustumSide.Right],fPlanes[TFrustumSide.Top]);
- fWorldSpaceCorners[2]:=IntersectionPoint(fPlanes[TFrustumSide.Near_],fPlanes[TFrustumSide.Right],fPlanes[TFrustumSide.Bottom]);
- fWorldSpaceCorners[3]:=IntersectionPoint(fPlanes[TFrustumSide.Near_],fPlanes[TFrustumSide.Left],fPlanes[TFrustumSide.Bottom]);
- fWorldSpaceCorners[4]:=IntersectionPoint(fPlanes[TFrustumSide.Far_],fPlanes[TFrustumSide.Left],fPlanes[TFrustumSide.Top]);
- fWorldSpaceCorners[5]:=IntersectionPoint(fPlanes[TFrustumSide.Far_],fPlanes[TFrustumSide.Right],fPlanes[TFrustumSide.Top]);
- fWorldSpaceCorners[6]:=IntersectionPoint(fPlanes[TFrustumSide.Far_],fPlanes[TFrustumSide.Right],fPlanes[TFrustumSide.Bottom]);
- fWorldSpaceCorners[7]:=IntersectionPoint(fPlanes[TFrustumSide.Far_],fPlanes[TFrustumSide.Left],fPlanes[TFrustumSide.Bottom]);}
+ fWorldSpaceCorners[0]:=((Crosses[BottomNear]*fPlanes[TFrustumSide.Left].Distance)+
+                         (Crosses[LeftNear]*-fPlanes[TFrustumSide.Bottom].Distance)+
+                         (Crosses[LeftBottom]*fPlanes[TFrustumSide.Near_].Distance))/
+                        (-(fPlanes[TFrustumSide.Left].Normal.Dot(Crosses[BottomNear])));
+
+ fWorldSpaceCorners[1]:=((Crosses[TopNear]*fPlanes[TFrustumSide.Left].Distance)+
+                         (Crosses[LeftNear]*fPlanes[TFrustumSide.Top].Distance)+
+                         (Crosses[LeftTop]*fPlanes[TFrustumSide.Near_].Distance))/
+                        (-(fPlanes[TFrustumSide.Left].Normal.Dot(Crosses[TopNear])));
+
+ fWorldSpaceCorners[2]:=((Crosses[BottomNear]*fPlanes[TFrustumSide.Right].Distance)+
+                         (Crosses[RightNear]*-fPlanes[TFrustumSide.Bottom].Distance)+
+                         (Crosses[RightBottom]*fPlanes[TFrustumSide.Near_].Distance))/
+                        (-(fPlanes[TFrustumSide.Right].Normal.Dot(Crosses[BottomNear])));
+
+ fWorldSpaceCorners[3]:=((Crosses[TopNear]*fPlanes[TFrustumSide.Right].Distance)+
+                         (Crosses[RightNear]*-fPlanes[TFrustumSide.Top].Distance)+
+                         (Crosses[RightTop]*fPlanes[TFrustumSide.Near_].Distance))/
+                        (-(fPlanes[TFrustumSide.Right].Normal.Dot(Crosses[TopNear])));
+
+ if TpvFrustum.TFlag.InfiniteFarPlane in fFlags then begin
+
+  fWorldSpaceCorners[4]:=TpvVector3.Origin;
+
+  fWorldSpaceCorners[5]:=TpvVector3.Origin;
+
+  fWorldSpaceCorners[6]:=TpvVector3.Origin;
+
+  fWorldSpaceCorners[7]:=TpvVector3.Origin;
+
+ end else begin
+
+  fWorldSpaceCorners[4]:=((Crosses[BottomFar]*fPlanes[TFrustumSide.Left].Distance)+
+                          (Crosses[LeftFar]*-fPlanes[TFrustumSide.Bottom].Distance)+
+                          (Crosses[LeftBottom]*fPlanes[TFrustumSide.Far_].Distance))/
+                         (-(fPlanes[TFrustumSide.Left].Normal.Dot(Crosses[BottomFar])));
+
+  fWorldSpaceCorners[5]:=((Crosses[TopFar]*fPlanes[TFrustumSide.Left].Distance)+
+                          (Crosses[LeftFar]*-fPlanes[TFrustumSide.Top].Distance)+
+                          (Crosses[LeftTop]*fPlanes[TFrustumSide.Far_].Distance))/
+                         (-(fPlanes[TFrustumSide.Left].Normal.Dot(Crosses[TopFar])));
+
+  fWorldSpaceCorners[6]:=((Crosses[BottomFar]*fPlanes[TFrustumSide.Right].Distance)+
+                          (Crosses[RightFar]*-fPlanes[TFrustumSide.Bottom].Distance)+
+                          (Crosses[RightBottom]*fPlanes[TFrustumSide.Far_].Distance))/
+                         (-(fPlanes[TFrustumSide.Right].Normal.Dot(Crosses[BottomFar])));
+
+  fWorldSpaceCorners[7]:=((Crosses[TopFar]*fPlanes[TFrustumSide.Right].Distance)+
+                          (Crosses[RightFar]*-fPlanes[TFrustumSide.Top].Distance)+
+                          (Crosses[RightTop]*fPlanes[TFrustumSide.Far_].Distance))/
+                         (-(fPlanes[TFrustumSide.Right].Normal.Dot(Crosses[TopFar])));
+
+ end;
 
 end;
 
@@ -161,7 +263,7 @@ begin
  Center:=(aAABB.Min+aAABB.Max)*0.5;
  Extents:=(aAABB.Max-aAABB.Min)*0.5;
  result:=COMPLETE_IN;
- for FrustumSide:=Low(TFrustumSide) to High(TFrustumSide) do begin
+ for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
   DistanceFromCenter:=fPlanes[FrustumSide].DistanceTo(Center);
   PlaneAbsoluteNormalDotExtents:=fAbsoluteNormals[FrustumSide].Dot(Extents);
   if (DistanceFromCenter+PlaneAbsoluteNormalDotExtents)<0.0 then begin
@@ -170,6 +272,58 @@ begin
   end else if (DistanceFromCenter-PlaneAbsoluteNormalDotExtents)<0.0 then begin
    result:=PARTIALLY_IN;
   end;
+ end;
+ if (not (TpvFrustum.TFlag.InfiniteFarPlane in fFlags)) and
+    (((fWorldSpaceCorners[0].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[1].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[2].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[3].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[4].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[5].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[6].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[7].x<aAABB.Min.x)) or
+     ((fWorldSpaceCorners[0].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[1].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[2].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[3].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[4].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[5].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[6].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[7].x>aAABB.Max.x)) or
+     ((fWorldSpaceCorners[0].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[1].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[2].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[3].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[4].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[5].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[6].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[7].y<aAABB.Min.y)) or
+     ((fWorldSpaceCorners[0].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[1].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[2].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[3].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[4].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[5].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[6].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[7].y>aAABB.Max.y)) or
+     ((fWorldSpaceCorners[0].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[1].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[2].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[3].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[4].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[5].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[6].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[7].z<aAABB.Min.z)) or
+     ((fWorldSpaceCorners[0].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[1].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[2].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[3].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[4].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[5].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[6].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[7].z>aAABB.Max.z))) then begin
+  result:=COMPLETE_OUT;
+  exit;
  end;
 end;
 
@@ -185,7 +339,7 @@ begin
  InMask:=aMask;
  OutMask:=$40000000;
  Bit:=1;
- for FrustumSide:=Low(TFrustumSide) to High(TFrustumSide) do begin
+ for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
   if (InMask and Bit)<>0 then begin
    DistanceFromCenter:=fPlanes[FrustumSide].DistanceTo(Center);
    PlaneAbsoluteNormalDotExtents:=fAbsoluteNormals[FrustumSide].Dot(Extents);
@@ -201,6 +355,58 @@ begin
   inc(Bit,Bit);
  end;
  aMask:=OutMask;
+ if (not (TpvFrustum.TFlag.InfiniteFarPlane in fFlags)) and
+    (((fWorldSpaceCorners[0].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[1].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[2].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[3].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[4].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[5].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[6].x<aAABB.Min.x) and
+      (fWorldSpaceCorners[7].x<aAABB.Min.x)) or
+     ((fWorldSpaceCorners[0].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[1].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[2].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[3].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[4].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[5].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[6].x>aAABB.Max.x) and
+      (fWorldSpaceCorners[7].x>aAABB.Max.x)) or
+     ((fWorldSpaceCorners[0].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[1].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[2].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[3].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[4].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[5].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[6].y<aAABB.Min.y) and
+      (fWorldSpaceCorners[7].y<aAABB.Min.y)) or
+     ((fWorldSpaceCorners[0].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[1].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[2].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[3].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[4].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[5].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[6].y>aAABB.Max.y) and
+      (fWorldSpaceCorners[7].y>aAABB.Max.y)) or
+     ((fWorldSpaceCorners[0].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[1].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[2].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[3].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[4].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[5].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[6].z<aAABB.Min.z) and
+      (fWorldSpaceCorners[7].z<aAABB.Min.z)) or
+     ((fWorldSpaceCorners[0].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[1].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[2].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[3].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[4].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[5].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[6].z>aAABB.Max.z) and
+      (fWorldSpaceCorners[7].z>aAABB.Max.z))) then begin
+  result:=COMPLETE_OUT;
+  aMask:=0;
+ end;
 end;
 
 function TpvFrustum.SphereInFrustum(const aSphere:TpvSphere;const aRadius:TpvScalar=0.0):TpvInt32;
@@ -210,7 +416,7 @@ var FrustumSide:TFrustumSide;
 begin
  Count:=0;
  Radius:=aSphere.Radius+aRadius;
- for FrustumSide:=Low(TFrustumSide) to High(TFrustumSide) do begin
+ for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
   Distance:=fPlanes[FrustumSide].DistanceTo(aSphere.Center);
   if Distance<=(-Radius) then begin
    result:=COMPLETE_OUT;
@@ -230,7 +436,7 @@ function TpvFrustum.PointInFrustum(const aPoint:TpvVector3):boolean;
 var FrustumSide:TFrustumSide;
 begin
  result:=true;
- for FrustumSide:=Low(TFrustumSide) to High(TFrustumSide) do begin
+ for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
   if fPlanes[FrustumSide].DistanceTo(aPoint)<=0.0 then begin
    result:=false;
    break;

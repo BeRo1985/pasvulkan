@@ -1913,6 +1913,7 @@ type EpvScene3D=class(Exception);
                             WorkMatrix:TpvMatrix4x4;
                             VisibleBitmap:TpvUInt32;
                             Light:TpvScene3D.TLight;
+                            WorkMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[0..MaxInFlightFrames-1] of boolean;
                             PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -15989,6 +15990,7 @@ var VisibleBit:TpvUInt32;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      Node:TpvScene3D.TGroup.TNode;
      OK:boolean;
+     Sphere:TpvSphere;
  begin
   if aNodeIndex>=0 then begin
    InstanceNode:=@fNodes[aNodeIndex];
@@ -16013,23 +16015,29 @@ var VisibleBit:TpvUInt32;
    end;
    if OK then begin
     if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-     if length(aFrustums)>0 then begin
-      if length(aFrustums)=1 then begin
-       OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
-      end else begin
-       OK:=false;
-       for Index:=0 to length(aFrustums)-1 do begin
-        if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-         OK:=true;
-         break;
+     Node:=fGroup.fNodes[aNodeIndex];
+     if (Node.fFlags*[TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated,
+                      TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,
+                      TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated])<>[] then begin
+      OK:=true;
+     end else begin
+      if length(aFrustums)>0 then begin
+       if length(aFrustums)=1 then begin
+        OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
+       end else begin
+        OK:=false;
+        for Index:=0 to length(aFrustums)-1 do begin
+         if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+          OK:=true;
+          break;
+         end;
         end;
        end;
+      end else begin
+       OK:=true;
       end;
-     end else begin
-      OK:=true;
      end;
      if OK then begin
-      Node:=fGroup.fNodes[aNodeIndex];
       OK:=((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
           ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
           ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode));
@@ -16410,6 +16418,10 @@ begin
   fUseMultiIndirectDraw:=false;
   fHardwareRaytracingSupport:=false;
  end;
+
+{fUseMultiDraw:=false;
+ fMaxMultiDrawCount:=0;
+ fUseMultiIndirectDraw:=false;}
 
  if fHardwareRaytracingSupport then begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or
@@ -19383,25 +19395,25 @@ begin
 
     end;
 
+    if fUseMultiDraw then begin
+     if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
+      fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                             fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                             @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                             fVkMultiDrawIndexedInfoEXTInstancesCount,
+                                                             fVkMultiDrawIndexedInfoEXTFirstInstance,
+                                                             SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                             nil);
+      fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+      fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+      fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
+     end;
+    end else if fUseMultiIndirectDraw then begin
+     VulkanFrameIndirectCommandBufferManager.Flush;
+    end;
+
    end;
 
-  end;
-
-  if fUseMultiDraw then begin
-   if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
-    fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
-                                                           fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
-                                                           @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
-                                                           fVkMultiDrawIndexedInfoEXTInstancesCount,
-                                                           fVkMultiDrawIndexedInfoEXTFirstInstance,
-                                                           SizeOf(TVkMultiDrawIndexedInfoEXT),
-                                                           nil);
-    fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
-    fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
-    fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
-   end;
-  end else if fUseMultiIndirectDraw then begin
-   VulkanFrameIndirectCommandBufferManager.Flush;
   end;
 
  end;

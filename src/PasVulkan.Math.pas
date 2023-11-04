@@ -476,6 +476,9 @@ type PpvScalar=^TpvScalar;
          Normal:TpvVector3;
          Distance:TpvScalar;
         );
+        3:(
+         Vector4:TpvVector4;
+        );
      end;
 
      PpvQuaternion=^TpvQuaternion;
@@ -740,6 +743,7 @@ type PpvScalar=^TpvScalar;
         1:(m00,m01,m02,m10,m11,m12,m20,m21,m22:TpvScalar);
         2:(Tangent,Bitangent,Normal:TpvVector3);
         3:(Right,Up,Forwards:TpvVector3);
+        4:(RawVectors:array[0..2] of TpvVector3);
        end;
 
      PpvDecomposedMatrix4x4=^TpvDecomposedMatrix4x4;
@@ -921,6 +925,7 @@ type PpvScalar=^TpvScalar;
         1:(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33:TpvScalar);
         2:(Tangent,Bitangent,Normal,Translation:TpvVector4);
         3:(Right,Up,Forwards,Offset:TpvVector4);
+        4:(RawVectors:array[0..3] of TpvVector4);
      end;
 
      // Dual quaternion with uniform scaling support
