@@ -109,9 +109,7 @@ compileshaderarguments=(
   "-V lens_star.frag -o ${tempPath}/lens_star_frag.spv"
   
   "-V mesh.comp -o ${tempPath}/mesh_comp.spv"
-  "-V mesh.comp -DSEPARATEBUFFERS -o ${tempPath}/mesh_separatebuffers_comp.spv"
   "-V mesh.comp -DRAYTRACING -o ${tempPath}/mesh_raytracing_comp.spv"
-  "-V mesh.comp -DRAYTRACING -DSEPARATEBUFFERS -o ${tempPath}/mesh_raytracing_separatebuffers_comp.spv"
 
   "-V mesh.vert -o ${tempPath}/mesh_vert.spv"
   "-V mesh.vert -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"

@@ -37,54 +37,6 @@ struct MorphTargetVertex {
    uvec4 metaData; // x = index, y = next
 };
 
-// Mesh descriptor set
-
-#ifdef SEPARATEBUFFERS    
-layout(set = 0, binding = 0, std430) buffer InVertices {
-  InPackedVertex inVertices[];
-};
-
-layout(set = 0, binding = 1, std430) buffer OutVertices {
-  OutPackedVertex outVertices[];
-};
-
-layout(set = 0, binding = 2, std430) buffer OutGenerations {
-  uint outGenerations[];
-};
-
-layout(set = 0, binding = 3, std430) buffer InIndices {
-  uint inIndices[];
-};
-
-layout(set = 0, binding = 4, std430) buffer MorphTargetVertices {
-  MorphTargetVertex morphTargetVertices[];
-};
-
-struct JointBlock {
-  uvec4 joints;
-  vec4 weights;
-};
-
-layout(set = 0, binding = 5, std430) buffer JointBlocks {
-  JointBlock jointBlocks[];
-};
-
-layout(set = 0, binding = 6, std430) buffer NodeMatrices {
-  mat4 nodeMatrices[];
-};
-
-layout(set = 0, binding = 7, std430) buffer MorphTargetWeights {
-  float morphTargetWeights[];
-};
- 
-#ifdef RAYTRACING
-layout(set = 0, binding = 8, std430) buffer OutRayTracingVertices {
-  OutRayTracingVertex outRayTracingVertices[];
-};
-#endif
-
-#else
-
 // Static descriptor set
 
 layout(set = 0, binding = 0, std430) buffer InVertices {
@@ -130,8 +82,6 @@ layout(set = 1, binding = 3, std430) buffer MorphTargetWeights {
 layout(set = 1, binding = 4, std430) buffer OutRayTracingVertices {
   OutRayTracingVertex outRayTracingVertices[];
 };
-#endif
-
 #endif
 
 /* clang-format on */
