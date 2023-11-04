@@ -2275,10 +2275,7 @@ type EpvScene3D=class(Exception);
                                                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
                                                                 const aRelative:Boolean;
                                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
-                     procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
-                                                    const aInFlightFrameIndex:TpvSizeInt;
-                                                    const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                    const aPipelineLayout:TpvVulkanPipelineLayout);
+                     procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
                      procedure SetGroupInstanceResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                          const aPipelineLayout:TpvVulkanPipelineLayout;
                                                          const aRenderPassIndex:TpvSizeInt;
@@ -2422,10 +2419,7 @@ type EpvScene3D=class(Exception);
                                           const aRenderPassIndex:TpvSizeInt;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
-              procedure UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
-                                             const aInFlightFrameIndex:TpvSizeInt;
-                                             const aCommandBuffer:TpvVulkanCommandBuffer;
-                                             const aPipelineLayout:TpvVulkanPipelineLayout);
+              procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
               procedure Draw(const aGraphicsPipelines:TpvScene3D.TGraphicsPipelines;
                              const aPreviousInFlightFrameIndex:TpvSizeInt;
                              const aInFlightFrameIndex:TpvSizeInt;
@@ -12092,18 +12086,12 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
-                                                 const aInFlightFrameIndex:TpvSizeInt;
-                                                 const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                 const aPipelineLayout:TpvVulkanPipelineLayout);
+procedure TpvScene3D.TGroup.UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
   for Instance in fInstances do begin
-   Instance.UpdateCachedVertices(aPipeline,
-                                 aInFlightFrameIndex,
-                                 aCommandBuffer,
-                                 aPipelineLayout);
+   Instance.UpdateCachedVertices(aInFlightFrameIndex);
   end;
  end;
 end;
@@ -16200,10 +16188,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aPipeline:TpvVulkanPipeline;
-                                                           const aInFlightFrameIndex:TpvSizeInt;
-                                                           const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                           const aPipelineLayout:TpvVulkanPipelineLayout);
+procedure TpvScene3D.TGroup.TInstance.UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
 var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
     DrawChoreographyBatchUniqueItemIndex,
     CountDrawChoreographyBatchUniqueItems:TpvSizeInt;
@@ -19130,10 +19115,7 @@ begin
 
  for Group in fGroups do begin
   if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
-   Group.UpdateCachedVertices(aPipeline,
-                              aInFlightFrameIndex,
-                              aCommandBuffer,
-                              aPipelineLayout);
+   Group.UpdateCachedVertices(aInFlightFrameIndex);
   end;
  end;
 
