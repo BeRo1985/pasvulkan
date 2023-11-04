@@ -2260,7 +2260,6 @@ type EpvScene3D=class(Exception);
                      fVulkanMorphTargetVertexWeightsBufferOffset:TpvInt64;
                      fVulkanMorphTargetVertexWeightsBufferCount:TpvInt64;
                      fCacheVerticesNodeDirtyBitmap:array of TpvUInt32;
-                     fCachedVerticesUpdated:boolean;
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
@@ -2399,7 +2398,6 @@ type EpvScene3D=class(Exception);
               fMaximumCountInstances:TpvSizeint;
               fBoundingBox:TpvAABB;
               fSetGroupResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
-              fCachedVerticesUpdated:boolean;
               fUsedVisibleDrawNodes:TUsedVisibleDrawNodes;
               fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
@@ -12100,15 +12098,12 @@ procedure TpvScene3D.TGroup.UpdateCachedVertices(const aPipeline:TpvVulkanPipeli
                                                  const aPipelineLayout:TpvVulkanPipelineLayout);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
- fCachedVerticesUpdated:=false;
  if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
   for Instance in fInstances do begin
    Instance.UpdateCachedVertices(aPipeline,
                                  aInFlightFrameIndex,
                                  aCommandBuffer,
                                  aPipelineLayout);
-  end;
-  if fCachedVerticesUpdated then begin
   end;
  end;
 end;
@@ -16214,13 +16209,9 @@ var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
     CountDrawChoreographyBatchUniqueItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TInstance.PNode;
-    FirstFlush:boolean;
     DrawChoreographyBatchUniqueItem:TpvScene3D.TDrawChoreographyBatchItem;
-    MeshComputeStagePushConstants:TpvScene3D.TMeshComputeStagePushConstants;
     CachedVertexRange:TpvScene3D.TCachedVertexRange;
 begin
-
- fCachedVerticesUpdated:=false;
 
  if fActives[aInFlightFrameIndex] and not fHeadless then begin
 
@@ -16258,8 +16249,6 @@ begin
     end;
 
    end;
-
-   FirstFlush:=true;
 
    IndicesStart:=0;
    IndicesCount:=0;
@@ -16299,18 +16288,9 @@ begin
 
      if IndicesCount>0 then begin
 
-      fGroup.fCachedVerticesUpdated:=true;
-
-      fCachedVerticesUpdated:=true;
-
-      if FirstFlush then begin
-
-       FirstFlush:=false;
-
-      end;
-
       CachedVertexRange.Offset:=fVulkanDrawUniqueIndexBufferOffset+IndicesStart;
       CachedVertexRange.Count:=IndicesCount;
+
       fGroup.fSceneInstance.fCachedVertexRanges.Add(CachedVertexRange);
 
      end;
