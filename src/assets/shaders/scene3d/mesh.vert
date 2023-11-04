@@ -146,6 +146,7 @@ void main() {
   vec3 cameraPosition = (-view.viewMatrix[3].xyz) * mat3(view.viewMatrix);
 #endif
 
+  vec3 modelScale = inModelScale; 
   vec3 position = inPosition;
 #ifdef VELOCITY  
   vec3 previousPosition = inPreviousPosition;
@@ -158,6 +159,7 @@ void main() {
     // as a delta transformation. It is because the mesh vertices are pretransformed by a compute shader, but this was originally only 
     // for non-instanced meshes. Therefore, the original to-be-instanced mesh data should be non-pretransformed by its origin.
     mat4 instanceMatrix = instanceMatrices[gl_InstanceIndex << 1]; 
+    modelScale *= vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)); // needed for transmissive materials
     position = (instanceMatrix * vec4(position, 1.0)).xyz;
     tangentSpace = transpose(inverse(mat3(instanceMatrix))) * tangentSpace;   
 #ifdef VELOCITY  
@@ -183,7 +185,7 @@ void main() {
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;
-  outModelScale = inModelScale;
+  outModelScale = modelScale;
   outMaterialID = inMaterialID;
 #ifndef VOXELIZATION
   outViewIndex = int(viewIndex); 
