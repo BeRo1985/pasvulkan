@@ -465,6 +465,12 @@ begin
  if aVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue<TpvInt64($80000000) then begin
   raise EpvApplication.Create('Application','The value of maxDrawIndexedIndexValue is too low, must be at least 2147483648.',LOG_ERROR);
  end;
+ if aVulkanDevice.PhysicalDevice.Features.multiDrawIndirect=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for multiDrawIndirect is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount<TpvInt64($40000000) then begin
+  raise EpvApplication.Create('Application','The value of maxDrawIndirectCount is too low, must be at least 1073741824.',LOG_ERROR);
+ end;
  if (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.descriptorBindingPartiallyBound=VK_FALSE) or
     (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.runtimeDescriptorArray=VK_FALSE) or
     (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.shaderSampledImageArrayNonUniformIndexing=VK_FALSE) then begin
