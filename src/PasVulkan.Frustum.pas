@@ -355,6 +355,9 @@ begin
    end;
    InMask:=InMask and (InMask-1);
   until (InMask=0) or (FrustumSide=fMaximumPlaneSide);
+  if InMask<>0 then begin
+   OutMask:=OutMask or (InMask or TpvUInt32($80000000));
+  end;
   aMask:=OutMask;
  end else begin
   aMask:=0;
