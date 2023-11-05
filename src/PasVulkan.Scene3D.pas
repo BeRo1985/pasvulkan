@@ -15357,7 +15357,7 @@ var Index:TPasGLTFSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     InstanceMaterial:TpvScene3D.TGroup.TInstance.TMaterial;
     AABB:TpvAABB;
-    HasMaterialUpdate,Dirty:boolean;
+    HasMaterialUpdate,Dirty,OK:boolean;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
@@ -15522,6 +15522,11 @@ begin
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
+      OK:=true;
+     end else begin
+      OK:=false;
+     end;
+     if OK then begin
       GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
       if RenderInstance.fFirst then begin
        RenderInstance.fFirst:=false;
@@ -15582,6 +15587,10 @@ begin
    if assigned(fNodes[Index].Light) then begin
     FreeAndNil(fNodes[Index].Light);
    end;
+  end;
+
+  for Index:=0 to fRenderInstances.Count-1 do begin
+   fRenderInstances[Index].fFirst:=true;
   end;
 
   if aInFlightFrameIndex>=0 then begin
