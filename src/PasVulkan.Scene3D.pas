@@ -2188,8 +2188,10 @@ type EpvScene3D=class(Exception);
                             fActive:Boolean;
                             fFirst:Boolean;
                             fIndex:TpvSizeInt;
+                            fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fModelMatrix:TpvMatrix4x4;
                             fPreviousModelMatrix:TpvMatrix4x4;
+                            fBoundingBox:TpvAABB;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
                             destructor Destroy; override;
@@ -2203,6 +2205,8 @@ type EpvScene3D=class(Exception);
                           end;
                           TRenderInstances=TpvObjectGenericList<TRenderInstance>;
                           TPerInFlightFrameRenderInstance=record
+                           PotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+                           BoundingBox:TpvAABB;
                            ModelMatrix:TpvMatrix4x4;
                            PreviousModelMatrix:TpvMatrix4x4;
                           end;
@@ -12827,7 +12831,9 @@ begin
  fActive:=true;
  fFirst:=true;
  fIndex:=-1;
+ fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
  fModelMatrix:=TpvMatrix4x4.Identity;
+ fPreviousModelMatrix:=TpvMatrix4x4.Identity;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
@@ -15539,8 +15545,17 @@ begin
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
+      RenderInstance.fBoundingBox:=fBoundingBox.Transform(RenderInstance.fModelMatrix);
+      if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
+         ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+          ((RenderInstance.fPotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+           fSceneInstance.fPotentiallyVisibleSet.fNodes[RenderInstance.fPotentiallyVisibleSetNodeIndex].fAABB.Intersect(RenderInstance.fBoundingBox))) then begin
+       RenderInstance.fPotentiallyVisibleSetNodeIndex:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(RenderInstance.fBoundingBox);
+      end;
       PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew;
       PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
+      PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
+      PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
       PerInFlightFrameRenderInstance^.ModelMatrix:=RenderInstance.fModelMatrix;
       if RenderInstance.fFirst then begin
        RenderInstance.fFirst:=false;
@@ -15551,6 +15566,7 @@ begin
       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
      end else begin
       RenderInstance.fFirst:=true;
+      RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
      end;
     end;
    end;
@@ -15600,7 +15616,9 @@ begin
   end;
 
   for Index:=0 to fRenderInstances.Count-1 do begin
-   fRenderInstances[Index].fFirst:=true;
+   RenderInstance:=fRenderInstances[Index];
+   RenderInstance.fFirst:=true;
+   RenderInstance.fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
   end;
 
   if aInFlightFrameIndex>=0 then begin
@@ -16096,12 +16114,11 @@ var VisibleBit:TpvUInt32;
  end;
  procedure ProcessPerInFlightFrameRenderInstances;
  var PerInFlightFrameRenderInstanceIndex,FrustumIndex,ViewIndex:TpvSizeInt;
-     PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
      DoCulling,PotentiallyVisible:boolean;
      GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
      PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
      PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
-     AABB:TpvAABB;
  begin
 
   if fUseRenderInstances then begin
@@ -16123,12 +16140,10 @@ var VisibleBit:TpvUInt32;
 
     if DoCulling then begin
 
-     AABB:=fBoundingBoxes[aInFlightFrameIndex].Transform(PerInFlightFrameRenderInstance.ModelMatrix);
-
      if length(aFrustums)>0 then begin
       PotentiallyVisible:=false;
       for FrustumIndex:=0 to length(aFrustums)-1 do begin
-       if aFrustums[FrustumIndex].AABBInFrustum(AABB)<>TpvFrustum.COMPLETE_OUT then begin
+       if aFrustums[FrustumIndex].AABBInFrustum(PerInFlightFrameRenderInstance^.BoundingBox)<>TpvFrustum.COMPLETE_OUT then begin
         PotentiallyVisible:=true;
         break;
        end;
@@ -16136,13 +16151,12 @@ var VisibleBit:TpvUInt32;
      end;
 
      if PotentiallyVisible and aPotentiallyVisibleSetCulling then begin
-      PotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(AABB);
-      if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+      if PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
        PotentiallyVisible:=false;
        for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
         ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
         if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
          PotentiallyVisible:=true;
          break;
         end;
