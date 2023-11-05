@@ -2233,6 +2233,7 @@ type EpvScene3D=class(Exception);
                      fLightShadowMapMatrices:TPasGLTF.TMatrix4x4DynamicArray;
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
                      fBoundingBox:TpvAABB;
+                     fBoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
                      fWorstCaseStaticBoundingBox:TpvAABB;
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
@@ -15528,6 +15529,9 @@ begin
     end;
    end;
   end;
+  if aInFlightFrameIndex>=0 then begin
+   fBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+  end;
 
   if aInFlightFrameIndex>=0 then begin
    fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
@@ -15604,6 +15608,8 @@ begin
    fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Count:=0;
 
    fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+
+   fBoundingBoxes[aInFlightFrameIndex]:=TpvAABB.Create(TpvVector3.Origin,TpvVector3.Origin);
 
   end;
 
@@ -16088,13 +16094,14 @@ var VisibleBit:TpvUInt32;
   end;
 
  end;
-var NodeIndex,ViewIndex,PerInFlightFrameRenderInstanceIndex:TpvSizeInt;
+var NodeIndex,ViewIndex,PerInFlightFrameRenderInstanceIndex,FrustumIndex:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     Scene:TpvScene3D.TGroup.TScene;
     PotentiallyVisible:boolean;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
     PerInFlightFrameRenderInstanceDynamicArray:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstanceDynamicArray;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    AABB:TpvAABB;
 begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
@@ -16161,15 +16168,53 @@ begin
    fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,aRenderPassIndex]:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
    fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,aRenderPassIndex]:=0;
 
+   DoCulling:=fGroup.fCulling and ((length(aFrustums)>0) or aPotentiallyVisibleSetCulling);
+
    PerInFlightFrameRenderInstanceDynamicArray:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex];
+
    for PerInFlightFrameRenderInstanceIndex:=0 to PerInFlightFrameRenderInstanceDynamicArray^.Count-1 do begin
+
     PerInFlightFrameRenderInstance:=@PerInFlightFrameRenderInstanceDynamicArray.Items[PerInFlightFrameRenderInstanceIndex];
+
     PotentiallyVisible:=true;
+
+    if DoCulling then begin
+
+     AABB:=fBoundingBoxes[aInFlightFrameIndex].Transform(PerInFlightFrameRenderInstance.ModelMatrix);
+
+     if length(aFrustums)>0 then begin
+      PotentiallyVisible:=false;
+      for FrustumIndex:=0 to length(aFrustums)-1 do begin
+       if aFrustums[FrustumIndex].AABBInFrustum(AABB)<>TpvFrustum.COMPLETE_OUT then begin
+        PotentiallyVisible:=true;
+        break;
+       end;
+      end;
+     end;
+
+     if PotentiallyVisible and aPotentiallyVisibleSetCulling then begin
+      PotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(AABB);
+      if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+       PotentiallyVisible:=false;
+       for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+        ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+        if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+         PotentiallyVisible:=true;
+         break;
+        end;
+       end;
+      end;
+     end;
+
+    end;
+
     if PotentiallyVisible then begin
      GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.ModelMatrix);
      GlobalVulkanInstanceMatrixDynamicArray^.Add(PerInFlightFrameRenderInstance^.PreviousModelMatrix);
      inc(fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,aRenderPassIndex]);
     end;
+
    end;
 
   end else begin
