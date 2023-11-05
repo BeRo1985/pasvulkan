@@ -16130,6 +16130,12 @@ begin
      end;
     end;
 
+    if fUseRenderInstances and fGroup.fCulling then begin
+
+     // TODO
+
+    end;
+
    end;
 
   end else begin
