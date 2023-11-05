@@ -2209,6 +2209,7 @@ type EpvScene3D=class(Exception);
                      fActive:boolean;
                      fHeadless:boolean;
                      fPreviousActive:boolean;
+                     fUseRenderInstances:boolean;
                      fIsNewInstance:TPasMPBool32;
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
@@ -2326,6 +2327,7 @@ type EpvScene3D=class(Exception);
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
+                     property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
                      property Lights:TpvScene3D.TGroup.TInstance.TLights read fLights;
@@ -12927,6 +12929,8 @@ begin
 
  fHeadless:=aHeadless;
 
+ fUseRenderInstances:=false;
+
  fPreviousActive:=false;
 
  fUploaded:=false;
@@ -15405,31 +15409,6 @@ begin
 
    if aInFlightFrameIndex>=0 then begin
 
-    if fRenderInstances.Count>0 then begin
-     GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
-     fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
-     fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=0;
-     for Index:=0 to fRenderInstances.Count-1 do begin
-      RenderInstance:=fRenderInstances[Index];
-      if RenderInstance.fActive then begin
-       GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
-       if RenderInstance.fFirst then begin
-        RenderInstance.fFirst:=false;
-        GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
-       end else begin
-        GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fPreviousModelMatrix);
-       end;
-       RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
-       inc(fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]);
-      end else begin
-       RenderInstance.fFirst:=true;
-      end;
-     end;
-    end else begin
-     fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=0;
-     fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=1;
-    end;
-
     for Index:=0 to fLights.Count-1 do begin
      fLights[Index].Update;
     end;
@@ -15536,7 +15515,34 @@ begin
   end;
 
   if aInFlightFrameIndex>=0 then begin
-   if fRenderInstances.Count>0 then begin
+   if fUseRenderInstances then begin
+    GlobalVulkanInstanceMatrixDynamicArray:=@fSceneInstance.fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
+    fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=GlobalVulkanInstanceMatrixDynamicArray^.Count shr 1;
+    fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=0;
+    for Index:=0 to fRenderInstances.Count-1 do begin
+     RenderInstance:=fRenderInstances[Index];
+     if RenderInstance.fActive then begin
+      GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
+      if RenderInstance.fFirst then begin
+       RenderInstance.fFirst:=false;
+       GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fModelMatrix);
+      end else begin
+       GlobalVulkanInstanceMatrixDynamicArray^.Add(RenderInstance.fPreviousModelMatrix);
+      end;
+      RenderInstance.fPreviousModelMatrix:=RenderInstance.fModelMatrix;
+      inc(fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]);
+     end else begin
+      RenderInstance.fFirst:=true;
+     end;
+    end;
+   end else begin
+    fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=0;
+    fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=1;
+   end;
+  end;
+
+  if aInFlightFrameIndex>=0 then begin
+   if fUseRenderInstances then begin
     fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
    end else if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
                ((fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
@@ -15549,7 +15555,7 @@ begin
   if fAABBTreeProxy<0 then begin
    fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
-   if fRenderInstances.Count>0 then begin
+   if fUseRenderInstances then begin
     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(TpvVector3.InlineableCreate(-65536.0,-65536.0,-65536.0),TpvVector3.InlineableCreate(65536.0,65536.0,65536.0)),TpvVector3.Create(1.0,1.0,1.0));
    end else begin
     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
@@ -15578,7 +15584,14 @@ begin
    end;
   end;
 
-  fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+  if aInFlightFrameIndex>=0 then begin
+
+   fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+
+   fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex]:=0;
+   fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex]:=0;
+
+  end;
 
   fPreviousActive:=false;
 
@@ -15971,6 +15984,7 @@ end;
 function TpvScene3D.TGroup.TInstance.CreateRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  result:=TpvScene3D.TGroup.TInstance.TRenderInstance.Create(self);
+ fUseRenderInstances:=true;
 end;
 
 procedure TpvScene3D.TGroup.TInstance.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
@@ -16095,7 +16109,7 @@ begin
  if fActives[aInFlightFrameIndex] and
     ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
 
-  if (fRenderInstances.Count>0) or not fGroup.fCulling then begin
+  if fUseRenderInstances or not fGroup.fCulling then begin
 
    if assigned(fOnNodeFilter) or
       assigned(GroupOnNodeFilter) or
