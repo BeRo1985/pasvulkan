@@ -66,6 +66,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math;
 
@@ -336,11 +337,12 @@ begin
  Center:=(aAABB.Min+aAABB.Max)*0.5;
  Extents:=(aAABB.Max-aAABB.Min)*0.5;
  result:=COMPLETE_IN;
- InMask:=aMask;
+ InMask:=aMask and TpvUInt32($3f);
  OutMask:=$40000000;
- Bit:=1;
- for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
-  if (InMask and Bit)<>0 then begin
+ if InMask<>0 then begin
+  repeat
+   Bit:=TPasMPMath.BitScanForward32(InMask);
+   FrustumSide:=TFrustumSide(Bit);
    DistanceFromCenter:=fPlanes[FrustumSide].DistanceTo(Center);
    PlaneAbsoluteNormalDotExtents:=fAbsoluteNormals[FrustumSide].Dot(Extents);
    if (DistanceFromCenter+PlaneAbsoluteNormalDotExtents)<0.0 then begin
@@ -351,62 +353,10 @@ begin
     OutMask:=OutMask or (Bit or $80000000);
     result:=PARTIALLY_IN;
    end;
-  end;
-  inc(Bit,Bit);
+   InMask:=InMask and (InMask-1);
+  until (InMask=0) or (FrustumSide=fMaximumPlaneSide);
  end;
  aMask:=OutMask;
- if (not (TpvFrustum.TFlag.InfiniteFarPlane in fFlags)) and
-    (((fWorldSpaceCorners[0].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[1].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[2].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[3].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[4].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[5].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[6].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[7].x<aAABB.Min.x)) or
-     ((fWorldSpaceCorners[0].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[1].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[2].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[3].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[4].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[5].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[6].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[7].x>aAABB.Max.x)) or
-     ((fWorldSpaceCorners[0].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[1].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[2].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[3].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[4].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[5].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[6].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[7].y<aAABB.Min.y)) or
-     ((fWorldSpaceCorners[0].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[1].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[2].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[3].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[4].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[5].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[6].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[7].y>aAABB.Max.y)) or
-     ((fWorldSpaceCorners[0].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[1].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[2].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[3].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[4].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[5].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[6].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[7].z<aAABB.Min.z)) or
-     ((fWorldSpaceCorners[0].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[1].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[2].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[3].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[4].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[5].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[6].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[7].z>aAABB.Max.z))) then begin
-  result:=COMPLETE_OUT;
-  aMask:=0;
- end;
 end;
 
 function TpvFrustum.SphereInFrustum(const aSphere:TpvSphere;const aRadius:TpvScalar=0.0):TpvInt32;
