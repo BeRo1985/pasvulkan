@@ -1078,12 +1078,12 @@ begin
                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
                                           0.0,
-                                          false,
-                                          0.0,
+                                          fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy>1.0,
+                                          Max(1.0,fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy),
                                           false,
                                           VK_COMPARE_OP_ALWAYS,
                                           0.0,
-                                          0.0,
+                                          65536.0,
                                           VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                           false);
  fVulkanDevice.DebugUtils.SetObjectName(fGeneralSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fGeneralSampler');
@@ -1114,12 +1114,12 @@ begin
                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                           0.0,
-                                          false,
-                                          1.0,
+                                          fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy>1.0,
+                                          Max(1.0,fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy),
                                           false,
                                           VK_COMPARE_OP_ALWAYS,
                                           0.0,
-                                          16.0,
+                                          65536.0,
                                           VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                           false);
  fVulkanDevice.DebugUtils.SetObjectName(fClampedSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedSampler');
@@ -1137,7 +1137,7 @@ begin
                                                  false,
                                                  VK_COMPARE_OP_ALWAYS,
                                                  0.0,
-                                                 16.0,
+                                                 65536.0,
                                                  VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
                                                  false);
  fVulkanDevice.DebugUtils.SetObjectName(fClampedNearestSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedNearestSampler');
