@@ -334,12 +334,12 @@ var FrustumSide:TFrustumSide;
     DistanceFromCenter,PlaneAbsoluteNormalDotExtents:TpvScalar;
     Center,Extents:TpvVector3;
 begin
- Center:=(aAABB.Min+aAABB.Max)*0.5;
- Extents:=(aAABB.Max-aAABB.Min)*0.5;
- result:=COMPLETE_IN;
  InMask:=aMask and TpvUInt32($3f);
- OutMask:=$40000000;
- if InMask<>0 then begin
+ if ((aMask and TpvUInt32($80000000))<>0) and (InMask<>0) then begin
+  Center:=(aAABB.Min+aAABB.Max)*0.5;
+  Extents:=(aAABB.Max-aAABB.Min)*0.5;
+  result:=COMPLETE_IN;
+  OutMask:=$40000000;
   repeat
    Bit:=TPasMPMath.BitScanForward32(InMask);
    FrustumSide:=TFrustumSide(Bit);
@@ -350,13 +350,16 @@ begin
     result:=COMPLETE_OUT;
     exit;
    end else if (DistanceFromCenter-PlaneAbsoluteNormalDotExtents)<0.0 then begin
-    OutMask:=OutMask or (Bit or $80000000);
+    OutMask:=OutMask or (Bit or TpvUInt32($80000000));
     result:=PARTIALLY_IN;
    end;
    InMask:=InMask and (InMask-1);
   until (InMask=0) or (FrustumSide=fMaximumPlaneSide);
+  aMask:=OutMask;
+ end else begin
+  aMask:=0;
+  result:=COMPLETE_OUT;
  end;
- aMask:=OutMask;
 end;
 
 function TpvFrustum.SphereInFrustum(const aSphere:TpvSphere;const aRadius:TpvScalar=0.0):TpvInt32;
