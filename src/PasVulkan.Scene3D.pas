@@ -16006,209 +16006,146 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aPotentiallyVisibleSetCulling:boolean);
 var VisibleBit:TpvUInt32;
     GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
+    DoCulling:boolean;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMask:TpvUInt32);
  var Index,NodeIndex,ViewIndex:TpvSizeInt;
      PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
      Mask:TpvUInt32;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      Node:TpvScene3D.TGroup.TNode;
-     OK:boolean;
-     Sphere:TpvSphere;
+     PotentiallyVisible:boolean;
  begin
+
   if aNodeIndex>=0 then begin
+
    InstanceNode:=@fNodes[aNodeIndex];
+
    Mask:=aMask;
-   if aPotentiallyVisibleSetCulling then begin
-    PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-    if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-     OK:=true;
-    end else begin
-     OK:=false;
-     for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-      ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
-      if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-         fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-       OK:=true;
-       break;
+
+   PotentiallyVisible:=true;
+
+   if DoCulling then begin
+
+    if aPotentiallyVisibleSetCulling then begin
+     PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+     if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+      PotentiallyVisible:=false;
+      for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+       ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+       if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+          fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+        PotentiallyVisible:=true;
+        break;
+       end;
       end;
      end;
     end;
-   end else begin
-    OK:=true;
-   end;
-   if OK then begin
-    if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-     Node:=fGroup.fNodes[aNodeIndex];
-     if (Node.fFlags*[TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated,
-                      TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,
-                      TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated])<>[] then begin
-      OK:=true;
-     end else begin
+
+    if PotentiallyVisible then begin
+     if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
       if length(aFrustums)>0 then begin
        if length(aFrustums)=1 then begin
-        OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
+        PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
        end else begin
-        OK:=false;
+        PotentiallyVisible:=false;
         for Index:=0 to length(aFrustums)-1 do begin
          if aFrustums[Index].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-          OK:=true;
+          PotentiallyVisible:=true;
           break;
          end;
         end;
        end;
-      end else begin
-       OK:=true;
-      end;
-     end;
-     if OK then begin
-      OK:=((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-          ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-          ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode));
-      if OK then begin
-       TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
-       Node:=fGroup.fNodes[aNodeIndex];
-       for NodeIndex:=0 to Node.fChildren.Count-1 do begin
-        ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
-       end;
       end;
      end;
     end;
+
    end;
-  end;
- end;
- procedure ProcessNodeEx(const aNodeIndex:TpvSizeInt);
- var NodeIndex:TpvSizeInt;
-     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-     Node:TpvScene3D.TGroup.TNode;
-     OK:boolean;
- begin
-  if aNodeIndex>=0 then begin
-   InstanceNode:=@fNodes[aNodeIndex];
-   Node:=fGroup.fNodes[aNodeIndex];
-   OK:=((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-       ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-       ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode));
-   if OK then begin
-    TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+
+   if PotentiallyVisible then begin
     Node:=fGroup.fNodes[aNodeIndex];
-    for NodeIndex:=0 to Node.fChildren.Count-1 do begin
-     ProcessNodeEx(Node.fChildren[NodeIndex].fIndex);
+    if ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+       ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+       ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) then begin
+     TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+     Node:=fGroup.fNodes[aNodeIndex];
+     for NodeIndex:=0 to Node.fChildren.Count-1 do begin
+      ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
+     end;
     end;
    end;
+
   end;
+
  end;
 var NodeIndex,ViewIndex:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     Scene:TpvScene3D.TGroup.TScene;
-    OK:boolean;
+    PotentiallyVisible:boolean;
 begin
 
  VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
 
- GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-
- GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
-
  if fActives[aInFlightFrameIndex] and
     ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
 
-  if fUseRenderInstances or not fGroup.fCulling then begin
+  GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+  GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
 
-   if assigned(fOnNodeFilter) or
-      assigned(GroupOnNodeFilter) or
-      assigned(GlobalOnNodeFilter) then begin
+  if (length(aFrustums)>0) or
+     aPotentiallyVisibleSetCulling or
+     assigned(fOnNodeFilter) or
+     assigned(GroupOnNodeFilter) or
+     assigned(GlobalOnNodeFilter) then begin
 
-    for NodeIndex:=0 to length(fNodes)-1 do begin
-     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
-    end;
+   for NodeIndex:=0 to length(fNodes)-1 do begin
+    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+   end;
 
-    Scene:=fActiveScenes[aInFlightFrameIndex];
+   Scene:=fActiveScenes[aInFlightFrameIndex];
 
-    if assigned(Scene) then begin
-     for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
-      ProcessNodeEx(Scene.fNodes[NodeIndex].fIndex);
+   if assigned(Scene) then begin
+
+    DoCulling:=fGroup.fCulling and not fUseRenderInstances;
+
+    PotentiallyVisible:=true;
+
+    if DoCulling and aPotentiallyVisibleSetCulling then begin
+     PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+     if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+      PotentiallyVisible:=false;
+      for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+       ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+       if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+          fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+        PotentiallyVisible:=true;
+        break;
+       end;
+      end;
      end;
     end;
 
-   end else begin
-
-    for NodeIndex:=0 to length(fNodes)-1 do begin
-     TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
+    if PotentiallyVisible then begin
+     for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
+      ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
+     end;
     end;
 
    end;
 
   end else begin
 
-   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
-   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
-
-   if (length(aFrustums)>0) or
-      aPotentiallyVisibleSetCulling or
-      assigned(fOnNodeFilter) or
-      assigned(GroupOnNodeFilter) or
-      assigned(GlobalOnNodeFilter) then begin
-
-    for NodeIndex:=0 to length(fNodes)-1 do begin
-     TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
-    end;
-
-    Scene:=fActiveScenes[aInFlightFrameIndex];
-
-    if assigned(Scene) then begin
-
-     if aPotentiallyVisibleSetCulling then begin
-
-      PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-
-      if PotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-
-       OK:=true;
-
-      end else begin
-
-       OK:=false;
-
-       for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-
-        ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
-
-        if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-         OK:=true;
-         break;
-        end;
-
-       end;
-
-      end;
-
-     end else begin
-      OK:=true;
-     end;
-
-     if OK then begin
-      for NodeIndex:=0 to Scene.fNodes.Count-1 do begin
-       ProcessNode(Scene.fNodes[NodeIndex].fIndex,$ffffffff);
-      end;
-     end;
-
-    end;
-
-   end else begin
-
-    for NodeIndex:=0 to length(fNodes)-1 do begin
-     TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
-    end;
-
+   for NodeIndex:=0 to length(fNodes)-1 do begin
+    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
    end;
 
   end;
 
  end else begin
+
   for NodeIndex:=0 to length(fNodes)-1 do begin
    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
   end;
+
  end;
 
 end;
