@@ -4703,6 +4703,7 @@ begin
                            InFlightFrameState^.CountFinalViews,
                            fScaledWidth,
                            fScaledHeight,
+                           [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                            true,
                            true,
                            true);
@@ -4716,6 +4717,7 @@ begin
                             Min(InFlightFrameState^.CountFinalViews,1),
                             Renderer.GlobalIlluminationVoxelGridSize,
                             Renderer.GlobalIlluminationVoxelGridSize,
+                            [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                             false,
                             false,
                             false);
@@ -4733,6 +4735,7 @@ begin
                            InFlightFrameState^.CountReflectionProbeViews,
                            fReflectionProbeWidth,
                            fReflectionProbeHeight,
+                           [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                            true,
                            false,
                            false);
@@ -4749,6 +4752,7 @@ begin
                            InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                            fTopDownSkyOcclusionMapWidth,
                            fTopDownSkyOcclusionMapHeight,
+                           [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
                            false,
                            false,
                            false);
@@ -4764,6 +4768,7 @@ begin
                            InFlightFrameState^.CountReflectiveShadowMapViews,
                            fReflectiveShadowMapWidth,
                            fReflectiveShadowMapHeight,
+                           [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                            true,
                            false,
                            false);
@@ -4778,6 +4783,7 @@ begin
                           InFlightFrameState^.CountCascadedShadowMapViews,
                           fCascadedShadowMapWidth,
                           fCascadedShadowMapHeight,
+                          [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
                           false,
                           true,
                           true);
