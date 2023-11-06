@@ -442,7 +442,6 @@ type { TpvScene3DRendererInstance }
        fFrustumClusterGridTileSizeX:TpvInt32;
        fFrustumClusterGridTileSizeY:TpvInt32;
        fFrustumClusterGridCountTotalViews:TpvInt32;
-       fFOV:TpvFloat;
        fZNear:TpvFloat;
        fZFar:TpvFloat;
        fCameraViewMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
@@ -717,7 +716,6 @@ type { TpvScene3DRendererInstance }
        property ScaledHeight:TpvInt32 read fScaledHeight;
        property CountSurfaceViews:TpvInt32 read fCountSurfaceViews write fCountSurfaceViews;
        property SurfaceMultiviewMask:TpvUInt32 read fSurfaceMultiviewMask write fSurfaceMultiviewMask;
-       property FOV:TpvFloat read fFOV write fFOV;
        property ZNear:TpvFloat read fZNear write fZNear;
        property ZFar:TpvFloat read fZFar write fZFar;
        property PixelAmountFactor:TpvDouble read GetPixelAmountFactor write SetPixelAmountFactor;
@@ -1426,7 +1424,9 @@ begin
 
  if assigned(fVirtualReality) then begin
 
-  fFOV:=fVirtualReality.FOV;
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   fCameraPresets[InFlightFrameIndex].FieldOfView:=fVirtualReality.FOV;
+  end;
 
   fZNear:=fVirtualReality.ZNear;
 
@@ -1438,7 +1438,9 @@ begin
 
  end else begin
 
-  fFOV:=53.13010235415598;
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+   fCameraPresets[InFlightFrameIndex].FieldOfView:=53.13010235415598;
+  end;
 
   fZNear:=-0.01;
 
@@ -4486,9 +4488,12 @@ var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
     ViewMatrix:TpvMatrix4x4;
+    FieldOfView:TpvFloat;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ FieldOfView:=fCameraPresets[aInFlightFrameIndex].FieldOfView;
 
  if fViews[aInFlightFrameIndex].Count=0 then begin
 
@@ -4532,15 +4537,15 @@ begin
 
    ViewLeft.ViewMatrix:=ViewMatrix;
 
-   if fFOV>0.0 then begin
+   if FieldOfView>0.0 then begin
     // > 0.0 = Horizontal FOV
     if fZFar>0.0 then begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedZeroToOne(fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedZeroToOne(FieldOfView,
                                                                                                 fScaledWidth/fScaledHeight,
                                                                                                 abs(fZNear),
                                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end else begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedOneToZero(fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreateHorizontalFOVPerspectiveRightHandedOneToZero(FieldOfView,
                                                                                                 fScaledWidth/fScaledHeight,
                                                                                                 abs(fZNear),
                                                                                                 IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
@@ -4548,12 +4553,12 @@ begin
    end else begin
     // < 0.0 = Vertical FOV
     if fZFar>0.0 then begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(-fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedZeroToOne(-FieldOfView,
                                                                                    fScaledWidth/fScaledHeight,
                                                                                    abs(fZNear),
                                                                                    IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));
     end else begin
-     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(-fFOV,
+     ViewLeft.ProjectionMatrix:=TpvMatrix4x4.CreatePerspectiveRightHandedOneToZero(-FieldOfView,
                                                                                    fScaledWidth/fScaledHeight,
                                                                                    abs(fZNear),
                                                                                    IfThen(IsInfinite(fZFar),1024.0,abs(fZFar)));

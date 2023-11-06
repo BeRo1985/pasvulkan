@@ -91,6 +91,7 @@ type { TpvScene3DRendererCameraPreset }
             end;
             PShaderData=^TShaderData;
       private
+       fFieldOfView:TpvFloat;
        fSensorSize:TpvVector2;
        fSensorSizeProperty:TpvVector2Property;
        fFocalLength:TpvFloat;
@@ -113,6 +114,9 @@ type { TpvScene3DRendererCameraPreset }
        destructor Destroy; override;
        procedure Assign(const aFrom:TpvScene3DRendererCameraPreset);
       published
+
+       // Field of view, > 0.0 = horizontal and < 0.0 = vertical
+       property FieldOfView:TpvFloat read fFieldOfView write fFieldOfView;
 
        // Sensor size at digital cameras in mm (or film size at analog cameras)
        property SensorSize:TpvVector2Property read fSensorSizeProperty;
@@ -171,6 +175,7 @@ implementation
 constructor TpvScene3DRendererCameraPreset.Create;
 begin
  inherited Create;
+ fFieldOfView:=53.13010235415598;
  fSensorSize:=TpvVector2.Create(36.0,24.0); // 36 x 24 mm
  fSensorSizeProperty:=TpvVector2Property.Create(@fSensorSize);
  fFocalLength:=50.0;
@@ -196,6 +201,7 @@ end;
 
 procedure TpvScene3DRendererCameraPreset.Assign(const aFrom:TpvScene3DRendererCameraPreset);
 begin
+ fFieldOfView:=aFrom.fFieldOfView;
  fSensorSize:=aFrom.fSensorSize;
  fFocalLength:=aFrom.fFocalLength;
  fFlangeFocalDistance:=aFrom.fFlangeFocalDistance;
