@@ -556,7 +556,7 @@ begin
 
  fScene3D.ResetFrame(InFlightFrameIndex);
 
- fRendererInstance.Reset(InFlightFrameIndex);
+ fRendererInstance.ResetFrame(InFlightFrameIndex);
 
  fRendererInstance.CameraViewMatrices[InFlightFrameIndex]:=InFlightFrameState^.CameraViewMatrix;
 
@@ -564,7 +564,7 @@ begin
   fRendererInstance.AddView(InFlightFrameIndex,InFlightFrameState^.View);
  end;
 
- fRendererInstance.DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter);
+ fRendererInstance.PrepareFrame(InFlightFrameIndex,pvApplication.DrawFrameCounter);
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
@@ -590,17 +590,17 @@ begin
 
  fScene3D.BeginFrame(InFlightFrameIndex);
 
- fRendererInstance.Transfer(InFlightFrameIndex);
+ fRendererInstance.UploadFrame(InFlightFrameIndex);
 
- fScene3D.UploadFrameData(InFlightFrameIndex);
+ fScene3D.UploadFrame(InFlightFrameIndex);
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
- fRendererInstance.Draw(pvApplication.SwapChainImageIndex,
-                        pvApplication.DrawInFlightFrameIndex,
-                        pvApplication.DrawFrameCounter,
-                        aWaitSemaphore,
-                        aWaitFence);
+ fRendererInstance.DrawFrame(pvApplication.SwapChainImageIndex,
+                             pvApplication.DrawInFlightFrameIndex,
+                             pvApplication.DrawFrameCounter,
+                             aWaitSemaphore,
+                             aWaitFence);
 
  fScene3D.EndFrame(InFlightFrameIndex);
 

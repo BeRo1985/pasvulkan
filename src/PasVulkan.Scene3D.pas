@@ -2714,7 +2714,7 @@ type EpvScene3D=class(Exception);
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
        function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
-       procedure UploadFrameData(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                const aViewBaseIndex:TpvSizeInt;
                                const aCountViews:TpvSizeInt;
@@ -2739,7 +2739,7 @@ type EpvScene3D=class(Exception);
        function NeedFlush(const aInFlightFrameIndex:TpvSizeInt):boolean;
        function Flush(const aInFlightFrameIndex:TpvSizeInt;
                       const aCommandBuffer:TpvVulkanCommandBuffer):boolean;
-       procedure UpdateDebugPrimitives(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UploadDebugPrimitives(const aInFlightFrameIndex:TpvSizeInt);
        procedure DrawDebugPrimitives(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                      const aPreviousInFlightFrameIndex:TpvSizeInt;
                                      const aInFlightFrameIndex:TpvSizeInt;
@@ -2750,7 +2750,7 @@ type EpvScene3D=class(Exception);
                                      const aCommandBuffer:TpvVulkanCommandBuffer;
                                      const aPipelineLayout:TpvVulkanPipelineLayout;
                                      const aOnSetRenderPassResources:TOnSetRenderPassResources);
-       procedure UpdateParticles(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UploadParticles(const aInFlightFrameIndex:TpvSizeInt);
        procedure DrawParticles(const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                const aPreviousInFlightFrameIndex:TpvSizeInt;
                                const aInFlightFrameIndex:TpvSizeInt;
@@ -18699,10 +18699,14 @@ begin
  end;
 end;}
 
-procedure TpvScene3D.UploadFrameData(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
 var ViewIndex:TpvSizeInt;
     Size:TVkDeviceSize;
 begin
+
+ UploadDebugPrimitives(aInFlightFrameIndex);
+
+ UploadParticles(aInFlightFrameIndex);
 
  if fViews.Count>0 then begin
   Move(fViews.Items[0],
@@ -19186,7 +19190,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UpdateDebugPrimitives(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.UploadDebugPrimitives(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0 then begin
   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
@@ -19235,7 +19239,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UpdateParticles(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.UploadParticles(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0 then begin
   fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,

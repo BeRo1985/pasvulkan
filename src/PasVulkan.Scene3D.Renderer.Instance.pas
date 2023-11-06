@@ -589,14 +589,14 @@ type { TpvScene3DRendererInstance }
        procedure AcquireVolatileResources;
        procedure ReleaseVolatileResources;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-       procedure Reset(const aInFlightFrameIndex:TpvInt32);
+       procedure ResetFrame(const aInFlightFrameIndex:TpvInt32);
        function AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
        function AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
        function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
-       procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-       procedure Transfer(const aInFlightFrameIndex:TpvInt32);
-       procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+       procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+       procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
+       procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
        property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4 read GetCameraViewMatrix write SetCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
@@ -3902,7 +3902,7 @@ begin
  fCameraViewMatrices[aInFlightFrameIndex]:=aCameraViewMatrix;
 end;
 
-procedure TpvScene3DRendererInstance.Reset(const aInFlightFrameIndex:TpvInt32);
+procedure TpvScene3DRendererInstance.ResetFrame(const aInFlightFrameIndex:TpvInt32);
 begin
  fViews[aInFlightFrameIndex].Count:=0;
  fCountRealViews[aInFlightFrameIndex]:=0;
@@ -4484,7 +4484,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+procedure TpvScene3DRendererInstance.PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
 var Index:TpvSizeInt;
     InFlightFrameState:PInFlightFrameState;
     ViewLeft,ViewRight:TpvScene3D.TView;
@@ -4786,26 +4786,13 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.Transfer(const aInFlightFrameIndex:TpvInt32);
+procedure TpvScene3DRendererInstance.UploadFrame(const aInFlightFrameIndex:TpvInt32);
 var Index:TpvSizeInt;
 begin
 
  for Index:=0 to fViews[aInFlightFrameIndex].Count-1 do begin
   Renderer.Scene3D.AddView(fViews[aInFlightFrameIndex].Items[Index]);
  end;
-
-end;
-
-procedure TpvScene3DRendererInstance.Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-const MinDeltaTime=1.0/480.0; // 480 Hz
-      MaxDeltaTime=1.0/1.0; // 1 Hz
-      LN2=0.6931471805599453;
-var t:TpvDouble;
-begin
-
- Renderer.Scene3D.UpdateDebugPrimitives(aInFlightFrameIndex);
-
- Renderer.Scene3D.UpdateParticles(aInFlightFrameIndex);
 
  Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                             Renderer.Scene3D.VulkanStagingCommandBuffer,
@@ -4829,6 +4816,15 @@ begin
   end;
 
  end;
+
+end;
+
+procedure TpvScene3DRendererInstance.DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+const MinDeltaTime=1.0/480.0; // 480 Hz
+      MaxDeltaTime=1.0/1.0; // 1 Hz
+      LN2=0.6931471805599453;
+var t:TpvDouble;
+begin
 
  FillChar(fFrustumClusterGridPushConstants,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),#0);
  fFrustumClusterGridPushConstants.TileSizeX:=fFrustumClusterGridTileSizeX;
