@@ -578,15 +578,17 @@ begin
 
  fScene3D.BeginFrame(InFlightFrameIndex);
 
- fRendererInstance.Reset;
+ fRendererInstance.Reset(InFlightFrameIndex);
 
  fRendererInstance.CameraViewMatrix:=InFlightFrameState^.CameraViewMatrix;
 
  if InFlightFrameState^.UseView then begin
-  fRendererInstance.AddView(InFlightFrameState^.View);
+  fRendererInstance.AddView(InFlightFrameIndex,InFlightFrameState^.View);
  end;
 
  fRendererInstance.DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter);
+
+ fRendererInstance.Transfer(InFlightFrameIndex);
 
  fScene3D.UploadFrameData(InFlightFrameIndex);
 

@@ -453,8 +453,8 @@ type { TpvScene3DRendererInstance }
        fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
       private
-       fViews:TpvScene3D.TViews;
-       fCountRealViews:TpvInt32;
+       fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
+       fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
       private
@@ -585,18 +585,18 @@ type { TpvScene3DRendererInstance }
        procedure AcquireVolatileResources;
        procedure ReleaseVolatileResources;
        procedure Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
-       procedure Reset;
-       function AddView(const aView:TpvScene3D.TView):TpvInt32;
-       function AddViews(const aViews:array of TpvScene3D.TView):TpvInt32;
+       procedure Reset(const aInFlightFrameIndex:TpvInt32);
+       function AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
+       function AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
        function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
        procedure DrawUpdate(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
+       procedure Transfer(const aInFlightFrameIndex:TpvInt32);
        procedure Draw(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
        property CameraViewMatrix:TpvMatrix4x4 read fCameraViewMatrix write fCameraViewMatrix;
-       property PointerToCameraViewMatrix:PpvMatrix4x4 read fPointerToCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
-       property Views:TpvScene3D.TViews read fViews;
+       //property Views:TpvScene3D.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
@@ -968,8 +968,8 @@ begin
  if IsInfinite(fInstance.fZFar) then begin
   RealZNear:=0.1;
   RealZFar:=16.0;
-  for Index:=0 to fInstance.fCountRealViews-1 do begin
-   fViewMatrix:=fInstance.fViews.Items[Index].ViewMatrix.SimpleInverse;
+  for Index:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
+   fViewMatrix:=fInstance.fViews[aInFlightFrameIndex].Items[Index].ViewMatrix.SimpleInverse;
    if fSceneWorldSpaceSphere.Contains(fViewMatrix.Translation.xyz) then begin
     if fSceneWorldSpaceSphere.RayIntersection(fViewMatrix.Translation.xyz,-fViewMatrix.Forwards.xyz,Value) then begin
      Value:=Value*2.0;
@@ -1018,13 +1018,13 @@ begin
  end;
  CascadedShadowMaps^[CountCascadedShadowMapCascades-1].SplitDepths.y:=Max(ZFar,RealZFar);
 
- for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
-  fProjectionMatrix:=fInstance.fViews.Items[ViewIndex].ProjectionMatrix;
+ for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
+  fProjectionMatrix:=fInstance.fViews[aInFlightFrameIndex].Items[ViewIndex].ProjectionMatrix;
   if DoNeedRefitNearFarPlanes then begin
    fProjectionMatrix[2,2]:=RealZFar/(RealZNear-RealZFar);
    fProjectionMatrix[3,2]:=(-(RealZNear*RealZFar))/(RealZFar-RealZNear);
   end;
-  fInverseViewProjectionMatrices[ViewIndex]:=(fInstance.fViews.Items[ViewIndex].ViewMatrix*fProjectionMatrix).Inverse;
+  fInverseViewProjectionMatrices[ViewIndex]:=(fInstance.fViews[aInFlightFrameIndex].Items[ViewIndex].ViewMatrix*fProjectionMatrix).Inverse;
  end;
 
  fLightForwardVector:=-Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
@@ -1059,7 +1059,7 @@ begin
  fLightViewMatrix.RawComponents[3,2]:=0.0;
  fLightViewMatrix.RawComponents[3,3]:=1.0;
 
- for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
+ for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
   for Index:=0 to 7 do begin
    fWorldSpaceFrustumCorners[ViewIndex,Index]:=fInverseViewProjectionMatrices[ViewIndex].MulHomogen(TpvVector4.InlineableCreate(FrustumCorners[Index],1.0)).xyz;
   end;
@@ -1072,7 +1072,7 @@ begin
   MinZ:=CascadedShadowMap^.SplitDepths.x;
   MaxZ:=CascadedShadowMap^.SplitDepths.y;
 
-  for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
+  for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
    for Index:=0 to 3 do begin
     fTemporaryFrustumCorners[ViewIndex,Index]:=fWorldSpaceFrustumCorners[ViewIndex,Index].Lerp(fWorldSpaceFrustumCorners[ViewIndex,Index+4],(MinZ-RealZNear)/(RealZFar-RealZNear));
     fTemporaryFrustumCorners[ViewIndex,Index+4]:=fWorldSpaceFrustumCorners[ViewIndex,Index].Lerp(fWorldSpaceFrustumCorners[ViewIndex,Index+4],(MaxZ-RealZNear)/(RealZFar-RealZNear));
@@ -1082,19 +1082,19 @@ begin
   FrustumCenterX:=0.0;
   FrustumCenterY:=0.0;
   FrustumCenterZ:=0.0;
-  for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
+  for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
    for Index:=0 to 7 do begin
     FrustumCenterX:=FrustumCenterX+fTemporaryFrustumCorners[ViewIndex,Index].x;
     FrustumCenterY:=FrustumCenterY+fTemporaryFrustumCorners[ViewIndex,Index].y;
     FrustumCenterZ:=FrustumCenterZ+fTemporaryFrustumCorners[ViewIndex,Index].z;
    end;
   end;
-  fFrustumCenter.x:=FrustumCenterX/(8.0*fInstance.fCountRealViews);
-  fFrustumCenter.y:=FrustumCenterY/(8.0*fInstance.fCountRealViews);
-  fFrustumCenter.z:=FrustumCenterZ/(8.0*fInstance.fCountRealViews);
+  fFrustumCenter.x:=FrustumCenterX/(8.0*fInstance.fCountRealViews[aInFlightFrameIndex]);
+  fFrustumCenter.y:=FrustumCenterY/(8.0*fInstance.fCountRealViews[aInFlightFrameIndex]);
+  fFrustumCenter.z:=FrustumCenterZ/(8.0*fInstance.fCountRealViews[aInFlightFrameIndex]);
 
   FrustumRadius:=0.0;
-  for ViewIndex:=0 to fInstance.fCountRealViews-1 do begin
+  for ViewIndex:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
    for Index:=0 to 7 do begin
     FrustumRadius:=Max(FrustumRadius,fTemporaryFrustumCorners[ViewIndex,Index].DistanceTo(fFrustumCenter));
    end;
@@ -1157,9 +1157,9 @@ begin
  fInstance.fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[2]:=0;
  fInstance.fCascadedShadowMapUniformBuffers[aInFlightFrameIndex].MetaData[3]:=0;
 
- InFlightFrameState^.CascadedShadowMapViewIndex:={Renderer.Scene3D}fInstance.AddView(CascadedShadowMaps^[0].View);
+ InFlightFrameState^.CascadedShadowMapViewIndex:={Renderer.Scene3D}fInstance.AddView(aInFlightFrameIndex,CascadedShadowMaps^[0].View);
  for CascadedShadowMapIndex:=1 to CountCascadedShadowMapCascades-1 do begin
-  {Renderer.Scene3D}fInstance.AddView(CascadedShadowMaps^[CascadedShadowMapIndex].View);
+  {Renderer.Scene3D}fInstance.AddView(aInFlightFrameIndex,CascadedShadowMaps^[CascadedShadowMapIndex].View);
  end;
 
  InFlightFrameState^.CountCascadedShadowMapViews:=CountCascadedShadowMapCascades;
@@ -1504,6 +1504,10 @@ begin
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fViews[InFlightFrameIndex].Initialize;
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
   fVulkanRenderSemaphores[InFlightFrameIndex]:=TpvVulkanSemaphore.Create(Renderer.VulkanDevice);
 
@@ -1648,6 +1652,10 @@ var InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
 begin
 
  FreeAndNil(fFrameGraph);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fViews[InFlightFrameIndex].Finalize;
+ end;
 
  FreeAndNil(fCascadedShadowMapBuilder);
 
@@ -3866,20 +3874,20 @@ begin
  fFrameGraph.Update(aInFlightFrameIndex,aFrameCounter);
 end;
 
-procedure TpvScene3DRendererInstance.Reset;
+procedure TpvScene3DRendererInstance.Reset(const aInFlightFrameIndex:TpvInt32);
 begin
- fViews.Count:=0;
- fCountRealViews:=0;
+ fViews[aInFlightFrameIndex].Count:=0;
+ fCountRealViews[aInFlightFrameIndex]:=0;
 end;
 
-function TpvScene3DRendererInstance.AddView(const aView:TpvScene3D.TView):TpvInt32;
+function TpvScene3DRendererInstance.AddView(const aInFlightFrameIndex:TpvInt32;const aView:TpvScene3D.TView):TpvInt32;
 begin
- result:=fViews.Add(aView);
+ result:=fViews[aInFlightFrameIndex].Add(aView);
 end;
 
-function TpvScene3DRendererInstance.AddViews(const aViews:array of TpvScene3D.TView):TpvInt32;
+function TpvScene3DRendererInstance.AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
 begin
- result:=fViews.Add(aViews);
+ result:=fViews[aInFlightFrameIndex].Add(aViews);
 end;
 
 procedure TpvScene3DRendererInstance.CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
@@ -4253,9 +4261,9 @@ begin
                                              CubeMapDirections[Index,1]);//}
   View.InverseViewMatrix:=View.ViewMatrix.Inverse;
   if Index=0 then begin
-   InFlightFrameState^.ReflectionProbeViewIndex:=fViews.Add(View);
+   InFlightFrameState^.ReflectionProbeViewIndex:=fViews[aInFlightFrameIndex].Add(View);
   end else begin
-   fViews.Add(View);
+   fViews[aInFlightFrameIndex].Add(View);
   end;
  end;
 
@@ -4343,7 +4351,7 @@ begin
 
  InFlightFrameState^.TopDownSkyOcclusionMapViewProjectionMatrix:=TopDownViewProjectionMatrix;
 
- InFlightFrameState^.TopDownSkyOcclusionMapViewIndex:=fViews.Add(View);
+ InFlightFrameState^.TopDownSkyOcclusionMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
  InFlightFrameState^.CountTopDownSkyOcclusionMapViews:=1;
 
 end;
@@ -4443,7 +4451,7 @@ begin
  InFlightFrameState^.ReflectiveShadowMapScale:=Scale;
  InFlightFrameState^.ReflectiveShadowMapExtents:=Extents;
 
- InFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews.Add(View);
+ InFlightFrameState^.ReflectiveShadowMapViewIndex:=fViews[aInFlightFrameIndex].Add(View);
  InFlightFrameState^.CountReflectiveShadowMapViews:=1;
 
 end;
@@ -4457,7 +4465,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
- if fViews.Count=0 then begin
+ if fViews[aInFlightFrameIndex].Count=0 then begin
 
   ViewMatrix:=fCameraViewMatrix;
 
@@ -4473,9 +4481,9 @@ begin
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
-   InFlightFrameState^.FinalViewIndex:=fViews.Add([ViewLeft,ViewRight]);
+   InFlightFrameState^.FinalViewIndex:=fViews[aInFlightFrameIndex].Add([ViewLeft,ViewRight]);
 
-   fCountRealViews:=fViews.Count;
+   fCountRealViews[aInFlightFrameIndex]:=fViews[aInFlightFrameIndex].Count;
    InFlightFrameState^.CountFinalViews:=2;
 
    ViewLeft.ViewMatrix:=fVirtualReality.GetPositionMatrix(0);
@@ -4488,7 +4496,7 @@ begin
    ViewRight.InverseViewMatrix:=ViewRight.ViewMatrix.Inverse;
    ViewRight.InverseProjectionMatrix:=ViewRight.ProjectionMatrix.Inverse;
 
-   InFlightFrameState^.HUDViewIndex:=fViews.Add([ViewLeft,ViewRight]);
+   InFlightFrameState^.HUDViewIndex:=fViews[aInFlightFrameIndex].Add([ViewLeft,ViewRight]);
    InFlightFrameState^.CountHUDViews:=2;
 
    InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
@@ -4543,13 +4551,13 @@ begin
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
-   InFlightFrameState^.FinalViewIndex:=fViews.Add(ViewLeft);
+   InFlightFrameState^.FinalViewIndex:=fViews[aInFlightFrameIndex].Add(ViewLeft);
 
    InFlightFrameState^.MainViewMatrix:=ViewLeft.ViewMatrix;
 
    InFlightFrameState^.MainViewProjectionMatrix:=ViewLeft.ViewMatrix*ViewLeft.ProjectionMatrix;
 
-   fCountRealViews:=fViews.Count;
+   fCountRealViews[aInFlightFrameIndex]:=fViews[aInFlightFrameIndex].Count;
    InFlightFrameState^.CountFinalViews:=1;
 
    ViewLeft.ViewMatrix:=TpvMatrix4x4.Identity;
@@ -4557,7 +4565,7 @@ begin
    ViewLeft.InverseViewMatrix:=ViewLeft.ViewMatrix.Inverse;
    ViewLeft.InverseProjectionMatrix:=ViewLeft.ProjectionMatrix.Inverse;
 
-   InFlightFrameState^.HUDViewIndex:=fViews.Add(ViewLeft);
+   InFlightFrameState^.HUDViewIndex:=fViews[aInFlightFrameIndex].Add(ViewLeft);
    InFlightFrameState^.CountHUDViews:=1;
 
   end;
@@ -4597,39 +4605,36 @@ begin
 
  CalculateCascadedShadowMaps(aInFlightFrameIndex);
 
- for Index:=0 to fViews.Count-1 do begin
-  Renderer.Scene3D.AddView(fViews.Items[Index]);
- end;
- InFlightFrameState^.CountViews:=fViews.Count;
+ InFlightFrameState^.CountViews:=fViews[aInFlightFrameIndex].Count;
 
- InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+ InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
 
  if InFlightFrameState^.CountCascadedShadowMapViews>0 then begin
-  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.CascadedShadowMapRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountReflectionProbeViews>0 then begin
-  InFlightFrameState^.ReflectionProbeRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+  InFlightFrameState^.ReflectionProbeRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
-  InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+  InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
-  InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+  InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=-1;
  end;
 
  if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
-  InFlightFrameState^.VoxelizationRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
+  InFlightFrameState^.VoxelizationRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.VoxelizationRenderPassIndex:=-1;
  end;
@@ -4731,6 +4736,16 @@ begin
                           true);
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
+
+end;
+
+procedure TpvScene3DRendererInstance.Transfer(const aInFlightFrameIndex:TpvInt32);
+var Index:TpvSizeInt;
+begin
+
+ for Index:=0 to fViews[aInFlightFrameIndex].Count-1 do begin
+  Renderer.Scene3D.AddView(fViews[aInFlightFrameIndex].Items[Index]);
+ end;
 
 end;
 

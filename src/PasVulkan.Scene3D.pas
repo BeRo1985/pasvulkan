@@ -2626,7 +2626,7 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfos:array[0..MaxInFlightFrames-1] of TpvScene3D.TImageInfos;
        fInFlightFrameImageInfoImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       fRenderPassIndexCounter:TPasMPInt32;
+       fRenderPassIndexCounter:array[0..MaxInFlightFrames-1] of TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
        fPrimaryShadowMapLightDirection:TpvVector3;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
@@ -2699,8 +2699,8 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
-       procedure ResetRenderPasses;
-       function AcquireRenderPassIndex:TpvSizeInt;
+       procedure ResetRenderPasses(const aInFlightFrameIndex:TpvSizeInt);
+       function AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareGPUUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -17907,14 +17907,14 @@ begin
  result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
 end;
 
-procedure TpvScene3D.ResetRenderPasses;
+procedure TpvScene3D.ResetRenderPasses(const aInFlightFrameIndex:TpvSizeInt);
 begin
- TPasMPInterlocked.Write(fRenderPassIndexCounter,0);
+ TPasMPInterlocked.Write(fRenderPassIndexCounter[aInFlightFrameIndex],0);
 end;
 
-function TpvScene3D.AcquireRenderPassIndex:TpvSizeInt;
+function TpvScene3D.AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
 begin
- result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter);
+ result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter[aInFlightFrameIndex]);
 end;
 
 procedure TpvScene3D.Check(const aInFlightFrameIndex:TpvSizeInt);
@@ -18654,7 +18654,7 @@ begin
 
  ClearViews;
 
- ResetRenderPasses;
+ ResetRenderPasses(aInFlightFrameIndex);
 
  fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex].Reset;
 
