@@ -119,6 +119,7 @@ void main(){
   }
 
   memoryBarrierShared();
+  groupMemoryBarrier();
   barrier(); 
 
   if (invocationIndex >= pushConstants.countDrawIndexedIndirectCommands) {
