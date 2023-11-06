@@ -554,6 +554,18 @@ begin
 
  fScene3D.PrepareGPUUpdate(InFlightFrameIndex);
 
+ fScene3D.ResetFrame(InFlightFrameIndex);
+
+ fRendererInstance.Reset(InFlightFrameIndex);
+
+ fRendererInstance.CameraViewMatrices[InFlightFrameIndex]:=InFlightFrameState^.CameraViewMatrix;
+
+ if InFlightFrameState^.UseView then begin
+  fRendererInstance.AddView(InFlightFrameIndex,InFlightFrameState^.View);
+ end;
+
+ fRendererInstance.DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter);
+
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
  inherited Update(aDeltaTime);
@@ -577,18 +589,6 @@ begin
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
  fScene3D.BeginFrame(InFlightFrameIndex);
-
- fScene3D.ResetFrame(InFlightFrameIndex);
-
- fRendererInstance.Reset(InFlightFrameIndex);
-
- fRendererInstance.CameraViewMatrices[InFlightFrameIndex]:=InFlightFrameState^.CameraViewMatrix;
-
- if InFlightFrameState^.UseView then begin
-  fRendererInstance.AddView(InFlightFrameIndex,InFlightFrameState^.View);
- end;
-
- fRendererInstance.DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter);
 
  fRendererInstance.Transfer(InFlightFrameIndex);
 
