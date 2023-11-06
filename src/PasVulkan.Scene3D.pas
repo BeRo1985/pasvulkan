@@ -19274,8 +19274,6 @@ begin
 
   fSetGlobalResourcesDone[aRenderPassIndex]:=false;
 
-  First:=true;
-
   for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
     for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
@@ -19303,6 +19301,8 @@ begin
    fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
    fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
   end;
+
+  First:=true;
 
   for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
 
