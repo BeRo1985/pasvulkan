@@ -2711,8 +2711,7 @@ type EpvScene3D=class(Exception);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt);
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
        function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
-       procedure UpdateViews(const aInFlightFrameIndex:TpvSizeInt);
-       procedure UpdateInstances(const aInFlightFrameIndex:TpvSizeInt);
+       procedure UploadFrameData(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                const aViewBaseIndex:TpvSizeInt;
                                const aCountViews:TpvSizeInt;
@@ -18683,9 +18682,11 @@ begin
  end;
 end;
 
-procedure TpvScene3D.UpdateViews(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.UploadFrameData(const aInFlightFrameIndex:TpvSizeInt);
 var ViewIndex:TpvSizeInt;
+    Size:TVkDeviceSize;
 begin
+
  if fViews.Count>0 then begin
   for ViewIndex:=0 to fViews.Count-1 do begin
    fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex]:=fPotentiallyVisibleSet.GetNodeIndexByPosition(Views.Items[ViewIndex].InverseViewMatrix.Translation.xyz);
@@ -18733,11 +18734,6 @@ begin
    end;
   end;
  end;
-end;
-
-procedure TpvScene3D.UpdateInstances(const aInFlightFrameIndex:TpvSizeInt);
-var Size:TVkDeviceSize;
-begin
 
  if fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 

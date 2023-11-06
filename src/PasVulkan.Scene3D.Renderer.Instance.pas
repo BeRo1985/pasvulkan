@@ -4593,14 +4593,6 @@ begin
  end;
  InFlightFrameState^.CountViews:=fViews.Count;
 
- Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
-                                            Renderer.Scene3D.VulkanStagingCommandBuffer,
-                                            Renderer.Scene3D.VulkanStagingFence,
-                                            fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
-                                            fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex],
-                                            0,
-                                            SizeOf(TCascadedShadowMapUniformBuffer));
-
  InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex;
 
  if InFlightFrameState^.CountCascadedShadowMapViews>0 then begin
@@ -4635,6 +4627,14 @@ begin
 
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
+
+ Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                            Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                            Renderer.Scene3D.VulkanStagingFence,
+                                            fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
+                                            fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex],
+                                            0,
+                                            SizeOf(TCascadedShadowMapUniformBuffer));
 
  case Renderer.GlobalIlluminationMode of
 

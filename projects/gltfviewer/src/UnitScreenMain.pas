@@ -588,9 +588,7 @@ begin
 
  fRendererInstance.DrawUpdate(InFlightFrameIndex,pvApplication.DrawFrameCounter);
 
- fScene3D.UpdateViews(InFlightFrameIndex);
-
- fScene3D.UpdateInstances(InFlightFrameIndex);
+ fScene3D.UploadFrameData(InFlightFrameIndex);
 
  fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
 
