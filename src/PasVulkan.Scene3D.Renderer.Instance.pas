@@ -570,7 +570,9 @@ type { TpvScene3DRendererInstance }
       private
        procedure CalculateCascadedShadowMaps(const aInFlightFrameIndex:TpvInt32);
        procedure UpdateGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
+       procedure UploadGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
        procedure UpdateGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
+       procedure UploadGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
        procedure AddCameraReflectionProbeViews(const aInFlightFrameIndex:TpvInt32);
        procedure AddTopDownSkyOcclusionMapView(const aInFlightFrameIndex:TpvInt32);
        procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
@@ -3956,16 +3958,6 @@ begin
 
   end;
 
-{ if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
-   pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
-                                                   Renderer.Scene3D.VulkanStagingCommandBuffer,
-                                                   Renderer.Scene3D.VulkanStagingFence,
-                                                   GlobalIlluminationRadianceHintsUniformBufferData^,
-                                                   fGlobalIlluminationRadianceHintsUniformBuffers[aInFlightFrameIndex],
-                                                   0,
-                                                   SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData));
-  end;
-
  end;
 
  begin
@@ -4005,16 +3997,6 @@ begin
 // GlobalIlluminationRadianceHintsRSMUniformBufferData^.ScaleFactors.RawComponents[CascadeIndex]:=(4.0*(InFlightFrameState^.ReflectiveShadowMapExtents.x*InFlightFrameState^.ReflectiveShadowMapExtents.y))/(CascadedVolumeCascade.fCellSize*CascadedVolumeCascade.fCellSize*GlobalIlluminationRadianceHintsRSMUniformBufferData^.CountSamples);
   end;
 
-{ if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
-   pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
-                                                   Renderer.Scene3D.VulkanStagingCommandBuffer,
-                                                   Renderer.Scene3D.VulkanStagingFence,
-                                                   GlobalIlluminationRadianceHintsRSMUniformBufferData^,
-                                                   fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex],
-                                                   0,
-                                                   SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData));
-  end;
-
  end;
 
  if Renderer.GlobalIlluminationCaching then begin
@@ -4023,7 +4005,36 @@ begin
 
 end;
 
+procedure TpvScene3DRendererInstance.UploadGlobalIlluminationCascadedRadianceHints(const aInFlightFrameIndex:TpvInt32);
+begin
+
+{if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
+  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                                  Renderer.Scene3D.VulkanStagingFence,
+                                                  fGlobalIlluminationRadianceHintsUniformBufferDataArray[aInFlightFrameIndex],
+                                                  fGlobalIlluminationRadianceHintsUniformBuffers[aInFlightFrameIndex],
+                                                  0,
+                                                  SizeOf(TGlobalIlluminationRadianceHintsUniformBufferData));
+ end;
+
+{if fGlobalIlluminationRadianceHintsFirsts[aInFlightFrameIndex] then}begin
+  pvApplication.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                                  Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                                  Renderer.Scene3D.VulkanStagingFence,
+                                                  fGlobalIlluminationRadianceHintsRSMUniformBufferDataArray[aInFlightFrameIndex],
+                                                  fGlobalIlluminationRadianceHintsRSMUniformBuffers[aInFlightFrameIndex],
+                                                  0,
+                                                  SizeOf(TGlobalIlluminationRadianceHintsRSMUniformBufferData));
+ end;
+end;
+
 procedure TpvScene3DRendererInstance.UpdateGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
+begin
+ fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Update(aInFlightFrameIndex);
+end;
+
+procedure TpvScene3DRendererInstance.UploadGlobalIlluminationCascadedVoxelConeTracing(const aInFlightFrameIndex:TpvInt32);
 var CascadeIndex:TpvSizeInt;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:PGlobalIlluminationCascadedVoxelConeTracingUniformBufferData;
@@ -4034,8 +4045,6 @@ var CascadeIndex:TpvSizeInt;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
-
- fGlobalIlluminationCascadedVoxelConeTracingCascadedVolumes.Update(aInFlightFrameIndex);
 
  GlobalIlluminationCascadedVoxelConeTracingUniformBufferData:=@fGlobalIlluminationCascadedVoxelConeTracingUniformBufferDataArray[aInFlightFrameIndex];
 
@@ -4628,14 +4637,6 @@ begin
  InFlightFrameState^.Jitter.xy:=GetJitterOffset(aFrameCounter);
  InFlightFrameState^.Jitter.zw:=GetJitterOffset(aFrameCounter-1);
 
- Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
-                                            Renderer.Scene3D.VulkanStagingCommandBuffer,
-                                            Renderer.Scene3D.VulkanStagingFence,
-                                            fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
-                                            fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex],
-                                            0,
-                                            SizeOf(TCascadedShadowMapUniformBuffer));
-
  case Renderer.GlobalIlluminationMode of
 
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
@@ -4729,10 +4730,6 @@ begin
                           true,
                           true);
 
- Renderer.Scene3D.UpdateDebugPrimitives(aInFlightFrameIndex);
-
- Renderer.Scene3D.UpdateParticles(aInFlightFrameIndex);
-
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 
 end;
@@ -4743,6 +4740,33 @@ const MinDeltaTime=1.0/480.0; // 480 Hz
       LN2=0.6931471805599453;
 var t:TpvDouble;
 begin
+
+ Renderer.Scene3D.UpdateDebugPrimitives(aInFlightFrameIndex);
+
+ Renderer.Scene3D.UpdateParticles(aInFlightFrameIndex);
+
+ Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                            Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                            Renderer.Scene3D.VulkanStagingFence,
+                                            fCascadedShadowMapUniformBuffers[aInFlightFrameIndex],
+                                            fCascadedShadowMapVulkanUniformBuffers[aInFlightFrameIndex],
+                                            0,
+                                            SizeOf(TCascadedShadowMapUniformBuffer));
+
+ case Renderer.GlobalIlluminationMode of
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
+   UploadGlobalIlluminationCascadedRadianceHints(aInFlightFrameIndex);
+  end;
+
+  TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
+   UploadGlobalIlluminationCascadedVoxelConeTracing(aInFlightFrameIndex);
+  end;
+
+  else begin
+  end;
+
+ end;
 
  FillChar(fFrustumClusterGridPushConstants,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),#0);
  fFrustumClusterGridPushConstants.TileSizeX:=fFrustumClusterGridTileSizeX;
