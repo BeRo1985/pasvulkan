@@ -108,6 +108,8 @@ type { TpvScene3DRendererPassesDepthOfFieldBokehComputePass }
 
 implementation
 
+uses PasVulkan.Scene3D.Renderer.CameraPreset;
+
 { TpvScene3DRendererPassesDepthOfFieldBokehComputePass }
 
 constructor TpvScene3DRendererPassesDepthOfFieldBokehComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
@@ -218,14 +220,17 @@ end;
 procedure TpvScene3DRendererPassesDepthOfFieldBokehComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var PushConstants:TpvScene3DRendererPassesDepthOfFieldBokehComputePass.TPushConstants;
     MemoryBarrier:TVkMemoryBarrier;
+    CameraPreset:TpvScene3DRendererCameraPreset;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
- PushConstants.Size:=fInstance.CameraPreset.BlurKernelSize;
- PushConstants.FFactor:=fInstance.CameraPreset.FNumber;
- PushConstants.Ngon:=fInstance.CameraPreset.Ngon;
+ CameraPreset:=fInstance.CameraPresets[aInFlightFrameIndex];
+
+ PushConstants.Size:=CameraPreset.BlurKernelSize;
+ PushConstants.FFactor:=CameraPreset.FNumber;
+ PushConstants.Ngon:=CameraPreset.Ngon;
  PushConstants.PhiShutterMax:=HalfPI;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,

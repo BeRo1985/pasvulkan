@@ -116,6 +116,8 @@ type { TpvScene3DRendererPassesDepthOfFieldBruteforceRenderPass }
 
 implementation
 
+uses PasVulkan.Scene3D.Renderer.CameraPreset;
+
 { TpvScene3DRendererPassesDepthOfFieldBruteforceRenderPass }
 
 constructor TpvScene3DRendererPassesDepthOfFieldBruteforceRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
@@ -358,14 +360,16 @@ end;
 procedure TpvScene3DRendererPassesDepthOfFieldBruteforceRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var //InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     PushConstants:TpvScene3DRendererPassesDepthOfFieldBruteforceRenderPass.TPushConstants;
+    CameraPreset:TpvScene3DRendererCameraPreset;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 //InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
- PushConstants.MaxCoC:=fInstance.CameraPreset.MaxCoC;
- PushConstants.FFactor:=fInstance.CameraPreset.FNumber;
- PushConstants.Ngon:=fInstance.CameraPreset.Ngon;
+ CameraPreset:=fInstance.CameraPresets[aInFlightFrameIndex];
+ PushConstants.MaxCoC:=CameraPreset.MaxCoC;
+ PushConstants.FFactor:=CameraPreset.FNumber;
+ PushConstants.Ngon:=CameraPreset.Ngon;
  PushConstants.DownSampleFactor:=2.0;
- PushConstants.BlurKernelSize:=fInstance.CameraPreset.BlurKernelSize;
+ PushConstants.BlurKernelSize:=CameraPreset.BlurKernelSize;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,

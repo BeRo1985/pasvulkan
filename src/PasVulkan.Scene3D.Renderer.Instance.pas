@@ -449,7 +449,7 @@ type { TpvScene3DRendererInstance }
        fInFlightFrameStates:TInFlightFrameStates;
        fPointerToInFlightFrameStates:PInFlightFrameStates;
        fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
-       fCameraPreset:TpvScene3DRendererCameraPreset;
+       fCameraPresets:array[0..MaxInFlightFrames-1] of TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
       private
        fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
@@ -576,8 +576,10 @@ type { TpvScene3DRendererInstance }
        procedure AddTopDownSkyOcclusionMapView(const aInFlightFrameIndex:TpvInt32);
        procedure AddReflectiveShadowMapView(const aInFlightFrameIndex:TpvInt32);
       private
-       function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4;
-       procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4);
+       function GetCameraPreset(const aInFlightFrameIndex:TpvInt32):TpvScene3DRendererCameraPreset; inline;
+      private
+       function GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4; inline;
+       procedure SetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32;const aCameraViewMatrix:TpvMatrix4x4); inline;
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
@@ -601,7 +603,7 @@ type { TpvScene3DRendererInstance }
        //property Views:TpvScene3D.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       published
-       property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
+       property CameraPresets[const aInFlightFrameIndex:TpvInt32]:TpvScene3DRendererCameraPreset read GetCameraPreset;
       public
        property InFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps read fInFlightFrameMustRenderGIMaps;
       public
@@ -1412,7 +1414,9 @@ begin
 
  fVirtualReality:=aVirtualReality;
 
- fCameraPreset:=TpvScene3DRendererCameraPreset.Create;
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fCameraPresets[InFlightFrameIndex]:=TpvScene3DRendererCameraPreset.Create;
+ end;
 
  fUseDebugBlit:=false;
 
@@ -1740,7 +1744,9 @@ begin
 
  FreeAndNil(fPasses);
 
- FreeAndNil(fCameraPreset);
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fCameraPresets[InFlightFrameIndex]);
+ end;
 
  inherited Destroy;
 end;
@@ -3284,7 +3290,9 @@ begin
  fScaledWidth:=Max(1,round(fSizeFactor*fWidth));
  fScaledHeight:=Max(1,round(fSizeFactor*fHeight));
 
- fCameraPreset.MaxCoC:=((fCameraPreset.BlurKernelSize*4.0)+6.0)/fScaledHeight;
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fCameraPresets[InFlightFrameIndex].MaxCoC:=((fCameraPresets[InFlightFrameIndex].BlurKernelSize*4.0)+6.0)/fScaledHeight;
+ end;
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
@@ -3874,6 +3882,11 @@ end;
 procedure TpvScene3DRendererInstance.Update(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
 begin
  fFrameGraph.Update(aInFlightFrameIndex,aFrameCounter);
+end;
+
+function TpvScene3DRendererInstance.GetCameraPreset(const aInFlightFrameIndex:TpvInt32):TpvScene3DRendererCameraPreset;
+begin
+ result:=fCameraPresets[aInFlightFrameIndex];
 end;
 
 function TpvScene3DRendererInstance.GetCameraViewMatrix(const aInFlightFrameIndex:TpvInt32):TpvMatrix4x4;

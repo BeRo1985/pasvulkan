@@ -390,7 +390,7 @@ var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
- PushConstants.BokehChromaticAberration:=fInstance.CameraPreset.BokehChromaticAberration;
+ PushConstants.BokehChromaticAberration:=fInstance.CameraPresets[aInFlightFrameIndex].BokehChromaticAberration;
  PushConstants.Debug:=0;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,

@@ -117,6 +117,8 @@ type { TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
 
 implementation
 
+uses PasVulkan.Scene3D.Renderer.CameraPreset;
+
 { TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass }
 
 constructor TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
@@ -389,15 +391,17 @@ end;
 procedure TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     PushConstants:TpvScene3DRendererPassesDepthOfFieldPrepareRenderPass.TPushConstants;
+    CameraPreset:TpvScene3DRendererCameraPreset;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
  PushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
- PushConstants.FocalLength:=fInstance.CameraPreset.FocalLength;
- PushConstants.FocalPlaneDistance:=fInstance.CameraPreset.FocalPlaneDistance;
- PushConstants.FNumber:=fInstance.CameraPreset.FNumber;
- PushConstants.SensorSizeY:=fInstance.CameraPreset.SensorSize.y;
- PushConstants.UseAutoFocus:=ord(fInstance.CameraPreset.AutoFocus) and 1;
+ CameraPreset:=fInstance.CameraPresets[aInFlightFrameIndex];
+ PushConstants.FocalLength:=CameraPreset.FocalLength;
+ PushConstants.FocalPlaneDistance:=CameraPreset.FocalPlaneDistance;
+ PushConstants.FNumber:=CameraPreset.FNumber;
+ PushConstants.SensorSizeY:=CameraPreset.SensorSize.y;
+ PushConstants.UseAutoFocus:=ord(CameraPreset.AutoFocus) and 1;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
