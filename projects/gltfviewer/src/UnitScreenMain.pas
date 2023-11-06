@@ -552,9 +552,9 @@ begin
   fUpdateLock.Release;
  end;
 
- fScene3D.PrepareGPUUpdate(InFlightFrameIndex);
-
  fScene3D.ResetFrame(InFlightFrameIndex);
+
+ fScene3D.PrepareFrame(InFlightFrameIndex);
 
  fRendererInstance.ResetFrame(InFlightFrameIndex);
 
