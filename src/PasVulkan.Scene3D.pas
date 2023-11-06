@@ -1351,6 +1351,17 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchItemBuckets=^TDrawChoreographyBatchItemBuckets;
             TDrawChoreographyBatchItemRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchItemBuckets;
             PDrawChoreographyBatchItemRenderPassBuckets=^TDrawChoreographyBatchItemRenderPassBuckets;
+            TGPUCullDrawIndexedIndirectCommand=packed record
+             case boolean of
+              false:(
+                BoundingSphere:TpvVector4;                                //  16 16
+                DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand; // +20 36
+              );
+              true:(
+               Alignment:array[0..47] of TpvUInt8;
+              );
+            end;
+            PGPUCullDrawIndexedIndirectCommand=^TGPUCullDrawIndexedIndirectCommand;
             { TVulkanLongTermStaticBufferData }
             TVulkanLongTermStaticBufferData=class
              private

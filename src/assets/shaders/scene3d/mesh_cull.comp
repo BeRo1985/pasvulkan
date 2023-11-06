@@ -1,0 +1,179 @@
+#version 450 core
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint baseDrawIndexedIndirectCommandIndex;
+  uint countDrawIndexedIndirectCommands;
+  uint drawCallIndex;
+  uint baseViewIndex;
+  uint countViews;
+} pushConstants;
+
+struct DrawIndexedIndirectCommand {
+	uint indexCount;
+  uint instanceCount;
+  uint firstIndex;
+  int vertexOffset;
+  uint firstInstance;
+  uint padding0;
+  uint padding1;
+  uint padding2;
+};
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 0, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256
+} uView;
+
+layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCommands {
+  DrawIndexedIndirectCommand commands[];
+} inputDrawIndexedIndirectCommands;
+
+layout(set = 0, binding = 2, std430) readonly buffer InputBoundingSpheres {
+  vec4 boundingSpheres[];
+} inputBoundingSpheres;
+
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounter {
+  uint counter;
+} outputDrawIndexedIndirectCommandCounter;
+
+layout(set = 0, binding = 4, std430) buffer OutputDrawIndexedIndirectCommandCounts {
+  uint count[];
+} outputDrawIndexedIndirectCommandCounts;
+
+layout(set = 0, binding = 5, std430) buffer OutputDrawIndexedIndirectCommands {
+  DrawIndexedIndirectCommand commands[];
+} outputDrawIndexedIndirectCommands;
+
+layout(set = 0, binding = 6) uniform sampler2DArray uTextureDepth;
+
+// 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
+bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 aabb){
+
+	if (C.z < (r + znear)){
+		return false;
+  }
+
+	vec2 cx = -C.xz;
+	vec2 vx = vec2(sqrt(dot(cx, cx) - (r * r)), r);
+	vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
+	vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
+
+	vec2 cy = -C.yz;
+	vec2 vy = vec2(sqrt(dot(cy, cy) - (r * r)), r);
+	vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
+	vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
+
+	aabb = vec4((minx.x / minx.y) * P00, (miny.x / miny.y) * P11, (maxx.x / maxx.y) * P00, (maxy.x / maxy.y) * P11);
+	aabb = fma(aabb.xwzy, vec4(0.5), vec4(0.5)); // clip space -> uv space
+
+	return true;
+}
+
+shared mat4 viewMatrices[8];
+shared vec4 inverseProjectionMatrixZData[8];
+shared float zNears[8]; 
+shared vec2 p00p11[8];
+shared vec4 frustums[8];
+
+void main(){
+
+  uint invocationIndex = gl_LocalInvocationID.x;
+
+  uint countViews = min(pushConstants.countViews, 8); // Maximal 8 views at once
+
+  if(invocationIndex < countViews){
+    
+    uint viewIndex = pushConstants.baseViewIndex + invocationIndex;
+
+    viewMatrices[invocationIndex] = uView.views[viewIndex].viewMatrix;
+
+    mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
+
+    inverseProjectionMatrixZData[invocationIndex] = vec4(uView.views[viewIndex].inverseProjectionMatrix[2].zw, uView.views[viewIndex].inverseProjectionMatrix[3].zw);
+
+    // Get z near from projection matrix
+    zNears[invocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
+
+    p00p11[invocationIndex] = vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
+
+    mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
+
+    frustums[invocationIndex] = vec4(
+      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
+    );
+
+  }
+
+  memoryBarrierShared();
+  barrier(); 
+
+  if (invocationIndex >= pushConstants.countDrawIndexedIndirectCommands) {
+    return;
+  }
+
+  vec4 boundingSphere = inputBoundingSpheres.boundingSpheres[invocationIndex];
+
+  // Only cull when sphere has a positive radius, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
+  // directly to the output buffer in that case.
+  if(boundingSphere.w > 0.0){
+ 
+    uint isDrawIndexedIndirectCommandVisibleBits = 0u;
+
+    for(uint viewIndex = 0u, bit = 1u; viewIndex < countViews; viewIndex++, bit <<= 1u){
+
+      vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+
+      vec4 frustum = frustums[viewIndex];
+
+      bool visible = (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) - frustum.x)) > -viewSpaceBoundingSphere.w) &&
+                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) - frustum.z)) > -viewSpaceBoundingSphere.w);
+
+      if(visible){
+
+        vec4 aabb;
+
+        if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[invocationIndex], p00p11[invocationIndex].x, p00p11[invocationIndex].y, aabb)){
+
+          vec2 size = vec2(aabb.zw - aabb.xy) * textureSize(uTextureDepth, 0).xy;
+          float level = floor(log2(max(size.x, size.y))); 
+
+          vec2 depthZ = fma(
+            inverseProjectionMatrixZData[invocationIndex].xy, 
+            textureLod(uTextureDepth, vec3((aabb.xy + aabb.zw) * 0.5, float(viewIndex)), level).xx, 
+            inverseProjectionMatrixZData[invocationIndex].zw
+          );
+          visible = (viewSpaceBoundingSphere.z - viewSpaceBoundingSphere.w) >= (depthZ.x / depthZ.y);
+
+        }
+
+      }
+
+      isDrawIndexedIndirectCommandVisibleBits |= visible ? bit : 0u;
+
+    }
+
+    if(isDrawIndexedIndirectCommandVisibleBits == 0){
+      return;
+    }
+
+  }
+
+  outputDrawIndexedIndirectCommands.commands[pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounter.counter, 1u)] = inputDrawIndexedIndirectCommands.commands[pushConstants.baseDrawIndexedIndirectCommandIndex + invocationIndex];
+
+  atomicAdd(outputDrawIndexedIndirectCommandCounts.count[pushConstants.drawCallIndex], 1u);
+
+}

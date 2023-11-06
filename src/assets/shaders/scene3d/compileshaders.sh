@@ -111,6 +111,8 @@ compileshaderarguments=(
   "-V mesh.comp -o ${tempPath}/mesh_comp.spv"
   "-V mesh.comp -DRAYTRACING -o ${tempPath}/mesh_raytracing_comp.spv"
 
+  "-V mesh_cull.comp -o ${tempPath}/mesh_cull_comp.spv"
+
   "-V mesh.vert -o ${tempPath}/mesh_vert.spv"
   "-V mesh.vert -DVELOCITY -o ${tempPath}/mesh_velocity_vert.spv"
   "-V mesh.vert -DVOXELIZATION -o ${tempPath}/mesh_voxelization_vert.spv"
