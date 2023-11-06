@@ -18654,8 +18654,6 @@ begin
 
  ClearViews;
 
- ResetRenderPasses(aInFlightFrameIndex);
-
  fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex].Reset;
 
 end;

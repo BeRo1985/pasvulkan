@@ -578,6 +578,8 @@ begin
 
  fScene3D.BeginFrame(InFlightFrameIndex);
 
+ fScene3D.ResetRenderPasses(InFlightFrameIndex);
+
  fRendererInstance.Reset(InFlightFrameIndex);
 
  fRendererInstance.CameraViewMatrices[InFlightFrameIndex]:=InFlightFrameState^.CameraViewMatrix;
