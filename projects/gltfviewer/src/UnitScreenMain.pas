@@ -580,7 +580,7 @@ begin
 
  fRendererInstance.Reset(InFlightFrameIndex);
 
- fRendererInstance.CameraViewMatrix:=InFlightFrameState^.CameraViewMatrix;
+ fRendererInstance.CameraViewMatrices[InFlightFrameIndex]:=InFlightFrameState^.CameraViewMatrix;
 
  if InFlightFrameState^.UseView then begin
   fRendererInstance.AddView(InFlightFrameIndex,InFlightFrameState^.View);
