@@ -594,8 +594,6 @@ begin
 
  fScene3D.UploadFrame(InFlightFrameIndex);
 
- fRenderer.Flush(InFlightFrameIndex,aWaitSemaphore);
-
  fRendererInstance.DrawFrame(pvApplication.SwapChainImageIndex,
                              pvApplication.DrawInFlightFrameIndex,
                              pvApplication.DrawFrameCounter,
