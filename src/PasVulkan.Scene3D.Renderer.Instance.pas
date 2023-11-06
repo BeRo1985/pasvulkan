@@ -452,6 +452,7 @@ type { TpvScene3DRendererInstance }
        fUseDebugBlit:boolean;
       private
        fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
+       fPotentiallyVisibleSetViewNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
        fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
       private
        fVulkanRenderSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
@@ -4687,12 +4688,17 @@ begin
 
  end;
 
+ for Index:=0 to fViews[aInFlightFrameIndex].Count-1 do begin
+  fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex,Index]:=Renderer.Scene3D.PotentiallyVisibleSet.GetNodeIndexByPosition(fViews[aInFlightFrameIndex].Items[Index].InverseViewMatrix.Translation.xyz);
+ end;
+
  // Final viewport(s) (and voxelization viewport)
  if InFlightFrameState^.CountFinalViews>0 then begin
 
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ViewRenderPassIndex,
                            fViews[aInFlightFrameIndex],
+                           fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
                            InFlightFrameState^.FinalViewIndex,
                            InFlightFrameState^.CountFinalViews,
                            fScaledWidth,
@@ -4705,6 +4711,7 @@ begin
    Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                             InFlightFrameState^.VoxelizationRenderPassIndex,
                             fViews[aInFlightFrameIndex],
+                            fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
                             InFlightFrameState^.FinalViewIndex,
                             Min(InFlightFrameState^.CountFinalViews,1),
                             Renderer.GlobalIlluminationVoxelGridSize,
@@ -4721,6 +4728,7 @@ begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ReflectionProbeRenderPassIndex,
                            fViews[aInFlightFrameIndex],
+                           fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
                            InFlightFrameState^.ReflectionProbeViewIndex,
                            InFlightFrameState^.CountReflectionProbeViews,
                            fReflectionProbeWidth,
@@ -4736,6 +4744,7 @@ begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex,
                            fViews[aInFlightFrameIndex],
+                           fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
                            InFlightFrameState^.TopDownSkyOcclusionMapViewIndex,
                            InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                            fTopDownSkyOcclusionMapWidth,
@@ -4750,6 +4759,7 @@ begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ReflectiveShadowMapRenderPassIndex,
                            fViews[aInFlightFrameIndex],
+                           fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
                            InFlightFrameState^.ReflectiveShadowMapViewIndex,
                            InFlightFrameState^.CountReflectiveShadowMapViews,
                            fReflectiveShadowMapWidth,
@@ -4763,6 +4773,7 @@ begin
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                           InFlightFrameState^.CascadedShadowMapRenderPassIndex,
                           fViews[aInFlightFrameIndex],
+                          fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
                           InFlightFrameState^.CascadedShadowMapViewIndex,
                           InFlightFrameState^.CountCascadedShadowMapViews,
                           fCascadedShadowMapWidth,

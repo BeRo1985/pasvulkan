@@ -680,7 +680,7 @@ type EpvScene3D=class(Exception);
               fBitmapSize:TpvUInt32;
               fBitmap:TBitmap;
               fPasMPInstance:TPasMP;
-              fViewNodeIndices:TViewNodeIndices;
+//            fViewNodeIndices:TViewNodeIndices;
               function GetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex):boolean;
               procedure SetNodeVisibility(const aNodeAIndex,aNodeBIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;const aVisibility:boolean);
               function RayCastTriangle(const aUserData:TpvPtrInt;const aRayOrigin,aRayDirection:TpvVector3;out aTime:TpvFloat;out aStop:boolean):boolean;
@@ -1922,7 +1922,7 @@ type EpvScene3D=class(Exception);
                             OverwriteWeightsSum:TpvDoubleDynamicArray;
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
-                            VisibleBitmap:TpvUInt32;
+                            VisibleBitmap:array[0..MaxInFlightFrames-1] of TpvUInt32;
                             Light:TpvScene3D.TLight;
                             WorkMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
@@ -2293,6 +2293,7 @@ type EpvScene3D=class(Exception);
                      procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
                      procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                        const aRenderPassIndex:TpvSizeInt;
+                                       const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                        const aViewBaseIndex:TpvSizeInt;
                                        const aCountViews:TpvSizeInt;
                                        const aFrustums:TpvFrustumDynamicArray;
@@ -2429,6 +2430,7 @@ type EpvScene3D=class(Exception);
               procedure ConstructDrawChoreographyBatchItems;
               procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                 const aRenderPassIndex:TpvSizeInt;
+                                const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                 const aViewBaseIndex:TpvSizeInt;
                                 const aCountViews:TpvSizeInt;
                                 const aFrustums:TpvFrustumDynamicArray;
@@ -2711,6 +2713,7 @@ type EpvScene3D=class(Exception);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt);
        function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
        function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
+//     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrameData(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                const aViewBaseIndex:TpvSizeInt;
@@ -2721,6 +2724,7 @@ type EpvScene3D=class(Exception);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                          const aRenderPassIndex:TpvSizeInt;
                          const aViews:TpvScene3D.TViews;
+                         const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                          const aViewBaseIndex:TpvSizeInt;
                          const aCountViews:TpvSizeInt;
                          const aViewPortWidth:TpvInt32;
@@ -3881,7 +3885,7 @@ begin
  fNodes:=TpvScene3D.TPotentiallyVisibleSet.TNodes.Create;
  fNodes.OwnsObjects:=true;
 
- FillChar(fViewNodeIndices,SizeOf(TViewNodeIndices),#$ff);
+//FillChar(fViewNodeIndices,SizeOf(TViewNodeIndices),#$ff);
 
 end;
 
@@ -12069,6 +12073,7 @@ end;
 
 procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aRenderPassIndex:TpvSizeInt;
+                                    const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                     const aViewBaseIndex:TpvSizeInt;
                                     const aCountViews:TpvSizeInt;
                                     const aFrustums:TpvFrustumDynamicArray;
@@ -12078,6 +12083,7 @@ begin
  for Instance in fInstances do begin
   Instance.Prepare(aInFlightFrameIndex,
                    aRenderPassIndex,
+                   aViewNodeIndices,
                    aViewBaseIndex,
                    aCountViews,
                    aFrustums,
@@ -16046,6 +16052,7 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRenderPassIndex:TpvSizeInt;
+                                              const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                                               const aViewBaseIndex:TpvSizeInt;
                                               const aCountViews:TpvSizeInt;
                                               const aFrustums:TpvFrustumDynamicArray;
@@ -16077,7 +16084,7 @@ var VisibleBit:TpvUInt32;
      if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
       PotentiallyVisible:=false;
       for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-       ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+       ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
        if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
         PotentiallyVisible:=true;
@@ -16112,7 +16119,7 @@ var VisibleBit:TpvUInt32;
     if ((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
        ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
        ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) then begin
-     TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap,VisibleBit);
+     TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap[aInFlightFrameIndex],VisibleBit);
      Node:=fGroup.fNodes[aNodeIndex];
      for NodeIndex:=0 to Node.fChildren.Count-1 do begin
       ProcessNode(Node.fChildren[NodeIndex].fIndex,Mask);
@@ -16165,7 +16172,7 @@ var VisibleBit:TpvUInt32;
       if PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
        PotentiallyVisible:=false;
        for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-        ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+        ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
         if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
            fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
          PotentiallyVisible:=true;
@@ -16214,7 +16221,7 @@ begin
      assigned(GlobalOnNodeFilter) then begin
 
    for NodeIndex:=0 to length(fNodes)-1 do begin
-    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+    TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap[aInFlightFrameIndex],not VisibleBit);
    end;
 
    Scene:=fActiveScenes[aInFlightFrameIndex];
@@ -16230,7 +16237,7 @@ begin
      if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
       PotentiallyVisible:=false;
       for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-       ViewPotentiallyVisibleSetNodeIndex:=fSceneInstance.fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex];
+       ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
        if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
         PotentiallyVisible:=true;
@@ -16251,7 +16258,7 @@ begin
   end else begin
 
    for NodeIndex:=0 to length(fNodes)-1 do begin
-    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap,VisibleBit);
+    TPasMPInterlocked.BitwiseOr(fNodes[NodeIndex].VisibleBitmap[aInFlightFrameIndex],VisibleBit);
    end;
 
   end;
@@ -16261,7 +16268,7 @@ begin
  end else begin
 
   for NodeIndex:=0 to length(fNodes)-1 do begin
-   TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap,not VisibleBit);
+   TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap[aInFlightFrameIndex],not VisibleBit);
   end;
 
   fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,aRenderPassIndex]:=0;
@@ -16426,7 +16433,7 @@ begin
 
      InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
 
-     if (InstanceNode^.VisibleBitmap and VisibleBit)<>0 then begin
+     if (InstanceNode^.VisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0 then begin
 
       DrawChoreographyBatchItems:=fSceneInstance.fDrawChoreographyBatchItemRenderPassBuckets[aRenderPassIndex,DrawChoreographyBatchItem.fPrimitiveTopology,DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,InstanceNode^.InverseFrontFaces]];
       DrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
@@ -18292,7 +18299,7 @@ procedure TpvScene3D.CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicA
                                               const aRoot:TpvSizeInt;
                                               const aVisibleBit:TPasMPUInt32;
                                               const aInFlightFrameIndex:TpvSizeInt);
- procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
+ procedure ProcessNode(const aNode:TpvSizeInt;const aMask:TpvUInt32);
  var Index:TpvSizeInt;
      TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
      Mask:TpvUInt32;
@@ -18685,15 +18692,19 @@ begin
  end;
 end;
 
+{procedure TpvScene3D.FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
+begin
+ for ViewIndex:=0 to fViews.Count-1 do begin
+  fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex]:=fPotentiallyVisibleSet.GetNodeIndexByPosition(Views.Items[ViewIndex].InverseViewMatrix.Translation.xyz);
+ end;
+end;}
+
 procedure TpvScene3D.UploadFrameData(const aInFlightFrameIndex:TpvSizeInt);
 var ViewIndex:TpvSizeInt;
     Size:TVkDeviceSize;
 begin
 
  if fViews.Count>0 then begin
-  for ViewIndex:=0 to fViews.Count-1 do begin
-   fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex]:=fPotentiallyVisibleSet.GetNodeIndexByPosition(Views.Items[ViewIndex].InverseViewMatrix.Translation.xyz);
-  end;
   Move(fViews.Items[0],
        fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
        fViews.Count*SizeOf(TpvScene3D.TView));
@@ -18870,6 +18881,7 @@ end;
 procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
                              const aViews:TpvScene3D.TViews;
+                             const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
                              const aViewBaseIndex:TpvSizeInt;
                              const aCountViews:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
@@ -18922,6 +18934,7 @@ begin
     if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
      Group.Prepare(aInFlightFrameIndex,
                    aRenderPassIndex,
+                   aViewNodeIndices,
                    aViewBaseIndex,
                    aCountViews,
                    Frustums,
