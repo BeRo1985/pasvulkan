@@ -379,8 +379,12 @@ type EpvVulkanException=class(Exception);
        fProperties:TVkPhysicalDeviceProperties;
        fMemoryProperties:TVkPhysicalDeviceMemoryProperties;
        fFeatures:TVkPhysicalDeviceFeatures;
-{      fVulkan11Features:TVkPhysicalDeviceVulkan11Features;
-       fVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;}
+       fVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+       fVulkan11Properties:TVkPhysicalDeviceVulkan11Properties;
+       fVulkan12Features:TVkPhysicalDeviceVulkan12Features;
+       fVulkan12Properties:TVkPhysicalDeviceVulkan12Properties;
+       fVulkan13Features:TVkPhysicalDeviceVulkan13Features;
+       fVulkan13Properties:TVkPhysicalDeviceVulkan13Properties;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
@@ -446,8 +450,12 @@ type EpvVulkanException=class(Exception);
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
        property Features:TVkPhysicalDeviceFeatures read fFeatures;
-{      property Vulkan11Features:TVkPhysicalDeviceVulkan11Features read fVulkan11Features;
-       property Vulkan11Properties:TVkPhysicalDeviceVulkan11Properties read fVulkan11Properties;}
+       property Vulkan11Features:TVkPhysicalDeviceVulkan11Features read fVulkan11Features;
+       property Vulkan11Properties:TVkPhysicalDeviceVulkan11Properties read fVulkan11Properties;
+       property Vulkan12Features:TVkPhysicalDeviceVulkan12Features read fVulkan12Features;
+       property Vulkan12Properties:TVkPhysicalDeviceVulkan12Properties read fVulkan12Properties;
+       property Vulkan13Features:TVkPhysicalDeviceVulkan13Features read fVulkan13Features;
+       property Vulkan13Properties:TVkPhysicalDeviceVulkan13Properties read fVulkan13Properties;
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
@@ -653,7 +661,9 @@ type EpvVulkanException=class(Exception);
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
-//     fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+       fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+       fPhysicalDeviceVulkan12Features:TVkPhysicalDeviceVulkan12Features;
+       fPhysicalDeviceVulkan13Features:TVkPhysicalDeviceVulkan13Features;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
@@ -8136,22 +8146,83 @@ begin
  FillChar(fProperties2KHR,SizeOf(TVkPhysicalDeviceProperties2KHR),#0);
  fProperties2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
 
-{FillChar(fVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
- fVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;}
+ begin
 
- FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
- fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+  FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
+  fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
 
-{if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+  FillChar(fVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
+  fVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+   fVulkan11Features.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fVulkan11Features;
+  end else begin
 
-  fVulkan11Features.pNext:=fFeatures2KHR.pNext;
-  fFeatures2KHR.pNext:=@fVulkan11Features;
+   if MultiviewSupportEnabled then begin
+    fMultiviewFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fMultiviewFeaturesKHR;
+   end;
 
- end else}begin
+  end;
 
-  if MultiviewSupportEnabled then begin
-   fMultiviewFeaturesKHR.pNext:=fFeatures2KHR.pNext;
-   fFeatures2KHR.pNext:=@fMultiviewFeaturesKHR;
+ end;
+
+ begin
+
+  FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
+  fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+
+  FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
+  fBufferDeviceAddressFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
+
+  FillChar(fHostQueryResetFeaturesEXT,SizeOf(TVkPhysicalDeviceHostQueryResetFeaturesEXT),#0);
+  fHostQueryResetFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+
+  FillChar(fVulkan12Features,SizeOf(TVkPhysicalDeviceVulkan12Features),#0);
+  fVulkan12Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+   fVulkan12Features.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fVulkan12Features;
+  end else begin
+
+   if AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>0 then begin
+    fDescriptorIndexingFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fDescriptorIndexingFeaturesEXT;
+   end;
+
+   if AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>0 then begin
+    fBufferDeviceAddressFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fBufferDeviceAddressFeaturesKHR;
+   end;
+
+   begin
+    if AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0 then begin
+     fHostQueryResetFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+     fFeatures2KHR.pNext:=@fHostQueryResetFeaturesEXT;
+    end;
+   end;
+
+  end;
+
+ end;
+
+ begin
+
+  FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
+  fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
+
+  FillChar(fVulkan13Features,SizeOf(TVkPhysicalDeviceVulkan13Features),#0);
+  fVulkan13Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
+   fVulkan13Features.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fVulkan13Features;
+  end else begin
+
+   if AvailableExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>0 then begin
+    fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+    fFeatures2KHR.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
+   end;
+
   end;
 
  end;
@@ -8166,47 +8237,11 @@ begin
  end;
 
  begin
-  FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
-  fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>0 then begin
-   fDescriptorIndexingFeaturesEXT.pNext:=fFeatures2KHR.pNext;
-   fFeatures2KHR.pNext:=@fDescriptorIndexingFeaturesEXT;
-  end;
- end;
-
- begin
-  FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
-  fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>0 then begin
-   fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=fFeatures2KHR.pNext;
-   fFeatures2KHR.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
-  end;
- end;
-
- begin
   FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
   fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
   if AvailableExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>0 then begin
    fFragmentShaderInterlockFeaturesEXT.pNext:=fFeatures2KHR.pNext;
    fFeatures2KHR.pNext:=@fFragmentShaderInterlockFeaturesEXT;
-  end;
- end;
-
- begin
-  FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
-  fBufferDeviceAddressFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
-  if AvailableExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>0 then begin
-   fBufferDeviceAddressFeaturesKHR.pNext:=fFeatures2KHR.pNext;
-   fFeatures2KHR.pNext:=@fBufferDeviceAddressFeaturesKHR;
-  end;
- end;
-
- begin
-  FillChar(fHostQueryResetFeaturesEXT,SizeOf(TVkPhysicalDeviceHostQueryResetFeaturesEXT),#0);
-  fHostQueryResetFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
-  if AvailableExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0 then begin
-   fHostQueryResetFeaturesEXT.pNext:=fFeatures2KHR.pNext;
-   fFeatures2KHR.pNext:=@fHostQueryResetFeaturesEXT;
   end;
  end;
 
@@ -8262,22 +8297,64 @@ begin
   fInstance.Commands.GetPhysicalDeviceFeatures2(Handle,@fFeatures2KHR);
  end;
 
-{FillChar(fVulkan11Properties,SizeOf(TVkPhysicalDeviceVulkan11Properties),#0);
- fVulkan11Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;}
+ FillChar(fVulkan11Properties,SizeOf(TVkPhysicalDeviceVulkan11Properties),#0);
+ fVulkan11Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+  fVulkan11Properties.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fVulkan11Properties;
+ end;
+
+ FillChar(fVulkan12Properties,SizeOf(TVkPhysicalDeviceVulkan12Properties),#0);
+ fVulkan12Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+  fVulkan12Properties.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fVulkan12Properties;
+ end;
+
+ FillChar(fVulkan13Properties,SizeOf(TVkPhysicalDeviceVulkan13Properties),#0);
+ fVulkan13Properties.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
+  fVulkan13Properties.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fVulkan13Properties;
+ end;
 
  FillChar(fMultiviewPropertiesKHR,SizeOf(TVkPhysicalDeviceMultiviewPropertiesKHR),#0);
  fMultiviewPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
 
-{if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
-
-  fVulkan11Properties.pNext:=fProperties2KHR.pNext;
-  fProperties2KHR.pNext:=@fVulkan11Properties;
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
   fMultiviewFeaturesKHR.multiview:=fVulkan11Features.multiview;
   fMultiviewFeaturesKHR.multiviewGeometryShader:=fVulkan11Features.multiviewGeometryShader;
   fMultiviewFeaturesKHR.multiviewTessellationShader:=fVulkan11Features.multiviewTessellationShader;
 
- end else}begin
+  fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayDynamicIndexing:=fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayDynamicIndexing:=fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayDynamicIndexing:=fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderUniformBufferArrayNonUniformIndexing:=fVulkan12Features.shaderUniformBufferArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderSampledImageArrayNonUniformIndexing:=fVulkan12Features.shaderSampledImageArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderStorageBufferArrayNonUniformIndexing:=fVulkan12Features.shaderStorageBufferArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderStorageImageArrayNonUniformIndexing:=fVulkan12Features.shaderStorageImageArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayNonUniformIndexing:=fVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayNonUniformIndexing:=fVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayNonUniformIndexing:=fVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingUniformBufferUpdateAfterBind:=fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingSampledImageUpdateAfterBind:=fVulkan12Features.descriptorBindingSampledImageUpdateAfterBind;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingStorageImageUpdateAfterBind:=fVulkan12Features.descriptorBindingStorageImageUpdateAfterBind;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingStorageBufferUpdateAfterBind:=fVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingUniformTexelBufferUpdateAfterBind:=fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingStorageTexelBufferUpdateAfterBind:=fVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingUpdateUnusedWhilePending:=fVulkan12Features.descriptorBindingUpdateUnusedWhilePending;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingPartiallyBound:=fVulkan12Features.descriptorBindingPartiallyBound;
+  fDescriptorIndexingFeaturesEXT.descriptorBindingVariableDescriptorCount:=fVulkan12Features.descriptorBindingVariableDescriptorCount;
+  fDescriptorIndexingFeaturesEXT.runtimeDescriptorArray:=fVulkan12Features.runtimeDescriptorArray;
+
+  fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress:=fVulkan12Features.bufferDeviceAddress;
+  fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay:=fVulkan12Features.bufferDeviceAddressCaptureReplay;
+  fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=fVulkan12Features.bufferDeviceAddressMultiDevice;
+
+  fHostQueryResetFeaturesEXT.hostQueryReset:=fVulkan12Features.hostQueryReset;
+
+ end else begin
 
   if MultiviewSupportEnabled then begin
 
@@ -8286,6 +8363,10 @@ begin
 
   end;
 
+ end;
+
+ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
+  fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=fVulkan13Features.shaderDemoteToHelperInvocation;
  end;
 
  FillChar(fMultiDrawPropertiesEXT,SizeOf(TVkPhysicalDeviceMultiDrawPropertiesEXT),#0);
@@ -8316,12 +8397,11 @@ begin
   fInstance.Commands.GetPhysicalDeviceProperties2(Handle,@fProperties2KHR);
  end;
 
-{if MultiviewSupportEnabled then begin
-  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
-   fMultiviewPropertiesKHR.maxMultiviewViewCount:=fVulkan11Properties.maxMultiviewViewCount;
-   fMultiviewPropertiesKHR.maxMultiviewInstanceIndex:=fVulkan11Properties.maxMultiviewInstanceIndex;
-  end;
- end;}
+ if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) and
+    (fVulkan11Features.multiview<>VK_FALSE) then begin
+  fMultiviewPropertiesKHR.maxMultiviewViewCount:=fVulkan11Properties.maxMultiviewViewCount;
+  fMultiviewPropertiesKHR.maxMultiviewInstanceIndex:=fVulkan11Properties.maxMultiviewInstanceIndex;
+ end;
 
  fMultiView:=fMultiviewFeaturesKHR.multiview<>VK_FALSE;
  fMultiViewTessellationShader:=fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE;
@@ -9814,17 +9894,31 @@ begin
    InitializeNVIDIAAfterMath;
   end;
 
-{ if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
    FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
    fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+   fPhysicalDeviceVulkan11Features.storageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.storageBuffer16BitAccess;
+   fPhysicalDeviceVulkan11Features.uniformAndStorageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.uniformAndStorageBuffer16BitAccess;
+   fPhysicalDeviceVulkan11Features.storagePushConstant16:=PhysicalDevice.fVulkan11Features.storagePushConstant16;
+   fPhysicalDeviceVulkan11Features.storageInputOutput16:=PhysicalDevice.fVulkan11Features.storageInputOutput16;
    fPhysicalDeviceVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
    fPhysicalDeviceVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
    fPhysicalDeviceVulkan11Features.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
+   fPhysicalDeviceVulkan11Features.variablePointersStorageBuffer:=PhysicalDevice.fVulkan11Features.variablePointersStorageBuffer;
+   fPhysicalDeviceVulkan11Features.variablePointers:=PhysicalDevice.fVulkan11Features.variablePointers;
+   fPhysicalDeviceVulkan11Features.protectedMemory:=PhysicalDevice.fVulkan11Features.protectedMemory;
+   fPhysicalDeviceVulkan11Features.shaderDrawParameters:=PhysicalDevice.fVulkan11Features.shaderDrawParameters;
    fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
 
-  end else}begin
+   FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
+   fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+   fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fVulkan11Features.multiview;
+   fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
+   fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
+
+  end else begin
 
    FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
    fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
@@ -9839,6 +9933,10 @@ begin
     DeviceCreateInfo.pNext:=@fMultiviewFeaturesKHR;
    end;
 
+  end;
+
+  begin
+
    FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
    fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
    if (fEnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0) and
@@ -9848,35 +9946,27 @@ begin
     DeviceCreateInfo.pNext:=@fMultiDrawFeaturesEXT;
    end;
 
-   FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
-   fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-   if (fEnabledExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0) and
-      assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
-    fDescriptorIndexingFeaturesEXT:=PhysicalDevice.DescriptorIndexingFeaturesEXT;
-    fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
-   end;
+  end;
 
-   FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
-   fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-   if (fEnabledExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0) and
-      (PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE) then begin
-    fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation;
-    fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
-   end;
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
-   FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
-   fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
-   if (fEnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>=0) and
-      ((PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE) or
-       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE) or
-       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE)) then begin
-    fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock;
-    fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock;
-    fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock;
-    fFragmentShaderInterlockFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fFragmentShaderInterlockFeaturesEXT;
+   FillChar(fPhysicalDeviceVulkan12Features,SizeOf(TVkPhysicalDeviceVulkan12Features),#0);
+   fPhysicalDeviceVulkan12Features:=PhysicalDevice.fVulkan12Features;
+   fPhysicalDeviceVulkan12Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+   fPhysicalDeviceVulkan12Features.pNext:=DeviceCreateInfo.pNext;
+   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan12Features;
+
+  end else begin
+
+   begin
+    FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
+    fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+    if (fEnabledExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0) and
+       assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
+     fDescriptorIndexingFeaturesEXT:=PhysicalDevice.DescriptorIndexingFeaturesEXT;
+     fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
+    end;
    end;
 
    FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
@@ -9901,6 +9991,44 @@ begin
      fHostQueryResetFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
      DeviceCreateInfo.pNext:=@fHostQueryResetFeaturesEXT;
     end;
+   end;
+
+  end;
+
+  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
+
+   FillChar(fPhysicalDeviceVulkan13Features,SizeOf(TVkPhysicalDeviceVulkan13Features),#0);
+   fPhysicalDeviceVulkan13Features:=PhysicalDevice.fVulkan13Features;
+   fPhysicalDeviceVulkan13Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+   fPhysicalDeviceVulkan13Features.pNext:=DeviceCreateInfo.pNext;
+   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan13Features;
+
+  end else begin
+
+   FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
+   fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0) and
+      (PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE) then begin
+    fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation;
+    fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
+   end;
+
+  end;
+
+  begin
+
+   FillChar(fFragmentShaderInterlockFeaturesEXT,SizeOf(TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT),#0);
+   fFragmentShaderInterlockFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)>=0) and
+      ((PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE) or
+       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE) or
+       (PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE)) then begin
+    fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock;
+    fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock;
+    fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock;
+    fFragmentShaderInterlockFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fFragmentShaderInterlockFeaturesEXT;
    end;
 
    begin
