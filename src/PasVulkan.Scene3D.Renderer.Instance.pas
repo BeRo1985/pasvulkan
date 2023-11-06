@@ -4692,6 +4692,7 @@ begin
 
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ViewRenderPassIndex,
+                           fViews[aInFlightFrameIndex],
                            InFlightFrameState^.FinalViewIndex,
                            InFlightFrameState^.CountFinalViews,
                            fScaledWidth,
@@ -4703,6 +4704,7 @@ begin
   if InFlightFrameState^.VoxelizationRenderPassIndex>=0 then begin
    Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                             InFlightFrameState^.VoxelizationRenderPassIndex,
+                            fViews[aInFlightFrameIndex],
                             InFlightFrameState^.FinalViewIndex,
                             Min(InFlightFrameState^.CountFinalViews,1),
                             Renderer.GlobalIlluminationVoxelGridSize,
@@ -4718,6 +4720,7 @@ begin
  if InFlightFrameState^.CountReflectionProbeViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ReflectionProbeRenderPassIndex,
+                           fViews[aInFlightFrameIndex],
                            InFlightFrameState^.ReflectionProbeViewIndex,
                            InFlightFrameState^.CountReflectionProbeViews,
                            fReflectionProbeWidth,
@@ -4732,6 +4735,7 @@ begin
  if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex,
+                           fViews[aInFlightFrameIndex],
                            InFlightFrameState^.TopDownSkyOcclusionMapViewIndex,
                            InFlightFrameState^.CountTopDownSkyOcclusionMapViews,
                            fTopDownSkyOcclusionMapWidth,
@@ -4745,6 +4749,7 @@ begin
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                            InFlightFrameState^.ReflectiveShadowMapRenderPassIndex,
+                           fViews[aInFlightFrameIndex],
                            InFlightFrameState^.ReflectiveShadowMapViewIndex,
                            InFlightFrameState^.CountReflectiveShadowMapViews,
                            fReflectiveShadowMapWidth,
@@ -4757,6 +4762,7 @@ begin
  // Cascaded shadow map viewport(s)
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
                           InFlightFrameState^.CascadedShadowMapRenderPassIndex,
+                          fViews[aInFlightFrameIndex],
                           InFlightFrameState^.CascadedShadowMapViewIndex,
                           InFlightFrameState^.CountCascadedShadowMapViews,
                           fCascadedShadowMapWidth,

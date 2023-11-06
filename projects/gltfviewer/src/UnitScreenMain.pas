@@ -578,7 +578,7 @@ begin
 
  fScene3D.BeginFrame(InFlightFrameIndex);
 
- fScene3D.ResetRenderPasses(InFlightFrameIndex);
+ fScene3D.ResetFrame(InFlightFrameIndex);
 
  fRendererInstance.Reset(InFlightFrameIndex);
 

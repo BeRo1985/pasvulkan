@@ -2699,7 +2699,7 @@ type EpvScene3D=class(Exception);
        destructor Destroy; override;
        procedure Upload;
        procedure Unload;
-       procedure ResetRenderPasses(const aInFlightFrameIndex:TpvSizeInt);
+       procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
        function AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -2720,6 +2720,7 @@ type EpvScene3D=class(Exception);
                                const aFrustums:TpvFrustumDynamicArray);
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                          const aRenderPassIndex:TpvSizeInt;
+                         const aViews:TpvScene3D.TViews;
                          const aViewBaseIndex:TpvSizeInt;
                          const aCountViews:TpvSizeInt;
                          const aViewPortWidth:TpvInt32;
@@ -17907,10 +17908,22 @@ begin
  result:=TpvScene3D.TLight(Pointer(aUserData)).fLightItemIndex;
 end;
 
-procedure TpvScene3D.ResetRenderPasses(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
+var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
 begin
+
  TPasMPInterlocked.Write(fRenderPassIndexCounter[aInFlightFrameIndex],0);
+
+ GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
+ if GlobalVulkanInstanceMatrixDynamicArray^.Count<2 then begin
+  GlobalVulkanInstanceMatrixDynamicArray^.Count:=0;
+  GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
+  GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
+ end;
+ GlobalVulkanInstanceMatrixDynamicArray^.Count:=2;
+
 end;
+
 
 function TpvScene3D.AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
 begin
@@ -18640,14 +18653,6 @@ procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
 var GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
 begin
 
- GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
- if GlobalVulkanInstanceMatrixDynamicArray^.Count<2 then begin
-  GlobalVulkanInstanceMatrixDynamicArray^.Count:=0;
-  GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
-  GlobalVulkanInstanceMatrixDynamicArray^.Add(TpvMatrix4x4.Identity);
- end;
- GlobalVulkanInstanceMatrixDynamicArray^.Count:=2;
-
  ExecuteGPUUpdate(aInFlightFrameIndex);
 
  TransferViewsToPreviousViews;
@@ -18864,6 +18869,7 @@ end;
 
 procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aRenderPassIndex:TpvSizeInt;
+                             const aViews:TpvScene3D.TViews;
                              const aViewBaseIndex:TpvSizeInt;
                              const aCountViews:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
@@ -18898,7 +18904,7 @@ begin
     AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
 
     for Index:=0 to aCountViews-1 do begin
-     View:=@fGlobalVulkanViews[aInFlightFrameIndex].Items[aViewBaseIndex+Index];
+     View:=@aViews.Items[aViewBaseIndex+Index];
      Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
     end;
 
