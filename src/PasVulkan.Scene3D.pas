@@ -19404,8 +19404,23 @@ begin
 
        NewPipeline:=aGraphicsPipelines[PrimitiveTopology,FaceCullingMode];
        if Pipeline<>NewPipeline then begin
-        if fUseMultiIndirectDraw and assigned(Pipeline) then begin
-         VulkanFrameIndirectCommandBufferManager.Flush;
+        if assigned(Pipeline) then begin
+         if fUseMultiDraw then begin
+          if fVkMultiDrawIndexedInfoEXTDynamicArray.Count>0 then begin
+           fVulkanDevice.Commands.Commands.CmdDrawMultiIndexedEXT(aCommandBuffer.Handle,
+                                                                  fVkMultiDrawIndexedInfoEXTDynamicArray.Count,
+                                                                  @fVkMultiDrawIndexedInfoEXTDynamicArray.Items[0],
+                                                                  fVkMultiDrawIndexedInfoEXTInstancesCount,
+                                                                  fVkMultiDrawIndexedInfoEXTFirstInstance,
+                                                                  SizeOf(TVkMultiDrawIndexedInfoEXT),
+                                                                  nil);
+           fVkMultiDrawIndexedInfoEXTDynamicArray.Count:=0;
+           fVkMultiDrawIndexedInfoEXTFirstInstance:=0;
+           fVkMultiDrawIndexedInfoEXTInstancesCount:=1;
+          end;
+         end else if fUseMultiIndirectDraw then begin
+          VulkanFrameIndirectCommandBufferManager.Flush;
+         end;
         end;
         Pipeline:=NewPipeline;
         if assigned(Pipeline) then begin
