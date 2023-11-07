@@ -18942,6 +18942,7 @@ var Index:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     View:TpvScene3D.PView;
+    DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
 begin
 
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -19016,6 +19017,17 @@ begin
    Frustums:=nil;
   end;
 
+ end;
+
+ for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
+  for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
+   for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
+    DrawChoreographyBatchItems:=fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
+    if DrawChoreographyBatchItems.Count>0 then begin
+     DrawChoreographyBatchItems.IndexOrderSort;
+    end;
+   end;
+  end;
  end;
 
 end;
@@ -19389,8 +19401,6 @@ begin
       DrawChoreographyBatchItems:=fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
 
       if DrawChoreographyBatchItems.Count>0 then begin
-
-       DrawChoreographyBatchItems.IndexOrderSort;
 
        NewPipeline:=aGraphicsPipelines[PrimitiveTopology,FaceCullingMode];
        if Pipeline<>NewPipeline then begin
