@@ -15607,9 +15607,11 @@ begin
      Node:=fGroup.fNodes[Index];
      InstanceNode:=@fNodes[Index];
      if assigned(Node.fMesh) then begin
-     {if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
+     {
+      if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
        ProcessMorphSkinNode(Node,InstanceNode);
-      end else}begin
+      end else//}
+      begin
        InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
        InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
       end;
