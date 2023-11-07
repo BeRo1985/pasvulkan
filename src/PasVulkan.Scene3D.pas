@@ -12192,15 +12192,17 @@ procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
- for Instance in fInstances do begin
-  Instance.Prepare(aInFlightFrameIndex,
-                   aRenderPassIndex,
-                   aViewNodeIndices,
-                   aViewBaseIndex,
-                   aCountViews,
-                   aFrustums,
-                   aPotentiallyVisibleSetCulling,
-                   aMaterialAlphaModes);
+ if not fHeadless then begin
+  for Instance in fInstances do begin
+   Instance.Prepare(aInFlightFrameIndex,
+                    aRenderPassIndex,
+                    aViewNodeIndices,
+                    aViewBaseIndex,
+                    aCountViews,
+                    aFrustums,
+                    aPotentiallyVisibleSetCulling,
+                    aMaterialAlphaModes);
+  end;
  end;
 end;
 
