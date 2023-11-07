@@ -16250,10 +16250,6 @@ begin
 
   if assigned(Scene) then begin
 
-   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@fSceneInstance.fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
-
-   InstanceScene:=fScenes[Scene.Index];
-
    PotentiallyVisible:=true;
 
    DoCulling:=fGroup.fCulling and not fUseRenderInstances;
@@ -16274,6 +16270,10 @@ begin
    end;
 
    if PotentiallyVisible then begin
+
+    DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@fSceneInstance.fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+
+    InstanceScene:=fScenes[Scene.Index];
 
     Masks[-1]:=TpvUInt32($ffffffff);
 
