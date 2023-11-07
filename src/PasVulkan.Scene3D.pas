@@ -16239,7 +16239,7 @@ var ViewIndex,NodeIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,
     FirstInstance,InstancesCount:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-    Masks:array[-1..7] of TpvUInt32;
+    Masks:array[-1..15] of TpvUInt32;
     GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
