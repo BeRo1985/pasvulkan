@@ -16303,6 +16303,8 @@ begin
 
      SkipListItem:=@Scene.fSkipList[SkipListItemIndex];
 
+     Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
+
      InstanceNode:=@fNodes[SkipListItem^.NodeIndex];
 
      PotentiallyVisible:=true;
@@ -16348,8 +16350,6 @@ begin
       end;
 
      end;
-
-     Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
 
      if PotentiallyVisible and
         (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
