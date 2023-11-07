@@ -2265,7 +2265,6 @@ type EpvScene3D=class(Exception);
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
                      fBoundingBox:TpvAABB;
                      fBoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
-                     fWorstCaseStaticBoundingBox:TpvAABB;
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
