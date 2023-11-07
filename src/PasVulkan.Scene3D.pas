@@ -237,6 +237,7 @@ type EpvScene3D=class(Exception);
             PUInt32Vector4=^TUInt32Vector4;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
+            PSizeIntDynamicArray=^TSizeIntDynamicArray;
             TSizeIntDynamicArrayEx=array of TpvSizeInt;
             TView=packed record
              ViewMatrix:TpvMatrix4x4;
@@ -1938,7 +1939,6 @@ type EpvScene3D=class(Exception);
                             OverwriteWeightsSum:TpvDoubleDynamicArray;
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
-                            VisibleBitmap:array[0..MaxInFlightFrames-1] of TpvUInt32;
                             Light:TpvScene3D.TLight;
                             WorkMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
@@ -2322,7 +2322,8 @@ type EpvScene3D=class(Exception);
                                        const aViewBaseIndex:TpvSizeInt;
                                        const aCountViews:TpvSizeInt;
                                        const aFrustums:TpvFrustumDynamicArray;
-                                       const aPotentiallyVisibleSetCulling:boolean);
+                                       const aPotentiallyVisibleSetCulling:boolean;
+                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
                      procedure GetBakedMeshProcessMorphSkinNode(const aBakedMesh:TpvScene3D.TBakedMesh;
                                                                 const aNode:TpvScene3D.TGroup.TNode;
                                                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -2334,9 +2335,6 @@ type EpvScene3D=class(Exception);
                                                          const aRenderPassIndex:TpvSizeInt;
                                                          const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                          const aInFlightFrameIndex:TpvSizeInt);
-                     procedure BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
-                                         const aRenderPassIndex:TpvSizeInt;
-                                         const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
                     public
                      constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aHeadless:Boolean=false); reintroduce;
                      destructor Destroy; override;
@@ -2458,16 +2456,14 @@ type EpvScene3D=class(Exception);
                                 const aViewBaseIndex:TpvSizeInt;
                                 const aCountViews:TpvSizeInt;
                                 const aFrustums:TpvFrustumDynamicArray;
-                                const aPotentiallyVisibleSetCulling:boolean);
+                                const aPotentiallyVisibleSetCulling:boolean;
+                                const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
               procedure SetGroupResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
                                           const aRenderPassIndex:TpvSizeInt;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
               procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
-              procedure BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
-                                  const aRenderPassIndex:TpvSizeInt;
-                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
               function AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
@@ -12176,7 +12172,8 @@ procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                     const aViewBaseIndex:TpvSizeInt;
                                     const aCountViews:TpvSizeInt;
                                     const aFrustums:TpvFrustumDynamicArray;
-                                    const aPotentiallyVisibleSetCulling:boolean);
+                                    const aPotentiallyVisibleSetCulling:boolean;
+                                    const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
  for Instance in fInstances do begin
@@ -12186,7 +12183,8 @@ begin
                    aViewBaseIndex,
                    aCountViews,
                    aFrustums,
-                   aPotentiallyVisibleSetCulling);
+                   aPotentiallyVisibleSetCulling,
+                   aMaterialAlphaModes);
  end;
 end;
 
@@ -12207,20 +12205,6 @@ begin
  if assigned(fSceneInstance.fVulkanDevice) and not fHeadless then begin
   for Instance in fInstances do begin
    Instance.UpdateCachedVertices(aInFlightFrameIndex);
-  end;
- end;
-end;
-
-procedure TpvScene3D.TGroup.BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
-                                      const aRenderPassIndex:TpvSizeInt;
-                                      const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var Instance:TpvScene3D.TGroup.TInstance;
-begin
- if not fHeadless then begin
-  for Instance in fInstances do begin
-   Instance.BatchDraw(aInFlightFrameIndex,
-                      aRenderPassIndex,
-                      aMaterialAlphaModes);
   end;
  end;
 end;
@@ -16234,8 +16218,9 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aViewBaseIndex:TpvSizeInt;
                                               const aCountViews:TpvSizeInt;
                                               const aFrustums:TpvFrustumDynamicArray;
-                                              const aPotentiallyVisibleSetCulling:boolean);
-var ViewIndex,NodeIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,
+                                              const aPotentiallyVisibleSetCulling:boolean;
+                                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
+var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyBatchItemIndex,
     FirstInstance,InstancesCount:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -16247,11 +16232,9 @@ var ViewIndex,NodeIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     PotentiallyVisible,DoCulling:boolean;
     SkipListItem:TpvScene3D.TGroup.TScene.PSkipListItem;
+    DrawChoreographyBatchItemIndices:PSizeIntDynamicArray;
+    DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
 begin
-
- for NodeIndex:=0 to length(fNodes)-1 do begin
-  TPasMPInterlocked.BitwiseAnd(fNodes[NodeIndex].VisibleBitmap[aInFlightFrameIndex],not (TpvUInt32(1) shl aRenderPassIndex));
- end;
 
  FirstInstance:=0;
  InstancesCount:=0;
@@ -16347,20 +16330,35 @@ begin
 
      Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
 
-     PotentiallyVisible:=PotentiallyVisible and
-                         (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-                          ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-                          ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)));
+     if PotentiallyVisible and
+        (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+         ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+         ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
 
-     if PotentiallyVisible then begin
-
-      TPasMPInterlocked.BitwiseOr(InstanceNode^.VisibleBitmap[aInFlightFrameIndex],TpvUInt32(1) shl aRenderPassIndex);
+      DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
+      for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
+       DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex]];
+       if DrawChoreographyBatchItem.fMaterial.fVisible and
+          (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+         (DrawChoreographyBatchItem.fCountIndices>0) then begin
+        fSceneInstance.fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,
+                                                              aRenderPassIndex,
+                                                              DrawChoreographyBatchItem.fAlphaMode,
+                                                              DrawChoreographyBatchItem.fPrimitiveTopology,
+                                                              DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
+                                                                                          InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
+       end;
+      end;
 
       inc(SkipListItemIndex);
 
      end else begin
 
-      inc(SkipListItemIndex,Max(1,SkipListItem^.SkipCount));
+      if SkipListItem^.SkipCount<=0 then begin
+       break;
+      end else begin
+       inc(SkipListItemIndex,SkipListItem^.SkipCount);
+      end;
 
      end;
 
@@ -16498,70 +16496,6 @@ begin
  if not (fSetGroupInstanceResourcesDone[aRenderPassIndex] or fHeadless) then begin
   fSetGroupInstanceResourcesDone[aRenderPassIndex]:=true;
  end;
-end;
-
-procedure TpvScene3D.TGroup.TInstance.BatchDraw(const aInFlightFrameIndex:TpvSizeInt;
-                                                const aRenderPassIndex:TpvSizeInt;
-                                                const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask]);
-var DrawChoreographyBatchItemIndex,
-    CountDrawChoreographyBatchItems:TpvSizeInt;
-    Scene:TpvScene3D.TGroup.TScene;
-    InstanceScene:TpvScene3D.TGroup.TInstance.TScene;
-    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-    VisibleBit:TpvUInt32;
-    DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
-    DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
-begin
-
- VisibleBit:=TpvUInt32(1) shl aRenderPassIndex;
-
- if fActives[aInFlightFrameIndex] and
-    ((fVisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0) and
-    (fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,aRenderPassIndex]>0) and
-    not fHeadless then begin
-
-  fSetGroupInstanceResourcesDone[aRenderPassIndex]:=false;
-
-  Scene:=fActiveScenes[aInFlightFrameIndex];
-
-  if assigned(Scene) then begin
-
-   InstanceScene:=fScenes[Scene.fIndex];
-
-   DrawChoreographyBatchItemIndex:=0;
-   CountDrawChoreographyBatchItems:=Scene.fDrawChoreographyBatchItems.Count;
-
-   while DrawChoreographyBatchItemIndex<CountDrawChoreographyBatchItems do begin
-
-    DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-    inc(DrawChoreographyBatchItemIndex);
-
-    if DrawChoreographyBatchItem.fMaterial.fVisible and
-       (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-       (DrawChoreographyBatchItem.fCountIndices>0) then begin
-
-     InstanceNode:=@fNodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex];
-
-     if (InstanceNode^.VisibleBitmap[aInFlightFrameIndex] and VisibleBit)<>0 then begin
-
-      DrawChoreographyBatchItems:=fSceneInstance.fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,
-                                                                                        aRenderPassIndex,
-                                                                                        DrawChoreographyBatchItem.fAlphaMode,
-                                                                                        DrawChoreographyBatchItem.fPrimitiveTopology,
-                                                                                        DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
-                                                                                                                    InstanceNode^.InverseFrontFaces]];
-      DrawChoreographyBatchItems.Add(DrawChoreographyBatchItem);
-
-     end;
-
-    end;
-
-   end;
-
-  end;
-
- end;
-
 end;
 
 { TpvScene3D }
@@ -19059,11 +18993,8 @@ begin
                    aViewBaseIndex,
                    aCountViews,
                    Frustums,
-                   aPotentiallyVisibleSetCulling);
-
-     Group.BatchDraw(aInFlightFrameIndex,
-                     aRenderPassIndex,
-                     aMaterialAlphaModes);
+                   aPotentiallyVisibleSetCulling,
+                   aMaterialAlphaModes);
 
     end;
 
