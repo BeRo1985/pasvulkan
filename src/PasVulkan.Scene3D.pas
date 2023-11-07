@@ -9200,7 +9200,7 @@ var Index,
     TemporaryIndices,
     TemporaryTriangleIndices:TPasGLTFUInt32DynamicArray;
     SourceMeshPrimitiveMode:TPasGLTF.TMesh.TPrimitive.TMode;
-    Normal,Tangent,Bitangent,p1p0,p2p0:TpvVector3;
+    Normal,Tangent,Bitangent,p1p0,p2p0,TemporaryPosition:TpvVector3;
     p0,p1,p2:PpvVector3;
     t1t0,t2t0:TpvVector2;
     t0,t1,t2:PpvVector2;
@@ -9700,7 +9700,6 @@ begin
           end;
          end;
         end;
-        fBoundingSphere:=TpvSphere.CreateFromAABB(fBoundingBox);
        end;
       end;
 
@@ -9770,6 +9769,22 @@ begin
          DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTargetTangents[VertexIndex][0];
          DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTargetTangents[VertexIndex][1];
          DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTargetTangents[VertexIndex][2];
+        end;
+
+        if not BoundingBoxFirst then begin
+         for VertexIndex:=0 to length(TemporaryPositions)-1 do begin
+          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex];
+          Vertex:=@DestinationMeshPrimitiveVertices[VertexIndex];
+          TemporaryPosition.x:=Vertex^.Position[0]+DestinationMeshPrimitiveTargetVertex^.Position[0];
+          TemporaryPosition.y:=Vertex^.Position[1]+DestinationMeshPrimitiveTargetVertex^.Position[1];
+          TemporaryPosition.z:=Vertex^.Position[2]+DestinationMeshPrimitiveTargetVertex^.Position[2];
+          fBoundingBox.Min.x:=Min(fBoundingBox.Min.x,TemporaryPosition.x);
+          fBoundingBox.Min.y:=Min(fBoundingBox.Min.y,TemporaryPosition.y);
+          fBoundingBox.Min.z:=Min(fBoundingBox.Min.z,TemporaryPosition.z);
+          fBoundingBox.Max.x:=Max(fBoundingBox.Max.x,TemporaryPosition.x);
+          fBoundingBox.Max.y:=Max(fBoundingBox.Max.y,TemporaryPosition.y);
+          fBoundingBox.Max.z:=Max(fBoundingBox.Max.z,TemporaryPosition.z);
+         end;
         end;
 
         if DoNeedCalculateTangents then begin
@@ -9952,6 +9967,8 @@ begin
  finally
   FreeMem(MaxJointBlocks);
  end;
+
+ fBoundingSphere:=TpvSphere.CreateFromAABB(fBoundingBox);
 
 end;
 
