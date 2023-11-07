@@ -19023,7 +19023,7 @@ begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
     DrawChoreographyBatchItems:=fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
-    if DrawChoreographyBatchItems.Count>0 then begin
+    if DrawChoreographyBatchItems.Count>1 then begin
      DrawChoreographyBatchItems.IndexOrderSort;
     end;
    end;
