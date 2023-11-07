@@ -254,8 +254,8 @@ begin
      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
      if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
       VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshMaskedFragment);
-     end else begin
-      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshFragment);
+{    end else begin
+      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshFragment);}
      end;
 
      VulkanGraphicsPipeline.InputAssemblyState.Topology:=TpvScene3D.VulkanPrimitiveTopologies[PrimitiveTopology];
