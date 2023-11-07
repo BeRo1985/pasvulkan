@@ -14783,7 +14783,78 @@ begin
 end;
 
 function TpvAABB.Transform(const Transform:TpvMatrix3x3):TpvAABB;
-var i,j:TpvInt32;
+begin
+ result.Min.x:=0.0;
+ result.Min.y:=0.0;
+ result.Min.z:=0.0;
+ result.Max.x:=0.0;
+ result.Max.y:=0.0;
+ result.Max.z:=0.0;
+ if Transform.RawComponents[0,0]>0.0 then begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[0,0]*Min.x);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[0,0]*Max.x);
+ end else begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[0,0]*Max.x);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[0,0]*Min.x);
+ end;
+ if Transform.RawComponents[0,1]>0.0 then begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[0,1]*Min.x);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[0,1]*Max.x);
+ end else begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[0,1]*Max.x);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[0,1]*Min.x);
+ end;
+ if Transform.RawComponents[0,2]>0.0 then begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[0,2]*Min.x);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[0,2]*Max.x);
+ end else begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[0,2]*Max.x);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[0,2]*Min.x);
+ end;
+ if Transform.RawComponents[1,0]>0.0 then begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[1,0]*Min.y);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[1,0]*Max.y);
+ end else begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[1,0]*Max.y);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[1,0]*Min.y);
+ end;
+ if Transform.RawComponents[1,1]>0.0 then begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[1,1]*Min.y);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[1,1]*Max.y);
+ end else begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[1,1]*Max.y);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[1,1]*Min.y);
+ end;
+ if Transform.RawComponents[1,2]>0.0 then begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[1,2]*Min.y);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[1,2]*Max.y);
+ end else begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[1,2]*Max.y);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[1,2]*Min.y);
+ end;
+ if Transform.RawComponents[2,0]>0.0 then begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[2,0]*Min.z);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[2,0]*Max.z);
+ end else begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[2,0]*Max.z);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[2,0]*Min.z);
+ end;
+ if Transform.RawComponents[2,1]>0.0 then begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[2,1]*Min.z);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[2,1]*Max.z);
+ end else begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[2,1]*Max.z);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[2,1]*Min.z);
+ end;
+ if Transform.RawComponents[2,2]>0.0 then begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[2,2]*Min.z);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[2,2]*Max.z);
+ end else begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[2,2]*Max.z);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[2,2]*Min.z);
+ end;
+end;
+{var i,j:TpvInt32;
     a,b:TpvScalar;
 begin
  result.Min.x:=0.0;
@@ -14805,10 +14876,98 @@ begin
    end;
   end;
  end;
-end;
+end;}
 
 function TpvAABB.Transform(const Transform:TpvMatrix4x4):TpvAABB;
-var i,j:TpvInt32;
+begin
+ result.Min.x:=Transform.RawComponents[3,0];
+ result.Min.y:=Transform.RawComponents[3,1];
+ result.Min.z:=Transform.RawComponents[3,2];
+ result.Max:=result.Min;
+ if Transform.RawComponents[0,0]>0.0 then begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[0,0]*Min.x);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[0,0]*Max.x);
+ end else begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[0,0]*Max.x);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[0,0]*Min.x);
+ end;
+ if Transform.RawComponents[0,1]>0.0 then begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[0,1]*Min.x);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[0,1]*Max.x);
+ end else begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[0,1]*Max.x);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[0,1]*Min.x);
+ end;
+ if Transform.RawComponents[0,2]>0.0 then begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[0,2]*Min.x);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[0,2]*Max.x);
+ end else begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[0,2]*Max.x);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[0,2]*Min.x);
+ end;
+ if Transform.RawComponents[1,0]>0.0 then begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[1,0]*Min.y);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[1,0]*Max.y);
+ end else begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[1,0]*Max.y);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[1,0]*Min.y);
+ end;
+ if Transform.RawComponents[1,1]>0.0 then begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[1,1]*Min.y);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[1,1]*Max.y);
+ end else begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[1,1]*Max.y);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[1,1]*Min.y);
+ end;
+ if Transform.RawComponents[1,2]>0.0 then begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[1,2]*Min.y);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[1,2]*Max.y);
+ end else begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[1,2]*Max.y);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[1,2]*Min.y);
+ end;
+ if Transform.RawComponents[2,0]>0.0 then begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[2,0]*Min.z);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[2,0]*Max.z);
+ end else begin
+  result.Min.x:=result.Min.x+(Transform.RawComponents[2,0]*Max.z);
+  result.Max.x:=result.Max.x+(Transform.RawComponents[2,0]*Min.z);
+ end;
+ if Transform.RawComponents[2,1]>0.0 then begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[2,1]*Min.z);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[2,1]*Max.z);
+ end else begin
+  result.Min.y:=result.Min.y+(Transform.RawComponents[2,1]*Max.z);
+  result.Max.y:=result.Max.y+(Transform.RawComponents[2,1]*Min.z);
+ end;
+ if Transform.RawComponents[2,2]>0.0 then begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[2,2]*Min.z);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[2,2]*Max.z);
+ end else begin
+  result.Min.z:=result.Min.z+(Transform.RawComponents[2,2]*Max.z);
+  result.Max.z:=result.Max.z+(Transform.RawComponents[2,2]*Min.z);
+ end;
+end;
+{var Size:TpvVector3;
+    Basis:array[0..2] of TpvVector3;
+    Temp:array[0..7] of TpvVector3;
+begin
+ Size:=Max-Min;
+ Basis[0]:=TpvVector3.InlineableCreate(Transform.RawComponents[0,0],Transform.RawComponents[0,1],Transform.RawComponents[0,2])*Size;
+ Basis[1]:=TpvVector3.InlineableCreate(Transform.RawComponents[1,0],Transform.RawComponents[1,1],Transform.RawComponents[1,2])*Size;
+ Basis[2]:=TpvVector3.InlineableCreate(Transform.RawComponents[2,0],Transform.RawComponents[2,1],Transform.RawComponents[2,2])*Size;
+ Temp[0]:=(Transform*TpvVector4.InlineableCreate(Min,1.0)).xyz;
+ Temp[1]:=Temp[0]+Basis[0];
+ Temp[2]:=Temp[0]+Basis[1];
+ Temp[3]:=Temp[1]+Basis[1];
+ Temp[4]:=Temp[0]+Basis[2];
+ Temp[5]:=Temp[1]+Basis[2];
+ Temp[6]:=Temp[2]+Basis[2];
+ Temp[7]:=Temp[3]+Basis[2];
+ result.Min:=Temp[0].Min(Temp[1].Min(Temp[2].Min(Temp[3].Min(Temp[4].Min(Temp[5].Min(Temp[6].Min(Temp[7])))))));
+ result.Max:=Temp[0].Max(Temp[1].Max(Temp[2].Max(Temp[3].Max(Temp[4].Max(Temp[5].Max(Temp[6].Max(Temp[7])))))));
+end;}
+{var i,j:TpvInt32;
     a,b:TpvScalar;
 begin
  result.Min.x:=Transform[3,0];
@@ -14828,7 +14987,7 @@ begin
    end;
   end;
  end;
-end;
+end;}
 
 function TpvAABB.MatrixMul(const Transform:TpvMatrix3x3):TpvAABB;
 var Index:TpvInt32;
@@ -14866,16 +15025,17 @@ end;
 
 function TpvAABB.MatrixMul(const Transform:TpvMatrix4x4):TpvAABB;
 var Index:TpvInt32;
-    v:TpvVector3;
+    v:TpvVector4;
 begin
  for Index:=0 to 7 do begin
-  v:=(Transform*TpvVector4.InlineableCreate(MinMax[(Index shr 0) and 1].x,
-                                            MinMax[(Index shr 1) and 1].y,
-                                            MinMax[(Index shr 2) and 1].z,
-                                            1.0)).xyz;
+  v:=Transform*TpvVector4.InlineableCreate(MinMax[(Index shr 0) and 1].x,
+                                           MinMax[(Index shr 1) and 1].y,
+                                           MinMax[(Index shr 2) and 1].z,
+                                           1.0);
+  v.xyz:=v.xyz/v.w;
   if Index=0 then begin
-   result.Min:=v;
-   result.Max:=v;
+   result.Min:=v.xyz;
+   result.Max:=v.xyz;
   end else begin
    if result.Min.x>v.x then begin
     result.Min.x:=v.x;

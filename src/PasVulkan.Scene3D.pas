@@ -11906,7 +11906,7 @@ var LightMap:TpvScene3D.TGroup.TLights;
      end;
     end;
     if Visible then begin
-     BoundingBox:=Node.fMesh.fBoundingBox.MatrixMul(Matrix);
+     BoundingBox:=Node.fMesh.fBoundingBox.Transform(Matrix);
      if First then begin
       First:=false;
       fBoundingBox:=BoundingBox;
@@ -15484,7 +15484,7 @@ var CullFace,Blend:TPasGLTFInt32;
    if OK then begin
     aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
    end else begin
-    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.MatrixMul(aInstanceNode^.WorkMatrix*fModelMatrix);
+    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
    end;
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
@@ -15612,7 +15612,7 @@ begin
        ProcessMorphSkinNode(Node,InstanceNode);
       end else//}
       begin
-       InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.MatrixMul(InstanceNode^.WorkMatrix*fModelMatrix);
+       InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
        InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
       end;
      end else begin
@@ -15644,7 +15644,7 @@ begin
 
   end;
 
-  fBoundingBox:=fGroup.fBoundingBox.MatrixMul(fModelMatrix);
+  fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
   if assigned(Scene) and (aInFlightFrameIndex>=0) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
@@ -15663,7 +15663,7 @@ begin
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
-      RenderInstance.fBoundingBox:=fBoundingBox.MatrixMul(RenderInstance.fModelMatrix);
+      RenderInstance.fBoundingBox:=fBoundingBox.Transform(RenderInstance.fModelMatrix);
       if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
          ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
           ((RenderInstance.fPotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
