@@ -14869,9 +14869,10 @@ var Index:TpvInt32;
     v:TpvVector3;
 begin
  for Index:=0 to 7 do begin
-  v:=Transform.MulHomogen(TpvVector3.InlineableCreate(MinMax[(Index shr 0) and 1].x,
-                                                      MinMax[(Index shr 1) and 1].y,
-                                                      MinMax[(Index shr 2) and 1].z));
+  v:=(Transform*TpvVector4.InlineableCreate(MinMax[(Index shr 0) and 1].x,
+                                            MinMax[(Index shr 1) and 1].y,
+                                            MinMax[(Index shr 2) and 1].z,
+                                            1.0)).xyz;
   if Index=0 then begin
    result.Min:=v;
    result.Max:=v;
