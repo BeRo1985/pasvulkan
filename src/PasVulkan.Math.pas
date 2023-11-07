@@ -912,6 +912,8 @@ type PpvScalar=^TpvScalar;
        function MulInverted({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulAbsBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function MulAbsBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -12123,6 +12125,21 @@ begin
  result.w:=a.w;
 end;
 
+function TpvMatrix4x4.MulAbsBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
+begin
+ result.x:=(abs(RawComponents[0,0])*a.x)+(abs(RawComponents[1,0])*a.y)+(abs(RawComponents[2,0])*a.z);
+ result.y:=(abs(RawComponents[0,1])*a.x)+(abs(RawComponents[1,1])*a.y)+(abs(RawComponents[2,1])*a.z);
+ result.z:=(abs(RawComponents[0,2])*a.x)+(abs(RawComponents[1,2])*a.y)+(abs(RawComponents[2,2])*a.z);
+end;
+
+function TpvMatrix4x4.MulAbsBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;
+begin
+ result.x:=(abs(RawComponents[0,0])*a.x)+(abs(RawComponents[1,0])*a.y)+(abs(RawComponents[2,0])*a.z);
+ result.y:=(abs(RawComponents[0,1])*a.x)+(abs(RawComponents[1,1])*a.y)+(abs(RawComponents[2,1])*a.z);
+ result.z:=(abs(RawComponents[0,2])*a.x)+(abs(RawComponents[1,2])*a.y)+(abs(RawComponents[2,2])*a.z);
+ result.w:=a.w;
+end;
+
 function TpvMatrix4x4.MulTransposedBasis({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 begin
  result.x:=(RawComponents[0,0]*a.x)+(RawComponents[0,1]*a.y)+(RawComponents[0,2]*a.z);
@@ -14783,7 +14800,17 @@ begin
 end;
 
 function TpvAABB.Transform(const Transform:TpvMatrix3x3):TpvAABB;
+var Center,Temp,Extents:TpvVector3;
 begin
+ Center:=(Min+Max)*0.5;
+ Temp:=(Max-Min)*0.5;
+ Extents.x:=(abs(Transform.RawComponents[0,0])*Temp.x)+(abs(Transform.RawComponents[1,0])*Temp.y)+(abs(Transform.RawComponents[2,0])*Temp.z);
+ Extents.y:=(abs(Transform.RawComponents[0,1])*Temp.x)+(abs(Transform.RawComponents[1,1])*Temp.y)+(abs(Transform.RawComponents[2,1])*Temp.z);
+ Extents.z:=(abs(Transform.RawComponents[0,2])*Temp.x)+(abs(Transform.RawComponents[1,2])*Temp.y)+(abs(Transform.RawComponents[2,2])*Temp.z);
+ result.Min:=Center-Extents;
+ result.Max:=Center+Extents;
+end;
+{begin
  result.Min.x:=0.0;
  result.Min.y:=0.0;
  result.Min.z:=0.0;
@@ -14853,7 +14880,7 @@ begin
   result.Min.z:=result.Min.z+(Transform.RawComponents[2,2]*Max.z);
   result.Max.z:=result.Max.z+(Transform.RawComponents[2,2]*Min.z);
  end;
-end;
+end;}
 {var i,j:TpvInt32;
     a,b:TpvScalar;
 begin
@@ -14879,7 +14906,14 @@ begin
 end;}
 
 function TpvAABB.Transform(const Transform:TpvMatrix4x4):TpvAABB;
+var Center,Extents:TpvVector3;
 begin
+ Center:=(Transform*TpvVector4.InlineableCreate((Min+Max)*0.5,1.0)).xyz;
+ Extents:=Transform.MulAbsBasis((Max-Min)*0.5);
+ result.Min:=Center-Extents;
+ result.Max:=Center+Extents;
+end;
+{begin
  result.Min.x:=Transform.RawComponents[3,0];
  result.Min.y:=Transform.RawComponents[3,1];
  result.Min.z:=Transform.RawComponents[3,2];
@@ -14947,7 +14981,7 @@ begin
   result.Min.z:=result.Min.z+(Transform.RawComponents[2,2]*Max.z);
   result.Max.z:=result.Max.z+(Transform.RawComponents[2,2]*Min.z);
  end;
-end;
+end;}
 {var Size:TpvVector3;
     Basis:array[0..2] of TpvVector3;
     Temp:array[0..7] of TpvVector3;
