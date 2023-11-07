@@ -12141,7 +12141,7 @@ end;
 function TpvMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3):TpvVector3;
 var Temporary:TpvVector4;
 begin
- Temporary:=self*TpvVector4.Create(a,1.0);
+ Temporary:=self*TpvVector4.InlineableCreate(a,1.0);
  Temporary:=Temporary/Temporary.w;
  result:=Temporary.xyz;
 end;
@@ -14831,100 +14831,71 @@ begin
 end;
 
 function TpvAABB.MatrixMul(const Transform:TpvMatrix3x3):TpvAABB;
-var Rotation:TpvMatrix3x3;
-    v:array[0..7] of TpvVector3;
-    Center,MinVector,MaxVector:TpvVector3;
-    i:TpvInt32;
+var Index:TpvInt32;
+    v:TpvVector3;
 begin
-
- Center:=(Min+Max)*0.5;
-
- MinVector:=Min-Center;
- MaxVector:=Max-Center;
-
- v[0]:=Transform*TpvVector3.Create(MinVector.x,MinVector.y,MinVector.z);
- v[1]:=Transform*TpvVector3.Create(MaxVector.x,MinVector.y,MinVector.z);
- v[2]:=Transform*TpvVector3.Create(MaxVector.x,MaxVector.y,MinVector.z);
- v[3]:=Transform*TpvVector3.Create(MaxVector.x,MaxVector.y,MaxVector.z);
- v[4]:=Transform*TpvVector3.Create(MinVector.x,MaxVector.y,MaxVector.z);
- v[5]:=Transform*TpvVector3.Create(MinVector.x,MinVector.y,MaxVector.z);
- v[6]:=Transform*TpvVector3.Create(MaxVector.x,MinVector.y,MaxVector.z);
- v[7]:=Transform*TpvVector3.Create(MinVector.x,MaxVector.y,MinVector.z);
-
- result.Min:=v[0];
- result.Max:=v[0];
- for i:=0 to 7 do begin
-  if result.Min.x>v[i].x then begin
-   result.Min.x:=v[i].x;
-  end;
-  if result.Min.y>v[i].y then begin
-   result.Min.y:=v[i].y;
-  end;
-  if result.Min.z>v[i].z then begin
-   result.Min.z:=v[i].z;
-  end;
-  if result.Max.x<v[i].x then begin
-   result.Max.x:=v[i].x;
-  end;
-  if result.Max.y<v[i].y then begin
-   result.Max.y:=v[i].y;
-  end;
-  if result.Max.z<v[i].z then begin
-   result.Max.z:=v[i].z;
+ for Index:=0 to 7 do begin
+  v:=Transform*TpvVector3.InlineableCreate(MinMax[(Index shr 0) and 1].x,
+                                           MinMax[(Index shr 1) and 1].y,
+                                           MinMax[(Index shr 2) and 1].z);
+  if Index=0 then begin
+   result.Min:=v;
+   result.Max:=v;
+  end else begin
+   if result.Min.x>v.x then begin
+    result.Min.x:=v.x;
+   end;
+   if result.Min.y>v.y then begin
+    result.Min.y:=v.y;
+   end;
+   if result.Min.z>v.z then begin
+    result.Min.z:=v.z;
+   end;
+   if result.Max.x<v.x then begin
+    result.Max.x:=v.x;
+   end;
+   if result.Max.y<v.y then begin
+    result.Max.y:=v.y;
+   end;
+   if result.Max.z<v.z then begin
+    result.Max.z:=v.z;
+   end;
   end;
  end;
- result.Min:=result.Min+Center;
- result.Max:=result.Max+Center;
 end;
 
 function TpvAABB.MatrixMul(const Transform:TpvMatrix4x4):TpvAABB;
-var Rotation:TpvMatrix4x4;
-    v:array[0..7] of TpvVector3;
-    Center,NewCenter,MinVector,MaxVector:TpvVector3;
-    i:TpvInt32;
+var Index:TpvInt32;
+    v:TpvVector3;
 begin
- Rotation:=TpvMatrix4x4.CreateRotation(Transform);
-
- Center:=(Min+Max)*0.5;
-
- MinVector:=Min-Center;
- MaxVector:=Max-Center;
-
- NewCenter:=Center+(Transform*TpvVector3.Origin);
-
- v[0]:=Rotation*TpvVector3.Create(MinVector.x,MinVector.y,MinVector.z);
- v[1]:=Rotation*TpvVector3.Create(MaxVector.x,MinVector.y,MinVector.z);
- v[2]:=Rotation*TpvVector3.Create(MaxVector.x,MaxVector.y,MinVector.z);
- v[3]:=Rotation*TpvVector3.Create(MaxVector.x,MaxVector.y,MaxVector.z);
- v[4]:=Rotation*TpvVector3.Create(MinVector.x,MaxVector.y,MaxVector.z);
- v[5]:=Rotation*TpvVector3.Create(MinVector.x,MinVector.y,MaxVector.z);
- v[6]:=Rotation*TpvVector3.Create(MaxVector.x,MinVector.y,MaxVector.z);
- v[7]:=Rotation*TpvVector3.Create(MinVector.x,MaxVector.y,MinVector.z);
-
- result.Min:=v[0];
- result.Max:=v[0];
- for i:=0 to 7 do begin
-  if result.Min.x>v[i].x then begin
-   result.Min.x:=v[i].x;
-  end;
-  if result.Min.y>v[i].y then begin
-   result.Min.y:=v[i].y;
-  end;
-  if result.Min.z>v[i].z then begin
-   result.Min.z:=v[i].z;
-  end;
-  if result.Max.x<v[i].x then begin
-   result.Max.x:=v[i].x;
-  end;
-  if result.Max.y<v[i].y then begin
-   result.Max.y:=v[i].y;
-  end;
-  if result.Max.z<v[i].z then begin
-   result.Max.z:=v[i].z;
+ for Index:=0 to 7 do begin
+  v:=Transform.MulHomogen(TpvVector3.InlineableCreate(MinMax[(Index shr 0) and 1].x,
+                                                      MinMax[(Index shr 1) and 1].y,
+                                                      MinMax[(Index shr 2) and 1].z));
+  if Index=0 then begin
+   result.Min:=v;
+   result.Max:=v;
+  end else begin
+   if result.Min.x>v.x then begin
+    result.Min.x:=v.x;
+   end;
+   if result.Min.y>v.y then begin
+    result.Min.y:=v.y;
+   end;
+   if result.Min.z>v.z then begin
+    result.Min.z:=v.z;
+   end;
+   if result.Max.x<v.x then begin
+    result.Max.x:=v.x;
+   end;
+   if result.Max.y<v.y then begin
+    result.Max.y:=v.y;
+   end;
+   if result.Max.z<v.z then begin
+    result.Max.z:=v.z;
+   end;
   end;
  end;
- result.Min:=result.Min+NewCenter;
- result.Max:=result.Max+NewCenter;
 end;
 
 function TpvAABB.ScissorRect(out Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean;
