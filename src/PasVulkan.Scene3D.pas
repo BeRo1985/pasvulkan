@@ -16230,6 +16230,7 @@ var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyB
     Node:TpvScene3D.TGroup.TNode;
     InstanceScene:TpvScene3D.TGroup.TInstance.TScene;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+    DrawChoreographyBatchItemMaterialAlphaModeBuckets:PDrawChoreographyBatchItemMaterialAlphaModeBuckets;
     PotentiallyVisible,DoCulling:boolean;
     SkipListItem:TpvScene3D.TGroup.TScene.PSkipListItem;
     DrawChoreographyBatchItemIndices:PSizeIntDynamicArray;
@@ -16248,6 +16249,8 @@ begin
   Scene:=fActiveScenes[aInFlightFrameIndex];
 
   if assigned(Scene) then begin
+
+   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@fSceneInstance.fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
    InstanceScene:=fScenes[Scene.Index];
 
@@ -16341,12 +16344,10 @@ begin
        if DrawChoreographyBatchItem.fMaterial.fVisible and
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
          (DrawChoreographyBatchItem.fCountIndices>0) then begin
-        fSceneInstance.fDrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,
-                                                              aRenderPassIndex,
-                                                              DrawChoreographyBatchItem.fAlphaMode,
-                                                              DrawChoreographyBatchItem.fPrimitiveTopology,
-                                                              DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
-                                                                                          InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
+        DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
+                                                           DrawChoreographyBatchItem.fPrimitiveTopology,
+                                                           DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
+                                                                                       InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
        end;
       end;
 
