@@ -123,9 +123,9 @@ type EpvScene3D=class(Exception);
              LightClusterGridHashMask=LightClusterGridHashSize-1;
        type TPrimitiveTopology=
              (
-              Points,
-              Lines,
-              Triangles
+              Points=0,
+              Lines=1,
+              Triangles=2
              );
           //TPrimitiveTopology=VK_PRIMITIVE_TOPOLOGY_POINT_LIST..VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             PPrimitiveTopology=^TPrimitiveTopology;
@@ -139,14 +139,14 @@ type EpvScene3D=class(Exception);
             TFrontFacesInversed=boolean;
             TFaceCullingMode=
              (
-              None,
-              Normal,
-              Inversed
+              None=0,
+              Normal=1,
+              Inversed=2
              );
             TBufferStreamingMode=
              (
-              Direct,
-              Staging
+              Direct=0,
+              Staging=1
              );
             TGraphicsPipelines=array[TPrimitiveTopology,TFaceCullingMode] of TpvVulkanPipeline;
             TTextureRawIndex=
@@ -1357,10 +1357,29 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchItemRenderPassBuckets=^TDrawChoreographyBatchItemRenderPassBuckets;
             TDrawChoreographyBatchItemFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchItemRenderPassBuckets;
             PDrawChoreographyBatchItemFrameBuckets=^TDrawChoreographyBatchItemFrameBuckets;
+            TGPUDrawIndexedIndirectCommand=packed record
+             public
+              case TpvUInt8 of
+               0:(
+                DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
+                Flags:TpvUInt32;
+                Padding0:array[1..2] of TpvUInt32;
+                BoundingSphere:TpvVector4;
+                Padding1:array[0..3] of TpvUInt32;
+               );
+               1:(
+                Alignment:array[0..63] of TpvUInt8;
+               );
+            end;
+            PGPUDrawIndexedIndirectCommand=^TGPUDrawIndexedIndirectCommand;
+            TGPUDrawIndexedIndirectCommands=array of TGPUDrawIndexedIndirectCommand;
+            TGPUDrawIndexedIndirectCommandDynamicArray=TpvDynamicArray<TGPUDrawIndexedIndirectCommand>;
+            PGPUDrawIndexedIndirectCommandDynamicArray=^TGPUDrawIndexedIndirectCommandDynamicArray;
             TDrawChoreographyBatchRange=record
              AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
-             PrimitiveTopology:TPrimitiveTopology;
-             FaceCullingMode:TFaceCullingMode;
+             PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+             FaceCullingMode:TpvScene3D.TFaceCullingMode;
+             DrawIndex:TpvUInt32;
              FirstCommand:TpvUInt32;
              CountCommands:TpvUInt32;
              CountIndex:TpvUInt32;
@@ -1371,17 +1390,6 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchRangeRenderPassBuckets=^TDrawChoreographyBatchRangeRenderPassBuckets;
             TDrawChoreographyBatchRangeFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeRenderPassBuckets;
             PDrawChoreographyBatchRangeFrameBuckets=^TDrawChoreographyBatchRangeFrameBuckets;
-            TGPUCullDrawIndexedIndirectCommand=packed record
-             case boolean of
-              false:(
-                BoundingSphere:TpvVector4;                                //  16 16
-                DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand; // +20 36
-              );
-              true:(
-               Alignment:array[0..47] of TpvUInt8;
-              );
-            end;
-            PGPUCullDrawIndexedIndirectCommand=^TGPUCullDrawIndexedIndirectCommand;
             { TVulkanLongTermStaticBufferData }
             TVulkanLongTermStaticBufferData=class
              private
@@ -2728,6 +2736,14 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
+      public
+       class function EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+                                      const aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+                                      const aFaceCullingMode:TpvScene3D.TFaceCullingMode):TpvUInt32; static;
+       class procedure DecodeModeFlags(const aFlags:TpvUInt32;
+                                       out aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+                                       out aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+                                       out aFaceCullingMode:TpvScene3D.TFaceCullingMode); static;
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
@@ -17192,6 +17208,25 @@ begin
  FreeAndNil(fBufferRangeAllocatorLock);
 
  inherited Destroy;
+end;
+
+class function TpvScene3D.EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+                                          const aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+                                          const aFaceCullingMode:TpvScene3D.TFaceCullingMode):TpvUInt32;
+begin
+ result:=((TpvUInt32(aAlphaMode) and 3) shl 0) or
+         ((TpvUInt32(aPrimitiveTopology) and 3) shl 2) or
+         ((TpvUInt32(aFaceCullingMode) and 3) shl 4);
+end;
+
+class procedure TpvScene3D.DecodeModeFlags(const aFlags:TpvUInt32;
+                                           out aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+                                           out aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+                                           out aFaceCullingMode:TpvScene3D.TFaceCullingMode);
+begin
+ aAlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32((aFlags shr 0) and 3));
+ aPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(TpvUInt32((aFlags shr 2) and 3));
+ aFaceCullingMode:=TpvScene3D.TFaceCullingMode(TpvUInt32((aFlags shr 4) and 3));
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
