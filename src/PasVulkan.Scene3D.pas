@@ -1357,6 +1357,20 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchItemRenderPassBuckets=^TDrawChoreographyBatchItemRenderPassBuckets;
             TDrawChoreographyBatchItemFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchItemRenderPassBuckets;
             PDrawChoreographyBatchItemFrameBuckets=^TDrawChoreographyBatchItemFrameBuckets;
+            TDrawChoreographyBatchRange=record
+             AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+             PrimitiveTopology:TPrimitiveTopology;
+             FaceCullingMode:TFaceCullingMode;
+             FirstCommand:TpvUInt32;
+             CountCommands:TpvUInt32;
+             CountIndex:TpvUInt32;
+            end;
+            PDrawChoreographyBatchRange=^TDrawChoreographyBatchRange;
+            TDrawChoreographyBatchRangeDynamicArray=TpvDynamicArray<TDrawChoreographyBatchRange>;
+            TDrawChoreographyBatchRangeRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchRangeDynamicArray;
+            PDrawChoreographyBatchRangeRenderPassBuckets=^TDrawChoreographyBatchRangeRenderPassBuckets;
+            TDrawChoreographyBatchRangeFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeRenderPassBuckets;
+            PDrawChoreographyBatchRangeFrameBuckets=^TDrawChoreographyBatchRangeFrameBuckets;
             TGPUCullDrawIndexedIndirectCommand=packed record
              case boolean of
               false:(

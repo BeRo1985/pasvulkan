@@ -16,7 +16,8 @@ layout(push_constant) uniform PushConstants {
   uint countViews;
 } pushConstants;
 
-struct DrawIndexedIndirectCommand {
+/*
+struct VkDrawIndexedIndirectCommand {
 	uint indexCount;
   uint instanceCount;
   uint firstIndex;
@@ -26,6 +27,14 @@ struct DrawIndexedIndirectCommand {
   uint padding1;
   uint padding2;
 };
+*/
+
+struct DrawIndexedIndirectCommand {
+  uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, yzw = padding for 16 bytes alignment to the next vec4 field
+  vec4 boundingSphere; // xyz = center, w = radius
+  uvec4 padding3; // just padding 
+}; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
 struct View {
   mat4 viewMatrix;
@@ -42,23 +51,15 @@ layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCom
   DrawIndexedIndirectCommand commands[];
 } inputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 2, std430) readonly buffer InputBoundingSpheres {
-  vec4 boundingSpheres[];
-} inputBoundingSpheres;
-
-layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounter {
-  uint counter;
-} outputDrawIndexedIndirectCommandCounter;
-
-layout(set = 0, binding = 4, std430) buffer OutputDrawIndexedIndirectCommandCounts {
-  uint count[];
-} outputDrawIndexedIndirectCommandCounts;
-
-layout(set = 0, binding = 5, std430) buffer OutputDrawIndexedIndirectCommands {
+layout(set = 0, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand commands[];
 } outputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 6) uniform sampler2DArray uTextureDepth;
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounts {
+  uint count[]; // 1-based, because [0] is the global counter, for to avoid to have an additional storage buffer just for the global counter
+} outputDrawIndexedIndirectCommandCounts;
+
+layout(set = 0, binding = 4) uniform sampler2DArray uTextureDepth;
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 aabb){
@@ -93,7 +94,8 @@ void main(){
 
   uint invocationIndex = gl_LocalInvocationID.x;
 
-  uint countViews = min(pushConstants.countViews, 8); // Maximal 8 views at once
+  // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
+  uint countViews = min(pushConstants.countViews, 8); 
 
   if(invocationIndex < countViews){
     
@@ -105,7 +107,7 @@ void main(){
 
     inverseProjectionMatrixZData[invocationIndex] = vec4(uView.views[viewIndex].inverseProjectionMatrix[2].zw, uView.views[viewIndex].inverseProjectionMatrix[3].zw);
 
-    // Get z near from projection matrix
+    // Get z near from projection matrix 
     zNears[invocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
 
     p00p11[invocationIndex] = vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
@@ -113,7 +115,8 @@ void main(){
     mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
 
     frustums[invocationIndex] = vec4(
-      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
+      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
+      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
     );
 
   }
@@ -123,10 +126,12 @@ void main(){
   barrier(); 
 
   if (invocationIndex >= pushConstants.countDrawIndexedIndirectCommands) {
-    return;
+    return;  
   }
 
-  vec4 boundingSphere = inputBoundingSpheres.boundingSpheres[invocationIndex];
+  uint sourceIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + invocationIndex;
+
+  vec4 boundingSphere = inputDrawIndexedIndirectCommands.commands[sourceIndex].boundingSphere;
 
   // Only cull when sphere has a positive radius, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
   // directly to the output buffer in that case.
@@ -140,6 +145,8 @@ void main(){
 
       vec4 frustum = frustums[viewIndex];
 
+      // Frustum visible check, but without testing the near und far planes, so it is more projection matrix variant independent (reverse z, 
+      // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a safety check.
       bool visible = (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) - frustum.x)) > -viewSpaceBoundingSphere.w) &&
                      (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) - frustum.z)) > -viewSpaceBoundingSphere.w);
 
@@ -173,8 +180,12 @@ void main(){
 
   }
 
-  outputDrawIndexedIndirectCommands.commands[pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounter.counter, 1u)] = inputDrawIndexedIndirectCommands.commands[pushConstants.baseDrawIndexedIndirectCommandIndex + invocationIndex];
+  uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.count[0u], 1u);
 
-  atomicAdd(outputDrawIndexedIndirectCommandCounts.count[pushConstants.drawCallIndex], 1u);
+  atomicAdd(outputDrawIndexedIndirectCommandCounts.count[pushConstants.drawCallIndex + 1u], 1u);
+  
+  // Just copy the draw indexed indirect command itself, but not the no more needed bounding sphere and so on, to save memory bandwidth
+  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
+  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
 }
