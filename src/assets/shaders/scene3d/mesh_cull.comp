@@ -56,7 +56,7 @@ layout(set = 0, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
 } outputDrawIndexedIndirectCommands;
 
 layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounts {
-  uint count[]; // 1-based, because [0] is the global counter, for to avoid to have an additional storage buffer just for the global counter
+  uint counts[];
 } outputDrawIndexedIndirectCommandCounts;
 
 layout(set = 0, binding = 4) uniform sampler2DArray uTextureDepth;
@@ -137,6 +137,8 @@ void main(){
   // directly to the output buffer in that case.
   if(boundingSphere.w > 0.0){
  
+    vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
+
     uint isDrawIndexedIndirectCommandVisibleBits = 0u;
 
     for(uint viewIndex = 0u, bit = 1u; viewIndex < countViews; viewIndex++, bit <<= 1u){
@@ -156,7 +158,7 @@ void main(){
 
         if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[invocationIndex], p00p11[invocationIndex].x, p00p11[invocationIndex].y, aabb)){
 
-          vec2 size = vec2(aabb.zw - aabb.xy) * textureSize(uTextureDepth, 0).xy;
+          vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
           float level = floor(log2(max(size.x, size.y))); 
 
           vec2 depthZ = fma(
@@ -180,9 +182,7 @@ void main(){
 
   }
 
-  uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.count[0u], 1u);
-
-  atomicAdd(outputDrawIndexedIndirectCommandCounts.count[pushConstants.drawCallIndex + 1u], 1u);
+  uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
   // Just copy the draw indexed indirect command itself, but not the no more needed bounding sphere and so on, to save memory bandwidth
   outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
