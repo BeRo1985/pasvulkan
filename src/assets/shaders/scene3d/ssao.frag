@@ -67,14 +67,130 @@ float linearizeDepth(float z) {
   return v.x / v.y;
 }
 
+float hash12(vec2 p){
+  vec3 p3  = fract(vec3(p.xyx) * vec3(0.1031, 0.11369, 0.13787));
+  p3 += dot(p3, p3.yzx + 19.19);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+vec2 hash22(vec2 p){
+  vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.11369, 0.13787));
+  p3 += dot(p3, p3.yzx+19.19);
+  return fract(vec2((p3.x + p3.y)*p3.z, (p3.x+p3.z)*p3.y));
+}
+
 vec3 hash33(vec3 p) {
   vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
   p3 += dot(p3, p3.yxz + 19.19);
   return fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
 }
 
-#undef GTAO
-#ifdef GTAO
+#define SSAO 0
+#define SPIRALAO 1
+#define GTAO 2
+#define METHOD SPIRALAO
+
+#if METHOD == SPIRALAO
+
+// Spiral AO
+
+const int SAMPLES = 16;
+const float INTENSITY = 0.5;
+const float SCALE = 2.5;
+const float BIAS = 0.05;
+const float AO_RADIUS = 2.0;
+const float MAX_DISTANCE = 0.125;
+
+float spiralAO(const in vec2 texCoord, const in vec3 viewPosition, const in vec3 viewNormal, float rotationAmount){
+  vec4 samplePositionSpiral = vec4(
+    hash12(texCoord * 100.0) * 6.283185307179586, // angle
+    0.0,                                          // radius
+    2.399963229728653,                            // delta angle, PI * (3.0 - sqrt(5.0)) (golden angle)  #
+    rotationAmount / float(SAMPLES)               // delta radius
+  );
+  float occlusion = 0.0;
+  for(int sampleIndex = 0; sampleIndex < SAMPLES; sampleIndex++){
+    vec3 diff = fetchPosition(texCoord + sin(vec2(samplePositionSpiral.xx) + vec2(0.0, 1.57079632679489661923)) * samplePositionSpiral.y) - viewPosition;
+    float l = length(diff);
+    occlusion += max(0.0, dot(viewNormal, diff / l) - BIAS) * (1.0 / (1.0 + (l * SCALE))) * smoothstep(MAX_DISTANCE, MAX_DISTANCE * 0.5, l);
+    samplePositionSpiral.xy += samplePositionSpiral.zw; 
+  }
+  return occlusion / float(SAMPLES);
+}
+
+void main(){
+
+#ifdef MULTIVIEW
+  vec3 texCoord = vec3(inTexCoord, viewIndex);
+#else
+  vec2 texCoord = inTexCoord;
+#endif
+  
+  vec3 position = fetchPosition(texCoord.xy);
+  
+  float depth = position.z;
+  
+  float occlusion = 0.0;
+
+  if (isinf(depth) || (abs(depth) < 1e-7)) {
+    
+    occlusion = 1.0;
+
+  } else {
+
+    vec3 viewNormal;
+#if 1
+    {
+      vec2 texelSize = vec2(dFdx(texCoord.x), dFdy(texCoord.y));
+#ifdef MULTIVIEW
+      vec3 offsetH = vec3(texelSize.x, 0.0, 0.0);
+      vec3 offsetV = vec3(0.0, texelSize.y, 0.0);
+#else
+      vec2 offsetH = vec2(texelSize.x, 0.0);
+      vec2 offsetV = vec2(0.0, texelSize.y);
+#endif
+      vec3 pl = fetchPosition(texCoord.xy - (offsetH.xy * 1.0));
+      vec3 pr = fetchPosition(texCoord.xy + (offsetH.xy * 1.0));
+      vec3 pu = fetchPosition(texCoord.xy - (offsetV.xy * 1.0));
+      vec3 pd = fetchPosition(texCoord.xy + (offsetV.xy * 1.0));
+      vec4 H = vec4(                                                                   //
+          pl.z,                                                                        //
+          pr.z,                                                                        //
+          linearizeDepth(textureLod(uTextureDepth, texCoord - (offsetH * 2.0), 0).x),  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetH * 2.0), 0).x)   //
+      );
+      vec4 V = vec4(                                                                   //
+          pu.z,                                                                        //
+          pd.z,                                                                        //
+          linearizeDepth(textureLod(uTextureDepth, texCoord - (offsetV * 2.0), 0).x),  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetV * 2.0), 0).x)   //
+      );
+      vec4 hve = abs((vec4(H.xy * H.zw, V.xy * V.zw) / fma(vec4(H.zw, V.zw), vec4(2.0), -vec4(H.xy, V.xy))) - vec4(depth));
+      viewNormal = -(cross((hve.x < hve.y) ? (position - pl) : (pr - position), (hve.z < hve.w) ? (position - pu) : (pd - position)));
+      viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
+    }
+#else
+    viewNormal = -cross(dFdx(position), dFdy(position));
+    viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
+#endif
+
+    vec2 viewSize = textureSize(uTextureDepth, 0).xy;
+    
+    vec2 inverseViewSize = vec2(1.0) / viewSize;
+    
+    occlusion = clamp(1. - (spiralAO(inTexCoord, 
+                                     position, 
+                                     viewNormal, 
+                                     (AO_RADIUS * projectionMatrix[1][1] * (0.25 * inverseViewSize.y)) / max(1e-6, abs(position.z))) * 
+                               INTENSITY), 
+                      0.0, 
+                      1.0);
+
+  }
+  oFragOcclusionDepth = vec2(occlusion, depth);
+}
+
+#elif METHOD == GTAO
 
 // GTAO
 
