@@ -159,11 +159,15 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'resource_ssao_data_final',
-                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              []
-                             );
+ if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
+  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                               'resource_ssao_data_final',
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                               []
+                              );
+ end else begin
+  fResourceSSAO:=nil;
+ end;
 
  fResourceVelocity:=nil;
 
@@ -189,19 +193,25 @@ inherited Create(aFrameGraph);
 
   end;
 
-  fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'resource_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );//}
+  if fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
-{ fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                       'resource_depth_data',
-                                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     ); //}
+                                     );//}
+
+  end else begin
+
+   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+                                       'resource_depth_data',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      ); //}
+
+  end;
 
  end else begin
 
@@ -243,19 +253,25 @@ inherited Create(aFrameGraph);
 
   end;
 
-  fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'resource_msaa_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );
+  if fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
-{fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                     'resource_msaa_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                  TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );//}
+   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                      'resource_msaa_depth_data',
+                                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                     );
+
+  end else begin
+
+   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+                                       'resource_msaa_depth_data',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      );
+
+  end;
 
  end;
 
@@ -342,7 +358,7 @@ begin
   Stream.Free;
  end;
 
- if fInstance.Renderer.UseDepthPrepass then begin
+ if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_frag.spv');
   try
@@ -408,7 +424,7 @@ begin
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshMaskedFragment);
 
- if fInstance.Renderer.UseDepthPrepass then begin
+ if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
   fVulkanPipelineShaderStageMeshDepthFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthFragmentShaderModule,'main');
   MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthFragment);
@@ -463,7 +479,7 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshMaskedFragment);
 
- if fInstance.Renderer.UseDepthPrepass then begin
+ if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
   FreeAndNil(fVulkanPipelineShaderStageMeshDepthFragment);
 
@@ -483,7 +499,7 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- if fInstance.Renderer.UseDepthPrepass then begin
+ if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
   FreeAndNil(fMeshDepthFragmentShaderModule);
 
@@ -614,20 +630,38 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
-                                                                       0,
-                                                                       2,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                      fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        // Duplicate as dummy really non-used opaque texture
-                                                                        TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                      fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                                       [],
-                                                                       [],
-                                                                       false);
+  if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                        0,
+                                                                        2,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                       fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                         // Duplicate as dummy really non-used opaque texture
+                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                       fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  end else begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                        0,
+                                                                        2,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                       fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
+                                                                         // Duplicate as dummy really non-used opaque texture
+                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                       fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+                                                                        ],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  end;
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                        0,
                                                                        1,
@@ -671,7 +705,7 @@ begin
  end;
  fVulkanPipelineLayout.Initialize;
 
- for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass do begin
+ for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
     for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -681,7 +715,7 @@ begin
   end;
  end;
 
- for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass do begin
+ for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded do begin
 
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
 
@@ -990,7 +1024,7 @@ begin
  end;
  fSkyBox.ReleaseResources;
  FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
- for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass do begin
+ for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
     for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -1091,7 +1125,7 @@ begin
    end;
   end else begin
 
-(* if fInstance.Renderer.UseDepthPrepass then begin
+   if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
     fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
@@ -1153,7 +1187,7 @@ begin
                                    [TpvScene3D.TMaterial.TAlphaMode.Mask]);
   end;
 
- { if fInstance.Renderer.UseDepthPrepass then begin
+ {if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,

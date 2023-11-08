@@ -147,11 +147,15 @@ inherited Create(aFrameGraph);
                                            []
                                           );
 
- fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                              'resource_ssao_data_final',
-                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              []
-                             );
+ if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
+  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
+                               'resource_ssao_data_final',
+                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                               []
+                              );
+ end else begin
+  fResourceSSAO:=nil;
+ end;
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
@@ -461,19 +465,35 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
-                                                                       0,
-                                                                       2,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                      fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceSSAO.ResourceTransition.Layout), // TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                        TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
-                                                                                                      fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
-                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                                       [],
-                                                                       [],
-                                                                       false);
+  if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                        0,
+                                                                        2,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                       fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                       fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  end else begin
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                        0,
+                                                                        2,
+                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                       fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
+                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
+                                                                                                       fInstance.SceneMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                        [],
+                                                                        [],
+                                                                        false);
+  end;
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                        0,
                                                                        1,

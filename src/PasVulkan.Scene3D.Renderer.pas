@@ -130,6 +130,8 @@ type TpvScene3DRenderer=class;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
        fVelocityBufferNeeded:Boolean;
+       fEarlyDepthPrepassNeeded:Boolean;
+       fScreenSpaceAmbientOcclusion:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fShadowMode:TpvScene3DRendererShadowMode;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
@@ -202,6 +204,8 @@ type TpvScene3DRenderer=class;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
+       property EarlyDepthPrepassNeeded:Boolean read fEarlyDepthPrepassNeeded;
+       property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode write fShadowMode;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
@@ -369,6 +373,8 @@ begin
   fCountInFlightFrames:=pvApplication.CountInFlightFrames;
  end;
 
+ fScreenSpaceAmbientOcclusion:=false;
+
  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.Auto;
 
  fShadowMode:=TpvScene3DRendererShadowMode.Auto;
@@ -523,6 +529,12 @@ var SampleCounts:TVkSampleCountFlags;
 begin
 
  fVelocityBufferNeeded:=false;
+
+ fEarlyDepthPrepassNeeded:=false;
+
+ if fScreenSpaceAmbientOcclusion then begin
+  fEarlyDepthPrepassNeeded:=true;
+ end;
 
  if fShadowMapSize=0 then begin
   fShadowMapSize:=512;
@@ -889,6 +901,7 @@ begin
  case fGlobalIlluminationMode of
   TpvScene3DRendererGlobalIlluminationMode.CascadedRadianceHints:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_radiance_hints_';
+   fEarlyDepthPrepassNeeded:=true;
   end;
   TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing:begin
    fMeshFragGlobalIlluminationTypeName:='globalillumination_cascaded_voxel_cone_tracing_';
