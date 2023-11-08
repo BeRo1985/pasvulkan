@@ -4739,6 +4739,7 @@ begin
                            [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                            true,
                            true,
+                           true,
                            true);
 
   if InFlightFrameState^.VoxelizationRenderPassIndex>=0 then begin
@@ -4751,6 +4752,7 @@ begin
                             Renderer.GlobalIlluminationVoxelGridSize,
                             Renderer.GlobalIlluminationVoxelGridSize,
                             [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
+                            false,
                             false,
                             false,
                             false);
@@ -4771,6 +4773,7 @@ begin
                            [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                            true,
                            false,
+                           false,
                            false);
  end;
 
@@ -4786,6 +4789,7 @@ begin
                            fTopDownSkyOcclusionMapWidth,
                            fTopDownSkyOcclusionMapHeight,
                            [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
+                           false,
                            false,
                            false,
                            false);
@@ -4804,6 +4808,7 @@ begin
                            [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask,TpvScene3D.TMaterial.TAlphaMode.Blend],
                            true,
                            false,
+                           false,
                            false);
  end;
 
@@ -4819,7 +4824,8 @@ begin
                           [TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Mask],
                           false,
                           true,
-                          true);
+                          true,
+                          false);
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
 

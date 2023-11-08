@@ -633,7 +633,7 @@ begin
     fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.None;
    end;
   end;
-  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
+//fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
  end;
 
  if fAntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
