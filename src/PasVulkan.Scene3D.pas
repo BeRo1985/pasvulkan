@@ -18002,7 +18002,6 @@ begin
 
 end;
 
-
 function TpvScene3D.AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
 begin
  result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter[aInFlightFrameIndex]);

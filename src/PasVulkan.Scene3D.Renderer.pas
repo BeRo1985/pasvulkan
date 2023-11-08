@@ -129,6 +129,7 @@ type TpvScene3DRenderer=class;
        fVulkanDevice:TpvVulkanDevice;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
+       fVelocityBufferNeeded:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
        fShadowMode:TpvScene3DRendererShadowMode;
        fTransparencyMode:TpvScene3DRendererTransparencyMode;
@@ -200,6 +201,7 @@ type TpvScene3DRenderer=class;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
+       property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
        property ShadowMode:TpvScene3DRendererShadowMode read fShadowMode write fShadowMode;
        property TransparencyMode:TpvScene3DRendererTransparencyMode read fTransparencyMode write fTransparencyMode;
@@ -520,6 +522,8 @@ var SampleCounts:TVkSampleCountFlags;
     FormatProperties:TVkFormatProperties;
 begin
 
+ fVelocityBufferNeeded:=false;
+
  if fShadowMapSize=0 then begin
   fShadowMapSize:=512;
  end;
@@ -617,7 +621,11 @@ begin
     fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.None;
    end;
   end;
-  //fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
+  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.TAA;
+ end;
+
+ if fAntialiasingMode=TpvScene3DRendererAntialiasingMode.TAA then begin
+  fVelocityBufferNeeded:=true;
  end;
 
  SampleCounts:=fVulkanDevice.PhysicalDevice.Properties.limits.framebufferColorSampleCounts and

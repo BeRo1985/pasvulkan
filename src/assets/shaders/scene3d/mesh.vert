@@ -40,9 +40,9 @@ layout(location = 10) flat out uint outMaterialID;
 layout(location = 11) flat out int outViewIndex;
 layout(location = 12) flat out uint outFrameIndex;
 #ifdef VELOCITY
-layout(location = 13) out vec4 outPreviousClipSpace;
-layout(location = 14) out vec4 outCurrentClipSpace;
-layout(location = 15) flat out vec4 outJitter;
+layout(location = 13) flat out vec4 outJitter;
+layout(location = 14) out vec4 outPreviousClipSpace;
+layout(location = 15) out vec4 outCurrentClipSpace;
 #else
 layout(location = 13) flat out vec2 outJitter;
 #endif
@@ -177,11 +177,7 @@ void main() {
   outCameraRelativePosition = worldSpacePosition - cameraPosition;
   outTangent = tangentSpace[0];
   outBitangent = tangentSpace[1];
-#ifdef VELOCITY
-  outNormal = normalize(transpose(mat3(view.inverseViewMatrix)) * tangentSpace[2]);
-#else
   outNormal = tangentSpace[2];
-#endif
   outTexCoord0 = inTexCoord0;
   outTexCoord1 = inTexCoord1;
   outColor0 = inColor0;

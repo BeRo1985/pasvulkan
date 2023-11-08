@@ -139,12 +139,6 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceNormals:=AddImageInput('resourcetype_normals',
-                                 'resource_normals_data',
-                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                );
-
  fResourceOutput:=AddImageOutput('resourcetype_ssao',
                                  'resource_ssao_data_temporary',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -218,7 +212,7 @@ begin
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                        fInstance.Renderer.CountInFlightFrames*4);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,fInstance.Renderer.CountInFlightFrames);
- fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames*2);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -228,11 +222,6 @@ begin
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
  fVulkanDescriptorSetLayout.AddBinding(1,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                       1,
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                       []);
- fVulkanDescriptorSetLayout.AddBinding(2,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -257,17 +246,6 @@ begin
                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
                                                                                                 fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,
                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                 [],
-                                                                 [],
-                                                                 false
-                                                                );
-  fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                 [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
-                                                                                                fResourceNormals.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                fResourceNormals.ResourceTransition.Layout)],
                                                                  [],
                                                                  [],
                                                                  false

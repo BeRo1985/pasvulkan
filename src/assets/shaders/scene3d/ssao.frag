@@ -27,8 +27,6 @@ layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 layout(set = 0, binding = 1) uniform sampler2D uTextureDepth;
 #endif
 
-layout(set = 0, binding = 2) uniform sampler2DArray uTextureNormals;
-
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
@@ -51,6 +49,15 @@ vec3 fetchPosition(vec2 texCoord) {
   return position.xyz / position.w;
 }
 
+vec3 fetchPositionLod(vec2 texCoord, float lod) {
+#ifdef MULTIVIEW
+  vec4 position = inverseProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, vec3(texCoord, viewIndex), lod).x), 1.0);
+#else
+  vec4 position = inverseProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, texCoord, lod).x), 1.0);
+#endif
+  return position.xyz / position.w;
+}
+
 float linearizeDepth(float z) {
 #if 0
   vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
@@ -59,6 +66,198 @@ float linearizeDepth(float z) {
 #endif
   return v.x / v.y;
 }
+
+vec3 hash33(vec3 p) {
+  vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
+  p3 += dot(p3, p3.yxz + 19.19);
+  return fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
+}
+
+#undef GTAO
+#ifdef GTAO
+
+// GTAO
+
+const float AO_RADIUS = 2.0;
+const int NUM_STEPS = 8;
+const int NUM_ROTATIONS = 4;
+const int NUM_OFFSETS = 1;
+const float LOD_BIAS = 0.5;
+
+float Falloff(float dist2, float cosh){
+  const float FALLOFF_START2	= 0.16;
+  const float FALLOFF_END2 = 4.0;
+  return 2.0 * clamp((dist2 - FALLOFF_START2) / (FALLOFF_END2 - FALLOFF_START2), 0.0, 1.0);
+}
+
+const vec2 SPATIAL_NOISE[4][4] = {
+  { 
+    vec2(0.0625* 0, 0.25*0), 
+    vec2(0.0625* 4, 0.25*1), 
+    vec2(0.0625* 8, 0.25*2), 
+    vec2(0.0625*12, 0.25*3) 
+  },
+  { 
+    vec2(0.0625* 5, 0.25*3), 
+    vec2(0.0625* 9, 0.25*0), 
+    vec2(0.0625*13, 0.25*1), 
+    vec2(0.0625* 1, 0.25*2) 
+  },
+  {
+     vec2(0.0625*10, 0.25*2), 
+     vec2(0.0625*14, 0.25*3), 
+     vec2(0.0625* 2, 0.25*0), 
+     vec2(0.0625* 6, 0.25*1) 
+  },
+  { 
+    vec2(0.0625*15, 0.25*1), 
+    vec2(0.0625* 3, 0.25*2), 
+    vec2(0.0625* 7, 0.25*3), 
+    vec2(0.0625*11, 0.25*0) 
+  }
+};
+
+const float TEMPORAL_NOISE[8] = float[8]( 0.0, 0.5, 0.25, 0.75, 0.125, 0.375, 0.625, 0.875 );
+
+vec2 viewSize = textureSize(uTextureDepth, 0).xy;
+vec2 inverseViewSize = vec2(1.0) / viewSize;
+
+float getHorizonSample(vec3 viewPosition, vec3 viewDirection, float lod, vec2 sampleOffset, float closest){
+  vec3 ws = fetchPositionLod((vec2(gl_FragCoord.xy) + sampleOffset) * inverseViewSize, lod) - viewPosition;
+  float dist2 = dot(ws, ws);
+  float cosH = dot(ws, viewDirection) * inversesqrt(dist2);
+  float falloff = clamp(dist2 / (0.25 * AO_RADIUS * AO_RADIUS), 0.0, 1.0);
+  float foCosH = mix(cosH, closest, falloff);
+  return foCosH > closest ? foCosH : mix(foCosH, closest, 0.8);
+}
+
+void main(){
+
+#ifdef MULTIVIEW
+  vec3 texCoord = vec3(inTexCoord, viewIndex);
+#else
+  vec2 texCoord = inTexCoord;
+#endif
+  
+  vec3 position = fetchPosition(texCoord.xy);
+  
+  float depth = position.z;
+  
+  float occlusion = 0.0;
+
+  if (isinf(depth) || (abs(depth) < 1e-7)) {
+    
+    occlusion = 1.0;
+
+  } else {
+
+    vec3 viewNormal;
+#if 1
+    {
+      vec2 texelSize = vec2(dFdx(texCoord.x), dFdy(texCoord.y));
+#ifdef MULTIVIEW
+      vec3 offsetH = vec3(texelSize.x, 0.0, 0.0);
+      vec3 offsetV = vec3(0.0, texelSize.y, 0.0);
+#else
+      vec2 offsetH = vec2(texelSize.x, 0.0);
+      vec2 offsetV = vec2(0.0, texelSize.y);
+#endif
+      vec3 pl = fetchPosition(texCoord.xy - (offsetH.xy * 1.0));
+      vec3 pr = fetchPosition(texCoord.xy + (offsetH.xy * 1.0));
+      vec3 pu = fetchPosition(texCoord.xy - (offsetV.xy * 1.0));
+      vec3 pd = fetchPosition(texCoord.xy + (offsetV.xy * 1.0));
+      vec4 H = vec4(                                                                   //
+          pl.z,                                                                        //
+          pr.z,                                                                        //
+          linearizeDepth(textureLod(uTextureDepth, texCoord - (offsetH * 2.0), 0).x),  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetH * 2.0), 0).x)   //
+      );
+      vec4 V = vec4(                                                                   //
+          pu.z,                                                                        //
+          pd.z,                                                                        //
+          linearizeDepth(textureLod(uTextureDepth, texCoord - (offsetV * 2.0), 0).x),  //
+          linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetV * 2.0), 0).x)   //
+      );
+      vec4 hve = abs((vec4(H.xy * H.zw, V.xy * V.zw) / fma(vec4(H.zw, V.zw), vec4(2.0), -vec4(H.xy, V.xy))) - vec4(depth));
+      viewNormal = -(cross((hve.x < hve.y) ? (position - pl) : (pr - position), (hve.z < hve.w) ? (position - pu) : (pd - position)));
+      viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
+    }
+#else
+    viewNormal = -cross(dFdx(position), dFdy(position));
+    viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
+#endif
+
+    vec3 viewPosition = position;
+    
+    vec3 viewDirection = normalize(-viewPosition); 
+
+    float pixelScale = projectionMatrix[1][1] * (0.25 * inverseViewSize.y);
+
+    float radius = max((AO_RADIUS * pixelScale) / abs(viewPosition.z), NUM_STEPS * 1.415);
+    float stepSize = radius / float(NUM_STEPS);
+
+    float lod = min(floor(log2(stepSize / (4.0 * float(NUM_STEPS)))) + LOD_BIAS, floor(log2(min(viewSize.x, viewSize.y))) + 1.0);
+
+    vec2 noises = SPATIAL_NOISE[uint(gl_FragCoord.y) & 3u][uint(gl_FragCoord.x) & 3u];
+
+    float noiseRotation = noises.x / float(NUM_ROTATIONS);
+    float noiseOffset = noises.y / float(NUM_OFFSETS);
+
+    for(int rotationIndex = 0; rotationIndex < NUM_ROTATIONS; rotationIndex++){
+
+      float rotation = (noiseRotation + TEMPORAL_NOISE[rotationIndex]) * 3.1415926535897932384626433832795;
+
+      for(int offsetIndex = 0; offsetIndex < NUM_OFFSETS; offsetIndex++){
+
+        float offset = (noiseOffset + TEMPORAL_NOISE[offsetIndex]) * stepSize;
+
+        const float HALF_PI = 1.570796327;
+
+        vec2 sampleDirection = sin(vec2(rotation) + vec2(HALF_PI, 0.0));
+
+        vec2 horizons = vec2(-1.0, -1.0);
+        float sampleDist = (1.0 + stepSize) - offset;
+
+        for(int stepIndex = 0; stepIndex < NUM_STEPS; stepIndex++){
+            const vec2 sampleOffset = sampleDirection * sampleDist;
+            horizons.x = getHorizonSample(viewPosition, viewDirection, lod, sampleOffset, horizons.x);
+            horizons.y = getHorizonSample(viewPosition, viewDirection, lod, -sampleOffset, horizons.y);
+            sampleDist += stepSize;
+        }
+
+        horizons = acos(horizons);
+
+        vec3 bitangent = normalize(cross(vec3(sampleDirection, 0.0), viewDirection));
+        vec3 tangent = cross(viewDirection, bitangent);
+        vec3 projectedNormal = viewNormal - (bitangent * dot(viewNormal, bitangent));
+
+        float nnx       = length(projectedNormal);
+        float invnnx    = 1.0 / (nnx + 1e-6);
+        float cosxi     = dot(projectedNormal, tangent) * invnnx; // xi = gamma + HALF_PI
+        float gamma     = acos(cosxi) - HALF_PI;
+        float cosgamma  = dot(projectedNormal, viewDirection) * invnnx;
+        float singamma2 = -2.0 * cosxi; // cos(x + HALF_PI) = -sin(x)
+
+        horizons = vec2(gamma) + vec2(max(-horizons.x - gamma, -HALF_PI), min(horizons.y - gamma, HALF_PI));
+
+        occlusion += nnx * 0.25 * (
+          (horizons.x * singamma2 + cosgamma - cos(2.0 * horizons.x - gamma)) +
+          (horizons.y * singamma2 + cosgamma - cos(2.0 * horizons.y - gamma))
+        );
+            
+      }
+
+    }
+    
+    occlusion /= float(NUM_ROTATIONS * NUM_OFFSETS);
+
+  }
+  oFragOcclusionDepth = vec2(occlusion, depth);
+}
+
+#else
+
+// SSAO
 
 vec3 signedOctDecode(vec3 normal) {
   vec2 outNormal;
@@ -142,12 +341,6 @@ const float radius = 0.5;
 const float bias = 0.025;
 const float strength = 0.25;
 
-vec3 hash33(vec3 p) {
-  vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
-  p3 += dot(p3, p3.yxz + 19.19);
-  return fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
-}
-
 void main() {
 #ifdef MULTIVIEW
   vec3 texCoord = vec3(inTexCoord, viewIndex);
@@ -160,15 +353,10 @@ void main() {
   if (isinf(depth) || (abs(depth) < 1e-7)) {
     occlusion = 1.0;
   } else {
-    vec3 normal;
+    vec3 viewNormal;
 #if 1
-    { 
-//    normal = signedOctDecode(textureLod(uTextureNormals, vec3(inTexCoord, viewIndex), 0).xyz); 
-      normal = fma(textureLod(uTextureNormals, vec3(inTexCoord, viewIndex), 0).xyz, vec3(2.0), vec3(-1.0)); 
-    }
-#elif 0
     {
-      vec2 texelSize = vec2(1.0) / vec2(textureSize(uTextureDepth, 0).xy);  // vec2(dFdx(texCoord.x), dFdy(texCoord.y));
+      vec2 texelSize = vec2(dFdx(texCoord.x), dFdy(texCoord.y));
 #ifdef MULTIVIEW
       vec3 offsetH = vec3(texelSize.x, 0.0, 0.0);
       vec3 offsetV = vec3(0.0, texelSize.y, 0.0);
@@ -193,17 +381,19 @@ void main() {
           linearizeDepth(textureLod(uTextureDepth, texCoord + (offsetV * 2.0), 0).x)   //
       );
       vec4 hve = abs((vec4(H.xy * H.zw, V.xy * V.zw) / fma(vec4(H.zw, V.zw), vec4(2.0), -vec4(H.xy, V.xy))) - vec4(depth));
-      normal = normalize(cross((hve.x < hve.y) ? (position - pl) : (pr - position), (hve.z < hve.w) ? (position - pu) : (pd - position)));
+      viewNormal = -(cross((hve.x < hve.y) ? (position - pl) : (pr - position), (hve.z < hve.w) ? (position - pu) : (pd - position)));
+      viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
     }
 #else
-    normal = normalize(cross(dFdx(position), dFdy(position)));
+    viewNormal = -cross(dFdx(position), dFdy(position));
+    viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
 #endif
     vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));
-    vec3 tangent = normalize(randomVector - (normal * dot(randomVector, normal)));
-    vec3 bitangent = cross(normal, tangent);
-    mat3 tbn = mat3(tangent, bitangent, normal);
+    vec3 viewTangent = normalize(randomVector - (viewNormal * dot(randomVector, viewNormal)));
+    vec3 viewBitangent = cross(viewNormal, viewTangent);
+    mat3 viewTBN = mat3(viewTangent, viewBitangent, viewNormal);
     for (int i = 0; i < countKernelSamples; i++) {
-      vec4 p = projectionMatrix * vec4(position.xyz + ((tbn * kernelSamples[i]) * radius), 1.0);
+      vec4 p = projectionMatrix * vec4(position.xyz + ((viewTBN * kernelSamples[i]) * radius), 1.0);
       p.xyz /= p.w;
       p.xy = fma(p.xy, vec2(0.5), vec2(0.5));
 #ifdef MULTIVIEW
@@ -217,3 +407,4 @@ void main() {
   }
   oFragOcclusionDepth = vec2(occlusion, depth);
 }
+#endif

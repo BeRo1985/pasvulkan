@@ -94,9 +94,9 @@ layout(location = 10) flat in uint inMaterialID;
 layout(location = 11) flat in int inViewIndex;
 layout(location = 12) flat in uint inFrameIndex;
 #ifdef VELOCITY
-layout(location = 13) in vec4 inPreviousClipSpace;
-layout(location = 14) in vec4 inCurrentClipSpace;
-layout(location = 15) flat in vec4 inJitter;
+layout(location = 13) flat in vec4 inJitter;
+layout(location = 14) in vec4 inPreviousClipSpace;
+layout(location = 15) in vec4 inCurrentClipSpace;
 #else
 layout(location = 13) flat in vec2 inJitter;
 #endif
@@ -105,12 +105,10 @@ layout(location = 13) flat in vec2 inJitter;
 #ifdef VOXELIZATION
   // Nothing in this case, since the fragment shader writes to the voxel grid directly.
 #elif defined(DEPTHONLY)
-  #if defined(VELOCITY) && !(defined(MBOIT) && defined(MBOITPASS1))
-    layout(location = 0) out vec2 outFragVelocity;
-    layout(location = 1) out vec4 outFragNormal;
-  #endif
 #else
-  #if defined(EXTRAEMISSIONOUTPUT) && !(defined(WBOIT) || defined(MBOIT))
+  #if defined(VELOCITY) && !(defined(MBOIT) && defined(MBOITPASS1))
+    layout(location = 1) out vec2 outFragVelocity;
+  #elif defined(EXTRAEMISSIONOUTPUT) && !(defined(WBOIT) || defined(MBOIT))
     layout(location = 1) out vec4 outFragEmission;
   #elif defined(REFLECTIVESHADOWMAPOUTPUT)
     layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
@@ -2332,13 +2330,9 @@ void main() {
 #undef TRANSPARENCY_IMPLEMENTATION
 
 #if defined(VELOCITY)
+
   outFragVelocity = (((inCurrentClipSpace.xy / inCurrentClipSpace.w) - inJitter.xy) - ((inPreviousClipSpace.xy / inPreviousClipSpace.w) - inJitter.zw)) * 0.5;
-
-  vec3 normal = normalize(workNormal);
-/*normal /= (abs(normal.x) + abs(normal.y) + abs(normal.z));
-  outFragNormal = vec4(vec3(fma(normal.xx, vec2(0.5, -0.5), vec2(fma(normal.y, 0.5, 0.5))), clamp(normal.z * 3.402823e+38, 0.0, 1.0)), 1.0);*/
-  outFragNormal = vec4(vec3(fma(normal.xyz, vec3(0.5), vec3(0.5))), 1.0);  
-
+  
 #elif defined(REFLECTIVESHADOWMAPOUTPUT)
 
   vec3 normal = normalize(workNormal);

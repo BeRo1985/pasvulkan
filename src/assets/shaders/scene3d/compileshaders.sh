@@ -237,6 +237,7 @@ compileshaderarguments=(
 
   "-V debug_primitive.vert -o ${tempPath}/debug_primitive_vert.spv"
   "-V debug_primitive.frag -o ${tempPath}/debug_primitive_frag.spv"
+  "-V debug_primitive.frag -DVELOCITY -o ${tempPath}/debug_primitive_velocity_frag.spv"
 
   "-V particle.vert -o ${tempPath}/particle_vert.spv"
   "-V particle.vert -DVOXELIZATION -o ${tempPath}/particle_voxelization_vert.spv"
@@ -373,6 +374,12 @@ addMeshFragmentShadingAlphaTestVariants(){
   addMeshFragmentShader "${1}_alphatest_nodiscard" "$2 -DALPHATEST -DNODISCARD"
 }
 
+# Add mesh fragment shader variants with or without velocity output (if any)
+addMeshFragmentShadingVelocityVariants(){
+  addMeshFragmentShadingAlphaTestVariants "$1" "$2"
+  addMeshFragmentShadingAlphaTestVariants "${1}_velocity" "$2 -DVELOCITY"
+}
+
 # Add mesh fragment shader variants with different alpha test techniques (if any)
 addMeshFragmentShadingOITAlphaTestVariants(){
   addMeshFragmentShader "$1" "$2"
@@ -383,7 +390,7 @@ addMeshFragmentShadingOITAlphaTestVariants(){
 addMeshFragmentShadingTransparencyVariants(){
 
   # No blending   
-  addMeshFragmentShadingAlphaTestVariants "$1" "$2"
+  addMeshFragmentShadingVelocityVariants "$1" "$2"
 
   if [[ $2 != *"ENVMAP"* ]]; then
 
@@ -478,9 +485,6 @@ addMeshFragmentDepthOnlyVariants(){
   # Depth only
   addMeshFragmentDepthOnlyAlphaTestVariants "${1}" "$2"
 
-  # Depth and velocity
-  addMeshFragmentDepthOnlyAlphaTestVariants "${1}_velocity" "$2 -DVELOCITY"
-
 }
 
 # Add mesh fragment shader variants with different alpha test techniques (if any)
@@ -518,7 +522,7 @@ addMeshFragmentPassTargetVariants(){
 
   # The actual shading stuff
   addMeshFragmentShadingGlobalIlluminationVariants "${1}_shading" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS"  
-  
+    
   # The environment map stuff
   #addMeshFragmentShadingGlobalIlluminationVariants "${1}_envmap" "$2 -DFRUSTUMCLUSTERGRID -DDECALS -DLIGHTS -DLIGHTCLUSTERS -DSHADOWS -DENVMAP"
 

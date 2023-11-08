@@ -8,6 +8,13 @@ layout(location = 0) in vec4 inColor;
 
 layout(location = 0) out vec4 outFragColor;
 
+#ifdef VELOCITY
+layout(location = 1) out vec2 outVelocity;
+#endif
+
 void main(){
   outFragColor = inColor;
+#ifdef VELOCITY
+  outVelocity = vec2(0.0); // Just no velocity for debug primitives for the sake of simplicity
+#endif  
 }

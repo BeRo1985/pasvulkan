@@ -94,8 +94,10 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
+       fResourceVelocity:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceDepth:TpvFrameGraph.TPass.TUsedImageResource;
        fMeshVertexShaderModule:TpvVulkanShaderModule;
+       fMeshVelocityVertexShaderModule:TpvVulkanShaderModule;
        fMeshFragmentShaderModule:TpvVulkanShaderModule;
        fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
@@ -106,6 +108,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageMeshVelocityVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthFragment:TpvVulkanPipelineShaderStage;
@@ -162,6 +165,8 @@ inherited Create(aFrameGraph);
                               []
                              );
 
+ fResourceVelocity:=nil;
+
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceColor:=AddImageOutput('resourcetype_color_optimized_non_alpha',
@@ -171,6 +176,18 @@ inherited Create(aFrameGraph);
                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                 );
+
+  if fInstance.Renderer.VelocityBufferNeeded then begin
+
+   fResourceVelocity:=AddImageOutput('resourcetype_velocity',
+                                     'resource_velocity_data',
+                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
+
+  end;
 
   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                      'resource_depth_data',
@@ -205,6 +222,27 @@ inherited Create(aFrameGraph);
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );}
 
+  if fInstance.Renderer.VelocityBufferNeeded then begin
+
+   fResourceVelocity:=AddImageOutput('resourcetype_msaa_velocity',
+                                     'resource_forwardrendering_msaa_velocity',
+                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                     TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                  TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                    );
+
+   fResourceVelocity:=AddImageResolveOutput('resourcetype_velocity',
+                                            'resource_velocity_data',
+                                            'resource_forwardrendering_msaa_velocity',
+                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                            TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.DontCare,
+                                                                         TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                            [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                          );
+
+  end;
+
   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
                                      'resource_msaa_depth_data',
                                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -232,6 +270,7 @@ procedure TpvScene3DRendererPassesForwardRenderPass.AcquirePersistentResources;
 var Index:TpvSizeInt;
     Stream:TStream;
     MeshFragmentSpecializationConstants:TpvScene3DRendererInstance.TMeshFragmentSpecializationConstants;
+    VelocityVariant:TpvUTF8String;
 begin
  inherited AcquirePersistentResources;
 
@@ -244,7 +283,26 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_frag.spv');
+ if fInstance.Renderer.VelocityBufferNeeded then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_velocity_vert.spv');
+  try
+   fMeshVelocityVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
+  finally
+   Stream.Free;
+  end;
+
+  VelocityVariant:='_velocity';
+
+ end else begin
+
+  fMeshVelocityVertexShaderModule:=nil;
+
+  VelocityVariant:='';
+
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_frag.spv');
  try
   fMeshFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -253,29 +311,29 @@ begin
 
  if fInstance.Renderer.UseDemote then begin
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_demote_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_demote_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_demote_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_demote_frag.spv');
   end;
  end else if fInstance.Renderer.UseNoDiscard then begin
   if fInstance.ZFar<0.0 then begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_nodiscard_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_nodiscard_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_reversedz_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end;
   end else begin
    if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_nodiscard_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_nodiscard_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_nodiscard_frag.spv');
    end;
   end;
  end else begin
   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+'_alphatest_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_shading_'+fInstance.Renderer.MeshFragGlobalIlluminationTypeName+'msaa_'+fInstance.Renderer.MeshFragShadowTypeName+VelocityVariant+'_alphatest_frag.spv');
   end;
  end;
  try
@@ -310,6 +368,12 @@ begin
    Stream.Free;
   end;
 
+ end else begin
+
+  fMeshDepthFragmentShaderModule:=nil;
+
+  fMeshDepthMaskedFragmentShaderModule:=nil;
+
  end;
 
  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_vert.spv');
@@ -319,7 +383,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_frag.spv');
+ if fInstance.Renderer.VelocityBufferNeeded then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_velocity_frag.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_frag.spv');
+ end;
  try
   fDebugPrimitiveFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -327,6 +395,12 @@ begin
  end;
 
  fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
+
+ if assigned(fMeshVelocityVertexShaderModule) then begin
+  fVulkanPipelineShaderStageMeshVelocityVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVelocityVertexShaderModule,'main');
+ end else begin
+  fVulkanPipelineShaderStageMeshVelocityVertex:=nil;
+ end;
 
  fVulkanPipelineShaderStageMeshFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshFragmentShaderModule,'main');
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshFragment);
@@ -341,6 +415,12 @@ begin
 
   fVulkanPipelineShaderStageMeshDepthMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthMaskedFragmentShaderModule,'main');
   MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
+
+ end else begin
+
+  fVulkanPipelineShaderStageMeshDepthFragment:=nil;
+
+  fVulkanPipelineShaderStageMeshDepthMaskedFragment:=nil;
 
  end;
 
@@ -377,6 +457,8 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
+ FreeAndNil(fVulkanPipelineShaderStageMeshVelocityVertex);
+
  FreeAndNil(fVulkanPipelineShaderStageMeshFragment);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshMaskedFragment);
@@ -394,6 +476,8 @@ begin
  FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveFragment);
 
  FreeAndNil(fMeshVertexShaderModule);
+
+ FreeAndNil(fMeshVelocityVertexShaderModule);
 
  FreeAndNil(fMeshFragmentShaderModule);
 
@@ -617,14 +701,19 @@ begin
 
      try
 
-      VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
       if DepthPrePass then begin
+       VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
        if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
         VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
-       end else begin
-        VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthFragment);
+{      end else begin
+        VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshDepthFragment);}
        end;
       end else begin
+       if fInstance.Renderer.VelocityBufferNeeded then begin
+        VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVelocityVertex);
+       end else begin
+        VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshVertex);
+       end;
        if AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask then begin
         VulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageMeshMaskedFragment);
        end else begin
@@ -635,7 +724,7 @@ begin
       VulkanGraphicsPipeline.InputAssemblyState.Topology:=TpvScene3D.VulkanPrimitiveTopologies[PrimitiveTopology];
       VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
-      fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline);
+      fInstance.Renderer.Scene3D.InitializeGraphicsPipeline(VulkanGraphicsPipeline,fInstance.Renderer.VelocityBufferNeeded and not DepthPrePass);
 
       VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fResourceColor.Width,fResourceColor.Height,0.0,1.0);
       VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fResourceColor.Width,fResourceColor.Height);
@@ -696,6 +785,16 @@ begin
                                                                            VK_BLEND_FACTOR_ZERO,
                                                                            VK_BLEND_OP_ADD,
                                                                            0);
+       if fInstance.Renderer.VelocityBufferNeeded then begin
+        VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_OP_ADD,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_OP_ADD,
+                                                                            0);
+       end;
       end else begin
        if ((VulkanGraphicsPipeline.MultisampleState.RasterizationSamples<>VK_SAMPLE_COUNT_1_BIT) and
            (AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Mask)) or
@@ -712,6 +811,19 @@ begin
                                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
        end else begin
+        VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_OP_ADD,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_FACTOR_ZERO,
+                                                                            VK_BLEND_OP_ADD,
+                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+       end;
+       if fInstance.Renderer.VelocityBufferNeeded then begin
         VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
                                                                             VK_BLEND_FACTOR_ZERO,
                                                                             VK_BLEND_FACTOR_ZERO,
@@ -810,6 +922,19 @@ begin
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  if fInstance.Renderer.VelocityBufferNeeded then begin
+   VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_FACTOR_ZERO,
+                                                                       VK_BLEND_OP_ADD,
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                       TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  end;
 
   VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
   VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
@@ -936,6 +1061,7 @@ end;
 procedure TpvScene3DRendererPassesForwardRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                             const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    PreviousInFlightFrameIndex:TpvSizeInt;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
@@ -945,10 +1071,11 @@ begin
 
   fOnSetRenderPassResourcesDone:=false;
 
-{}fSkyBox.Draw(aInFlightFrameIndex,
-               InFlightFrameState^.FinalViewIndex,
-               InFlightFrameState^.CountFinalViews,
-               aCommandBuffer);//{}
+  if fInstance.Renderer.VelocityBufferNeeded then begin
+   PreviousInFlightFrameIndex:=IfThen(aFrameIndex=0,aInFlightFrameIndex,FrameGraph.DrawPreviousInFlightFrameIndex);
+  end else begin
+   PreviousInFlightFrameIndex:=-1;
+  end;
 
   if fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
    if assigned(fVoxelMeshVisualization) then begin
@@ -992,10 +1119,16 @@ begin
                                      [TpvScene3D.TMaterial.TAlphaMode.Mask]);
     end;}
 
-   end;   *)
+   end;   //*)
+
+{}fSkyBox.Draw(aInFlightFrameIndex,
+               InFlightFrameState^.FinalViewIndex,
+               InFlightFrameState^.CountFinalViews,
+               aCommandBuffer);
+   fOnSetRenderPassResourcesDone:=false;//{}
 
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                   -1,
+                                   PreviousInFlightFrameIndex,
                                    aInFlightFrameIndex,
                                    InFlightFrameState^.ViewRenderPassIndex,
                                    InFlightFrameState^.FinalViewIndex,
@@ -1008,7 +1141,7 @@ begin
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                   -1,
+                                   PreviousInFlightFrameIndex,
                                    aInFlightFrameIndex,
                                    InFlightFrameState^.ViewRenderPassIndex,
                                    InFlightFrameState^.FinalViewIndex,
