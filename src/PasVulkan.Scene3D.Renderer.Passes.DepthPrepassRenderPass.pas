@@ -93,6 +93,9 @@ type { TpvScene3DRendererPassesDepthPrepassRenderPass }
        fMeshVertexShaderModule:TpvVulkanShaderModule;
        fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthMaskedFragmentShaderModule:TpvVulkanShaderModule;
+       fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fGlobalVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fVulkanPipelineShaderStageMeshVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthMaskedFragment:TpvVulkanPipelineShaderStage;
@@ -240,9 +243,36 @@ begin
 
  fVulkanRenderPass:=VulkanRenderPass;
 
+ fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(0,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
+ fGlobalVulkanDescriptorSetLayout.Initialize;
+
+ fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*fInstance.Renderer.CountInFlightFrames);
+ fGlobalVulkanDescriptorPool.Initialize;
+
+ for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fGlobalVulkanDescriptorPool,
+                                                                                 fGlobalVulkanDescriptorSetLayout);
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                       0,
+                                                                       1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                       [],
+                                                                       [fInstance.GlobalVulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                       [],
+                                                                       false);
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].Flush;
+ end;
+
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Renderer.Scene3D.GlobalVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fGlobalVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -381,6 +411,11 @@ begin
   end;
  end;
  FreeAndNil(fVulkanPipelineLayout);
+ for Index:=0 to fInstance.Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
+ end;
+ FreeAndNil(fGlobalVulkanDescriptorPool);
+ FreeAndNil(fGlobalVulkanDescriptorSetLayout);
  inherited ReleaseVolatileResources;
 end;
 
@@ -398,6 +433,13 @@ procedure TpvScene3DRendererPassesDepthPrepassRenderPass.OnSetRenderPassResource
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                       fVulkanPipelineLayout.Handle,
+                                       1,
+                                       1,
+                                       @fGlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,
+                                       nil);
  end;
 end;
 

@@ -377,9 +377,9 @@ begin
 
  fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fGlobalVulkanDescriptorSetLayout.AddBinding(0,
-                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             3,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(1,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -387,27 +387,27 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(2,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             3,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
-                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
                                              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             2,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
- fGlobalVulkanDescriptorSetLayout.AddBinding(5,
-                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(5,
+                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             2,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(6,
-                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
@@ -417,12 +417,12 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(8,
-                                             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fGlobalVulkanDescriptorSetLayout.AddBinding(9,
-                                             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
@@ -441,9 +441,14 @@ begin
                                              1,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
+ fGlobalVulkanDescriptorSetLayout.AddBinding(13,
+                                             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                             1,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             []);
  case fInstance.Renderer.TransparencyMode of
   TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT:begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(13,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(14,
                                                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -459,7 +464,7 @@ begin
  fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9*fInstance.Renderer.CountInFlightFrames);
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,fInstance.Renderer.CountInFlightFrames);
- fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
+ fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,4*fInstance.Renderer.CountInFlightFrames);
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*fInstance.Renderer.CountInFlightFrames);
  fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,5*fInstance.Renderer.CountInFlightFrames);
  fGlobalVulkanDescriptorPool.Initialize;
@@ -469,6 +474,14 @@ begin
                                                                                  fGlobalVulkanDescriptorSetLayout);
   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
                                                                        0,
+                                                                       1,
+                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                       [],
+                                                                       [fInstance.GlobalVulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                       [],
+                                                                       false);
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                       0,
                                                                        3,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                        [fInstance.Renderer.GGXBRDF.DescriptorImageInfo,
@@ -477,7 +490,7 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                        0,
                                                                        3,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -487,7 +500,7 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -495,7 +508,7 @@ begin
                                                                        [fInstance.CascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -506,7 +519,7 @@ begin
                                                                        [],
                                                                        false);
   if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
-   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                         0,
                                                                         2,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -520,7 +533,7 @@ begin
                                                                         [],
                                                                         false);
   end else begin
-   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+   fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                         0,
                                                                         2,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -534,7 +547,7 @@ begin
                                                                         [],
                                                                         false);
   end;
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -542,7 +555,7 @@ begin
                                                                        [fInstance.FrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -550,7 +563,7 @@ begin
                                                                        [fInstance.FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -558,7 +571,7 @@ begin
                                                                        [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
@@ -568,7 +581,7 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(9,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -576,7 +589,7 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(10,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(11,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -584,7 +597,7 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(11,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(12,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -592,7 +605,7 @@ begin
                                                                        [],
                                                                        [],
                                                                        false);
-  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(12,
+  fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(13,
                                                                        0,
                                                                        1,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
@@ -602,7 +615,7 @@ begin
                                                                        false);
   case fInstance.Renderer.TransparencyMode of
    TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT:begin
-    fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(13,
+    fGlobalVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(14,
                                                                          0,
                                                                          1,
                                                                          TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),

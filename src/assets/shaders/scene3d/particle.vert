@@ -57,7 +57,7 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 0, binding = 0, std140) uniform uboViews {
+layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 

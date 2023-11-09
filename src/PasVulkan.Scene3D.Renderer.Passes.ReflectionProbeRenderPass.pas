@@ -281,6 +281,7 @@ begin
  fVulkanPipelineShaderStageDebugPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDebugPrimitiveFragmentShaderModule,'main');
 
  fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer,
+                                          fInstance,
                                           fInstance.Renderer.Scene3D,
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);
 

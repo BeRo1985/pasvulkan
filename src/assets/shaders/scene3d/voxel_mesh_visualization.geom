@@ -19,13 +19,13 @@ layout(location = 2) flat in mat4 inViewProjectionMatrix[];
 
 layout(location = 0) out vec4 outColor;
 
-layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
+layout (set = 0, binding = 1, std140) readonly uniform VoxelGridData {
   #include "voxelgriddata_uniforms.glsl"
 } voxelGridData;
 
-layout(set = 1, binding = 1) uniform sampler3D uVoxelGridOcclusion[];
+layout(set = 0, binding = 2) uniform sampler3D uVoxelGridOcclusion[];
 
-layout(set = 1, binding = 2) uniform sampler3D uVoxelGridRadiance[];
+layout(set = 0, binding = 3) uniform sampler3D uVoxelGridRadiance[];
 
 void main(){
 

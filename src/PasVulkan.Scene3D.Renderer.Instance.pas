@@ -455,8 +455,9 @@ type { TpvScene3DRendererInstance }
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
       public
        fSetGlobalResourcesDone:TpvScene3D.TSetGlobalResourcesDone;
-      private
+      public
        fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
+      private
        fPotentiallyVisibleSetViewNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
        fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
       private
@@ -608,6 +609,8 @@ type { TpvScene3DRendererInstance }
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+      public
+       property GlobalVulkanViewUniformBuffers:TpvScene3D.TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
       public
        property VertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray read fVertexStagePushConstants write fVertexStagePushConstants;
        property DrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets read fDrawChoreographyBatchItemFrameBuckets write fDrawChoreographyBatchItemFrameBuckets;
@@ -4948,10 +4951,6 @@ begin
  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
  if PreviousInFlightFrameIndex<0 then begin
   inc(PreviousInFlightFrameIndex,Renderer.CountInFlightFrames);
- end;
-
- for Index:=0 to fViews[aInFlightFrameIndex].Count-1 do begin
-  Renderer.Scene3D.AddView(fViews[aInFlightFrameIndex].Items[Index]);
  end;
 
  if fViews[aInFlightFrameIndex].Count>0 then begin

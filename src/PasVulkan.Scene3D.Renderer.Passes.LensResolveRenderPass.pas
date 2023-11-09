@@ -407,7 +407,7 @@ procedure TpvScene3DRendererPassesLensResolveRenderPass.Execute(const aCommandBu
 var Matrix:TpvMatrix4x4;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- Matrix:=fInstance.Renderer.Scene3D.Views.Items[fInstance.InFlightFrameStates[aInFlightFrameIndex].FinalViewIndex].ViewMatrix;
+ Matrix:=fInstance.fViews[aInFlightFrameIndex].Items[fInstance.InFlightFrameStates[aInFlightFrameIndex].FinalViewIndex].ViewMatrix;
  fPushConstants.LensStarRotationAngle:=(Matrix.RawComponents[0,0]+Matrix.RawComponents[1,1]+Matrix.RawComponents[2,2])*(pi/3.0);
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),

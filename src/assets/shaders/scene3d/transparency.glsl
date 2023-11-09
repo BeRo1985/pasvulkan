@@ -36,44 +36,44 @@
 
     #if defined(WBOIT)
 
-      layout(set = 1, binding = 8, std140) uniform uboWBOIT {
+      layout(set = 1, binding = 9, std140) uniform uboWBOIT {
         vec4 wboitZNearZFar;
       } uWBOIT;
 
     #elif defined(MBOIT)
 
-      layout(set = 1, binding = 8, std140) uniform uboMBOIT {
+      layout(set = 1, binding = 9, std140) uniform uboMBOIT {
         vec4 mboitZNearZFar;
       } uMBOIT;
 
       #if defined(MBOITPASS1)
       #elif defined(MBOITPASS2)
         #ifdef MSAA
-          layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uMBOITMoments0;
-          layout(input_attachment_index = 1, set = 1, binding = 10) uniform subpassInputMS uMBOITMoments1;
+          layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uMBOITMoments0;
+          layout(input_attachment_index = 1, set = 1, binding = 11) uniform subpassInputMS uMBOITMoments1;
         #else
-          layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uMBOITMoments0;
-          layout(input_attachment_index = 1, set = 1, binding = 10) uniform subpassInput uMBOITMoments1;
+          layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uMBOITMoments0;
+          layout(input_attachment_index = 1, set = 1, binding = 11) uniform subpassInput uMBOITMoments1;
         #endif
       #endif
 
     #elif defined(LOCKOIT)
 
       #ifdef MSAA
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
       #else
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
       #endif
-      layout(set = 1, binding = 9, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-      layout(set = 1, binding = 10, r32ui) uniform coherent uimage2DArray uOITImgAux;
+      layout(set = 1, binding = 10, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+      layout(set = 1, binding = 11, r32ui) uniform coherent uimage2DArray uOITImgAux;
       #ifdef SPINLOCK
-        layout(set = 1, binding = 11, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        layout(set = 1, binding = 12, std140) uniform uboOIT {
+        layout(set = 1, binding = 12, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+        layout(set = 1, binding = 13, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
       #ifdef INTERLOCK
-        layout(set = 1, binding = 11, std140) uniform uboOIT {
+        layout(set = 1, binding = 12, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
@@ -81,47 +81,47 @@
     #elif defined(DFAOIT)
 
       #ifdef MSAA
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
-        layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
-        layout(set = 1, binding = 10, rgba16f) uniform coherent image2DMSArray uOITImgAccumulation;
-        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
-        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+        layout(set = 1, binding = 10, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
+        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAccumulation;
+        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
+        layout(set = 1, binding = 13, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
       #else
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
-        layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCouterFragmentDepthsSampleMask;
-        layout(set = 1, binding = 10, rgba16f) uniform coherent image2DArray uOITImgAccumulation;
-        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAverage;
-        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgBucket;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
+        layout(set = 1, binding = 10, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCouterFragmentDepthsSampleMask;
+        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAccumulation;
+        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgAverage;
+        layout(set = 1, binding = 13, rgba16f) uniform coherent image2DArray uOITImgBucket;
       #endif
       #ifdef SPINLOCK
-        layout(set = 1, binding = 13, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        /*layout(set = 1, binding = 14, std140) uniform uboOIT {
+        layout(set = 1, binding = 14, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+        /*layout(set = 1, binding = 15, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;*/
       #endif
       #ifdef INTERLOCK
-        /*layout(set = 1, binding = 14, std140) uniform uboOIT {
+        /*layout(set = 1, binding = 15, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;*/
       #endif
 
     #elif defined(LOOPOIT)
 
-      layout(set = 1, binding = 8, std140) uniform uboOIT {
+      layout(set = 1, binding = 9, std140) uniform uboOIT {
         ivec4 oitViewPort;
       } uOIT;
       #ifdef MSAA
-        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uOITImgDepth;
       #else
-        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uOITImgDepth;
       #endif
       #if defined(LOOPOIT_PASS1)
-        layout(set = 1, binding = 10, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;
+        layout(set = 1, binding = 11, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;
       #else
-        layout(set = 1, binding = 10, r32ui) uniform readonly uimageBuffer uOITImgZBuffer;
-        layout(set = 1, binding = 11, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
+        layout(set = 1, binding = 11, r32ui) uniform readonly uimageBuffer uOITImgZBuffer;
+        layout(set = 1, binding = 12, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
         #ifdef MSAA    
-          layout(set = 1, binding = 12, r32ui) uniform coherent uimageBuffer uOITImgSBuffer;
+          layout(set = 1, binding = 13, r32ui) uniform coherent uimageBuffer uOITImgSBuffer;
         #endif
       #endif 
 
@@ -131,44 +131,44 @@
 
     #if defined(WBOIT)
 
-      layout(set = 1, binding = 8, std140) uniform uboWBOIT {
+      layout(set = 1, binding = 9, std140) uniform uboWBOIT {
         vec4 wboitZNearZFar;
       } uWBOIT;
 
     #elif defined(MBOIT)
 
-      layout(set = 1, binding = 8, std140) uniform uboMBOIT {
+      layout(set = 1, binding = 9, std140) uniform uboMBOIT {
         vec4 mboitZNearZFar;
       } uMBOIT;
 
       #if defined(MBOITPASS1)
       #elif defined(MBOITPASS2)
         #ifdef MSAA
-          layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uMBOITMoments0;
-          layout(input_attachment_index = 1, set = 1, binding = 10) uniform subpassInputMS uMBOITMoments1;
+          layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uMBOITMoments0;
+          layout(input_attachment_index = 1, set = 1, binding = 11) uniform subpassInputMS uMBOITMoments1;
         #else
-          layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uMBOITMoments0;
-          layout(input_attachment_index = 1, set = 1, binding = 10) uniform subpassInput uMBOITMoments1;
+          layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uMBOITMoments0;
+          layout(input_attachment_index = 1, set = 1, binding = 11) uniform subpassInput uMBOITMoments1;
         #endif
       #endif
 
     #elif defined(LOCKOIT)
 
       #ifdef MSAA
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
       #else
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
       #endif
-      layout(set = 1, binding = 9, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
-      layout(set = 1, binding = 10, r32ui) uniform coherent uimage2DArray uOITImgAux;
+      layout(set = 1, binding = 10, rgba32ui) uniform coherent uimageBuffer uOITImgABuffer;
+      layout(set = 1, binding = 11, r32ui) uniform coherent uimage2DArray uOITImgAux;
       #ifdef SPINLOCK
-        layout(set = 1, binding = 11, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        layout(set = 1, binding = 12, std140) uniform uboOIT {
+        layout(set = 1, binding = 12, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+        layout(set = 1, binding = 13, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
       #ifdef INTERLOCK
-        layout(set = 1, binding = 11, std140) uniform uboOIT {
+        layout(set = 1, binding = 12, std140) uniform uboOIT {
           ivec4 oitViewPort;
         } uOIT;
       #endif
@@ -176,47 +176,47 @@
     #elif defined(DFAOIT)
 
       #ifdef MSAA
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInputMS uOITImgDepth;
-        layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
-        layout(set = 1, binding = 10, rgba16f) uniform coherent image2DMSArray uOITImgAccumulation;
-        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
-        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+        layout(set = 1, binding = 10, rgba32ui) uniform coherent uimage2DMSArray uOITImgFragmentCouterFragmentDepthsSampleMask;
+        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DMSArray uOITImgAccumulation;
+        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DMSArray uOITImgAverage;
+        layout(set = 1, binding = 13, rgba16f) uniform coherent image2DMSArray uOITImgBucket;
       #else
-        layout(input_attachment_index = 0, set = 1, binding = 8) uniform subpassInput uOITImgDepth;
-        layout(set = 1, binding = 9, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCouterFragmentDepthsSampleMask;
-        layout(set = 1, binding = 10, rgba16f) uniform coherent image2DArray uOITImgAccumulation;
-        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAverage;
-        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgBucket;
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
+        layout(set = 1, binding = 10, rgba32ui) uniform coherent uimage2DArray uOITImgFragmentCouterFragmentDepthsSampleMask;
+        layout(set = 1, binding = 11, rgba16f) uniform coherent image2DArray uOITImgAccumulation;
+        layout(set = 1, binding = 12, rgba16f) uniform coherent image2DArray uOITImgAverage;
+        layout(set = 1, binding = 13, rgba16f) uniform coherent image2DArray uOITImgBucket;
       #endif
       #ifdef SPINLOCK
-        layout(set = 1, binding = 13, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
-        //layout(set = 1, binding = 14, std140) uniform uboOIT {
+        layout(set = 1, binding = 14, r32ui) uniform coherent uimage2DArray uOITImgSpinLock;
+        //layout(set = 1, binding = 15, std140) uniform uboOIT {
         //  ivec4 oitViewPort;
         //} uOIT;
       #endif
       #ifdef INTERLOCK
-        //layout(set = 1, binding = 14, std140) uniform uboOIT {
+        //layout(set = 1, binding = 15, std140) uniform uboOIT {
         //  ivec4 oitViewPort;
         //} uOIT;
       #endif
 
     #elif defined(LOOPOIT)
 
-      layout(set = 1, binding = 8, std140) uniform uboOIT {
+      layout(set = 1, binding = 9, std140) uniform uboOIT {
         ivec4 oitViewPort;
       } uOIT;
       #ifdef MSAA
-        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uOITImgDepth;
       #else
-        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uOITImgDepth;
       #endif
       #if defined(LOOPOIT_PASS1)
-        layout(set = 1, binding = 10, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;
+        layout(set = 1, binding = 11, r32ui) uniform coherent uimageBuffer uOITImgZBuffer;
       #else
-        layout(set = 1, binding = 10, r32ui) uniform readonly uimageBuffer uOITImgZBuffer;
-        layout(set = 1, binding = 11, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
+        layout(set = 1, binding = 11, r32ui) uniform readonly uimageBuffer uOITImgZBuffer;
+        layout(set = 1, binding = 12, rg32ui) uniform coherent uimageBuffer uOITImgABuffer;
         #ifdef MSAA    
-          layout(set = 1, binding = 12, r32ui) uniform coherent uimageBuffer uOITImgSBuffer;
+          layout(set = 1, binding = 13, r32ui) uniform coherent uimageBuffer uOITImgSBuffer;
         #endif
       #endif 
 

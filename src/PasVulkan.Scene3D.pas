@@ -2590,9 +2590,7 @@ type EpvScene3D=class(Exception);
        fImageDescriptorProcessedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fImageDescriptorGeneration:TpvUInt64;
        fImageDescriptorProcessedGeneration:TpvUInt64;
-       fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TGlobalViewUniformBuffer;
 //     fGlobalVulkanViewUniformStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-       fGlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers;
        fGlobalVulkanInstanceMatrixDynamicArrays:TGlobalVulkanInstanceMatrixDynamicArrays;
        fGlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers;
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
@@ -2654,8 +2652,6 @@ type EpvScene3D=class(Exception);
        fBoundingBox:TpvAABB;
        fInFlightFrameBoundingBoxes:TInFlightFrameAABBs;
        fInFlightFrameBufferMemoryBarriers:TInFlightFrameBufferMemoryBarriers;
-       fPreviousViews:TViews;
-       fViews:TViews;
        fCountInFlightFrames:TpvSizeInt;
        fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
@@ -2761,8 +2757,6 @@ type EpvScene3D=class(Exception);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt);
-       function AddView(const aView:TpvScene3D.TView):TpvSizeInt;
-       function AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
@@ -2850,10 +2844,8 @@ type EpvScene3D=class(Exception);
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
-       property GlobalVulkanViewUniformBuffers:TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
        property GlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers read fGlobalVulkanInstanceMatrixBuffers;
        property GlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets read fGlobalVulkanDescriptorSets;
-       property Views:TViews read fViews;
        property PrimaryLightDirection:TpvVector3 read fPrimaryLightDirection write fPrimaryLightDirection;
        property PrimaryShadowMapLightDirection:TpvVector3 read fPrimaryShadowMapLightDirection write fPrimaryShadowMapLightDirection;
        property LightBuffers:TpvScene3D.TLightBuffers read fLightBuffers;
@@ -16946,10 +16938,6 @@ begin
   fCountLights[Index]:=0;
  end;
 
- fPreviousViews.Initialize;
-
- fViews.Initialize;
-
  fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
  fGroups:=TGroups.Create;
  fGroups.OwnsObjects:=false;
@@ -17043,39 +17031,34 @@ begin
 
   fGlobalVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice,TVkDescriptorSetLayoutCreateFlags(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT),true);
   fGlobalVulkanDescriptorSetLayout.AddBinding(0,
-                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
   fGlobalVulkanDescriptorSetLayout.AddBinding(1,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
-                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
   fGlobalVulkanDescriptorSetLayout.AddBinding(2,
                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               1,
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
-  fGlobalVulkanDescriptorSetLayout.AddBinding(3,
-                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                              1,
-                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                              []);
   if fUseBufferDeviceAddress then begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(3,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end else begin
-   fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+   fGlobalVulkanDescriptorSetLayout.AddBinding(3,
                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end;
-  fGlobalVulkanDescriptorSetLayout.AddBinding(5,
+  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                               length(fImageInfos),
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -17136,10 +17119,6 @@ begin
   FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
  end;
  FreeAndNil(fGlobalVulkanDescriptorPool);
-
- for Index:=0 to fCountInFlightFrames-1 do begin
-  FreeAndNil(fGlobalVulkanViewUniformBuffers[Index]);
- end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGlobalVulkanInstanceMatrixBuffers[Index]);
@@ -17263,10 +17242,6 @@ begin
  FreeAndNil(fImageListLock);
 
  FreeAndNil(fTechniques);
-
- fPreviousViews.Finalize;
-
- fViews.Finalize;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fDebugPrimitiveVertexDynamicArrays[Index]);
@@ -17484,23 +17459,6 @@ begin
           end;}
 
           for Index:=0 to fCountInFlightFrames-1 do begin
-           fGlobalVulkanViewUniformBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                          SizeOf(TGlobalViewUniformBuffer),
-                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                          [],
-                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                          0,
-                                                                          0,
-                                                                          0,
-                                                                          0,
-                                                                          0,
-                                                                          0,
-                                                                          [TpvVulkanBufferFlag.PersistentMapped]);
-          end;
-
-          for Index:=0 to fCountInFlightFrames-1 do begin
            fGlobalVulkanInstanceMatrixBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                              Max(1,length(fGlobalVulkanInstanceMatrixDynamicArrays[Index].Items))*SizeOf(TpvMatrix4x4),
                                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -17624,23 +17582,6 @@ begin
                                                                                  [TpvVulkanBufferFlag.PersistentMapped]);
 
           end;}
-
-          for Index:=0 to fCountInFlightFrames-1 do begin
-           fGlobalVulkanViewUniformBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                          SizeOf(TGlobalViewUniformBuffer),
-                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                          [],
-                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                          0,
-                                                                          0,
-                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                                                          0,
-                                                                          0,
-                                                                          0,
-                                                                          0,
-                                                                          []);
-          end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
            fGlobalVulkanInstanceMatrixBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
@@ -17969,9 +17910,9 @@ begin
          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
                                                                  0,
                                                                  1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fGlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
+                                                                 [fGlobalVulkanInstanceMatrixBuffers[Index].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
@@ -17979,18 +17920,10 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                  [],
-                                                                 [fGlobalVulkanInstanceMatrixBuffers[Index].DescriptorBufferInfo],
-                                                                 [],
-                                                                 false);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(2,
-                                                                 0,
-                                                                 1,
-                                                                 TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                 [],
                                                                  [fLightBuffers[Index].fLightItemsVulkanBuffer.DescriptorBufferInfo],
                                                                  [],
                                                                  false);
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(2,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -17999,7 +17932,7 @@ begin
                                                                  [],
                                                                  false);
          if fUseBufferDeviceAddress then begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
@@ -18008,7 +17941,7 @@ begin
                                                                   [],
                                                                   false);
          end else begin
-          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+          fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(3,
                                                                   0,
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -18017,7 +17950,7 @@ begin
                                                                   [],
                                                                   false);
          end;
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
                                                                  0,
                                                                  length(fImageInfos),
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -18085,7 +18018,6 @@ begin
      FreeAndNil(fGlobalVulkanDescriptorPool);
 
      for Index:=0 to fCountInFlightFrames-1 do begin
-      FreeAndNil(fGlobalVulkanViewUniformBuffers[Index]);
       FreeAndNil(fVulkanDebugPrimitiveVertexBuffers[Index]);
       FreeAndNil(fVulkanParticleVertexBuffers[Index]);
      end;
@@ -18722,11 +18654,6 @@ end;
 procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
 begin
 
- fPreviousViews.Count:=0;
- fPreviousViews.Add(fViews);
-
- fViews.Count:=0;
-
  fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex].Reset;
 
 end;
@@ -18734,31 +18661,6 @@ end;
 procedure TpvScene3D.EndFrame(const aInFlightFrameIndex:TpvSizeInt);
 begin
 end;
-
-function TpvScene3D.AddView(const aView:TpvScene3D.TView):TpvSizeInt;
-begin
- if (fViews.Count+1)<TpvScene3D.MaxViews then begin
-  result:=fViews.Add(aView);
- end else begin
-  result:=-1;
- end;
-end;
-
-function TpvScene3D.AddViews(const aViews:array of TpvScene3D.TView):TpvSizeInt;
-begin
- if (length(aViews)>0) and ((fViews.Count+length(aViews))<TpvScene3D.MaxViews) then begin
-  result:=fViews.Add(aViews);
- end else begin
-  result:=-1;
- end;
-end;
-
-{procedure TpvScene3D.FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
-begin
- for ViewIndex:=0 to fViews.Count-1 do begin
-  fPotentiallyVisibleSet.fViewNodeIndices[ViewIndex]:=fPotentiallyVisibleSet.GetNodeIndexByPosition(Views.Items[ViewIndex].InverseViewMatrix.Translation.xyz);
- end;
-end;}
 
 procedure TpvScene3D.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
 var Index,ItemID,RenderPassIndex:TpvSizeInt;
@@ -18787,7 +18689,7 @@ begin
    try
     if fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
      fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]:=fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex];
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(5,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
                                                                            0,
                                                                            length(fInFlightFrameImageInfos[aInFlightFrameIndex]),
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -18932,41 +18834,6 @@ begin
 
   LightBuffers[aInFlightFrameIndex].UploadFrame;
 
-  if fViews.Count>0 then begin
-   Move(fViews.Items[0],
-        fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
-        fViews.Count*SizeOf(TpvScene3D.TView));
-   if fPreviousViews.Count=0 then begin
-    fPreviousViews.Add(fViews);
-   end;
-   Move(fPreviousViews.Items[0],
-        fGlobalVulkanViews[aInFlightFrameIndex].Items[fViews.Count],
-        fPreviousViews.Count*SizeOf(TpvScene3D.TView));
-   if assigned(fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex]) then begin
-    case fBufferStreamingMode of
-     TBufferStreamingMode.Direct:begin
-      fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
-                                                                      0,
-                                                                      (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView),
-                                                                      FlushUpdateData
-                                                                     );
-     end;
-     TBufferStreamingMode.Staging:begin
-      fVulkanDevice.MemoryStaging.Upload(fVulkanStagingQueue,
-                                         fVulkanStagingCommandBuffer,
-                                         fVulkanStagingFence,
-                                         fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
-                                         fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex],
-                                         0,
-                                         (fViews.Count+fPreviousViews.Count)*SizeOf(TpvScene3D.TView));
-     end;
-     else begin
-      Assert(false);
-     end;
-    end;
-   end;
-  end;
-
   if fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex].Count>0 then begin
 
    if assigned(fGlobalVulkanInstanceMatrixBuffers[aInFlightFrameIndex]) then begin
@@ -19018,7 +18885,7 @@ begin
 
      end;
 
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(1,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(0,
                                                                            0,
                                                                            1,
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -19657,7 +19524,7 @@ begin
   VertexStagePushConstants:=@TpvScene3DRendererInstance(aRendererInstance).VertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
-  VertexStagePushConstants^.CountAllViews:=fViews.Count;
+  VertexStagePushConstants^.CountAllViews:=TpvScene3DRendererInstance(aRendererInstance).fViews[aInFlightFrameIndex].Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
   if assigned(aJitter) then begin
    VertexStagePushConstants^.Jitter:=aJitter^;

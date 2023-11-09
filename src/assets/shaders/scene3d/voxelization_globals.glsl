@@ -20,15 +20,15 @@
 
 // 6 sides, 6 volumes, for multi directional anisotropic voxels, because a cube of voxel has 6 sides
 
-layout (set = 1, binding = 0, std140) readonly uniform VoxelGridData {
+layout (set = 1, binding = 1, std140) readonly uniform VoxelGridData {
   #include "voxelgriddata_uniforms.glsl"
 } voxelGridData;
 
-layout (set = 1, binding = 1, std430) coherent buffer VoxelGridContentData {
+layout (set = 1, binding = 2, std430) coherent buffer VoxelGridContentData {
   uvec4 data[];
 } voxelGridContentData;
 
-layout (set = 1, binding = 2, std430) coherent buffer VoxelGridContentMetaData {
+layout (set = 1, binding = 3, std430) coherent buffer VoxelGridContentMetaData {
   uint data[];
 } voxelGridContentMetaData;
 

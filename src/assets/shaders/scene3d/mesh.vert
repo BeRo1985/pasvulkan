@@ -78,11 +78,11 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 0, binding = 0, std140) uniform uboViews {
+layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 0, binding = 1, std430) readonly buffer InstanceMatrices {
+layout(set = 0, binding = 0, std430) readonly buffer InstanceMatrices {
   mat4 instanceMatrices[]; // pair-wise: 0 = base, 1 = previous (for velocity)
 };
 

@@ -84,6 +84,7 @@ type { TpvScene3DRendererSkyBox }
             end;
       private
        fRenderer:TpvScene3DRenderer;
+       fRendererInstance:TpvScene3DRendererInstance;
        fScene3D:TpvScene3D;
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
@@ -96,7 +97,7 @@ type { TpvScene3DRendererSkyBox }
        fVulkanPipeline:TpvVulkanGraphicsPipeline;
       public
 
-       constructor Create(const aRenderer:TpvScene3DRenderer;const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
+       constructor Create(const aRenderer:TpvScene3DRenderer;const aRendererInstance:TpvScene3DRendererInstance;const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
 
        destructor Destroy; override;
 
@@ -115,13 +116,15 @@ implementation
 
 { TpvScene3DRendererSkyBox }
 
-constructor TpvScene3DRendererSkyBox.Create(const aRenderer:TpvScene3DRenderer;const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
+constructor TpvScene3DRendererSkyBox.Create(const aRenderer:TpvScene3DRenderer;const aRendererInstance:TpvScene3DRendererInstance;const aScene3D:TpvScene3D;const aSkyCubeMap:TVkDescriptorImageInfo);
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
  inherited Create;
 
  fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
 
  fScene3D:=aScene3D;
 
@@ -169,7 +172,7 @@ begin
                                                     1,
                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                     [],
-                                                    [fScene3D.GlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
+                                                    [fRendererInstance.GlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
                                                     [],
                                                     false);
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
