@@ -2313,7 +2313,6 @@ type EpvScene3D=class(Exception);
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fAABBTreeProxy:TpvSizeInt;
-                     fVisibleBitmap:array[0..MaxInFlightFrames-1] of TPasMPUInt32;
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanVertexBufferCount:TpvInt64;
                      fVulkanDrawIndexBufferOffset:TpvInt64;
@@ -2717,19 +2716,26 @@ type EpvScene3D=class(Exception);
        procedure NewMaterialDataGeneration;
        procedure AddInFlightFrameBufferMemoryBarrier(const aInFlightFrameIndex:TpvSizeInt;
                                                       const aBuffer:TpvVulkanBuffer);
-       procedure CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicArray;
-                                          const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                          const aRoot:TpvSizeInt;
-                                          const aVisibleBit:TPasMPUInt32;
-                                          const aInFlightFrameIndex:TpvSizeInt);
-       procedure CullLightAABBTreeWithFrustums(const aInFlightFrameIndex:TpvSizeInt;
-                                               const aFrustums:TpvFrustumDynamicArray;
-                                               const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                               const aRoot:TpvSizeInt);
-       procedure CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+       procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
+                            const aFrustums:TpvFrustumDynamicArray;
+                            const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                            const aRoot:TpvSizeInt);
+       procedure CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                             const aRoot:TpvSizeInt;
                                             var aLightItemArray:TpvScene3D.TLightItems;
                                             var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
+       procedure CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
+                                              const aRendererInstance:TObject;
+                                              const aRenderPassIndex:TpvSizeInt;
+                                              const aViews:TpvScene3D.TViews;
+                                              const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
+                                              const aViewBaseIndex:TpvSizeInt;
+                                              const aCountViews:TpvSizeInt;
+                                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                                              const aPotentiallyVisibleSetCulling:boolean;
+                                              const aFrustums:TpvFrustumDynamicArray;
+                                              const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                              const aRoot:TpvSizeInt);
        function GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;
        procedure SetGlobalResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                     const aPipelineLayout:TpvVulkanPipelineLayout;
@@ -16291,8 +16297,7 @@ begin
  FirstInstance:=0;
  InstancesCount:=0;
 
- if fActives[aInFlightFrameIndex] and
-    ((fVisibleBitmap[aInFlightFrameIndex] and (TpvUInt32(1) shl aRenderPassIndex))<>0) then begin
+ if fActives[aInFlightFrameIndex] then begin
 
   GroupOnNodeFilter:=fGroup.fOnNodeFilter;
   GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
@@ -18190,262 +18195,10 @@ begin
 
 end;
 
-procedure TpvScene3D.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
-var Index,ItemID,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
-    OldGeneration,NewGeneration:TpvUInt64;
-    DirtyBits:TPasMPUInt32;
-    LightBuffer:TpvScene3D.TLightBuffer;
-    LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
-    Group:TpvScene3D.TGroup;
-    Texture:TpvScene3D.TTexture;
-    GroupInstance:TpvScene3D.TGroup.TInstance;
-    First:boolean;
-    Material:TpvScene3D.TMaterial;
-    MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
-begin
-
- if assigned(fVulkanDevice) then begin
-
-  for Group in fGroups do begin
-   Group.PrepareFrame(aInFlightFrameIndex);
-  end;
-
-  if (fImageDescriptorProcessedGeneration<>fImageDescriptorGeneration) or
-     (fImageDescriptorProcessedGenerations[aInFlightFrameIndex]<>fImageDescriptorProcessedGeneration) then begin
-
-   fImageDescriptorGenerationLock.Acquire;
-   try
-
-    if fImageDescriptorProcessedGeneration<>fImageDescriptorGeneration then begin
-     fImageDescriptorProcessedGeneration:=fImageDescriptorGeneration;
-     fImageInfos[0]:=fWhiteTexture.GetDescriptorImageInfo(false);
-     for Index:=1 to length(fImageInfos)-1 do begin
-      fImageInfos[Index]:=fImageInfos[0];
-     end;
-     for Index:=0 to fTextures.Count-1 do begin
-      Texture:=fTextures[Index];
-      if Texture.fUploaded and (Texture.fReferenceCounter>0) and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
-       fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
-       fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
-      end;
-     end;
-    end;
-
-    if fImageDescriptorProcessedGenerations[aInFlightFrameIndex]<>fImageDescriptorProcessedGeneration then begin
-     fImageDescriptorProcessedGenerations[aInFlightFrameIndex]:=fImageDescriptorProcessedGeneration;
-     fInFlightFrameImageInfos[aInFlightFrameIndex]:=fImageInfos;
-     inc(fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex]);
-    end;
-
-   finally
-    fImageDescriptorGenerationLock.Release;
-   end;
-
-  end;
-
-  if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
-
-   fMaterialDataGenerationLock.Acquire;
-   try
-
-    if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
-
-     fMaterialDataProcessedGenerations[aInFlightFrameIndex]:=fMaterialDataGeneration;
-
-     MaterialIDDirtyMap:=@fMaterialIDDirtyMaps[aInFlightFrameIndex];
-     for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
-      DirtyBits:=TPasMPInterlocked.Exchange(MaterialIDDirtyMap^[Index],0);
-      if DirtyBits<>0 then begin
-       TPasMPInterlocked.BitwiseOr(fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex,Index],DirtyBits);
-      end;
-      while DirtyBits<>0 do begin
-       ItemID:=(Index shl 5) or TPasMPMath.FindFirstSetBit32(DirtyBits);
-       if (ItemID>=0) and (ItemID<length(fMaterialIDMap)) then begin
-        Material:=fMaterialIDMap[ItemID];
-        if assigned(Material) then begin
-         fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID]:=Material.fShaderData;
-         fInFlightFrameMaterialBufferDataGenerations[aInFlightFrameIndex,ItemID]:=Material.fGeneration;
-        end else begin
-         fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID]:=TMaterial.DefaultShaderData;
-         fInFlightFrameMaterialBufferDataGenerations[aInFlightFrameIndex,ItemID]:=High(TpvUInt64);
-        end;
-       end;
-       DirtyBits:=DirtyBits and (DirtyBits-1);
-      end;
-     end;
-
-    end;
-
-   finally
-    fMaterialDataGenerationLock.Release;
-   end;
-
-  end;
-
-  OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
-  NewGeneration:=fLightAABBTreeGeneration;
-  if (OldGeneration<>NewGeneration) and
-     (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
-
-   LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
-
-   if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
-    if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
-     LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
-    end else begin
-     Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
-    end;
-    LightAABBTreeState^.Root:=fLightAABBTree.Root;
-   end else begin
-    LightAABBTreeState^.Root:=-1;
-   end;
-
-   LightBuffer:=fLightBuffers[aInFlightFrameIndex];
-   CollectLightAABBTreeLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
-   fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
-   LightBuffer.fNewLightAABBTreeGeneration:=fLightAABBTreeGeneration;
-
-  end;
-
- end;
-
-end;
-
-procedure TpvScene3D.CullAABBTreeWithFrustums(const aFrustums:TpvFrustumDynamicArray;
-                                              const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                              const aRoot:TpvSizeInt;
-                                              const aVisibleBit:TPasMPUInt32;
-                                              const aInFlightFrameIndex:TpvSizeInt);
- procedure ProcessNode(const aNode:TpvSizeInt;const aMask:TpvUInt32);
- var Index:TpvSizeInt;
-     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-     Mask:TpvUInt32;
-     OK:boolean;
- begin
-  if aNode>=0 then begin
-   TreeNode:=@aTreeNodes[aNode];
-   Mask:=aMask;
-   if length(aFrustums)>0 then begin
-    if length(aFrustums)=1 then begin
-     OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-    end else begin
-     OK:=false;
-     for Index:=0 to length(aFrustums)-1 do begin
-      if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-       OK:=true;
-       break;
-      end;
-     end;
-    end;
-   end else begin
-    OK:=true;
-   end;
-   if OK then begin
-    if TreeNode^.UserData<>0 then begin
-     TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap[aInFlightFrameIndex],aVisibleBit);
-    end;
-    if TreeNode^.Children[0]>=0 then begin
-     ProcessNode(TreeNode^.Children[0],Mask);
-    end;
-    if TreeNode^.Children[1]>=0 then begin
-     ProcessNode(TreeNode^.Children[1],Mask);
-    end;
-   end;
-  end;
- end;
-type PStackItem=^TStackItem;
-     TStackItem=record
-      Node:TpvSizeInt;
-      Mask:TpvUInt32;
-     end;
-var Index,StackPointer:TpvSizeInt;
-    StackItem:PStackItem;
-    Node:TpvSizeInt;
-    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-    Mask:TpvUInt32;
-    Stack:array[0..31] of TStackItem;
-    OK:boolean;
-begin
- if (aRoot>=0) and (length(aTreeNodes)>0) then begin
-  Stack[0].Node:=aRoot;
-  Stack[0].Mask:=$ffffffff;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   StackItem:=@Stack[StackPointer];
-   Node:=StackItem^.Node;
-   Mask:=StackItem^.Mask;
-   while Node>=0 do begin
-    TreeNode:=@aTreeNodes[Node];
-    if length(aFrustums)>0 then begin
-     if length(aFrustums)=1 then begin
-      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-     end else begin
-      OK:=false;
-      for Index:=0 to length(aFrustums)-1 do begin
-       if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-        OK:=true;
-        break;
-       end;
-      end;
-     end;
-    end else begin
-     OK:=true;
-    end;
-    if OK then begin
-     if TreeNode^.UserData<>0 then begin
-      TPasMPInterlocked.BitwiseOr(TpvScene3D.TGroup.TInstance(TreeNode^.UserData).fVisibleBitmap[aInFlightFrameIndex],aVisibleBit);
-     end;
-     if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
-      if TreeNode^.Children[0]>=0 then begin
-       ProcessNode(TreeNode^.Children[0],Mask);
-      end;
-      if TreeNode^.Children[1]>=0 then begin
-       ProcessNode(TreeNode^.Children[1],Mask);
-      end;
-     end else begin
-      if TreeNode^.Children[0]>=0 then begin
-       if TreeNode^.Children[1]>=0 then begin
-        StackItem:=@Stack[StackPointer];
-        StackItem^.Node:=TreeNode^.Children[1];
-        StackItem^.Mask:=Mask;
-        inc(StackPointer);
-       end;
-       Node:=TreeNode^.Children[0];
-       continue;
-      end else begin
-       if TreeNode^.Children[1]>=0 then begin
-        Node:=TreeNode^.Children[1];
-        continue;
-       end;
-      end;
-     end;
-    end;
-    break;
-   end;
-  end;
- end;
-end;
-
-function TpvScene3DCompareIndirectLights(const a,b:pointer):TpvInt32;
-begin
- result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1)-
-              (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1));
- if result=0 then begin
-  result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.Directional) and 1)-
-               (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TLightType.Directional) and 1));
-  if result=0 then begin
-   result:=Sign(TpvScene3D.TLight(b).fViewSpacePosition.z-TpvScene3D.TLight(a).fViewSpacePosition.z);
-   if result=0 then begin
-   end;
-  end;
- end;
-end;
-
-procedure TpvScene3D.CullLightAABBTreeWithFrustums(const aInFlightFrameIndex:TpvSizeInt;
-                                                   const aFrustums:TpvFrustumDynamicArray;
-                                                   const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                                   const aRoot:TpvSizeInt);
+procedure TpvScene3D.CullLights(const aInFlightFrameIndex:TpvSizeInt;
+                                const aFrustums:TpvFrustumDynamicArray;
+                                const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                const aRoot:TpvSizeInt);
  procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
  var Index:TpvSizeInt;
      TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
@@ -18563,7 +18316,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.CollectLightAABBTreeLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+procedure TpvScene3D.CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                                 const aRoot:TpvSizeInt;
                                                 var aLightItemArray:TpvScene3D.TLightItems;
                                                 var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
@@ -18660,6 +18413,127 @@ begin
    end;
   end;
  end;
+end;
+
+procedure TpvScene3D.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
+var Index,ItemID,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
+    OldGeneration,NewGeneration:TpvUInt64;
+    DirtyBits:TPasMPUInt32;
+    LightBuffer:TpvScene3D.TLightBuffer;
+    LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    Group:TpvScene3D.TGroup;
+    Texture:TpvScene3D.TTexture;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+    First:boolean;
+    Material:TpvScene3D.TMaterial;
+    MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
+begin
+
+ if assigned(fVulkanDevice) then begin
+
+  for Group in fGroups do begin
+   Group.PrepareFrame(aInFlightFrameIndex);
+  end;
+
+  if (fImageDescriptorProcessedGeneration<>fImageDescriptorGeneration) or
+     (fImageDescriptorProcessedGenerations[aInFlightFrameIndex]<>fImageDescriptorProcessedGeneration) then begin
+
+   fImageDescriptorGenerationLock.Acquire;
+   try
+
+    if fImageDescriptorProcessedGeneration<>fImageDescriptorGeneration then begin
+     fImageDescriptorProcessedGeneration:=fImageDescriptorGeneration;
+     fImageInfos[0]:=fWhiteTexture.GetDescriptorImageInfo(false);
+     for Index:=1 to length(fImageInfos)-1 do begin
+      fImageInfos[Index]:=fImageInfos[0];
+     end;
+     for Index:=0 to fTextures.Count-1 do begin
+      Texture:=fTextures[Index];
+      if Texture.fUploaded and (Texture.fReferenceCounter>0) and (Texture.ID>0) and (((Texture.ID*2)+1)<length(fImageInfos)) then begin
+       fImageInfos[(Texture.ID*2)+0]:=Texture.GetDescriptorImageInfo(false);
+       fImageInfos[(Texture.ID*2)+1]:=Texture.GetDescriptorImageInfo(true);
+      end;
+     end;
+    end;
+
+    if fImageDescriptorProcessedGenerations[aInFlightFrameIndex]<>fImageDescriptorProcessedGeneration then begin
+     fImageDescriptorProcessedGenerations[aInFlightFrameIndex]:=fImageDescriptorProcessedGeneration;
+     fInFlightFrameImageInfos[aInFlightFrameIndex]:=fImageInfos;
+     inc(fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex]);
+    end;
+
+   finally
+    fImageDescriptorGenerationLock.Release;
+   end;
+
+  end;
+
+  if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
+
+   fMaterialDataGenerationLock.Acquire;
+   try
+
+    if fMaterialDataProcessedGenerations[aInFlightFrameIndex]<>fMaterialDataGeneration then begin
+
+     fMaterialDataProcessedGenerations[aInFlightFrameIndex]:=fMaterialDataGeneration;
+
+     MaterialIDDirtyMap:=@fMaterialIDDirtyMaps[aInFlightFrameIndex];
+     for Index:=0 to Min((fMaxMaterialID+32) shr 5,High(TMaterialIDDirtyMap)) do begin
+      DirtyBits:=TPasMPInterlocked.Exchange(MaterialIDDirtyMap^[Index],0);
+      if DirtyBits<>0 then begin
+       TPasMPInterlocked.BitwiseOr(fMaterialIDToUpdateDirtyMaps[aInFlightFrameIndex,Index],DirtyBits);
+      end;
+      while DirtyBits<>0 do begin
+       ItemID:=(Index shl 5) or TPasMPMath.FindFirstSetBit32(DirtyBits);
+       if (ItemID>=0) and (ItemID<length(fMaterialIDMap)) then begin
+        Material:=fMaterialIDMap[ItemID];
+        if assigned(Material) then begin
+         fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID]:=Material.fShaderData;
+         fInFlightFrameMaterialBufferDataGenerations[aInFlightFrameIndex,ItemID]:=Material.fGeneration;
+        end else begin
+         fInFlightFrameMaterialBufferData[aInFlightFrameIndex,ItemID]:=TMaterial.DefaultShaderData;
+         fInFlightFrameMaterialBufferDataGenerations[aInFlightFrameIndex,ItemID]:=High(TpvUInt64);
+        end;
+       end;
+       DirtyBits:=DirtyBits and (DirtyBits-1);
+      end;
+     end;
+
+    end;
+
+   finally
+    fMaterialDataGenerationLock.Release;
+   end;
+
+  end;
+
+  OldGeneration:=fLightAABBTreeStateGenerations[aInFlightFrameIndex];
+  NewGeneration:=fLightAABBTreeGeneration;
+  if (OldGeneration<>NewGeneration) and
+     (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
+
+   LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
+
+   if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
+    if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
+     LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+    end else begin
+     Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+    end;
+    LightAABBTreeState^.Root:=fLightAABBTree.Root;
+   end else begin
+    LightAABBTreeState^.Root:=-1;
+   end;
+
+   LightBuffer:=fLightBuffers[aInFlightFrameIndex];
+   CollectLights(LightAABBTreeState^.TreeNodes,LightAABBTreeState^.Root,LightBuffer.fLightItems,LightBuffer.fLightMetaInfos);
+   fLightAABBTree.GetSkipListNodes(LightBuffer.fLightTree,GetLightUserDataIndex);
+   LightBuffer.fNewLightAABBTreeGeneration:=fLightAABBTreeGeneration;
+
+  end;
+
+ end;
+
 end;
 
 procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -18997,7 +18871,7 @@ begin
 
  AABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
 
- CullLightAABBTreeWithFrustums(aInFlightFrameIndex,aFrustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
+ CullLights(aInFlightFrameIndex,aFrustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root);
 
  if fCountIndirectLights[aInFlightFrameIndex]>0 then begin
 // IndirectIntroSort(@fIndirectLights[aInFlightFrameIndex,0],0,fCountIndirectLights[aInFlightFrameIndex],TpvScene3DCompareIndirectLights);
@@ -19093,6 +18967,168 @@ begin
 
 end;
 
+function TpvScene3DCompareIndirectLights(const a,b:pointer):TpvInt32;
+begin
+ result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1)-
+              (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1));
+ if result=0 then begin
+  result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.Directional) and 1)-
+               (ord(TpvScene3D.TLight(a).fData.fType_=TpvScene3D.TLightData.TLightType.Directional) and 1));
+  if result=0 then begin
+   result:=Sign(TpvScene3D.TLight(b).fViewSpacePosition.z-TpvScene3D.TLight(a).fViewSpacePosition.z);
+   if result=0 then begin
+   end;
+  end;
+ end;
+end;
+
+procedure TpvScene3D.CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvSizeInt;
+                                                  const aRendererInstance:TObject;
+                                                  const aRenderPassIndex:TpvSizeInt;
+                                                  const aViews:TpvScene3D.TViews;
+                                                  const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
+                                                  const aViewBaseIndex:TpvSizeInt;
+                                                  const aCountViews:TpvSizeInt;
+                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                                                  const aPotentiallyVisibleSetCulling:boolean;
+                                                  const aFrustums:TpvFrustumDynamicArray;
+                                                  const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
+                                                  const aRoot:TpvSizeInt);
+ procedure ProcessNode(const aNode:TpvSizeInt;const aMask:TpvUInt32);
+ var Index:TpvSizeInt;
+     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+     Mask:TpvUInt32;
+     OK:boolean;
+     GroupInstance:TpvScene3D.TGroup.TInstance;
+ begin
+  if aNode>=0 then begin
+   TreeNode:=@aTreeNodes[aNode];
+   Mask:=aMask;
+   if length(aFrustums)>0 then begin
+    if length(aFrustums)=1 then begin
+     OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+    end else begin
+     OK:=false;
+     for Index:=0 to length(aFrustums)-1 do begin
+      if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+       OK:=true;
+       break;
+      end;
+     end;
+    end;
+   end else begin
+    OK:=true;
+   end;
+   if OK then begin
+    if TreeNode^.UserData<>0 then begin
+     GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
+     if (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and not GroupInstance.fHeadless then begin
+      GroupInstance.Prepare(aInFlightFrameIndex,
+                            aRendererInstance,
+                            aRenderPassIndex,
+                            aViewNodeIndices,
+                            aViewBaseIndex,
+                            aCountViews,
+                            aFrustums,
+                            aPotentiallyVisibleSetCulling,
+                            aMaterialAlphaModes);
+     end;
+    end;
+    if TreeNode^.Children[0]>=0 then begin
+     ProcessNode(TreeNode^.Children[0],Mask);
+    end;
+    if TreeNode^.Children[1]>=0 then begin
+     ProcessNode(TreeNode^.Children[1],Mask);
+    end;
+   end;
+  end;
+ end;
+type PStackItem=^TStackItem;
+     TStackItem=record
+      Node:TpvSizeInt;
+      Mask:TpvUInt32;
+     end;
+var Index,StackPointer:TpvSizeInt;
+    StackItem:PStackItem;
+    Node:TpvSizeInt;
+    TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    Mask:TpvUInt32;
+    Stack:array[0..31] of TStackItem;
+    GroupInstance:TpvScene3D.TGroup.TInstance;
+    OK:boolean;
+begin
+ if (aRoot>=0) and (length(aTreeNodes)>0) then begin
+  Stack[0].Node:=aRoot;
+  Stack[0].Mask:=$ffffffff;
+  StackPointer:=1;
+  while StackPointer>0 do begin
+   dec(StackPointer);
+   StackItem:=@Stack[StackPointer];
+   Node:=StackItem^.Node;
+   Mask:=StackItem^.Mask;
+   while Node>=0 do begin
+    TreeNode:=@aTreeNodes[Node];
+    if length(aFrustums)>0 then begin
+     if length(aFrustums)=1 then begin
+      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+     end else begin
+      OK:=false;
+      for Index:=0 to length(aFrustums)-1 do begin
+       if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+        OK:=true;
+        break;
+       end;
+      end;
+     end;
+    end else begin
+     OK:=true;
+    end;
+    if OK then begin
+     if TreeNode^.UserData<>0 then begin
+      GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
+      if (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and not GroupInstance.fHeadless then begin
+       GroupInstance.Prepare(aInFlightFrameIndex,
+                             aRendererInstance,
+                             aRenderPassIndex,
+                             aViewNodeIndices,
+                             aViewBaseIndex,
+                             aCountViews,
+                             aFrustums,
+                             aPotentiallyVisibleSetCulling,
+                             aMaterialAlphaModes);
+      end;
+     end;
+     if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
+      if TreeNode^.Children[0]>=0 then begin
+       ProcessNode(TreeNode^.Children[0],Mask);
+      end;
+      if TreeNode^.Children[1]>=0 then begin
+       ProcessNode(TreeNode^.Children[1],Mask);
+      end;
+     end else begin
+      if TreeNode^.Children[0]>=0 then begin
+       if TreeNode^.Children[1]>=0 then begin
+        StackItem:=@Stack[StackPointer];
+        StackItem^.Node:=TreeNode^.Children[1];
+        StackItem^.Mask:=Mask;
+        inc(StackPointer);
+       end;
+       Node:=TreeNode^.Children[0];
+       continue;
+      end else begin
+       if TreeNode^.Children[1]>=0 then begin
+        Node:=TreeNode^.Children[1];
+        continue;
+       end;
+      end;
+     end;
+    end;
+    break;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aRendererInstance:TObject;
                              const aRenderPassIndex:TpvSizeInt;
@@ -19111,14 +19147,12 @@ var Index:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
-    VisibleBit:TPasMPUInt32;
     Frustums:TpvFrustumDynamicArray;
     Group:TpvScene3D.TGroup;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     View:TpvScene3D.PView;
     DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
-    DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
 begin
 
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -19131,18 +19165,12 @@ begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
 
-  VisibleBit:=TpvUInt32(1) shl (aRenderPassIndex and 31);
-
   Frustums:=nil;
   try
 
    if aFrustumCulling then begin
 
     SetLength(Frustums,aCountViews);
-
-    for GroupInstance in fGroupInstances do begin
-     TPasMPInterlocked.BitwiseAnd(GroupInstance.fVisibleBitmap[aInFlightFrameIndex],not VisibleBit);
-    end;
 
     AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
 
@@ -19151,30 +19179,36 @@ begin
      Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
     end;
 
-    CullAABBTreeWithFrustums(Frustums,AABBTreeState^.TreeNodes,AABBTreeState^.Root,VisibleBit,aInFlightFrameIndex);
+    CullAndPrepareGroupInstances(aInFlightFrameIndex,
+                             aRendererInstance,
+                             aRenderPassIndex,
+                             aViews,
+                             aViewNodeIndices,
+                             aViewBaseIndex,
+                             aCountViews,
+                             aMaterialAlphaModes,
+                             aPotentiallyVisibleSetCulling,
+                             Frustums,
+                             AABBTreeState^.TreeNodes,
+                             AABBTreeState^.Root
+                            );
 
    end else begin
 
-    for GroupInstance in fGroupInstances do begin
-     TPasMPInterlocked.BitwiseOr(GroupInstance.fVisibleBitmap[aInFlightFrameIndex],VisibleBit);
-    end;
-
-   end;
-
-   for Group in fGroups do begin
-
-    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
-
-     Group.Prepare(aInFlightFrameIndex,
-                   aRendererInstance,
-                   aRenderPassIndex,
-                   aViewNodeIndices,
-                   aViewBaseIndex,
-                   aCountViews,
-                   Frustums,
-                   aPotentiallyVisibleSetCulling,
-                   aMaterialAlphaModes);
-
+    for Group in fGroups do begin
+     if (Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and not Group.fHeadless then begin
+      for GroupInstance in Group.fInstances do begin
+       GroupInstance.Prepare(aInFlightFrameIndex,
+                             aRendererInstance,
+                             aRenderPassIndex,
+                             aViewNodeIndices,
+                             aViewBaseIndex,
+                             aCountViews,
+                             Frustums,
+                             aPotentiallyVisibleSetCulling,
+                             aMaterialAlphaModes);
+      end;
+     end;
     end;
 
    end;
