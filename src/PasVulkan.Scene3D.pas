@@ -18211,7 +18211,7 @@ var Index:TpvSizeInt;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     Mask:TpvUInt32;
     Stack:TStack;
-    OK:boolean;
+    PotentiallyVisible:boolean;
 begin
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
   Stack.Initialize;
@@ -18226,20 +18226,20 @@ begin
      TreeNode:=@aTreeNodes[Node];
      if length(aFrustums)>0 then begin
       if length(aFrustums)=1 then begin
-       OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+       PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
       end else begin
-       OK:=false;
+       PotentiallyVisible:=false;
        for Index:=0 to length(aFrustums)-1 do begin
         if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-         OK:=true;
+         PotentiallyVisible:=true;
          break;
         end;
        end;
       end;
      end else begin
-      OK:=true;
+      PotentiallyVisible:=true;
      end;
-     if OK then begin
+     if PotentiallyVisible then begin
       if TreeNode^.UserData<>0 then begin
        if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
         fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
@@ -18274,85 +18274,58 @@ procedure TpvScene3D.CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeN
                                    const aRoot:TpvSizeInt;
                                    var aLightItemArray:TpvScene3D.TLightItems;
                                    var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
- procedure ProcessLight(const aLight:TpvScene3D.TLight);
- var LightItem:TpvScene3D.PLightItem;
-     LightMetaInfo:TpvScene3D.PLightMetaInfo;
-     InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
- begin
-  if aLightItemArray.Count<MaxVisibleLights then begin
-   aLight.fLightItemIndex:=aLightItemArray.AddNew;
-   LightItem:=@aLightItemArray.Items[aLight.fLightItemIndex];
-   LightItem^.Type_:=TpvUInt32(aLight.fDataPointer^.Type_);
-   LightItem^.ShadowMapIndex:=0;
-   InnerConeAngleCosinus:=cos(aLight.fDataPointer^.InnerConeAngle);
-   OuterConeAngleCosinus:=cos(aLight.fDataPointer^.OuterConeAngle);
-  {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
-   LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
-   LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
-   LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-   LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(aLight.fDataPointer^.fColor,aLight.fDataPointer^.fIntensity);
-   LightItem^.PositionRange:=TpvVector4.InlineableCreate(aLight.fPosition,aLight.fDataPointer^.fRange);
-   LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(aLight.fDirection,0.0);
-   LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
-   LightMetaInfo:=@aLightMetaInfoArray[aLight.fLightItemIndex];
-   LightMetaInfo^.MinBounds:=TpvVector4.Create(aLight.fBoundingBox.Min,TpvUInt32(aLight.fDataPointer^.Type_));
-   LightMetaInfo^.MaxBounds:=TpvVector4.Create(aLight.fBoundingBox.Max,aLight.fBoundingBox.Radius);
-  end else begin
-   aLight.fLightItemIndex:=-1;
-  end;
- end;
- procedure ProcessNode(const aNode:TpvSizeint);
- var TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
- begin
-  if aNode>=0 then begin
-   TreeNode:=@aTreeNodes[aNode];
-   if TreeNode^.UserData<>0 then begin
-    ProcessLight(TpvScene3D.TLight(Pointer(TreeNode^.UserData)));
-   end;
-   if TreeNode^.Children[0]>=0 then begin
-    ProcessNode(TreeNode^.Children[0]);
-   end;
-   if TreeNode^.Children[1]>=0 then begin
-    ProcessNode(TreeNode^.Children[1]);
-   end;
-  end;
- end;
-type PStackItem=^TStackItem;
-     TStackItem=record
+type TStackItem=record
       Node:TpvSizeInt;
      end;
-var StackPointer:TpvSizeInt;
-    StackItem:PStackItem;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+var StackItem:PStackItem;
     Node:TpvSizeInt;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-    Stack:array[0..31] of TStackItem;
+    Light:TpvScene3D.TLight;
+    LightItem:TpvScene3D.PLightItem;
+    LightMetaInfo:TpvScene3D.PLightMetaInfo;
+    InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
+    Stack:TStack;
 begin
  aLightItemArray.Count:=0;
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
-  Stack[0].Node:=aRoot;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   StackItem:=@Stack[StackPointer];
-   Node:=StackItem^.Node;
-   while Node>=0 do begin
-    TreeNode:=@aTreeNodes[Node];
-    if TreeNode^.UserData<>0 then begin
-     ProcessLight(TpvScene3D.TLight(Pointer(TreeNode^.UserData)));
-    end;
-    if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
-     if TreeNode^.Children[0]>=0 then begin
-      ProcessNode(TreeNode^.Children[0]);
+  Stack.Initialize;
+  try
+   StackItem:=Stack.PushIndirect;
+   StackItem^.Node:=aRoot;
+   while Stack.PopIndirect(StackItem) do begin
+    Node:=StackItem^.Node;
+    while Node>=0 do begin
+     TreeNode:=@aTreeNodes[Node];
+     if TreeNode^.UserData<>0 then begin
+      Light:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
+      if aLightItemArray.Count<MaxVisibleLights then begin
+       Light.fLightItemIndex:=aLightItemArray.AddNew;
+       LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
+       LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
+       LightItem^.ShadowMapIndex:=0;
+       InnerConeAngleCosinus:=cos(Light.fDataPointer^.InnerConeAngle);
+       OuterConeAngleCosinus:=cos(Light.fDataPointer^.OuterConeAngle);
+      {LightItem^.InnerConeCosinus:=InnerConeAngleCosinus;
+       LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
+       LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
+       LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
+       LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Light.fDataPointer^.fIntensity);
+       LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
+       LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);
+       LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
+       LightMetaInfo:=@aLightMetaInfoArray[Light.fLightItemIndex];
+       LightMetaInfo^.MinBounds:=TpvVector4.Create(Light.fBoundingBox.Min,TpvUInt32(Light.fDataPointer^.Type_));
+       LightMetaInfo^.MaxBounds:=TpvVector4.Create(Light.fBoundingBox.Max,Light.fBoundingBox.Radius);
+      end else begin
+       Light.fLightItemIndex:=-1;
+      end;
      end;
-     if TreeNode^.Children[1]>=0 then begin
-      ProcessNode(TreeNode^.Children[1]);
-     end;
-    end else begin
      if TreeNode^.Children[0]>=0 then begin
       if TreeNode^.Children[1]>=0 then begin
-       StackItem:=@Stack[StackPointer];
+       StackItem:=Stack.PushIndirect;
        StackItem^.Node:=TreeNode^.Children[1];
-       inc(StackPointer);
       end;
       Node:=TreeNode^.Children[0];
       continue;
@@ -18362,23 +18335,23 @@ begin
        continue;
       end;
      end;
+     break;
     end;
-    break;
    end;
+  finally
+   Stack.Finalize;
   end;
  end;
 end;
 
 procedure TpvScene3D.PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
-var Index,ItemID,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
+var Index,ItemID:TpvSizeInt;
     OldGeneration,NewGeneration:TpvUInt64;
     DirtyBits:TPasMPUInt32;
     LightBuffer:TpvScene3D.TLightBuffer;
-    LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    LightAABBTreeState:TpvBVHDynamicAABBTree.PState;
     Group:TpvScene3D.TGroup;
     Texture:TpvScene3D.TTexture;
-    GroupInstance:TpvScene3D.TGroup.TInstance;
-    First:boolean;
     Material:TpvScene3D.TMaterial;
     MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
 begin
