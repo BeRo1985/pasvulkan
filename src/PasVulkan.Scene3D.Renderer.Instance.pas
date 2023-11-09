@@ -570,8 +570,8 @@ type { TpvScene3DRendererInstance }
       private
        fSizeFactor:TpvDouble;
       private
-       fGlobalVulkanViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TGlobalViewUniformBuffer;
-       fGlobalVulkanViewUniformBuffers:TpvScene3D.TGlobalVulkanViewUniformBuffers;
+       fVulkanViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViewUniformBuffer;
+       fVulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers;
       private
        fRenderPassIndexCounter:array[0..MaxInFlightFrames-1] of TPasMPInt32;
       private
@@ -610,7 +610,7 @@ type { TpvScene3DRendererInstance }
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
-       property GlobalVulkanViewUniformBuffers:TpvScene3D.TGlobalVulkanViewUniformBuffers read fGlobalVulkanViewUniformBuffers;
+       property VulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers read fVulkanViewUniformBuffers;
       public
        property VertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray read fVertexStagePushConstants write fVertexStagePushConstants;
        property DrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets read fDrawChoreographyBatchItemFrameBuckets write fDrawChoreographyBatchItemFrameBuckets;
@@ -1668,8 +1668,8 @@ begin
   TpvScene3D.TBufferStreamingMode.Direct:begin
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    fGlobalVulkanViewUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                SizeOf(TpvScene3D.TGlobalViewUniformBuffer),
+    fVulkanViewUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                SizeOf(TpvScene3D.TViewUniformBuffer),
                                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                 [],
@@ -1689,8 +1689,8 @@ begin
   TpvScene3D.TBufferStreamingMode.Staging:begin
 
    for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    fGlobalVulkanViewUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                SizeOf(TpvScene3D.TGlobalViewUniformBuffer),
+    fVulkanViewUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                SizeOf(TpvScene3D.TViewUniformBuffer),
                                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                 [],
@@ -1752,7 +1752,7 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-  FreeAndNil(fGlobalVulkanViewUniformBuffers[InFlightFrameIndex]);
+  FreeAndNil(fVulkanViewUniformBuffers[InFlightFrameIndex]);
  end;
 
  FreeAndNil(fCascadedShadowMapBuilder);
@@ -4955,24 +4955,24 @@ begin
 
  if fViews[aInFlightFrameIndex].Count>0 then begin
   Move(fViews[aInFlightFrameIndex].Items[0],
-       fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
+       fVulkanViews[aInFlightFrameIndex].Items[0],
        fViews[aInFlightFrameIndex].Count*SizeOf(TpvScene3D.TView));
   CountViews:=fViews[aInFlightFrameIndex].Count;
   if fViews[PreviousInFlightFrameIndex].Count=0 then begin
    Move(fViews[aInFlightFrameIndex].Items[0],
-        fGlobalVulkanViews[aInFlightFrameIndex].Items[CountViews],
+        fVulkanViews[aInFlightFrameIndex].Items[CountViews],
         fViews[aInFlightFrameIndex].Count*SizeOf(TpvScene3D.TView));
    inc(CountViews,fViews[aInFlightFrameIndex].Count);
   end else begin
    Move(fViews[PreviousInFlightFrameIndex].Items[0],
-        fGlobalVulkanViews[aInFlightFrameIndex].Items[CountViews],
+        fVulkanViews[aInFlightFrameIndex].Items[CountViews],
         fViews[PreviousInFlightFrameIndex].Count*SizeOf(TpvScene3D.TView));
    inc(CountViews,fViews[PreviousInFlightFrameIndex].Count);
   end;
-  if assigned(fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex]) then begin
+  if assigned(fVulkanViewUniformBuffers[aInFlightFrameIndex]) then begin
    case Renderer.Scene3D.BufferStreamingMode of
     TpvScene3D.TBufferStreamingMode.Direct:begin
-     fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
+     fVulkanViewUniformBuffers[aInFlightFrameIndex].UpdateData(fVulkanViews[aInFlightFrameIndex].Items[0],
                                                                      0,
                                                                      CountViews*SizeOf(TpvScene3D.TView),
                                                                      false //FlushUpdateData
@@ -4982,8 +4982,8 @@ begin
      Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
                                                 Renderer.Scene3D.VulkanStagingCommandBuffer,
                                                 Renderer.Scene3D.VulkanStagingFence,
-                                                fGlobalVulkanViews[aInFlightFrameIndex].Items[0],
-                                                fGlobalVulkanViewUniformBuffers[aInFlightFrameIndex],
+                                                fVulkanViews[aInFlightFrameIndex].Items[0],
+                                                fVulkanViewUniformBuffers[aInFlightFrameIndex],
                                                 0,
                                                 CountViews*SizeOf(TpvScene3D.TView));
     end;

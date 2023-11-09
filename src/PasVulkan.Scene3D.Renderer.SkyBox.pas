@@ -172,7 +172,7 @@ begin
                                                     1,
                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                     [],
-                                                    [fRendererInstance.GlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
+                                                    [fRendererInstance.VulkanViewUniformBuffers[Index].DescriptorBufferInfo],
                                                     [],
                                                     false);
   fVulkanDescriptorSets[Index].WriteToDescriptorSet(1,

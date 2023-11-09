@@ -299,11 +299,11 @@ type EpvScene3D=class(Exception);
        const MaxViews=65536 div SizeOf(TView);
        type TID=TpvUInt32;
             TIDManager=class(TpvGenericIDManager<TID>);
-            TGlobalViewUniformBuffer=record
+            TViewUniformBuffer=record
              Items:array[0..MaxViews-1] of TView;
             end;
-            PGlobalViewUniformBuffer=^TGlobalViewUniformBuffer;
-            TGlobalVulkanViewUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            PViewUniformBuffer=^TViewUniformBuffer;
+            TVulkanViewUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalVulkanInstanceMatrixBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalVulkanInstanceMatrixDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
@@ -17567,7 +17567,7 @@ begin
                                                                             );
 
            fGlobalVulkanViewUniformStagingBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                 SizeOf(TGlobalViewUniformBuffer),
+                                                                                 SizeOf(TViewUniformBuffer),
                                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                  [],

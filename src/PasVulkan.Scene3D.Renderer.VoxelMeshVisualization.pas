@@ -178,7 +178,7 @@ begin
                                                     1,
                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                     [],
-                                                    [fInstance.GlobalVulkanViewUniformBuffers[Index].DescriptorBufferInfo],
+                                                    [fInstance.VulkanViewUniformBuffers[Index].DescriptorBufferInfo],
                                                     [],
                                                     false);
   fVulkanDescriptorSets[Index].Flush;

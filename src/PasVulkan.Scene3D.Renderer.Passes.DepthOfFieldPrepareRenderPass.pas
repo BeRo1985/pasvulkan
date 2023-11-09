@@ -276,7 +276,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                  [],
-                                                                 [fInstance.GlobalVulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                 [fInstance.VulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                  [],
                                                                  false);
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
