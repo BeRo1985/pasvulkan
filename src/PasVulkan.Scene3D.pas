@@ -2663,7 +2663,6 @@ type EpvScene3D=class(Exception);
        fInFlightFrameImageInfos:array[0..MaxInFlightFrames-1] of TpvScene3D.TImageInfos;
        fInFlightFrameImageInfoImageDescriptorGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
        fInFlightFrameImageInfoImageDescriptorUploadedGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-       fRenderPassIndexCounter:array[0..MaxInFlightFrames-1] of TPasMPInt32;
        fPrimaryLightDirection:TpvVector3;
        fPrimaryShadowMapLightDirection:TpvVector3;
        fDebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays;
@@ -2757,7 +2756,6 @@ type EpvScene3D=class(Exception);
        procedure Upload;
        procedure Unload;
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
-       function AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -18170,8 +18168,6 @@ var RenderPassIndex:TpvSizeInt;
     GlobalVulkanInstanceMatrixDynamicArray:PGlobalVulkanInstanceMatrixDynamicArray;
 begin
 
- TPasMPInterlocked.Write(fRenderPassIndexCounter[aInFlightFrameIndex],0);
-
  GlobalVulkanInstanceMatrixDynamicArray:=@fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex];
  if GlobalVulkanInstanceMatrixDynamicArray^.Count<2 then begin
   GlobalVulkanInstanceMatrixDynamicArray^.Count:=0;
@@ -18188,11 +18184,6 @@ begin
 
  FillChar(fPerInFlightFrameGPUCulledArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCulledArray),#0);
 
-end;
-
-function TpvScene3D.AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
-begin
- result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter[aInFlightFrameIndex]);
 end;
 
 procedure TpvScene3D.Check(const aInFlightFrameIndex:TpvSizeInt);

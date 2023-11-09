@@ -569,6 +569,9 @@ type { TpvScene3DRendererInstance }
       private
        fSizeFactor:TpvDouble;
       private
+       fRenderPassIndexCounter:array[0..MaxInFlightFrames-1] of TPasMPInt32;
+      private
+       function AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
       private
@@ -1790,6 +1793,11 @@ begin
  end;
 
  inherited Destroy;
+end;
+
+function TpvScene3DRendererInstance.AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
+begin
+ result:=TPasMPInterlocked.Increment(fRenderPassIndexCounter[aInFlightFrameIndex]);
 end;
 
 function TpvScene3DRendererInstance.GetPixelAmountFactor:TpvDouble;
@@ -3975,6 +3983,7 @@ end;
 
 procedure TpvScene3DRendererInstance.ResetFrame(const aInFlightFrameIndex:TpvInt32);
 begin
+ TPasMPInterlocked.Write(fRenderPassIndexCounter[aInFlightFrameIndex],0);
  fViews[aInFlightFrameIndex].Count:=0;
  fCountRealViews[aInFlightFrameIndex]:=0;
 end;
@@ -4709,34 +4718,34 @@ begin
 
  InFlightFrameState^.CountViews:=fViews[aInFlightFrameIndex].Count;
 
- InFlightFrameState^.ViewRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
+ InFlightFrameState^.ViewRenderPassIndex:=AcquireRenderPassIndex(aInFlightFrameIndex);
 
  if InFlightFrameState^.CountCascadedShadowMapViews>0 then begin
-  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
+  InFlightFrameState^.CascadedShadowMapRenderPassIndex:=AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.CascadedShadowMapRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountReflectionProbeViews>0 then begin
-  InFlightFrameState^.ReflectionProbeRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
+  InFlightFrameState^.ReflectionProbeRenderPassIndex:=AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectionProbeRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
-  InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
+  InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex:=-1;
  end;
 
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
-  InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
+  InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.ReflectiveShadowMapRenderPassIndex:=-1;
  end;
 
  if Renderer.GlobalIlluminationMode=TpvScene3DRendererGlobalIlluminationMode.CascadedVoxelConeTracing then begin
-  InFlightFrameState^.VoxelizationRenderPassIndex:=Renderer.Scene3D.AcquireRenderPassIndex(aInFlightFrameIndex);
+  InFlightFrameState^.VoxelizationRenderPassIndex:=AcquireRenderPassIndex(aInFlightFrameIndex);
  end else begin
   InFlightFrameState^.VoxelizationRenderPassIndex:=-1;
  end;
