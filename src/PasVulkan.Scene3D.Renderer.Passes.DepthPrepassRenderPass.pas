@@ -82,6 +82,7 @@ type { TpvScene3DRendererPassesDepthPrepassRenderPass }
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
+                                          const aRendererInstance:TObject;
                                           const aRenderPassIndex:TpvSizeInt;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
@@ -390,6 +391,7 @@ end;
 
 procedure TpvScene3DRendererPassesDepthPrepassRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                                   const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                                  const aRendererInstance:TObject;
                                                                                   const aRenderPassIndex:TpvSizeInt;
                                                                                   const aPreviousInFlightFrameIndex:TpvSizeInt;
                                                                                   const aInFlightFrameIndex:TpvSizeInt);
@@ -415,7 +417,8 @@ begin
 
   end else begin
 
-   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
                                    aInFlightFrameIndex,
                                    InFlightFrameState^.ViewRenderPassIndex,

@@ -83,6 +83,7 @@ type { TpvScene3DRendererPassesDirectTransparencyRenderPass }
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
+                                          const aRendererInstance:TObject;
                                           const aRenderPassIndex:TpvSizeInt;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
@@ -633,10 +634,11 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesDirectTransparencyRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
-                                                                             const aRenderPassIndex:TpvSizeInt;
-                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                                                             const aInFlightFrameIndex:TpvSizeInt);
+                                                                                        const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                                        const aRendererInstance:TObject;
+                                                                                        const aRenderPassIndex:TpvSizeInt;
+                                                                                        const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                                        const aInFlightFrameIndex:TpvSizeInt);
 var DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
  if not fOnSetRenderPassResourcesDone then begin
@@ -690,7 +692,8 @@ begin
   fOnSetRenderPassResourcesDone:=false;
 
   if fInstance.Renderer.Scene3D.HasTransmission {or fInstance.Renderer.UseOITAlphaTest} then begin
-   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
                                    InFlightFrameState^.ViewRenderPassIndex,
@@ -704,7 +707,8 @@ begin
                                    @InFlightFrameState^.Jitter);
   end;
 
-  fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
+  fInstance.Renderer.Scene3D.Draw(fInstance,
+                                  fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
                                   -1,
                                   aInFlightFrameIndex,
                                   InFlightFrameState^.ViewRenderPassIndex,

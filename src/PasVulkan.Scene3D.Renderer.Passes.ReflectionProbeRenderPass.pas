@@ -83,6 +83,7 @@ type { TpvScene3DRendererPassesReflectionProbeRenderPass }
        fOnSetRenderPassResourcesDone:boolean;
        procedure OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
                                           const aPipelineLayout:TpvVulkanPipelineLayout;
+                                          const aRendererInstance:TObject;
                                           const aRenderPassIndex:TpvSizeInt;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
@@ -749,10 +750,11 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesReflectionProbeRenderPass.OnSetRenderPassResources(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                             const aPipelineLayout:TpvVulkanPipelineLayout;
-                                                                             const aRenderPassIndex:TpvSizeInt;
-                                                                             const aPreviousInFlightFrameIndex:TpvSizeInt;
-                                                                             const aInFlightFrameIndex:TpvSizeInt);
+                                                                                     const aPipelineLayout:TpvVulkanPipelineLayout;
+                                                                                     const aRendererInstance:TObject;
+                                                                                     const aRenderPassIndex:TpvSizeInt;
+                                                                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
+                                                                                     const aInFlightFrameIndex:TpvSizeInt);
 begin
  if not fOnSetRenderPassResourcesDone then begin
   fOnSetRenderPassResourcesDone:=true;
@@ -787,7 +789,8 @@ begin
 
    if fInstance.Renderer.UseDepthPrepass then begin
 
-    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
+    fInstance.Renderer.Scene3D.Draw(fInstance,
+                                    fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
                                     aInFlightFrameIndex,
                                     InFlightFrameState^.ReflectionProbeRenderPassIndex,
@@ -801,7 +804,8 @@ begin
                                     nil);
 
     if fInstance.Renderer.SurfaceSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
-     fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
+     fInstance.Renderer.Scene3D.Draw(fInstance,
+                                     fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                      -1,
                                      aInFlightFrameIndex,
                                      InFlightFrameState^.ReflectionProbeRenderPassIndex,
@@ -817,7 +821,8 @@ begin
 
    end;  // *)
 
-   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    -1,
                                    aInFlightFrameIndex,
                                    InFlightFrameState^.ReflectionProbeRenderPassIndex,
@@ -831,7 +836,8 @@ begin
                                    nil);
 
   if ((fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.Direct) and not fInstance.Renderer.Scene3D.HasTransmission) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
-   fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
+   fInstance.Renderer.Scene3D.Draw(fInstance,
+                                   fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    -1,
                                    aInFlightFrameIndex,
                                    InFlightFrameState^.ReflectionProbeRenderPassIndex,

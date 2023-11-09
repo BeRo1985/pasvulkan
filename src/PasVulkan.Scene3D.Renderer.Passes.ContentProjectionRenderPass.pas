@@ -388,7 +388,7 @@ var RenderPassIndex:TpvInt32;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  RenderPassIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].ViewRenderPassIndex;
- VertexStagePushConstants:=fInstance.Renderer.Scene3D.VertexStagePushConstants[RenderPassIndex];
+ VertexStagePushConstants:=fInstance.VertexStagePushConstants[RenderPassIndex];
  if assigned(fInstance.VirtualReality) then begin
   VertexStagePushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].HUDViewIndex;
   VertexStagePushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;

@@ -451,6 +451,7 @@ type { TpvScene3DRendererInstance }
        fCameraPresets:array[0..MaxInFlightFrames-1] of TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
       private
+       fVertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray;
        fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
        fPotentiallyVisibleSetViewNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
        fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
@@ -597,6 +598,8 @@ type { TpvScene3DRendererInstance }
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+      public
+       property VertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray read fVertexStagePushConstants write fVertexStagePushConstants;
       public
        property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4 read GetCameraViewMatrix write SetCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
@@ -4729,6 +4732,7 @@ begin
  if InFlightFrameState^.CountFinalViews>0 then begin
 
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                           self,
                            InFlightFrameState^.ViewRenderPassIndex,
                            fViews[aInFlightFrameIndex],
                            fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
@@ -4744,6 +4748,7 @@ begin
 
   if InFlightFrameState^.VoxelizationRenderPassIndex>=0 then begin
    Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                            self,
                             InFlightFrameState^.VoxelizationRenderPassIndex,
                             fViews[aInFlightFrameIndex],
                             fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
@@ -4763,6 +4768,7 @@ begin
  // Reflection probe viewport(s)
  if InFlightFrameState^.CountReflectionProbeViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                           self,
                            InFlightFrameState^.ReflectionProbeRenderPassIndex,
                            fViews[aInFlightFrameIndex],
                            fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
@@ -4781,6 +4787,7 @@ begin
  // Reflection probe viewport(s)
  if InFlightFrameState^.CountTopDownSkyOcclusionMapViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                           self,
                            InFlightFrameState^.TopDownSkyOcclusionMapRenderPassIndex,
                            fViews[aInFlightFrameIndex],
                            fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
@@ -4798,6 +4805,7 @@ begin
  // Reflective shadow map viewport(s)
  if InFlightFrameState^.CountReflectiveShadowMapViews>0 then begin
   Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                           self,
                            InFlightFrameState^.ReflectiveShadowMapRenderPassIndex,
                            fViews[aInFlightFrameIndex],
                            fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
@@ -4814,6 +4822,7 @@ begin
 
  // Cascaded shadow map viewport(s)
  Renderer.Scene3D.Prepare(aInFlightFrameIndex,
+                          self,
                           InFlightFrameState^.CascadedShadowMapRenderPassIndex,
                           fViews[aInFlightFrameIndex],
                           fPotentiallyVisibleSetViewNodeIndices[aInFlightFrameIndex],
