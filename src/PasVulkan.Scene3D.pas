@@ -2551,6 +2551,7 @@ type EpvScene3D=class(Exception);
             PCachedVertexRange=^TCachedVertexRange;
             TCachedVertexRanges=TpvDynamicArray<TCachedVertexRange>;
             TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
+            TSetGlobalResourcesDone=array[0..MaxRenderPassIndices-1] of boolean;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -2655,7 +2656,6 @@ type EpvScene3D=class(Exception);
        fInFlightFrameBufferMemoryBarriers:TInFlightFrameBufferMemoryBarriers;
        fPreviousViews:TViews;
        fViews:TViews;
-       fSetGlobalResourcesDone:array[0..MaxRenderPassIndices-1] of boolean;
        fCountInFlightFrames:TpvSizeInt;
        fUseBufferDeviceAddress:boolean;
        fHasTransmission:boolean;
@@ -19355,9 +19355,9 @@ var BufferHandles:array[0..4] of TVkBuffer;
     Count:TpvSizeInt;
 begin
 
- if not fSetGlobalResourcesDone[aRenderPassIndex] then begin
+ if not TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPassIndex] then begin
 
-  fSetGlobalResourcesDone[aRenderPassIndex]:=true;
+  TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPassIndex]:=true;
 
   aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
@@ -19687,7 +19687,7 @@ begin
    fInFlightFrameBufferMemoryBarriers[aInFlightFrameIndex].Count:=0;
   end;
 
-  fSetGlobalResourcesDone[aRenderPassIndex]:=false;
+  TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPassIndex]:=false;
 
   if fUseMultiIndirectDraw then begin
    VulkanFrameIndirectCommandBufferManager:=fVulkanFrameIndirectCommandBufferManagerArray[aInFlightFrameIndex];

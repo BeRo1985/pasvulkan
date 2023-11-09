@@ -453,6 +453,9 @@ type { TpvScene3DRendererInstance }
       private
        fVertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray;
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
+      public
+       fSetGlobalResourcesDone:TpvScene3D.TSetGlobalResourcesDone;
+      private
        fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
        fPotentiallyVisibleSetViewNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
        fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
