@@ -452,6 +452,7 @@ type { TpvScene3DRendererInstance }
        fUseDebugBlit:boolean;
       private
        fVertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray;
+       fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
        fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
        fPotentiallyVisibleSetViewNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
        fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
@@ -600,6 +601,7 @@ type { TpvScene3DRendererInstance }
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
       public
        property VertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray read fVertexStagePushConstants write fVertexStagePushConstants;
+       property DrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets read fDrawChoreographyBatchItemFrameBuckets write fDrawChoreographyBatchItemFrameBuckets;
       public
        property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4 read GetCameraViewMatrix write SetCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
@@ -1406,7 +1408,10 @@ end;
 { TpvScene3DRendererInstance }
 
 constructor TpvScene3DRendererInstance.Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality;const aExternalImageFormat:TVkFormat);
-var InFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
+    MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
  inherited Create(aParent);
 
@@ -1646,6 +1651,18 @@ begin
   end;
  end;
 
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
+   for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
+     for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
+      fDrawChoreographyBatchItemFrameBuckets[InFlightFrameIndex,RenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode]:=TpvScene3D.TDrawChoreographyBatchItems.Create(false);
+     end;
+    end;
+   end;
+  end;
+ end;
+
  fLeft:=0;
  fTop:=0;
  fWidth:=1024;
@@ -1660,7 +1677,10 @@ begin
 end;
 
 destructor TpvScene3DRendererInstance.Destroy;
-var InFlightFrameIndex,CascadeIndex,ImageIndex:TpvSizeInt;
+var InFlightFrameIndex,RenderPassIndex,CascadeIndex,ImageIndex:TpvSizeInt;
+    MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
+    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
+    FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
 
  FreeAndNil(fFrameGraph);
@@ -1745,6 +1765,18 @@ begin
    FreeAndNil(fApproximationOrderIndependentTransparentUniformVulkanBuffer);
   end;
   else begin
+  end;
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
+   for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
+    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
+     for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to high(TpvScene3D.TFaceCullingMode) do begin
+      FreeAndNil(fDrawChoreographyBatchItemFrameBuckets[InFlightFrameIndex,RenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode]);
+     end;
+    end;
+   end;
   end;
  end;
 
