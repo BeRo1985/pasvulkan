@@ -412,6 +412,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationRadianceHintsDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TGlobalIlluminationRadianceHintsRSMUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+            TViews=array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
       private
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
@@ -455,8 +456,8 @@ type { TpvScene3DRendererInstance }
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
       public
        fSetGlobalResourcesDone:TpvScene3D.TSetGlobalResourcesDone;
-      public
-       fViews:array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
+      private
+       fViews:TpvScene3DRendererInstance.TViews;
       private
        fPotentiallyVisibleSetViewNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
        fCountRealViews:array[0..MaxInFlightFrames-1] of TpvInt32;
@@ -617,7 +618,7 @@ type { TpvScene3DRendererInstance }
       public
        property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4 read GetCameraViewMatrix write SetCameraViewMatrix;
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
-       //property Views:TpvScene3D.TViews read fViews;
+       property Views:TpvScene3DRendererInstance.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       published
        property CameraPresets[const aInFlightFrameIndex:TpvInt32]:TpvScene3DRendererCameraPreset read GetCameraPreset;

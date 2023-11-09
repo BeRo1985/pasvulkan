@@ -19524,7 +19524,7 @@ begin
   VertexStagePushConstants:=@TpvScene3DRendererInstance(aRendererInstance).VertexStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
-  VertexStagePushConstants^.CountAllViews:=TpvScene3DRendererInstance(aRendererInstance).fViews[aInFlightFrameIndex].Count;
+  VertexStagePushConstants^.CountAllViews:=TpvScene3DRendererInstance(aRendererInstance).Views[aInFlightFrameIndex].Count;
   VertexStagePushConstants^.FrameIndex:=aFrameIndex;
   if assigned(aJitter) then begin
    VertexStagePushConstants^.Jitter:=aJitter^;
