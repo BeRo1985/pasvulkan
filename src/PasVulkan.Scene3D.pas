@@ -247,6 +247,7 @@ type EpvScene3D=class(Exception);
             end;
             PView=^TView;
             TViews=TpvDynamicArray<TView>;
+            TRendererInstanceIDManager=TpvGenericIDManager<TpvUInt32>;
             TScalarSum=record
              public
               x:TpvDouble;
@@ -2564,6 +2565,7 @@ type EpvScene3D=class(Exception);
        fVulkanDevice:TpvVulkanDevice;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
+       fRendererInstanceIDManager:TRendererInstanceIDManager;
        fObjectListLock:TPasMPCriticalSection;
        fObjectList:TpvObjectList;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
@@ -2865,6 +2867,7 @@ type EpvScene3D=class(Exception);
        property VulkanStagingCommandBuffer:TpvVulkanCommandBuffer read fVulkanStagingCommandBuffer;
        property VulkanStagingFence:TpvVulkanFence read fVulkanStagingFence;
       published
+       property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
@@ -16555,6 +16558,8 @@ begin
   fVulkanDevice:=nil;
  end;
 
+ fRendererInstanceIDManager:=TRendererInstanceIDManager.Create;
+
  fObjectListLock:=TPasMPCriticalSection.Create;
 
  fObjectList:=TpvObjectList.Create;
@@ -17309,6 +17314,8 @@ begin
  FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
+
+ FreeAndNil(fRendererInstanceIDManager);
 
  inherited Destroy;
 end;

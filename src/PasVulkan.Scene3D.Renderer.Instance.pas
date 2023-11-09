@@ -414,6 +414,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TViews=array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
       private
+       fID:TpvUInt32;
        fFrameGraph:TpvFrameGraph;
        fVirtualReality:TpvVirtualReality;
        fExternalImageFormat:TVkFormat;
@@ -712,6 +713,7 @@ type { TpvScene3DRendererInstance }
       public
        property ImageBasedLightingReflectionProbeCubeMaps:TpvScene3DRendererImageBasedLightingReflectionProbeCubeMaps read fImageBasedLightingReflectionProbeCubeMaps;
       published
+       property ID:TpvUInt32 read fID;
        property FrameGraph:TpvFrameGraph read fFrameGraph;
        property VirtualReality:TpvVirtualReality read fVirtualReality;
        property ExternalImageFormat:TVkFormat read fExternalImageFormat write fExternalImageFormat;
@@ -1428,6 +1430,8 @@ var InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
 begin
  inherited Create(aParent);
 
+ fID:=Renderer.Scene3D.RendererInstanceIDManager.AllocateID;
+
  fPasses:=TpvScene3DRendererInstancePasses.Create;
 
  fExternalImageFormat:=aExternalImageFormat;
@@ -1852,6 +1856,8 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fCameraPresets[InFlightFrameIndex]);
  end;
+
+ Renderer.Scene3D.RendererInstanceIDManager.FreeID(fID);
 
  inherited Destroy;
 end;
