@@ -18199,106 +18199,58 @@ procedure TpvScene3D.CullLights(const aInFlightFrameIndex:TpvSizeInt;
                                 const aFrustums:TpvFrustumDynamicArray;
                                 const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                 const aRoot:TpvSizeInt);
- procedure ProcessNode(const aNode:TpvSizeint;const aMask:TpvUInt32);
- var Index:TpvSizeInt;
-     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-     Mask:TpvUInt32;
-     OK:boolean;
- begin
-  if aNode>=0 then begin
-   TreeNode:=@aTreeNodes[aNode];
-   Mask:=aMask;
-   if length(aFrustums)>0 then begin
-    if length(aFrustums)=1 then begin
-     OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-    end else begin
-     OK:=false;
-     for Index:=0 to length(aFrustums)-1 do begin
-      if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-       OK:=true;
-       break;
-      end;
-     end;
-    end;
-   end else begin
-    OK:=true;
-   end;
-   if OK then begin
-    if TreeNode^.UserData<>0 then begin
-     if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
-      fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-      inc(fCountIndirectLights[aInFlightFrameIndex]);
-     end;
-    end;
-    if TreeNode^.Children[0]>=0 then begin
-     ProcessNode(TreeNode^.Children[0],Mask);
-    end;
-    if TreeNode^.Children[1]>=0 then begin
-     ProcessNode(TreeNode^.Children[1],Mask);
-    end;
-   end;
-  end;
- end;
-type PStackItem=^TStackItem;
-     TStackItem=record
+type TStackItem=record
       Node:TpvSizeInt;
       Mask:TpvUInt32;
      end;
-var Index,StackPointer:TpvSizeInt;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+var Index:TpvSizeInt;
     StackItem:PStackItem;
     Node:TpvSizeInt;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     Mask:TpvUInt32;
-    Stack:array[0..31] of TStackItem;
+    Stack:TStack;
     OK:boolean;
 begin
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
-  Stack[0].Node:=aRoot;
-  Stack[0].Mask:=$ffffffff;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   StackItem:=@Stack[StackPointer];
-   Node:=StackItem^.Node;
-   Mask:=StackItem^.Mask;
-   while Node>=0 do begin
-    TreeNode:=@aTreeNodes[Node];
-    if length(aFrustums)>0 then begin
-     if length(aFrustums)=1 then begin
-      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-     end else begin
-      OK:=false;
-      for Index:=0 to length(aFrustums)-1 do begin
-       if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-        OK:=true;
-        break;
+  Stack.Initialize;
+  try
+   StackItem:=Stack.PushIndirect;
+   StackItem^.Node:=aRoot;
+   StackItem^.Mask:=$ffffffff;
+   while Stack.PopIndirect(StackItem) do begin
+    Node:=StackItem^.Node;
+    Mask:=StackItem^.Mask;
+    while Node>=0 do begin
+     TreeNode:=@aTreeNodes[Node];
+     if length(aFrustums)>0 then begin
+      if length(aFrustums)=1 then begin
+       OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+      end else begin
+       OK:=false;
+       for Index:=0 to length(aFrustums)-1 do begin
+        if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+         OK:=true;
+         break;
+        end;
        end;
       end;
-     end;
-    end else begin
-     OK:=true;
-    end;
-    if OK then begin
-     if TreeNode^.UserData<>0 then begin
-      if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
-       fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
-       inc(fCountIndirectLights[aInFlightFrameIndex]);
-      end;
-     end;
-     if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
-      if TreeNode^.Children[0]>=0 then begin
-       ProcessNode(TreeNode^.Children[0],Mask);
-      end;
-      if TreeNode^.Children[1]>=0 then begin
-       ProcessNode(TreeNode^.Children[1],Mask);
-      end;
      end else begin
+      OK:=true;
+     end;
+     if OK then begin
+      if TreeNode^.UserData<>0 then begin
+       if fCountIndirectLights[aInFlightFrameIndex]<MaxVisibleLights then begin
+        fIndirectLights[aInFlightFrameIndex,fCountIndirectLights[aInFlightFrameIndex]]:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
+        inc(fCountIndirectLights[aInFlightFrameIndex]);
+       end;
+      end;
       if TreeNode^.Children[0]>=0 then begin
        if TreeNode^.Children[1]>=0 then begin
-        StackItem:=@Stack[StackPointer];
+        StackItem:=Stack.PushIndirect;
         StackItem^.Node:=TreeNode^.Children[1];
         StackItem^.Mask:=Mask;
-        inc(StackPointer);
        end;
        Node:=TreeNode^.Children[0];
        continue;
@@ -18309,17 +18261,19 @@ begin
        end;
       end;
      end;
+     break;
     end;
-    break;
    end;
+  finally
+   Stack.Finalize;
   end;
  end;
 end;
 
 procedure TpvScene3D.CollectLights(const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
-                                                const aRoot:TpvSizeInt;
-                                                var aLightItemArray:TpvScene3D.TLightItems;
-                                                var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
+                                   const aRoot:TpvSizeInt;
+                                   var aLightItemArray:TpvScene3D.TLightItems;
+                                   var aLightMetaInfoArray:TpvScene3D.TLightMetaInfos);
  procedure ProcessLight(const aLight:TpvScene3D.TLight);
  var LightItem:TpvScene3D.PLightItem;
      LightMetaInfo:TpvScene3D.PLightMetaInfo;
