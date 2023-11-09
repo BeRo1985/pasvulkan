@@ -1431,6 +1431,12 @@ begin
  inherited Create(aParent);
 
  fID:=Renderer.Scene3D.RendererInstanceIDManager.AllocateID;
+ if fID=0 then begin
+  raise EpvScene3D.Create('Invalid renderer instance ID');
+ end else if fID>TpvScene3D.MaxRendererInstances then begin
+  raise EpvScene3D.Create('Too many renderer instances for the same TpvScene3D');
+ end;
+ dec(fID);
 
  fPasses:=TpvScene3DRendererInstancePasses.Create;
 
@@ -1857,7 +1863,7 @@ begin
   FreeAndNil(fCameraPresets[InFlightFrameIndex]);
  end;
 
- Renderer.Scene3D.RendererInstanceIDManager.FreeID(fID);
+ Renderer.Scene3D.RendererInstanceIDManager.FreeID(fID+1);
 
  inherited Destroy;
 end;
