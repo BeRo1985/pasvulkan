@@ -18994,124 +18994,86 @@ procedure TpvScene3D.CullAndPrepareGroupInstances(const aInFlightFrameIndex:TpvS
                                                   const aFrustums:TpvFrustumDynamicArray;
                                                   const aTreeNodes:TpvBVHDynamicAABBTree.TTreeNodes;
                                                   const aRoot:TpvSizeInt);
- procedure ProcessNode(const aNode:TpvSizeInt;const aMask:TpvUInt32);
- var Index:TpvSizeInt;
-     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
-     Mask:TpvUInt32;
-     OK:boolean;
-     GroupInstance:TpvScene3D.TGroup.TInstance;
- begin
-  if aNode>=0 then begin
-   TreeNode:=@aTreeNodes[aNode];
-   Mask:=aMask;
-   if length(aFrustums)>0 then begin
-    if length(aFrustums)=1 then begin
-     OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-    end else begin
-     OK:=false;
-     for Index:=0 to length(aFrustums)-1 do begin
-      if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-       OK:=true;
-       break;
-      end;
-     end;
-    end;
-   end else begin
-    OK:=true;
-   end;
-   if OK then begin
-    if TreeNode^.UserData<>0 then begin
-     GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
-     if (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and not GroupInstance.fHeadless then begin
-      GroupInstance.Prepare(aInFlightFrameIndex,
-                            aRendererInstance,
-                            aRenderPassIndex,
-                            aViewNodeIndices,
-                            aViewBaseIndex,
-                            aCountViews,
-                            aFrustums,
-                            aPotentiallyVisibleSetCulling,
-                            aMaterialAlphaModes);
-     end;
-    end;
-    if TreeNode^.Children[0]>=0 then begin
-     ProcessNode(TreeNode^.Children[0],Mask);
-    end;
-    if TreeNode^.Children[1]>=0 then begin
-     ProcessNode(TreeNode^.Children[1],Mask);
-    end;
-   end;
-  end;
- end;
-type PStackItem=^TStackItem;
-     TStackItem=record
+type TStackItem=record
       Node:TpvSizeInt;
       Mask:TpvUInt32;
      end;
-var Index,StackPointer:TpvSizeInt;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicFastStack<TStackItem>;
+var Index,ViewIndex:TpvSizeInt;
+    PotentiallyVisibleSetNodeIndex,
+    ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     StackItem:PStackItem;
     Node:TpvSizeInt;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     Mask:TpvUInt32;
-    Stack:array[0..31] of TStackItem;
+    Stack:TStack;
     GroupInstance:TpvScene3D.TGroup.TInstance;
-    OK:boolean;
+    PotentiallyVisible:boolean;
 begin
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
-  Stack[0].Node:=aRoot;
-  Stack[0].Mask:=$ffffffff;
-  StackPointer:=1;
-  while StackPointer>0 do begin
-   dec(StackPointer);
-   StackItem:=@Stack[StackPointer];
-   Node:=StackItem^.Node;
-   Mask:=StackItem^.Mask;
-   while Node>=0 do begin
-    TreeNode:=@aTreeNodes[Node];
-    if length(aFrustums)>0 then begin
-     if length(aFrustums)=1 then begin
-      OK:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-     end else begin
-      OK:=false;
-      for Index:=0 to length(aFrustums)-1 do begin
-       if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-        OK:=true;
-        break;
+  Stack.Initialize;
+  try
+   StackItem:=Stack.PushIndirect;
+   StackItem^.Node:=aRoot;
+   StackItem^.Mask:=$ffffffff;
+   while Stack.PopIndirect(StackItem) do begin
+    Node:=StackItem^.Node;
+    Mask:=StackItem^.Mask;
+    while Node>=0 do begin
+     TreeNode:=@aTreeNodes[Node];
+     if length(aFrustums)>0 then begin
+      if length(aFrustums)=1 then begin
+       PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+      end else begin
+       PotentiallyVisible:=false;
+       for Index:=0 to length(aFrustums)-1 do begin
+        if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+         PotentiallyVisible:=true;
+         break;
+        end;
        end;
       end;
-     end;
-    end else begin
-     OK:=true;
-    end;
-    if OK then begin
-     if TreeNode^.UserData<>0 then begin
-      GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
-      if (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and not GroupInstance.fHeadless then begin
-       GroupInstance.Prepare(aInFlightFrameIndex,
-                             aRendererInstance,
-                             aRenderPassIndex,
-                             aViewNodeIndices,
-                             aViewBaseIndex,
-                             aCountViews,
-                             aFrustums,
-                             aPotentiallyVisibleSetCulling,
-                             aMaterialAlphaModes);
-      end;
-     end;
-     if (StackPointer>=High(Stack)) and ((TreeNode^.Children[0]>=0) or (TreeNode^.Children[1]>=0)) then begin
-      if TreeNode^.Children[0]>=0 then begin
-       ProcessNode(TreeNode^.Children[0],Mask);
-      end;
-      if TreeNode^.Children[1]>=0 then begin
-       ProcessNode(TreeNode^.Children[1],Mask);
-      end;
      end else begin
+      PotentiallyVisible:=true;
+     end;
+     if PotentiallyVisible then begin
+      if TreeNode^.UserData<>0 then begin
+       GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
+       if (not GroupInstance.fHeadless) And
+          (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) then begin
+        if aPotentiallyVisibleSetCulling then begin
+         PotentiallyVisibleSetNodeIndex:=GroupInstance.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+         if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+          PotentiallyVisible:=false;
+          for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+           ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
+           if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+              fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+            PotentiallyVisible:=true;
+            break;
+           end;
+          end;
+         end;
+        end;
+        if PotentiallyVisible then begin
+         GroupInstance.Prepare(aInFlightFrameIndex,
+                               aRendererInstance,
+                               aRenderPassIndex,
+                               aViewNodeIndices,
+                               aViewBaseIndex,
+                               aCountViews,
+                               aFrustums,
+                               aPotentiallyVisibleSetCulling,
+                               aMaterialAlphaModes);
+        end;
+       end;
+      end;
       if TreeNode^.Children[0]>=0 then begin
        if TreeNode^.Children[1]>=0 then begin
-        StackItem:=@Stack[StackPointer];
+        StackItem:=Stack.PushIndirect;
         StackItem^.Node:=TreeNode^.Children[1];
         StackItem^.Mask:=Mask;
-        inc(StackPointer);
        end;
        Node:=TreeNode^.Children[0];
        continue;
@@ -19122,9 +19084,11 @@ begin
        end;
       end;
      end;
+     break;
     end;
-    break;
    end;
+  finally
+   Stack.Finalize;
   end;
  end;
 end;
@@ -19168,30 +19132,31 @@ begin
   Frustums:=nil;
   try
 
-   if aFrustumCulling then begin
-
-    SetLength(Frustums,aCountViews);
+   if aFrustumCulling or aPotentiallyVisibleSetCulling then begin
 
     AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
 
-    for Index:=0 to aCountViews-1 do begin
-     View:=@aViews.Items[aViewBaseIndex+Index];
-     Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
+    if aFrustumCulling then begin
+     SetLength(Frustums,aCountViews);
+     for Index:=0 to aCountViews-1 do begin
+      View:=@aViews.Items[aViewBaseIndex+Index];
+      Frustums[Index].Init(View^.ViewMatrix,View^.ProjectionMatrix);
+     end;
     end;
 
     CullAndPrepareGroupInstances(aInFlightFrameIndex,
-                             aRendererInstance,
-                             aRenderPassIndex,
-                             aViews,
-                             aViewNodeIndices,
-                             aViewBaseIndex,
-                             aCountViews,
-                             aMaterialAlphaModes,
-                             aPotentiallyVisibleSetCulling,
-                             Frustums,
-                             AABBTreeState^.TreeNodes,
-                             AABBTreeState^.Root
-                            );
+                                 aRendererInstance,
+                                 aRenderPassIndex,
+                                 aViews,
+                                 aViewNodeIndices,
+                                 aViewBaseIndex,
+                                 aCountViews,
+                                 aMaterialAlphaModes,
+                                 aPotentiallyVisibleSetCulling,
+                                 Frustums,
+                                 AABBTreeState^.TreeNodes,
+                                 AABBTreeState^.Root
+                                );
 
    end else begin
 

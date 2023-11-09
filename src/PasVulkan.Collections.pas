@@ -101,6 +101,23 @@ type TpvDynamicArray<T>=record
        function Pop(out aItem:T):boolean;
      end;
 
+     TpvDynamicFastStack<T>=record
+      public
+       const LocalSize=32;
+       type PT=^T;
+      private
+       fLocalItems:array[0..LocalSize-1] of T;
+       fItems:array of T;
+       fCount:TpvSizeInt;
+      public
+       procedure Initialize;
+       procedure Finalize;
+       procedure Push(const aItem:T);
+       function PushIndirect:PT;
+       function Pop(out aItem:T):boolean;
+       function PopIndirect(out aItem:PT):boolean;
+     end;
+
      TpvDynamicQueue<T>=record
       public
        type TQueueItems=array of T;
@@ -902,6 +919,82 @@ begin
  if result then begin
   dec(Count);
   aItem:=Items[Count];
+ end;
+end;
+
+{ TpvDynamicFastStack<T> }
+
+procedure TpvDynamicFastStack<T>.Initialize;
+begin
+ System.Initialize(fLocalItems);
+ fItems:=nil;
+ fCount:=0;
+end;
+
+procedure TpvDynamicFastStack<T>.Finalize;
+begin
+ System.Finalize(fLocalItems);
+ fItems:=nil;
+ fCount:=0;
+end;
+
+procedure TpvDynamicFastStack<T>.Push(const aItem:T);
+var Index,ThresholdedCount:TpvSizeInt;
+begin
+ Index:=fCount;
+ inc(fCount);
+ if Index<=High(fLocalItems) then begin
+  fLocalItems[Index]:=aItem;
+ end else begin
+  ThresholdedCount:=fCount-Length(fLocalItems);
+  if length(fItems)<ThresholdedCount then begin
+   SetLength(fItems,ThresholdedCount+((ThresholdedCount+1) shr 1));
+  end;
+  fItems[Index-Length(fLocalItems)]:=aItem;
+ end;
+end;
+
+function TpvDynamicFastStack<T>.PushIndirect:PT;
+var Index,ThresholdedCount:TpvSizeInt;
+begin
+ Index:=fCount;
+ inc(fCount);
+ if Index<=High(fLocalItems) then begin
+  result:=@fLocalItems[Index];
+ end else begin
+  ThresholdedCount:=fCount-Length(fLocalItems);
+  if length(fItems)<ThresholdedCount then begin
+   SetLength(fItems,ThresholdedCount+((ThresholdedCount+1) shr 1));
+  end;
+  result:=@fItems[Index-Length(fLocalItems)];
+ end;
+end;
+
+function TpvDynamicFastStack<T>.Pop(out aItem:T):boolean;
+begin
+ result:=fCount>0;
+ if result then begin
+  dec(fCount);
+  if fCount<=High(fLocalItems) then begin
+   aItem:=fLocalItems[fCount];
+  end else begin
+   aItem:=fItems[fCount-Length(fLocalItems)];
+  end;
+ end;
+end;
+
+function TpvDynamicFastStack<T>.PopIndirect(out aItem:PT):boolean;
+begin
+ result:=fCount>0;
+ if result then begin
+  dec(fCount);
+  if fCount<=High(fLocalItems) then begin
+   aItem:=@fLocalItems[fCount];
+  end else begin
+   aItem:=@fItems[fCount-Length(fLocalItems)];
+  end;
+ end else begin
+  aItem:=nil;
  end;
 end;
 
