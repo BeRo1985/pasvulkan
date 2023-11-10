@@ -15822,16 +15822,18 @@ begin
 
  end;
 
- AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
- if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
-  if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
-   AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+ if aInFlightFrameIndex>=0 then begin
+  AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+  if assigned(fAABBTree) and (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+   if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+    AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+   end else begin
+    Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   end;
+   AABBTreeState^.Root:=fAABBTree.Root;
   end else begin
-   Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   AABBTreeState^.Root:=-1;
   end;
-  AABBTreeState^.Root:=fAABBTree.Root;
- end else begin
-  AABBTreeState^.Root:=-1;
  end;
 
 end;
