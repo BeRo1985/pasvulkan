@@ -1880,7 +1880,8 @@ type EpvScene3D=class(Exception);
                           TSkipList=array of TSkipListItem;
                     private
                      fIndex:TpvSizeInt;
-                     fNodes:TNodes;
+                     fNodes:TpvScene3D.TGroup.TNodes;
+                     fAllNodes:TpvScene3D.TGroup.TNodes;
                      fTransformAnimatedNodes:TpvScene3D.TGroup.TNodes;
                      fSkinOrWeightsAnimatedNodes:TpvScene3D.TGroup.TNodes;
                      fStaticNodes:TpvScene3D.TGroup.TNodes;
@@ -1895,6 +1896,7 @@ type EpvScene3D=class(Exception);
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Nodes:TpvScene3D.TGroup.TNodes read fNodes;
+                     property AllNodes:TpvScene3D.TGroup.TNodes read fAllNodes;
                      property TransformAnimatedNodes:TpvScene3D.TGroup.TNodes read fTransformAnimatedNodes;
                      property SkinOrWeightsAnimatedNodes:TpvScene3D.TGroup.TNodes read fSkinOrWeightsAnimatedNodes;
                      property StaticNodes:TpvScene3D.TGroup.TNodes read fStaticNodes;
@@ -2484,7 +2486,7 @@ type EpvScene3D=class(Exception);
               fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
               procedure ConstructBuffers;
               procedure MarkAnimatedElements;
-              procedure SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
+              procedure CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
               procedure ConstructDrawChoreographyBatchItems;
@@ -10362,6 +10364,9 @@ begin
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=false;
 
+ fAllNodes:=TNodes.Create;
+ fAllNodes.OwnsObjects:=false;
+
  fTransformAnimatedNodes:=TpvScene3D.TGroup.TNodes.Create;
  fTransformAnimatedNodes.OwnsObjects:=false;
 
@@ -10389,6 +10394,7 @@ begin
  FreeAndNil(fTransformAnimatedNodes);
  FreeAndNil(fSkinOrWeightsAnimatedNodes);
  FreeAndNil(fStaticNodes);
+ FreeAndNil(fAllNodes);
  FreeAndNil(fNodes);
  inherited Destroy;
 end;
@@ -10893,7 +10899,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
+procedure TpvScene3D.TGroup.CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 type TStackItem=record
       Node:TpvScene3D.TGroup.TNode;
       Parent:TpvScene3D.TGroup.TNode;
@@ -10917,6 +10923,7 @@ begin
 
    for Scene in fScenes do begin
 
+    Scene.fAllNodes.Clear;
     Scene.fTransformAnimatedNodes.Clear;
     Scene.fSkinOrWeightsAnimatedNodes.Clear;
     Scene.fStaticNodes.Clear;
@@ -10937,6 +10944,7 @@ begin
 
     while Stack.Pop(StackItem) do begin
      if not NodeHashMap.ExistKey(StackItem.Node) then begin
+      Scene.fAllNodes.Add(StackItem.Node);
       NodeHashMap.Add(StackItem.Node,true);
       if (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in StackItem.Node.fFlags) or
          (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in StackItem.Node.fFlags) then begin
@@ -12054,7 +12062,7 @@ begin
 
          MarkAnimatedElements;
 
-         SplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
+         CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
 
          if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
           fScene:=fScenes[aSourceDocument.Scene];
@@ -15791,11 +15799,21 @@ begin
      end else begin
       InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
      end;
-     if assigned(fAABBTree) and assigned(Node.Mesh) then begin
-      if InstanceNode^.AABBTreeProxy<0 then begin
-       InstanceNode^.AABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Index)+1);
-      end else begin
-       fAABBTree.MoveProxy(InstanceNode^.AABBTreeProxy,InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvVector3.Origin);
+    end;
+
+    if assigned(fAABBTree) then begin
+     for Index:=0 to Scene.fAllNodes.Count-1 do begin
+      Node:=Scene.fAllNodes[Index];
+      InstanceNode:=@fNodes[Node.Index];
+      if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] and assigned(Node.Mesh) then begin
+       if InstanceNode^.AABBTreeProxy<0 then begin
+        InstanceNode^.AABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Node.fIndex)+1);
+       end else begin
+        fAABBTree.MoveProxy(InstanceNode^.AABBTreeProxy,InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvVector3.Origin);
+       end;
+      end else if InstanceNode^.AABBTreeProxy>=0 then begin
+       fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
+       InstanceNode^.AABBTreeProxy:=-1;
       end;
      end;
     end;
