@@ -15620,17 +15620,18 @@ begin
 
    if aInFlightFrameIndex>=0 then begin
     for Index:=0 to length(fNodes)-1 do begin
-     if not fNodes[Index].Processed then begin
-      if assigned(fNodes[Index].Light) then begin
-       FreeAndNil(fNodes[Index].Light);
+     InstanceNode:=@fNodes[Index];
+     if not InstanceNode^.Processed then begin
+      if assigned(InstanceNode^.Light) then begin
+       FreeAndNil(InstanceNode^.Light);
       end;
-      if fNodes[Index].AABBTreeProxy>=0 then begin
+      if InstanceNode^.AABBTreeProxy>=0 then begin
        try
         if assigned(fAABBTree) then begin
-         fAABBTree.DestroyProxy(fNodes[Index].AABBTreeProxy);
+         fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
         end;
        finally
-        fNodes[Index].AABBTreeProxy:=-1;
+        InstanceNode^.AABBTreeProxy:=-1;
        end;
       end;
      end;
@@ -15686,6 +15687,13 @@ begin
       end;
      end else begin
       InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+     end;
+     if assigned(Node.Mesh) then begin
+      if InstanceNode^.AABBTreeProxy<0 then begin
+       InstanceNode^.AABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Index)+1);
+      end else begin
+       fAABBTree.MoveProxy(InstanceNode^.AABBTreeProxy,InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvVector3.Origin);
+      end;
      end;
     end;
 
@@ -15778,16 +15786,17 @@ begin
   end;
 
   for Index:=0 to length(fNodes)-1 do begin
-   if assigned(fNodes[Index].Light) then begin
-    FreeAndNil(fNodes[Index].Light);
+   InstanceNode:=@fNodes[Index];
+   if assigned(InstanceNode^.Light) then begin
+    FreeAndNil(InstanceNode^.Light);
    end;
-   if fNodes[Index].AABBTreeProxy>=0 then begin
+   if InstanceNode^.AABBTreeProxy>=0 then begin
     try
      if assigned(fAABBTree) then begin
-      fAABBTree.DestroyProxy(fNodes[Index].AABBTreeProxy);
+      fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
      end;
     finally
-     fNodes[Index].AABBTreeProxy:=-1;
+     InstanceNode^.AABBTreeProxy:=-1;
     end;
    end;
   end;
