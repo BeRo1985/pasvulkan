@@ -611,6 +611,10 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceDebugUtils=class;
 
+     TpvVulkanDevice=class;
+
+     TpvVulkanDeviceOnBeforeDeviceCreate=procedure(const aDevice:TpvVulkanDevice;const aDeviceCreateInfo:PVkDeviceCreateInfo) of object;
+
      TpvVulkanDevice=class(TpvVulkanObject)
       private
        fInstance:TpvVulkanInstance;
@@ -618,6 +622,7 @@ type EpvVulkanException=class(Exception);
        fSurface:TpvVulkanSurface;
        fDeviceQueueCreateInfoList:TpvVulkanDeviceQueueCreateInfoList;
        fDeviceQueueCreateInfos:TVkDeviceQueueCreateInfoArray;
+       fOnBeforeDeviceCreate:TpvVulkanDeviceOnBeforeDeviceCreate;
        fEnabledLayerNames:TStringList;
        fEnabledExtensionNames:TStringList;
        fEnabledLayerNameStrings:array of TpvVulkanCharString;
@@ -731,17 +736,23 @@ type EpvVulkanException=class(Exception);
        property FullScreenExclusiveSupport:boolean read fFullScreenExclusiveSupport;
        property PresentIDSupport:boolean read fPresentIDSupport;
        property PresentWaitSupport:boolean read fPresentWaitSupport;
+       property OnBeforeDeviceCreate:TpvVulkanDeviceOnBeforeDeviceCreate read fOnBeforeDeviceCreate write fOnBeforeDeviceCreate;
       public
-       property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
-       property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
-       property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR;
-       property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
-       property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
-       property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
-       property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
-       property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR;
-       property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR;
-       property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR;
+       property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT write fDescriptorIndexingFeaturesEXT;
+       property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT write fShaderDemoteToHelperInvocationFeaturesEXT;
+       property PhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features read fPhysicalDeviceVulkan11Features write fPhysicalDeviceVulkan11Features;
+       property PhysicalDeviceVulkan12Features:TVkPhysicalDeviceVulkan12Features read fPhysicalDeviceVulkan12Features write fPhysicalDeviceVulkan12Features;
+       property PhysicalDeviceVulkan13Features:TVkPhysicalDeviceVulkan13Features read fPhysicalDeviceVulkan13Features write fPhysicalDeviceVulkan13Features;
+       property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR write fMultiviewFeaturesKHR;
+       property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT write fMultiDrawFeaturesEXT;
+       property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT write fFragmentShaderInterlockFeaturesEXT;
+       property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR write fBufferDeviceAddressFeaturesKHR;
+       property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT write fHostQueryResetFeaturesEXT;
+       property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR write fRayTracingPipelineFeaturesKHR;
+       property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR write fRayQueryFeaturesKHR;
+       property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR write fRayTracingMaintenance1FeaturesKHR;
+       property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures write fPresentIDFeatures;
+       property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures write fPresentWaitFeatures;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -9304,6 +9315,8 @@ begin
 
  fDeviceQueueCreateInfos:=nil;
 
+ fOnBeforeDeviceCreate:=nil;
+
  fEnabledLayerNameStrings:=nil;
  fEnabledExtensionNameStrings:=nil;
 
@@ -10070,8 +10083,6 @@ begin
     end;
    end;
 
-   fFullScreenExclusiveSupport:=fEnabledExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>0;
-
    begin
     FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIDFeaturesKHR),#0);
     fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
@@ -10082,8 +10093,6 @@ begin
      DeviceCreateInfo.pNext:=@fPresentIDFeatures;
     end;
    end;
-
-   fPresentIDSupport:=PhysicalDevice.fPresentIDFeatures.presentId<>VK_FALSE;
 
    begin
     FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentWaitFeaturesKHR),#0);
@@ -10096,11 +10105,23 @@ begin
     end;
    end;
 
-   fPresentWaitSupport:=PhysicalDevice.fPresentWaitFeatures.presentWait<>VK_FALSE;
+  end;
 
+  if assigned(fOnBeforeDeviceCreate) then begin
+   fOnBeforeDeviceCreate(self,@DeviceCreateInfo);
   end;
 
   VulkanCheckResult(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@DeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
+
+  begin
+
+   fFullScreenExclusiveSupport:=fEnabledExtensionNames.IndexOf(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)>0;
+
+   fPresentIDSupport:=fPresentIDFeatures.presentId<>VK_FALSE;
+
+   fPresentWaitSupport:=fPresentWaitFeatures.presentWait<>VK_FALSE;
+
+  end;
 
   GetMem(DeviceCommands,SizeOf(TVulkanCommands));
   try
