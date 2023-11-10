@@ -2277,6 +2277,8 @@ type EpvScene3D=class(Exception);
                           TPerInFlightFrameRenderInstances=array[0..MaxInFlightFrames-1] of TPerInFlightFrameRenderInstanceDynamicArray;
                           TCullVisibleBitmap=array of TpvUInt32;
                           TCullVisibleBitmaps=array[0..MaxInFlightFrames-1] of TCullVisibleBitmap;
+                          TCullVisibleNodePath=array of TpvSizeInt;
+                          TCullVisibleNodePaths=array[0..MaxInFlightFrames-1] of TCullVisibleNodePath;
                           TOnNodeFilter=function(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aGroup:TpvScene3D.TGroup;const aGroupInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode):boolean of object;
                     private
                      fGroup:TGroup;
@@ -2319,6 +2321,8 @@ type EpvScene3D=class(Exception);
                      fActiveScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+                     fCullVisibleCountMaxParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+                     fCullVisibleNodePaths:TCullVisibleNodePaths;
                      fCullVisibleBitmapLocks:array[0..MaxInFlightFrames-1] of TPasMPInt32;
                      fCullVisibleBitmapSizes:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                      fCullVisibleBitmaps:TCullVisibleBitmaps;
@@ -13268,6 +13272,8 @@ begin
  end;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+  fCullVisibleCountMaxParents[Index]:=0;
+  fCullVisibleNodePaths[Index]:=nil;
   fCullVisibleBitmapLocks[Index]:=0;
   fCullVisibleBitmapSizes[Index]:=0;
   fCullVisibleBitmaps[Index]:=nil;
@@ -13551,6 +13557,8 @@ begin
  end;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+  fCullVisibleCountMaxParents[Index]:=0;
+  fCullVisibleNodePaths[Index]:=nil;
   fCullVisibleBitmapLocks[Index]:=0;
   fCullVisibleBitmapSizes[Index]:=0;
   fCullVisibleBitmaps[Index]:=nil;
@@ -15575,12 +15583,13 @@ var CullFace,Blend:TPasGLTFInt32;
  end;
  procedure AssignNodeParentsAndResetCullVisibleGenerations(const aScene:TpvScene3D.TGroup.TScene);
  type TStackItem=record
-       NodeIndex:TPasGLTFSizeInt;
-       ParentNodeIndex:TPasGLTFSizeInt;
+       NodeIndex:TpvSizeInt;
+       ParentNodeIndex:TpvSizeInt;
+       Level:TpvSizeInt;
       end;
       PStackItem=^TStackItem;
       TStack=TpvDynamicFastStack<TStackItem>;
- var NodeIndex,ParentNodeIndex,ChildNodeIndex,CullVisibleIDCounter:TpvSizeInt;
+ var NodeIndex,ParentNodeIndex,Level,ChildNodeIndex,CullVisibleIDCounter:TpvSizeInt;
      Node:TpvScene3D.TGroup.TNode;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      StackItem:PStackItem;
@@ -15600,7 +15609,10 @@ var CullFace,Blend:TPasGLTFInt32;
     StackItem:=Stack.PushIndirect;
     StackItem^.NodeIndex:=aScene.fNodes[NodeIndex].Index;
     StackItem^.ParentNodeIndex:=-1;
+    StackItem^.Level:=0;
    end;
+
+   fCullVisibleCountMaxParents[aInFlightFrameIndex]:=0;
 
    CullVisibleIDCounter:=0;
 
@@ -15609,6 +15621,10 @@ var CullFace,Blend:TPasGLTFInt32;
     NodeIndex:=StackItem^.NodeIndex;
 
     ParentNodeIndex:=StackItem^.ParentNodeIndex;
+
+    Level:=StackItem^.Level;
+
+    fCullVisibleCountMaxParents[aInFlightFrameIndex]:=Max(fCullVisibleCountMaxParents[aInFlightFrameIndex],Level);
 
     Node:=fGroup.fNodes[NodeIndex];
 
@@ -15623,12 +15639,17 @@ var CullFace,Blend:TPasGLTFInt32;
      StackItem:=Stack.PushIndirect;
      StackItem^.NodeIndex:=Node.fChildren[ChildNodeIndex].Index;
      StackItem^.ParentNodeIndex:=NodeIndex;
+     StackItem^.Level:=Level+1;
     end;
 
    end;
 
   finally
    Stack.Finalize;
+  end;
+
+  if length(fCullVisibleNodePaths[aInFlightFrameIndex])<(fCullVisibleCountMaxParents[aInFlightFrameIndex]+1) then begin
+   SetLength(fCullVisibleNodePaths[aInFlightFrameIndex],(fCullVisibleCountMaxParents[aInFlightFrameIndex]+1)*2);
   end;
 
   fCullVisibleBitmapSizes[aInFlightFrameIndex]:=((CullVisibleIDCounter shl 1)+31) shr 5;
@@ -16472,42 +16493,107 @@ function TpvScene3D.TGroup.TInstance.PrepareCheckNodeFilter(const aInFlightFrame
                                                             const aRendererInstance:TObject;
                                                             const aRenderPassIndex:TpvSizeInt;
                                                             const aNodeIndex:TpvSizeInt):boolean;
-var Node:TpvScene3D.TGroup.TNode;
+var PathCounter,NodeIndex:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     BitOffset:TpvUInt32;
     Data:PpvUInt32;
 begin
+
  InstanceNode:=@fNodes[aNodeIndex];
+
  if InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]>=0 then begin
+
   BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+
   case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
+
    1:begin
     result:=false;
    end;
+
    2:begin
     result:=true;
    end;
+
    else begin
-    Node:=fGroup.fNodes[aNodeIndex];
-    result:=((InstanceNode^.Parents[aInFlightFrameIndex]<0) or
-             PrepareCheckNodeFilter(aInFlightFrameIndex,
-                                    aRendererInstance,
-                                    aRenderPassIndex,
-                                    InstanceNode^.Parents[aInFlightFrameIndex])) and
-            (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-             ((not assigned(fGroup.fOnNodeFilter)) or fGroup.fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-             ((not assigned(fGroup.fSceneInstance.OnNodeFilter)) or fGroup.fSceneInstance.OnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
-    Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
-    if result then begin
-     Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
-    end else begin
-     Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+
+    PathCounter:=0;
+    NodeIndex:=aNodeIndex;
+    while NodeIndex>=0 do begin
+     fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter]:=NodeIndex;
+     inc(PathCounter);
+     NodeIndex:=fNodes[NodeIndex].Parents[aInFlightFrameIndex];
     end;
+
+    result:=true;
+
+    while PathCounter>0 do begin
+
+     dec(PathCounter);
+
+     NodeIndex:=fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter];
+
+     InstanceNode:=@fNodes[NodeIndex];
+
+     BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+
+     if result then begin
+
+      case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
+
+       1:begin
+
+        result:=false;
+
+       end;
+
+       2:begin
+
+        result:=true;
+
+       end;
+
+       else begin
+
+        Node:=fGroup.fNodes[aNodeIndex];
+
+        result:=(((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+                 ((not assigned(fGroup.fOnNodeFilter)) or fGroup.fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+                 ((not assigned(fGroup.fSceneInstance.OnNodeFilter)) or fGroup.fSceneInstance.OnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
+
+        Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
+
+        if result then begin
+         Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
+        end else begin
+         Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+        end;
+
+       end;
+
+      end;
+
+     end else begin
+
+      Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
+
+      Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+
+     end;
+
+    end;
+
    end;
+
   end;
+
  end else begin
+
   result:=false;
+
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
