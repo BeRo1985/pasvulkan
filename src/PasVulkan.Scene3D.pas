@@ -2427,6 +2427,7 @@ type EpvScene3D=class(Exception);
                    TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fCulling:boolean;
+              fDynamicAABBTreeCulling:boolean;
               fHeadless:boolean;
               fObjects:TBaseObjects;
               fMaterialsToDuplicate:TpvScene3D.TGroup.TMaterialsToDuplicate;
@@ -2503,6 +2504,7 @@ type EpvScene3D=class(Exception);
               property CameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices read fCameraNodeIndices;
              published
               property Culling:boolean read fCulling write fCulling;
+              property DynamicAABBTreeCulling:boolean read fDynamicAABBTreeCulling write fDynamicAABBTreeCulling;
               property Headless:boolean read fHeadless write fHeadless;
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
@@ -10560,6 +10562,8 @@ begin
 
  fCulling:=true;
 
+ fDynamicAABBTreeCulling:=false;
+
  fUsedVisibleDrawNodes:=TUsedVisibleDrawNodes.Create;
  fUsedVisibleDrawNodes.OwnsObjects:=false;
 
@@ -13407,7 +13411,11 @@ begin
   fScenes.Add(TpvScene3D.TGroup.TInstance.TScene.Create(self,fGroup.fScenes[Index]));
  end;
 
- fAABBTree:=TpvBVHDynamicAABBTree.Create;
+ if fGroup.fDynamicAABBTreeCulling then begin
+  fAABBTree:=TpvBVHDynamicAABBTree.Create;
+ end else begin
+  fAABBTree:=nil;
+ end;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
@@ -15626,11 +15634,9 @@ begin
       if assigned(InstanceNode^.Light) then begin
        FreeAndNil(InstanceNode^.Light);
       end;
-      if InstanceNode^.AABBTreeProxy>=0 then begin
+      if assigned(fAABBTree) and (InstanceNode^.AABBTreeProxy>=0) then begin
        try
-        if assigned(fAABBTree) then begin
-         fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
-        end;
+        fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
        finally
         InstanceNode^.AABBTreeProxy:=-1;
        end;
@@ -15689,7 +15695,7 @@ begin
      end else begin
       InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
      end;
-     if assigned(Node.Mesh) then begin
+     if assigned(fAABBTree) and assigned(Node.Mesh) then begin
       if InstanceNode^.AABBTreeProxy<0 then begin
        InstanceNode^.AABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Index)+1);
       end else begin
@@ -15791,11 +15797,9 @@ begin
    if assigned(InstanceNode^.Light) then begin
     FreeAndNil(InstanceNode^.Light);
    end;
-   if InstanceNode^.AABBTreeProxy>=0 then begin
+   if assigned(fAABBTree) and (InstanceNode^.AABBTreeProxy>=0) then begin
     try
-     if assigned(fAABBTree) then begin
-      fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
-     end;
+     fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
     finally
      InstanceNode^.AABBTreeProxy:=-1;
     end;
@@ -16379,14 +16383,21 @@ begin
 
      Stack.Initialize;
      try
+
       StackItem:=Stack.PushIndirect;
       StackItem^.NodeIndex:=AABBTreeState^.Root;
       StackItem^.Mask:=$ffffffff;
+
       while Stack.PopIndirect(StackItem) do begin
+
        NodeIndex:=StackItem^.NodeIndex;
+
        Mask:=StackItem^.Mask;
+
        while NodeIndex>=0 do begin
+
         AABBTreeNode:=@AABBTreeState^.TreeNodes[NodeIndex];
+
         if length(aFrustums)>0 then begin
          if length(aFrustums)=1 then begin
           PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(AABBTreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
@@ -16402,14 +16413,35 @@ begin
         end else begin
          PotentiallyVisible:=true;
         end;
+
         if PotentiallyVisible then begin
+
          if AABBTreeNode^.UserData<>0 then begin
+
           Node:=fGroup.fNodes[AABBTreeNode^.UserData-1];
+
           InstanceNode:=@fNodes[AABBTreeNode^.UserData-1];
+
+          if aPotentiallyVisibleSetCulling then begin
+           PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+           if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+            PotentiallyVisible:=false;
+            for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+             ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
+             if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+                fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+              PotentiallyVisible:=true;
+              break;
+             end;
+            end;
+           end;
+          end;
+
           if PotentiallyVisible and
              (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
               ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
               ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+
            DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
            for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
             DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex]];
@@ -16422,8 +16454,11 @@ begin
                                                                                             InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
             end;
            end;
+
           end;
+
          end;
+
          if AABBTreeNode^.Children[0]>=0 then begin
           if AABBTreeNode^.Children[1]>=0 then begin
            StackItem:=Stack.PushIndirect;
@@ -16438,10 +16473,15 @@ begin
            continue;
           end;
          end;
+
         end;
+
         break;
+
        end;
+
       end;
+
      finally
       Stack.Finalize;
      end;
