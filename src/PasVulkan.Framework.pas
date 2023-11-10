@@ -10018,6 +10018,33 @@ begin
 
     fVulkan12Features.hostQueryReset:=PhysicalDevice.fVulkan12Features.hostQueryReset;
 
+    fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderUniformBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformBufferArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderSampledImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderSampledImageArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderStorageBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageBufferArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderStorageImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageImageArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingUniformBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingSampledImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingSampledImageUpdateAfterBind;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingStorageImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageImageUpdateAfterBind;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingStorageBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingUniformTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingStorageTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingUpdateUnusedWhilePending:=PhysicalDevice.fVulkan12Features.descriptorBindingUpdateUnusedWhilePending;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingPartiallyBound:=PhysicalDevice.fVulkan12Features.descriptorBindingPartiallyBound;
+    fDescriptorIndexingFeaturesEXT.descriptorBindingVariableDescriptorCount:=PhysicalDevice.fVulkan12Features.descriptorBindingVariableDescriptorCount;
+    fDescriptorIndexingFeaturesEXT.runtimeDescriptorArray:=PhysicalDevice.fVulkan12Features.runtimeDescriptorArray;
+
+    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress:=PhysicalDevice.fVulkan12Features.bufferDeviceAddress;
+    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressCaptureReplay;
+    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressMultiDevice;
+
+    fHostQueryResetFeaturesEXT.hostQueryReset:=PhysicalDevice.fVulkan12Features.hostQueryReset;
+
    end else begin
 
     if (fEnabledExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0) and
@@ -10027,6 +10054,7 @@ begin
 
      fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
      DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
+
     end;
 
     if (fEnabledExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0) and
@@ -10073,6 +10101,8 @@ begin
     DeviceCreateInfo.pNext:=@fVulkan13Features;
 
     fVulkan13Features.shaderDemoteToHelperInvocation:=PhysicalDevice.fVulkan13Features.shaderDemoteToHelperInvocation;
+
+    fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=PhysicalDevice.fVulkan13Features.shaderDemoteToHelperInvocation;
 
    end else begin
 
