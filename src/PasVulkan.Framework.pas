@@ -9999,6 +9999,7 @@ begin
 
    FillChar(fPhysicalDeviceVulkan13Features,SizeOf(TVkPhysicalDeviceVulkan13Features),#0);
    fPhysicalDeviceVulkan13Features:=PhysicalDevice.fVulkan13Features;
+   fPhysicalDeviceVulkan13Features.robustImageAccess:=VK_FALSE;
    fPhysicalDeviceVulkan13Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
    fPhysicalDeviceVulkan13Features.pNext:=DeviceCreateInfo.pNext;
    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan13Features;
