@@ -375,7 +375,7 @@ begin
 
  fTemporary:=false;
 
- pvApplication.ResourceManager. fMetaResourceLock.AcquireWrite;
+ pvApplication.ResourceManager.fMetaResourceLock.AcquireWrite;
  try
   pvApplication.ResourceManager.fMetaResourceList.Add(self);
  finally

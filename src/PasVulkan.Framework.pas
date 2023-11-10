@@ -10074,8 +10074,6 @@ begin
 
     fVulkan13Features.shaderDemoteToHelperInvocation:=PhysicalDevice.fVulkan13Features.shaderDemoteToHelperInvocation;
 
-    fVulkan13Features.maintenance4:=PhysicalDevice.fVulkan13Features.maintenance4;
-
    end else begin
 
     if (fEnabledExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0) and
