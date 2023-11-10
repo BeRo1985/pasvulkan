@@ -9907,128 +9907,189 @@ begin
    InitializeNVIDIAAfterMath;
   end;
 
-  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+  /////////////////////////////////////////////////////////////////////////
+
+  begin
 
    FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
    fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-   fPhysicalDeviceVulkan11Features.storageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.storageBuffer16BitAccess;
-   fPhysicalDeviceVulkan11Features.uniformAndStorageBuffer16BitAccess:=PhysicalDevice.fVulkan11Features.uniformAndStorageBuffer16BitAccess;
-   fPhysicalDeviceVulkan11Features.storagePushConstant16:=PhysicalDevice.fVulkan11Features.storagePushConstant16;
-   fPhysicalDeviceVulkan11Features.storageInputOutput16:=PhysicalDevice.fVulkan11Features.storageInputOutput16;
-   fPhysicalDeviceVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
-   fPhysicalDeviceVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
-   fPhysicalDeviceVulkan11Features.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
-   fPhysicalDeviceVulkan11Features.variablePointersStorageBuffer:=PhysicalDevice.fVulkan11Features.variablePointersStorageBuffer;
-   fPhysicalDeviceVulkan11Features.variablePointers:=PhysicalDevice.fVulkan11Features.variablePointers;
-   fPhysicalDeviceVulkan11Features.protectedMemory:=PhysicalDevice.fVulkan11Features.protectedMemory;
-   fPhysicalDeviceVulkan11Features.shaderDrawParameters:=PhysicalDevice.fVulkan11Features.shaderDrawParameters;
-   fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
-   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
 
    FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
    fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
-   fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fVulkan11Features.multiview;
-   fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
-   fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
 
-  end else begin
+   if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
-   FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
-   fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0) and
-      (PhysicalDevice.fMultiviewFeaturesKHR.multiview<>VK_FALSE) or
-      (PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE) or
-      (PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE) then begin
-    fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fMultiviewFeaturesKHR.multiview;
-    fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader;
-    fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
-    fMultiviewFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fMultiviewFeaturesKHR;
+    fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
+
+    fPhysicalDeviceVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
+    fPhysicalDeviceVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
+    fPhysicalDeviceVulkan11Features.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
+
+    fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fVulkan11Features.multiview;
+    fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
+    fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
+
+   end else begin
+
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0) and
+       (PhysicalDevice.fMultiviewFeaturesKHR.multiview<>VK_FALSE) or
+       (PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE) or
+       (PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE) then begin
+
+     fMultiviewFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fMultiviewFeaturesKHR;
+
+     fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fMultiviewFeaturesKHR.multiview;
+     fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewTessellationShader;
+     fMultiviewFeaturesKHR.multiviewGeometryShader:=PhysicalDevice.fMultiviewFeaturesKHR.multiviewGeometryShader;
+
+    end;
+
    end;
 
   end;
+
+  /////////////////////////////////////////////////////////////////////////
 
   begin
 
    FillChar(fMultiDrawFeaturesEXT,SizeOf(TVkPhysicalDeviceMultiDrawFeaturesEXT),#0);
    fMultiDrawFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
+
    if (fEnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>=0) and
       (PhysicalDevice.fMultiDrawFeaturesEXT.multiDraw<>VK_FALSE) then begin
-    fMultiDrawFeaturesEXT.multiDraw:=PhysicalDevice.fMultiDrawFeaturesEXT.multiDraw;
+
     fMultiDrawFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fMultiDrawFeaturesEXT;
+
+    fMultiDrawFeaturesEXT.multiDraw:=PhysicalDevice.fMultiDrawFeaturesEXT.multiDraw;
+
    end;
 
   end;
 
-  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+  /////////////////////////////////////////////////////////////////////////
+
+  begin
 
    FillChar(fPhysicalDeviceVulkan12Features,SizeOf(TVkPhysicalDeviceVulkan12Features),#0);
-   fPhysicalDeviceVulkan12Features:=PhysicalDevice.fVulkan12Features;
    fPhysicalDeviceVulkan12Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-   fPhysicalDeviceVulkan12Features.pNext:=DeviceCreateInfo.pNext;
-   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan12Features;
 
-  end else begin
-
-   begin
-    FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
-    fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-    if (fEnabledExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0) and
-       assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
-     fDescriptorIndexingFeaturesEXT:=PhysicalDevice.DescriptorIndexingFeaturesEXT;
-     fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
-     DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
-    end;
-   end;
+   FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
+   fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
 
    FillChar(fBufferDeviceAddressFeaturesKHR,SizeOf(TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR),#0);
    fBufferDeviceAddressFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
-   if (fEnabledExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0) and
-      ((PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) or
-       (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE) or
-       (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice<>VK_FALSE)) then begin
-    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress;
-    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay;
-    fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice;
-    fBufferDeviceAddressFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fBufferDeviceAddressFeaturesKHR;
-   end;
 
-   begin
-    FillChar(fHostQueryResetFeaturesEXT,SizeOf(TVkPhysicalDeviceHostQueryResetFeaturesEXT),#0);
-    fHostQueryResetFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+   FillChar(fHostQueryResetFeaturesEXT,SizeOf(TVkPhysicalDeviceHostQueryResetFeaturesEXT),#0);
+   fHostQueryResetFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+
+   if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
+
+    fPhysicalDeviceVulkan12Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan12Features;
+
+    fPhysicalDeviceVulkan12Features.descriptorIndexing:=PhysicalDevice.fVulkan12Features.descriptorIndexing;
+    fPhysicalDeviceVulkan12Features.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
+    fPhysicalDeviceVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
+    fPhysicalDeviceVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
+    fPhysicalDeviceVulkan12Features.shaderUniformBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformBufferArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.shaderSampledImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderSampledImageArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.shaderStorageBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageBufferArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.shaderStorageImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageImageArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing;
+    fPhysicalDeviceVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind;
+    fPhysicalDeviceVulkan12Features.descriptorBindingSampledImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingSampledImageUpdateAfterBind;
+    fPhysicalDeviceVulkan12Features.descriptorBindingStorageImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageImageUpdateAfterBind;
+    fPhysicalDeviceVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind;
+    fPhysicalDeviceVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind;
+    fPhysicalDeviceVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind;
+    fPhysicalDeviceVulkan12Features.descriptorBindingUpdateUnusedWhilePending:=PhysicalDevice.fVulkan12Features.descriptorBindingUpdateUnusedWhilePending;
+    fPhysicalDeviceVulkan12Features.descriptorBindingPartiallyBound:=PhysicalDevice.fVulkan12Features.descriptorBindingPartiallyBound;
+    fPhysicalDeviceVulkan12Features.descriptorBindingVariableDescriptorCount:=PhysicalDevice.fVulkan12Features.descriptorBindingVariableDescriptorCount;
+    fPhysicalDeviceVulkan12Features.runtimeDescriptorArray:=PhysicalDevice.fVulkan12Features.runtimeDescriptorArray;
+
+    fPhysicalDeviceVulkan12Features.bufferDeviceAddress:=PhysicalDevice.fVulkan12Features.bufferDeviceAddress;
+    fPhysicalDeviceVulkan12Features.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressCaptureReplay;
+    fPhysicalDeviceVulkan12Features.bufferDeviceAddressMultiDevice:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressMultiDevice;
+
+    fPhysicalDeviceVulkan12Features.hostQueryReset:=PhysicalDevice.fVulkan12Features.hostQueryReset;
+
+   end else begin
+
+    if (fEnabledExtensionNames.IndexOf(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME)>=0) and
+       assigned(PhysicalDevice.DescriptorIndexingFeaturesEXT.pNext) then begin
+
+     fDescriptorIndexingFeaturesEXT:=PhysicalDevice.DescriptorIndexingFeaturesEXT;
+
+     fDescriptorIndexingFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fDescriptorIndexingFeaturesEXT;
+    end;
+
+    if (fEnabledExtensionNames.IndexOf(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)>=0) and
+       ((PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) or
+        (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE) or
+        (PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice<>VK_FALSE)) then begin
+
+     fBufferDeviceAddressFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fBufferDeviceAddressFeaturesKHR;
+
+     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddress;
+     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay;
+     fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice:=PhysicalDevice.fBufferDeviceAddressFeaturesKHR.bufferDeviceAddressMultiDevice;
+
+    end;
+
     if (fEnabledExtensionNames.IndexOf(VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)>0) and
        (PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset<>VK_FALSE) then begin
-     fHostQueryResetFeaturesEXT.hostQueryReset:=PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset;
+
      fHostQueryResetFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
      DeviceCreateInfo.pNext:=@fHostQueryResetFeaturesEXT;
+
+     fHostQueryResetFeaturesEXT.hostQueryReset:=PhysicalDevice.fHostQueryResetFeaturesEXT.hostQueryReset;
+
     end;
+
    end;
 
   end;
 
-  if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
+  /////////////////////////////////////////////////////////////////////////
+
+  begin
 
    FillChar(fPhysicalDeviceVulkan13Features,SizeOf(TVkPhysicalDeviceVulkan13Features),#0);
-   fPhysicalDeviceVulkan13Features:=PhysicalDevice.fVulkan13Features;
-   fPhysicalDeviceVulkan13Features.robustImageAccess:=VK_FALSE;
    fPhysicalDeviceVulkan13Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-   fPhysicalDeviceVulkan13Features.pNext:=DeviceCreateInfo.pNext;
-   DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan13Features;
-
-  end else begin
 
    FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
    fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-   if (fEnabledExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0) and
-      (PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE) then begin
-    fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation;
-    fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
+
+   if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
+
+    fPhysicalDeviceVulkan13Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan13Features;
+
+    fPhysicalDeviceVulkan13Features.shaderDemoteToHelperInvocation:=PhysicalDevice.fVulkan13Features.shaderDemoteToHelperInvocation;
+
+    fPhysicalDeviceVulkan13Features.maintenance4:=PhysicalDevice.fVulkan13Features.maintenance4;
+
+   end else begin
+
+    if (fEnabledExtensionNames.IndexOf(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)>=0) and
+       (PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE) then begin
+     fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation:=PhysicalDevice.fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation;
+     fShaderDemoteToHelperInvocationFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+     DeviceCreateInfo.pNext:=@fShaderDemoteToHelperInvocationFeaturesEXT;
+    end;
+
    end;
 
   end;
+
+  /////////////////////////////////////////////////////////////////////////
 
   begin
 
@@ -10045,67 +10106,65 @@ begin
     DeviceCreateInfo.pNext:=@fFragmentShaderInterlockFeaturesEXT;
    end;
 
-   begin
-    FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
-    fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-    if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0) and
-       (PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) then begin
-     fRayTracingPipelineFeaturesKHR.rayTracingPipeline:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline;
-     fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay;
-     fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplayMixed:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplayMixed;
-     fRayTracingPipelineFeaturesKHR.rayTracingPipelineTraceRaysIndirect:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineTraceRaysIndirect;
-     fRayTracingPipelineFeaturesKHR.rayTraversalPrimitiveCulling:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTraversalPrimitiveCulling;
-     fRayTracingPipelineFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
-     DeviceCreateInfo.pNext:=@fRayTracingPipelineFeaturesKHR;
-    end;
+   FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
+   fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0) and
+      (PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) then begin
+    fRayTracingPipelineFeaturesKHR.rayTracingPipeline:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipeline;
+    fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplay;
+    fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplayMixed:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineShaderGroupHandleCaptureReplayMixed;
+    fRayTracingPipelineFeaturesKHR.rayTracingPipelineTraceRaysIndirect:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTracingPipelineTraceRaysIndirect;
+    fRayTracingPipelineFeaturesKHR.rayTraversalPrimitiveCulling:=PhysicalDevice.fRayTracingPipelineFeaturesKHR.rayTraversalPrimitiveCulling;
+    fRayTracingPipelineFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fRayTracingPipelineFeaturesKHR;
    end;
 
-   begin
-    FillChar(fRayQueryFeaturesKHR,SizeOf(TVkPhysicalDeviceRayQueryFeaturesKHR),#0);
-    fRayQueryFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-    if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>0) and
-       (PhysicalDevice.fRayQueryFeaturesKHR.rayQuery<>VK_FALSE) then begin
-     fRayQueryFeaturesKHR.rayQuery:=PhysicalDevice.fRayQueryFeaturesKHR.rayQuery;
-     fRayQueryFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
-     DeviceCreateInfo.pNext:=@fRayQueryFeaturesKHR;
-    end;
+   FillChar(fRayQueryFeaturesKHR,SizeOf(TVkPhysicalDeviceRayQueryFeaturesKHR),#0);
+   fRayQueryFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_QUERY_EXTENSION_NAME)>0) and
+      (PhysicalDevice.fRayQueryFeaturesKHR.rayQuery<>VK_FALSE) then begin
+    fRayQueryFeaturesKHR.rayQuery:=PhysicalDevice.fRayQueryFeaturesKHR.rayQuery;
+    fRayQueryFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fRayQueryFeaturesKHR;
    end;
 
-   begin
-    FillChar(fRayTracingMaintenance1FeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR),#0);
-    fRayTracingMaintenance1FeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR;
-    if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>0) and
-       (PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1<>VK_FALSE) then begin
-     fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1;
-     fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2;
-     fRayTracingMaintenance1FeaturesKHR.pNext:=DeviceCreateInfo.pNext;
-     DeviceCreateInfo.pNext:=@fRayTracingMaintenance1FeaturesKHR;
-    end;
-   end;
-
-   begin
-    FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIDFeaturesKHR),#0);
-    fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
-    if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0) and
-       (PhysicalDevice.fPresentIDFeatures.presentId<>VK_FALSE) then begin
-     fPresentIDFeatures.presentId:=PhysicalDevice.fPresentIDFeatures.presentId;
-     fPresentIDFeatures.pNext:=DeviceCreateInfo.pNext;
-     DeviceCreateInfo.pNext:=@fPresentIDFeatures;
-    end;
-   end;
-
-   begin
-    FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentWaitFeaturesKHR),#0);
-    fPresentWaitFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
-    if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>0) and
-       (PhysicalDevice.fPresentWaitFeatures.presentWait<>VK_FALSE) then begin
-     fPresentWaitFeatures.presentWait:=PhysicalDevice.fPresentWaitFeatures.presentWait;
-     fPresentWaitFeatures.pNext:=DeviceCreateInfo.pNext;
-     DeviceCreateInfo.pNext:=@fPresentWaitFeatures;
-    end;
+   FillChar(fRayTracingMaintenance1FeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR),#0);
+   fRayTracingMaintenance1FeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME)>0) and
+      (PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1<>VK_FALSE) then begin
+    fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingMaintenance1;
+    fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2:=PhysicalDevice.fRayTracingMaintenance1FeaturesKHR.rayTracingPipelineTraceRaysIndirect2;
+    fRayTracingMaintenance1FeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fRayTracingMaintenance1FeaturesKHR;
    end;
 
   end;
+
+  /////////////////////////////////////////////////////////////////////////
+
+  begin
+
+   FillChar(fPresentIDFeatures,SizeOf(TVkPhysicalDevicePresentIDFeaturesKHR),#0);
+   fPresentIDFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_ID_EXTENSION_NAME)>0) and
+      (PhysicalDevice.fPresentIDFeatures.presentId<>VK_FALSE) then begin
+    fPresentIDFeatures.presentId:=PhysicalDevice.fPresentIDFeatures.presentId;
+    fPresentIDFeatures.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPresentIDFeatures;
+   end;
+
+   FillChar(fPresentWaitFeatures,SizeOf(TVkPhysicalDevicePresentWaitFeaturesKHR),#0);
+   fPresentWaitFeatures.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)>0) and
+      (PhysicalDevice.fPresentWaitFeatures.presentWait<>VK_FALSE) then begin
+    fPresentWaitFeatures.presentWait:=PhysicalDevice.fPresentWaitFeatures.presentWait;
+    fPresentWaitFeatures.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fPresentWaitFeatures;
+   end;
+
+  end;
+
+  /////////////////////////////////////////////////////////////////////////
 
   if assigned(fOnBeforeDeviceCreate) then begin
    fOnBeforeDeviceCreate(self,@DeviceCreateInfo);
