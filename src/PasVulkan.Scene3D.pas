@@ -19172,17 +19172,26 @@ var Index,ViewIndex:TpvSizeInt;
     GroupInstance:TpvScene3D.TGroup.TInstance;
     PotentiallyVisible:boolean;
 begin
+
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
+
   Stack.Initialize;
   try
+
    StackItem:=Stack.PushIndirect;
    StackItem^.Node:=aRoot;
    StackItem^.Mask:=$ffffffff;
+
    while Stack.PopIndirect(StackItem) do begin
+
     Node:=StackItem^.Node;
+
     Mask:=StackItem^.Mask;
+
     while Node>=0 do begin
+
      TreeNode:=@aTreeNodes[Node];
+
      if length(aFrustums)>0 then begin
       if length(aFrustums)=1 then begin
        PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
@@ -19198,11 +19207,17 @@ begin
      end else begin
       PotentiallyVisible:=true;
      end;
+
      if PotentiallyVisible then begin
+
       if TreeNode^.UserData<>0 then begin
+
        GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
-       if (not GroupInstance.fHeadless) And
-          (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) then begin
+
+       if (not GroupInstance.fHeadless) and
+          (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,
+                                                  TpvResource.TAsyncLoadState.Done]) then begin
+
         if aPotentiallyVisibleSetCulling then begin
          PotentiallyVisibleSetNodeIndex:=GroupInstance.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
          if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
@@ -19217,6 +19232,7 @@ begin
           end;
          end;
         end;
+
         if PotentiallyVisible then begin
          GroupInstance.Prepare(aInFlightFrameIndex,
                                aRendererInstance,
@@ -19228,8 +19244,11 @@ begin
                                aPotentiallyVisibleSetCulling,
                                aMaterialAlphaModes);
         end;
+
        end;
+
       end;
+
       if TreeNode^.Children[0]>=0 then begin
        if TreeNode^.Children[1]>=0 then begin
         StackItem:=Stack.PushIndirect;
@@ -19244,14 +19263,21 @@ begin
         continue;
        end;
       end;
+
      end;
+
      break;
+
     end;
+
    end;
+
   finally
    Stack.Finalize;
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
