@@ -15547,6 +15547,8 @@ var Index,PerInFlightFrameRenderInstanceIndex:TPasGLTFSizeInt;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
+    AABBTreeNode:TpvBVHDynamicAABBTree.PTreeNode;
+    AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
 begin
 
  if aInFlightFrameIndex>=0 then begin
@@ -15829,6 +15831,28 @@ begin
  if aInFlightFrameIndex>=0 then begin
   AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
   if assigned(fAABBTree) and (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+   if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) then begin
+    for Index:=0 to length(fAABBTree.Nodes)-1 do begin
+     AABBTreeNode:=@fAABBTree.Nodes[Index];
+     if AABBTreeNode^.UserData<=0 then begin
+      if AABBTreeNode^.UserData=0 then begin
+       AABBTreeNodePotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+      end else begin
+       AABBTreeNodePotentiallyVisibleSet:=-AABBTreeNode^.UserData;
+      end;
+      if ((AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+          ((AABBTreeNodePotentiallyVisibleSet<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+          fSceneInstance.fPotentiallyVisibleSet.fNodes[AABBTreeNodePotentiallyVisibleSet].fAABB.Intersect(AABBTreeNode^.AABB))) then begin
+       AABBTreeNodePotentiallyVisibleSet:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(AABBTreeNode^.AABB);
+       if AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+        AABBTreeNode^.UserData:=0;
+       end else begin
+        AABBTreeNode^.UserData:=-AABBTreeNodePotentiallyVisibleSet;
+       end;
+      end;
+     end;
+    end;
+   end;
    if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
     AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
    end else begin
@@ -16416,7 +16440,24 @@ begin
 
         if PotentiallyVisible then begin
 
-         if AABBTreeNode^.UserData<>0 then begin
+         if AABBTreeNode^.UserData<0 then begin
+
+          if aPotentiallyVisibleSetCulling then begin
+           PotentiallyVisibleSetNodeIndex:=-AABBTreeNode^.UserData;
+           if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+            PotentiallyVisible:=false;
+            for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+             ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
+             if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+                fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+              PotentiallyVisible:=true;
+              break;
+             end;
+            end;
+           end;
+          end;
+
+         end else if AABBTreeNode^.UserData>0 then begin
 
           Node:=fGroup.fNodes[AABBTreeNode^.UserData-1];
 
@@ -16455,22 +16496,28 @@ begin
             end;
            end;
 
+          end else begin
+
+           PotentiallyVisible:=false;
+
           end;
 
          end;
 
-         if AABBTreeNode^.Children[0]>=0 then begin
-          if AABBTreeNode^.Children[1]>=0 then begin
-           StackItem:=Stack.PushIndirect;
-           StackItem^.NodeIndex:=AABBTreeNode^.Children[1];
-           StackItem^.Mask:=Mask;
-          end;
-          NodeIndex:=AABBTreeNode^.Children[0];
-          continue;
-         end else begin
-          if AABBTreeNode^.Children[1]>=0 then begin
-           NodeIndex:=AABBTreeNode^.Children[1];
+         if PotentiallyVisible then begin
+          if AABBTreeNode^.Children[0]>=0 then begin
+           if AABBTreeNode^.Children[1]>=0 then begin
+            StackItem:=Stack.PushIndirect;
+            StackItem^.NodeIndex:=AABBTreeNode^.Children[1];
+            StackItem^.Mask:=Mask;
+           end;
+           NodeIndex:=AABBTreeNode^.Children[0];
            continue;
+          end else begin
+           if AABBTreeNode^.Children[1]>=0 then begin
+            NodeIndex:=AABBTreeNode^.Children[1];
+            continue;
+           end;
           end;
          end;
 
