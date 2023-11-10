@@ -16498,106 +16498,120 @@ var PathCounter,NodeIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     BitOffset:TpvUInt32;
     Data:PpvUInt32;
+    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
 begin
 
- InstanceNode:=@fNodes[aNodeIndex];
+ GroupOnNodeFilter:=fGroup.fOnNodeFilter;
+ GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
 
- if InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]>=0 then begin
+ if assigned(fOnNodeFilter) or
+    assigned(GroupOnNodeFilter) or
+    assigned(GlobalOnNodeFilter) then begin
 
-  BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+  InstanceNode:=@fNodes[aNodeIndex];
 
-  case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
+  if InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]>=0 then begin
 
-   1:begin
-    result:=false;
-   end;
+   BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
 
-   2:begin
-    result:=true;
-   end;
+   case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
 
-   else begin
-
-    result:=true;
-
-    PathCounter:=0;
-    NodeIndex:=aNodeIndex;
-    while NodeIndex>=0 do begin
-     InstanceNode:=@fNodes[NodeIndex];
-     BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
-     if ((fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3)=1 then begin
-      result:=false;
-      break;
-     end else begin
-      fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter]:=NodeIndex;
-      inc(PathCounter);
-      NodeIndex:=InstanceNode^.Parents[aInFlightFrameIndex];
-     end;
+    1:begin
+     result:=false;
     end;
 
-    while PathCounter>0 do begin
+    2:begin
+     result:=true;
+    end;
 
-     dec(PathCounter);
+    else begin
 
-     NodeIndex:=fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter];
+     result:=true;
 
-     InstanceNode:=@fNodes[NodeIndex];
+     PathCounter:=0;
+     NodeIndex:=aNodeIndex;
+     while NodeIndex>=0 do begin
+      InstanceNode:=@fNodes[NodeIndex];
+      BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+      if ((fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3)=1 then begin
+       result:=false;
+       break;
+      end else begin
+       fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter]:=NodeIndex;
+       inc(PathCounter);
+       NodeIndex:=InstanceNode^.Parents[aInFlightFrameIndex];
+      end;
+     end;
 
-     BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+     while PathCounter>0 do begin
 
-     if result then begin
+      dec(PathCounter);
 
-      case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
+      NodeIndex:=fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter];
 
-       1:begin
+      InstanceNode:=@fNodes[NodeIndex];
 
-        result:=false;
+      BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
 
-       end;
+      if result then begin
 
-       2:begin
+       case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
 
-        result:=true;
+        1:begin
 
-       end;
+         result:=false;
 
-       else begin
+        end;
 
-        Node:=fGroup.fNodes[aNodeIndex];
+        2:begin
 
-        result:=(((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-                 ((not assigned(fGroup.fOnNodeFilter)) or fGroup.fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-                 ((not assigned(fGroup.fSceneInstance.OnNodeFilter)) or fGroup.fSceneInstance.OnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
+         result:=true;
 
-        Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
+        end;
 
-        if result then begin
-         Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
-        end else begin
-         Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+        else begin
+
+         Node:=fGroup.fNodes[aNodeIndex];
+
+         result:=(((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+                  ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+                  ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
+
+         Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
+
+         if result then begin
+          Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
+         end else begin
+          Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+         end;
+
         end;
 
        end;
 
+      end else begin
+
+       Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
+
+       Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+
       end;
-
-     end else begin
-
-      Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
-
-      Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
 
      end;
 
     end;
 
    end;
+
+  end else begin
+
+   result:=false;
 
   end;
 
  end else begin
 
-  result:=false;
+  result:=true;
 
  end;
 
@@ -16626,6 +16640,7 @@ var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyB
     Mask:TpvUInt32;
     Masks:array[-1..15] of TpvUInt32;
     RendererInstanceID:TpvUInt32;
+    HaveNodeFilter:Boolean;
     GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
     Scene:TpvScene3D.TGroup.TScene;
     Node:TpvScene3D.TGroup.TNode;
@@ -16668,10 +16683,16 @@ begin
 
     if (AABBTreeState^.Root>=0) and (length(AABBTreeState^.TreeNodes)>0) then begin
 
-     TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCullVisibleBitmapLocks[aInFlightFrameIndex]);
+     HaveNodeFilter:=assigned(fOnNodeFilter) or
+                     assigned(GroupOnNodeFilter) or
+                     assigned(GlobalOnNodeFilter);
+
+     if HaveNodeFilter then begin
+      TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCullVisibleBitmapLocks[aInFlightFrameIndex]);
+     end;
      try
 
-      if fCullVisibleBitmapSizes[aInFlightFrameIndex]>0 then begin
+      if HaveNodeFilter and (fCullVisibleBitmapSizes[aInFlightFrameIndex]>0) then begin
        FillChar(fCullVisibleBitmaps[aInFlightFrameIndex][0],fCullVisibleBitmapSizes[aInFlightFrameIndex]*SizeOf(TpvUInt32),#0);
       end;
 
@@ -16749,10 +16770,11 @@ begin
            end;
 
            if PotentiallyVisible and
-              PrepareCheckNodeFilter(aInFlightFrameIndex,
-                                     aRendererInstance,
-                                     aRenderPassIndex,
-                                     AABBTreeNode^.UserData-1) then begin
+              ((not HaveNodeFilter) or
+               PrepareCheckNodeFilter(aInFlightFrameIndex,
+                                      aRendererInstance,
+                                      aRenderPassIndex,
+                                      AABBTreeNode^.UserData-1)) then begin
 
             DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
             for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
@@ -16805,7 +16827,9 @@ begin
       end;
 
      finally
-      TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCullVisibleBitmapLocks[aInFlightFrameIndex]);
+      if HaveNodeFilter then begin
+       TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCullVisibleBitmapLocks[aInFlightFrameIndex]);
+      end;
      end;
 
     end;
