@@ -2472,15 +2472,6 @@ type EpvScene3D=class(Exception);
               procedure CollectUsedVisibleDrawNodes;
               procedure CollectMaterials;
               procedure ConstructDrawChoreographyBatchItems;
-              procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
-                                const aRendererInstance:TObject;
-                                const aRenderPassIndex:TpvSizeInt;
-                                const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
-                                const aViewBaseIndex:TpvSizeInt;
-                                const aCountViews:TpvSizeInt;
-                                const aFrustums:TpvFrustumDynamicArray;
-                                const aPotentiallyVisibleSetCulling:boolean;
-                                const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
               procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
@@ -12225,32 +12216,6 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.Prepare(const aInFlightFrameIndex:TpvSizeInt;
-                                    const aRendererInstance:TObject;
-                                    const aRenderPassIndex:TpvSizeInt;
-                                    const aViewNodeIndices:TpvScene3D.TPotentiallyVisibleSet.TViewNodeIndices;
-                                    const aViewBaseIndex:TpvSizeInt;
-                                    const aCountViews:TpvSizeInt;
-                                    const aFrustums:TpvFrustumDynamicArray;
-                                    const aPotentiallyVisibleSetCulling:boolean;
-                                    const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var Instance:TpvScene3D.TGroup.TInstance;
-begin
- if not fHeadless then begin
-  for Instance in fInstances do begin
-   Instance.Prepare(aInFlightFrameIndex,
-                    aRendererInstance,
-                    aRenderPassIndex,
-                    aViewNodeIndices,
-                    aViewBaseIndex,
-                    aCountViews,
-                    aFrustums,
-                    aPotentiallyVisibleSetCulling,
-                    aMaterialAlphaModes);
-  end;
- end;
-end;
-
 procedure TpvScene3D.TGroup.UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
 begin
@@ -16310,113 +16275,94 @@ begin
 
    DoCulling:=fGroup.fCulling and not fUseRenderInstances;
 
-   if DoCulling and aPotentiallyVisibleSetCulling then begin
-    PotentiallyVisibleSetNodeIndex:=fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-    if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-     PotentiallyVisible:=false;
-     for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-      ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
-      if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-         fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-       PotentiallyVisible:=true;
-       break;
-      end;
-     end;
-    end;
-   end;
+   DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
-   if PotentiallyVisible then begin
+   InstanceScene:=fScenes[Scene.Index];
 
-    DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+   Masks[-1]:=TpvUInt32($ffffffff);
 
-    InstanceScene:=fScenes[Scene.Index];
+   SkipListItemIndex:=0;
 
-    Masks[-1]:=TpvUInt32($ffffffff);
+   SkipListItemCount:=length(Scene.fSkipList);
 
-    SkipListItemIndex:=0;
+   while SkipListItemIndex<SkipListItemCount do begin
 
-    SkipListItemCount:=length(Scene.fSkipList);
+    SkipListItem:=@Scene.fSkipList[SkipListItemIndex];
 
-    while SkipListItemIndex<SkipListItemCount do begin
+    Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
 
-     SkipListItem:=@Scene.fSkipList[SkipListItemIndex];
+    InstanceNode:=@fNodes[SkipListItem^.NodeIndex];
 
-     Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
+    PotentiallyVisible:=true;
 
-     InstanceNode:=@fNodes[SkipListItem^.NodeIndex];
+    if DoCulling then begin
 
-     PotentiallyVisible:=true;
-
-     if DoCulling then begin
-
-      if aPotentiallyVisibleSetCulling then begin
-       PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-       if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-        PotentiallyVisible:=false;
-        for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-         ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
-         if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-            fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-          PotentiallyVisible:=true;
-          break;
-         end;
+     if aPotentiallyVisibleSetCulling then begin
+      PotentiallyVisibleSetNodeIndex:=InstanceNode^.PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
+      if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+       PotentiallyVisible:=false;
+       for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
+        ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
+        if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+           fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
+         PotentiallyVisible:=true;
+         break;
         end;
        end;
       end;
+     end;
 
-      if PotentiallyVisible then begin
-       if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-        if length(aFrustums)>0 then begin
-         if length(aFrustums)=1 then begin
-          if SkipListItem^.Level<=High(Masks) then begin
-           Masks[SkipListItem^.Level]:=Masks[SkipListItem^.Level-1];
-           PotentiallyVisible:=not ((((Masks[SkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[SkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
-          end else begin
-           PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
-          end;
+     if PotentiallyVisible then begin
+      if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+       if length(aFrustums)>0 then begin
+        if length(aFrustums)=1 then begin
+         if SkipListItem^.Level<=High(Masks) then begin
+          Masks[SkipListItem^.Level]:=Masks[SkipListItem^.Level-1];
+          PotentiallyVisible:=not ((((Masks[SkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[SkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
          end else begin
-          PotentiallyVisible:=false;
-          for FrustumIndex:=0 to length(aFrustums)-1 do begin
-           if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-            PotentiallyVisible:=true;
-            break;
-           end;
+          PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+         end;
+        end else begin
+         PotentiallyVisible:=false;
+         for FrustumIndex:=0 to length(aFrustums)-1 do begin
+          if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+           PotentiallyVisible:=true;
+           break;
           end;
          end;
         end;
        end;
       end;
-
      end;
 
-     if PotentiallyVisible and
-        (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-         ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-         ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+    end;
 
-      DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
-      for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
-       DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex]];
-       if DrawChoreographyBatchItem.fMaterial.fVisible and
-          (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-         (DrawChoreographyBatchItem.fCountIndices>0) then begin
-        DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
-                                                           DrawChoreographyBatchItem.fPrimitiveTopology,
-                                                           DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
-                                                                                       InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
-       end;
+    if PotentiallyVisible and
+       (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+        ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+        ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+
+     DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
+     for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
+      DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex]];
+      if DrawChoreographyBatchItem.fMaterial.fVisible and
+         (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
+        (DrawChoreographyBatchItem.fCountIndices>0) then begin
+       DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
+                                                          DrawChoreographyBatchItem.fPrimitiveTopology,
+                                                          DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
+                                                                                      InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
       end;
+     end;
 
-      inc(SkipListItemIndex);
+     inc(SkipListItemIndex);
 
+    end else begin
+
+     if SkipListItem^.SkipCount<=0 then begin
+      break;
      end else begin
-
-      if SkipListItem^.SkipCount<=0 then begin
-       break;
-      end else begin
-       inc(SkipListItemIndex,SkipListItem^.SkipCount);
-      end;
-
+      inc(SkipListItemIndex,SkipListItem^.SkipCount);
      end;
 
     end;
