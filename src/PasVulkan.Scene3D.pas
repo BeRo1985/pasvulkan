@@ -1977,6 +1977,7 @@ type EpvScene3D=class(Exception);
                             CacheVerticesGeneration:TpvUInt64;
                             CacheVerticesDirtyCounter:TpvUInt32;
                             AABBTreeProxy:TpvSizeInt;
+                            Parents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                            public
                             function InverseFrontFaces:boolean; inline;
                           end;
@@ -15542,6 +15543,59 @@ var CullFace,Blend:TPasGLTFInt32;
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
  end;
+ procedure AssignNodeParents(const aScene:TpvScene3D.TGroup.TScene);
+ type TStackItem=record
+       NodeIndex:TPasGLTFSizeInt;
+       ParentNodeIndex:TPasGLTFSizeInt;
+      end;
+      PStackItem=^TStackItem;
+      TStack=TpvDynamicFastStack<TStackItem>;
+ var NodeIndex,ParentNodeIndex,ChildNodeIndex:TPasGLTFSizeInt;
+     Node:TpvScene3D.TGroup.TNode;
+     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     StackItem:PStackItem;
+     Stack:TStack;
+ begin
+
+  for NodeIndex:=0 to length(fNodes)-1 do begin
+   InstanceNode:=@fNodes[NodeIndex];
+   InstanceNode^.Parents[aInFlightFrameIndex]:=-1;
+  end;
+
+  Stack.Initialize;
+  try
+
+   for NodeIndex:=0 to aScene.fNodes.Count-1 do begin
+    StackItem:=Stack.PushIndirect;
+    StackItem^.NodeIndex:=aScene.fNodes[NodeIndex].Index;
+    StackItem^.ParentNodeIndex:=-1;
+   end;
+
+   while Stack.PopIndirect(StackItem) do begin
+
+    NodeIndex:=StackItem^.NodeIndex;
+
+    ParentNodeIndex:=StackItem^.ParentNodeIndex;
+
+    Node:=fGroup.fNodes[NodeIndex];
+
+    InstanceNode:=@fNodes[NodeIndex];
+
+    InstanceNode^.Parents[aInFlightFrameIndex]:=ParentNodeIndex;
+
+    for ChildNodeIndex:=0 to Node.fChildNodeIndices.Count-1 do begin
+     StackItem:=Stack.PushIndirect;
+     StackItem^.NodeIndex:=Node.fChildNodeIndices.Items[ChildNodeIndex];
+     StackItem^.ParentNodeIndex:=NodeIndex;
+    end;
+
+   end;
+
+  finally
+   Stack.Finalize;
+  end;
+
+ end;
 var Index,PerInFlightFrameRenderInstanceIndex:TPasGLTFSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
@@ -15568,8 +15622,9 @@ begin
 
   if assigned(Scene) then begin
 
-   if aInFlightFrameIndex>=0 then begin
+   if (aInFlightFrameIndex>=0) and (fActiveScenes[aInFlightFrameIndex]<>Scene) then begin
     fActiveScenes[aInFlightFrameIndex]:=Scene;
+    AssignNodeParents(Scene);
    end;
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
@@ -15786,6 +15841,10 @@ begin
   fPreviousActive:=true;
 
  end else if fPreviousActive then begin
+
+  if aInFlightFrameIndex>=0 then begin
+   fActiveScenes[aInFlightFrameIndex]:=nil;
+  end;
 
   if fAABBTreeProxy>=0 then begin
    try
