@@ -15666,7 +15666,9 @@ begin
 
    if (aInFlightFrameIndex>=0) and (fActiveScenes[aInFlightFrameIndex]<>Scene) then begin
     fActiveScenes[aInFlightFrameIndex]:=Scene;
-    AssignNodeParentsAndResetCullVisibleGenerations(Scene);
+    if assigned(fAABBTree) then begin
+     AssignNodeParentsAndResetCullVisibleGenerations(Scene);
+    end;
    end;
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
