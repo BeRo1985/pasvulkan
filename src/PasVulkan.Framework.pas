@@ -679,6 +679,13 @@ type EpvVulkanException=class(Exception);
        fRayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR;
        fPresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR;
        fPresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR;
+       fMultiView:boolean;
+       fMultiViewTessellationShader:boolean;
+       fMultiViewGeometryShader:boolean;
+       fShaderDemoteToHelperInvocation:boolean;
+       fFragmentShaderSampleInterlock:boolean;
+       fFragmentShaderPixelInterlock:boolean;
+       fFragmentShaderShadingRateInterlock:boolean;
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;
@@ -753,6 +760,14 @@ type EpvVulkanException=class(Exception);
        property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR write fRayTracingMaintenance1FeaturesKHR;
        property PresentIDFeatures:TVkPhysicalDevicePresentIDFeaturesKHR read fPresentIDFeatures write fPresentIDFeatures;
        property PresentWaitFeatures:TVkPhysicalDevicePresentWaitFeaturesKHR read fPresentWaitFeatures write fPresentWaitFeatures;
+      published
+       property MultiView:boolean read fMultiView;
+       property MultiViewTessellationShader:boolean read fMultiViewTessellationShader;
+       property MultiViewGeometryShader:boolean read fMultiViewGeometryShader;
+       property ShaderDemoteToHelperInvocation:boolean read fShaderDemoteToHelperInvocation;
+       property FragmentShaderSampleInterlock:boolean read fFragmentShaderSampleInterlock;
+       property FragmentShaderPixelInterlock:boolean read fFragmentShaderPixelInterlock;
+       property FragmentShaderShadingRateInterlock:boolean read fFragmentShaderShadingRateInterlock;
      end;
 
      TpvVulkanDeviceDebugMarker=class
@@ -10207,6 +10222,16 @@ begin
    fPresentIDSupport:=fPresentIDFeatures.presentId<>VK_FALSE;
 
    fPresentWaitSupport:=fPresentWaitFeatures.presentWait<>VK_FALSE;
+
+   fMultiView:=fMultiviewFeaturesKHR.multiview<>VK_FALSE;
+   fMultiViewTessellationShader:=fMultiviewFeaturesKHR.multiviewTessellationShader<>VK_FALSE;
+   fMultiViewGeometryShader:=fMultiviewFeaturesKHR.multiviewGeometryShader<>VK_FALSE;
+
+   fShaderDemoteToHelperInvocation:=fShaderDemoteToHelperInvocationFeaturesEXT.shaderDemoteToHelperInvocation<>VK_FALSE;
+
+   fFragmentShaderSampleInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE;
+   fFragmentShaderPixelInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE;
+   fFragmentShaderShadingRateInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE;
 
   end;
 

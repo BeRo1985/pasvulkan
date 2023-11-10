@@ -16799,7 +16799,7 @@ begin
 
  if fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue>=TpvInt64($80000000) then begin
   fUseMultiDraw:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0) and
-                 (fVulkanDevice.PhysicalDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
+                 (fVulkanDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
   fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
   fUseMultiIndirectDraw:=(fVulkanDevice.PhysicalDevice.Features.multiDrawIndirect<>VK_FALSE) and
                          (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount>=65536);
