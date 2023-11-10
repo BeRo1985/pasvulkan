@@ -16518,15 +16518,22 @@ begin
 
    else begin
 
+    result:=true;
+
     PathCounter:=0;
     NodeIndex:=aNodeIndex;
     while NodeIndex>=0 do begin
-     fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter]:=NodeIndex;
-     inc(PathCounter);
-     NodeIndex:=fNodes[NodeIndex].Parents[aInFlightFrameIndex];
+     InstanceNode:=@fNodes[NodeIndex];
+     BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+     if ((fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3)=1 then begin
+      result:=false;
+      break;
+     end else begin
+      fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter]:=NodeIndex;
+      inc(PathCounter);
+      NodeIndex:=InstanceNode^.Parents[aInFlightFrameIndex];
+     end;
     end;
-
-    result:=true;
 
     while PathCounter>0 do begin
 
