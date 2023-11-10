@@ -15611,9 +15611,9 @@ var CullFace,Blend:TPasGLTFInt32;
     InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]:=CullVisibleIDCounter;
     inc(CullVisibleIDCounter);
 
-    for ChildNodeIndex:=0 to Node.fChildNodeIndices.Count-1 do begin
+    for ChildNodeIndex:=0 to Node.fChildren.Count-1 do begin
      StackItem:=Stack.PushIndirect;
-     StackItem^.NodeIndex:=Node.fChildNodeIndices.Items[ChildNodeIndex];
+     StackItem^.NodeIndex:=Node.fChildren[ChildNodeIndex].Index;
      StackItem^.ParentNodeIndex:=NodeIndex;
     end;
 
@@ -16458,31 +16458,35 @@ var Node:TpvScene3D.TGroup.TNode;
     Data:PpvUInt32;
 begin
  InstanceNode:=@fNodes[aNodeIndex];
- BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
- case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
-  1:begin
-   result:=false;
-  end;
-  2:begin
-   result:=true;
-  end;
-  else begin
-   Node:=fGroup.fNodes[aNodeIndex];
-   result:=((InstanceNode^.Parents[aInFlightFrameIndex]<0) or
-            PrepareCheckNodeFilter(aInFlightFrameIndex,
-                                   aRendererInstance,
-                                   aRenderPassIndex,
-                                   InstanceNode^.Parents[aInFlightFrameIndex])) and
-           (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-            ((not assigned(fGroup.fOnNodeFilter)) or fGroup.fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-            ((not assigned(fGroup.fSceneInstance.OnNodeFilter)) or fGroup.fSceneInstance.OnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
-   Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
-   if result then begin
-    Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
-   end else begin
-    Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+ if InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]>=0 then begin
+  BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
+  case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
+   1:begin
+    result:=false;
+   end;
+   2:begin
+    result:=true;
+   end;
+   else begin
+    Node:=fGroup.fNodes[aNodeIndex];
+    result:=((InstanceNode^.Parents[aInFlightFrameIndex]<0) or
+             PrepareCheckNodeFilter(aInFlightFrameIndex,
+                                    aRendererInstance,
+                                    aRenderPassIndex,
+                                    InstanceNode^.Parents[aInFlightFrameIndex])) and
+            (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+             ((not assigned(fGroup.fOnNodeFilter)) or fGroup.fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+             ((not assigned(fGroup.fSceneInstance.OnNodeFilter)) or fGroup.fSceneInstance.OnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
+    Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
+    if result then begin
+     Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
+    end else begin
+     Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
+    end;
    end;
   end;
+ end else begin
+  result:=false;
  end;
 end;
 
