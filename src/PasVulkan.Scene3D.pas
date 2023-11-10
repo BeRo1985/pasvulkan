@@ -1976,6 +1976,7 @@ type EpvScene3D=class(Exception);
                             CacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             CacheVerticesGeneration:TpvUInt64;
                             CacheVerticesDirtyCounter:TpvUInt32;
+                            AABBTreeProxy:TpvSizeInt;
                            public
                             function InverseFrontFaces:boolean; inline;
                           end;
@@ -2313,6 +2314,8 @@ type EpvScene3D=class(Exception);
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                      fAABBTreeProxy:TpvSizeInt;
+                     fAABBTree:TpvBVHDynamicAABBTree;
+                     fAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanVertexBufferCount:TpvInt64;
                      fVulkanDrawIndexBufferOffset:TpvInt64;
@@ -13210,6 +13213,7 @@ begin
   end;
   InstanceNode^.CacheVerticesGeneration:=1;
   InstanceNode^.CacheVerticesDirtyCounter:=1;
+  InstanceNode^.AABBTreeProxy:=-1;
  end;
 
  SetLength(fAnimations,fGroup.fAnimations.Count+1);
@@ -13403,13 +13407,21 @@ begin
   fScenes.Add(TpvScene3D.TGroup.TInstance.TScene.Create(self,fGroup.fScenes[Index]));
  end;
 
+ fAABBTree:=TpvBVHDynamicAABBTree.Create;
+
+ for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+  fAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
 var Index:TPasGLTFSizeInt;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
+
  Unload;
+
  if assigned(fRenderInstances) then begin
   TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fRenderInstanceLock);
   try
@@ -13429,6 +13441,7 @@ begin
    TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fRenderInstanceLock);
   end;
  end;
+
  if assigned(fSceneInstance) and not fHeadless then begin
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
@@ -13457,6 +13470,7 @@ begin
   fVulkanNodeMatricesBufferCount:=0;
   fVulkanMorphTargetVertexWeightsBufferCount:=0;
  end;
+
  if fAABBTreeProxy>=0 then begin
   try
    if assigned(fGroup) and
@@ -13468,37 +13482,62 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+
  FreeAndNil(fScenes);
+
  FreeAndNil(fCameras);
+
  FreeAndNil(fLights);
+
  for Index:=0 to length(fNodes)-1 do begin
   if assigned(fNodes[Index].Light) then begin
    FreeAndNil(fNodes[Index].Light);
   end;
  end;
+
  for Index:=0 to length(fAnimations)-1 do begin
   FreeAndNil(fAnimations[Index]);
  end;
+
  FreeAndNil(fMaterials);
+
  fCacheVerticesNodeDirtyBitmap:=nil;
+
  if assigned(fDuplicatedMaterials) then begin
   for Index:=0 to fDuplicatedMaterials.Count-1 do begin
    fDuplicatedMaterials[Index].DecRef;
   end;
   FreeAndNil(fDuplicatedMaterials);
  end;
+
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fPerInFlightFrameRenderInstances[Index].Finalize;
  end;
+
+ FreeAndNil(fAABBTree);
+
+ for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+  fAABBTreeStates[Index].TreeNodes:=nil;
+ end;
+
  fNodes:=nil;
+
  fSkins:=nil;
+
  fMaterialMap:=nil;
+
  fAnimations:=nil;
+
  fNodeMatrices:=nil;
+
  fMorphTargetVertexWeights:=nil;
+
  fGroup:=nil;
+
  FreeAndNil(fLock);
+
  inherited Destroy;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.AfterConstruction;
