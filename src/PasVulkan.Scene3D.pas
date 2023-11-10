@@ -15538,6 +15538,7 @@ var Index,PerInFlightFrameRenderInstanceIndex:TPasGLTFSizeInt;
     HasMaterialUpdate,Dirty:boolean;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     PerInFlightFrameRenderInstance:TpvScene3D.TGroup.TInstance.PPerInFlightFrameRenderInstance;
+    AABBTreeState:TpvBVHDynamicAABBTree.PState;
 begin
 
  if aInFlightFrameIndex>=0 then begin
@@ -15819,6 +15820,18 @@ begin
 
   fPreviousActive:=false;
 
+ end;
+
+ AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+ if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+  if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+   AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+  end else begin
+   Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+  end;
+  AABBTreeState^.Root:=fAABBTree.Root;
+ end else begin
+  AABBTreeState^.Root:=-1;
  end;
 
 end;
