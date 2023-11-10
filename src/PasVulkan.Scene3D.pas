@@ -13419,6 +13419,8 @@ begin
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
+  fAABBTreeStates[Index].Root:=-1;
+  fAABBTreeStates[Index].Generation:=High(TpvUInt64);
  end;
 
 end;
@@ -13526,6 +13528,8 @@ begin
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
+  fAABBTreeStates[Index].Root:=-1;
+  fAABBTreeStates[Index].Generation:=High(TpvUInt64);
  end;
 
  fNodes:=nil;
@@ -15830,37 +15834,46 @@ begin
 
  if aInFlightFrameIndex>=0 then begin
   AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
-  if assigned(fAABBTree) and (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
-   if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) then begin
-    for Index:=0 to length(fAABBTree.Nodes)-1 do begin
-     AABBTreeNode:=@fAABBTree.Nodes[Index];
-     if AABBTreeNode^.UserData<=0 then begin
-      if AABBTreeNode^.UserData=0 then begin
-       AABBTreeNodePotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
-      end else begin
-       AABBTreeNodePotentiallyVisibleSet:=-AABBTreeNode^.UserData;
-      end;
-      if ((AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-          ((AABBTreeNodePotentiallyVisibleSet<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
-          fSceneInstance.fPotentiallyVisibleSet.fNodes[AABBTreeNodePotentiallyVisibleSet].fAABB.Intersect(AABBTreeNode^.AABB))) then begin
-       AABBTreeNodePotentiallyVisibleSet:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(AABBTreeNode^.AABB);
-       if AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-        AABBTreeNode^.UserData:=0;
-       end else begin
-        AABBTreeNode^.UserData:=-AABBTreeNodePotentiallyVisibleSet;
+  if assigned(fAABBTree) then begin
+   fAABBTree.UpdateGeneration;
+   if AABBTreeState^.Generation<>fAABBTree.Generation then begin
+    AABBTreeState^.Generation:=fAABBTree.Generation;
+    if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+     if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) then begin
+      for Index:=0 to length(fAABBTree.Nodes)-1 do begin
+       AABBTreeNode:=@fAABBTree.Nodes[Index];
+       if AABBTreeNode^.UserData<=0 then begin
+        if AABBTreeNode^.UserData=0 then begin
+         AABBTreeNodePotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
+        end else begin
+         AABBTreeNodePotentiallyVisibleSet:=-AABBTreeNode^.UserData;
+        end;
+        if ((AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
+            ((AABBTreeNodePotentiallyVisibleSet<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
+            fSceneInstance.fPotentiallyVisibleSet.fNodes[AABBTreeNodePotentiallyVisibleSet].fAABB.Intersect(AABBTreeNode^.AABB))) then begin
+         AABBTreeNodePotentiallyVisibleSet:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(AABBTreeNode^.AABB);
+         if AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
+          AABBTreeNode^.UserData:=0;
+         end else begin
+          AABBTreeNode^.UserData:=-AABBTreeNodePotentiallyVisibleSet;
+         end;
+        end;
        end;
       end;
      end;
+     if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+      AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+     end else begin
+      Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+     end;
+     AABBTreeState^.Root:=fAABBTree.Root;
+    end else begin
+     AABBTreeState^.Root:=-1;
     end;
    end;
-   if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
-    AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
-   end else begin
-    Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
-   end;
-   AABBTreeState^.Root:=fAABBTree.Root;
   end else begin
    AABBTreeState^.Root:=-1;
+   AABBTreeState^.Generation:=High(TpvUInt64);
   end;
  end;
 
@@ -17297,6 +17310,8 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fLightAABBTreeStates[Index].TreeNodes:=nil;
+  fLightAABBTreeStates[Index].Root:=-1;
+  fLightAABBTreeStates[Index].Generation:=High(TpvUInt64);
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -17315,6 +17330,8 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
+  fAABBTreeStates[Index].Root:=-1;
+  fAABBTreeStates[Index].Generation:=High(TpvUInt64);
  end;
 
  fOnNodeFilter:=nil;
@@ -17350,6 +17367,8 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fAABBTreeStates[Index].TreeNodes:=nil;
+  fAABBTreeStates[Index].Root:=-1;
+  fAABBTreeStates[Index].Generation:=High(TpvUInt64);
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -17360,6 +17379,8 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   fLightAABBTreeStates[Index].TreeNodes:=nil;
+  fLightAABBTreeStates[Index].Root:=-1;
+  fLightAABBTreeStates[Index].Generation:=High(TpvUInt64);
  end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -18368,15 +18389,19 @@ begin
  end;
 
  AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
- if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
-  if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
-   AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+ fAABBTree.UpdateGeneration;
+ if AABBTreeState^.Generation<>fAABBTree.Generation then begin
+  AABBTreeState^.Generation:=fAABBTree.Generation;
+  if (length(fAABBTree.Nodes)>0) and (fAABBTree.Root>=0) then begin
+   if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+    AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
+   end else begin
+    Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   end;
+   AABBTreeState^.Root:=fAABBTree.Root;
   end else begin
-   Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+   AABBTreeState^.Root:=-1;
   end;
-  AABBTreeState^.Root:=fAABBTree.Root;
- end else begin
-  AABBTreeState^.Root:=-1;
  end;
 
  First:=true;
@@ -18646,16 +18671,19 @@ begin
      (TPasMPInterlocked.CompareExchange(fLightAABBTreeStateGenerations[aInFlightFrameIndex],NewGeneration,OldGeneration)=OldGeneration) then begin
 
    LightAABBTreeState:=@fLightAABBTreeStates[aInFlightFrameIndex];
-
-   if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
-    if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
-     LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+   fLightAABBTree.UpdateGeneration;
+   if LightAABBTreeState^.Generation<>fLightAABBTree.Generation then begin
+    LightAABBTreeState^.Generation:=fLightAABBTree.Generation;
+    if (length(fLightAABBTree.Nodes)>0) and (fLightAABBTree.Root>=0) then begin
+     if length(LightAABBTreeState^.TreeNodes)<length(fLightAABBTree.Nodes) then begin
+      LightAABBTreeState^.TreeNodes:=copy(fLightAABBTree.Nodes);
+     end else begin
+      Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+     end;
+     LightAABBTreeState^.Root:=fLightAABBTree.Root;
     end else begin
-     Move(fLightAABBTree.Nodes[0],LightAABBTreeState^.TreeNodes[0],length(fLightAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
+     LightAABBTreeState^.Root:=-1;
     end;
-    LightAABBTreeState^.Root:=fLightAABBTree.Root;
-   end else begin
-    LightAABBTreeState^.Root:=-1;
    end;
 
    LightBuffer:=fLightBuffers[aInFlightFrameIndex];
