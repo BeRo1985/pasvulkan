@@ -15624,6 +15624,15 @@ begin
       if assigned(fNodes[Index].Light) then begin
        FreeAndNil(fNodes[Index].Light);
       end;
+      if fNodes[Index].AABBTreeProxy>=0 then begin
+       try
+        if assigned(fAABBTree) then begin
+         fAABBTree.DestroyProxy(fNodes[Index].AABBTreeProxy);
+        end;
+       finally
+        fNodes[Index].AABBTreeProxy:=-1;
+       end;
+      end;
      end;
     end;
    end;
@@ -15771,6 +15780,15 @@ begin
   for Index:=0 to length(fNodes)-1 do begin
    if assigned(fNodes[Index].Light) then begin
     FreeAndNil(fNodes[Index].Light);
+   end;
+   if fNodes[Index].AABBTreeProxy>=0 then begin
+    try
+     if assigned(fAABBTree) then begin
+      fAABBTree.DestroyProxy(fNodes[Index].AABBTreeProxy);
+     end;
+    finally
+     fNodes[Index].AABBTreeProxy:=-1;
+    end;
    end;
   end;
 
