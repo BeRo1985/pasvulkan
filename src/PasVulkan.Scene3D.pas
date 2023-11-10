@@ -16589,11 +16589,13 @@ begin
        if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
         if length(aFrustums)>0 then begin
          if length(aFrustums)=1 then begin
-          if SkipListItem^.Level<=High(Masks) then begin
-           Masks[SkipListItem^.Level]:=Masks[SkipListItem^.Level-1];
-           PotentiallyVisible:=not ((((Masks[SkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[SkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
-          end else begin
-           PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+          if Masks[SkipListItem^.Level-1]<>$40000000 then begin
+           if SkipListItem^.Level<=High(Masks) then begin
+            Masks[SkipListItem^.Level]:=Masks[SkipListItem^.Level-1];
+            PotentiallyVisible:=not ((((Masks[SkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[SkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
+           end else begin
+            PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+           end;
           end;
          end else begin
           PotentiallyVisible:=false;
