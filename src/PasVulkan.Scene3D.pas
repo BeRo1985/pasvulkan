@@ -2354,7 +2354,8 @@ type EpvScene3D=class(Exception);
                                        const aCountViews:TpvSizeInt;
                                        const aFrustums:TpvFrustumDynamicArray;
                                        const aPotentiallyVisibleSetCulling:boolean;
-                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
+                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                                       const aFrustumCullMask:TpvUInt32);
                      procedure GetBakedMeshProcessMorphSkinNode(const aBakedMesh:TpvScene3D.TBakedMesh;
                                                                 const aNode:TpvScene3D.TGroup.TNode;
                                                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -16362,7 +16363,8 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aCountViews:TpvSizeInt;
                                               const aFrustums:TpvFrustumDynamicArray;
                                               const aPotentiallyVisibleSetCulling:boolean;
-                                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
+                                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                                              const aFrustumCullMask:TpvUInt32);
 type TStackItem=record
       NodeIndex:TpvSizeInt;
       Mask:TpvUInt32;
@@ -16423,7 +16425,7 @@ begin
 
       StackItem:=Stack.PushIndirect;
       StackItem^.NodeIndex:=AABBTreeState^.Root;
-      StackItem^.Mask:=$ffffffff;
+      StackItem^.Mask:=aFrustumCullMask;
 
       while Stack.PopIndirect(StackItem) do begin
 
@@ -19242,7 +19244,8 @@ begin
                                aCountViews,
                                aFrustums,
                                aPotentiallyVisibleSetCulling,
-                               aMaterialAlphaModes);
+                               aMaterialAlphaModes,
+                               Mask);
         end;
 
        end;
@@ -19358,7 +19361,8 @@ begin
                              aCountViews,
                              Frustums,
                              aPotentiallyVisibleSetCulling,
-                             aMaterialAlphaModes);
+                             aMaterialAlphaModes,
+                             TpvUInt32($ffffffff));
       end;
      end;
     end;
