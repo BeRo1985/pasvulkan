@@ -666,9 +666,9 @@ type EpvVulkanException=class(Exception);
        fNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
-       fPhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features;
-       fPhysicalDeviceVulkan12Features:TVkPhysicalDeviceVulkan12Features;
-       fPhysicalDeviceVulkan13Features:TVkPhysicalDeviceVulkan13Features;
+       fVulkan11Features:TVkPhysicalDeviceVulkan11Features;
+       fVulkan12Features:TVkPhysicalDeviceVulkan12Features;
+       fVulkan13Features:TVkPhysicalDeviceVulkan13Features;
        fMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
@@ -740,9 +740,9 @@ type EpvVulkanException=class(Exception);
       public
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT write fDescriptorIndexingFeaturesEXT;
        property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT write fShaderDemoteToHelperInvocationFeaturesEXT;
-       property PhysicalDeviceVulkan11Features:TVkPhysicalDeviceVulkan11Features read fPhysicalDeviceVulkan11Features write fPhysicalDeviceVulkan11Features;
-       property PhysicalDeviceVulkan12Features:TVkPhysicalDeviceVulkan12Features read fPhysicalDeviceVulkan12Features write fPhysicalDeviceVulkan12Features;
-       property PhysicalDeviceVulkan13Features:TVkPhysicalDeviceVulkan13Features read fPhysicalDeviceVulkan13Features write fPhysicalDeviceVulkan13Features;
+       property Vulkan11Features:TVkPhysicalDeviceVulkan11Features read fVulkan11Features write fVulkan11Features;
+       property Vulkan12Features:TVkPhysicalDeviceVulkan12Features read fVulkan12Features write fVulkan12Features;
+       property Vulkan13Features:TVkPhysicalDeviceVulkan13Features read fVulkan13Features write fVulkan13Features;
        property MultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR read fMultiviewFeaturesKHR write fMultiviewFeaturesKHR;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT write fMultiDrawFeaturesEXT;
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT write fFragmentShaderInterlockFeaturesEXT;
@@ -9911,20 +9911,20 @@ begin
 
   begin
 
-   FillChar(fPhysicalDeviceVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
-   fPhysicalDeviceVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+   FillChar(fVulkan11Features,SizeOf(TVkPhysicalDeviceVulkan11Features),#0);
+   fVulkan11Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 
    FillChar(fMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeatures),#0);
    fMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
 
    if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
-    fPhysicalDeviceVulkan11Features.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan11Features;
+    fVulkan11Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fVulkan11Features;
 
-    fPhysicalDeviceVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
-    fPhysicalDeviceVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
-    fPhysicalDeviceVulkan11Features.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
+    fVulkan11Features.multiview:=PhysicalDevice.fVulkan11Features.multiview;
+    fVulkan11Features.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
+    fVulkan11Features.multiviewGeometryShader:=PhysicalDevice.fVulkan11Features.multiviewGeometryShader;
 
     fMultiviewFeaturesKHR.multiview:=PhysicalDevice.fVulkan11Features.multiview;
     fMultiviewFeaturesKHR.multiviewTessellationShader:=PhysicalDevice.fVulkan11Features.multiviewTessellationShader;
@@ -9973,8 +9973,8 @@ begin
 
   begin
 
-   FillChar(fPhysicalDeviceVulkan12Features,SizeOf(TVkPhysicalDeviceVulkan12Features),#0);
-   fPhysicalDeviceVulkan12Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+   FillChar(fVulkan12Features,SizeOf(TVkPhysicalDeviceVulkan12Features),#0);
+   fVulkan12Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 
    FillChar(fDescriptorIndexingFeaturesEXT,SizeOf(TVkPhysicalDeviceDescriptorIndexingFeaturesEXT),#0);
    fDescriptorIndexingFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
@@ -9987,36 +9987,36 @@ begin
 
    if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2 then begin
 
-    fPhysicalDeviceVulkan12Features.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan12Features;
+    fVulkan12Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fVulkan12Features;
 
-    fPhysicalDeviceVulkan12Features.descriptorIndexing:=PhysicalDevice.fVulkan12Features.descriptorIndexing;
-    fPhysicalDeviceVulkan12Features.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
-    fPhysicalDeviceVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
-    fPhysicalDeviceVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
-    fPhysicalDeviceVulkan12Features.shaderUniformBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformBufferArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.shaderSampledImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderSampledImageArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.shaderStorageBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageBufferArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.shaderStorageImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageImageArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing;
-    fPhysicalDeviceVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind;
-    fPhysicalDeviceVulkan12Features.descriptorBindingSampledImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingSampledImageUpdateAfterBind;
-    fPhysicalDeviceVulkan12Features.descriptorBindingStorageImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageImageUpdateAfterBind;
-    fPhysicalDeviceVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind;
-    fPhysicalDeviceVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind;
-    fPhysicalDeviceVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind;
-    fPhysicalDeviceVulkan12Features.descriptorBindingUpdateUnusedWhilePending:=PhysicalDevice.fVulkan12Features.descriptorBindingUpdateUnusedWhilePending;
-    fPhysicalDeviceVulkan12Features.descriptorBindingPartiallyBound:=PhysicalDevice.fVulkan12Features.descriptorBindingPartiallyBound;
-    fPhysicalDeviceVulkan12Features.descriptorBindingVariableDescriptorCount:=PhysicalDevice.fVulkan12Features.descriptorBindingVariableDescriptorCount;
-    fPhysicalDeviceVulkan12Features.runtimeDescriptorArray:=PhysicalDevice.fVulkan12Features.runtimeDescriptorArray;
+    fVulkan12Features.descriptorIndexing:=PhysicalDevice.fVulkan12Features.descriptorIndexing;
+    fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
+    fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
+    fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
+    fVulkan12Features.shaderUniformBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformBufferArrayNonUniformIndexing;
+    fVulkan12Features.shaderSampledImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderSampledImageArrayNonUniformIndexing;
+    fVulkan12Features.shaderStorageBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageBufferArrayNonUniformIndexing;
+    fVulkan12Features.shaderStorageImageArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageImageArrayNonUniformIndexing;
+    fVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayNonUniformIndexing;
+    fVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayNonUniformIndexing;
+    fVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayNonUniformIndexing;
+    fVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformBufferUpdateAfterBind;
+    fVulkan12Features.descriptorBindingSampledImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingSampledImageUpdateAfterBind;
+    fVulkan12Features.descriptorBindingStorageImageUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageImageUpdateAfterBind;
+    fVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageBufferUpdateAfterBind;
+    fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind;
+    fVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind:=PhysicalDevice.fVulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind;
+    fVulkan12Features.descriptorBindingUpdateUnusedWhilePending:=PhysicalDevice.fVulkan12Features.descriptorBindingUpdateUnusedWhilePending;
+    fVulkan12Features.descriptorBindingPartiallyBound:=PhysicalDevice.fVulkan12Features.descriptorBindingPartiallyBound;
+    fVulkan12Features.descriptorBindingVariableDescriptorCount:=PhysicalDevice.fVulkan12Features.descriptorBindingVariableDescriptorCount;
+    fVulkan12Features.runtimeDescriptorArray:=PhysicalDevice.fVulkan12Features.runtimeDescriptorArray;
 
-    fPhysicalDeviceVulkan12Features.bufferDeviceAddress:=PhysicalDevice.fVulkan12Features.bufferDeviceAddress;
-    fPhysicalDeviceVulkan12Features.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressCaptureReplay;
-    fPhysicalDeviceVulkan12Features.bufferDeviceAddressMultiDevice:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressMultiDevice;
+    fVulkan12Features.bufferDeviceAddress:=PhysicalDevice.fVulkan12Features.bufferDeviceAddress;
+    fVulkan12Features.bufferDeviceAddressCaptureReplay:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressCaptureReplay;
+    fVulkan12Features.bufferDeviceAddressMultiDevice:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressMultiDevice;
 
-    fPhysicalDeviceVulkan12Features.hostQueryReset:=PhysicalDevice.fVulkan12Features.hostQueryReset;
+    fVulkan12Features.hostQueryReset:=PhysicalDevice.fVulkan12Features.hostQueryReset;
 
    end else begin
 
@@ -10061,20 +10061,20 @@ begin
 
   begin
 
-   FillChar(fPhysicalDeviceVulkan13Features,SizeOf(TVkPhysicalDeviceVulkan13Features),#0);
-   fPhysicalDeviceVulkan13Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+   FillChar(fVulkan13Features,SizeOf(TVkPhysicalDeviceVulkan13Features),#0);
+   fVulkan13Features.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 
    FillChar(fShaderDemoteToHelperInvocationFeaturesEXT,SizeOf(TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT),#0);
    fShaderDemoteToHelperInvocationFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
 
    if (fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_3 then begin
 
-    fPhysicalDeviceVulkan13Features.pNext:=DeviceCreateInfo.pNext;
-    DeviceCreateInfo.pNext:=@fPhysicalDeviceVulkan13Features;
+    fVulkan13Features.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fVulkan13Features;
 
-    fPhysicalDeviceVulkan13Features.shaderDemoteToHelperInvocation:=PhysicalDevice.fVulkan13Features.shaderDemoteToHelperInvocation;
+    fVulkan13Features.shaderDemoteToHelperInvocation:=PhysicalDevice.fVulkan13Features.shaderDemoteToHelperInvocation;
 
-    fPhysicalDeviceVulkan13Features.maintenance4:=PhysicalDevice.fVulkan13Features.maintenance4;
+    fVulkan13Features.maintenance4:=PhysicalDevice.fVulkan13Features.maintenance4;
 
    end else begin
 
