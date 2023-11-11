@@ -6,6 +6,10 @@
 
 /* clang-format off */
 
+#ifndef PASS
+#define PASS 0
+#endif
+
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
@@ -14,6 +18,7 @@ layout(push_constant) uniform PushConstants {
   uint drawCallIndex;
   uint baseViewIndex;
   uint countViews;
+  uint firstFrame;
 } pushConstants;
 
 /*
@@ -31,7 +36,7 @@ struct VkDrawIndexedIndirectCommand {
 
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
-  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, yzw = padding for 16 bytes alignment to the next vec4 field
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = nodeIndex, zw = padding for 16 bytes alignment to the next vec4 field
   vec4 boundingSphere; // xyz = center, w = radius
   uvec4 padding3; // just padding 
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
@@ -51,16 +56,25 @@ layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCom
   DrawIndexedIndirectCommand commands[];
 } inputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
+layout(set = 0, binding = 2, std430) readonly buffer InputPreviousVisibleNodes {
+  uint bitmap[];
+} inputPreviousVisibleNodes;
+
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand commands[];
 } outputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounts {
+layout(set = 0, binding = 4, std430) buffer OutputDrawIndexedIndirectCommandCounts {
   uint counts[];
 } outputDrawIndexedIndirectCommandCounts;
 
-layout(set = 0, binding = 4) uniform sampler2DArray uTextureDepth;
+layout(set = 0, binding = 5, std430) buffer OutputNewVisibleNodes {
+  uint bitmap[];
+} outputNewVisibleNodes;
 
+layout(set = 0, binding = 6) uniform sampler2DArray uTextureDepth;
+
+#if PASS == 1
 bool referenceProjectSphere(const in vec3 center, const in float radius, const in mat4 projectionMatrix, const in float zNear, out vec4 aabb){
 
   if(center.z < (radius + zNear)){ //if((-(center.z + radius)) < zNear){
@@ -135,8 +149,40 @@ shared vec4 inverseProjectionMatrixZData[8];
 shared float zNears[8]; 
 shared vec2 p00p11[8];
 shared vec4 frustums[8];
+#endif
 
 void main(){
+
+#if PASS == 0
+
+  // In the first pass, just draw the previous frame visible stuff as against-cull-data (HiZ depth buffer) for the next pass
+
+  uint invocationIndex = gl_LocalInvocationID.x;
+
+  if(invocationIndex >= pushConstants.countDrawIndexedIndirectCommands){
+    return;  
+  }
+
+  uint sourceIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + invocationIndex;
+
+  const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
+  const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
+
+  const uint nodeIndex = cmd1.y;
+
+  if((pushConstants.firstFrame != 0u) &&  // If it is the first frame, just don't cull anything
+     ((inputPreviousVisibleNodes.bitmap[nodeIndex >> 5u] & (1u << (nodeIndex & 31u))) == 0u)){
+    return; // Skip, since it was not visible in the previous frame
+  }
+
+  uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
+  
+  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+  
+#else // PASS == 1
+
+  // In the second pass, cull the stuff against the previous frame visible stuff but with the current view and projection matrices
 
   uint invocationIndex = gl_LocalInvocationID.x;
 
@@ -171,13 +217,15 @@ void main(){
   groupMemoryBarrier();
   barrier(); 
 
-  if (invocationIndex >= pushConstants.countDrawIndexedIndirectCommands) {
+  if(invocationIndex >= pushConstants.countDrawIndexedIndirectCommands){
     return;  
   }
 
   uint sourceIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + invocationIndex;
 
   vec4 boundingSphere = inputDrawIndexedIndirectCommands.commands[sourceIndex].boundingSphere;
+
+  bool isDrawIndexedIndirectCommandVisible = false;
 
   // Only cull when sphere has a positive radius, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
   // directly to the output buffer in that case.
@@ -222,16 +270,28 @@ void main(){
 
     }
 
-    if(isDrawIndexedIndirectCommandVisibleBits == 0u){
-      return;
-    }
+    isDrawIndexedIndirectCommandVisible = isDrawIndexedIndirectCommandVisibleBits != 0u;
 
+  }
+
+  const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
+  const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
+
+  const uint nodeIndex = cmd1.y;
+  
+  if(isDrawIndexedIndirectCommandVisible){
+    atomicOr(outputNewVisibleNodes.bitmap[nodeIndex >> 5u], 1u << (nodeIndex & 31u));
+  }else{
+    atomicAnd(outputNewVisibleNodes.bitmap[nodeIndex >> 5u], ~(1u << (nodeIndex & 31u)));
+    return;
   }
 
   uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
   // Just copy the draw indexed indirect command itself, but not the no more needed bounding sphere and so on, to save memory bandwidth
-  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
-  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
+  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+
+#endif
 
 }
