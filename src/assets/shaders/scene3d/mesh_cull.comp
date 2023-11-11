@@ -36,7 +36,7 @@ struct VkDrawIndexedIndirectCommand {
 
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
-  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = nodeIndex, zw = padding for 16 bytes alignment to the next vec4 field
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = objectIndex, zw = padding for 16 bytes alignment to the next vec4 field
   vec4 boundingSphere; // xyz = center, w = radius
   uvec4 padding3; // just padding 
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
@@ -168,10 +168,10 @@ void main(){
   const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
-  const uint nodeIndex = cmd1.y;
+  const uint objectIndex = cmd1.y;
 
   if((pushConstants.firstFrame != 0u) &&  // If it is the first frame, just don't cull anything
-     ((inputPreviousVisibleNodes.bitmap[nodeIndex >> 5u] & (1u << (nodeIndex & 31u))) == 0u)){
+     ((inputPreviousVisibleNodes.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u)){
     return; // Skip, since it was not visible in the previous frame
   }
 
@@ -277,12 +277,12 @@ void main(){
   const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
-  const uint nodeIndex = cmd1.y;
+  const uint objectIndex = cmd1.y;
   
   if(isDrawIndexedIndirectCommandVisible){
-    atomicOr(outputNewVisibleNodes.bitmap[nodeIndex >> 5u], 1u << (nodeIndex & 31u));
+    atomicOr(outputNewVisibleNodes.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u));
   }else{
-    atomicAnd(outputNewVisibleNodes.bitmap[nodeIndex >> 5u], ~(1u << (nodeIndex & 31u)));
+    atomicAnd(outputNewVisibleNodes.bitmap[objectIndex >> 5u], ~(1u << (objectIndex & 31u)));
     return;
   }
 
