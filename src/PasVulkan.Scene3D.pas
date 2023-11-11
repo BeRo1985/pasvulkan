@@ -19503,10 +19503,8 @@ begin
  end;
 
  if aGPUCulling then begin
-  TpvScene3DRendererInstance(aRendererInstance).PerInFlightFrameGPUCulledArray^[aInFlightFrameIndex,aRenderPassIndex]:=true;
   PrepareGPUCulling(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aMaterialAlphaModes);
  end else begin
-  TpvScene3DRendererInstance(aRendererInstance).PerInFlightFrameGPUCulledArray^[aInFlightFrameIndex,aRenderPassIndex]:=false;
  end;
 
 end;

@@ -4249,9 +4249,8 @@ begin
 
  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
   fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex].Count:=0;
+  fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex]:=false;
  end;
-
- FillChar(fPerInFlightFrameGPUCulledArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCulledArray),#0);
 
 end;
 
