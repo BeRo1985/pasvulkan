@@ -2750,10 +2750,6 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
-       procedure PrepareGPUCulling(const aInFlightFrameIndex:TpvSizeInt;
-                                   const aRendererInstance:TObject;
-                                   const aRenderPassIndex:TpvSizeInt;
-                                   const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
       public
        class function EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
                                       const aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -19144,97 +19140,6 @@ begin
 
 end;
 
-procedure TpvScene3D.PrepareGPUCulling(const aInFlightFrameIndex:TpvSizeInt;
-                                       const aRendererInstance:TObject;
-                                       const aRenderPassIndex:TpvSizeInt;
-                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
-var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex:TpvSizeInt;
-    RendererInstance:TpvScene3DRendererInstance;
-    RendererInstanceID:TpvUInt32;
-    MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
-    PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
-    FaceCullingMode:TpvScene3D.TFaceCullingMode;
-    DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
-    DrawChoreographyBatchItem:TDrawChoreographyBatchItem;
-    GPUDrawIndexedIndirectCommandDynamicArray:PGPUDrawIndexedIndirectCommandDynamicArray;
-    DrawChoreographyBatchRangeDynamicArray:PDrawChoreographyBatchRangeDynamicArray;
-    DrawChoreographyBatchRange:TDrawChoreographyBatchRange;
-    GPUDrawIndexedIndirectCommand:PGPUDrawIndexedIndirectCommand;
-    BoundingSphere:PpvSphere;
-begin
-
- RendererInstance:=TpvScene3DRendererInstance(aRendererInstance);
-
- RendererInstance.PerInFlightFrameGPUCulledArray^[aInFlightFrameIndex,aRenderPassIndex]:=true;
-
- RendererInstanceID:=RendererInstance.ID;
-
- GPUDrawIndexedIndirectCommandDynamicArray:=@RendererInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex];
-
- DrawChoreographyBatchRangeDynamicArray:=@RendererInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
-
- for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
-
-  if MaterialAlphaMode in aMaterialAlphaModes then begin
-
-   DrawChoreographyBatchRange.AlphaMode:=MaterialAlphaMode;
-
-   for PrimitiveTopology:=Low(TPrimitiveTopology) to high(TPrimitiveTopology) do begin
-
-    DrawChoreographyBatchRange.PrimitiveTopology:=PrimitiveTopology;
-
-    for FaceCullingMode:=Low(TFaceCullingMode) to high(TFaceCullingMode) do begin
-
-     DrawChoreographyBatchRange.FaceCullingMode:=FaceCullingMode;
-
-     DrawChoreographyBatchItems:=TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex,MaterialAlphaMode,PrimitiveTopology,FaceCullingMode];
-
-     if DrawChoreographyBatchItems.Count>0 then begin
-
-      DrawChoreographyBatchRange.FirstCommand:=GPUDrawIndexedIndirectCommandDynamicArray.Count;
-
-      for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItems.Count-1 do begin
-
-       DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
-
-       if (DrawChoreographyBatchItem.fCountIndices>0) and
-          (TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID,aRenderPassIndex]>0) then begin
-
-        GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray.AddNew;
-        GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray.Items[GPUDrawIndexedIndirectCommandIndex];
-        GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=DrawChoreographyBatchItem.fCountIndices;
-        GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,RendererInstanceID,aRenderPassIndex];
-        GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex:=DrawChoreographyBatchItem.fStartIndex;
-        GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
-        GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,RendererInstanceID,aRenderPassIndex];
-        BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fBoundingSpheres[aInFlightFrameIndex];
-        GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere^.Center,BoundingSphere^.Radius);
-
-       end;
-
-      end;
-
-      DrawChoreographyBatchRange.CountCommands:=GPUDrawIndexedIndirectCommandDynamicArray.Count-DrawChoreographyBatchRange.FirstCommand;
-
-      if DrawChoreographyBatchRange.CountCommands>0 then begin
-
-       DrawChoreographyBatchRange.Index:=DrawChoreographyBatchRangeDynamicArray.Count;
-       DrawChoreographyBatchRangeDynamicArray.Add(DrawChoreographyBatchRange);
-
-      end;
-
-     end;
-
-    end;
-
-   end;
-
-  end;
-
- end;
-
-end;
-
 function TpvScene3DCompareIndirectLights(const a,b:pointer):TpvInt32;
 begin
  result:=Sign((ord(TpvScene3D.TLight(b).fData.fType_=TpvScene3D.TLightData.TLightType.PrimaryDirectional) and 1)-
@@ -19503,8 +19408,7 @@ begin
  end;
 
  if aGPUCulling then begin
-  PrepareGPUCulling(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aMaterialAlphaModes);
- end else begin
+  TpvScene3DRendererInstance(aRendererInstance).PrepareGPUCulling(aInFlightFrameIndex,aRenderPassIndex,aMaterialAlphaModes);
  end;
 
 end;
