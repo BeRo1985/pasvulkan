@@ -156,8 +156,9 @@ void main(){
 #if PASS == 0
 
   // In the first pass, just draw the previous frame visible stuff as against-cull-data (HiZ depth buffer) for the next pass
-  // The previous drawIndexedIndirectCommands can't be reused directly, since as there is the possibility of no more existing 
-  // objects, data and so on. Therefore this first pass is needed, otherwise it would be possible that it breaks.
+  // The previous drawIndexedIndirectCommands can't be reused directly here in this implementation, since as there is the 
+  // possibility of no more existing objects, data and so on. Therefore this first pass is needed, otherwise it would be 
+  // possible that it breaks.
 
   uint invocationIndex = gl_LocalInvocationID.x;
 
