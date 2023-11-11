@@ -61,27 +61,73 @@ layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCoun
 
 layout(set = 0, binding = 4) uniform sampler2DArray uTextureDepth;
 
-// 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 aabb){
+bool referenceProjectSphere(const in vec3 center, const in float radius, const in mat4 projectionMatrix, const in float zNear, out vec4 aabb){
 
-  if (C.z < (r + znear)){
+  if(center.z < (radius + zNear)){ //if((-(center.z + radius)) < zNear){
+
     return false;
+
+  }else{
+
+    vec3 right = (projectionMatrix * vec4(vec3(-center.z, 0.0, center.x) * (radius / sqrt(dot(center, center) - (radius * radius))), 0.0)).xyw;
+    vec3 up = (projectionMatrix * vec2(0.0, radius).xyxx).xyw;
+
+    vec3 anchorCenter = (projectionMatrix * vec4(center, 1.0)).xyw;
+
+    vec2 leftAnchor = (anchorCenter.xy - right.xy) / (anchorCenter.z - right.z);
+    vec2 rightAnchor = (anchorCenter.xy + right.xy) / (anchorCenter.z + right.z);
+    vec2 downAnchor = (anchorCenter.xy - up.xy) / (anchorCenter.z - up.z);
+    vec2 upAnchor = (anchorCenter.xy + up.xy) / (anchorCenter.z + up.z);
+    
+    aabb = fma(
+      vec4(
+        min(min(min(leftAnchor, rightAnchor), downAnchor), upAnchor), 
+        max(max(max(leftAnchor, rightAnchor), downAnchor), upAnchor)
+      ), 
+      vec4(0.5), 
+      vec4(0.5)
+    );
+
+    return true;
+
   }
 
-  vec2 cx = -C.xz;
-  vec2 vx = vec2(sqrt(dot(cx, cx) - (r * r)), r);
-  vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
-  vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
+}
 
-  vec2 cy = -C.yz;
-  vec2 vy = vec2(sqrt(dot(cy, cy) - (r * r)), r);
-  vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
-  vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
+// 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
+bool projectSphere(vec3 center, float radius, float zNear, float P00, float P11, out vec4 aabb){
 
-  aabb = vec4((minx.x / minx.y) * P00, (miny.x / miny.y) * P11, (maxx.x / maxx.y) * P00, (maxy.x / maxy.y) * P11);
-  aabb = fma(aabb.xwzy, vec4(0.5), vec4(0.5)); // clip space -> uv space
+  if(center.z < (radius + zNear)){
 
-  return true;
+    return false;
+
+  }else{
+
+    vec2 cx = -center.xz;
+    vec2 vx = vec2(sqrt(dot(cx, cx) - (radius * radius)), radius);
+    vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
+    vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
+
+    vec2 cy = -center.yz;
+    vec2 vy = vec2(sqrt(dot(cy, cy) - (radius * radius)), radius);
+    vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
+    vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
+
+    aabb = fma(
+      vec4(
+        (minx.x / minx.y) * P00, 
+        (miny.x / miny.y) * P11,
+        (maxx.x / maxx.y) * P00, 
+        (maxy.x / maxy.y) * P11
+      ).xwzy, 
+      vec4(0.5), 
+      vec4(0.5)
+    ); 
+
+    return true;
+
+  }  
+
 }
 
 shared mat4 viewMatrices[8];
