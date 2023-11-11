@@ -4849,7 +4849,7 @@ var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex:TpvSizeInt
     BoundingSphere:PpvSphere;
 begin
 
- PerInFlightFrameGPUCulledArray^[aInFlightFrameIndex,aRenderPassIndex]:=true;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex]:=true;
 
  GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex];
 
