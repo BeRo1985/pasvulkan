@@ -192,7 +192,10 @@ type EpvFrameGraph=class(Exception);
                     (
                      Undefined,
                      Absolute,
-                     SurfaceDependent
+                     SurfaceDependent,
+                     SurfaceDependentPreviousPowerOfTwo,
+                     SurfaceDependentNextPowerOfTwo,
+                     SurfaceDependentNearestPowerOfTwo
                     );
                    PImageSizeKind=^TImageSizeKind;
                    TKind=TImageSizeKind;
@@ -1996,6 +1999,21 @@ begin
   TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
    fExtent.width:=Max(1,round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth));
    fExtent.height:=Max(1,round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight));
+   fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+  end;
+  TpvFrameGraph.TImageSize.TKind.SurfaceDependentPreviousPowerOfTwo:begin
+   fExtent.width:=Max(1,RoundDownToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
+   fExtent.height:=Max(1,RoundDownToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
+   fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+  end;
+  TpvFrameGraph.TImageSize.TKind.SurfaceDependentNextPowerOfTwo:begin
+   fExtent.width:=Max(1,RoundUpToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
+   fExtent.height:=Max(1,RoundUpToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
+   fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+  end;
+  TpvFrameGraph.TImageSize.TKind.SurfaceDependentNearestPowerOfTwo:begin
+   fExtent.width:=Max(1,RoundNearestToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
+   fExtent.height:=Max(1,RoundNearestToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
   end;
   else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
@@ -4033,6 +4051,33 @@ begin
    TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
     Width:=Max(1,round(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
     Height:=Max(1,round(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
+    if fMultiview then begin
+     Layers:=1;
+    end else begin
+     Layers:=Max(1,round(RenderPass.fSize.Size.w));
+    end;
+   end;
+   TpvFrameGraph.TImageSize.TKind.SurfaceDependentPreviousPowerOfTwo:begin
+    Width:=Max(1,RoundDownToPowerOfTwo(round(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth)));
+    Height:=Max(1,RoundDownToPowerOfTwo(round(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight)));
+    if fMultiview then begin
+     Layers:=1;
+    end else begin
+     Layers:=Max(1,round(RenderPass.fSize.Size.w));
+    end;
+   end;
+   TpvFrameGraph.TImageSize.TKind.SurfaceDependentNextPowerOfTwo:begin
+    Width:=Max(1,RoundUpToPowerOfTwo(round(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth)));
+    Height:=Max(1,RoundUpToPowerOfTwo(round(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight)));
+    if fMultiview then begin
+     Layers:=1;
+    end else begin
+     Layers:=Max(1,round(RenderPass.fSize.Size.w));
+    end;
+   end;
+   TpvFrameGraph.TImageSize.TKind.SurfaceDependentNearestPowerOfTwo:begin
+    Width:=Max(1,RoundNearestToPowerOfTwo(round(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth)));
+    Height:=Max(1,RoundNearestToPowerOfTwo(round(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight)));
     if fMultiview then begin
      Layers:=1;
     end else begin

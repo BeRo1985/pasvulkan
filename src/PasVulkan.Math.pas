@@ -1497,9 +1497,17 @@ type PpvScalar=^TpvScalar;
 
      PpvPolynomial=^TpvPolynomial;
 
+function RoundDownToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundDownToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundDownToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+
+function RoundNearestToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundNearestToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundNearestToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
 function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function IntLog264(x:TpvUInt64):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
@@ -1707,6 +1715,82 @@ function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:Tp
 
 implementation
 
+function RoundDownToPowerOfTwo(x:TpvUInt32):TpvUInt32;
+begin
+
+ if x=0 then begin
+
+  // Handle zero case
+  result:=0;
+
+ end else begin
+
+  // / Propagate the highest bit to the right
+  x:=x or (x shr 1);
+  x:=x or (x shr 2);
+  x:=x or (x shr 4);
+  x:=x or (x shr 8);
+  x:=x or (x shr 16);
+
+  // Subtract half of the value to get the previous power of 2
+  result:=x-(x shr 1);
+
+ end;
+
+end;
+
+function RoundDownToPowerOfTwo64(x:TpvUInt64):TpvUInt64;
+begin
+
+ if x=0 then begin
+
+  // Handle zero case
+  result:=0;
+
+ end else begin
+
+  // / Propagate the highest bit to the right
+  x:=x or (x shr 1);
+  x:=x or (x shr 2);
+  x:=x or (x shr 4);
+  x:=x or (x shr 8);
+  x:=x or (x shr 16);
+  x:=x or (x shr 32);
+
+  // Subtract half of the value to get the previous power of 2
+  result:=x-(x shr 1);
+
+ end;
+
+end;
+
+function RoundDownToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt;
+begin
+
+ if x=0 then begin
+
+  // Handle zero case
+  result:=0;
+
+ end else begin
+
+  // / Propagate the highest bit to the right
+  x:=x or (x shr 1);
+  x:=x or (x shr 2);
+  x:=x or (x shr 4);
+  x:=x or (x shr 8);
+  x:=x or (x shr 16);
+{$ifdef CPU64}
+  x:=x or (x shr 32);
+{$endif}
+
+  // Subtract half of the value to get the previous power of 2
+  result:=x-(x shr 1);
+
+ end;
+
+end;
+
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32;
 begin
  dec(x);
@@ -1742,6 +1826,42 @@ begin
  x:=x or (x shr 32);
 {$endif}
  result:=x+1;
+end;
+
+function RoundNearestToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+var a,b:TpvUInt32;
+begin
+ a:=RoundDownToPowerOfTwo(x);
+ b:=RoundUpToPowerOfTwo(x);
+ if (x-a)<(b-x) then begin
+  result:=a;
+ end else begin
+  result:=b;
+ end;
+end;
+
+function RoundNearestToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+var a,b:TpvUInt64;
+begin
+ a:=RoundDownToPowerOfTwo64(x);
+ b:=RoundUpToPowerOfTwo64(x);
+ if (x-a)<(b-x) then begin
+  result:=a;
+ end else begin
+  result:=b;
+ end;
+end;
+
+function RoundNearestToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+var a,b:TpvUInt32;
+begin
+ a:=RoundDownToPowerOfTwoSizeUInt(x);
+ b:=RoundUpToPowerOfTwoSizeUInt(x);
+ if (x-a)<(b-x) then begin
+  result:=a;
+ end else begin
+  result:=b;
+ end;
 end;
 
 function IntLog2(x:TpvUInt32):TpvUInt32; {$if defined(fpc)}{$ifdef CAN_INLINE}inline;{$endif}
