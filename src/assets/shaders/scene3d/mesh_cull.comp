@@ -158,8 +158,8 @@ void main(){
   // In the first pass, just draw the previous frame visible stuff as against-cull-data (HiZ depth buffer) for the next pass
   // The previous drawIndexedIndirectCommands can't be reused directly here in this everything-in-a-single-round-trip
   // implementation, since as there is the possibility of no more existing objects, different data offsets and so on. Therefore 
-  // this first pass is needed, otherwise it would be possible that it breaks, The object indices are temporally stable, so they
-  // can be reused.
+  // this first pass is needed, otherwise it would be possible that it breaks, On the other hand, the object indices are temporally 
+  // stable, so they can be reused from the previous frame for the starting point HiZ depth buffer.
 
   uint invocationIndex = gl_LocalInvocationID.x;
 
