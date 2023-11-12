@@ -2591,9 +2591,8 @@ type EpvScene3D=class(Exception);
        fObjectList:TpvObjectList;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
        fBufferStreamingMode:TBufferStreamingMode;
-       fUseMultiDraw:Boolean;
+       fMultiDrawSupport:Boolean;
        fMaxMultiDrawCount:TpvUInt32;
-       fUseMultiIndirectDraw:Boolean;
        fHardwareRaytracingSupport:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
@@ -2896,9 +2895,8 @@ type EpvScene3D=class(Exception);
        property UseBufferDeviceAddress:boolean read fUseBufferDeviceAddress write fUseBufferDeviceAddress;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
-       property UseMultiDraw:boolean read fUseMultiDraw write fUseMultiDraw;
+       property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
-       property UseMultiIndirectDraw:boolean read fUseMultiIndirectDraw write fUseMultiIndirectDraw;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
@@ -17132,24 +17130,13 @@ begin
   fBufferStreamingMode:=TBufferStreamingMode.Staging;
  end;
 
- if fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndexedIndexValue>=TpvInt64($80000000) then begin
-  fUseMultiDraw:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0) and
-                 (fVulkanDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
-  fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
-  fUseMultiIndirectDraw:=(fVulkanDevice.PhysicalDevice.Features.multiDrawIndirect<>VK_FALSE) and
-                         (fVulkanDevice.PhysicalDevice.Properties.limits.maxDrawIndirectCount>=65536);
-  fHardwareRaytracingSupport:=(fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
-                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
- end else begin
-  fUseMultiDraw:=false;
-  fMaxMultiDrawCount:=0;
-  fUseMultiIndirectDraw:=false;
-  fHardwareRaytracingSupport:=false;
- end;
+ fMultiDrawSupport:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MULTI_DRAW_EXTENSION_NAME)>0) and
+                    (fVulkanDevice.MultiDrawFeaturesEXT.multiDraw<>VK_FALSE);
 
-{fUseMultiDraw:=false;
- fMaxMultiDrawCount:=0;
- fUseMultiIndirectDraw:=false;}
+ fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
+
+ fHardwareRaytracingSupport:=(fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
+                             (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
 
  if fHardwareRaytracingSupport then begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or

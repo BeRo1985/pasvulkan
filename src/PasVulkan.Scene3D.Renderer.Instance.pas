@@ -5003,15 +5003,12 @@ procedure TpvScene3DRendererInstance.ExecuteDraw(const aPreviousInFlightFrameInd
                                                  const aPipelineLayout:TpvVulkanPipelineLayout;
                                                  const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources;
                                                  const aJitter:PpvVector4);
-var DrawChoreographyBatchRangeIndex,
-    GPUDrawIndexedIndirectCommandIndex:TpvSizeInt;
+var DrawChoreographyBatchRangeIndex:TpvSizeInt;
     Pipeline,NewPipeline:TpvVulkanPipeline;
     First:boolean;
     VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
-    GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
-    GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
@@ -5032,8 +5029,6 @@ begin
   Pipeline:=nil;
 
   First:=true;
-
-  GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex];
 
   DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
@@ -5068,24 +5063,12 @@ begin
 
      end;
 
-     if fScene3D.UseMultiIndirectDraw then begin
+     begin
 
       aCommandBuffer.CmdDrawIndexedIndirect(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,
                                             (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
                                             DrawChoreographyBatchRange^.CountCommands,
                                             SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
-
-     end else begin
-
-      for GPUDrawIndexedIndirectCommandIndex:=DrawChoreographyBatchRange^.FirstCommand to (DrawChoreographyBatchRange^.FirstCommand+DrawChoreographyBatchRange^.CountCommands)-1 do begin
-       GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray.Items[GPUDrawIndexedIndirectCommandIndex];
-       aCommandBuffer.CmdDrawIndexed(GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount,
-                                     GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount,
-                                     GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstIndex,
-                                     GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset,
-                                     GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance);
-      end;
-
      end;
 
     end;
