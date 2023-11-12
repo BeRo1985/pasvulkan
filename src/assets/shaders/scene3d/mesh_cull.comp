@@ -12,15 +12,6 @@
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
-layout(push_constant) uniform PushConstants {
-  uint baseDrawIndexedIndirectCommandIndex;
-  uint countDrawIndexedIndirectCommands;
-  uint drawCallIndex;
-  uint baseViewIndex;
-  uint countViews;
-  uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
-} pushConstants;
-
 /*
 struct VkDrawIndexedIndirectCommand {
   uint indexCount;
@@ -41,6 +32,42 @@ struct DrawIndexedIndirectCommand {
   uvec4 padding3; // just padding 
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
+#if PASS == 0
+
+layout(push_constant) uniform PushConstants {
+  uint baseDrawIndexedIndirectCommandIndex;
+  uint countDrawIndexedIndirectCommands;
+  uint drawCallIndex;
+  uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
+} pushConstants;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputDrawIndexedIndirectCommands {
+  DrawIndexedIndirectCommand commands[];
+} inputDrawIndexedIndirectCommands;
+
+layout(set = 0, binding = 1, std430) readonly buffer InputPreviousVisibleObjects {
+  uint bitmap[];
+} inputPreviousVisibleObjects;
+
+layout(set = 0, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
+  DrawIndexedIndirectCommand commands[];
+} outputDrawIndexedIndirectCommands;
+
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounts {
+  uint counts[];
+} outputDrawIndexedIndirectCommandCounts;
+
+#else // PASS == 1
+
+layout(push_constant) uniform PushConstants {
+  uint baseDrawIndexedIndirectCommandIndex;
+  uint countDrawIndexedIndirectCommands;
+  uint drawCallIndex;
+  uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
+  uint baseViewIndex;
+  uint countViews;
+} pushConstants;
+
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -56,25 +83,20 @@ layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCom
   DrawIndexedIndirectCommand commands[];
 } inputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 2, std430) readonly buffer InputPreviousVisibleObjects {
-  uint bitmap[];
-} inputPreviousVisibleObjects;
-
-layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommands {
+layout(set = 0, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand commands[];
 } outputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 4, std430) buffer OutputDrawIndexedIndirectCommandCounts {
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCounts {
   uint counts[];
 } outputDrawIndexedIndirectCommandCounts;
 
-layout(set = 0, binding = 5, std430) buffer OutputNewVisibleObjects {
+layout(set = 0, binding = 4, std430) buffer OutputNewVisibleObjects {
   uint bitmap[];
 } outputNewVisibleObjects;
 
-layout(set = 0, binding = 6) uniform sampler2DArray uTextureDepth;
+layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepth;
 
-#if PASS == 1
 bool referenceProjectSphere(const in vec3 center, const in float radius, const in mat4 projectionMatrix, const in float zNear, out vec4 aabb){
 
   if(center.z < (radius + zNear)){ //if((-(center.z + radius)) < zNear){
@@ -174,7 +196,7 @@ void main(){
 
   const uint objectIndex = cmd1.y;
 
-  if((pushConstants.firstFrame != 0u) &&  // If it is the first frame, just don't cull anything
+  if((pushConstants.skipCulling != 0u) &&  // If it is the first frame, just don't cull anything
      ((inputPreviousVisibleObjects.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u)){
     return; // Skip, since it was not visible in the previous frame
   }
