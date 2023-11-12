@@ -13541,7 +13541,7 @@ begin
 
  fSceneInstance.fCullObjectIDLock.Acquire;
  try
-  for Index:=0 to fGroup.fNodes.Count-1 do begin
+  for Index:=0 to length(fNodes)-1 do begin
    InstanceNode:=@fNodes[Index];
    fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode^.CullObjectID);
   end;
