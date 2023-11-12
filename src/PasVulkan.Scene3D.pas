@@ -13252,10 +13252,15 @@ begin
  fSceneInstance.fCullObjectIDLock.Acquire;
  try
   for Index:=0 to fGroup.fNodes.Count-1 do begin
+   Node:=fGroup.fNodes[Index];
    InstanceNode:=@fNodes[Index];
-   InstanceNode^.CullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
-   if fSceneInstance.fMaxCullObjectID<InstanceNode^.CullObjectID then begin
-    fSceneInstance.fMaxCullObjectID:=InstanceNode^.CullObjectID;
+   if assigned(Node.Mesh) then begin
+    InstanceNode^.CullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
+    if fSceneInstance.fMaxCullObjectID<InstanceNode^.CullObjectID then begin
+     fSceneInstance.fMaxCullObjectID:=InstanceNode^.CullObjectID;
+    end;
+   end else begin
+    InstanceNode^.CullObjectID:=0;
    end;
   end;
  finally
@@ -13554,7 +13559,13 @@ begin
  try
   for Index:=0 to length(fNodes)-1 do begin
    InstanceNode:=@fNodes[Index];
-   fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode^.CullObjectID);
+   if InstanceNode^.CullObjectID>0 then begin
+    try
+     fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode^.CullObjectID);
+    finally
+     InstanceNode^.CullObjectID:=0;
+    end;
+   end;
   end;
  finally
   fSceneInstance.fCullObjectIDLock.Release;
