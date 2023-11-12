@@ -450,6 +450,15 @@ begin
      (aVulkanDevice.PhysicalDevice.Vulkan12Features.drawIndirectCount=VK_FALSE)) then begin
   raise EpvApplication.Create('Application','Support for drawIndirectCount is needed',LOG_ERROR);
  end;
+ if (((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
+     (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)<0)) or
+    (((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) and
+     (aVulkanDevice.PhysicalDevice.Vulkan12Features.samplerFilterMinmax=VK_FALSE)) then begin
+  raise EpvApplication.Create('Application','Support for samplerFilterMinmax is needed',LOG_ERROR);
+ end;
+ if aVulkanDevice.PhysicalDevice.SamplerFilterMinmaxPropertiesEXT.filterMinmaxImageComponentMapping=VK_FALSE then begin
+  raise EpvApplication.Create('Application','Support for filterMinmaxImageComponentMapping is needed',LOG_ERROR);
+ end;
  if (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.descriptorBindingPartiallyBound=VK_FALSE) or
     (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.runtimeDescriptorArray=VK_FALSE) or
     (aVulkanDevice.PhysicalDevice.DescriptorIndexingFeaturesEXT.shaderSampledImageArrayNonUniformIndexing=VK_FALSE) then begin
@@ -513,6 +522,10 @@ begin
  if ((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
     (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME)>=0) then begin
   aVulkanDevice.EnabledExtensionNames.Add(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
+ end;
+ if ((aVulkanDevice.Instance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
+    (aVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)>=0) then begin
+  aVulkanDevice.EnabledExtensionNames.Add(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME);
  end;
 end;
 

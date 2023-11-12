@@ -61,6 +61,24 @@ compileshaderarguments=(
   "-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=1 -DMULTIVIEW -o ${tempPath}/downsample_rgba16f_multiview_level1_comp.spv"
   "-V downsample.comp -DRGBA16F -DMIPMAPLEVEL=2 -DMULTIVIEW -o ${tempPath}/downsample_rgba16f_multiview_level2_comp.spv"
 
+  "-V depth_resolve.comp -o ${tempPath}/depth_resolve_comp.spv"
+  "-V depth_resolve.comp -DREVERSEDZ -o ${tempPath}/depth_resolve_reversedz_comp.spv"
+  "-V depth_resolve.comp -DMSAA -o ${tempPath}/depth_resolve_depth_msaa_comp.spv"
+  "-V depth_resolve.comp -DMSAA -DREVERSEDZ -o ${tempPath}/depth_resolve_msaa_reversedz_comp.spv"
+  "-V depth_resolve.comp -DMULTIVIEW -o ${tempPath}/depth_resolve_multiview_comp.spv"
+  "-V depth_resolve.comp -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/depth_resolve_multiview_reversedz_comp.spv"
+  "-V depth_resolve.comp -DMULTIVIEW -DMSAA -o ${tempPath}/depth_resolve_multiview_msaa_comp.spv"
+  "-V depth_resolve.comp -DMULTIVIEW -DMSAA -DREVERSEDZ -o ${tempPath}/depth_resolve_multiview_msaa_reversedz_comp.spv"
+
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=0 -o ${tempPath}/downsample_culldepthpyramid_level0_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=0 -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_reversedz_level0_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -o ${tempPath}/downsample_culldepthpyramid_multiview_level0_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=0 -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_multiview_reversedz_level0_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=1 -o ${tempPath}/downsample_culldepthpyramid_level1_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -o ${tempPath}/downsample_culldepthpyramid_multiview_level1_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=1 -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_reversedz_level1_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_multiview_reversedz_level1_comp.spv"
+
   "-V downsample_depth.comp -DMIPMAPLEVEL=0 -o ${tempPath}/downsample_depth_level0_comp.spv"
   "-V downsample_depth.comp -DMIPMAPLEVEL=0 -DREVERSEDZ -o ${tempPath}/downsample_depth_reversedz_level0_comp.spv"
   "-V downsample_depth.comp -DMIPMAPLEVEL=0 -DMSAA -o ${tempPath}/downsample_depth_msaa_level0_comp.spv"
@@ -73,7 +91,7 @@ compileshaderarguments=(
   "-V downsample_depth.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -o ${tempPath}/downsample_depth_multiview_level1_comp.spv"
   "-V downsample_depth.comp -DMIPMAPLEVEL=1 -DREVERSEDZ -o ${tempPath}/downsample_depth_reversedz_level1_comp.spv"
   "-V downsample_depth.comp -DMIPMAPLEVEL=1 -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_depth_multiview_reversedz_level1_comp.spv"
-
+  
   "-V dof_autofocus.comp -o ${tempPath}/dof_autofocus_comp.spv"
   "-V dof_bokeh.comp -o ${tempPath}/dof_bokeh_comp.spv"
   "-V dof_prepare.frag -o ${tempPath}/dof_prepare_frag.spv"

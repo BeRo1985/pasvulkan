@@ -389,6 +389,7 @@ type EpvVulkanException=class(Exception);
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
+       fSamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
        fConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
        fShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT;
@@ -460,6 +461,7 @@ type EpvVulkanException=class(Exception);
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
+       property SamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT read fSamplerFilterMinmaxPropertiesEXT;
        property ConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT read fConservativeRasterizationPropertiesEXT;
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
        property ShaderDemoteToHelperInvocationFeaturesEXT:TVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT read fShaderDemoteToHelperInvocationFeaturesEXT;
@@ -1750,7 +1752,8 @@ type EpvVulkanException=class(Exception);
                           const aMinLod:TpvFloat;
                           const aMaxLod:TpvFloat;
                           const aBorderColor:TVkBorderColor;
-                          const aUnnormalizedCoordinates:boolean); reintroduce; overload;
+                          const aUnnormalizedCoordinates:boolean;
+                          const aReductionMode:TVkSamplerReductionMode=TVkSamplerReductionMode.VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -8402,6 +8405,16 @@ begin
   fProperties2KHR.pNext:=@fMultiDrawPropertiesEXT;
  end;
 
+ FillChar(fSamplerFilterMinmaxPropertiesEXT,SizeOf(TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT),#0);
+ fSamplerFilterMinmaxPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT;
+ if (((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
+     (fAvailableExtensionNames.IndexOf(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)>=0)) or
+    (((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>=VK_API_VERSION_1_2) and
+     (fVulkan12Features.samplerFilterMinmax<>VK_FALSE)) then begin
+  fSamplerFilterMinmaxPropertiesEXT.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fSamplerFilterMinmaxPropertiesEXT;
+ end;
+
  FillChar(fConservativeRasterizationPropertiesEXT,SizeOf(TVkPhysicalDeviceConservativeRasterizationPropertiesEXT),#0);
  fConservativeRasterizationPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
  if fAvailableExtensionNames.IndexOf(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)>=0 then begin
@@ -10032,6 +10045,8 @@ begin
     fVulkan12Features.bufferDeviceAddressMultiDevice:=PhysicalDevice.fVulkan12Features.bufferDeviceAddressMultiDevice;
 
     fVulkan12Features.hostQueryReset:=PhysicalDevice.fVulkan12Features.hostQueryReset;
+
+    fVulkan12Features.samplerFilterMinmax:=PhysicalDevice.fVulkan12Features.samplerFilterMinmax;
 
     fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
@@ -15651,8 +15666,10 @@ constructor TpvVulkanSampler.Create(const aDevice:TpvVulkanDevice;
                                     const aMinLod:TpvFloat;
                                     const aMaxLod:TpvFloat;
                                     const aBorderColor:TVkBorderColor;
-                                    const aUnnormalizedCoordinates:boolean);
+                                    const aUnnormalizedCoordinates:boolean;
+                                    const aReductionMode:TVkSamplerReductionMode);
 var SamplerCreateInfo:TVkSamplerCreateInfo;
+    SamplerReductionModeCreateInfo:TVkSamplerReductionModeCreateInfo;
 begin
 
  inherited Create;
@@ -15693,6 +15710,17 @@ begin
   SamplerCreateInfo.unnormalizedCoordinates:=VK_TRUE;
  end else begin
   SamplerCreateInfo.unnormalizedCoordinates:=VK_FALSE;
+ end;
+
+ if aReductionMode<>TVkSamplerReductionMode.VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE then begin
+  // From the specs:
+  // If this structure is not present, reductionMode is considered to be
+  // VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE.
+  FillChar(SamplerReductionModeCreateInfo,SizeOf(TVkSamplerReductionModeCreateInfo),#0);
+  SamplerReductionModeCreateInfo.sType:=VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT;
+  SamplerReductionModeCreateInfo.pNext:=SamplerCreateInfo.pNext;
+  SamplerCreateInfo.pNext:=@SamplerReductionModeCreateInfo;
+  SamplerReductionModeCreateInfo.reductionMode:=aReductionMode;
  end;
 
  VulkanCheckResult(fDevice.fDeviceVulkan.CreateSampler(fDevice.fDeviceHandle,@SamplerCreateInfo,fDevice.fAllocationCallbacks,@fSamplerHandle));
