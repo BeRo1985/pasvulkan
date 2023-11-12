@@ -2881,6 +2881,8 @@ type EpvScene3D=class(Exception);
        property VulkanStagingCommandPool:TpvVulkanCommandPool read fVulkanStagingCommandPool;
        property VulkanStagingCommandBuffer:TpvVulkanCommandBuffer read fVulkanStagingCommandBuffer;
        property VulkanStagingFence:TpvVulkanFence read fVulkanStagingFence;
+      public
+       property MaxCullObjectID:TpvUInt32 read fMaxCullObjectID;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
