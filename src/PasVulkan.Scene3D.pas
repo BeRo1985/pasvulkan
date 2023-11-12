@@ -1322,6 +1322,7 @@ type EpvScene3D=class(Exception);
               fDoubleSided:boolean;
               fMaterial:TpvScene3D.TMaterial;
               fNode:TObject;
+              fObjectIndex:TpvUInt32;
               fMesh:TObject;
               fMeshPrimitive:TpvSizeInt;
               fStartIndex:TpvSizeInt;
@@ -1339,6 +1340,7 @@ type EpvScene3D=class(Exception);
               property DoubleSided:boolean read fDoubleSided write fDoubleSided;
               property Material:TpvScene3D.TMaterial read fMaterial write fMaterial;
               property Node:TObject read fNode write fNode;
+              property ObjectIndex:TpvUInt32 read fObjectIndex write fObjectIndex;
               property Mesh:TObject read fMesh write fMesh;
               property MeshPrimitive:TpvSizeInt read fMeshPrimitive write fMeshPrimitive;
               property StartIndex:TpvSizeInt read fStartIndex write fStartIndex;
@@ -2319,8 +2321,10 @@ type EpvScene3D=class(Exception);
                      fRenderInstanceLock:TpvInt32;
                      fRenderInstances:TRenderInstances;
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
+                    public
                      fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
                      fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
+                    private
                      fActiveScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -7332,6 +7336,11 @@ begin
   try
    NewDrawChoreographyBatchItem.fGroupInstance:=aGroupInstance;
    if assigned(aGroupInstance) then begin
+    if assigned(DrawChoreographyBatchItem.Node) then begin
+     NewDrawChoreographyBatchItem.fObjectIndex:=TpvScene3D.TGroup.TInstance(aGroupInstance).Nodes[TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).fIndex].CullObjectID;
+    end else begin
+     NewDrawChoreographyBatchItem.fObjectIndex:=0;
+    end;
     if aIsUnique then begin
      inc(NewDrawChoreographyBatchItem.fStartIndex,TpvScene3D.TGroup.TInstance(aGroupInstance).fVulkanDrawUniqueIndexBufferOffset);
     end else begin
