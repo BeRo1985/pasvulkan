@@ -5361,12 +5361,12 @@ begin
  begin
 
   if (not assigned(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputVisibleObjectBuffers[aInFlightFrameIndex]) or
-     (fPerInFlightFrameGPUDrawIndexedIndirectCommandInputVisibleObjectBuffers[aInFlightFrameIndex].Size<=(Renderer.Scene3D.MaxCullObjectID+1)*SizeOf(TpvUInt32))) then begin
+     (fPerInFlightFrameGPUDrawIndexedIndirectCommandInputVisibleObjectBuffers[aInFlightFrameIndex].Size<=((Renderer.Scene3D.MaxCullObjectID+32) shr 5)*SizeOf(TpvUInt32))) then begin
 
    FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputVisibleObjectBuffers[aInFlightFrameIndex]);
 
    fPerInFlightFrameGPUDrawIndexedIndirectCommandInputVisibleObjectBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                                                        (Renderer.Scene3D.MaxCullObjectID+1)*SizeOf(TpvUInt32),
+                                                                                                                        ((Renderer.Scene3D.MaxCullObjectID+32) shr 5)*SizeOf(TpvUInt32),
                                                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                                                         [],
@@ -5385,12 +5385,12 @@ begin
   end;
 
   if (not assigned(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputVisibleObjectBuffers[aInFlightFrameIndex]) or
-     (fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputVisibleObjectBuffers[aInFlightFrameIndex].Size<=(Renderer.Scene3D.MaxCullObjectID+1)*SizeOf(TpvUInt32))) then begin
+     (fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputVisibleObjectBuffers[aInFlightFrameIndex].Size<=((Renderer.Scene3D.MaxCullObjectID+32) shr 5)*SizeOf(TpvUInt32))) then begin
 
    FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputVisibleObjectBuffers[aInFlightFrameIndex]);
 
    fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputVisibleObjectBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                                                                         (Renderer.Scene3D.MaxCullObjectID+1)*SizeOf(TpvUInt32),
+                                                                                                                         ((Renderer.Scene3D.MaxCullObjectID+32) shr 5)*SizeOf(TpvUInt32),
                                                                                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                                                          [],
