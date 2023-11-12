@@ -5536,6 +5536,23 @@ begin
 
   end;
 
+  begin
+
+   if fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex].Count>0 then begin
+
+    Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.Scene3D.VulkanStagingQueue,
+                                               Renderer.Scene3D.VulkanStagingCommandBuffer,
+                                               Renderer.Scene3D.VulkanStagingFence,
+                                               fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex].Items[0],
+                                               fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex],
+                                               0,
+                                               fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex].Count*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
+
+   end;
+
+
+  end;
+
  end;
 
  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
