@@ -620,9 +620,10 @@ type { TpvScene3DRendererInstance }
        function AddViews(const aInFlightFrameIndex:TpvInt32;const aViews:array of TpvScene3D.TView):TpvInt32;
        function GetJitterOffset(const aFrameCounter:TpvInt64):TpvVector2;
        function AddTemporalAntialiasingJitter(const aProjectionMatrix:TpvMatrix4x4;const aFrameCounter:TpvInt64):TpvMatrix4x4;
-       procedure PrepareGPUCulling(const aInFlightFrameIndex:TpvSizeInt;
-                                   const aRenderPassIndex:TpvSizeInt;
-                                   const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
+       procedure PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
+                             const aRenderPassIndex:TpvSizeInt;
+                             const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                             const aGPUCulling:boolean);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64);
        procedure UploadFrame(const aInFlightFrameIndex:TpvInt32);
        procedure DrawFrame(const aSwapChainImageIndex,aInFlightFrameIndex:TpvInt32;const aFrameCounter:TpvInt64;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -4884,9 +4885,10 @@ begin
 
 end;
 
-procedure TpvScene3DRendererInstance.PrepareGPUCulling(const aInFlightFrameIndex:TpvSizeInt;
-                                                       const aRenderPassIndex:TpvSizeInt;
-                                                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes);
+procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSizeInt;
+                                                 const aRenderPassIndex:TpvSizeInt;
+                                                 const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
+                                                 const aGPUCulling:boolean);
 var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -4900,7 +4902,7 @@ var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex:TpvSizeInt
     BoundingSphere:PpvSphere;
 begin
 
- fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex]:=true;
+ fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex]:=aGPUCulling;
 
  GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex];
 

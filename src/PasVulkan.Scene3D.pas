@@ -19468,9 +19468,10 @@ begin
   end;
  end;
 
- if aGPUCulling then begin
-  TpvScene3DRendererInstance(aRendererInstance).PrepareGPUCulling(aInFlightFrameIndex,aRenderPassIndex,aMaterialAlphaModes);
- end;
+ TpvScene3DRendererInstance(aRendererInstance).PrepareDraw(aInFlightFrameIndex,
+                                                           aRenderPassIndex,
+                                                           aMaterialAlphaModes,
+                                                           aGPUCulling);
 
 end;
 
@@ -19831,7 +19832,7 @@ begin
 
   Pipeline:=nil;
 
-  if RendererInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex] then begin
+  if true {RendererInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex]} then begin
 
    First:=true;
 
