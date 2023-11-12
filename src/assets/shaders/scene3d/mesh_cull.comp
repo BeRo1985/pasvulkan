@@ -18,7 +18,7 @@ layout(push_constant) uniform PushConstants {
   uint drawCallIndex;
   uint baseViewIndex;
   uint countViews;
-  uint firstFrame;
+  uint firstFrame; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
 } pushConstants;
 
 /*

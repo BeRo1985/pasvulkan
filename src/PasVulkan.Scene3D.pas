@@ -1365,7 +1365,8 @@ type EpvScene3D=class(Exception);
               case TpvUInt8 of
                0:(
                 DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
-                Padding0:array[0..2] of TpvUInt32;
+                ObjectIndex:TpvUInt32;
+                Padding0:array[1..2] of TpvUInt32;
                 BoundingSphere:TpvVector4;
                 Padding1:array[0..3] of TpvUInt32;
                );
@@ -1982,6 +1983,7 @@ type EpvScene3D=class(Exception);
                             AABBTreeProxy:TpvSizeInt;
                             Parents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                             CullVisibleIDs:array[0..MaxInFlightFrames-1] of TpvSizeInt;
+                            CullObjectID:TpvUInt32;
                            public
                             function InverseFrontFaces:boolean; inline;
                           end;
@@ -2622,6 +2624,9 @@ type EpvScene3D=class(Exception);
        fVulkanMaterialDataBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanMaterialUniformBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fTechniques:TpvTechniques;
+       fCullObjectIDLock:TPasMPSlimReaderWriterLock;
+       fCullObjectIDManager:TIDManager;
+       fMaxCullObjectID:TpvInt64;
        fImageListLock:TPasMPCriticalSection;
        fImages:TImages;
        fImageIDManager:TIDManager;
@@ -13233,6 +13238,19 @@ begin
   InstanceNode^.AABBTreeProxy:=-1;
  end;
 
+ fSceneInstance.fCullObjectIDLock.Acquire;
+ try
+  for Index:=0 to fGroup.fNodes.Count-1 do begin
+   InstanceNode:=@fNodes[Index];
+   InstanceNode^.CullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
+   if fSceneInstance.fMaxCullObjectID<InstanceNode^.CullObjectID then begin
+    fSceneInstance.fMaxCullObjectID:=InstanceNode^.CullObjectID
+   end;
+  end;
+ finally
+  fSceneInstance.fCullObjectIDLock.Release;
+ end;
+
  SetLength(fAnimations,fGroup.fAnimations.Count+1);
  for Index:=0 to length(fAnimations)-1 do begin
   fAnimations[Index]:=TpvScene3D.TGroup.TInstance.TAnimation.Create;
@@ -13449,6 +13467,7 @@ end;
 destructor TpvScene3D.TGroup.TInstance.Destroy;
 var Index:TPasGLTFSizeInt;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
 
  Unload;
@@ -13519,6 +13538,16 @@ begin
  FreeAndNil(fCameras);
 
  FreeAndNil(fLights);
+
+ fSceneInstance.fCullObjectIDLock.Acquire;
+ try
+  for Index:=0 to fGroup.fNodes.Count-1 do begin
+   InstanceNode:=@fNodes[Index];
+   fSceneInstance.fCullObjectIDManager.FreeID(InstanceNode^.CullObjectID);
+  end;
+ finally
+  fSceneInstance.fCullObjectIDLock.Release;
+ end;
 
  for Index:=0 to length(fNodes)-1 do begin
   if assigned(fNodes[Index].Light) then begin
@@ -17199,6 +17228,12 @@ begin
 
  fTechniques:=TpvTechniques.Create;
 
+ fCullObjectIDLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fCullObjectIDManager:=TpvScene3D.TIDManager.Create;
+
+ fMaxCullObjectID:=-1;
+
  fImageListLock:=TPasMPCriticalSection.Create;
 
  fImages:=TImages.Create;
@@ -17599,6 +17634,10 @@ begin
  FreeAndNil(fImageIDHashMap);
  FreeAndNil(fImageIDManager);
  FreeAndNil(fImageListLock);
+
+ FreeAndNil(fCullObjectIDManager);
+
+ FreeAndNil(fCullObjectIDLock);
 
  FreeAndNil(fTechniques);
 
