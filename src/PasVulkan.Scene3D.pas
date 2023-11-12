@@ -2626,7 +2626,7 @@ type EpvScene3D=class(Exception);
        fTechniques:TpvTechniques;
        fCullObjectIDLock:TPasMPSlimReaderWriterLock;
        fCullObjectIDManager:TIDManager;
-       fMaxCullObjectID:TpvInt64;
+       fMaxCullObjectID:TpvUInt32;
        fImageListLock:TPasMPCriticalSection;
        fImages:TImages;
        fImageIDManager:TIDManager;
@@ -13244,7 +13244,7 @@ begin
    InstanceNode:=@fNodes[Index];
    InstanceNode^.CullObjectID:=fSceneInstance.fCullObjectIDManager.AllocateID;
    if fSceneInstance.fMaxCullObjectID<InstanceNode^.CullObjectID then begin
-    fSceneInstance.fMaxCullObjectID:=InstanceNode^.CullObjectID
+    fSceneInstance.fMaxCullObjectID:=InstanceNode^.CullObjectID;
    end;
   end;
  finally
@@ -17232,7 +17232,7 @@ begin
 
  fCullObjectIDManager:=TpvScene3D.TIDManager.Create;
 
- fMaxCullObjectID:=-1;
+ fMaxCullObjectID:=0;
 
  fImageListLock:=TPasMPCriticalSection.Create;
 
