@@ -18,7 +18,7 @@ layout(push_constant) uniform PushConstants {
   uint drawCallIndex;
   uint baseViewIndex;
   uint countViews;
-  uint firstFrame; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
+  uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
 } pushConstants;
 
 /*
@@ -56,9 +56,9 @@ layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCom
   DrawIndexedIndirectCommand commands[];
 } inputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 2, std430) readonly buffer InputPreviousVisibleNodes {
+layout(set = 0, binding = 2, std430) readonly buffer InputPreviousVisibleObjects {
   uint bitmap[];
-} inputPreviousVisibleNodes;
+} inputPreviousVisibleObjects;
 
 layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand commands[];
@@ -68,9 +68,9 @@ layout(set = 0, binding = 4, std430) buffer OutputDrawIndexedIndirectCommandCoun
   uint counts[];
 } outputDrawIndexedIndirectCommandCounts;
 
-layout(set = 0, binding = 5, std430) buffer OutputNewVisibleNodes {
+layout(set = 0, binding = 5, std430) buffer OutputNewVisibleObjects {
   uint bitmap[];
-} outputNewVisibleNodes;
+} outputNewVisibleObjects;
 
 layout(set = 0, binding = 6) uniform sampler2DArray uTextureDepth;
 
@@ -174,7 +174,7 @@ void main(){
   const uint objectIndex = cmd1.y;
 
   if((pushConstants.firstFrame != 0u) &&  // If it is the first frame, just don't cull anything
-     ((inputPreviousVisibleNodes.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u)){
+     ((inputPreviousVisibleObjects.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u)){
     return; // Skip, since it was not visible in the previous frame
   }
 
@@ -283,9 +283,9 @@ void main(){
   const uint objectIndex = cmd1.y;
   
   if(isDrawIndexedIndirectCommandVisible){
-    atomicOr(outputNewVisibleNodes.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u));
+    atomicOr(outputNewVisibleObjects.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u));
   }else{
-    atomicAnd(outputNewVisibleNodes.bitmap[objectIndex >> 5u], ~(1u << (objectIndex & 31u)));
+    atomicAnd(outputNewVisibleObjects.bitmap[objectIndex >> 5u], ~(1u << (objectIndex & 31u)));
     return;
   }
 
