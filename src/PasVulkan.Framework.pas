@@ -10048,6 +10048,8 @@ begin
 
     fVulkan12Features.samplerFilterMinmax:=PhysicalDevice.fVulkan12Features.samplerFilterMinmax;
 
+    fVulkan12Features.drawIndirectCount:=PhysicalDevice.fVulkan12Features.drawIndirectCount;
+
     fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;

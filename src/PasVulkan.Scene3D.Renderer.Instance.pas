@@ -5090,10 +5090,11 @@ procedure TpvScene3DRendererInstance.ExecuteDraw(const aPreviousInFlightFrameInd
                                                  const aJitter:PpvVector4);
 var DrawChoreographyBatchRangeIndex:TpvSizeInt;
     Pipeline,NewPipeline:TpvVulkanPipeline;
-    First:boolean;
+    First,GPUCulling:boolean;
     VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
+    vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
@@ -5114,6 +5115,20 @@ begin
   Pipeline:=nil;
 
   First:=true;
+
+  GPUCulling:=fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,aRenderPassIndex];
+
+  if GPUCulling then begin
+   if assigned(Renderer.VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount) then begin
+    vkCmdDrawIndexedIndirectCount:=Renderer.VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount;
+   end else if assigned(Renderer.VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCountKHR) then begin
+    vkCmdDrawIndexedIndirectCount:=addr(Renderer.VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCountKHR);
+   end else begin
+    vkCmdDrawIndexedIndirectCount:=nil;
+   end;
+  end else begin
+   vkCmdDrawIndexedIndirectCount:=nil;
+  end;
 
   DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
@@ -5148,7 +5163,17 @@ begin
 
      end;
 
-     begin
+     if assigned(vkCmdDrawIndexedIndirectCount) then begin
+
+      vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                    fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,
+                                    (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
+                                    fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                    DrawChoreographyBatchRange^.Index*SizeOf(TpvUInt32),
+                                    DrawChoreographyBatchRange^.CountCommands,
+                                    SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
+
+     end else begin
 
       aCommandBuffer.CmdDrawIndexedIndirect(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,
                                             (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
