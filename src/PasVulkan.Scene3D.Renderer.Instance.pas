@@ -586,6 +586,7 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
        fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers:TpvScene3D.TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers;
        fPerInFlightFrameGPUCulledArray:TpvScene3D.TPerInFlightFrameGPUCulledArray;
+       fPerInFlightFrameGPUCountObjectIndicesArray:TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray;
        fPointerToPerInFlightFrameGPUCulledArray:TpvScene3D.PPerInFlightFrameGPUCulledArray;
        fDrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets;
       private
@@ -3592,6 +3593,8 @@ begin
 
  fPointerToPerInFlightFrameGPUCulledArray:=@fPerInFlightFrameGPUCulledArray;
 
+ FillChar(fPerInFlightFrameGPUCountObjectIndicesArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray),#0);
+
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
   for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
    fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex,RenderPassIndex].Initialize;
@@ -5455,6 +5458,8 @@ begin
 
 
  begin
+
+  fPerInFlightFrameGPUCountObjectIndicesArray[aInFlightFrameIndex]:=Max(0,fScene3D.MaxCullObjectID+1);
 
   Count:=fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex].Count;
 

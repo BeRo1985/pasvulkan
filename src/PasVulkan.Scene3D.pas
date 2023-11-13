@@ -1386,6 +1386,8 @@ type EpvScene3D=class(Exception);
             TPerInFlightFrameGPUDrawIndexedIndirectCommandBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TPerInFlightFrameGPUCulledArray=array[0..MaxInFlightFrames-1,0..MaxRenderPassIndices-1] of Boolean;
             PPerInFlightFrameGPUCulledArray=^TPerInFlightFrameGPUCulledArray;
+            TPerInFlightFrameGPUCountObjectIndicesArray=array[0..MaxInFlightFrames-1] of TpvSizeInt;
+            PPerInFlightFrameGPUCountObjectIndicesArray=^TPerInFlightFrameGPUCountObjectIndicesArray;
             TDrawChoreographyBatchRange=record
              AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
              PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
