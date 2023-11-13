@@ -7587,10 +7587,6 @@ begin
 
    begin
 
-    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorSet);
-
-    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorPool);
-
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                  1);
@@ -8019,10 +8015,6 @@ begin
    end;
 
    begin
-
-    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorSet);
-
-    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorPool);
 
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -17289,16 +17281,16 @@ var Index,InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
     CurrentObject:TObject;
 begin
 
- if assigned(ResourceManager) then begin
-  ResourceManager.DestroyDelayedFreeingObjectsWithParent(self);
- end;
-
  for Index:=0 to fFreeQueue.Count-1 do begin
   FreeAndNil(fFreeQueue.ItemArray[Index].Data);
  end;
  FreeAndNil(fFreeQueue);
 
  FreeAndNil(fFreeQueueLock);
+
+ if assigned(ResourceManager) then begin
+  ResourceManager.DestroyDelayedFreeingObjectsWithParent(self);
+ end;
 
  Unload;
 
@@ -17513,6 +17505,7 @@ var Index:TpvSizeInt;
 begin
  fFreeQueueLock.Acquire;
  try
+  Index:=0;
   while Index<fFreeQueue.Count do begin
    Item:=@fFreeQueue.ItemArray[Index];
    if Item^.Counter>0 then begin
@@ -17529,20 +17522,21 @@ begin
 end;
 
 procedure TpvScene3D.AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32);
-var Index:TpvSizeInt;
-    Item:PFreeQueueItem;
+var Item:PFreeQueueItem;
 begin
- fFreeQueueLock.Acquire;
- try
-  Item:=fFreeQueue.AddNew;
-  if aFrameDelay<0 then begin
-   Item^.Counter:=fCountInFlightFrames;
-  end else begin
-   Item^.Counter:=aFrameDelay;
+ if assigned(aObject) then begin
+  fFreeQueueLock.Acquire;
+  try
+   Item:=fFreeQueue.AddNew;
+   if aFrameDelay<0 then begin
+    Item^.Counter:=fCountInFlightFrames;
+   end else begin
+    Item^.Counter:=aFrameDelay;
+   end;
+   Item^.Data:=aObject;
+  finally
+   fFreeQueueLock.Release;
   end;
-  Item^.Data:=aObject;
- finally
-  fFreeQueueLock.Release;
  end;
 end;
 

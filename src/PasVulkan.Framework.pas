@@ -10050,6 +10050,9 @@ begin
 
     fVulkan12Features.drawIndirectCount:=PhysicalDevice.fVulkan12Features.drawIndirectCount;
 
+    fVulkan12Features.shaderOutputLayer:=PhysicalDevice.fVulkan12Features.shaderOutputLayer;
+    fVulkan12Features.shaderOutputViewportIndex:=PhysicalDevice.fVulkan12Features.shaderOutputViewportIndex;
+
     fDescriptorIndexingFeaturesEXT.shaderInputAttachmentArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderInputAttachmentArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderUniformTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderUniformTexelBufferArrayDynamicIndexing;
     fDescriptorIndexingFeaturesEXT.shaderStorageTexelBufferArrayDynamicIndexing:=PhysicalDevice.fVulkan12Features.shaderStorageTexelBufferArrayDynamicIndexing;
