@@ -81,6 +81,7 @@ type { TpvScene3DRendererArray2DImage }
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fLayers:TpvInt32;
+       fFormat:TVkFormat;
       public
 
        constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
@@ -100,6 +101,8 @@ type { TpvScene3DRendererArray2DImage }
        property Height:TpvInt32 read fHeight;
 
        property Layers:TpvInt32 read fLayers;
+
+       property Format:TVkFormat read fFormat;
 
      end;
 
@@ -127,6 +130,8 @@ begin
  fHeight:=aHeight;
 
  fLayers:=aLayers;
+
+ fFormat:=aFormat;
 
  case aFormat of
   VK_FORMAT_D16_UNORM,
