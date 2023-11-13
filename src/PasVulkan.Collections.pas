@@ -120,7 +120,8 @@ type TpvDynamicArray<T>=record
 
      TpvDynamicQueue<T>=record
       public
-       type TQueueItems=array of T;
+       type PT=^T;
+            TQueueItems=array of T;
       public
        Items:TQueueItems;
        Head:TpvSizeInt;
@@ -137,6 +138,7 @@ type TpvDynamicArray<T>=record
        function Dequeue(out aItem:T):boolean; overload;
        function Dequeue:boolean; overload;
        function Peek(out aItem:T):boolean;
+       function PeekIndirect:PT;
      end;
 
      { TpvDynamicArrayList }
@@ -1129,6 +1131,15 @@ begin
  result:=Count>0;
  if result then begin
   aItem:=Items[Head];
+ end;
+end;
+
+function TpvDynamicQueue<T>.PeekIndirect:PT;
+begin
+ if Count>0 then begin
+  result:=@Items[Head];
+ end else begin
+  result:=nil;
  end;
 end;
 

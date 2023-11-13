@@ -306,6 +306,12 @@ type EpvScene3D=class(Exception);
             end;
             PViewUniformBuffer=^TViewUniformBuffer;
             TVulkanViewUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+            TFreeQueueItem=record
+             Counter:TpvInt32;
+             Data:TObject;
+            end;
+            PFreeQueueItem=^TFreeQueueItem;
+            TFreeQueue=TpvDynamicArrayList<TFreeQueueItem>;
             TGlobalVulkanInstanceMatrixBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TGlobalVulkanInstanceMatrixDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             PGlobalVulkanInstanceMatrixDynamicArray=^TGlobalVulkanInstanceMatrixDynamicArray;
@@ -2546,6 +2552,8 @@ type EpvScene3D=class(Exception);
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
        fRendererInstanceIDManager:TRendererInstanceIDManager;
+       fFreeQueueLock:TPasMPSlimReaderWriterLock;
+       fFreeQueue:TFreeQueue;
        fObjectListLock:TPasMPCriticalSection;
        fObjectList:TpvObjectList;
        fPotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet;
@@ -2714,6 +2722,8 @@ type EpvScene3D=class(Exception);
                                     const aRenderPassIndex:TpvSizeInt;
                                     const aPreviousInFlightFrameIndex:TpvSizeInt;
                                     const aInFlightFrameIndex:TpvSizeInt);
+      private
+       procedure ProcessFreeQueue;
       public
        class function EncodeModeFlags(const aAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
                                       const aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
@@ -2725,6 +2735,7 @@ type EpvScene3D=class(Exception);
       public
        constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
        destructor Destroy; override;
+       procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure Upload;
        procedure Unload;
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -7384,11 +7395,11 @@ begin
    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
    // or the buffers are not yet allocated
 
-   FreeAndNil(fVulkanComputeDescriptorSet);
-   FreeAndNil(fVulkanComputeDescriptorPool);
+   fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorSet);
+   fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorPool);
 
    if (not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))) then begin
-    FreeAndNil(fVulkanDynamicVertexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanDynamicVertexBuffer);
     fVulkanDynamicVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                        Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7417,7 +7428,7 @@ begin
    end;
 
    if (not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))) then begin
-    FreeAndNil(fVulkanStaticVertexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanStaticVertexBuffer);
     fVulkanStaticVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                       Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7446,7 +7457,7 @@ begin
    end;
 
    if (not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
-    FreeAndNil(fVulkanDrawIndexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanDrawIndexBuffer);
     fVulkanDrawIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                    Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7475,7 +7486,7 @@ begin
    end;
 
    if (not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
-    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanDrawUniqueIndexBuffer);
     fVulkanDrawUniqueIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                          Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32),
                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7504,7 +7515,7 @@ begin
    end;
 
    if (not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))) then begin
-    FreeAndNil(fVulkanMorphTargetVertexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanMorphTargetVertexBuffer);
     fVulkanMorphTargetVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                            Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex),
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -7533,7 +7544,7 @@ begin
    end;
 
    if (not assigned(fVulkanJointBlockBuffer)) or (fVulkanJointBlockBuffer.Size<(Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))) then begin
-    FreeAndNil(fVulkanJointBlockBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanJointBlockBuffer);
     fVulkanJointBlockBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                     Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
@@ -7575,6 +7586,10 @@ begin
    end;
 
    begin
+
+    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorSet);
+
+    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorPool);
 
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -7819,8 +7834,8 @@ begin
    // Just reupload all buffers in this case, since the size of the buffers has changed (larger than before)
    // or the buffers are not yet allocated 
 
-   FreeAndNil(fVulkanComputeDescriptorSet);
-   FreeAndNil(fVulkanComputeDescriptorPool);
+   fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorSet);
+   fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorPool);
 
    for Group in fSceneInstance.fGroups do begin
     if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
@@ -7836,7 +7851,7 @@ begin
    end;
 
    if (not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertex))) then begin
-    FreeAndNil(fVulkanCachedVertexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanCachedVertexBuffer);
     fVulkanCachedVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                       Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertex),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7856,7 +7871,7 @@ begin
    end;
 
    if (not assigned(fVulkanCachedVertexGenerationBuffer)) or (fVulkanCachedVertexGenerationBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertexGeneration))) then begin
-    FreeAndNil(fVulkanCachedVertexGenerationBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanCachedVertexGenerationBuffer);
     fVulkanCachedVertexGenerationBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                 Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertexGeneration),
                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7876,7 +7891,7 @@ begin
    end;
 
    if fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex)))) then begin
-    FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanCachedRaytracingVertexBuffer);
     fVulkanCachedRaytracingVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                 Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex),
                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -7896,7 +7911,7 @@ begin
    end;
 
    if (not assigned(fVulkanNodeMatricesBuffer)) or (fVulkanNodeMatricesBuffer.Size<(Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4))) then begin
-    FreeAndNil(fVulkanNodeMatricesBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanNodeMatricesBuffer);
     case fSceneInstance.fBufferStreamingMode of
      TBufferStreamingMode.Direct:begin
       fVulkanNodeMatricesBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -7950,7 +7965,7 @@ begin
    end;
 
    if (not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat))) then begin
-    FreeAndNil(fVulkanMorphTargetVertexWeightsBuffer);
+    fSceneInstance.AddToFreeQueue(fVulkanMorphTargetVertexWeightsBuffer);
     case fSceneInstance.fBufferStreamingMode of
      TBufferStreamingMode.Direct:begin
       fVulkanMorphTargetVertexWeightsBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -8004,6 +8019,10 @@ begin
    end;
 
    begin
+
+    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorSet);
+
+    fSceneInstance.AddToFreeQueue(fVulkanComputeDescriptorPool);
 
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -16866,6 +16885,10 @@ begin
 
  fRendererInstanceIDManager:=TRendererInstanceIDManager.Create;
 
+ fFreeQueueLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fFreeQueue:=TFreeQueue.Create;
+
  fObjectListLock:=TPasMPCriticalSection.Create;
 
  fObjectList:=TpvObjectList.Create;
@@ -17270,6 +17293,13 @@ begin
   ResourceManager.DestroyDelayedFreeingObjectsWithParent(self);
  end;
 
+ for Index:=0 to fFreeQueue.Count-1 do begin
+  FreeAndNil(fFreeQueue.ItemArray[Index].Data);
+ end;
+ FreeAndNil(fFreeQueue);
+
+ FreeAndNil(fFreeQueueLock);
+
  Unload;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
@@ -17475,6 +17505,45 @@ begin
  aAlphaMode:=TpvScene3D.TMaterial.TAlphaMode(TpvUInt32((aFlags shr 0) and 3));
  aPrimitiveTopology:=TpvScene3D.TPrimitiveTopology(TpvUInt32((aFlags shr 2) and 3));
  aFaceCullingMode:=TpvScene3D.TFaceCullingMode(TpvUInt32((aFlags shr 4) and 3));
+end;
+
+procedure TpvScene3D.ProcessFreeQueue;
+var Index:TpvSizeInt;
+    Item:PFreeQueueItem;
+begin
+ fFreeQueueLock.Acquire;
+ try
+  while Index<fFreeQueue.Count do begin
+   Item:=@fFreeQueue.ItemArray[Index];
+   if Item^.Counter>0 then begin
+    dec(Item^.Counter);
+    inc(Index);
+   end else begin
+    FreeAndNil(Item^.Data);
+    fFreeQueue.Delete(Index);
+   end;
+  end;
+ finally
+  fFreeQueueLock.Release;
+ end;
+end;
+
+procedure TpvScene3D.AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32);
+var Index:TpvSizeInt;
+    Item:PFreeQueueItem;
+begin
+ fFreeQueueLock.Acquire;
+ try
+  Item:=fFreeQueue.AddNew;
+  if aFrameDelay<0 then begin
+   Item^.Counter:=fCountInFlightFrames;
+  end else begin
+   Item^.Counter:=aFrameDelay;
+  end;
+  Item^.Data:=aObject;
+ finally
+  fFreeQueueLock.Release;
+ end;
 end;
 
 procedure TpvScene3D.NewImageDescriptorGeneration;
@@ -18231,6 +18300,7 @@ end;
 procedure TpvScene3D.Check(const aInFlightFrameIndex:TpvSizeInt);
 var Group:TpvScene3D.TGroup;
 begin
+ ProcessFreeQueue;
  for Group in fGroups do begin
   Group.Check(aInFlightFrameIndex);
  end;
