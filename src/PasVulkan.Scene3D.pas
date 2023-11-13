@@ -1398,7 +1398,7 @@ type EpvScene3D=class(Exception);
              AlphaMode:TpvScene3D.TMaterial.TAlphaMode;
              PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
              FaceCullingMode:TpvScene3D.TFaceCullingMode;
-             Index:TpvUInt32;
+             DrawCallIndex:TpvUInt32;
              FirstCommand:TpvUInt32;
              CountCommands:TpvUInt32;
             end;

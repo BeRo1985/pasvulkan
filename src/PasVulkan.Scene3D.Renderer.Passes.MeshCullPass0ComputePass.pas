@@ -248,7 +248,7 @@ begin
      PushConstants.BaseDrawIndexedIndirectCommandIndex:=DrawChoreographyBatchRange^.FirstCommand;
      PushConstants.CountDrawIndexedIndirectCommands:=DrawChoreographyBatchRange^.CountCommands;
      PushConstants.CountObjectIndices:=fInstance.PerInFlightFrameGPUCountObjectIndicesArray[PreviousInFlightFrameIndex];
-     PushConstants.DrawCallIndex:=DrawChoreographyBatchRange^.Index;
+     PushConstants.DrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
      PushConstants.SkipCulling:=IfThen((aFrameIndex=0) or (fInstance.PerInFlightFrameGPUCountObjectIndicesArray[PreviousInFlightFrameIndex]=0),1,0);
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,

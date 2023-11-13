@@ -5147,7 +5147,8 @@ procedure TpvScene3DRendererInstance.PrepareDraw(const aInFlightFrameIndex:TpvSi
                                                  const aRenderPassIndex:TpvSizeInt;
                                                  const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                                                  const aGPUCulling:boolean);
-var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex:TpvSizeInt;
+var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex,
+    DrawChoreographyBatchRangeIndex:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
@@ -5156,6 +5157,7 @@ var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex:TpvSizeInt
     GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.TDrawChoreographyBatchRange;
+    DrawChoreographyBatchRangeItem:TpvScene3D.PDrawChoreographyBatchRange;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
     BoundingSphere:PpvSphere;
 begin
@@ -5216,8 +5218,14 @@ begin
 
       if DrawChoreographyBatchRange.CountCommands>0 then begin
 
-       DrawChoreographyBatchRange.Index:=DrawChoreographyBatchRangeDynamicArray.Count;
-       DrawChoreographyBatchRangeDynamicArray.Add(DrawChoreographyBatchRange);
+       DrawChoreographyBatchRangeIndex:=DrawChoreographyBatchRangeDynamicArray.AddNew;
+       DrawChoreographyBatchRangeItem:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
+       DrawChoreographyBatchRangeItem^.AlphaMode:=DrawChoreographyBatchRange.AlphaMode;
+       DrawChoreographyBatchRangeItem^.PrimitiveTopology:=DrawChoreographyBatchRange.PrimitiveTopology;
+       DrawChoreographyBatchRangeItem^.FaceCullingMode:=DrawChoreographyBatchRange.FaceCullingMode;
+       DrawChoreographyBatchRangeItem^.DrawCallIndex:=DrawChoreographyBatchRangeIndex;
+       DrawChoreographyBatchRangeItem^.FirstCommand:=DrawChoreographyBatchRange.FirstCommand;
+       DrawChoreographyBatchRangeItem^.CountCommands:=DrawChoreographyBatchRange.CountCommands;
 
       end;
 
@@ -5326,7 +5334,7 @@ begin
                                     fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,
                                     (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
                                     fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
-                                    DrawChoreographyBatchRange^.Index*SizeOf(TpvUInt32),
+                                    DrawChoreographyBatchRange^.DrawCallIndex*SizeOf(TpvUInt32),
                                     DrawChoreographyBatchRange^.CountCommands,
                                     SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand));
 

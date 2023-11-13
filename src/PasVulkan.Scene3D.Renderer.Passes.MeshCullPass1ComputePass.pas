@@ -252,7 +252,7 @@ begin
      PushConstants.BaseDrawIndexedIndirectCommandIndex:=DrawChoreographyBatchRange^.FirstCommand;
      PushConstants.CountDrawIndexedIndirectCommands:=DrawChoreographyBatchRange^.CountCommands;
      PushConstants.CountObjectIndices:=fInstance.PerInFlightFrameGPUCountObjectIndicesArray[aInFlightFrameIndex];
-     PushConstants.DrawCallIndex:=DrawChoreographyBatchRange^.Index;
+     PushConstants.DrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
      PushConstants.SkipCulling:=0;
      PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
      PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
