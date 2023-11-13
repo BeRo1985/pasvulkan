@@ -38,6 +38,7 @@ layout(push_constant) uniform PushConstants {
   uint baseDrawIndexedIndirectCommandIndex;
   uint countDrawIndexedIndirectCommands;
   uint drawCallIndex;
+  uint countObjectIndices;
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
 } pushConstants;
 
@@ -63,6 +64,7 @@ layout(push_constant) uniform PushConstants {
   uint baseDrawIndexedIndirectCommandIndex;
   uint countDrawIndexedIndirectCommands;
   uint drawCallIndex;
+  uint countObjectIndices;
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
   uint baseViewIndex;
   uint countViews;
@@ -196,8 +198,12 @@ void main(){
 
   const uint objectIndex = cmd1.y;
 
-  if((pushConstants.skipCulling != 0u) &&  // If it is the first frame, just don't cull anything
-     ((inputPreviousVisibleObjects.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u)){
+  if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
+     ((objectIndex < pushConstants.countObjectIndices) && // Check if the object index is in the valid range, since
+                                                          // new drawIndexedIndirectCommands may have been added 
+                                                          // with a higher object index than the current 
+                                                          // countObjectIndices in contrast to the previous frame
+      ((inputPreviousVisibleObjects.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u))){
     return; // Skip, since it was not visible in the previous frame
   }
 
@@ -253,9 +259,9 @@ void main(){
 
   bool isDrawIndexedIndirectCommandVisible = false;
 
-  // Only cull when sphere has a positive radius, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
+  // Only cull when needed, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
   // directly to the output buffer in that case.
-  if(boundingSphere.w > 0.0){
+  if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u)){
  
     vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
 
@@ -297,6 +303,10 @@ void main(){
     }
 
     isDrawIndexedIndirectCommandVisible = isDrawIndexedIndirectCommandVisibleBits != 0u;
+
+  }else{
+      
+    isDrawIndexedIndirectCommandVisible = true;
 
   }
 
