@@ -175,29 +175,29 @@ void main(){
 
   // In the second pass, cull the stuff against the previous frame visible stuff but with the current view and projection matrices
 
-  uint invocationIndex = gl_GlobalInvocationID.x;
+  uint localInvocationIndex = gl_LocalInvocationID.x;
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
   uint countViews = min(pushConstants.countViews, 8); 
 
-  if(invocationIndex < countViews){
+  if(localInvocationIndex < countViews){
     
-    uint viewIndex = pushConstants.baseViewIndex + invocationIndex;
+    uint viewIndex = pushConstants.baseViewIndex + localInvocationIndex;
 
-    viewMatrices[invocationIndex] = uView.views[viewIndex].viewMatrix;
+    viewMatrices[localInvocationIndex] = uView.views[viewIndex].viewMatrix;
 
-    mat4 projectionMatrix = projectionMatrices[invocationIndex] = uView.views[viewIndex].projectionMatrix;
+    mat4 projectionMatrix = projectionMatrices[localInvocationIndex] = uView.views[viewIndex].projectionMatrix;
 
-    inverseProjectionMatrixZData[invocationIndex] = vec4(uView.views[viewIndex].inverseProjectionMatrix[2].zw, uView.views[viewIndex].inverseProjectionMatrix[3].zw);
+    inverseProjectionMatrixZData[localInvocationIndex] = vec4(uView.views[viewIndex].inverseProjectionMatrix[2].zw, uView.views[viewIndex].inverseProjectionMatrix[3].zw);
 
     // Get z near from projection matrix 
-    zNears[invocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
+    zNears[localInvocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
 
-    p00p11[invocationIndex] = vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
+    p00p11[localInvocationIndex] = vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
 
     mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
 
-    frustums[invocationIndex] = vec4(
+    frustums[localInvocationIndex] = vec4(
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
     );
@@ -207,6 +207,8 @@ void main(){
   memoryBarrierShared();
   groupMemoryBarrier();
   barrier(); 
+
+  uint invocationIndex = gl_GlobalInvocationID.x;
 
   if(invocationIndex >= pushConstants.countDrawIndexedIndirectCommands){
     return;  
