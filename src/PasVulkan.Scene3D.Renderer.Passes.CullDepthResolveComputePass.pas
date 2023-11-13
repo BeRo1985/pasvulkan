@@ -151,29 +151,29 @@ begin
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
   if fInstance.ZFar<0.0 then begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_multiview_reversedz_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_reversedz_comp.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_reversedz_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_reversedz_comp.spv');
    end;
   end else begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_multiview_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_comp.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_resolve_comp.spv');
    end;
   end;
  end else begin
   if fInstance.ZFar<0.0 then begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_multiview_msaa_reversedz_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_reversedz_comp.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_msaa_reversedz_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_reversedz_comp.spv');
    end;
   end else begin
    if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_multiview_msaa_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_comp.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_msaa_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_comp.spv');
    end;
   end;
  end;
