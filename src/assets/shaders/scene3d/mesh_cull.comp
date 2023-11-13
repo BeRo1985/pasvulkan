@@ -259,9 +259,12 @@ void main(){
 
   bool isDrawIndexedIndirectCommandVisible = false;
 
+  const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
+
   // Only cull when needed, since some render passes may not need culling, so we just forward the drawIndexedIndirectCommands 
-  // directly to the output buffer in that case.
-  if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u)){
+  // directly to the output buffer in that case. And don't cull draw items with more than one instance, since in this case
+  // the bounding sphere is not valid for all instances.
+  if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u) && (cmd0.y == 1u)){
  
     vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
 
@@ -310,7 +313,6 @@ void main(){
 
   }
 
-  const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
   const uint objectIndex = cmd1.y;
