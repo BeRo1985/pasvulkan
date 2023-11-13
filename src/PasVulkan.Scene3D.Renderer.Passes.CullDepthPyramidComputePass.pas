@@ -147,33 +147,17 @@ begin
 
  inherited AcquirePersistentResources;
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  if fInstance.ZFar<0.0 then begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_level0_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_level0_comp.spv');
-   end;
+ if fInstance.ZFar<0.0 then begin
+  if fInstance.CountSurfaceViews>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_level0_comp.spv');
   end else begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_level0_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_level0_comp.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_level0_comp.spv');
   end;
  end else begin
-  if fInstance.ZFar<0.0 then begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_msaa_reversedz_level0_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_msaa_reversedz_level0_comp.spv');
-   end;
+  if fInstance.CountSurfaceViews>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_level0_comp.spv');
   end else begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_msaa_level0_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_msaa_level0_comp.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_level0_comp.spv');
   end;
  end;
  try
