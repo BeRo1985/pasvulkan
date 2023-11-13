@@ -278,7 +278,7 @@ begin
                                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                                     0,
                                                                     1,
                                                                     0,

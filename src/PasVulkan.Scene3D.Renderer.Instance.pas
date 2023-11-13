@@ -4001,7 +4001,7 @@ begin
      for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
 
       if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-       fCullDepthArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+       fCullDepthArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,true);
        Renderer.VulkanDevice.DebugUtils.SetObjectName(fCullDepthArray2DImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCullDepthArray2DImages['+IntToStr(InFlightFrameIndex)+'].Image');
        Renderer.VulkanDevice.DebugUtils.SetObjectName(fCullDepthArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fCullDepthArray2DImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
       end else begin
