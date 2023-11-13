@@ -5199,7 +5199,7 @@ begin
      if assigned(vkCmdDrawIndexedIndirectCount) then begin
 
       vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
-                                    fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,
+                                    fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,
                                     (DrawChoreographyBatchRange^.FirstCommand*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand))+TpvPtrUInt(Pointer(@TpvScene3D.PGPUDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand)),
                                     fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
                                     DrawChoreographyBatchRange^.Index*SizeOf(TpvUInt32),
