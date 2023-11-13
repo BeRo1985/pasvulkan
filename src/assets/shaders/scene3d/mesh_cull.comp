@@ -13,15 +13,13 @@
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 /*
+// From Vulkan spec, just as reference: 
 struct VkDrawIndexedIndirectCommand {
   uint indexCount;
   uint instanceCount;
   uint firstIndex;
   int vertexOffset;
   uint firstInstance;
-  uint padding0;
-  uint padding1;
-  uint padding2;
 };
 */
 
@@ -78,7 +76,7 @@ struct View {
 };
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
-  View views[256]; // 65536 / (64 * 4) = 256
+  View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
 layout(set = 0, binding = 1, std430) readonly buffer InputDrawIndexedIndirectCommands {
@@ -99,41 +97,8 @@ layout(set = 0, binding = 4, std430) buffer OutputNewVisibleObjects {
 
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepth;
 
-bool referenceProjectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-
-  if(center.z < (radius + zNear)){ //if((-(center.z + radius)) < zNear){
-
-    return false;
-
-  }else{
-
-    vec3 right = (projectionMatrix * vec4(vec3(-center.z, 0.0, center.x) * (radius / sqrt(dot(center, center) - (radius * radius))), 0.0)).xyw;
-    vec3 up = (projectionMatrix * vec2(0.0, radius).xyxx).xyw;
-
-    vec3 anchorCenter = (projectionMatrix * vec4(center, 1.0)).xyw;
-
-    vec2 leftAnchor = (anchorCenter.xy - right.xy) / (anchorCenter.z - right.z);
-    vec2 rightAnchor = (anchorCenter.xy + right.xy) / (anchorCenter.z + right.z);
-    vec2 downAnchor = (anchorCenter.xy - up.xy) / (anchorCenter.z - up.z);
-    vec2 upAnchor = (anchorCenter.xy + up.xy) / (anchorCenter.z + up.z);
-    
-    aabb = fma(
-      vec4(
-        min(min(min(leftAnchor, rightAnchor), downAnchor), upAnchor), 
-        max(max(max(leftAnchor, rightAnchor), downAnchor), upAnchor)
-      ), 
-      vec4(0.5), 
-      vec4(0.5)
-    );
-
-    return true;
-
-  }
-
-}
-
-// 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool projectSphere(vec3 center, float radius, float zNear, float P00, float P11, out vec4 aabb){
+// Further optimized variant of: 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
+bool projectSphere(vec3 center, float radius, float zNear, vec2 p00p11, out vec4 aabb){
 
   if(center.z < (radius + zNear)){
 
@@ -141,26 +106,14 @@ bool projectSphere(vec3 center, float radius, float zNear, float P00, float P11,
 
   }else{
 
-    vec2 cx = -center.xz;
-    vec2 vx = vec2(sqrt(dot(cx, cx) - (radius * radius)), radius);
-    vec2 minx = mat2(vx.x, vx.y, -vx.y, vx.x) * cx;
-    vec2 maxx = mat2(vx.x, -vx.y, vx.y, vx.x) * cx;
+    vec3 cxy = -center.xyz;
+    vec3 vxy = vec3(sqrt(vec2(dot(cxy.xz, cxy.xz), dot(cxy.yz, cxy.yz)) - vec2(radius * radius)), radius);
+    vec2 minx = mat2(vxy.x, vxy.z, -vxy.z, vxy.x) * cxy.xz;
+    vec2 maxx = mat2(vxy.x, -vxy.z, vxy.z, vxy.x) * cxy.xz;
+    vec2 miny = mat2(vxy.y, vxy.z, -vxy.z, vxy.y) * cxy.yz;
+    vec2 maxy = mat2(vxy.y, -vxy.z, vxy.z, vxy.y) * cxy.yz;
 
-    vec2 cy = -center.yz;
-    vec2 vy = vec2(sqrt(dot(cy, cy) - (radius * radius)), radius);
-    vec2 miny = mat2(vy.x, vy.y, -vy.y, vy.x) * cy;
-    vec2 maxy = mat2(vy.x, -vy.y, vy.y, vy.x) * cy;
-
-    aabb = fma(
-      vec4(
-        (minx.x / minx.y) * P00, 
-        (miny.x / miny.y) * P11,
-        (maxx.x / maxx.y) * P00, 
-        (maxy.x / maxy.y) * P11
-      ).xwzy, 
-      vec4(0.5), 
-      vec4(0.5)
-    ); 
+    aabb = fma(vec4((vec4(minx.x, miny.x, maxx.x, maxy.x) / vec4(minx.y, miny.y, maxx.y, maxy.y)) * p00p11.xyxy).xzwy, vec4(0.5), vec4(0.5)); 
 
     return true;
 
@@ -168,25 +121,17 @@ bool projectSphere(vec3 center, float radius, float zNear, float P00, float P11,
 
 }
 
-bool coneCull(vec3 center, float radius, vec3 cone_axis, float cone_cutoff, vec3 camera_position){
-	return dot(center - camera_position, cone_axis) >= fma(cone_cutoff, length(center - camera_position), radius);
-}
-
-float linearizeDepth(const in mat4 inverseProjectionMatrix, const in float z) {
-#if 0
-  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
-#else
-  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
-#endif
-  return -(v.x / v.y);
-}
-
+// The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
+// are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
+// forward approach in my opinion, so that almost everything is done on the GPU and is in the same place, as long as it don't hurts the performance
+// significantly.
 shared mat4 viewMatrices[8];
 shared mat4 projectionMatrices[8];
 shared vec4 inverseProjectionMatrixZData[8];
 shared float zNears[8]; 
 shared vec2 p00p11[8];
 shared vec4 frustums[8];
+
 #endif
 
 void main(){
@@ -256,7 +201,7 @@ void main(){
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
     );
-
+      
   }
 
   memoryBarrierShared();
@@ -282,32 +227,24 @@ void main(){
  
     vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
 
-    uint isDrawIndexedIndirectCommandVisibleBits = 0u;
-
     for(uint viewIndex = 0u, bit = 1u; viewIndex < countViews; viewIndex++, bit <<= 1u){
 
       vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 
-      vec4 frustum = frustums[viewIndex];
-
       // Frustum visible check, but without testing the near und far planes, so it is more projection matrix variant independent (reverse z, 
       // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a safety check.
-      bool visible = true; /* (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) - frustum.x)) > -viewSpaceBoundingSphere.w) &&
-                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) - frustum.z)) > -viewSpaceBoundingSphere.w);*/
+      vec4 frustum = frustums[viewIndex];
+      bool visible = (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
+                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);
 
       if(visible){
 
         vec4 aabb;
 
-        if(
-#if 0
-          referenceProjectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb)
-#else
-          projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], p00p11[viewIndex].x, p00p11[viewIndex].y, aabb)
-#endif          
-        ){
+        if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], p00p11[viewIndex], aabb)){
 
           vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+
           float level = floor(log2(max(size.x, size.y))); 
 
           vec2 depthZ = fma(
@@ -315,20 +252,28 @@ void main(){
             textureLod(uTextureDepth, vec3((aabb.xy + aabb.zw) * 0.5, float(viewIndex)), level).xx, 
             inverseProjectionMatrixZData[invocationIndex].zw
           );
+
           visible = (viewSpaceBoundingSphere.z - viewSpaceBoundingSphere.w) >= (depthZ.x / depthZ.y);
 
         }
 
       }
 
-      isDrawIndexedIndirectCommandVisibleBits |= visible ? bit : 0u;
+      if(visible){
+        
+        isDrawIndexedIndirectCommandVisible = true;
+
+        // No need to check also the other views in this case
+        break; 
+
+      }
 
     }
 
-    isDrawIndexedIndirectCommandVisible = isDrawIndexedIndirectCommandVisibleBits != 0u;
-
   }else{
       
+    // Always visible, if there is no bounding sphere, or if culling is disabled, or if there are more than one instance, since in this case 
+    // the bounding sphere is not valid for all instances  
     isDrawIndexedIndirectCommandVisible = true;
 
   }
