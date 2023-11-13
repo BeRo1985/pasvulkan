@@ -144,7 +144,7 @@ void main(){
   // this first pass is needed, otherwise it would be possible that it breaks, On the other hand, the object indices are temporally 
   // stable, so they can be reused from the previous frame for the starting point HiZ depth buffer.
 
-  uint invocationIndex = gl_LocalInvocationID.x;
+  uint invocationIndex = gl_GlobalInvocationID.x;
 
   if(invocationIndex >= pushConstants.countDrawIndexedIndirectCommands){
     return;  
@@ -175,7 +175,7 @@ void main(){
 
   // In the second pass, cull the stuff against the previous frame visible stuff but with the current view and projection matrices
 
-  uint invocationIndex = gl_LocalInvocationID.x;
+  uint invocationIndex = gl_GlobalInvocationID.x;
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
   uint countViews = min(pushConstants.countViews, 8); 

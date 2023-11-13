@@ -3526,7 +3526,7 @@ begin
                                                                                                             0,
                                                                                                             [TpvVulkanBufferFlag.PersistentMapped]
                                                                                                            );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers['+IntToStr(InFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdInputBuffers['+IntToStr(InFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                              Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[InFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand),
@@ -3543,7 +3543,7 @@ begin
                                                                                                              0,
                                                                                                              []
                                                                                                             );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers['+IntToStr(InFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffers['+IntToStr(InFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                               Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[InFlightFrameIndex]+1)*SizeOf(TVkUInt32),
@@ -3560,7 +3560,7 @@ begin
                                                                                                               0,
                                                                                                               [TpvVulkanBufferFlag.PersistentMapped]
                                                                                                              );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers['+IntToStr(InFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CounterBuffers['+IntToStr(InFlightFrameIndex)+']');
 
     end;
 
@@ -3581,7 +3581,7 @@ begin
                                                                                                             0,
                                                                                                             []
                                                                                                            );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers['+IntToStr(InFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdInputBuffers['+IntToStr(InFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                              Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[InFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand),
@@ -3598,7 +3598,7 @@ begin
                                                                                                              0,
                                                                                                              []
                                                                                                             );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers['+IntToStr(InFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffers['+IntToStr(InFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                               Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[InFlightFrameIndex]+1)*SizeOf(TVkUInt32),
@@ -3615,7 +3615,7 @@ begin
                                                                                                               0,
                                                                                                               []
                                                                                                              );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers['+IntToStr(InFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CounterBuffers['+IntToStr(InFlightFrameIndex)+']');
 
     end;
 
@@ -3640,7 +3640,7 @@ begin
                                                                                                                   0,
                                                                                                                   []
                                                                                                                  );
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers['+IntToStr(InFlightFrameIndex)+']');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.VisibleBuffers['+IntToStr(InFlightFrameIndex)+']');
 
   end;
 
@@ -5791,7 +5791,7 @@ begin
                                                                                                              0,
                                                                                                              [TpvVulkanBufferFlag.PersistentMapped]
                                                                                                             );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers['+IntToStr(aInFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdInputBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                               Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand),
@@ -5808,7 +5808,7 @@ begin
                                                                                                               0,
                                                                                                               []
                                                                                                              );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers['+IntToStr(aInFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                                Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex]+1)*SizeOf(TVkUInt32),
@@ -5825,7 +5825,7 @@ begin
                                                                                                                0,
                                                                                                                [TpvVulkanBufferFlag.PersistentMapped]
                                                                                                               );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers['+IntToStr(aInFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CounterBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
     end;
 
@@ -5846,7 +5846,7 @@ begin
                                                                                                              0,
                                                                                                              []
                                                                                                             );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers['+IntToStr(aInFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandInputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdInputBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                               Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex])*SizeOf(TpvScene3D.TGPUDrawIndexedIndirectCommand),
@@ -5863,7 +5863,7 @@ begin
                                                                                                               0,
                                                                                                               []
                                                                                                              );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers['+IntToStr(aInFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandOutputBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CmdOutputBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
      fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
                                                                                                                (Max(1,fPerInFlightFrameGPUDrawIndexedIndirectCommandBufferSizes[aInFlightFrameIndex])+1)*SizeOf(TVkUInt32),
@@ -5880,7 +5880,7 @@ begin
                                                                                                                0,
                                                                                                                []
                                                                                                               );
-     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers['+IntToStr(aInFlightFrameIndex)+']');
+     Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.CounterBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
     end;
 
@@ -5914,7 +5914,7 @@ begin
                                                                                                                    0,
                                                                                                                    []
                                                                                                                   );
-   Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers['+IntToStr(aInFlightFrameIndex)+']');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'3DRendererInstance.VisibleBuffers['+IntToStr(aInFlightFrameIndex)+']');
 
    DoNeedUpdateDescriptors:=true;
 
