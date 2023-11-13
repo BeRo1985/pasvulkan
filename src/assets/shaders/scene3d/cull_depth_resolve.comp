@@ -34,7 +34,6 @@ layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTexture
 
 layout(push_constant) uniform PushConstants {
   uint countSamples;
-  uint viewBaseIndex;
 } pushConstants;
 
 /* clang-format on */
