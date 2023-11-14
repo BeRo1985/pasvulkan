@@ -105,9 +105,12 @@ type { TpvFrustum }
       public
        procedure Init(const aViewMatrix,aProjectionMatrix:TpvMatrix4x4);
        class function ExtractFrustumSphere(const aZNear,aZFar,aFOV,aAspectRatio:TpvScalar;const aPosition,aDirection:TpvVector3):TpvSphere; static;
+       function AABBInFrustum(const aAABBMin,aAABBMax:TpvVector3):TpvInt32; overload;
+       function AABBInFrustum(const aAABBMin,aAABBMax:TpvVector3;var aMask:TpvUInt32):TpvInt32; overload;
        function AABBInFrustum(const aAABB:TpvAABB):TpvInt32; overload;
        function AABBInFrustum(const aAABB:TpvAABB;var aMask:TpvUInt32):TpvInt32; overload;
-       function SphereInFrustum(const aSphere:TpvSphere;const aRadius:TpvScalar=0.0):TpvInt32;
+       function SphereInFrustum(const aSphereCenter:TpvVector3;const aSphereRadius:TpvScalar;const aRadius:TpvScalar=0.0):TpvInt32; overload;
+       function SphereInFrustum(const aSphere:TpvSphere;const aRadius:TpvScalar=0.0):TpvInt32; overload;
        function PointInFrustum(const aPoint:TpvVector3):boolean;
       public
        property Planes:TPlanes read fPlanes write fPlanes;
@@ -256,13 +259,13 @@ begin
  result.Center:=aPosition+(aDirection*((ViewLen*0.5)+aZNear));
 end;
 
-function TpvFrustum.AABBInFrustum(const aAABB:TpvAABB):TpvInt32;
+function TpvFrustum.AABBInFrustum(const aAABBMin,aAABBMax:TpvVector3):TpvInt32;
 var FrustumSide:TFrustumSide;
     DistanceFromCenter,PlaneAbsoluteNormalDotExtents:TpvScalar;
     Center,Extents:TpvVector3;
 begin
- Center:=(aAABB.Min+aAABB.Max)*0.5;
- Extents:=(aAABB.Max-aAABB.Min)*0.5;
+ Center:=(aAABBMin+aAABBMax)*0.5;
+ Extents:=(aAABBMax-aAABBMin)*0.5;
  result:=COMPLETE_IN;
  for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
   DistanceFromCenter:=fPlanes[FrustumSide].DistanceTo(Center);
@@ -275,60 +278,60 @@ begin
   end;
  end;
  if (not (TpvFrustum.TFlag.InfiniteFarPlane in fFlags)) and
-    (((fWorldSpaceCorners[0].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[1].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[2].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[3].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[4].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[5].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[6].x<aAABB.Min.x) and
-      (fWorldSpaceCorners[7].x<aAABB.Min.x)) or
-     ((fWorldSpaceCorners[0].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[1].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[2].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[3].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[4].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[5].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[6].x>aAABB.Max.x) and
-      (fWorldSpaceCorners[7].x>aAABB.Max.x)) or
-     ((fWorldSpaceCorners[0].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[1].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[2].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[3].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[4].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[5].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[6].y<aAABB.Min.y) and
-      (fWorldSpaceCorners[7].y<aAABB.Min.y)) or
-     ((fWorldSpaceCorners[0].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[1].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[2].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[3].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[4].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[5].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[6].y>aAABB.Max.y) and
-      (fWorldSpaceCorners[7].y>aAABB.Max.y)) or
-     ((fWorldSpaceCorners[0].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[1].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[2].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[3].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[4].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[5].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[6].z<aAABB.Min.z) and
-      (fWorldSpaceCorners[7].z<aAABB.Min.z)) or
-     ((fWorldSpaceCorners[0].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[1].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[2].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[3].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[4].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[5].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[6].z>aAABB.Max.z) and
-      (fWorldSpaceCorners[7].z>aAABB.Max.z))) then begin
+    (((fWorldSpaceCorners[0].x<aAABBMin.x) and
+      (fWorldSpaceCorners[1].x<aAABBMin.x) and
+      (fWorldSpaceCorners[2].x<aAABBMin.x) and
+      (fWorldSpaceCorners[3].x<aAABBMin.x) and
+      (fWorldSpaceCorners[4].x<aAABBMin.x) and
+      (fWorldSpaceCorners[5].x<aAABBMin.x) and
+      (fWorldSpaceCorners[6].x<aAABBMin.x) and
+      (fWorldSpaceCorners[7].x<aAABBMin.x)) or
+     ((fWorldSpaceCorners[0].x>aAABBMax.x) and
+      (fWorldSpaceCorners[1].x>aAABBMax.x) and
+      (fWorldSpaceCorners[2].x>aAABBMax.x) and
+      (fWorldSpaceCorners[3].x>aAABBMax.x) and
+      (fWorldSpaceCorners[4].x>aAABBMax.x) and
+      (fWorldSpaceCorners[5].x>aAABBMax.x) and
+      (fWorldSpaceCorners[6].x>aAABBMax.x) and
+      (fWorldSpaceCorners[7].x>aAABBMax.x)) or
+     ((fWorldSpaceCorners[0].y<aAABBMin.y) and
+      (fWorldSpaceCorners[1].y<aAABBMin.y) and
+      (fWorldSpaceCorners[2].y<aAABBMin.y) and
+      (fWorldSpaceCorners[3].y<aAABBMin.y) and
+      (fWorldSpaceCorners[4].y<aAABBMin.y) and
+      (fWorldSpaceCorners[5].y<aAABBMin.y) and
+      (fWorldSpaceCorners[6].y<aAABBMin.y) and
+      (fWorldSpaceCorners[7].y<aAABBMin.y)) or
+     ((fWorldSpaceCorners[0].y>aAABBMax.y) and
+      (fWorldSpaceCorners[1].y>aAABBMax.y) and
+      (fWorldSpaceCorners[2].y>aAABBMax.y) and
+      (fWorldSpaceCorners[3].y>aAABBMax.y) and
+      (fWorldSpaceCorners[4].y>aAABBMax.y) and
+      (fWorldSpaceCorners[5].y>aAABBMax.y) and
+      (fWorldSpaceCorners[6].y>aAABBMax.y) and
+      (fWorldSpaceCorners[7].y>aAABBMax.y)) or
+     ((fWorldSpaceCorners[0].z<aAABBMin.z) and
+      (fWorldSpaceCorners[1].z<aAABBMin.z) and
+      (fWorldSpaceCorners[2].z<aAABBMin.z) and
+      (fWorldSpaceCorners[3].z<aAABBMin.z) and
+      (fWorldSpaceCorners[4].z<aAABBMin.z) and
+      (fWorldSpaceCorners[5].z<aAABBMin.z) and
+      (fWorldSpaceCorners[6].z<aAABBMin.z) and
+      (fWorldSpaceCorners[7].z<aAABBMin.z)) or
+     ((fWorldSpaceCorners[0].z>aAABBMax.z) and
+      (fWorldSpaceCorners[1].z>aAABBMax.z) and
+      (fWorldSpaceCorners[2].z>aAABBMax.z) and
+      (fWorldSpaceCorners[3].z>aAABBMax.z) and
+      (fWorldSpaceCorners[4].z>aAABBMax.z) and
+      (fWorldSpaceCorners[5].z>aAABBMax.z) and
+      (fWorldSpaceCorners[6].z>aAABBMax.z) and
+      (fWorldSpaceCorners[7].z>aAABBMax.z))) then begin
   result:=COMPLETE_OUT;
   exit;
  end;
 end;
 
-function TpvFrustum.AABBInFrustum(const aAABB:TpvAABB;var aMask:TpvUInt32):TpvInt32;
+function TpvFrustum.AABBInFrustum(const aAABBMin,aAABBMax:TpvVector3;var aMask:TpvUInt32):TpvInt32;
 var FrustumSide:TFrustumSide;
     Bit,InMask,OutMask:TpvUInt32;
     DistanceFromCenter,PlaneAbsoluteNormalDotExtents:TpvScalar;
@@ -336,8 +339,8 @@ var FrustumSide:TFrustumSide;
 begin
  InMask:=aMask;
  if (InMask and TpvUInt32($80000000))<>0 then begin
-  Center:=(aAABB.Min+aAABB.Max)*0.5;
-  Extents:=(aAABB.Max-aAABB.Min)*0.5;
+  Center:=(aAABBMin+aAABBMax)*0.5;
+  Extents:=(aAABBMax-aAABBMin)*0.5;
   OutMask:=$40000000;
   result:=COMPLETE_IN;
   InMask:=InMask and TpvUInt32($3f);
@@ -364,6 +367,39 @@ begin
    aMask:=0;
    result:=COMPLETE_OUT;
   end;
+ end;
+end;
+
+function TpvFrustum.AABBInFrustum(const aAABB:TpvAABB):TpvInt32;
+begin
+ result:=AABBInFrustum(aAABB.Min,aAABB.Max);
+end;
+
+function TpvFrustum.AABBInFrustum(const aAABB:TpvAABB;var aMask:TpvUInt32):TpvInt32;
+begin
+ result:=AABBInFrustum(aAABB.Min,aAABB.Max,aMask);
+end;
+
+function TpvFrustum.SphereInFrustum(const aSphereCenter:TpvVector3;const aSphereRadius:TpvScalar;const aRadius:TpvScalar=0.0):TpvInt32; overload;
+var FrustumSide:TFrustumSide;
+    Count:TpvSizeInt;
+    Distance,Radius:TpvScalar;
+begin
+ Count:=0;
+ Radius:=aSphereRadius+aRadius;
+ for FrustumSide:=Low(TFrustumSide) to fMaximumPlaneSide do begin
+  Distance:=fPlanes[FrustumSide].DistanceTo(aSphereCenter);
+  if Distance<=(-Radius) then begin
+   result:=COMPLETE_OUT;
+   exit;
+  end else if Distance>Radius then begin
+   inc(Count);
+  end;
+ end;
+ if Count=6 then begin
+  result:=COMPLETE_IN;
+ end else begin
+  result:=PARTIALLY_IN;
  end;
 end;
 

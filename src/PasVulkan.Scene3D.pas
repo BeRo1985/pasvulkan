@@ -15718,13 +15718,13 @@ begin
      fAABBTree.GetSkipListNodes(fAABBTreeSkipLists[aInFlightFrameIndex],nil);
     end else begin
      AABBTreeState^.Root:=-1;
-     fAABBTreeSkipLists[Index].Count:=0;
+     fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
     end;
    end;
   end else begin
    AABBTreeState^.Root:=-1;
    AABBTreeState^.Generation:=High(TpvUInt64);
-   fAABBTreeSkipLists[Index].Count:=0;
+   fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
   end;
  end;
 
