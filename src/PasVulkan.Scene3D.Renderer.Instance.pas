@@ -4405,7 +4405,7 @@ begin
                                                                                      1,
                                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                                      [],
-                                                                                     [fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers[(InFlightFrameIndex+(fScene3D.CountInFlightFrames-1)) mod fScene3D.CountInFlightFrames].DescriptorBufferInfo],
+                                                                                     [fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibleObjectBuffers[InFlightFrameIndex].DescriptorBufferInfo],
                                                                                      [],
                                                                                      false
                                                                                     );
