@@ -273,10 +273,12 @@ void main(){
 
       vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 
-      // Frustum visible check, but without testing the near und far planes, so it is more projection matrix variant independent (reverse z, 
-      // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a safety check.
+      // Frustum visible check, but without testing the far planes, so it is more projection matrix variant independent (reverse z, 
+      // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a 
+      // safety check.
       vec4 frustum = frustums[viewIndex];
-      bool visible = (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
+      bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
+                     (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
                      (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);
 
       if(visible){
