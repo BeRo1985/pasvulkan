@@ -6616,7 +6616,19 @@ type TEventBeforeAfter=(Event,Before,After);
          TResourceTransition.TKind.ImageInput:begin
           for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
            if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-            Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+            case ResourceTransition.Layout of
+             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+             VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+             VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+             VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
+             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+              Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+             end;
+             else begin
+              AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+             end;
+            end;
             break;
            end;
           end;
@@ -6651,7 +6663,18 @@ type TEventBeforeAfter=(Event,Before,After);
            for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
             if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
              Subpass.fDepthStencilAttachment:=AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
-             Subpass.fInputAttachments.Add(Subpass.fDepthStencilAttachment);
+             case ResourceTransition.Layout of
+              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+              VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+              VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+              VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
+              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+               Subpass.fInputAttachments.Add(Subpass.fDepthStencilAttachment);
+              end;
+              else begin
+              end;
+             end;
              break;
             end;
            end;
@@ -6666,6 +6689,8 @@ type TEventBeforeAfter=(Event,Before,After);
             end;
            end;
           end;
+         end;
+         else begin
          end;
         end;
        end;

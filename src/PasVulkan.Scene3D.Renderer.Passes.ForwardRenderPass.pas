@@ -271,6 +271,14 @@ inherited Create(aFrameGraph);
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                      );
 
+{  fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+                                       'resource_msaa_depth_data',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Load,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      );}
+
   end else begin
 
    fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
