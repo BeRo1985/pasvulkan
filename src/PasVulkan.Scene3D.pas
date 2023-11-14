@@ -2814,7 +2814,8 @@ type EpvScene3D=class(Exception);
                       const aPipelineLayout:TpvVulkanPipelineLayout;
                       const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources;
                       const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
-                      const aJitter:PpvVector4=nil);
+                      const aJitter:PpvVector4=nil;
+                      const aDisocclusions:Boolean=false);
        procedure GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
                               const aAspectRatio:TpvScalar;
                               out aZNear:TpvScalar;
@@ -19432,7 +19433,8 @@ procedure TpvScene3D.Draw(const aRendererInstance:TObject;
                           const aPipelineLayout:TpvVulkanPipelineLayout;
                           const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources;
                           const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
-                          const aJitter:PpvVector4);
+                          const aJitter:PpvVector4;
+                          const aDisocclusions:Boolean);
 begin
  TpvScene3DRendererInstance(aRendererInstance).ExecuteDraw(aPreviousInFlightFrameIndex,
                                                            aInFlightFrameIndex,
@@ -19445,7 +19447,8 @@ begin
                                                            aCommandBuffer,
                                                            aPipelineLayout,
                                                            aOnSetRenderPassResources,
-                                                           aJitter);
+                                                           aJitter,
+                                                           aDisocclusions);
 end;
 
 procedure TpvScene3D.GetZNearZFar(const aViewMatrix:TpvMatrix4x4;
