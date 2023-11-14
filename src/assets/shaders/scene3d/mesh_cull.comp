@@ -44,9 +44,9 @@ layout(set = 0, binding = 0, std430) readonly buffer InputDrawIndexedIndirectCom
   DrawIndexedIndirectCommand commands[];
 } inputDrawIndexedIndirectCommands;
 
-layout(set = 0, binding = 1, std430) readonly buffer InputPreviousVisibleObjects {
+layout(set = 0, binding = 1, std430) readonly buffer InputVisiblityBuffer { // from previous frame
   uint bitmap[];
-} inputPreviousVisibleObjects;
+} inputVisibilityBuffer;
 
 layout(set = 0, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand commands[];
@@ -91,9 +91,9 @@ layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommandCoun
   uint counts[];
 } outputDrawIndexedIndirectCommandCounts;
 
-layout(set = 0, binding = 4, std430) buffer OutputNewVisibleObjects {
+layout(set = 0, binding = 4, std430) buffer OutputVisiblityBuffer {
   uint bitmap[];
-} outputNewVisibleObjects;
+} outputVisiblityBuffer;
 
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepth;
 
@@ -162,7 +162,7 @@ void main(){
                                                           // new drawIndexedIndirectCommands may have been added 
                                                           // with a higher object index than the current 
                                                           // countObjectIndices in contrast to the previous frame
-      ((inputPreviousVisibleObjects.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u))){
+      ((inputVisibilityBuffer.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u))){
     return; // Skip, since it was not visible in the previous frame
   }
 
@@ -288,7 +288,7 @@ void main(){
     return;
   }
 
-  atomicOr(outputNewVisibleObjects.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u));
+  atomicOr(outputVisiblityBuffer.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u));
 
   uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
