@@ -118,7 +118,7 @@ begin
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
   fResourceInput:=AddImageInput('resourcetype_depth',
-                                'resource_cull_depth_data',
+                                'resource_depth_data',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );

@@ -130,6 +130,7 @@ type TpvScene3DRenderer=class;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
        fCountInFlightFrames:TpvSizeInt;
        fVelocityBufferNeeded:Boolean;
+       fGPUCulling:Boolean;
        fEarlyDepthPrepassNeeded:Boolean;
        fScreenSpaceAmbientOcclusion:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
@@ -206,6 +207,7 @@ type TpvScene3DRenderer=class;
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
+       property GPUCulling:Boolean read fGPUCulling;
        property EarlyDepthPrepassNeeded:Boolean read fEarlyDepthPrepassNeeded;
        property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
@@ -547,7 +549,9 @@ begin
 
  fVelocityBufferNeeded:=false;
 
- fEarlyDepthPrepassNeeded:=false;
+ fGPUCulling:=true;
+
+ fEarlyDepthPrepassNeeded:=true;
 
  if fScreenSpaceAmbientOcclusion then begin
   fEarlyDepthPrepassNeeded:=true;

@@ -136,35 +136,49 @@ inherited Create(aFrameGraph);
 
  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
-{ fResourceDepth:=AddImageDepthInput('resourcetype_depth',
-                                     'resource_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );}
+  if fInstance.Renderer.GPUCulling then begin
 
-  fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
-                                      'resource_depth_data', // _temporary',
+   fResourceDepth:=AddImageDepthInput('resourcetype_depth',
+                                      'resource_depth_data',
+//                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
+                                     );//}
+
+  end else begin
+
+   fResourceDepth:=AddImageDepthOutput('resourcetype_depth',
+                                       'resource_depth_data', // _temporary',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      );
+
+  end;
 
  end else begin
 
-{ fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
-                                     'resource_msaa_depth_data',
-                                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                     [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                    );}
+  if fInstance.Renderer.GPUCulling then begin
 
-  fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                      'resource_msaa_depth_data', //'_temporary',
+   fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
+                                      'resource_msaa_depth_data',
+//                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                   TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                     );
+                                     );//}
+
+  end else begin
+
+   fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
+                                       'resource_msaa_depth_data', //'_temporary',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      );
+
+  end;
 
  end;
 
