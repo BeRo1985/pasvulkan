@@ -258,8 +258,8 @@ begin
      PushConstants.SkipCulling:=0;
      PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
      PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
-     PushConstants.BaseDrawIndexedIndirectCommandIndexForDisocclusions:=TpvUInt32($ffffffff);
-     PushConstants.DrawCallIndexForDisocclusions:=TpvUInt32($ffffffff);
+     PushConstants.BaseDrawIndexedIndirectCommandIndexForDisocclusions:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandDisocclusionOffsets[aInFlightFrameIndex];
+     PushConstants.DrawCallIndexForDisocclusions:=TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+DrawChoreographyBatchRange^.DrawCallIndex;
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
