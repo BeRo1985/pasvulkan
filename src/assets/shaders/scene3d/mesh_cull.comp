@@ -101,7 +101,7 @@ layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepth;
 #ifdef USE_MORE_ROBUST_SPHERE_CULLING
 bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
 
- if(((-center.z) + radius) < zNear){
+  if(((-center.z) - radius) < zNear){
 
     return false;
 
@@ -135,7 +135,7 @@ bool projectSphere(const in vec3 center, const in float radius, const in float z
 // Further optimized variant of: 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 bool projectSphere(vec3 center, float radius, float zNear, vec2 p00p11, out vec4 aabb){
 
-  if(((-center.z) + radius) < zNear){
+  if(((-center.z) - radius) < zNear){
 
     return false;
 
