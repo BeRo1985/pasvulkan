@@ -551,7 +551,7 @@ begin
 
  fGPUCulling:=true;
 
- fEarlyDepthPrepassNeeded:=true;
+ fEarlyDepthPrepassNeeded:=false;
 
  if fScreenSpaceAmbientOcclusion then begin
   fEarlyDepthPrepassNeeded:=true;
