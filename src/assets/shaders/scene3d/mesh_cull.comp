@@ -285,13 +285,13 @@ void main(){
 
         vec4 aabb;
 
+        if(
 #ifdef USE_MORE_ROBUST_SPHERE_CULLING
-        visible = projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb);
+           projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb)
 #else        
-        visible = projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], p00p11[viewIndex], aabb);
+           projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], p00p11[viewIndex], aabb)
 #endif
-
-        if(visible){
+          ){
 
           vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
 
