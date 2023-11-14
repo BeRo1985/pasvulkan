@@ -600,6 +600,8 @@ type EpvFrameGraph=class(Exception);
                    TResourceTransitionFlag=
                     (
                      Attachment,
+                     ExplicitInputAttachment,
+                     ExplicitOutputAttachment,
                      PreviousFrameInput,
                      NextFrameOutput
                     );
@@ -6623,10 +6625,18 @@ type TEventBeforeAfter=(Event,Before,After);
              VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
              VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
-              Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+              if TResourceTransition.TFlag.ExplicitOutputAttachment in ResourceTransition.fFlags then begin
+               AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+              end else begin
+               Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+              end;
              end;
              else begin
-              AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+              if TResourceTransition.TFlag.ExplicitInputAttachment in ResourceTransition.fFlags then begin
+               Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+              end else begin
+               AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+              end;
              end;
             end;
             break;
@@ -6670,9 +6680,14 @@ type TEventBeforeAfter=(Event,Before,After);
               VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
               VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
               VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
-               Subpass.fInputAttachments.Add(Subpass.fDepthStencilAttachment);
+               if not (TResourceTransition.TFlag.ExplicitOutputAttachment in ResourceTransition.fFlags) then begin
+                Subpass.fInputAttachments.Add(Subpass.fDepthStencilAttachment);
+               end;
               end;
               else begin
+               if TResourceTransition.TFlag.ExplicitInputAttachment in ResourceTransition.fFlags then begin
+                Subpass.fInputAttachments.Add(Subpass.fDepthStencilAttachment);
+               end;
               end;
              end;
              break;
