@@ -16354,12 +16354,11 @@ var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyB
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     DrawChoreographyBatchItemMaterialAlphaModeBuckets:PDrawChoreographyBatchItemMaterialAlphaModeBuckets;
     PotentiallyVisible,DoCulling:boolean;
+    AABBTreeSkipList:TpvScene3D.TGroup.TInstance.PAABBTreeSkipList;
+    AABBTreeSkipListItem:TpvScene3D.TGroup.TInstance.PAABBTreeSkipListItem;
     SkipListItem:TpvScene3D.TGroup.TScene.PSkipListItem;
     DrawChoreographyBatchItemIndices:PSizeIntDynamicArray;
     DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
-    AABBTreeState:TpvBVHDynamicAABBTree.PState;
-    AABBTreeSkipList:TpvScene3D.TGroup.TInstance.PAABBTreeSkipList;
-    AABBTreeSkipListItem:TpvScene3D.TGroup.TInstance.PAABBTreeSkipListItem;
 begin
 
  FirstInstance:=0;
@@ -16384,9 +16383,9 @@ begin
 
    if assigned(fAABBTree) then begin
 
-    AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
+    AABBTreeSkipList:=@fAABBTreeSkipLists[aInFlightFrameIndex];
 
-    if (AABBTreeState^.Root>=0) and (length(AABBTreeState^.TreeNodes)>0) then begin
+    if AABBTreeSkipList^.Count>0 then begin
 
      HaveNodeFilter:=(length(fCullVisibleBitmaps[aInFlightFrameIndex])>0) and
                      (assigned(fOnNodeFilter) or
@@ -16423,8 +16422,6 @@ begin
        end;
 
       end;
-
-      AABBTreeSkipList:=@fAABBTreeSkipLists[aInFlightFrameIndex];
 
       Masks[-1]:=TpvUInt32($ffffffff);
 
