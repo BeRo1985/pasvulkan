@@ -46,19 +46,19 @@ void main() {
     ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
     if((sourceSize.x & 1) != 0){
       if((sourceSize.y & 1) != 0){
-         // When width and height are odd, 4 bilinear samples (with min or max sampler reduction filter) are used to avoid undersampling.
+         // When width and height are odd, 4 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
         depth = reduceOp(reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.25, 0.25)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
                                   texture(uSourceTexture, vec3((vec2(xy) + vec2(0.75, 0.75)) / vec2(destinationTextureSize.xy), float(viewIndex))).x),
                          reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.25, 0.75)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
                                   texture(uSourceTexture, vec3((vec2(xy) + vec2(0.75, 0.25)) / vec2(destinationTextureSize.xy), float(viewIndex))).x));
       }else{
-        // When only width is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to avoid undersampling.
+        // When only width is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
         depth = reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.25, 0.5)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
                          texture(uSourceTexture, vec3((vec2(xy) + vec2(0.75, 0.5)) / vec2(destinationTextureSize.xy), float(viewIndex))).x);
       }      
     }else{
       if((sourceSize.y & 1) != 0){
-        // When only height is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to avoid undersampling.
+        // When only height is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to reduce undersampling.
         depth = reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.5, 0.25)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
                          texture(uSourceTexture, vec3((vec2(xy) + vec2(0.5, 0.75)) / vec2(destinationTextureSize.xy), float(viewIndex))).x);
       }else{
