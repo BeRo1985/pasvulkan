@@ -21,15 +21,17 @@ layout(push_constant) uniform PushConstants {
 
 /* clang-format on */
 
+#ifdef REVERSEDZ
+  #define reduceOp min
+#else
+  #define reduceOp max
+#endif
+
 void main() {
   ivec3 position = ivec3(ivec2(gl_FragCoord.xy), int(inFaceIndex));  
   float result = texelFetch(uTexture, position, 0).x;
   for(int sampleIndex = 1, samples = pushConstants.countSamples; sampleIndex < samples; sampleIndex++){
- #ifdef REVERSEDZ
-    result = max(result, texelFetch(uTexture, position, sampleIndex).x);
-  #else
-    result = min(result, texelFetch(uTexture, position, sampleIndex).x);
-  #endif
+    result = reduceOp(result, texelFetch(uTexture, position, sampleIndex).x);
   }
   oOutput = result;
 }

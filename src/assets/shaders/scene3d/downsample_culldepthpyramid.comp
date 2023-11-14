@@ -18,6 +18,12 @@ layout(set = 0, binding = 1, r32f) writeonly uniform image2D uDestinationTexture
 
 /* clang-format on */
 
+#ifdef REVERSEDZ
+  #define reduceOp min
+#else
+  #define reduceOp max
+#endif
+
 void main() {
 #ifdef MULTIVIEW
   ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
@@ -35,30 +41,44 @@ void main() {
     int viewIndex = int(gl_GlobalInvocationID.z);
     float depth;
   #if MIPMAPLEVEL == 0
-     depth = texture(uSourceTexture, vec3((vec2(xy) + vec2(0.5)) / vec2(destinationTextureSize.xy), float(viewIndex))).x;
+    // Special handling for the first mipmap level for including handling of non-power-of-two textures as source for the power-of-two first mip map level
+    // of the hierarchical Z buffer.    
+    ivec2 sourceSize = ivec2(textureSize(uSourceTexture, 0).xy);
+    if((sourceSize.x & 1) != 0){
+      if((sourceSize.y & 1) != 0){
+         // When width and height are odd, 4 bilinear samples (with min or max sampler reduction filter) are used to avoid undersampling.
+        depth = reduceOp(reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.25, 0.25)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
+                                  texture(uSourceTexture, vec3((vec2(xy) + vec2(0.75, 0.75)) / vec2(destinationTextureSize.xy), float(viewIndex))).x),
+                         reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.25, 0.75)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
+                                  texture(uSourceTexture, vec3((vec2(xy) + vec2(0.75, 0.25)) / vec2(destinationTextureSize.xy), float(viewIndex))).x));
+      }else{
+        // When only width is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to avoid undersampling.
+        depth = reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.25, 0.5)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
+                         texture(uSourceTexture, vec3((vec2(xy) + vec2(0.75, 0.5)) / vec2(destinationTextureSize.xy), float(viewIndex))).x);
+      }      
+    }else{
+      if((sourceSize.y & 1) != 0){
+        // When only height is odd, 2 bilinear samples (with min or max sampler reduction filter) are used to avoid undersampling.
+        depth = reduceOp(texture(uSourceTexture, vec3((vec2(xy) + vec2(0.5, 0.25)) / vec2(destinationTextureSize.xy), float(viewIndex))).x,
+                         texture(uSourceTexture, vec3((vec2(xy) + vec2(0.5, 0.75)) / vec2(destinationTextureSize.xy), float(viewIndex))).x);
+      }else{
+        // Otherwise when width and height are even, just one bilinear sample (with min or max sampler reduction filter) is used, since it is already 
+        // perfectly 2x2.
+        depth = texture(uSourceTexture, vec3((vec2(xy) + vec2(0.5)) / vec2(destinationTextureSize.xy), float(viewIndex))).x;
+      }
+    }
   #else
       ivec3 sourceSize = ivec3(textureSize(uSourceTexture, 0).xyz);
       ivec3 sourceSizeMask = sourceSize - ivec3(1);
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
     #if 1  
       vec4 depths = textureGather(uSourceTexture, vec3(vec2(vec2(sourceXY) + vec2(0.5)) / vec2(sourceSize.xy), sourceXY.z), 0);
-      #ifdef REVERSEDZ
-        depth = min(min(depths.x, depths.y), min(depths.z, depths.w));
-      #else
-        depth = max(max(depths.x, depths.y), max(depths.z, depths.w));
-      #endif
+      depth = reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w));
     #else
-      #ifdef REVERSEDZ
-          depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
-                      min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
-      #else
-          depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
-                      max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
-      #endif
+      depth = reduceOp(reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
     #endif
   #endif
 #else
@@ -71,23 +91,12 @@ void main() {
       ivec2 sourceXY = xy << ivec2(1);
     #if 1  
       vec4 depths = textureGather(uSourceTexture, vec2(vec2(sourceXY) + vec2(0.5)) / vec2(sourceSize.xy), 0);
-      #ifdef REVERSEDZ
-        depth = min(min(depths.x, depths.y), min(depths.z, depths.w));
-      #else
-        depth = max(max(depths.x, depths.y), max(depths.z, depths.w));
-      #endif
+      depth = reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w));
     #else
-      #ifdef REVERSEDZ
-          depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
-                      min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
-      #else
-          depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
-                      max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
-      #endif
+      depth = reduceOp(reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
     #endif
   #endif
 #endif
