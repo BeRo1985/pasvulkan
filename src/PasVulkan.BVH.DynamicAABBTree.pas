@@ -146,6 +146,7 @@ type EpvBVHDynamicAABBTree=class(Exception);
             PSkipListNode=^TSkipListNode;
             TSkipListNodes=array of TSkipListNode;
             TSkipListNodeArray=TpvDynamicArray<TSkipListNode>;
+            PSkipListNodeArray=^TSkipListNodeArray;
             TSkipListNodeMap=array of TpvSizeUInt;
             TSkipListNodeStackItem=record
              Pass:TpvSizeInt;
