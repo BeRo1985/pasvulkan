@@ -2293,10 +2293,7 @@ type EpvScene3D=class(Exception);
                      fActiveScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
                      fActives:array[0..MaxInFlightFrames-1] of boolean;
                      fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-                     fCullVisibleCountMaxParents:array[0..MaxInFlightFrames-1] of TpvSizeInt;
-                     fCullVisibleNodePaths:TCullVisibleNodePaths;
                      fCullVisibleBitmapLocks:array[0..MaxInFlightFrames-1] of TPasMPInt32;
-                     fCullVisibleBitmapSizes:array[0..MaxInFlightFrames-1] of TpvSizeInt;
                      fCullVisibleBitmaps:TCullVisibleBitmaps;
                      fAABBTreeProxy:TpvSizeInt;
                      fAABBTree:TpvBVHDynamicAABBTree;
@@ -2331,10 +2328,6 @@ type EpvScene3D=class(Exception);
                                                                       const aPotentiallyVisibleSetCulling:boolean;
                                                                       out aFirstInstance:TpvSizeInt;
                                                                       out aInstancesCount:TpvSizeInt);
-                     function PrepareCheckNodeFilter(const aInFlightFrameIndex:TpvSizeInt;
-                                                     const aRendererInstance:TObject;
-                                                     const aRenderPassIndex:TpvSizeInt;
-                                                     const aNodeIndex:TpvSizeInt):boolean;
                      procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                        const aRendererInstance:TObject;
                                        const aRenderPassIndex:TpvSizeInt;
@@ -13056,11 +13049,11 @@ begin
  end;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-  fCullVisibleCountMaxParents[Index]:=0;
-  fCullVisibleNodePaths[Index]:=nil;
   fCullVisibleBitmapLocks[Index]:=0;
-  fCullVisibleBitmapSizes[Index]:=0;
   fCullVisibleBitmaps[Index]:=nil;
+  if fGroup.fDynamicAABBTreeCulling then begin
+   SetLength(fCullVisibleBitmaps[Index],(length(fNodes)+31) shr 5);
+  end;
  end;
 
  fAABBTreeProxy:=-1;
@@ -13358,10 +13351,7 @@ begin
  end;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-  fCullVisibleCountMaxParents[Index]:=0;
-  fCullVisibleNodePaths[Index]:=nil;
   fCullVisibleBitmapLocks[Index]:=0;
-  fCullVisibleBitmapSizes[Index]:=0;
   fCullVisibleBitmaps[Index]:=nil;
  end;
 
@@ -15382,84 +15372,6 @@ var CullFace,Blend:TPasGLTFInt32;
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
  end;
- procedure AssignNodeParentsAndResetCullVisibleGenerations(const aScene:TpvScene3D.TGroup.TScene);
- type TStackItem=record
-       NodeIndex:TpvSizeInt;
-       ParentNodeIndex:TpvSizeInt;
-       Level:TpvSizeInt;
-      end;
-      PStackItem=^TStackItem;
-      TStack=TpvDynamicFastStack<TStackItem>;
- var NodeIndex,ParentNodeIndex,Level,ChildNodeIndex,CullVisibleIDCounter:TpvSizeInt;
-     Node:TpvScene3D.TGroup.TNode;
-     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-     StackItem:PStackItem;
-     Stack:TStack;
- begin
-
-  for NodeIndex:=0 to length(fNodes)-1 do begin
-   InstanceNode:=@fNodes[NodeIndex];
-   InstanceNode^.Parents[aInFlightFrameIndex]:=-1;
-   InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]:=-1;
-  end;
-
-  Stack.Initialize;
-  try
-
-   for NodeIndex:=0 to aScene.fNodes.Count-1 do begin
-    StackItem:=Stack.PushIndirect;
-    StackItem^.NodeIndex:=aScene.fNodes[NodeIndex].Index;
-    StackItem^.ParentNodeIndex:=-1;
-    StackItem^.Level:=0;
-   end;
-
-   fCullVisibleCountMaxParents[aInFlightFrameIndex]:=0;
-
-   CullVisibleIDCounter:=0;
-
-   while Stack.PopIndirect(StackItem) do begin
-
-    NodeIndex:=StackItem^.NodeIndex;
-
-    ParentNodeIndex:=StackItem^.ParentNodeIndex;
-
-    Level:=StackItem^.Level;
-
-    fCullVisibleCountMaxParents[aInFlightFrameIndex]:=Max(fCullVisibleCountMaxParents[aInFlightFrameIndex],Level);
-
-    Node:=fGroup.fNodes[NodeIndex];
-
-    InstanceNode:=@fNodes[NodeIndex];
-
-    InstanceNode^.Parents[aInFlightFrameIndex]:=ParentNodeIndex;
-
-    InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]:=CullVisibleIDCounter;
-    inc(CullVisibleIDCounter);
-
-    for ChildNodeIndex:=0 to Node.fChildren.Count-1 do begin
-     StackItem:=Stack.PushIndirect;
-     StackItem^.NodeIndex:=Node.fChildren[ChildNodeIndex].Index;
-     StackItem^.ParentNodeIndex:=NodeIndex;
-     StackItem^.Level:=Level+1;
-    end;
-
-   end;
-
-  finally
-   Stack.Finalize;
-  end;
-
-  if length(fCullVisibleNodePaths[aInFlightFrameIndex])<(fCullVisibleCountMaxParents[aInFlightFrameIndex]+1) then begin
-   SetLength(fCullVisibleNodePaths[aInFlightFrameIndex],(fCullVisibleCountMaxParents[aInFlightFrameIndex]+1)*2);
-  end;
-
-  fCullVisibleBitmapSizes[aInFlightFrameIndex]:=((CullVisibleIDCounter shl 1)+31) shr 5;
-
-  if length(fCullVisibleBitmaps[aInFlightFrameIndex])<fCullVisibleBitmapSizes[aInFlightFrameIndex] then begin
-   SetLength(fCullVisibleBitmaps[aInFlightFrameIndex],fCullVisibleBitmapSizes[aInFlightFrameIndex]+((fCullVisibleBitmapSizes[aInFlightFrameIndex]+1) shr 1));
-  end;
-
- end;
 var Index,PerInFlightFrameRenderInstanceIndex:TPasGLTFSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
     Animation:TpvScene3D.TGroup.TInstance.TAnimation;
@@ -15488,9 +15400,6 @@ begin
 
    if (aInFlightFrameIndex>=0) and (fActiveScenes[aInFlightFrameIndex]<>Scene) then begin
     fActiveScenes[aInFlightFrameIndex]:=Scene;
-    if assigned(fAABBTree) then begin
-     AssignNodeParentsAndResetCullVisibleGenerations(Scene);
-    end;
    end;
 
    //CurrentSkinShaderStorageBufferObjectHandle:=0;
@@ -16290,134 +16199,6 @@ begin
 
 end;
 
-function TpvScene3D.TGroup.TInstance.PrepareCheckNodeFilter(const aInFlightFrameIndex:TpvSizeInt;
-                                                            const aRendererInstance:TObject;
-                                                            const aRenderPassIndex:TpvSizeInt;
-                                                            const aNodeIndex:TpvSizeInt):boolean;
-var PathCounter,NodeIndex:TpvSizeInt;
-    Node:TpvScene3D.TGroup.TNode;
-    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-    BitOffset:TpvUInt32;
-    Data:PpvUInt32;
-    GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
-begin
-
- GroupOnNodeFilter:=fGroup.fOnNodeFilter;
- GlobalOnNodeFilter:=fGroup.fSceneInstance.fOnNodeFilter;
-
- if assigned(fOnNodeFilter) or
-    assigned(GroupOnNodeFilter) or
-    assigned(GlobalOnNodeFilter) then begin
-
-  InstanceNode:=@fNodes[aNodeIndex];
-
-  if InstanceNode^.CullVisibleIDs[aInFlightFrameIndex]>=0 then begin
-
-   BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
-
-   case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
-
-    1:begin
-     result:=false;
-    end;
-
-    2:begin
-     result:=true;
-    end;
-
-    else begin
-
-     result:=true;
-
-     PathCounter:=0;
-     NodeIndex:=aNodeIndex;
-     while NodeIndex>=0 do begin
-      InstanceNode:=@fNodes[NodeIndex];
-      BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
-      if ((fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3)=1 then begin
-       result:=false;
-       break;
-      end else begin
-       fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter]:=NodeIndex;
-       inc(PathCounter);
-       NodeIndex:=InstanceNode^.Parents[aInFlightFrameIndex];
-      end;
-     end;
-
-     while PathCounter>0 do begin
-
-      dec(PathCounter);
-
-      NodeIndex:=fCullVisibleNodePaths[aInFlightFrameIndex,PathCounter];
-
-      InstanceNode:=@fNodes[NodeIndex];
-
-      BitOffset:=InstanceNode^.CullVisibleIDs[aInFlightFrameIndex] shl 1;
-
-      if result then begin
-
-       case (fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5] shr (BitOffset and 31)) and 3 of
-
-        1:begin
-
-         result:=false;
-
-        end;
-
-        2:begin
-
-         result:=true;
-
-        end;
-
-        else begin
-
-         Node:=fGroup.fNodes[aNodeIndex];
-
-         result:=(((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-                  ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-                  ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)));
-
-         Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
-
-         if result then begin
-          Data^:=Data^ or (TpvUInt32(2) shl (BitOffset and 31));
-         end else begin
-          Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
-         end;
-
-        end;
-
-       end;
-
-      end else begin
-
-       Data:=@fCullVisibleBitmaps[aInFlightFrameIndex][BitOffset shr 5];
-
-       Data^:=Data^ or (TpvUInt32(1) shl (BitOffset and 31));
-
-      end;
-
-     end;
-
-    end;
-
-   end;
-
-  end else begin
-
-   result:=false;
-
-  end;
-
- end else begin
-
-  result:=true;
-
- end;
-
-end;
-
 procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                                               const aRendererInstance:TObject;
                                               const aRenderPassIndex:TpvSizeInt;
@@ -16435,7 +16216,7 @@ type TStackItem=record
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
 var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyBatchItemIndex,
-    FirstInstance,InstancesCount,NodeIndex:TpvSizeInt;
+    FirstInstance,InstancesCount,NodeIndex,CullVisibleID:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     Mask:TpvUInt32;
@@ -16484,17 +16265,40 @@ begin
 
     if (AABBTreeState^.Root>=0) and (length(AABBTreeState^.TreeNodes)>0) then begin
 
-     HaveNodeFilter:=assigned(fOnNodeFilter) or
-                     assigned(GroupOnNodeFilter) or
-                     assigned(GlobalOnNodeFilter);
+     HaveNodeFilter:=(length(fCullVisibleBitmaps[aInFlightFrameIndex])>0) and
+                     (assigned(fOnNodeFilter) or
+                      assigned(GroupOnNodeFilter) or
+                      assigned(GlobalOnNodeFilter));
 
      if HaveNodeFilter then begin
       TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCullVisibleBitmapLocks[aInFlightFrameIndex]);
      end;
      try
 
-      if HaveNodeFilter and (fCullVisibleBitmapSizes[aInFlightFrameIndex]>0) then begin
-       FillChar(fCullVisibleBitmaps[aInFlightFrameIndex][0],fCullVisibleBitmapSizes[aInFlightFrameIndex]*SizeOf(TpvUInt32),#0);
+      if HaveNodeFilter then begin
+
+       FillChar(fCullVisibleBitmaps[aInFlightFrameIndex][0],length(fCullVisibleBitmaps[aInFlightFrameIndex])*SizeOf(TpvUInt32),#0);
+
+       SkipListItemIndex:=0;
+       SkipListItemCount:=length(Scene.fSkipList);
+       while SkipListItemIndex<SkipListItemCount do begin
+        SkipListItem:=@Scene.fSkipList[SkipListItemIndex];
+        Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
+        InstanceNode:=@fNodes[SkipListItem^.NodeIndex];
+        if (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+            ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+            ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+         fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5]:=fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5] or (TpvUInt32(1) shl (SkipListItem^.NodeIndex and 31));
+         inc(SkipListItemIndex);
+        end else begin
+         if SkipListItem^.SkipCount<=0 then begin
+          break;
+         end else begin
+          inc(SkipListItemIndex,SkipListItem^.SkipCount);
+         end;
+        end;
+       end;
+
       end;
 
       Stack.Initialize;
@@ -16572,10 +16376,7 @@ begin
 
            if PotentiallyVisible and
               ((not HaveNodeFilter) or
-               PrepareCheckNodeFilter(aInFlightFrameIndex,
-                                      aRendererInstance,
-                                      aRenderPassIndex,
-                                      AABBTreeNode^.UserData-1)) then begin
+               ((fCullVisibleBitmaps[aInFlightFrameIndex][Node.Index shr 5] and (TpvUInt32(1) shl (Node.Index and 31))<>0))) then begin
 
             DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
             for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
