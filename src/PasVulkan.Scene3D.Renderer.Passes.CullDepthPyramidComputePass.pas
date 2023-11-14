@@ -203,6 +203,7 @@ end;
 procedure TpvScene3DRendererPassesCullDepthPyramidComputePass.AcquireVolatileResources;
 var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
     ImageViewType:TVkImageViewType;
+    Sampler:TpvVulkanSampler;
 begin
 
  inherited AcquireVolatileResources;
@@ -253,6 +254,12 @@ begin
   ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
  end;
 
+ if fInstance.ZFar<0.0 then begin
+  Sampler:=fInstance.Renderer.MipMapMinFilterSampler;
+ end else begin
+  Sampler:=fInstance.Renderer.MipMapMaxFilterSampler;
+ end;
+
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   if assigned(fResourceInput) then begin
    fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
@@ -288,13 +295,14 @@ begin
   for MipMapLevelIndex:=0 to fInstance.CullDepthPyramidMipMappedArray2DImages[InFlightFrameIndex].MipMapLevels-1 do begin
    fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
                                                                                              fVulkanDescriptorSetLayout);
+
    if MipMapLevelIndex=0 then begin
     if assigned(fResourceInput) then begin
      fVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelIndex].WriteToDescriptorSet(0,
                                                                                      0,
                                                                                      1,
                                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                     [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                     [TVkDescriptorImageInfo.Create(Sampler.Handle,
                                                                                                                     fVulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                                     fResourceInput.ResourceTransition.Layout)],
                                                                                      [],
@@ -306,7 +314,7 @@ begin
                                                                                      0,
                                                                                      1,
                                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                     [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                     [TVkDescriptorImageInfo.Create(Sampler.Handle,
                                                                                                                     fVulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                      [],
@@ -319,7 +327,7 @@ begin
                                                                                     0,
                                                                                     1,
                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                    [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                    [TVkDescriptorImageInfo.Create(Sampler.Handle,
                                                                                                                    fInstance.CullDepthPyramidMipMappedArray2DImages[InFlightFrameIndex].VulkanImageViews[MipMapLevelIndex-1].Handle,
                                                                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                     [],
