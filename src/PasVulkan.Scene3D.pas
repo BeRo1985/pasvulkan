@@ -15828,20 +15828,20 @@ begin
        end;
       end;
      end;
-     if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
+{    if length(AABBTreeState^.TreeNodes)<length(fAABBTree.Nodes) then begin
       AABBTreeState^.TreeNodes:=copy(fAABBTree.Nodes);
      end else begin
       Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
      end;
-     AABBTreeState^.Root:=fAABBTree.Root;
+     AABBTreeState^.Root:=fAABBTree.Root;}
      GenerateAABBTreeSkipList;
     end else begin
-     AABBTreeState^.Root:=-1;
+//   AABBTreeState^.Root:=-1;
      fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
     end;
    end;
   end else begin
-   AABBTreeState^.Root:=-1;
+// AABBTreeState^.Root:=-1;
    AABBTreeState^.Generation:=High(TpvUInt64);
    fAABBTreeSkipLists[aInFlightFrameIndex].Count:=0;
   end;
