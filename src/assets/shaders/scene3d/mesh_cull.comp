@@ -295,7 +295,7 @@ void main(){
 
           float level = floor(log2(max(size.x, size.y))); 
 
-#undef USE_FASTER_DEPTH_CALCULATIONS
+#define USE_FASTER_DEPTH_CALCULATIONS
 #ifdef USE_FASTER_DEPTH_CALCULATIONS
           vec2 depthZ = fma(
             inverseProjectionMatrixZData[viewIndex].xy, 
