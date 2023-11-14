@@ -5233,6 +5233,11 @@ begin
         GPUDrawIndexedIndirectCommand^.ObjectIndex:=DrawChoreographyBatchItem.ObjectIndex;
         BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fBoundingSpheres[aInFlightFrameIndex];
         GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere^.Center,BoundingSphere^.Radius);
+{       if assigned(DrawChoreographyBatchItem.Node) and
+           ((TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Flags) or
+            (TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Flags)) then begin
+         GPUDrawIndexedIndirectCommand^.BoundingSphere.w:=-1;
+        end;}
 
        end;
 
