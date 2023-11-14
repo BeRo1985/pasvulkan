@@ -87,6 +87,8 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              SkipCulling:TpvUInt32;
              BaseViewIndex:TpvUInt32;
              CountViews:TpvUInt32;
+             BaseDrawIndexedIndirectCommandIndexForDisocclusions:TpvUInt32;
+             DrawCallIndexForDisocclusions:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
       private
@@ -256,6 +258,8 @@ begin
      PushConstants.SkipCulling:=0;
      PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;
      PushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
+     PushConstants.BaseDrawIndexedIndirectCommandIndexForDisocclusions:=TpvUInt32($ffffffff);
+     PushConstants.DrawCallIndexForDisocclusions:=TpvUInt32($ffffffff);
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

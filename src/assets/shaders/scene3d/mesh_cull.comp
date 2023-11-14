@@ -27,7 +27,7 @@ struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
   uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = objectIndex, zw = padding for 16 bytes alignment to the next vec4 field
   vec4 boundingSphere; // xyz = center, w = radius
-  uvec4 padding3; // just padding 
+  uvec4 metaData; // x = added, yzw = unused 
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
 #if PASS == 0
@@ -40,7 +40,7 @@ layout(push_constant) uniform PushConstants {
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
 } pushConstants;
 
-layout(set = 0, binding = 0, std430) readonly buffer InputDrawIndexedIndirectCommands {
+layout(set = 0, binding = 0, std430) buffer InputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand commands[];
 } inputDrawIndexedIndirectCommands;
 
@@ -66,6 +66,8 @@ layout(push_constant) uniform PushConstants {
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
   uint baseViewIndex;
   uint countViews;
+  uint baseDrawIndexedIndirectCommandIndexForDisocclusions;
+  uint drawCallIndexForDisocclusions;
 } pushConstants;
 
 struct View {
@@ -201,8 +203,11 @@ void main(){
                                                           // with a higher object index than the current 
                                                           // countObjectIndices in contrast to the previous frame
       ((inputVisibilityBuffer.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u))){
-    return; // Skip, since it was not visible in the previous frame
+    // Skip, since it was not visible in the previous frame    
+    return; 
   }
+
+  inputDrawIndexedIndirectCommands.commands[sourceIndex].metaData.x = 1u; // Mark as added
 
   uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
@@ -346,14 +351,34 @@ void main(){
     return;
   }
 
-  atomicOr(outputVisiblityBuffer.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u));
+  // Mark as visible in any case, independently of being already added in the previous pass 
+  atomicOr(outputVisiblityBuffer.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u)); 
 
-  uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
-  
-  // Just copy the draw indexed indirect command itself, but not the no more needed bounding sphere and so on, to save memory bandwidth
-  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
-  outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+  // Append to the global üart of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive 
+  // occlusion culls are avoided as much as possible.
+  {
+
+    uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
+    
+    // Copy only the essential command data to conserve memory bandwidth, omitting unnecessary details like bounding spheres.
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+
+  }
+
+  // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering 
+  // in the depth buffer. This is necessary because a complete depth pre-pass is needed for things like e.g. screen space ambient occlusion and the like.
+  if((inputDrawIndexedIndirectCommands.commands[sourceIndex].metaData.x == 0u) &&         // Just when not already added in the previous pass to the global output buffer part
+     (pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
+
+    uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndexForDisocclusions], 1u);
+    
+    // Similarly, copy only the necessary command data, excluding non-essential elements like bounding sphere, to save memory bandwidth.
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd0 = cmd0;
+    outputDrawIndexedIndirectCommands.commands[destinationIndex].cmd1 = cmd1;
+
+  }
 
 #endif
 
-}
+} 
