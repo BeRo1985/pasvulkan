@@ -148,7 +148,7 @@ bool projectSphere(vec3 center, float radius, float zNear, vec2 p00p11, out vec4
     vec2 miny = mat2(vxy.y, vxy.z, -vxy.z, vxy.y) * cxy.yz;
     vec2 maxy = mat2(vxy.y, -vxy.z, vxy.z, vxy.y) * cxy.yz;
 
-    aabb = fma(vec4((vec4(minx.x, miny.x, maxx.x, maxy.x) / vec4(minx.y, miny.y, maxx.y, maxy.y)) * p00p11.xyxy).xzwy, vec4(0.5), vec4(0.5)); 
+    aabb = fma(vec4((vec4(minx.x, miny.x, maxx.x, maxy.x) / vec4(minx.y, miny.y, maxx.y, maxy.y)) * p00p11.xyxy), vec4(0.5), vec4(0.5)); 
 
     return true;
 
