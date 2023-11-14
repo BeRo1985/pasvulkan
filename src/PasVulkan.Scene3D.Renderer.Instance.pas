@@ -150,6 +150,8 @@ type { TpvScene3DRendererInstance }
 
              Jitter:TpvVector4;
 
+             CameraReset:Boolean;
+
             end;
             PInFlightFrameState=^TInFlightFrameState;
             TInFlightFrameStates=array[0..MaxInFlightFrames+1] of TInFlightFrameState;
@@ -5394,6 +5396,8 @@ var Index:TpvSizeInt;
 begin
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
+
+ InFlightFrameState^.CameraReset:=fCameraPresets[aInFlightFrameIndex].Reset;
 
  FieldOfView:=fCameraPresets[aInFlightFrameIndex].FieldOfView;
 

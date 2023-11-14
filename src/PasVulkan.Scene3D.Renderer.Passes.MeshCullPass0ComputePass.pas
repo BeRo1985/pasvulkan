@@ -249,7 +249,9 @@ begin
      PushConstants.CountDrawIndexedIndirectCommands:=DrawChoreographyBatchRange^.CountCommands;
      PushConstants.CountObjectIndices:=fInstance.PerInFlightFrameGPUCountObjectIndicesArray[PreviousInFlightFrameIndex];
      PushConstants.DrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
-     PushConstants.SkipCulling:=IfThen((aFrameIndex=0) or (fInstance.PerInFlightFrameGPUCountObjectIndicesArray[PreviousInFlightFrameIndex]=0),1,0);
+     PushConstants.SkipCulling:=IfThen((aFrameIndex=0) or
+                                       fInstance.InFlightFrameStates[aInFlightFrameIndex].CameraReset or
+                                       (fInstance.PerInFlightFrameGPUCountObjectIndicesArray[PreviousInFlightFrameIndex]=0),1,0);
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
