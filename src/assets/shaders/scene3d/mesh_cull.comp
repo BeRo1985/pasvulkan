@@ -255,7 +255,7 @@ void main(){
             inverseProjectionMatrixZData[invocationIndex].zw
           );
 
-          visible = (viewSpaceBoundingSphere.z - viewSpaceBoundingSphere.w) >= (depthZ.x / depthZ.y);
+          visible = false;//(viewSpaceBoundingSphere.z - viewSpaceBoundingSphere.w) >= (depthZ.x / depthZ.y);
 
         }
 
