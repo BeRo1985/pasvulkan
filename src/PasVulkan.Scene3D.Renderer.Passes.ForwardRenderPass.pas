@@ -159,7 +159,7 @@ inherited Create(aFrameGraph);
 
  fUsePreviousDepth:=fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded;
 
- fUseDepthPrepass:=fInstance.Renderer.UseDepthPrepass and not (fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded);
+ fUseDepthPrepass:=fInstance.Renderer.UseDepthPrepass and not ({fInstance.Renderer.GPUCulling or} fInstance.Renderer.EarlyDepthPrepassNeeded);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                            'resource_cascadedshadowmap_data_final',
@@ -1164,7 +1164,8 @@ begin
                                     fVulkanPipelineLayout,
                                     OnSetRenderPassResources,
                                     [TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                    @InFlightFrameState^.Jitter);
+                                    @InFlightFrameState^.Jitter,
+                                    true);
 
  {  if fInstance.Renderer.SurfaceSampleCountFlagBits=VK_SAMPLE_COUNT_1_BIT then begin
      fInstance.Renderer.Scene3D.Draw(fInstance,
@@ -1178,7 +1179,8 @@ begin
                                      aCommandBuffer,
                                      fVulkanPipelineLayout,
                                      OnSetRenderPassResources,
-                                     [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                     [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                     true);
     end;}
 
    end;   //*)

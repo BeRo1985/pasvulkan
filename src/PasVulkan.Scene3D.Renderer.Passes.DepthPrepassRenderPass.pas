@@ -497,7 +497,8 @@ begin
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
-                                   @InFlightFrameState^.Jitter);
+                                   @InFlightFrameState^.Jitter,
+                                   true);
 
 { if (fInstance.Renderer.TransparencyMode=TTransparencyMode.Direct) or not (fInstance.Renderer.UseOITAlphaTest or fInstance.Renderer.Scene3D.HasTransmission) then begin
    fInstance.Renderer.Scene3D.Draw(fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -511,7 +512,8 @@ begin
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
                                    [TpvScene3D.TMaterial.TAlphaMode.Mask],
-                                   @InFlightFrameState^.Jitter);
+                                   @InFlightFrameState^.Jitter,
+                                   true);
    end;}
 
   end;
