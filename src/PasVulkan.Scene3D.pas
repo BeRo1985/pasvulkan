@@ -2298,6 +2298,7 @@ type EpvScene3D=class(Exception);
                      fAABBTreeProxy:TpvSizeInt;
                      fAABBTree:TpvBVHDynamicAABBTree;
                      fAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
+                     fAABBTreeSkipLists:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TSkipListNodeArray;
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanVertexBufferCount:TpvInt64;
                      fVulkanDrawIndexBufferOffset:TpvInt64;
@@ -13230,6 +13231,7 @@ begin
   fAABBTreeStates[Index].TreeNodes:=nil;
   fAABBTreeStates[Index].Root:=-1;
   fAABBTreeStates[Index].Generation:=High(TpvUInt64);
+  fAABBTreeSkipLists[Index].Initialize;
  end;
 
 end;
@@ -13361,6 +13363,7 @@ begin
   fAABBTreeStates[Index].TreeNodes:=nil;
   fAABBTreeStates[Index].Root:=-1;
   fAABBTreeStates[Index].Generation:=High(TpvUInt64);
+  fAABBTreeSkipLists[Index].Finalize;
  end;
 
  fNodes:=nil;
@@ -15687,11 +15690,11 @@ begin
      if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) then begin
       for Index:=0 to length(fAABBTree.Nodes)-1 do begin
        AABBTreeNode:=@fAABBTree.Nodes[Index];
-       if AABBTreeNode^.UserData<=0 then begin
+       if (AABBTreeNode^.UserData=0) or ((AABBTreeNode^.UserData and TpvUInt32($80000000))<>0) then begin
         if AABBTreeNode^.UserData=0 then begin
          AABBTreeNodePotentiallyVisibleSet:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
         end else begin
-         AABBTreeNodePotentiallyVisibleSet:=-AABBTreeNode^.UserData;
+         AABBTreeNodePotentiallyVisibleSet:=AABBTreeNode^.UserData and TpvUInt32($7fffffff);
         end;
         if ((AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
             ((AABBTreeNodePotentiallyVisibleSet<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
@@ -15700,7 +15703,7 @@ begin
          if AABBTreeNodePotentiallyVisibleSet=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
           AABBTreeNode^.UserData:=0;
          end else begin
-          AABBTreeNode^.UserData:=-AABBTreeNodePotentiallyVisibleSet;
+          AABBTreeNode^.UserData:=AABBTreeNodePotentiallyVisibleSet or TpvUInt32($80000000);
          end;
         end;
        end;
@@ -15712,13 +15715,16 @@ begin
       Move(fAABBTree.Nodes[0],AABBTreeState^.TreeNodes[0],length(fAABBTree.Nodes)*SizeOf(TpvBVHDynamicAABBTree.TTreeNode));
      end;
      AABBTreeState^.Root:=fAABBTree.Root;
+     fAABBTree.GetSkipListNodes(fAABBTreeSkipLists[aInFlightFrameIndex],nil);
     end else begin
      AABBTreeState^.Root:=-1;
+     fAABBTreeSkipLists[Index].Count:=0;
     end;
    end;
   end else begin
    AABBTreeState^.Root:=-1;
    AABBTreeState^.Generation:=High(TpvUInt64);
+   fAABBTreeSkipLists[Index].Count:=0;
   end;
  end;
 
@@ -16336,10 +16342,10 @@ begin
 
          if PotentiallyVisible then begin
 
-          if AABBTreeNode^.UserData<0 then begin
+          if (AABBTreeNode^.UserData and TpvUInt32($80000000))<>0 then begin
 
            if aPotentiallyVisibleSetCulling then begin
-            PotentiallyVisibleSetNodeIndex:=-AABBTreeNode^.UserData;
+            PotentiallyVisibleSetNodeIndex:=AABBTreeNode^.UserData and TpvUInt32($7fffffff);
             if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
              PotentiallyVisible:=false;
              for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
@@ -16353,7 +16359,7 @@ begin
             end;
            end;
 
-          end else if AABBTreeNode^.UserData>0 then begin
+          end else if (AABBTreeNode^.UserData>=1) and (AABBTreeNode^.UserData<=TpvUInt32($7fffffff)) then begin
 
            Node:=fGroup.fNodes[AABBTreeNode^.UserData-1];
 
