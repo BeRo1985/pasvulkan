@@ -468,9 +468,6 @@ end;
 
 { TpvBVHDynamicAABBTree }
 
-
-{ TpvBVHDynamicAABBTree }
-
 constructor TpvBVHDynamicAABBTree.Create;
 var i:TpvSizeInt;
 begin
@@ -1612,7 +1609,7 @@ begin
  try
   if Root>=0 then begin
    if length(fSkipListNodeMap)<length(Nodes) then begin
-    SetLength(fSkipListNodeMap,(length(Nodes)*3) shr 1);
+    SetLength(fSkipListNodeMap,length(Nodes)+((length(Nodes)+1) shr 1));
    end;
    aSkipListNodeArray.Count:=0;
    NewStackItem.Pass:=0;
