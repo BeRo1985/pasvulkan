@@ -295,7 +295,7 @@ void main(){
 
           float level = floor(log2(max(size.x, size.y))); 
 
-#define USE_FASTER_DEPTH_CALCULATIONS
+#undef USE_FASTER_DEPTH_CALCULATIONS
 #ifdef USE_FASTER_DEPTH_CALCULATIONS
           vec2 depthZ = fma(
             inverseProjectionMatrixZData[viewIndex].xy, 
@@ -311,7 +311,7 @@ void main(){
 #endif
           float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
           
-          visible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) < depth; // also here flip the sign of z of bounding sphere, because z in view space is negative otherwise
+          visible = ((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth;
 
         }
 
