@@ -89,9 +89,11 @@ type { TpvScene3DRendererPassesForwardRenderPass }
                                           const aRenderPassIndex:TpvSizeInt;
                                           const aPreviousInFlightFrameIndex:TpvSizeInt;
                                           const aInFlightFrameIndex:TpvSizeInt);
-      public
+      private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fInstance:TpvScene3DRendererInstance;
+       fUsePreviousDepth:Boolean;
+       fUseDepthPrepass:Boolean;
        fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
        fResourceColor:TpvFrameGraph.TPass.TUsedImageResource;
@@ -122,6 +124,7 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fSkyBox:TpvScene3DRendererSkyBox;
        fVoxelVisualization:TpvScene3DRendererVoxelVisualization;
        fVoxelMeshVisualization:TpvScene3DRendererVoxelMeshVisualization;
+      public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
@@ -153,6 +156,10 @@ inherited Create(aFrameGraph);
                                        fInstance.SizeFactor,
                                        1.0,
                                        fInstance.CountSurfaceViews);
+
+ fUsePreviousDepth:=fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded;
+
+ fUseDepthPrepass:=fInstance.Renderer.UseDepthPrepass and not (fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded);
 
  fResourceCascadedShadowMap:=AddImageInput('resourcetype_cascadedshadowmap_data',
                                            'resource_cascadedshadowmap_data_final',
@@ -194,7 +201,7 @@ inherited Create(aFrameGraph);
 
   end;
 
-  if fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+  if fUsePreviousDepth then begin
 
    fResourceDepth:=AddImageDepthInput('resourcetype_depth',
                                       'resource_depth_data',
@@ -255,7 +262,7 @@ inherited Create(aFrameGraph);
 
   end;
 
-  if fInstance.Renderer.GPUCulling or fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+  if fUsePreviousDepth then begin
 
    fResourceDepth:=AddImageDepthInput('resourcetype_msaa_depth',
                                       'resource_msaa_depth_data',
@@ -361,7 +368,7 @@ begin
   Stream.Free;
  end;
 
- if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+ if fUseDepthPrepass then begin
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_'+fInstance.Renderer.MeshFragTypeName+'_depth_frag.spv');
   try
@@ -427,7 +434,7 @@ begin
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshMaskedFragment);
 
- if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+ if fUseDepthPrepass then begin
 
   fVulkanPipelineShaderStageMeshDepthFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthFragmentShaderModule,'main');
   MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthFragment);
@@ -483,7 +490,7 @@ begin
 
  FreeAndNil(fVulkanPipelineShaderStageMeshMaskedFragment);
 
- if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+ if fUseDepthPrepass then begin
 
   FreeAndNil(fVulkanPipelineShaderStageMeshDepthFragment);
 
@@ -503,7 +510,7 @@ begin
 
  FreeAndNil(fMeshMaskedFragmentShaderModule);
 
- if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+ if fUseDepthPrepass then begin
 
   FreeAndNil(fMeshDepthFragmentShaderModule);
 
@@ -722,7 +729,7 @@ begin
  end;
  fVulkanPipelineLayout.Initialize;
 
- for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded do begin
+ for DepthPrePass:=false to fUseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
     for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -732,7 +739,7 @@ begin
   end;
  end;
 
- for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded do begin
+ for DepthPrePass:=false to fUseDepthPrepass do begin
 
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
 
@@ -1041,7 +1048,7 @@ begin
  end;
  fSkyBox.ReleaseResources;
  FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
- for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded do begin
+ for DepthPrePass:=false to fUseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
     for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -1143,7 +1150,7 @@ begin
    end;
   end else begin
 
-   if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+   if fUseDepthPrepass then begin
 
     fInstance.Renderer.Scene3D.Draw(fInstance,
                                     fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
@@ -1212,7 +1219,7 @@ begin
                                    @InFlightFrameState^.Jitter);
   end;
 
- {if fInstance.Renderer.UseDepthPrepass and not fInstance.Renderer.EarlyDepthPrepassNeeded then begin
+ {if fUseDepthPrepass then begin
 
    fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Mask],
