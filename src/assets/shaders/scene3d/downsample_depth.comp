@@ -68,6 +68,16 @@ float linearizeDepth(float z) {
 
 /* clang-format on */
 
+#ifdef REVERSEDZ
+  #define reduceOp min
+  #define minDepthOp max
+  #define maxDepthOp min
+#else
+  #define reduceOp max
+  #define minDepthOp min
+  #define maxDepthOp max
+#endif
+
 void main() {
 #ifdef MULTIVIEW
   ivec3 invocationPosition = ivec3(gl_GlobalInvocationID.xyz);
@@ -93,66 +103,60 @@ void main() {
   #if MIPMAPLEVEL == 0
     inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(viewIndex)].inverseProjectionMatrix;
     #ifdef MSAA       
-      #ifdef REVERSEDZ
-          float minDepth = 0.0;
-          float maxDepth = 1.0;
-          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            float sampleDepth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x; 
-            minDepth = max(minDepth, sampleDepth);
-            maxDepth = min(maxDepth, sampleDepth);
-          }
-      #else
-          float minDepth = 1.0;
-          float maxDepth = 0.0;
-          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            float sampleDepth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x; 
-            minDepth = min(minDepth, sampleDepth);
-            maxDepth = max(maxDepth, sampleDepth);
-          }
-      #endif
-        depth = maxDepth;
-        float minDepthLinear = linearizeDepth(minDepth);
-        float maxDepthLinear = linearizeDepth(maxDepth);
-        uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
-        uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
-        atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
-        atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
-        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
-          atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
-          atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
-        }
+      float minDepth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
+      float maxDepth = minDepth;
+      for (int i = 1, j = int(pushConstants.countSamples); i < j; i++) {
+        float sampleDepth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), i).x; 
+        minDepth = minDepthOp(minDepth, sampleDepth);
+        maxDepth = maxDepthOp(maxDepth, sampleDepth);
+      }
+      depth = maxDepth;
+      float minDepthLinear = linearizeDepth(minDepth);
+      float maxDepthLinear = linearizeDepth(maxDepth);
+      uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
+      uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
+      atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
+      atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
+      if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+        atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
+        atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
+      }
     #else
-        depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
-        uint depthUI = floatBitsToUint(linearizeDepth(depth));
-        atomicMin(nearestFarthestDepthBuffer.x, depthUI);
-        atomicMax(nearestFarthestDepthBuffer.z, depthUI);
-        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
-          atomicMin(nearestFarthestDepthBuffer.y, depthUI);
-          atomicMax(nearestFarthestDepthBuffer.w, depthUI);
-        }
+      depth = texelFetch(uSourceTexture, ivec3(xy, viewIndex), 0).x;
+      uint depthUI = floatBitsToUint(linearizeDepth(depth));
+      atomicMin(nearestFarthestDepthBuffer.x, depthUI);
+      atomicMax(nearestFarthestDepthBuffer.z, depthUI);
+      if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+        atomicMin(nearestFarthestDepthBuffer.y, depthUI);
+        atomicMax(nearestFarthestDepthBuffer.w, depthUI);
+      }
     #endif
   #else
       ivec3 sourceXY = ivec3(xy.xy << ivec2(1), viewIndex);
     #if 1  
       vec4 depths = textureGather(uSourceTexture, vec3(vec2(vec2(sourceXY) + vec2(0.5)) / vec2(sourceSize.xy), sourceXY.z), 0);
-      #ifdef REVERSEDZ
-        depth = min(min(depths.x, depths.y), min(depths.z, depths.w));
-      #else
-        depth = max(max(depths.x, depths.y), max(depths.z, depths.w));
-      #endif
+      depth = reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w));
     #else
-      #ifdef REVERSEDZ
-          depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
-                      min(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
-      #else
-          depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
-                      max(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
-      #endif
+      depth = reduceOp(reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 0, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 0, 0), ivec3(0), sourceSizeMask), 0).x),   //
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 1, 0), ivec3(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 1, 0), ivec3(0), sourceSizeMask), 0).x));  //
     #endif
+    if(((sourceSize.x & 1) != 0) && ((sourceXY.x + 2) < sourceSize.x)){
+      depth = reduceOp(depth, 
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(2, 0, 0), ivec3(0), sourceSizeMask), 0).x,
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec3(2, 1, 0), ivec3(0), sourceSizeMask), 0).x));
+      if(((sourceSize.y & 1) != 0) && ((sourceXY.y + 2) < sourceSize.y)){ 
+        depth = reduceOp(depth,
+                         reduceOp(reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 2, 0), ivec3(0), sourceSizeMask), 0).x,
+                                           texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 2, 0), ivec3(0), sourceSizeMask), 0).x),
+                                  texelFetch(uSourceTexture, clamp(sourceXY + ivec3(2, 2, 0), ivec3(0), sourceSizeMask), 0).x));
+      }      
+    }else if(((sourceSize.y & 1) != 0) && ((sourceXY.y + 2) < sourceSize.y)){ 
+      depth = reduceOp(depth, 
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec3(0, 2, 0), ivec3(0), sourceSizeMask), 0).x,
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec3(1, 2, 0), ivec3(0), sourceSizeMask), 0).x));
+    }
   #endif
 #else
 #ifdef MSAA
@@ -165,66 +169,60 @@ void main() {
   #if MIPMAPLEVEL == 0
     inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex].inverseProjectionMatrix;
     #ifdef MSAA
-      #ifdef REVERSEDZ
-          float minDepth = 0.0;
-          float maxDepth = 1.0;
-          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            float sampleDepth = texelFetch(uSourceTexture, xy, i).x;
-            minDepth = max(minDepth, sampleDepth);
-            maxDepth = min(maxDepth, sampleDepth);
-          }
-      #else
-          float minDepth = 1.0;
-          float maxDepth = 0.0;
-          for (int i = 0, j = int(pushConstants.countSamples); i < j; i++) {
-            float sampleDepth = texelFetch(uSourceTexture, xy, i).x;
-            minDepth = min(minDepth, sampleDepth);
-            maxDepth = max(maxDepth, sampleDepth);
-          }
-      #endif
-        depth = maxDepth;
-        float minDepthLinear = linearizeDepth(minDepth);
-        float maxDepthLinear = linearizeDepth(maxDepth);
-        uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
-        uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
-        atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
-        atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
-        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
-          atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
-          atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
-        }
+      float minDepth = texelFetch(uSourceTexture, xy, 0).x;
+      float maxDepth = minDepth;
+      for (int i = 1, j = int(pushConstants.countSamples); i < j; i++) {
+        float sampleDepth = texelFetch(uSourceTexture, xy, i).x;
+        minDepth = minDepthOp(minDepth, sampleDepth);
+        maxDepth = maxDepthOp(maxDepth, sampleDepth);
+      }
+      depth = maxDepth;
+      float minDepthLinear = linearizeDepth(minDepth);
+      float maxDepthLinear = linearizeDepth(maxDepth);
+      uint minDepthUI = floatBitsToUint(min(minDepthLinear, maxDepthLinear));
+      uint maxDepthUI = floatBitsToUint(max(minDepthLinear, maxDepthLinear));
+      atomicMin(nearestFarthestDepthBuffer.x, minDepthUI);
+      atomicMax(nearestFarthestDepthBuffer.z, maxDepthUI);
+      if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+        atomicMin(nearestFarthestDepthBuffer.y, minDepthUI);
+        atomicMax(nearestFarthestDepthBuffer.w, maxDepthUI);
+      }
     #else
-        depth = texelFetch(uSourceTexture, xy, 0).x;
-        uint depthUI = floatBitsToUint(linearizeDepth(depth));
-        atomicMin(nearestFarthestDepthBuffer.x, depthUI);
-        atomicMax(nearestFarthestDepthBuffer.z, depthUI);
-        if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
-          atomicMin(nearestFarthestDepthBuffer.y, depthUI);
-          atomicMax(nearestFarthestDepthBuffer.w, depthUI);
-        }  
+      depth = texelFetch(uSourceTexture, xy, 0).x;
+      uint depthUI = floatBitsToUint(linearizeDepth(depth));
+      atomicMin(nearestFarthestDepthBuffer.x, depthUI);
+      atomicMax(nearestFarthestDepthBuffer.z, depthUI);
+      if(all(greaterThanEqual(xy, (destinationTextureSize.xy * 52) >> 7)) && all(lessThanEqual(xy, (destinationTextureSize.xy * 76) >> 7))){
+        atomicMin(nearestFarthestDepthBuffer.y, depthUI);
+        atomicMax(nearestFarthestDepthBuffer.w, depthUI);
+      }  
     #endif
   #else
       ivec2 sourceXY = xy << ivec2(1);
     #if 1  
       vec4 depths = textureGather(uSourceTexture, vec2(vec2(sourceXY) + vec2(0.5)) / vec2(sourceSize.xy), 0);
-      #ifdef REVERSEDZ
-        depth = min(min(depths.x, depths.y), min(depths.z, depths.w));
-      #else
-        depth = max(max(depths.x, depths.y), max(depths.z, depths.w));
-      #endif
+      depth = reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w));
     #else
-      #ifdef REVERSEDZ
-          depth = min(min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
-                      min(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
-      #else
-          depth = max(max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
-                      max(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
-                          texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
-      #endif
+      depth = reduceOp(reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 0), ivec2(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 0), ivec2(0), sourceSizeMask), 0).x),   //
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 1), ivec2(0), sourceSizeMask), 0).x,    //
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 1), ivec2(0), sourceSizeMask), 0).x));  //
     #endif
+    if(((sourceSize.x & 1) != 0) && ((sourceXY.x + 2) < sourceSize.x)){
+      depth = reduceOp(depth, 
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(2, 0), ivec2(0), sourceSizeMask), 0).x,
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec2(2, 1), ivec2(0), sourceSizeMask), 0).x));
+      if(((sourceSize.y & 1) != 0) && ((sourceXY.y + 2) < sourceSize.y)){ 
+        depth = reduceOp(depth,
+                         reduceOp(reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 2), ivec2(0), sourceSizeMask), 0).x,
+                                           texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 2), ivec2(0), sourceSizeMask), 0).x),
+                                  texelFetch(uSourceTexture, clamp(sourceXY + ivec2(2, 2), ivec2(0), sourceSizeMask), 0).x));
+      }      
+    }else if(((sourceSize.y & 1) != 0) && ((sourceXY.y + 2) < sourceSize.y)){ 
+      depth = reduceOp(depth, 
+                       reduceOp(texelFetch(uSourceTexture, clamp(sourceXY + ivec2(0, 2), ivec2(0), sourceSizeMask), 0).x,
+                                texelFetch(uSourceTexture, clamp(sourceXY + ivec2(1, 2), ivec2(0), sourceSizeMask), 0).x));
+    }
   #endif
 #endif
     imageStore(uDestinationTexture, invocationPosition, vec4(depth));
