@@ -207,7 +207,8 @@ inherited Create(aFrameGraph);
                                       'resource_depth_data',
 //                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                      );//}
 
   end else begin
@@ -268,16 +269,9 @@ inherited Create(aFrameGraph);
                                       'resource_msaa_depth_data',
 //                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                      );
-
-{  fResourceDepth:=AddImageDepthOutput('resourcetype_msaa_depth',
-                                       'resource_msaa_depth_data',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Load,
-                                                                    TpvVector4.InlineableCreate(IfThen(fInstance.ZFar<0.0,0.0,1.0),0.0,0.0,0.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      );}
 
   end else begin
 

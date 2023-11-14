@@ -142,7 +142,8 @@ inherited Create(aFrameGraph);
                                       'resource_depth_data',
 //                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                      );//}
 
   end else begin
@@ -165,7 +166,8 @@ inherited Create(aFrameGraph);
                                       'resource_msaa_depth_data',
 //                                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                      [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                       TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
                                      );//}
 
   end else begin
