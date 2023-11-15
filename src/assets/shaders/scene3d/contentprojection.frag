@@ -24,12 +24,12 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(std140, set = 0, binding = 0) uniform uboViews {
+layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 1, binding = 0, input_attachment_index = 0) uniform subpassInput uTextureBackground;
-layout(set = 1, binding = 1) uniform sampler2D uTextureContent;
+layout(set = 0, binding = 1, input_attachment_index = 0) uniform subpassInput uTextureBackground;
+layout(set = 0, binding = 2) uniform sampler2D uTextureContent;
 
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 View view = uView.views[viewIndex];
