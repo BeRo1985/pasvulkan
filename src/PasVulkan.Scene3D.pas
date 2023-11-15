@@ -15475,7 +15475,6 @@ var CullFace,Blend:TPasGLTFInt32;
  begin
 
   Mesh:=aNode.fMesh;
-
   if assigned(Mesh) then begin
 
    Skin:=aNode.fSkin;
