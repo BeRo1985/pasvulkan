@@ -15462,33 +15462,68 @@ var CullFace,Blend:TPasGLTFInt32;
   end;
  end;
  procedure ProcessSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
+ // This procedure calculates a conservative worst-case bounding box for a node with a skinned animated mesh. It 
+ // approximates the bounding box for a given animation state using the mesh bounding box (which includes already
+ // conservative morph vertices) and the joints used by the node. This method is not completely accurate but offers a 
+ // balance between performance and precision, as it avoids recalculating based on current transformed vertex positions.
  var JointIndex:TpvSizeInt;
      Mesh:TpvScene3D.TGroup.TMesh;
      Skin:TpvScene3D.TGroup.TSkin;
-     InverseMatrix,Matrix:TpvMatrix4x4;
+     InverseMatrix,JointMatrix,SumMatrix:TpvMatrix4x4;
      UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
+     BoundingBox:TpvAABB;
  begin
+
   Mesh:=aNode.fMesh;
+
   if assigned(Mesh) then begin
+
    Skin:=aNode.fSkin;
+
+   // Obtain the inverse of the node's world matrix, if it exists.
    if assigned(Skin) then begin
     InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
    end else begin
     InverseMatrix:=TpvMatrix4x4.Identity;
    end;
-   Matrix:=TpvMatrix4x4.Identity;
+
+   // Initialize the bounding box with the mesh bounding box, which already includes the worst-case scenario for morph vertices.   
+   BoundingBox:=Mesh.fBoundingBox; 
+
+   // Start with an identity matrix for the sum matrix.
+   SumMatrix:=TpvMatrix4x4.Identity;
+
+   // Iterate over all joints used by the current node, considering each joint's largest weight which is used by the mesh vertices of the node.
    for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
+
     UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
+
     if (UsedJoint^.Joint>=0) and (UsedJoint^.Joint<length(fNodeMatrices)) then begin
-     Matrix:=Matrix+((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight);
+     
+     // Compute the joint matrix.
+     JointMatrix:=(fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight;
+
+     // Incorporate the joint matrix into the sum matrix.
+     SumMatrix:=SumMatrix+JointMatrix;
+
+     // Update the bounding box by combining it with the transformed mesh bounding box using the joint matrix.
+     BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(JointMatrix));
+
     end;
+
    end;
-   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=(aNode.fMesh.fBoundingBox.Combine(
-                                                        aNode.fMesh.fBoundingBox.Transform(Matrix)
-                                                       )
-                                                      ).Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
+
+   // Further combine the bounding box using the sum matrix. This aims to be conservative but not necessarily 100% accurate.
+   BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(SumMatrix));
+
+   // Transform the final bounding box using the node and model matrices and store it in the instance node.
+   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
+
+   // Indicate that the bounding box has been calculated for the instance node.
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+
   end;
+
  end;
  procedure GenerateAABBTreeSkipList;
  type TStackItem=record
