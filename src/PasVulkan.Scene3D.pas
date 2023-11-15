@@ -15513,7 +15513,7 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
 
    // Further combine the bounding box using the sum matrix. This aims to be conservative but not necessarily 100% accurate.
-   BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(SumMatrix));
+   //BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(SumMatrix));
 
    // Transform the final bounding box using the node and model matrices and store it in the instance node.
    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
