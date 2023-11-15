@@ -15465,9 +15465,8 @@ var CullFace,Blend:TPasGLTFInt32;
  var JointIndex:TpvSizeInt;
      Mesh:TpvScene3D.TGroup.TMesh;
      Skin:TpvScene3D.TGroup.TSkin;
-     InverseMatrix,Matrix,ModelNodeMatrix:TpvMatrix4x4;
+     InverseMatrix,Matrix:TpvMatrix4x4;
      UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
-     DynamicBoundingBox:TpvAABB;
  begin
   Mesh:=aNode.fMesh;
   if assigned(Mesh) then begin
@@ -15477,7 +15476,6 @@ var CullFace,Blend:TPasGLTFInt32;
    end else begin
     InverseMatrix:=TpvMatrix4x4.Identity;
    end;
-   ModelNodeMatrix:=aInstanceNode^.WorkMatrix*fModelMatrix;
    Matrix:=TpvMatrix4x4.Identity;
    for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
     UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
@@ -15485,9 +15483,10 @@ var CullFace,Blend:TPasGLTFInt32;
      Matrix:=Matrix+((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight);
     end;
    end;
-   ModelNodeMatrix:=Matrix*ModelNodeMatrix;
-   DynamicBoundingBox:=aNode.fMesh.fBoundingBox.Combine(aNode.fMesh.fBoundingBox.Transform(ModelNodeMatrix));
-   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
+   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=(aNode.fMesh.fBoundingBox.Combine(
+                                                        aNode.fMesh.fBoundingBox.Transform(Matrix)
+                                                       )
+                                                      ).Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
  end;
