@@ -1794,6 +1794,13 @@ type EpvScene3D=class(Exception);
                           PNodeFlags=^TNodeFlags;
                           TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
                           TUsedByScenesList=TpvObjectGenericList<TpvScene3D.TGroup.TScene>;
+                          TUsedJoint=record
+                           Joint:TpvSizeInt;
+                           Weight:TpvScalar;
+                          end;
+                          PUsedJoint=^TUsedJoint;
+                          TUsedJoints=TpvDynamicArray<TpvScene3D.TGroup.TNode.TUsedJoint>;
+                          PUsedJoints=^TUsedJoints;
                     private
                      fIndex:TpvSizeInt;
                      fFlags:TNodeFlags;
@@ -1815,6 +1822,7 @@ type EpvScene3D=class(Exception);
                      fScale:TpvVector3;
                      fDrawChoreographyBatchItemIndices:TSizeIntDynamicArray;
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
+                     fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
                      procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
@@ -9983,6 +9991,8 @@ begin
  fUsedByScenesList:=TUsedByScenesList.Create;
  fUsedByScenesList.OwnsObjects:=false;
 
+ fUsedJoints.Initialize;
+
  fMesh:=nil;
 
  fNodeMeshInstanceIndex:=-1;
@@ -10005,6 +10015,8 @@ begin
  fSkin:=nil;
 
  fLight:=nil;
+
+ fUsedJoints.Finalize;
 
  FreeAndNil(fUsedByScenesList);
 
@@ -11773,6 +11785,59 @@ var LightMap:TpvScene3D.TGroup.TLights;
    end;
   end;
  end;
+ procedure CollectNodeUsedJoints;
+ type TJointIndexHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
+ var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,Joint,UsedJointIndex:TpvSizeInt;
+     JointIndexHashMap:TJointIndexHashMap;
+     Node:TpvScene3D.TGroup.TNode;
+     Mesh:TpvScene3D.TGroup.TMesh;
+     Primitive:TpvScene3D.TGroup.TMesh.PPrimitive;
+     Vertex:TpvScene3D.PVertex;
+     JointBlock:TpvScene3D.PJointBlock;
+     Weight:TpvScalar;
+     UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
+ begin
+  JointIndexHashMap:=TJointIndexHashMap.Create(-1);
+  try
+   for Node in fNodes do begin
+    Mesh:=Node.Mesh;
+    if assigned(Mesh) then begin
+     Node.fUsedJoints.Clear;
+     JointIndexHashMap.Clear;
+     for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+      Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+      if Primitive^.CountVertices>0 then begin
+       for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+        Vertex:=@fVertices.Items[VertexIndex];
+        if Vertex^.CountJointBlocks>0 then begin
+         for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+          JointBlock:=@fJointBlocks.Items[JointBlockIndex];
+          for JointIndex:=0 to 3 do begin
+           Joint:=JointBlock^.Joints[JointIndex];
+           Weight:=JointBlock^.Weights[JointIndex];
+           if JointIndexHashMap.TryGet(Joint,UsedJointIndex) then begin
+            UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
+            UsedJoint^.Weight:=Max(abs(UsedJoint^.Weight),abs(Weight))*Sign(Weight);
+           end else begin 
+            UsedJointIndex:=Node.fUsedJoints.AddNew;
+            JointIndexHashMap.Add(Joint,UsedJointIndex);
+            UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
+            UsedJoint^.Joint:=Joint;
+            UsedJoint^.Weight:=Weight;
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+     Node.fUsedJoints.Finish;
+    end;
+   end;
+  finally
+   FreeAndNil(JointIndexHashMap);
+  end;
+ end;
 var Image:TpvScene3D.TImage;
     Sampler:TpvScene3D.TSampler;
     Texture:TpvScene3D.TTexture;
@@ -11925,6 +11990,8 @@ begin
  CollectUsedVisibleDrawNodes;
 
  CollectMaterials;
+
+ CollectNodeUsedJoints;
 
  ConstructDrawChoreographyBatchItems;
 
