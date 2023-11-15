@@ -15461,6 +15461,36 @@ var CullFace,Blend:TPasGLTFInt32;
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
  end;
+ procedure ProcessSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
+ var JointIndex:TpvSizeInt;
+     Mesh:TpvScene3D.TGroup.TMesh;
+     Skin:TpvScene3D.TGroup.TSkin;
+     InverseMatrix,Matrix,ModelNodeMatrix:TpvMatrix4x4;
+     UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
+     DynamicBoundingBox:TpvAABB;
+ begin
+  Mesh:=aNode.fMesh;
+  if assigned(Mesh) then begin
+   Skin:=aNode.fSkin;
+   if assigned(Skin) then begin
+    InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
+   end else begin
+    InverseMatrix:=TpvMatrix4x4.Identity;
+   end;
+   ModelNodeMatrix:=aInstanceNode^.WorkMatrix*fModelMatrix;
+   Matrix:=TpvMatrix4x4.Identity;
+   for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
+    UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
+    if (UsedJoint^.Joint>=0) and (UsedJoint^.Joint<length(fNodeMatrices)) then begin
+     Matrix:=Matrix+((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight);
+    end;
+   end;
+   ModelNodeMatrix:=Matrix*ModelNodeMatrix;
+   DynamicBoundingBox:=aNode.fMesh.fBoundingBox.Combine(aNode.fMesh.fBoundingBox.Transform(ModelNodeMatrix));
+   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
+   aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
+  end;
+ end;
  procedure GenerateAABBTreeSkipList;
  type TStackItem=record
        NodeIndex:TpvSizeInt;
@@ -15695,7 +15725,9 @@ begin
       if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
        ProcessMorphSkinNode(Node,InstanceNode);
       end else//}
-      begin
+      if assigned(Node.fSkin) then begin
+       ProcessSkinNode(Node,InstanceNode);
+      end else begin
        InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
        InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
       end;
