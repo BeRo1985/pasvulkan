@@ -15542,7 +15542,7 @@ var CullFace,Blend:TPasGLTFInt32;
  var JointIndex:TpvSizeInt;
      Mesh:TpvScene3D.TGroup.TMesh;
      Skin:TpvScene3D.TGroup.TSkin;
-     InverseMatrix,JointMatrix,SumMatrix:TpvMatrix4x4;
+     InverseMatrix,JointMatrix{,SumMatrix}:TpvMatrix4x4;
      UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
      BoundingBox:TpvAABB;
  begin
@@ -15562,8 +15562,8 @@ var CullFace,Blend:TPasGLTFInt32;
    // Initialize the bounding box with the mesh bounding box, which already includes the worst-case scenario for morph vertices.   
    BoundingBox:=Mesh.fBoundingBox; 
 
-   // Start with an identity matrix for the sum matrix.
-   SumMatrix:=TpvMatrix4x4.Identity;
+   // Start with an null matrix for the sum matrix.
+// SumMatrix:=TpvMatrix4x4.Null;
 
    // Iterate over all joints used by the current node, considering each joint's largest weight which is used by the mesh vertices of the node.
    for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
@@ -15576,7 +15576,7 @@ var CullFace,Blend:TPasGLTFInt32;
      JointMatrix:=(fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight;
 
      // Incorporate the joint matrix into the sum matrix.
-     SumMatrix:=SumMatrix+JointMatrix;
+//   SumMatrix:=SumMatrix+JointMatrix;
 
      // Update the bounding box by combining it with the transformed mesh bounding box using the joint matrix.
      BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(JointMatrix));
@@ -15586,7 +15586,7 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
 
    // Further combine the bounding box using the sum matrix. This aims to be conservative but not necessarily 100% accurate.
-   //BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(SumMatrix));
+// BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(SumMatrix));
 
    // Transform the final bounding box using the node and model matrices and store it in the instance node.
    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
