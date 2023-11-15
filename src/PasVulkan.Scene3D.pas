@@ -15370,7 +15370,7 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
   end;
  end;
- procedure ProcessBoundingBoxNode(const aNodeIndex:TpvSizeInt);
+ procedure ProcessBoundingBoxNodeRecursive(const aNodeIndex:TpvSizeInt);
  var Index:TPasGLTFSizeInt;
      Node:TpvScene3D.TGroup.TNode;
      InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
@@ -15382,7 +15382,7 @@ var CullFace,Blend:TPasGLTFInt32;
   AABB:=@InstanceNode^.BoundingBoxes[aInFlightFrameIndex];
   Filled:=@InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex];
   for Index:=0 to Node.Children.Count-1 do begin
-   ProcessBoundingBoxNode(Node.Children[Index].Index);
+   ProcessBoundingBoxNodeRecursive(Node.Children[Index].Index);
    OtherInstanceNode:=@fNodes[Node.Children[Index].Index];
    if OtherInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
     OtherAABB:=@OtherInstanceNode^.BoundingBoxes[aInFlightFrameIndex];
@@ -15393,6 +15393,79 @@ var CullFace,Blend:TPasGLTFInt32;
      AABB^:=OtherAABB^;
     end;
    end;
+  end;
+ end;
+ procedure ProcessBoundingSceneBoxNodesWithManualStack(const aScene:TpvScene3D.TGroup.TScene);
+ type TStackItem=record
+       NodeIndex:TpvSizeInt;       
+       Pass:TpvSizeInt;
+      end;
+      PStackItem=^TStackItem;
+      TStack=TpvDynamicFastStack<TStackItem>;
+ var Stack:TStack;
+     StackItem:TStackItem;
+     NewStackItem:PStackItem;
+     Index:TpvSizeInt;
+     Node:TpvScene3D.TGroup.TNode;
+     InstanceNode,OtherInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+     AABB:PpvAABB;
+     Filled:PBoolean;
+ begin
+  if aScene.fNodes.Count>0 then begin
+   Stack.Initialize;
+   try   
+    for Index:=aScene.fNodes.Count-1 downto 0 do begin
+     NewStackItem:=Stack.PushIndirect;
+     NewStackItem^.NodeIndex:=aScene.fNodes[Index].Index;
+     NewStackItem^.Pass:=0;
+    end;
+    while Stack.Pop(StackItem) do begin   
+     Node:=fGroup.fNodes[StackItem.NodeIndex];
+     case StackItem.Pass of
+      0:begin
+       if Node.Children.Count>0 then begin 
+        NewStackItem:=Stack.PushIndirect;
+        NewStackItem^.NodeIndex:=StackItem.NodeIndex;
+        NewStackItem^.Pass:=1;
+        for Index:=Node.Children.Count-1 downto 0 do begin
+         NewStackItem:=Stack.PushIndirect;
+         NewStackItem^.NodeIndex:=Node.Children[Index].Index;
+         NewStackItem^.Pass:=0;
+        end; 
+       end; 
+      end;  
+      1:begin 
+       if Node.Children.Count>0 then begin 
+        InstanceNode:=@fNodes[StackItem.NodeIndex];
+        AABB:=@InstanceNode^.BoundingBoxes[aInFlightFrameIndex];
+        Filled:=@InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex];
+        for Index:=0 to Node.Children.Count-1 do begin
+         OtherInstanceNode:=@fNodes[Node.Children[Index].Index];
+         if OtherInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+          AABB^:=AABB^.Combine(OtherInstanceNode^.BoundingBoxes[aInFlightFrameIndex]);
+         end else begin
+          Filled^:=true;
+          AABB^:=OtherInstanceNode^.BoundingBoxes[aInFlightFrameIndex];
+         end;
+        end; 
+       end;
+      end; 
+     end;
+    end; 
+   finally
+    Stack.Finalize;
+   end;
+  end; 
+ end;
+ procedure ProcessBoundingSceneBoxNodes(const aScene:TpvScene3D.TGroup.TScene);
+ var Index:TpvSizeInt;
+ begin
+  if length(fNodes)<64 then begin
+   for Index:=0 to aScene.fNodes.Count-1 do begin
+    ProcessBoundingBoxNodeRecursive(aScene.fNodes[Index].Index);
+   end;
+  end else begin
+   ProcessBoundingSceneBoxNodesWithManualStack(aScene);
   end;
  end;
  procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
@@ -15770,9 +15843,7 @@ begin
      end;
     end;
 
-    for Index:=0 to Scene.fNodes.Count-1 do begin
-     ProcessBoundingBoxNode(Scene.fNodes[Index].Index);
-    end;
+    ProcessBoundingSceneBoxNodes(Scene);
 
     for Index:=0 to fGroup.fNodes.Count-1 do begin
      Node:=fGroup.fNodes[Index];
