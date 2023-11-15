@@ -11815,15 +11815,17 @@ var LightMap:TpvScene3D.TGroup.TLights;
           for JointIndex:=0 to 3 do begin
            Joint:=JointBlock^.Joints[JointIndex];
            Weight:=JointBlock^.Weights[JointIndex];
-           if JointIndexHashMap.TryGet(Joint,UsedJointIndex) then begin
-            UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
-            UsedJoint^.Weight:=Max(abs(UsedJoint^.Weight),abs(Weight))*Sign(Weight);
-           end else begin 
-            UsedJointIndex:=Node.fUsedJoints.AddNew;
-            JointIndexHashMap.Add(Joint,UsedJointIndex);
-            UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
-            UsedJoint^.Joint:=Joint;
-            UsedJoint^.Weight:=Weight;
+           if (Joint>=0) and not IsZero(Weight) then begin
+            if JointIndexHashMap.TryGet(Joint,UsedJointIndex) then begin
+             UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
+             UsedJoint^.Weight:=Max(abs(UsedJoint^.Weight),abs(Weight))*Sign(Weight);
+            end else begin
+             UsedJointIndex:=Node.fUsedJoints.AddNew;
+             JointIndexHashMap.Add(Joint,UsedJointIndex);
+             UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
+             UsedJoint^.Joint:=Joint;
+             UsedJoint^.Weight:=Weight;
+            end;
            end;
           end;
          end;
@@ -15542,7 +15544,7 @@ var CullFace,Blend:TPasGLTFInt32;
  var JointIndex:TpvSizeInt;
      Mesh:TpvScene3D.TGroup.TMesh;
      Skin:TpvScene3D.TGroup.TSkin;
-     InverseMatrix,JointMatrix{,SumMatrix}:TpvMatrix4x4;
+     InverseMatrix:TpvMatrix4x4;
      UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
      BoundingBox:TpvAABB;
  begin
@@ -15552,7 +15554,7 @@ var CullFace,Blend:TPasGLTFInt32;
 
    Skin:=aNode.fSkin;
 
-   // Obtain the inverse of the node's world matrix, if it exists.
+   // Obtain the inverse of the node's world matrix, if it is needed.
    if assigned(Skin) then begin
     InverseMatrix:=aInstanceNode^.WorkMatrix.Inverse;
    end else begin
@@ -15562,31 +15564,16 @@ var CullFace,Blend:TPasGLTFInt32;
    // Initialize the bounding box with the mesh bounding box, which already includes the worst-case scenario for morph vertices.   
    BoundingBox:=Mesh.fBoundingBox; 
 
-   // Start with an null matrix for the sum matrix.
-// SumMatrix:=TpvMatrix4x4.Null;
-
    // Iterate over all joints used by the current node, considering each joint's largest weight which is used by the mesh vertices of the node.
+   // This aims to be conservative but not necessarily 100% accurate.
    for JointIndex:=0 to aNode.fUsedJoints.Count-1 do begin
 
     UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
 
-    if (UsedJoint^.Joint>=0) and (UsedJoint^.Joint<length(fNodeMatrices)) then begin
-     
-     // Compute the joint matrix.
-     JointMatrix:=(fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight;
-
-     // Incorporate the joint matrix into the sum matrix.
-//   SumMatrix:=SumMatrix+JointMatrix;
-
-     // Update the bounding box by combining it with the transformed mesh bounding box using the joint matrix.
-     BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(JointMatrix));
-
-    end;
+    // Update the bounding box by combining it with the transformed mesh bounding box using the joint matrix.
+    BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
 
    end;
-
-   // Further combine the bounding box using the sum matrix. This aims to be conservative but not necessarily 100% accurate.
-// BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform(SumMatrix));
 
    // Transform the final bounding box using the node and model matrices and store it in the instance node.
    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
