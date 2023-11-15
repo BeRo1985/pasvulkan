@@ -25,9 +25,9 @@ struct VkDrawIndexedIndirectCommand {
 
 struct DrawIndexedIndirectCommand {
   uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
-  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = objectIndex, zw = padding for 16 bytes alignment to the next vec4 field
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = objectIndex, z = added flag, w = padding/unused
   vec4 boundingSphere; // xyz = center, w = radius
-  uvec4 metaData; // x = added, yzw = unused 
+  uvec4 padding; // padding/unused
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
 #if PASS == 0
@@ -195,19 +195,17 @@ void main(){
   const uvec4 cmd0 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd0;
   const uvec4 cmd1 = inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1;
 
-  const uint objectIndex = cmd1.y;
-
   if((pushConstants.skipCulling == 0u) &&  // If it is the first frame or the like, just don't cull anything
-     ((objectIndex < pushConstants.countObjectIndices) && // Check if the object index is in the valid range, since
-                                                          // new drawIndexedIndirectCommands may have been added 
-                                                          // with a higher object index than the current 
-                                                          // countObjectIndices in contrast to the previous frame
-      ((inputVisibilityBuffer.bitmap[objectIndex >> 5u] & (1u << (objectIndex & 31u))) == 0u))){
+     ((cmd1.y < pushConstants.countObjectIndices) && // Check if the object index is in the valid range, since
+                                                     // new drawIndexedIndirectCommands may have been added 
+                                                     // with a higher object index than the current 
+                                                     // countObjectIndices in contrast to the previous frame
+      ((inputVisibilityBuffer.bitmap[cmd1.y >> 5u] & (1u << (cmd1.y & 31u))) == 0u))){
     // Skip, since it was not visible in the previous frame    
     return; 
   }
 
-  inputDrawIndexedIndirectCommands.commands[sourceIndex].metaData.x = 1u; // Mark as added
+  inputDrawIndexedIndirectCommands.commands[sourceIndex].cmd1.z = 1u; // Mark as added
 
   uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndex + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndex], 1u);
   
@@ -352,7 +350,7 @@ void main(){
   }
 
   // Mark as visible in any case, independently of being already added in the previous pass 
-  atomicOr(outputVisiblityBuffer.bitmap[objectIndex >> 5u], 1u << (objectIndex & 31u)); 
+  atomicOr(outputVisiblityBuffer.bitmap[cmd1.y >> 5u], 1u << (cmd1.y & 31u)); 
 
   // Append to the global üart of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive 
   // occlusion culls are avoided as much as possible.
@@ -368,7 +366,7 @@ void main(){
 
   // Manage disocclusion in the output buffer. This step helps optimize depth pre-pass by minimizing depth-buffer overdraw and avoiding redundant rendering 
   // in the depth buffer. This is necessary because a complete depth pre-pass is needed for things like e.g. screen space ambient occlusion and the like.
-  if((inputDrawIndexedIndirectCommands.commands[sourceIndex].metaData.x == 0u) &&         // Just when not already added in the previous pass to the global output buffer part
+  if((cmd1.z == 0u) &&                                                                    // Just when not already added in the previous pass to the global output buffer part
      (pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions != 0xffffffffu)){ // Just when enabled
 
     uint destinationIndex = pushConstants.baseDrawIndexedIndirectCommandIndexForDisocclusions + atomicAdd(outputDrawIndexedIndirectCommandCounts.counts[pushConstants.drawCallIndexForDisocclusions], 1u);
