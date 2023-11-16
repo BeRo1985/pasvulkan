@@ -170,6 +170,7 @@ begin
  finally
   Stream.Free;
  end;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'CullDepthPyramidComputePass.fFirstPassComputeShaderModule');
 
  if fInstance.ZFar<0.0 then begin
   if fInstance.CountSurfaceViews>1 then begin
@@ -189,6 +190,7 @@ begin
  finally
   Stream.Free;
  end;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'CullDepthPyramidComputePass.fReductionComputeShaderModule');
 
  fFirstPassVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fFirstPassComputeShaderModule,'main');
 
@@ -231,6 +233,7 @@ begin
  fFirstPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
  fFirstPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames);
  fFirstPassVulkanDescriptorPool.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorPool');
 
  fFirstPassVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fFirstPassVulkanDescriptorSetLayout.AddBinding(0,
@@ -244,10 +247,12 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
  fFirstPassVulkanDescriptorSetLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorSetLayout');
 
  fFirstPassPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fFirstPassPipelineLayout.AddDescriptorSetLayout(fFirstPassVulkanDescriptorSetLayout);
  fFirstPassPipelineLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'CullDepthPyramidComputePass.fFirstPassPipelineLayout');
 
  fFirstPassPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                      fInstance.Renderer.VulkanPipelineCache,
@@ -256,6 +261,7 @@ begin
                                                      fFirstPassPipelineLayout,
                                                      nil,
                                                      0);
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'CullDepthPyramidComputePass.fFirstPassPipeline');
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   if assigned(fResourceInput) then begin
@@ -289,6 +295,8 @@ begin
                                                                     fInstance.CountSurfaceViews
                                                                    );
   end;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'CullDepthPyramidComputePass.fVulkanImageViews['+IntToStr(InFlightFrameIndex)+']');
+
   fFirstPassVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fFirstPassVulkanDescriptorPool,
                                                                                     fFirstPassVulkanDescriptorSetLayout);
   if assigned(fResourceInput) then begin
@@ -328,6 +336,7 @@ begin
                                                                           false
                                                                          );
   fFirstPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
  end;
 
  /////
@@ -338,6 +347,7 @@ begin
  fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
  fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(4*4));
  fReductionVulkanDescriptorPool.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CullDepthPyramidComputePass.fReductionVulkanDescriptorPool');
 
  fReductionVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fReductionVulkanDescriptorSetLayout.AddBinding(0,
@@ -351,11 +361,13 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
  fReductionVulkanDescriptorSetLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'CullDepthPyramidComputePass.fReductionVulkanDescriptorSetLayout');
 
  fReductionPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fReductionPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvInt32));
  fReductionPipelineLayout.AddDescriptorSetLayout(fReductionVulkanDescriptorSetLayout);
  fReductionPipelineLayout.Initialize;
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'CullDepthPyramidComputePass.fReductionPipelineLayout');
 
  fReductionPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                      fInstance.Renderer.VulkanPipelineCache,
@@ -364,6 +376,7 @@ begin
                                                      fReductionPipelineLayout,
                                                      nil,
                                                      0);
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'CullDepthPyramidComputePass.fReductionPipeline');
 
  fCountMipMapLevelSets:=Min(((fInstance.CullDepthPyramidMipMappedArray2DImages[0].MipMapLevels+1)+3) shr 2,4);
 
@@ -407,6 +420,7 @@ begin
                                                                                                false
                                                                                               );
    fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex].Flush;
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'CullDepthPyramidComputePass.fReductionVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+','+IntToStr(MipMapLevelSetIndex)+']');
   end;
  end;
 
