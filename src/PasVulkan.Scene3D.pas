@@ -1797,6 +1797,7 @@ type EpvScene3D=class(Exception);
                           TUsedJoint=record
                            Joint:TpvSizeInt;
                            Weight:TpvScalar;
+                           AABB:TpvAABB;
                           end;
                           PUsedJoint=^TUsedJoint;
                           TUsedJoints=TpvDynamicArray<TpvScene3D.TGroup.TNode.TUsedJoint>;
@@ -11786,8 +11787,16 @@ var LightMap:TpvScene3D.TGroup.TLights;
   end;
  end;
  procedure CollectNodeUsedJoints;
+ // This procedure goes through all nodes and collects their used joints and their associated used weights and AABBs,
+ // for later runtime calculation of a conservative worst-case bounding box for a node with a skinned animated mesh,
+ // For that, it identifies and records the joints used by each node. It iterates through all nodes, determining which
+ // joints influence the vertices of the node's mesh. A bounding box for each joint will be calculated, accounting for
+ // mesh vertices including approximate influences of morph target vertices, and aggregates this information in a list
+ // of used joints for each node. This list is later used to approximate the bounding box for skinned animated meshes.
  type TJointIndexHashMap=TpvHashMap<TpvSizeInt,TpvSizeInt>;
  var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex,Joint,UsedJointIndex:TpvSizeInt;
+     MorphTargetVertexIndex:TpvUInt32;
+     MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
      JointIndexHashMap:TJointIndexHashMap;
      Node:TpvScene3D.TGroup.TNode;
      Mesh:TpvScene3D.TGroup.TMesh;
@@ -11796,49 +11805,124 @@ var LightMap:TpvScene3D.TGroup.TLights;
      JointBlock:TpvScene3D.PJointBlock;
      Weight:TpvScalar;
      UsedJoint:TpvScene3D.TGroup.TNode.PUsedJoint;
+     AABB:TpvAABB;
  begin
+
+  // Create a hash map to store joint indices
   JointIndexHashMap:=TJointIndexHashMap.Create(-1);
   try
+
+   // Iterate over each node
    for Node in fNodes do begin
+
     Mesh:=Node.Mesh;
+
+    // Check if the node has a mesh
     if assigned(Mesh) then begin
+
+     // Reset the list of used joints for the node
      Node.fUsedJoints.Clear;
+
+     // Clear the hash map of joint indices
      JointIndexHashMap.Clear;
+
+     // Iterate over each primitive of the mesh
      for PrimitiveIndex:=0 to length(Mesh.fPrimitives)-1 do begin
+
       Primitive:=@Mesh.fPrimitives[PrimitiveIndex];
+
+      // Check if the primitive has vertices
       if Primitive^.CountVertices>0 then begin
+
+       // Iterate over each vertex of the primitive
        for VertexIndex:=TpvSizeInt(Primitive^.StartBufferVertexOffset) to TpvSizeInt(Primitive^.StartBufferVertexOffset+Primitive^.CountVertices)-1 do begin
+
         Vertex:=@fVertices.Items[VertexIndex];
+
+        // Check if the vertex has joint blocks
         if Vertex^.CountJointBlocks>0 then begin
+
+         // Initialize the axis-aligned bounding box (AABB) with the vertex position
+         AABB.Min:=Vertex^.Position;
+         AABB.Max:=Vertex^.Position;
+
+         // Process and adjust bounding box for morph target vertices. The loop continues until
+         // it encounters the sentinel value TpvUInt32($ffffffff), which indicates the end of
+         // the morph target vertex chain. This value is used as a marker to signify that
+         // there are no more morph target vertices to process.
+         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+         while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+          MorphTargetVertex:=@fMorphTargetVertices.Items[MorphTargetVertexIndex];
+          AABB.DirectCombineVector3(Vertex^.Position+MorphTargetVertex^.Position.xyz); // Assume a weight value of 1.0 for an approximate result
+          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+         end;
+
+         // Iterate over joint blocks that influence the current vertex
          for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
+
           JointBlock:=@fJointBlocks.Items[JointBlockIndex];
+
+          // Process each joint in the joint block
           for JointIndex:=0 to 3 do begin
+
            Joint:=JointBlock^.Joints[JointIndex];
            Weight:=JointBlock^.Weights[JointIndex];
+
+           // Check if joint is valid and weight is not zero
            if (Joint>=0) and not IsZero(Weight) then begin
+
+            // Check if joint is already in the used joints list
             if JointIndexHashMap.TryGet(Joint,UsedJointIndex) then begin
+
+             // If yes, update the data of the used joint
+
              UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
              UsedJoint^.Weight:=Max(abs(UsedJoint^.Weight),abs(Weight))*Sign(Weight);
+             UsedJoint^.AABB.DirectCombine(AABB);
+
             end else begin
+
+             // If no, add the joint to the used joints list with initial data 
+
              UsedJointIndex:=Node.fUsedJoints.AddNew;
+
              JointIndexHashMap.Add(Joint,UsedJointIndex);
+
              UsedJoint:=@Node.fUsedJoints.Items[UsedJointIndex];
              UsedJoint^.Joint:=Joint;
              UsedJoint^.Weight:=Weight;
+             UsedJoint^.AABB:=AABB;
+
             end;
+
            end;
+
           end;
+
          end;
+
         end;
+
        end;
+
       end;
+
      end;
-     Node.fUsedJoints.Finish;
+
+     // Finalize the list of used joints for the node (freezing the dynamic allocated array to its final size) 
+     Node.fUsedJoints.Finish; 
+
     end;
+
    end;
+
   finally
+
+   // Release resources for the joint index hash map
    FreeAndNil(JointIndexHashMap);
+   
   end;
+
  end;
 var Image:TpvScene3D.TImage;
     Sampler:TpvScene3D.TSampler;
@@ -15570,8 +15654,8 @@ var CullFace,Blend:TPasGLTFInt32;
 
     UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
 
-    // Update the bounding box by combining it with the transformed mesh bounding box using the joint matrix.
-    BoundingBox:=BoundingBox.Combine(Mesh.fBoundingBox.Transform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
+    // Update the bounding box by combining it with the transformed by-the-joint-affected-vertices bounding box using the joint matrix.
+    BoundingBox:=BoundingBox.Combine(UsedJoint^.AABB.Transform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
 
    end;
 

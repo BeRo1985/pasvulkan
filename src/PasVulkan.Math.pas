@@ -1093,8 +1093,10 @@ type PpvScalar=^TpvScalar;
        function Flip:TpvAABB;
        function SquareMagnitude:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Resize(const f:TpvScalar):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure DirectCombine(const WithAABB:TpvAABB); {$ifdef CAN_INLINE}inline;{$endif}
+       procedure DirectCombineVector3(const v:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
        function Combine(const WithAABB:TpvAABB):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
-       function CombineVector3(v:TpvVector3):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
+       function CombineVector3(const v:TpvVector3):TpvAABB; {$ifdef CAN_INLINE}inline;{$endif}
        function DistanceTo(const ToAABB:TpvAABB):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Radius:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Compare(const WithAABB:TpvAABB):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -14330,6 +14332,26 @@ begin
  result.Max:=Max+v;
 end;
 
+procedure TpvAABB.DirectCombine(const WithAABB:TpvAABB);
+begin
+ Min.x:=Math.Min(Min.x,WithAABB.Min.x);
+ Min.y:=Math.Min(Min.y,WithAABB.Min.y);
+ Min.z:=Math.Min(Min.z,WithAABB.Min.z);
+ Max.x:=Math.Max(Max.x,WithAABB.Max.x);
+ Max.y:=Math.Max(Max.y,WithAABB.Max.y);
+ Max.z:=Math.Max(Max.z,WithAABB.Max.z);
+end;
+
+procedure TpvAABB.DirectCombineVector3(const v:TpvVector3);
+begin
+ Min.x:=Math.Min(Min.x,v.x);
+ Min.y:=Math.Min(Min.y,v.y);
+ Min.z:=Math.Min(Min.z,v.z);
+ Max.x:=Math.Max(Max.x,v.x);
+ Max.y:=Math.Max(Max.y,v.y);
+ Max.z:=Math.Max(Max.z,v.z);
+end;
+
 function TpvAABB.Combine(const WithAABB:TpvAABB):TpvAABB;
 begin
  result.Min.x:=Math.Min(Min.x,WithAABB.Min.x);
@@ -14340,7 +14362,7 @@ begin
  result.Max.z:=Math.Max(Max.z,WithAABB.Max.z);
 end;
 
-function TpvAABB.CombineVector3(v:TpvVector3):TpvAABB;
+function TpvAABB.CombineVector3(const v:TpvVector3):TpvAABB;
 begin
  result.Min.x:=Math.Min(Min.x,v.x);
  result.Min.y:=Math.Min(Min.y,v.y);
