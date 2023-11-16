@@ -193,7 +193,6 @@ void main() {
       imageStore(uDestinationTextures[3], invocationPosition.xy >> 3, depths.xxxx);
 #endif
     }
-    sharedZ[localInvocationIndex] = depths.x;
   }
   
 #else
