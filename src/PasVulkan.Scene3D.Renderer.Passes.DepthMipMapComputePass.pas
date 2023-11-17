@@ -567,8 +567,8 @@ begin
                                   SizeOf(TpvScene3DRendererPassesDepthMipMapComputePass.TPushConstants),
                                   @PushConstants);
 
-  aCommandBuffer.CmdDispatch(Max(1,(fInstance.CullDepthArray2DImages[aInFlightFrameIndex].Width+((1 shl 4)-1)) shr 4),
-                             Max(1,(fInstance.CullDepthArray2DImages[aInFlightFrameIndex].Height+((1 shl 4)-1)) shr 4),
+  aCommandBuffer.CmdDispatch(Max(1,(fInstance.DepthMipmappedArray2DImages[aInFlightFrameIndex].Width+((1 shl 4)-1)) shr 4),
+                             Max(1,(fInstance.DepthMipmappedArray2DImages[aInFlightFrameIndex].Height+((1 shl 4)-1)) shr 4),
                              fInstance.CountSurfaceViews);
 
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -621,8 +621,8 @@ begin
                                    SizeOf(TpvInt32),
                                    @CountMipMaps);
 
-   aCommandBuffer.CmdDispatch(Max(1,(fInstance.CullDepthArray2DImages[aInFlightFrameIndex].Width+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
-                              Max(1,(fInstance.CullDepthArray2DImages[aInFlightFrameIndex].Height+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
+   aCommandBuffer.CmdDispatch(Max(1,(fInstance.DepthMipmappedArray2DImages[aInFlightFrameIndex].Width+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
+                              Max(1,(fInstance.DepthMipmappedArray2DImages[aInFlightFrameIndex].Height+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
                               fInstance.CountSurfaceViews);
 
    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
