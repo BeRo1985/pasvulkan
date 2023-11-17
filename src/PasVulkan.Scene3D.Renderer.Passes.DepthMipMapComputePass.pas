@@ -472,7 +472,6 @@ end;
 procedure TpvScene3DRendererPassesDepthMipMapComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var MipMapLevelIndex,MipMapLevelSetIndex:TpvSizeInt;
     CountMipMaps:TpvInt32;
-    CountSamples:TpvUInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     NearestFarthestDepthVulkanBuffer:TpvVulkanBuffer;
