@@ -247,7 +247,7 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
  fFirstPassVulkanDescriptorSetLayout.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorSetLayout');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorSetLayout');
 
  fFirstPassPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fFirstPassPipelineLayout.AddDescriptorSetLayout(fFirstPassVulkanDescriptorSetLayout);

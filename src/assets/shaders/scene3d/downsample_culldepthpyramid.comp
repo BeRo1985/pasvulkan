@@ -135,7 +135,9 @@ void main() {
 #endif
   depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
   
-  if(all(lessThan(invocationPosition.xy >> 0, imageSize(uDestinationTextures[0]).xy))){
+  ivec2 destinationTextureSize = imageSize(uDestinationTextures[0]).xy;
+
+  if(all(lessThan(invocationPosition.xy >> 0, destinationTextureSize))){
 #ifdef MULTIVIEW
     imageStore(uDestinationTextures[0], ivec3(invocationPosition.xy >> 0, invocationPosition.z), depths.xxxx);
 #else
@@ -151,13 +153,15 @@ void main() {
   sharedZ[localInvocationIndex] = depths.x;
 
   barrier();
+
+  destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
   
   if((localInvocationIndex & 0x09 /*0b001001*/) == 0){
     depths.y = sharedZ[localInvocationIndex + 0x01];
     depths.z = sharedZ[localInvocationIndex + 0x08];
     depths.w = sharedZ[localInvocationIndex + 0x09];
     depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
-    if(all(lessThan(invocationPosition.xy >> 1, imageSize(uDestinationTextures[1]).xy))){
+    if(all(lessThan(invocationPosition.xy >> 1, destinationTextureSize))){
 #ifdef MULTIVIEW
       imageStore(uDestinationTextures[1], ivec3(invocationPosition.xy >> 1, invocationPosition.z), depths.xxxx);
 #else
@@ -171,12 +175,14 @@ void main() {
   }
   barrier();
 
+  destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
+
   if((localInvocationIndex & 0x1b /*0b011011*/) == 0){
     depths.y = sharedZ[localInvocationIndex + 0x02];
     depths.z = sharedZ[localInvocationIndex + 0x10];
     depths.w = sharedZ[localInvocationIndex + 0x12];
     depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
-    if(all(lessThan(invocationPosition.xy >> 2, imageSize(uDestinationTextures[2]).xy))){
+    if(all(lessThan(invocationPosition.xy >> 2, destinationTextureSize))){
 #ifdef MULTIVIEW
       imageStore(uDestinationTextures[2], ivec3(invocationPosition.xy >> 2, invocationPosition.z), depths.xxxx);
 #else
@@ -190,12 +196,14 @@ void main() {
   }
   barrier();
 
+  destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
+
   if((localInvocationIndex & 0x3f /*0b111111*/) == 0){
     depths.y = sharedZ[localInvocationIndex + 0x04];
     depths.z = sharedZ[localInvocationIndex + 0x20];
     depths.w = sharedZ[localInvocationIndex + 0x24];
     depths = vec4(reduceOp(reduceOp(depths.x, depths.y), reduceOp(depths.z, depths.w)));
-    if(all(lessThan(invocationPosition.xy >> 3, imageSize(uDestinationTextures[3]).xy))){
+    if(all(lessThan(invocationPosition.xy >> 3, destinationTextureSize))){
 #ifdef MULTIVIEW
       imageStore(uDestinationTextures[3], ivec3(invocationPosition.xy >> 3, invocationPosition.z), depths.xxxx);
 #else
