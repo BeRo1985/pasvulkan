@@ -2435,6 +2435,7 @@ type EpvScene3D=class(Exception);
                    TCameraNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
+              fReady:boolean;
               fCulling:boolean;
               fDynamicAABBTreeCulling:boolean;
               fHeadless:boolean;
@@ -10304,7 +10305,10 @@ end;
 
 constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
 begin
+
  inherited Create(aResourceManager,aParent,aMetaResource);
+
+ fReady:=false;
 
  fHeadless:=false;
 
@@ -11175,20 +11179,25 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Finish;
-var Scene:TpvScene3D.TGroup.TScene;
 begin
 
- ConstructBuffers;
+ if not fReady then begin
 
- CollectUsedVisibleDrawNodes;
+  ConstructBuffers;
 
- CollectMaterials;
+  CollectUsedVisibleDrawNodes;
 
- CollectNodeUsedJoints;
+  CollectMaterials;
 
- ConstructDrawChoreographyBatchItems;
+  CollectNodeUsedJoints;
 
- ConstructSkipLists;
+  ConstructDrawChoreographyBatchItems;
+
+  ConstructSkipLists;
+
+  fReady:=true;
+
+ end;
 
 end;
 
