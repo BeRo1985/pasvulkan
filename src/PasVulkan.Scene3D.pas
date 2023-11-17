@@ -2486,6 +2486,7 @@ type EpvScene3D=class(Exception);
               procedure CollectMaterials;
               procedure CollectNodeUsedJoints;
               procedure ConstructDrawChoreographyBatchItems;
+              procedure ConstructSkipLists;
               procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
@@ -2503,6 +2504,7 @@ type EpvScene3D=class(Exception);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
               procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+              procedure Finish;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
@@ -11153,6 +11155,14 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.ConstructSkipLists;
+var Scene:TpvScene3D.TGroup.TScene;
+begin
+ for Scene in fScenes do begin
+  Scene.ConstructSkipList;
+ end;
+end;
+
 function TpvScene3D.TGroup.AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
 var FileName:TPasGLTFUTF8String;
 begin
@@ -11162,6 +11172,24 @@ begin
  end else begin
   result:=nil;
  end;
+end;
+
+procedure TpvScene3D.TGroup.Finish;
+var Scene:TpvScene3D.TGroup.TScene;
+begin
+
+ ConstructBuffers;
+
+ CollectUsedVisibleDrawNodes;
+
+ CollectMaterials;
+
+ CollectNodeUsedJoints;
+
+ ConstructDrawChoreographyBatchItems;
+
+ ConstructSkipLists;
+
 end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
@@ -12073,19 +12101,7 @@ begin
   FreeAndNil(LightMap);
  end;
 
- ConstructBuffers;
-
- CollectUsedVisibleDrawNodes;
-
- CollectMaterials;
-
- CollectNodeUsedJoints;
-
- ConstructDrawChoreographyBatchItems;
-
- for Scene in fScenes do begin
-  Scene.ConstructSkipList;
- end;
+ Finish;
 
 end;
 
