@@ -91,7 +91,7 @@ type { TpvScene3DRendererPassesCullDepthPyramidComputePass }
        fFirstPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fReductionVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fReductionVulkanDescriptorPool:TpvVulkanDescriptorPool;
-       fReductionVulkanDescriptorSets:array[0..MaxInFlightFrames-1,0..3] of TpvVulkanDescriptorSet;
+       fReductionVulkanDescriptorSets:array[0..MaxInFlightFrames-1,0..7] of TpvVulkanDescriptorSet;
        fFirstPassPipelineLayout:TpvVulkanPipelineLayout;
        fReductionPipelineLayout:TpvVulkanPipelineLayout;
        fFirstPassPipeline:TpvVulkanComputePipeline;
@@ -378,12 +378,9 @@ begin
                                                      0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'CullDepthPyramidComputePass.fReductionPipeline');
 
- fCountMipMapLevelSets:=Min(((fInstance.CullDepthPyramidMipMappedArray2DImages[0].MipMapLevels+1)+3) shr 2,4);
+ fCountMipMapLevelSets:=Min(((fInstance.CullDepthPyramidMipMappedArray2DImages[0].MipMapLevels+1)+3) shr 2,8);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  for MipMapLevelSetIndex:=0 to 3 do begin
-   fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex]:=nil;
-  end;
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
    fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex]:=TpvVulkanDescriptorSet.Create(fReductionVulkanDescriptorPool,
                                                                                                          fReductionVulkanDescriptorSetLayout);
