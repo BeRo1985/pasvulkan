@@ -1752,8 +1752,6 @@ type EpvScene3D=class(Exception);
                      fInverseBindMatrices:TMatrix4x4DynamicArray;
                      fMatrices:TMatrix4x4DynamicArray;
                      fJoints:TSizeIntDynamicArray;
-                     fStorageBufferObjectOffset:TpvSizeUInt;
-                     fStorageBufferObjectSize:TpvSizeUInt;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -2464,7 +2462,6 @@ type EpvScene3D=class(Exception);
               fJointBlocks:TGroupJointBlocks;
               fJointBlockOffsets:TSizeIntDynamicArrayEx;
               fMorphTargetVertices:TMorphTargetVertexDynamicArray;
-              fSkinStorageBufferSize:TpvSizeInt;
               fMorphTargetCount:TpvSizeInt;
               fCountNodeWeights:TpvSizeInt;
               fCountJointNodeMatrices:TpvSizeInt;
@@ -10406,8 +10403,6 @@ begin
 
  fCountJointNodeMatrices:=0;
 
- fSkinStorageBufferSize:=0;
-
  fCachedVertexBufferMemoryBarriers:=nil;
 
  fCulling:=true;
@@ -11802,13 +11797,6 @@ begin
   result:=fSkins.Add(Skin);
   Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
   inc(fCountJointNodeMatrices,Skin.fJoints.Count);
-  Skin.fStorageBufferObjectOffset:=fSkinStorageBufferSize;
-  if Skin.fJoints.Count>0 then begin
-   Skin.fStorageBufferObjectSize:=Skin.fJoints.Count*SizeOf(TpvMatrix4x4);
-   inc(fSkinStorageBufferSize,Skin.fStorageBufferObjectSize);
-  end else begin
-   Skin.fStorageBufferObjectSize:=0;
-  end;
  end else begin
   result:=-1;
  end;
