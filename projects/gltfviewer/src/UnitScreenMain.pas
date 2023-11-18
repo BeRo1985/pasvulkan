@@ -834,6 +834,7 @@ begin
   end;
 
   fGroup:=TpvScene3D.TGroup(aResource);
+//fGroup.DynamicAABBTreeCulling:=true;
 
   fGroupInstance:=fGroup.CreateInstance;
 
