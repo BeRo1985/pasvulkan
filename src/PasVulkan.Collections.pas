@@ -172,6 +172,8 @@ type TpvDynamicArray<T>=record
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
+       procedure Resize(const aCount:TpvSizeInt);
+       procedure Finish;
        function AddNew:PT;
        function Add(const pItem:T):TpvSizeInt; overload;
        function Add(const pItems:TpvDynamicArrayList<T>):TpvSizeInt; overload;
@@ -1207,6 +1209,17 @@ begin
    end;
   end;
  end;
+end;
+
+procedure TpvDynamicArrayList<T>.Resize(const aCount:TpvSizeInt);
+begin
+ SetCount(aCount);
+end;
+
+procedure TpvDynamicArrayList<T>.Finish;
+begin
+ fAllocated:=fCount;
+ SetLength(fItems,fAllocated);
 end;
 
 function TpvDynamicArrayList<T>.GetItem(const pIndex:TpvSizeInt):T;

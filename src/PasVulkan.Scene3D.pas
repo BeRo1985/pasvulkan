@@ -237,6 +237,7 @@ type EpvScene3D=class(Exception);
             TInt16Vector4=array[0..3] of TpvInt16;
             PUInt32Vector4=^TUInt32Vector4;
             TFloatDynamicArray=TpvDynamicArray<TpvFloat>;
+            TFloatDynamicArrayList=TpvDynamicArrayList<TpvFloat>;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
             PSizeIntDynamicArray=^TSizeIntDynamicArray;
@@ -1747,7 +1748,7 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TPrimitives;
                      fBoundingBox:TpvAABB;
                      fBoundingSphere:TpvSphere;
-                     fWeights:TpvScene3D.TFloatDynamicArray;
+                     fWeights:TpvScene3D.TFloatDynamicArrayList;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
@@ -1761,7 +1762,7 @@ type EpvScene3D=class(Exception);
                      property Primitives:TPrimitives read fPrimitives write fPrimitives;
                      property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
                      property BoundingSphere:TpvSphere read fBoundingSphere write fBoundingSphere;
-                     property Weights:TpvScene3D.TFloatDynamicArray read fWeights write fWeights;
+                     property Weights:TpvScene3D.TFloatDynamicArrayList read fWeights;
                      property NodeMeshInstances:TpvSizeInt read fNodeMeshInstances;
                      property ReferencedByNodes:TReferencedByNodes read fReferencedByNodes;
                    end;
@@ -1837,7 +1838,7 @@ type EpvScene3D=class(Exception);
                      fCamera:TCamera;
                      fSkin:TSkin;
                      fLight:TpvScene3D.TGroup.TLight;
-                     fWeights:TpvScene3D.TFloatDynamicArray;
+                     fWeights:TpvScene3D.TFloatDynamicArrayList;
                      fWeightsOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
                      fLightIndex:TPasGLTFSizeInt;
@@ -8871,7 +8872,7 @@ begin
  inherited Create(aGroup);
  fGroup:=aGroup;
  fIndex:=aIndex;
- fWeights.Initialize;
+ fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
  fPrimitives:=nil;
  fNodeMeshInstances:=0;
  fReferencedByNodes.Initialize;
@@ -8907,7 +8908,7 @@ begin
   end;
  end;
  fPrimitives:=nil;
- fWeights.Finalize;
+ FreeAndNil(fWeights);
  fReferencedByNodes.Finalize;
  inherited Destroy;
 end;
@@ -10053,7 +10054,7 @@ begin
  fUsedByScenesList:=TUsedByScenesList.Create;
  fUsedByScenesList.OwnsObjects:=false;
 
- fWeights.Initialize;
+ fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
 
  fUsedJoints.Initialize;
 
@@ -10084,7 +10085,7 @@ begin
 
  fUsedJoints.Finalize;
 
- fWeights.Finalize;
+ FreeAndNil(fWeights);
 
  FreeAndNil(fUsedByScenesList);
 
