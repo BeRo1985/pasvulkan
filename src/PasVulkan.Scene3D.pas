@@ -2522,15 +2522,15 @@ type EpvScene3D=class(Exception);
               procedure CleanUp;
               procedure Finish;
              public
-              procedure AddLight(const aLight:TpvScene3D.TGroup.TLight);
-              procedure AddImage(const aImage:TpvScene3D.TImage);
-              procedure AddSampler(const aSampler:TpvScene3D.TSampler);
-              procedure AddTexture(const aTexture:TpvScene3D.TTexture);
-              procedure AddMaterial(const aMaterial:TpvScene3D.TMaterial);
-              procedure AddMesh(const aMesh:TpvScene3D.TGroup.TMesh);
-              procedure AddSkin(const aSkin:TpvScene3D.TGroup.TSkin);
-              procedure AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
-              procedure AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
+              function AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
+              function AddImage(const aImage:TpvScene3D.TImage):TpvSizeInt;
+              function AddSampler(const aSampler:TpvScene3D.TSampler):TpvSizeInt;
+              function AddTexture(const aTexture:TpvScene3D.TTexture):TpvSizeInt;
+              function AddMaterial(const aMaterial:TpvScene3D.TMaterial):TpvSizeInt;
+              function AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeInt;
+              function AddSkin(const aSkin:TpvScene3D.TGroup.TSkin):TpvSizeInt;
+              function AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
+              function AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):TpvSizeInt;
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
@@ -11645,14 +11645,16 @@ begin
 
 end;
 
-procedure TpvScene3D.TGroup.AddLight(const aLight:TpvScene3D.TGroup.TLight);
+function TpvScene3D.TGroup.AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
 begin
  if assigned(aLight) then begin
-  fLights.Add(aLight);
+  result:=fLights.Add(aLight);
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddImage(const aImage:TpvScene3D.TImage);
+function TpvScene3D.TGroup.AddImage(const aImage:TpvScene3D.TImage):TpvSizeInt;
 var Image,HashedImage,CurrentImage:TpvScene3D.TImage;
     HashData:TpvScene3D.TImage.THashData;
 begin
@@ -11664,12 +11666,12 @@ begin
     HashData:=Image.GetHashData;
     HashedImage:=fSceneInstance.fImageHashMap[HashData];
     if assigned(HashedImage) then begin
-     fNewImageMap.Add(HashedImage);
+     result:=fNewImageMap.Add(HashedImage);
      CurrentImage:=HashedImage;
     end else begin
      Image.fHashData:=HashData;
      fSceneInstance.fImageHashMap[HashData]:=Image;
-     fNewImageMap.Add(Image);
+     result:=fNewImageMap.Add(Image);
      CurrentImage:=Image;
      Image:=nil;
     end;
@@ -11684,10 +11686,12 @@ begin
   finally
    FreeAndNil(Image);
   end;
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddSampler(const aSampler:TpvScene3D.TSampler);
+function TpvScene3D.TGroup.AddSampler(const aSampler:TpvScene3D.TSampler):TpvSizeInt;
 var Sampler,HashedSampler,CurrentSampler:TSampler;
     HashData:TSampler.THashData;
 begin
@@ -11699,11 +11703,11 @@ begin
     HashData:=Sampler.GetHashData;
     HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
     if assigned(HashedSampler) then begin
-     fNewSamplerMap.Add(HashedSampler);
+     result:=fNewSamplerMap.Add(HashedSampler);
      CurrentSampler:=HashedSampler;
     end else begin
      fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
-     fNewSamplerMap.Add(Sampler);
+     result:=fNewSamplerMap.Add(Sampler);
      CurrentSampler:=Sampler;
      Sampler:=nil;
     end;
@@ -11717,10 +11721,12 @@ begin
   finally
    FreeAndNil(Sampler);
   end;
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddTexture(const aTexture:TpvScene3D.TTexture);
+function TpvScene3D.TGroup.AddTexture(const aTexture:TpvScene3D.TTexture):TpvSizeInt;
 var Texture,HashedTexture,CurrentTexture:TTexture;
      HashData:TTexture.THashData;
 begin
@@ -11732,11 +11738,11 @@ begin
     HashData:=Texture.GetHashData;
     HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
     if assigned(HashedTexture) then begin
-     fNewTextureMap.Add(HashedTexture);
+     result:=fNewTextureMap.Add(HashedTexture);
      CurrentTexture:=HashedTexture;
     end else begin
      fSceneInstance.fTextureHashMap[HashData]:=Texture;
-     fNewTextureMap.Add(Texture);
+     result:=fNewTextureMap.Add(Texture);
      CurrentTexture:=Texture;
      Texture:=nil;
     end;
@@ -11750,10 +11756,12 @@ begin
   finally
    FreeAndNil(Texture);
   end;
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial);
+function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial):TpvSizeInt;
 var Material,HashedMaterial:TpvScene3D.TMaterial;
     HashData:TpvScene3D.TMaterial.THashData;
 begin
@@ -11763,31 +11771,35 @@ begin
    HashData:=Material.fData;
    HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
    if assigned(HashedMaterial) then begin
-    fMaterials.Add(HashedMaterial);
+    result:=fMaterials.Add(HashedMaterial);
    end else begin
     fSceneInstance.fMaterialHashMap[HashData]:=Material;
-    fMaterials.Add(Material);
+    result:=fMaterials.Add(Material);
     Material:=nil;
    end;
   finally
    FreeAndNil(Material);
   end;
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh);
+function TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeInt;
 begin
  if assigned(aMesh) then begin
-  fMeshes.Add(aMesh);
+  result:=fMeshes.Add(aMesh);
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddSkin(const aSkin:TpvScene3D.TGroup.TSkin);
+function TpvScene3D.TGroup.AddSkin(const aSkin:TpvScene3D.TGroup.TSkin):TpvSizeInt;
 var Skin:TpvScene3D.TGroup.TSkin;
 begin
  Skin:=aSkin;
  if assigned(Skin) then begin
-  fSkins.Add(Skin);
+  result:=fSkins.Add(Skin);
   Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
   inc(fCountJointNodeMatrices,Skin.fJoints.Count);
   Skin.fStorageBufferObjectOffset:=fSkinStorageBufferSize;
@@ -11797,20 +11809,26 @@ begin
   end else begin
    Skin.fStorageBufferObjectSize:=0;
   end;
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
+function TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
 begin
  if assigned(aAnimation) then begin
-  fAnimations.Add(aAnimation);
+  result:=fAnimations.Add(aAnimation);
+ end else begin
+  result:=-1;
  end;
 end;
 
-procedure TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
+function TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):TpvSizeInt;
 begin
  if assigned(aCamera) then begin
-  fCameras.Add(aCamera);
+  result:=fCameras.Add(aCamera);
+ end else begin
+  result:=-1;
  end;
 end;
 
