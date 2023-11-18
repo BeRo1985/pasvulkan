@@ -11624,6 +11624,40 @@ end;
 
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var POCACodeString:TpvUTF8String;
+ procedure ProcessLights;
+ var Index:TpvSizeInt;
+     Light:TpvScene3D.TGroup.TLight;
+     ExtensionObject:TPasJSONItemObject;
+     KHRLightsPunctualItem,LightsItem,LightItem:TPasJSONItem;
+     KHRLightsPunctualObject:TPasJSONItemObject;
+     LightsArray:TPasJSONItemArray;
+ begin
+  ExtensionObject:=aSourceDocument.Extensions;
+  if assigned(ExtensionObject) then begin
+   KHRLightsPunctualItem:=ExtensionObject.Properties['KHR_lights_punctual'];
+   if assigned(KHRLightsPunctualItem) and (KHRLightsPunctualItem is TPasJSONItemObject) then begin
+    KHRLightsPunctualObject:=TPasJSONItemObject(KHRLightsPunctualItem);
+    LightsItem:=KHRLightsPunctualObject.Properties['lights'];
+    if assigned(LightsItem) and (LightsItem is TPasJSONItemArray) then begin
+     LightsArray:=TPasJSONItemArray(LightsItem);
+     for Index:=0 to LightsArray.Count-1 do begin
+      LightItem:=LightsArray.Items[Index];
+      if assigned(LightItem) and (LightItem is TPasJSONItemObject) then begin
+       Light:=TpvScene3D.TGroup.TLight.Create(self,Index);
+       try
+        Light.AssignFromGLTF(aSourceDocument,TPasJSONItemObject(LightItem));
+       finally
+        fLights.Add(Light);
+       end;
+      end else begin
+       Light:=nil;
+      end;
+      fNewLightMap.Add(Light);
+     end;
+    end;
+   end;
+  end;
+ end;
  procedure ProcessImages;
  var Index:TpvSizeInt;
      SourceImage:TPasGLTF.TImage;
@@ -11932,40 +11966,6 @@ var POCACodeString:TpvUTF8String;
     inc(fSkinStorageBufferSize,Skin.fStorageBufferObjectSize);
    end else begin
     Skin.fStorageBufferObjectSize:=0;
-   end;
-  end;
- end;
- procedure ProcessLights;
- var Index:TpvSizeInt;
-     Light:TpvScene3D.TGroup.TLight;
-     ExtensionObject:TPasJSONItemObject;
-     KHRLightsPunctualItem,LightsItem,LightItem:TPasJSONItem;
-     KHRLightsPunctualObject:TPasJSONItemObject;
-     LightsArray:TPasJSONItemArray;
- begin
-  ExtensionObject:=aSourceDocument.Extensions;
-  if assigned(ExtensionObject) then begin
-   KHRLightsPunctualItem:=ExtensionObject.Properties['KHR_lights_punctual'];
-   if assigned(KHRLightsPunctualItem) and (KHRLightsPunctualItem is TPasJSONItemObject) then begin
-    KHRLightsPunctualObject:=TPasJSONItemObject(KHRLightsPunctualItem);
-    LightsItem:=KHRLightsPunctualObject.Properties['lights'];
-    if assigned(LightsItem) and (LightsItem is TPasJSONItemArray) then begin
-     LightsArray:=TPasJSONItemArray(LightsItem);
-     for Index:=0 to LightsArray.Count-1 do begin
-      LightItem:=LightsArray.Items[Index];
-      if assigned(LightItem) and (LightItem is TPasJSONItemObject) then begin
-       Light:=TpvScene3D.TGroup.TLight.Create(self,Index);
-       try
-        Light.AssignFromGLTF(aSourceDocument,TPasJSONItemObject(LightItem));
-       finally
-        fLights.Add(Light);
-       end;
-      end else begin
-       Light:=nil;
-      end;
-      fNewLightMap.Add(Light);
-     end;
-    end;
    end;
   end;
  end;
