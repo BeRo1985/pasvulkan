@@ -174,9 +174,13 @@ type TpvDynamicArray<T>=record
        procedure Clear;
        procedure Resize(const aCount:TpvSizeInt);
        procedure Finish;
+       procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>); overload;
+       procedure Assign(const aItems:array of T); overload;
        function AddNew:PT;
        function Add(const pItem:T):TpvSizeInt; overload;
        function Add(const pItems:TpvDynamicArrayList<T>):TpvSizeInt; overload;
+       function AddRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
+       function AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
        procedure Delete(const pIndex:TpvSizeInt);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt); inline;
@@ -1232,6 +1236,28 @@ begin
  fItems[pIndex]:=pItem;
 end;
 
+procedure TpvDynamicArrayList<T>.Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>);
+var Index:TpvSizeInt;
+begin
+ fCount:=aFrom.fCount;
+ fAllocated:=fCount;
+ SetLength(fItems,fCount);
+ for Index:=0 to fCount-1 do begin
+  fItems[Index]:=aFrom.fItems[Index];
+ end;
+end;
+
+procedure TpvDynamicArrayList<T>.Assign(const aItems:array of T);
+var Index:TpvSizeInt;
+begin
+ fCount:=length(aItems);
+ fAllocated:=fCount;
+ SetLength(fItems,fCount);
+ for Index:=0 to fCount-1 do begin
+  fItems[Index]:=aItems[Index];
+ end;
+end;
+
 function TpvDynamicArrayList<T>.AddNew:PT;
 begin
  inc(fCount);
@@ -1267,6 +1293,24 @@ begin
    fItems[result+index]:=pItems.fItems[Index];
   end;
  end;
+end;
+
+function TpvDynamicArrayList<T>.AddRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ result:=fCount;
+ if aCount>0 then begin
+  SetCount(fCount+aCount);
+  for Index:=0 to aCount-1 do begin
+   Items[result+Index]:=aFrom.Items[aStartIndex+Index];
+  end;
+ end;
+end;
+
+function TpvDynamicArrayList<T>.AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt;
+begin
+ Clear;
+ result:=AddRangeFrom(aFrom,aStartIndex,aCount);
 end;
 
 procedure TpvDynamicArrayList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
