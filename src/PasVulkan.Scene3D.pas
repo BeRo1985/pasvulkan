@@ -1733,7 +1733,7 @@ type EpvScene3D=class(Exception);
                                   StartBufferIndexOffset:TpvSizeUInt;
                                  end;
                                  PNodeMeshPrimitiveInstance=^TNodeMeshPrimitiveInstance;
-                                 TNodeMeshPrimitiveInstances=TpvDynamicArray<TNodeMeshPrimitiveInstance>;
+                                 TNodeMeshPrimitiveInstances=TpvDynamicArrayList<TNodeMeshPrimitiveInstance>;
                            private
                             fPrimitiveTopology:TPrimitiveTopology;
                             fMaterialID:TpvInt64;
@@ -1744,7 +1744,7 @@ type EpvScene3D=class(Exception);
                             fStartBufferIndexOffset:TpvSizeUInt;
                             fCountVertices:TpvSizeUInt;
                             fCountIndices:TpvSizeUInt;
-                            fNodeMeshPrimitiveInstances:TNodeMeshPrimitiveInstances;
+                            fNodeMeshPrimitiveInstances:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances;
                            public
                             constructor Create; reintroduce;
                             destructor Destroy; override;
@@ -8879,12 +8879,12 @@ begin
  inherited Create;
  fMaterial:=nil;
  fTargets:=nil;
- fNodeMeshPrimitiveInstances.Initialize;
+ fNodeMeshPrimitiveInstances:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances.Create;
 end;
 
 destructor TpvScene3D.TGroup.TMesh.TPrimitive.Destroy;
 begin
- fNodeMeshPrimitiveInstances.Finalize;
+ FreeAndNil(fNodeMeshPrimitiveInstances);
  fTargets:=nil;
  inherited Destroy;
 end;
@@ -8939,7 +8939,6 @@ end;
 
 function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
 var PrimitiveIndex,
-    NodeMeshPrimitiveInstanceIndex,
     VertexIndex,
     NewVertexIndex,
     IndexIndex,
@@ -8972,8 +8971,8 @@ begin
     MaterialID:=0;
    end;}
    MaterialID:=Primitive.fMaterialID+1; // +1 because 0 = empty material
-   NodeMeshPrimitiveInstanceIndex:=Primitive.fNodeMeshPrimitiveInstances.AddNew;
-   NodeMeshPrimitiveInstance:=@Primitive.fNodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
+
+   NodeMeshPrimitiveInstance:=Primitive.fNodeMeshPrimitiveInstances.AddNew;
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=Primitive.fMorphTargetBaseIndex;
    NodeMeshPrimitiveInstance^.StartBufferVertexOffset:=Primitive.fStartBufferVertexOffset;
    NodeMeshPrimitiveInstance^.StartBufferIndexOffset:=Primitive.fStartBufferIndexOffset;
@@ -9026,8 +9025,7 @@ begin
 
    MaterialID:=Primitive.fMaterialID+1; // +1 because 0 = empty material
 
-   NodeMeshPrimitiveInstanceIndex:=Primitive.fNodeMeshPrimitiveInstances.AddNew;
-   NodeMeshPrimitiveInstance:=@Primitive.fNodeMeshPrimitiveInstances.Items[NodeMeshPrimitiveInstanceIndex];
+   NodeMeshPrimitiveInstance:=Primitive.fNodeMeshPrimitiveInstances.AddNew;
 
    NodeMeshPrimitiveInstance^.MorphTargetBaseIndex:=fGroup.fMorphTargetCount;
    inc(fGroup.fMorphTargetCount,length(Primitive.fTargets));
@@ -9858,8 +9856,6 @@ begin
         end;
        end;
       end;
-
-      DestinationMeshPrimitive.fNodeMeshPrimitiveInstances.Initialize;
 
       DestinationMeshPrimitive.fNodeMeshPrimitiveInstances.Clear;
 
@@ -11512,7 +11508,7 @@ begin
     if assigned(Primitive) then begin
      Material:=Primitive.fMaterial;
      if assigned(Material) and (Node.fNodeMeshInstanceIndex<Primitive.fNodeMeshPrimitiveInstances.Count) then begin
-      NodeMeshPrimitiveInstance:=@Primitive.fNodeMeshPrimitiveInstances.Items[Node.fNodeMeshInstanceIndex];
+      NodeMeshPrimitiveInstance:=@Primitive.fNodeMeshPrimitiveInstances.ItemArray[Node.fNodeMeshInstanceIndex];
       if Primitive.fCountIndices>0 then begin
        DrawChoreographyBatchItem:=TDrawChoreographyBatchItem.Create;
        try
