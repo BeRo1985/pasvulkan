@@ -1767,7 +1767,7 @@ type EpvScene3D=class(Exception);
                     published
                      property Index:TpvSizeInt read fIndex;
                     public
-                     property Primitives:TPrimitives read fPrimitives write fPrimitives;
+                     property Primitives:TPrimitives read fPrimitives;
                      property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
                      property BoundingSphere:TpvSphere read fBoundingSphere write fBoundingSphere;
                      property Weights:TpvScene3D.TFloatDynamicArrayList read fWeights;
