@@ -12038,7 +12038,7 @@ var POCACodeString:TpvUTF8String;
    try
     Image.AssignFromGLTF(aSourceDocument,aSourceDocument.Images[Index]);
    finally
-    AddImage(Image);
+    AddImage(Image,false);
    end;
   end;
  end;
@@ -12051,7 +12051,7 @@ var POCACodeString:TpvUTF8String;
    try
     Sampler.AssignFromGLTF(aSourceDocument,aSourceDocument.Samplers[Index]);
    finally
-    AddSampler(Sampler);
+    AddSampler(Sampler,false);
    end;
   end;
  end;
@@ -12064,7 +12064,7 @@ var POCACodeString:TpvUTF8String;
    try
     Texture.AssignFromGLTF(aSourceDocument,aSourceDocument.Textures[Index],fNewImageMap,fNewSamplerMap);
    finally
-    AddTexture(Texture);
+    AddTexture(Texture,false);
    end;
   end;
  end;
@@ -12079,7 +12079,7 @@ var POCACodeString:TpvUTF8String;
     try
      Material.AssignFromGLTF(aSourceDocument,aSourceDocument.Materials[Index],fNewTextureMap);
     finally
-     AddMaterial(Material);
+     AddMaterial(Material,false);
     end;
    end;
    FinalizeMaterials(false);
