@@ -2524,6 +2524,7 @@ type EpvScene3D=class(Exception);
              public
               procedure AddLight(const aLight:TpvScene3D.TGroup.TLight);
               procedure AddImage(const aImage:TpvScene3D.TImage);
+              procedure AddSampler(const aSampler:TpvScene3D.TSampler);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
@@ -11672,6 +11673,39 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.AddSampler(const aSampler:TpvScene3D.TSampler);
+var Sampler,HashedSampler,CurrentSampler:TSampler;
+    HashData:TSampler.THashData;
+begin
+ Sampler:=aSampler;
+ if assigned(Sampler) then begin
+  try
+   fSceneInstance.fSamplerListLock.Acquire;
+   try
+    HashData:=Sampler.GetHashData;
+    HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
+    if assigned(HashedSampler) then begin
+     fNewSamplerMap.Add(HashedSampler);
+     CurrentSampler:=HashedSampler;
+    end else begin
+     fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
+     fNewSamplerMap.Add(Sampler);
+     CurrentSampler:=Sampler;
+     Sampler:=nil;
+    end;
+    if assigned(CurrentSampler) and (fNewSamplers.IndexOf(CurrentSampler)<0) then begin
+     CurrentSampler.IncRef;
+     fNewSamplers.Add(CurrentSampler);
+    end;
+   finally
+    fSceneInstance.fSamplerListLock.Release;
+   end;
+  finally
+   FreeAndNil(Sampler);
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var POCACodeString:TpvUTF8String;
  procedure ProcessLights;
@@ -11723,39 +11757,14 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessSamplers;
  var Index:TpvSizeInt;
-     SourceSampler:TPasGLTF.TSampler;
-     Sampler,
-     HashedSampler,
-     CurrentSampler:TSampler;
-     HashData:TSampler.THashData;
+     Sampler:TSampler;
  begin
   for Index:=0 to aSourceDocument.Samplers.Count-1 do begin
-   SourceSampler:=aSourceDocument.Samplers[Index];
    Sampler:=TSampler.Create(ResourceManager,fSceneInstance);
    try
-    fSceneInstance.fSamplerListLock.Acquire;
-    try
-     Sampler.AssignFromGLTF(aSourceDocument,SourceSampler);
-     HashData:=Sampler.GetHashData;
-     HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
-     if assigned(HashedSampler) then begin
-      fNewSamplerMap.Add(HashedSampler);
-      CurrentSampler:=HashedSampler;
-     end else begin
-      fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
-      fNewSamplerMap.Add(Sampler);
-      CurrentSampler:=Sampler;
-      Sampler:=nil;
-     end;
-     if assigned(CurrentSampler) and (fNewSamplers.IndexOf(CurrentSampler)<0) then begin
-      CurrentSampler.IncRef;
-      fNewSamplers.Add(CurrentSampler);
-     end;
-    finally
-     fSceneInstance.fSamplerListLock.Release;
-    end;
+    Sampler.AssignFromGLTF(aSourceDocument,aSourceDocument.Samplers[Index]);
    finally
-    FreeAndNil(Sampler);
+    AddSampler(Sampler);
    end;
   end;
  end;
