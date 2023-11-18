@@ -1302,7 +1302,7 @@ begin
  if aCount>0 then begin
   SetCount(fCount+aCount);
   for Index:=0 to aCount-1 do begin
-   Items[result+Index]:=aFrom.Items[aStartIndex+Index];
+   fItems[result+Index]:=aFrom.fItems[aStartIndex+Index];
   end;
  end;
 end;
