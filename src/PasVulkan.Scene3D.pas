@@ -2525,6 +2525,7 @@ type EpvScene3D=class(Exception);
               procedure AddLight(const aLight:TpvScene3D.TGroup.TLight);
               procedure AddImage(const aImage:TpvScene3D.TImage);
               procedure AddSampler(const aSampler:TpvScene3D.TSampler);
+              procedure AddTexture(const aTexture:TpvScene3D.TTexture);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
@@ -11708,6 +11709,39 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.AddTexture(const aTexture:TpvScene3D.TTexture);
+var Texture,HashedTexture,CurrentTexture:TTexture;
+     HashData:TTexture.THashData;
+begin
+ Texture:=aTexture;
+ if assigned(Texture) then begin
+  try
+   fSceneInstance.fTextureListLock.Acquire;
+   try
+    HashData:=Texture.GetHashData;
+    HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
+    if assigned(HashedTexture) then begin
+     fNewTextureMap.Add(HashedTexture);
+     CurrentTexture:=HashedTexture;
+    end else begin
+     fSceneInstance.fTextureHashMap[HashData]:=Texture;
+     fNewTextureMap.Add(Texture);
+     CurrentTexture:=Texture;
+     Texture:=nil;
+    end;
+    if assigned(CurrentTexture) and (fNewTextures.IndexOf(CurrentTexture)<0) then begin
+     CurrentTexture.IncRef;
+     fNewTextures.Add(CurrentTexture);
+    end;
+   finally
+    fSceneInstance.fTextureListLock.Release;
+   end;
+  finally
+   FreeAndNil(Texture);
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var POCACodeString:TpvUTF8String;
  procedure ProcessLights;
@@ -11772,39 +11806,14 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessTextures;
  var Index:TpvSizeInt;
-     SourceTexture:TPasGLTF.TTexture;
-     Texture,
-     HashedTexture,
-     CurrentTexture:TTexture;
-     HashData:TTexture.THashData;
+     Texture:TTexture;
  begin
   for Index:=0 to aSourceDocument.Textures.Count-1 do begin
-   SourceTexture:=aSourceDocument.Textures[Index];
    Texture:=TTexture.Create(ResourceManager,fSceneInstance);
    try
-    fSceneInstance.fTextureListLock.Acquire;
-    try
-     Texture.AssignFromGLTF(aSourceDocument,SourceTexture,fNewImageMap,fNewSamplerMap);
-     HashData:=Texture.GetHashData;
-     HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
-     if assigned(HashedTexture) then begin
-      fNewTextureMap.Add(HashedTexture);
-      CurrentTexture:=HashedTexture;
-     end else begin
-      fSceneInstance.fTextureHashMap[HashData]:=Texture;
-      fNewTextureMap.Add(Texture);
-      CurrentTexture:=Texture;
-      Texture:=nil;
-     end;
-     if assigned(CurrentTexture) and (fNewTextures.IndexOf(CurrentTexture)<0) then begin
-      CurrentTexture.IncRef;
-      fNewTextures.Add(CurrentTexture);
-     end;
-    finally
-     fSceneInstance.fTextureListLock.Release;
-    end;
+    Texture.AssignFromGLTF(aSourceDocument,aSourceDocument.Textures[Index],fNewImageMap,fNewSamplerMap);
    finally
-    FreeAndNil(Texture);
+    AddTexture(Texture);
    end;
   end;
  end;
