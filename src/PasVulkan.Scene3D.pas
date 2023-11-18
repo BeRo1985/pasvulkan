@@ -9864,6 +9864,7 @@ begin
      fWeights.Items[WeightIndex]:=0.0;
     end;
    end;
+   fWeights.Finish;
   end;
 
  finally
@@ -10119,7 +10120,7 @@ begin
 
   if Count<fMesh.fWeights.Count then begin
 
-   fWeights.Resize(Mesh.fWeights.Count);
+   fWeights.Resize(fMesh.fWeights.Count);
 
    for WeightIndex:=Count to fMesh.fWeights.Count-1 do begin
     fWeights.Items[WeightIndex]:=fMesh.fWeights.Items[WeightIndex];
@@ -16209,7 +16210,7 @@ begin
      InstanceNode:=@fNodes[Index];
      if assigned(Node.fMesh) then begin
      {
-      if assigned(Node.fSkin) or (length(Node.fWeights)>0) or (length(Node.fMesh.fWeights)>0) then begin
+      if assigned(Node.fSkin) or (Node.fWeights.Count>0) or (Node.fMesh.fWeights.Count>0) then begin
        ProcessMorphSkinNode(Node,InstanceNode);
       end else//}
       if assigned(Node.fSkin) then begin
