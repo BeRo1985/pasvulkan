@@ -1815,6 +1815,7 @@ type EpvScene3D=class(Exception);
                      fWeights:TpvFloatDynamicArray;
                      fWeightsOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
+                     fLightIndex:TPasGLTFSizeInt;
                      fMatrix:TpvMatrix4x4;
                      fTranslation:TpvVector3;
                      fRotation:TpvQuaternion;
@@ -1822,10 +1823,10 @@ type EpvScene3D=class(Exception);
                      fDrawChoreographyBatchItemIndices:TSizeIntDynamicArray;
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
-                     procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
+                     procedure Finish;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -2485,6 +2486,8 @@ type EpvScene3D=class(Exception);
               fNewSamplers:TpvScene3D.TSamplers;
               fNewTextures:TpvScene3D.TTextures;
               procedure ConstructBuffers;
+              procedure PostProcessSkins;
+              procedure PostProcessNodes;
               procedure PostProcessAnimations;
               procedure MarkAnimatedElements;
               procedure CollectAllSceneNodesAndSplitNodesIntoAnimatedOrNotAnimatedSubtreesPerScene;
@@ -2528,6 +2531,7 @@ type EpvScene3D=class(Exception);
               function AddSkin(const aSkin:TpvScene3D.TGroup.TSkin):TpvSizeInt;
               function AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
               function AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):TpvSizeInt;
+              function AddNode(const aNode:TpvScene3D.TGroup.TNode):TpvSizeInt;
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
@@ -10011,6 +10015,8 @@ begin
 
  fFlags:=[];
 
+ fJoint:=-1;
+
  fChildren:=TNodes.Create;
  fChildren.OwnsObjects:=false;
 
@@ -10027,6 +10033,8 @@ begin
  fNodeMeshInstanceIndex:=-1;
 
  fSkin:=nil;
+
+ fLightIndex:=-1;
 
  fLight:=nil;
 
@@ -10063,9 +10071,54 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.TNode.Finish;
+var WeightIndex,Count,JointMatrixOffset:TpvSizeInt;
+begin
+
+ if assigned(fMesh) then begin
+
+  if assigned(fSkin) then begin
+   JointMatrixOffset:=fSkin.fJointMatrixOffset;
+  end else begin
+   JointMatrixOffset:=0;
+  end;
+
+  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset,JointMatrixOffset);
+
+  Count:=length(fWeights);
+
+  if Count<length(fMesh.fWeights) then begin
+
+   SetLength(fWeights,length(fMesh.fWeights));
+
+   for WeightIndex:=Count to length(fMesh.fWeights)-1 do begin
+    fWeights[WeightIndex]:=fMesh.fWeights[WeightIndex];
+   end;
+
+  end;
+
+ end else begin
+
+  fNodeMeshInstanceIndex:=-1;
+
+ end;
+
+ fWeightsOffset:=fGroup.fCountNodeWeights;
+
+ inc(fGroup.fCountNodeWeights,length(fWeights));
+
+ fFlags:=[];
+ if assigned(fSkin) then begin
+  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated);
+ end;
+ if length(fWeights)>0 then begin
+  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.TNode.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
-var WeightIndex,ChildrenIndex,Count,LightIndex,JointMatrixOffset:TPasGLTFSizeInt;
-    Mesh:TMesh;
+var WeightIndex,ChildrenIndex:TpvSizeInt;
     ExtensionObject:TPasJSONItemObject;
     KHRLightsPunctualItem:TPasJSONItem;
     KHRLightsPunctualObject:TPasJSONItemObject;
@@ -10091,7 +10144,18 @@ begin
   fSkin:=nil;
  end;
 
- fJoint:=-1;
+ ExtensionObject:=aSourceNode.Extensions;
+ if assigned(ExtensionObject) then begin
+  KHRLightsPunctualItem:=ExtensionObject.Properties['KHR_lights_punctual'];
+  if assigned(KHRLightsPunctualItem) and (KHRLightsPunctualItem is TPasJSONItemObject) then begin
+   KHRLightsPunctualObject:=TPasJSONItemObject(KHRLightsPunctualItem);
+   fLightIndex:=TPasJSON.GetInt64(KHRLightsPunctualObject.Properties['light'],-1);
+  end else begin
+   fLightIndex:=-1;
+  end;
+ end else begin
+  fLightIndex:=-1;
+ end;
 
  fMatrix:=TpvMatrix4x4(pointer(@aSourceNode.Matrix)^);
 
@@ -10106,29 +10170,9 @@ begin
   fWeights[WeightIndex]:=aSourceNode.Weights[WeightIndex];
  end;
 
- fWeightsOffset:=Group.fCountNodeWeights;
-
- if assigned(fSkin) then begin
-  JointMatrixOffset:=fSkin.fJointMatrixOffset;
- end else begin
-  JointMatrixOffset:=0;
+ if (aLightMap.Count>0) and (fLightIndex>=0) and (fLightIndex<aLightMap.Count) then begin
+  aLightMap[fLightIndex].fNodes.Add(self);
  end;
-
- if assigned(fMesh) then begin
-  Mesh:=fMesh;
-  fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset,JointMatrixOffset);
-  Count:=length(fWeights);
-  if Count<length(Mesh.fWeights) then begin
-   SetLength(fWeights,length(Mesh.fWeights));
-   for WeightIndex:=Count to length(Mesh.fWeights)-1 do begin
-    fWeights[WeightIndex]:=Mesh.fWeights[WeightIndex];
-   end;
-  end;
- end else begin
-  fNodeMeshInstanceIndex:=-1;
- end;
-
- inc(fGroup.fCountNodeWeights,length(fWeights));
 
  fChildNodeIndices.Initialize;
  fChildNodeIndices.Resize(aSourceNode.Children.Count);
@@ -10137,42 +10181,6 @@ begin
  end;
  fChildNodeIndices.Finish;
 
- if aLightMap.Count>0 then begin
-  ExtensionObject:=aSourceNode.Extensions;
-  if assigned(ExtensionObject) then begin
-   KHRLightsPunctualItem:=ExtensionObject.Properties['KHR_lights_punctual'];
-   if assigned(KHRLightsPunctualItem) and (KHRLightsPunctualItem is TPasJSONItemObject) then begin
-    KHRLightsPunctualObject:=TPasJSONItemObject(KHRLightsPunctualItem);
-    LightIndex:=TPasJSON.GetInt64(KHRLightsPunctualObject.Properties['light'],-1);
-    if (LightIndex>=0) and (LightIndex<aLightMap.Count) then begin
-     fLight:=aLightMap[LightIndex];
-     fLight.fNodes.Add(self);
-    end;
-   end;
-  end;
- end;
-
- fFlags:=[];
- if assigned(fSkin) then begin
-  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated);
- end;
- if length(fWeights)>0 then begin
-  Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
- end;
-
-end;
-
-procedure TpvScene3D.TGroup.TNode.Finish;
-var ChildrenIndex,NodeIndex:TpvSizeInt;
-begin
- for ChildrenIndex:=0 to fChildNodeIndices.Count-1 do begin
-  NodeIndex:=fChildNodeIndices.Items[ChildrenIndex];
-  if (NodeIndex>=0) and (NodeIndex<fGroup.fNodes.Count) then begin
-   fChildren.Add(fGroup.fNodes[NodeIndex]);
-  end else begin
-   raise EPasGLTFInvalidDocument.Create('Node index out of range');
-  end;
- end;
 end;
 
 { TpvScene3D.TGroup.TScene }
@@ -10727,6 +10735,84 @@ end;
 
 procedure TpvScene3D.TGroup.ConstructBuffers;
 begin
+end;
+
+procedure TpvScene3D.TGroup.PostProcessSkins;
+var Skin:TpvScene3D.TGroup.TSkin;
+begin
+ fCountJointNodeMatrices:=0;
+ for Skin in fSkins do begin
+  Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
+  inc(fCountJointNodeMatrices,Skin.fJoints.Count);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.PostProcessNodes;
+var Index,Offset:TpvSizeInt;
+    Node:TpvScene3D.TGroup.TNode;
+begin
+
+ fCountNodeWeights:=0;
+
+ for Index:=0 to fNodes.Count-1 do begin
+  fNodes[Index].Finish;
+ end;
+
+ fNodeNameIndexHashMap.Clear;
+
+ fCameraNodeIndices.Clear;
+
+ for Index:=0 to fNodes.Count-1 do begin
+  Node:=fNodes[Index];
+  if (length(trim(Node.fName))>0) and not fNodeNameIndexHashMap.ExistKey(Node.fName) then begin
+   fNodeNameIndexHashMap.Add(Node.fName,Index);
+  end;
+  if assigned(Node.Camera) then begin
+   fCameraNodeIndices.Add(Index);
+  end;
+ end;
+
+ begin
+
+  Offset:=fNodes.Count+1;
+
+  for Index:=0 to length(fJointBlockOffsets)-1 do begin
+   inc(fJointBlockOffsets[Index],Offset);
+  end;
+
+  for Index:=0 to fSkins.Count-1 do begin
+   inc(fSkins[Index].fJointMatrixOffset,Offset);
+  end;
+
+  for Index:=0 to Min(fJointBlocks.Count,length(fJointBlockOffsets))-1 do begin
+
+   if IsZero(fJointBlocks.Items[Index].Weights.x) then begin
+    fJointBlocks.Items[Index].Joints[0]:=0;
+   end else begin
+    inc(fJointBlocks.Items[Index].Joints[0],fJointBlockOffsets[Index]);
+   end;
+
+   if IsZero(fJointBlocks.Items[Index].Weights.y) then begin
+    fJointBlocks.Items[Index].Joints[1]:=0;
+   end else begin
+    inc(fJointBlocks.Items[Index].Joints[1],fJointBlockOffsets[Index]);
+   end;
+
+   if IsZero(fJointBlocks.Items[Index].Weights.z) then begin
+    fJointBlocks.Items[Index].Joints[2]:=0;
+   end else begin
+    inc(fJointBlocks.Items[Index].Joints[2],fJointBlockOffsets[Index]);
+   end;
+
+   if IsZero(fJointBlocks.Items[Index].Weights.w) then begin
+    fJointBlocks.Items[Index].Joints[3]:=0;
+   end else begin
+    inc(fJointBlocks.Items[Index].Joints[3],fJointBlockOffsets[Index]);
+   end;
+  end;
+
+ end;
+
 end;
 
 procedure TpvScene3D.TGroup.PostProcessAnimations;
@@ -11614,6 +11700,10 @@ begin
 
   FinalizeMaterials(true);
 
+  PostProcessSkins;
+
+  PostProcessNodes;
+
   PostProcessAnimations;
 
   MarkAnimatedElements;
@@ -11795,8 +11885,6 @@ begin
  Skin:=aSkin;
  if assigned(Skin) then begin
   result:=fSkins.Add(Skin);
-  Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
-  inc(fCountJointNodeMatrices,Skin.fJoints.Count);
  end else begin
   result:=-1;
  end;
@@ -11815,6 +11903,15 @@ function TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):Tp
 begin
  if assigned(aCamera) then begin
   result:=fCameras.Add(aCamera);
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvScene3D.TGroup.AddNode(const aNode:TpvScene3D.TGroup.TNode):TpvSizeInt;
+begin
+ if assigned(aNode) then begin
+  result:=fNodes.Add(aNode);
  end else begin
   result:=-1;
  end;
@@ -12076,16 +12173,17 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessNodes;
  type TPOCAFileHashMap=TpvStringHashMap<Boolean>;
- var Index,Offset:TpvSizeInt;
+ var Index,NodeIndex,ChildrenIndex:TpvSizeInt;
      SourceNode:TPasGLTF.TNode;
      Node:TNode;
      TemporaryString:TPasJSONUTF8String;
      TemporaryStream:TStream;
      POCAFileHashMap:TPOCAFileHashMap;
  begin
+
   POCAFileHashMap:=TPOCAFileHashMap.Create(false);
   try
-   fCountNodeWeights:=0;
+
    fNodes.Clear;
    for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
     SourceNode:=aSourceDocument.Nodes[Index];
@@ -12130,55 +12228,25 @@ var POCACodeString:TpvUTF8String;
       end;
      end;
     finally
-     fNodes.Add(Node);
+     AddNode(Node);
     end;
    end;
   finally
    FreeAndNil(POCAFileHashMap);
   end;
-  fNodeNameIndexHashMap.Clear;
-  fCameraNodeIndices.Clear;
+
   for Index:=0 to fNodes.Count-1 do begin
    Node:=fNodes[Index];
-   Node.Finish;
-   fNodeNameIndexHashMap.Add(Node.fName,Index);
-   if assigned(Node.Camera) then begin
-    fCameraNodeIndices.Add(Index);
-   end;
-  end;
-  begin
-   Offset:=fNodes.Count+1;
-   for Index:=0 to length(fJointBlockOffsets)-1 do begin
-    inc(fJointBlockOffsets[Index],Offset);
-   end;
-   for Index:=0 to fSkins.Count-1 do begin
-    inc(fSkins[Index].fJointMatrixOffset,Offset);
-   end;
-   for Index:=0 to Min(fJointBlocks.Count,length(fJointBlockOffsets))-1 do begin
-    if IsZero(fJointBlocks.Items[Index].Weights.x) then begin
-     fJointBlocks.Items[Index].Joints[0]:=0;
+   for ChildrenIndex:=0 to Node.fChildNodeIndices.Count-1 do begin
+    NodeIndex:=Node.fChildNodeIndices.Items[ChildrenIndex];
+    if (NodeIndex>=0) and (NodeIndex<fNodes.Count) then begin
+     Node.fChildren.Add(fNodes[NodeIndex]);
     end else begin
-     inc(fJointBlocks.Items[Index].Joints[0],fJointBlockOffsets[Index]);
-    end;
-    if IsZero(fJointBlocks.Items[Index].Weights.y) then begin
-     fJointBlocks.Items[Index].Joints[1]:=0;
-    end else begin
-     inc(fJointBlocks.Items[Index].Joints[1],fJointBlockOffsets[Index]);
-    end;
-    if IsZero(fJointBlocks.Items[Index].Weights.z) then begin
-     fJointBlocks.Items[Index].Joints[2]:=0;
-    end else begin
-     inc(fJointBlocks.Items[Index].Joints[2],fJointBlockOffsets[Index]);
-    end;
-    if IsZero(fJointBlocks.Items[Index].Weights.w) then begin
-     fJointBlocks.Items[Index].Joints[3]:=0;
-    end else begin
-     inc(fJointBlocks.Items[Index].Joints[3],fJointBlockOffsets[Index]);
+     raise EPasGLTFInvalidDocument.Create('Node index out of range');
     end;
    end;
   end;
-{ if fCountNodeWeights=fMorphTargetCount then begin
-  end;}
+
  end;
  procedure ProcessScenes;
  var Index:TpvSizeInt;
