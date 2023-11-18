@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\TransmissionRoughnessTest.glb&quot;  --force-use-validation-layers --antialiasing-mode msaasmaa --force-no-vsync"/>
+        <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\house.glb&quot;  --force-use-validation-layers --antialiasing-mode msaasmaa --force-no-vsync"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\TransmissionRoughnessTest.glb&quot;  --force-use-validation-layers --antialiasing-mode msaasmaa --force-no-vsync"/>
+            <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\house.glb&quot;  --force-use-validation-layers --antialiasing-mode msaasmaa --force-no-vsync"/>
           </local>
         </Mode0>
       </Modes>
