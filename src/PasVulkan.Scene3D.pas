@@ -12012,17 +12012,15 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessMeshes;
  var Index:TpvSizeInt;
-     SourceMesh:TPasGLTF.TMesh;
      Mesh:TMesh;
  begin
   for Index:=0 to aSourceDocument.Meshes.Count-1 do begin
-   SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self,Index);
    try
-    if length(trim(SourceMesh.fName))>0 then begin
-     fMeshNameIndexHashMap.Add(SourceMesh.fName,Index);
+    Mesh.AssignFromGLTF(aSourceDocument,aSourceDocument.Meshes[Index],fMaterials);
+    if length(trim(Mesh.fName))>0 then begin
+     fMeshNameIndexHashMap.Add(Mesh.fName,Index);
     end;
-    Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,fMaterials);
    finally
     fMeshes.Add(Mesh);
    end;
