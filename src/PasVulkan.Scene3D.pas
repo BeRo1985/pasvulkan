@@ -1725,7 +1725,7 @@ type EpvScene3D=class(Exception);
                                    Vertices:TTargetVertices;
                                  end;
                                  PTarget=^TTarget;
-                                 TTargets=array of TTarget;
+                                 TTargets=TpvDynamicArrayList<TTarget>;
                                  { TNodeMeshPrimitiveInstance }
                                  TNodeMeshPrimitiveInstance=class
                                   private
@@ -1742,7 +1742,7 @@ type EpvScene3D=class(Exception);
                             fPrimitiveTopology:TPrimitiveTopology;
                             fMaterialID:TpvInt64;
                             fMaterial:TMaterial;
-                            fTargets:TTargets;
+                            fTargets:TpvScene3D.TGroup.TMesh.TPrimitive.TTargets;
                             fMorphTargetBaseIndex:TpvSizeUInt;
                             fStartBufferVertexOffset:TpvSizeUInt;
                             fStartBufferIndexOffset:TpvSizeUInt;
@@ -1756,7 +1756,7 @@ type EpvScene3D=class(Exception);
                             property PrimitiveTopology:TPrimitiveTopology read fPrimitiveTopology write fPrimitiveTopology;
                             property MaterialID:TpvInt64 read fMaterialID write fMaterialID;
                             property Material:TMaterial read fMaterial write fMaterial;
-                            //property Targets:TTargets read fTargets write fTargets;
+                            property Targets:TpvScene3D.TGroup.TMesh.TPrimitive.TTargets read fTargets;
                             property MorphTargetBaseIndex:TpvSizeUInt read fMorphTargetBaseIndex write fMorphTargetBaseIndex;
                             property StartBufferVertexOffset:TpvSizeUInt read fStartBufferVertexOffset write fStartBufferVertexOffset;
                             property StartBufferIndexOffset:TpvSizeUInt read fStartBufferIndexOffset write fStartBufferIndexOffset;
@@ -8893,14 +8893,14 @@ constructor TpvScene3D.TGroup.TMesh.TPrimitive.Create;
 begin
  inherited Create;
  fMaterial:=nil;
- fTargets:=nil;
+ fTargets:=TpvScene3D.TGroup.TMesh.TPrimitive.TTargets.Create;
  fNodeMeshPrimitiveInstances:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances.Create(true);
 end;
 
 destructor TpvScene3D.TGroup.TMesh.TPrimitive.Destroy;
 begin
  FreeAndNil(fNodeMeshPrimitiveInstances);
- fTargets:=nil;
+ FreeAndNil(fTargets);
  inherited Destroy;
 end;
 
@@ -9052,7 +9052,7 @@ begin
    try
 
     NodeMeshPrimitiveInstance.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
-    inc(fGroup.fMorphTargetCount,length(Primitive.fTargets));
+    inc(fGroup.fMorphTargetCount,Primitive.fTargets.Count);
 
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=fGroup.fVertices.Count;
     for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
@@ -9661,15 +9661,15 @@ begin
 
        // Load morph target data
 
-       SetLength(DestinationMeshPrimitive.fTargets,SourceMeshPrimitive.Targets.Count);
+       DestinationMeshPrimitive.fTargets.Resize(SourceMeshPrimitive.Targets.Count);
 
-       MaxCountTargets:=Max(MaxCountTargets,length(DestinationMeshPrimitive.fTargets));
+       MaxCountTargets:=Max(MaxCountTargets,DestinationMeshPrimitive.fTargets.Count);
 
-       for TargetIndex:=0 to length(DestinationMeshPrimitive.fTargets)-1 do begin
+       for TargetIndex:=0 to DestinationMeshPrimitive.fTargets.Count-1 do begin
 
         SourceMeshPrimitiveTarget:=SourceMeshPrimitive.Targets[TargetIndex];
 
-        DestinationMeshPrimitiveTarget:=@DestinationMeshPrimitive.fTargets[TargetIndex];
+        DestinationMeshPrimitiveTarget:=@DestinationMeshPrimitive.fTargets.ItemArray[TargetIndex];
 
         AccessorIndex:=SourceMeshPrimitiveTarget['POSITION'];
         if AccessorIndex>=0 then begin
@@ -9839,13 +9839,15 @@ begin
           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0]-TangentSpaceMatrix.Tangent.x;
           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1]-TangentSpaceMatrix.Tangent.y;
           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2]-TangentSpaceMatrix.Tangent.z;
-          DestinationMeshPrimitiveTargetVertex^.Count:=length(DestinationMeshPrimitive.fTargets);
+          DestinationMeshPrimitiveTargetVertex^.Count:=DestinationMeshPrimitive.fTargets.Count;
          end;
         end;
 
        end;
 
       end;
+
+      DestinationMeshPrimitive.fTargets.Finish;
 
       DestinationMeshPrimitive.fStartBufferVertexOffset:=fGroup.fVertices.Count;
       fGroup.fVertices.Add(DestinationMeshPrimitiveVertices);
@@ -9860,15 +9862,15 @@ begin
 
       DestinationMeshPrimitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
 
-      if length(DestinationMeshPrimitive.fTargets)>0 then begin
+      if DestinationMeshPrimitive.fTargets.Count>0 then begin
 
-       inc(fGroup.fMorphTargetCount,length(DestinationMeshPrimitive.fTargets));
+       inc(fGroup.fMorphTargetCount,DestinationMeshPrimitive.fTargets.Count);
 
        for VertexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset) to TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset+DestinationMeshPrimitive.fCountVertices)-1 do begin
         Vertex:=@fGroup.fVertices.Items[VertexIndex];
         Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
-        for TargetIndex:=0 to length(DestinationMeshPrimitive.fTargets)-1 do begin
-         DestinationMeshPrimitiveTarget:=@DestinationMeshPrimitive.fTargets[TargetIndex];
+        for TargetIndex:=0 to DestinationMeshPrimitive.fTargets.Count-1 do begin
+         DestinationMeshPrimitiveTarget:=@DestinationMeshPrimitive.fTargets.ItemArray[TargetIndex];
          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget^.Vertices[VertexIndex-DestinationMeshPrimitive.fStartBufferVertexOffset];
          MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
          MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
@@ -9876,7 +9878,7 @@ begin
          MorphTargetVertex^.Normal:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Normal,0.0);
          MorphTargetVertex^.Tangent:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Tangent,0.0);
          MorphTargetVertex^.Index:=DestinationMeshPrimitive.fMorphTargetBaseIndex+TargetIndex;
-         if (TargetIndex+1)<length(DestinationMeshPrimitive.fTargets) then begin
+         if (TargetIndex+1)<DestinationMeshPrimitive.fTargets.Count then begin
           MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
          end else begin
           MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
