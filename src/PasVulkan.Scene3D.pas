@@ -2527,6 +2527,7 @@ type EpvScene3D=class(Exception);
               procedure AddSampler(const aSampler:TpvScene3D.TSampler);
               procedure AddTexture(const aTexture:TpvScene3D.TTexture);
               procedure AddMaterial(const aMaterial:TpvScene3D.TMaterial);
+              procedure AddSkin(const aSkin:TpvScene3D.TGroup.TSkin);
               procedure AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
               procedure AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
              public
@@ -10402,6 +10403,8 @@ begin
 
  fJointBlockOffsets:=nil;
 
+ fCountJointNodeMatrices:=0;
+
  fSkinStorageBufferSize:=0;
 
  fCachedVertexBufferMemoryBarriers:=nil;
@@ -11771,6 +11774,24 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.AddSkin(const aSkin:TpvScene3D.TGroup.TSkin);
+var Skin:TpvScene3D.TGroup.TSkin;
+begin
+ Skin:=aSkin;
+ if assigned(Skin) then begin
+  fSkins.Add(Skin);
+  Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
+  inc(fCountJointNodeMatrices,Skin.fJoints.Count);
+  Skin.fStorageBufferObjectOffset:=fSkinStorageBufferSize;
+  if Skin.fJoints.Count>0 then begin
+   Skin.fStorageBufferObjectSize:=Skin.fJoints.Count*SizeOf(TpvMatrix4x4);
+   inc(fSkinStorageBufferSize,Skin.fStorageBufferObjectSize);
+  end else begin
+   Skin.fStorageBufferObjectSize:=0;
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
 begin
  if assigned(aAnimation) then begin
@@ -12028,27 +12049,14 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessSkins;
  var Index:TpvSizeInt;
-     SourceSkin:TPasGLTF.TSkin;
      Skin:TSkin;
  begin
-  fCountJointNodeMatrices:=0;
-  fSkinStorageBufferSize:=0;
   for Index:=0 to aSourceDocument.Skins.Count-1 do begin
-   SourceSkin:=aSourceDocument.Skins[Index];
    Skin:=TSkin.Create(self,Index);
    try
-    Skin.AssignFromGLTF(aSourceDocument,SourceSkin);
+    Skin.AssignFromGLTF(aSourceDocument,aSourceDocument.Skins[Index]);
    finally
-    fSkins.Add(Skin);
-   end;
-   Skin.fJointMatrixOffset:=fCountJointNodeMatrices;
-   inc(fCountJointNodeMatrices,Skin.fJoints.Count);
-   Skin.fStorageBufferObjectOffset:=fSkinStorageBufferSize;
-   if Skin.fJoints.Count>0 then begin
-    Skin.fStorageBufferObjectSize:=Skin.fJoints.Count*SizeOf(TpvMatrix4x4);
-    inc(fSkinStorageBufferSize,Skin.fStorageBufferObjectSize);
-   end else begin
-    Skin.fStorageBufferObjectSize:=0;
+    AddSkin(Skin);
    end;
   end;
  end;
