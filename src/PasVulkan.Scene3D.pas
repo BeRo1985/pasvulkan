@@ -2521,10 +2521,10 @@ type EpvScene3D=class(Exception);
               procedure Finish;
              public
               function AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
-              function AddImage(const aImage:TpvScene3D.TImage):TpvSizeInt;
-              function AddSampler(const aSampler:TpvScene3D.TSampler):TpvSizeInt;
-              function AddTexture(const aTexture:TpvScene3D.TTexture):TpvSizeInt;
-              function AddMaterial(const aMaterial:TpvScene3D.TMaterial):TpvSizeInt;
+              function AddImage(const aImage:TpvScene3D.TImage;const aForceNew:Boolean=false):TpvSizeInt;
+              function AddSampler(const aSampler:TpvScene3D.TSampler;const aForceNew:Boolean=false):TpvSizeInt;
+              function AddTexture(const aTexture:TpvScene3D.TTexture;const aForceNew:Boolean=false):TpvSizeInt;
+              function AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean=false):TpvSizeInt;
               function AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeInt;
               function AddSkin(const aSkin:TpvScene3D.TGroup.TSkin):TpvSizeInt;
               function AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
@@ -11726,7 +11726,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.AddImage(const aImage:TpvScene3D.TImage):TpvSizeInt;
+function TpvScene3D.TGroup.AddImage(const aImage:TpvScene3D.TImage;const aForceNew:Boolean):TpvSizeInt;
 var Image,HashedImage,CurrentImage:TpvScene3D.TImage;
     HashData:TpvScene3D.TImage.THashData;
 begin
@@ -11736,16 +11736,25 @@ begin
    fSceneInstance.fImageListLock.Acquire;
    try
     HashData:=Image.GetHashData;
-    HashedImage:=fSceneInstance.fImageHashMap[HashData];
-    if assigned(HashedImage) then begin
-     result:=fNewImageMap.Add(HashedImage);
-     CurrentImage:=HashedImage;
-    end else begin
-     Image.fHashData:=HashData;
-     fSceneInstance.fImageHashMap[HashData]:=Image;
+    if aForceNew then begin
+     if not fSceneInstance.fImageHashMap.ExistKey(HashData) then begin
+      fSceneInstance.fImageHashMap[HashData]:=Image;
+     end;
      result:=fNewImageMap.Add(Image);
      CurrentImage:=Image;
      Image:=nil;
+    end else begin
+     HashedImage:=fSceneInstance.fImageHashMap[HashData];
+     if assigned(HashedImage) then begin
+      result:=fNewImageMap.Add(HashedImage);
+      CurrentImage:=HashedImage;
+     end else begin
+      Image.fHashData:=HashData;
+      fSceneInstance.fImageHashMap[HashData]:=Image;
+      result:=fNewImageMap.Add(Image);
+      CurrentImage:=Image;
+      Image:=nil;
+     end;
     end;
     if assigned(CurrentImage) and (fNewImages.IndexOf(CurrentImage)<0) then begin
      CurrentImage.IncRef;
@@ -11763,7 +11772,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.AddSampler(const aSampler:TpvScene3D.TSampler):TpvSizeInt;
+function TpvScene3D.TGroup.AddSampler(const aSampler:TpvScene3D.TSampler;const aForceNew:Boolean):TpvSizeInt;
 var Sampler,HashedSampler,CurrentSampler:TSampler;
     HashData:TSampler.THashData;
 begin
@@ -11773,15 +11782,24 @@ begin
    fSceneInstance.fSamplerListLock.Acquire;
    try
     HashData:=Sampler.GetHashData;
-    HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
-    if assigned(HashedSampler) then begin
-     result:=fNewSamplerMap.Add(HashedSampler);
-     CurrentSampler:=HashedSampler;
-    end else begin
-     fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
+    if aForceNew then begin
+     if not fSceneInstance.fSamplerHashMap.ExistKey(HashData) then begin
+      fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
+     end;
      result:=fNewSamplerMap.Add(Sampler);
      CurrentSampler:=Sampler;
      Sampler:=nil;
+    end else begin
+     HashedSampler:=fSceneInstance.fSamplerHashMap[HashData];
+     if assigned(HashedSampler) then begin
+      result:=fNewSamplerMap.Add(HashedSampler);
+      CurrentSampler:=HashedSampler;
+     end else begin
+      fSceneInstance.fSamplerHashMap[HashData]:=Sampler;
+      result:=fNewSamplerMap.Add(Sampler);
+      CurrentSampler:=Sampler;
+      Sampler:=nil;
+     end;
     end;
     if assigned(CurrentSampler) and (fNewSamplers.IndexOf(CurrentSampler)<0) then begin
      CurrentSampler.IncRef;
@@ -11798,7 +11816,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.AddTexture(const aTexture:TpvScene3D.TTexture):TpvSizeInt;
+function TpvScene3D.TGroup.AddTexture(const aTexture:TpvScene3D.TTexture;const aForceNew:Boolean):TpvSizeInt;
 var Texture,HashedTexture,CurrentTexture:TTexture;
      HashData:TTexture.THashData;
 begin
@@ -11808,15 +11826,24 @@ begin
    fSceneInstance.fTextureListLock.Acquire;
    try
     HashData:=Texture.GetHashData;
-    HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
-    if assigned(HashedTexture) then begin
-     result:=fNewTextureMap.Add(HashedTexture);
-     CurrentTexture:=HashedTexture;
-    end else begin
-     fSceneInstance.fTextureHashMap[HashData]:=Texture;
+    if aForceNew then begin
+     if not fSceneInstance.fTextureHashMap.ExistKey(HashData) then begin
+      fSceneInstance.fTextureHashMap[HashData]:=Texture;
+     end;
      result:=fNewTextureMap.Add(Texture);
      CurrentTexture:=Texture;
      Texture:=nil;
+    end else begin
+     HashedTexture:=fSceneInstance.fTextureHashMap[HashData];
+     if assigned(HashedTexture) then begin
+      result:=fNewTextureMap.Add(HashedTexture);
+      CurrentTexture:=HashedTexture;
+     end else begin
+      fSceneInstance.fTextureHashMap[HashData]:=Texture;
+      result:=fNewTextureMap.Add(Texture);
+      CurrentTexture:=Texture;
+      Texture:=nil;
+     end;
     end;
     if assigned(CurrentTexture) and (fNewTextures.IndexOf(CurrentTexture)<0) then begin
      CurrentTexture.IncRef;
@@ -11833,7 +11860,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial):TpvSizeInt;
+function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean):TpvSizeInt;
 var Material,HashedMaterial:TpvScene3D.TMaterial;
     HashData:TpvScene3D.TMaterial.THashData;
 begin
@@ -11841,13 +11868,21 @@ begin
  if assigned(Material) then begin
   try
    HashData:=Material.fData;
-   HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
-   if assigned(HashedMaterial) then begin
-    result:=fMaterials.Add(HashedMaterial);
-   end else begin
-    fSceneInstance.fMaterialHashMap[HashData]:=Material;
+   if aForceNew then begin
+    if not fSceneInstance.fMaterialHashMap.ExistKey(HashData) then begin
+     fSceneInstance.fMaterialHashMap[HashData]:=Material;
+    end;
     result:=fMaterials.Add(Material);
     Material:=nil;
+   end else begin
+    HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
+    if assigned(HashedMaterial) then begin
+     result:=fMaterials.Add(HashedMaterial);
+    end else begin
+     fSceneInstance.fMaterialHashMap[HashData]:=Material;
+     result:=fMaterials.Add(Material);
+     Material:=nil;
+    end;
    end;
   finally
    FreeAndNil(Material);
