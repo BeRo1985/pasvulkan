@@ -1765,15 +1765,15 @@ type EpvScene3D=class(Exception);
                             property NodeMeshPrimitiveInstances:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances read fNodeMeshPrimitiveInstances;
                           end;
                           TPrimitives=TpvObjectGenericList<TPrimitive>;
-                          TReferencedByNodes=TpvDynamicArray<TPasGLTFSizeInt>;
+                          TReferencedByNodes=TpvDynamicArrayList<TPasGLTFSizeInt>;
                     private
                      fIndex:TpvSizeInt;
-                     fPrimitives:TPrimitives;
+                     fPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
                      fBoundingBox:TpvAABB;
                      fBoundingSphere:TpvSphere;
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
                      fNodeMeshInstances:TpvSizeInt;
-                     fReferencedByNodes:TReferencedByNodes;
+                     fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
@@ -1782,12 +1782,12 @@ type EpvScene3D=class(Exception);
                     published
                      property Index:TpvSizeInt read fIndex;
                     public
-                     property Primitives:TPrimitives read fPrimitives;
+                     property Primitives:TpvScene3D.TGroup.TMesh.TPrimitives read fPrimitives;
                      property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
                      property BoundingSphere:TpvSphere read fBoundingSphere write fBoundingSphere;
                      property Weights:TpvScene3D.TFloatDynamicArrayList read fWeights;
                      property NodeMeshInstances:TpvSizeInt read fNodeMeshInstances;
-                     property ReferencedByNodes:TReferencedByNodes read fReferencedByNodes;
+                     property ReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes read fReferencedByNodes;
                    end;
                    TMeshes=TpvObjectGenericList<TMesh>;
                    TSkin=class(TGroupObject)
@@ -8914,7 +8914,7 @@ begin
  fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
  fPrimitives:=TpvScene3D.TGroup.TMesh.TPrimitives.Create(true);
  fNodeMeshInstances:=0;
- fReferencedByNodes.Initialize;
+ fReferencedByNodes:=TpvScene3D.TGroup.TMesh.TReferencedByNodes.Create;
 end;
 
 destructor TpvScene3D.TGroup.TMesh.Destroy;
@@ -8948,7 +8948,7 @@ begin
  end;
  FreeAndNil(fPrimitives);
  FreeAndNil(fWeights);
- fReferencedByNodes.Finalize;
+ FreeAndNil(fReferencedByNodes);
  inherited Destroy;
 end;
 
