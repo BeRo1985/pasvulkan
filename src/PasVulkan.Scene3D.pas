@@ -2527,6 +2527,7 @@ type EpvScene3D=class(Exception);
               procedure AddSampler(const aSampler:TpvScene3D.TSampler);
               procedure AddTexture(const aTexture:TpvScene3D.TTexture);
               procedure AddMaterial(const aMaterial:TpvScene3D.TMaterial);
+              procedure AddMesh(const aMesh:TpvScene3D.TGroup.TMesh);
               procedure AddSkin(const aSkin:TpvScene3D.TGroup.TSkin);
               procedure AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
               procedure AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
@@ -11774,6 +11775,13 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh);
+begin
+ if assigned(aMesh) then begin
+  fMeshs.Add(aMesh);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AddSkin(const aSkin:TpvScene3D.TGroup.TSkin);
 var Skin:TpvScene3D.TGroup.TSkin;
 begin
@@ -12043,7 +12051,7 @@ var POCACodeString:TpvUTF8String;
      fMeshNameIndexHashMap.Add(Mesh.fName,Index);
     end;
    finally
-    fMeshes.Add(Mesh);
+    AddMesh(Mesh);
    end;
   end;
  end;
