@@ -12090,9 +12090,6 @@ var POCACodeString:TpvUTF8String;
    end;
   end;
  end;
-var Image:TpvScene3D.TImage;
-    Sampler:TpvScene3D.TSampler;
-    Texture:TpvScene3D.TTexture;
 begin
 
  POCACodeString:='';
