@@ -1790,7 +1790,6 @@ type EpvScene3D=class(Exception);
                           PNodeFlag=^TNodeFlag;
                           TNodeFlags=set of TNodeFlag;
                           PNodeFlags=^TNodeFlags;
-                          TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
                           TUsedByScenesList=TpvObjectGenericList<TpvScene3D.TGroup.TScene>;
                           TUsedJoint=record
                            Joint:TpvSizeInt;
@@ -1804,7 +1803,6 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fFlags:TNodeFlags;
                      fUsedByScenesList:TUsedByScenesList;
-                     fChildNodeIndices:TChildNodeIndices;
                      fChildren:TNodes;
                      fSplittedChildren:TNodes;
                      fMesh:TMesh;
@@ -10011,8 +10009,6 @@ begin
 
  fIndex:=aIndex;
 
- fChildNodeIndices.Initialize;
-
  fFlags:=[];
 
  fJoint:=-1;
@@ -10060,8 +10056,6 @@ begin
  FreeAndNil(fSplittedChildren);
 
  FreeAndNil(fChildren);
-
- fChildNodeIndices.Finalize;
 
  fDrawChoreographyBatchItemIndices.Finalize;
 
@@ -10173,13 +10167,6 @@ begin
  if (aLightMap.Count>0) and (fLightIndex>=0) and (fLightIndex<aLightMap.Count) then begin
   aLightMap[fLightIndex].fNodes.Add(self);
  end;
-
- fChildNodeIndices.Initialize;
- fChildNodeIndices.Resize(aSourceNode.Children.Count);
- for ChildrenIndex:=0 to fChildNodeIndices.Count-1 do begin
-  fChildNodeIndices.Items[ChildrenIndex]:=aSourceNode.Children[ChildrenIndex];
- end;
- fChildNodeIndices.Finish;
 
 end;
 
@@ -12173,78 +12160,106 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessNodes;
  type TPOCAFileHashMap=TpvStringHashMap<Boolean>;
+      TChildNodeIndices=TpvDynamicArray<TpvSizeInt>;
+      PChildNodeIndices=^TChildNodeIndices;
+      TNodeChildNodeIndices=TpvDynamicArray<TChildNodeIndices>;
  var Index,NodeIndex,ChildrenIndex:TpvSizeInt;
      SourceNode:TPasGLTF.TNode;
      Node:TNode;
      TemporaryString:TPasJSONUTF8String;
      TemporaryStream:TStream;
      POCAFileHashMap:TPOCAFileHashMap;
+     NodeChildNodeIndices:TNodeChildNodeIndices;
+     ChildNodeIndices:PChildNodeIndices;
+
  begin
 
-  POCAFileHashMap:=TPOCAFileHashMap.Create(false);
+  NodeChildNodeIndices.Initialize;
   try
 
-   fNodes.Clear;
-   for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
-    SourceNode:=aSourceDocument.Nodes[Index];
-    Node:=TNode.Create(self,Index);
-    try
-     Node.AssignFromGLTF(aSourceDocument,SourceNode,fNewLightMap);
-     if assigned(SourceNode.Extras) then begin
+   POCAFileHashMap:=TPOCAFileHashMap.Create(false);
+   try
+
+    fNodes.Clear;
+    for Index:=0 to aSourceDocument.Nodes.Count-1 do begin
+     SourceNode:=aSourceDocument.Nodes[Index];
+     Node:=TNode.Create(self,Index);
+     try
+      Node.AssignFromGLTF(aSourceDocument,SourceNode,fNewLightMap);
       begin
-       TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocacode'],'');
-       if length(TemporaryString)>0 then begin
-        TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
-        POCACodeString:=POCACodeString+TemporaryString;
-       end else begin
-        TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocafile'],'');
+       NodeIndex:=NodeChildNodeIndices.AddNew;
+       ChildNodeIndices:=@NodeChildNodeIndices.Items[NodeIndex];
+       ChildNodeIndices^.Initialize;
+       ChildNodeIndices^.Resize(SourceNode.Children.Count);
+       for ChildrenIndex:=0 to ChildNodeIndices^.Count-1 do begin
+        ChildNodeIndices^.Items[ChildrenIndex]:=SourceNode.Children[ChildrenIndex];
+       end;
+       ChildNodeIndices^.Finish;
+      end;
+      if assigned(SourceNode.Extras) then begin
+       begin
+        TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocacode'],'');
         if length(TemporaryString)>0 then begin
-         if not POCAFileHashMap.ExistKey(TemporaryString) then begin
-          POCAFileHashMap.Add(TemporaryString,true);
-          if pvApplication.Assets.ExistAsset(TemporaryString) then begin
-           TemporaryStream:=pvApplication.Assets.GetAssetStream(TemporaryString);
-          end else begin
-           TemporaryStream:=nil;
-          end;
-          if not assigned(TemporaryStream) then begin
-           TemporaryStream:=aSourceDocument.GetURI(TemporaryString);
-          end;
-          if assigned(TemporaryStream) then begin
-           try
-            TemporaryString:='';
-            if TemporaryStream.Size>0 then begin
-             SetLength(TemporaryString,TemporaryStream.Size);
-             TemporaryStream.ReadBuffer(TemporaryString[1],TemporaryStream.Size);
-             TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
-             POCACodeString:=POCACodeString+TemporaryString;
+         TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
+         POCACodeString:=POCACodeString+TemporaryString;
+        end else begin
+         TemporaryString:=TPasJSON.GetString(SourceNode.Extras.Properties['pocafile'],'');
+         if length(TemporaryString)>0 then begin
+          if not POCAFileHashMap.ExistKey(TemporaryString) then begin
+           POCAFileHashMap.Add(TemporaryString,true);
+           if pvApplication.Assets.ExistAsset(TemporaryString) then begin
+            TemporaryStream:=pvApplication.Assets.GetAssetStream(TemporaryString);
+           end else begin
+            TemporaryStream:=nil;
+           end;
+           if not assigned(TemporaryStream) then begin
+            TemporaryStream:=aSourceDocument.GetURI(TemporaryString);
+           end;
+           if assigned(TemporaryStream) then begin
+            try
+             TemporaryString:='';
+             if TemporaryStream.Size>0 then begin
+              SetLength(TemporaryString,TemporaryStream.Size);
+              TemporaryStream.ReadBuffer(TemporaryString[1],TemporaryStream.Size);
+              TemporaryString:='(function(){'+#13#10+TemporaryString+#13#10+'})();'+#13#10;
+              POCACodeString:=POCACodeString+TemporaryString;
+             end;
+            finally
+             FreeAndNil(TemporaryStream);
             end;
-           finally
-            FreeAndNil(TemporaryStream);
            end;
           end;
          end;
         end;
        end;
       end;
+     finally
+      AddNode(Node);
+     end;
+    end;
+   finally
+    FreeAndNil(POCAFileHashMap);
+   end;
+
+   for Index:=0 to fNodes.Count-1 do begin
+    Node:=fNodes[Index];
+    ChildNodeIndices:=@NodeChildNodeIndices.Items[Index];
+    try
+     for ChildrenIndex:=0 to ChildNodeIndices^.Count-1 do begin
+      NodeIndex:=ChildNodeIndices^.Items[ChildrenIndex];
+      if (NodeIndex>=0) and (NodeIndex<fNodes.Count) then begin
+       Node.fChildren.Add(fNodes[NodeIndex]);
+      end else begin
+       raise EPasGLTFInvalidDocument.Create('Node index out of range');
+      end;
      end;
     finally
-     AddNode(Node);
+     ChildNodeIndices^.Finalize;
     end;
    end;
-  finally
-   FreeAndNil(POCAFileHashMap);
-  end;
 
-  for Index:=0 to fNodes.Count-1 do begin
-   Node:=fNodes[Index];
-   for ChildrenIndex:=0 to Node.fChildNodeIndices.Count-1 do begin
-    NodeIndex:=Node.fChildNodeIndices.Items[ChildrenIndex];
-    if (NodeIndex>=0) and (NodeIndex<fNodes.Count) then begin
-     Node.fChildren.Add(fNodes[NodeIndex]);
-    end else begin
-     raise EPasGLTFInvalidDocument.Create('Node index out of range');
-    end;
-   end;
+  finally
+   NodeChildNodeIndices.Finalize;
   end;
 
  end;
