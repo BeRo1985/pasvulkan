@@ -2510,15 +2510,22 @@ type EpvScene3D=class(Exception);
               procedure LoadData; override;
               procedure Upload; override;
               procedure Unload; override;
+             public
+              function BeginLoad(const aStream:TStream):boolean; override;
+              function EndLoad:boolean; override;
+             public
               procedure Check(const aInFlightFrameIndex:TpvSizeInt);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
               procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+             public
               procedure CleanUp;
               procedure Finish;
+             public
+              procedure AddImage(const aImage:TpvScene3D.TImage);
+             public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
-              function BeginLoad(const aStream:TStream):boolean; override;
-              function EndLoad:boolean; override;
+             public
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
@@ -11622,6 +11629,41 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.AddImage(const aImage:TpvScene3D.TImage);
+var Image,HashedImage,CurrentImage:TpvScene3D.TImage;
+    HashData:TpvScene3D.TImage.THashData;
+begin
+ Image:=aImage;
+ if assigned(Image) then begin
+  try
+   fSceneInstance.fImageListLock.Acquire;
+   try
+    HashData:=Image.GetHashData;
+    HashedImage:=fSceneInstance.fImageHashMap[HashData];
+    if assigned(HashedImage) then begin
+     fNewImageMap.Add(HashedImage);
+     CurrentImage:=HashedImage;
+    end else begin
+     Image.fHashData:=HashData;
+     fSceneInstance.fImageHashMap[HashData]:=Image;
+     fNewImageMap.Add(Image);
+     CurrentImage:=Image;
+     Image:=nil;
+    end;
+    if assigned(CurrentImage) and (fNewImages.IndexOf(CurrentImage)<0) then begin
+     CurrentImage.IncRef;
+     CurrentImage.LoadData;
+     fNewImages.Add(CurrentImage);
+    end;
+   finally
+    fSceneInstance.fImageListLock.Release;
+   end;
+  finally
+   FreeAndNil(Image);
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var POCACodeString:TpvUTF8String;
  procedure ProcessLights;
@@ -11660,41 +11702,14 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessImages;
  var Index:TpvSizeInt;
-     SourceImage:TPasGLTF.TImage;
-     Image,
-     HashedImage,
-     CurrentImage:TImage;
-     HashData:TImage.THashData;
+     Image:TpvScene3D.TImage;
  begin
   for Index:=0 to aSourceDocument.Images.Count-1 do begin
-   SourceImage:=aSourceDocument.Images[Index];
    Image:=TImage.Create(ResourceManager,fSceneInstance);
    try
-    Image.AssignFromGLTF(aSourceDocument,SourceImage);
-    fSceneInstance.fImageListLock.Acquire;
-    try
-     HashData:=Image.GetHashData;
-     HashedImage:=fSceneInstance.fImageHashMap[HashData];
-     if assigned(HashedImage) then begin
-      fNewImageMap.Add(HashedImage);
-      CurrentImage:=HashedImage;
-     end else begin
-      Image.fHashData:=HashData;
-      fSceneInstance.fImageHashMap[HashData]:=Image;
-      fNewImageMap.Add(Image);
-      CurrentImage:=Image;
-      Image:=nil;
-     end;
-     if assigned(CurrentImage) and (fNewImages.IndexOf(CurrentImage)<0) then begin
-      CurrentImage.IncRef;
-      CurrentImage.LoadData;
-      fNewImages.Add(CurrentImage);
-     end;
-    finally
-     fSceneInstance.fImageListLock.Release;
-    end;
+    Image.AssignFromGLTF(aSourceDocument,aSourceDocument.Images[Index]);
    finally
-    FreeAndNil(Image);
+    AddImage(Image);
    end;
   end;
  end;
