@@ -2526,6 +2526,7 @@ type EpvScene3D=class(Exception);
               procedure AddImage(const aImage:TpvScene3D.TImage);
               procedure AddSampler(const aSampler:TpvScene3D.TSampler);
               procedure AddTexture(const aTexture:TpvScene3D.TTexture);
+              procedure AddMaterial(const aMaterial:TpvScene3D.TMaterial);
               procedure AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
               procedure AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
              public
@@ -11748,6 +11749,28 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial);
+var Material,HashedMaterial:TpvScene3D.TMaterial;
+    HashData:TpvScene3D.TMaterial.THashData;
+begin
+ Material:=aMaterial;
+ if assigned(Material) then begin
+  try
+   HashData:=Material.fData;
+   HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
+   if assigned(HashedMaterial) then begin
+    fMaterials.Add(HashedMaterial);
+   end else begin
+    fSceneInstance.fMaterialHashMap[HashData]:=Material;
+    fMaterials.Add(Material);
+    Material:=nil;
+   end;
+  finally
+   FreeAndNil(Material);
+  end;
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
 begin
  if assigned(aAnimation) then begin
@@ -11893,43 +11916,22 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessMaterials;
  var Index:TpvSizeInt;
-     Material,HashedMaterial:TpvScene3D.TMaterial;
-     HashData:TpvScene3D.TMaterial.THashData;
+     Material:TpvScene3D.TMaterial;
  begin
-
   fSceneInstance.fMaterialListLock.Acquire;
   try
-
    for Index:=0 to aSourceDocument.Materials.Count-1 do begin
-
     Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
     try
-
      Material.AssignFromGLTF(aSourceDocument,aSourceDocument.Materials[Index],fNewTextureMap);
-
-     HashData:=Material.fData;
-
-     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
-     if assigned(HashedMaterial) then begin
-      fMaterials.Add(HashedMaterial);
-     end else begin
-      fSceneInstance.fMaterialHashMap[HashData]:=Material;
-      fMaterials.Add(Material);
-      Material:=nil;
-     end;
-
     finally
-     FreeAndNil(Material);
+     AddMaterial(Material);
     end;
-
    end;
-
    FinalizeMaterials(false);
-
   finally
    fSceneInstance.fMaterialListLock.Release;
   end;
-
  end;
  procedure ProcessAnimations;
  var Index:TpvSizeInt;
