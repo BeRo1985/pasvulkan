@@ -70,6 +70,9 @@ uses SysUtils,
      Generics.Collections;
 
 type TpvDynamicArray<T>=record
+      private
+       function GetItem(const pIndex:TpvSizeInt):T; inline;
+       procedure SetItem(const pIndex:TpvSizeInt;const pItem:T); inline;
       public
        Items:array of T;
        Count:TpvSizeInt;
@@ -89,6 +92,7 @@ type TpvDynamicArray<T>=record
        function AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
        procedure Exchange(const aIndexA,aIndexB:TpvSizeInt); inline;
        procedure Delete(const aIndex:TpvSizeInt);
+       property DefaultItems[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
      end;
 
      TpvDynamicStack<T>=record
@@ -120,8 +124,7 @@ type TpvDynamicArray<T>=record
 
      TpvDynamicQueue<T>=record
       public
-       type PT=^T;
-            TQueueItems=array of T;
+       type TQueueItems=array of T;
       public
        Items:TQueueItems;
        Head:TpvSizeInt;
@@ -138,7 +141,6 @@ type TpvDynamicArray<T>=record
        function Dequeue(out aItem:T):boolean; overload;
        function Dequeue:boolean; overload;
        function Peek(out aItem:T):boolean;
-       function PeekIndirect:PT;
      end;
 
      { TpvDynamicArrayList }
@@ -765,6 +767,16 @@ begin
  SetLength(Items,Count);
 end;
 
+function TpvDynamicArray<T>.GetItem(const pIndex:TpvSizeInt):T;
+begin
+ result:=Items[pIndex];
+end;
+
+procedure TpvDynamicArray<T>.SetItem(const pIndex:TpvSizeInt;const pItem:T);
+begin
+ Items[pIndex]:=pItem;
+end;
+
 procedure TpvDynamicArray<T>.Assign(const aFrom:TpvDynamicArray<T>);
 begin
  Items:=copy(aFrom.Items);
@@ -1131,15 +1143,6 @@ begin
  result:=Count>0;
  if result then begin
   aItem:=Items[Head];
- end;
-end;
-
-function TpvDynamicQueue<T>.PeekIndirect:PT;
-begin
- if Count>0 then begin
-  result:=@Items[Head];
- end else begin
-  result:=nil;
  end;
 end;
 
