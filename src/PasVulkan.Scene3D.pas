@@ -2522,6 +2522,7 @@ type EpvScene3D=class(Exception);
               procedure CleanUp;
               procedure Finish;
              public
+              procedure AddLight(const aLight:TpvScene3D.TGroup.TLight);
               procedure AddImage(const aImage:TpvScene3D.TImage);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
@@ -11629,6 +11630,13 @@ begin
 
 end;
 
+procedure TpvScene3D.TGroup.AddLight(const aLight:TpvScene3D.TGroup.TLight);
+begin
+ if assigned(aLight) then begin
+  fLights.Add(aLight);
+ end;
+end;
+
 procedure TpvScene3D.TGroup.AddImage(const aImage:TpvScene3D.TImage);
 var Image,HashedImage,CurrentImage:TpvScene3D.TImage;
     HashData:TpvScene3D.TImage.THashData;
@@ -11689,7 +11697,7 @@ var POCACodeString:TpvUTF8String;
        try
         Light.AssignFromGLTF(aSourceDocument,TPasJSONItemObject(LightItem));
        finally
-        fLights.Add(Light);
+        AddLight(Light);
        end;
       end else begin
        Light:=nil;
