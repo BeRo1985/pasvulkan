@@ -15820,13 +15820,16 @@ var CullFace,Blend:TPasGLTFInt32;
  procedure ProcessBoundingSceneBoxNodes(const aScene:TpvScene3D.TGroup.TScene);
  var Index:TpvSizeInt;
  begin
-  if length(fNodes)<64 then begin
+  for Index:=0 to aScene.fNodes.Count-1 do begin
+   ProcessBoundingBoxNodeRecursive(aScene.fNodes[Index].Index);
+  end;
+{ if length(fNodes)<64 then begin
    for Index:=0 to aScene.fNodes.Count-1 do begin
     ProcessBoundingBoxNodeRecursive(aScene.fNodes[Index].Index);
    end;
   end else begin
    ProcessBoundingSceneBoxNodesWithManualStack(aScene);
-  end;
+  end;}
  end;
  procedure ProcessMorphSkinNode(const aNode:TpvScene3D.TGroup.TNode;const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
  var PrimitiveIndex,VertexIndex,JointBlockIndex,JointIndex:TpvSizeInt;
