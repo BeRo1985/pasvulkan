@@ -2514,6 +2514,7 @@ type EpvScene3D=class(Exception);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
               procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+              procedure CleanUp;
               procedure Finish;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
               function BeginLoad(const aStream:TStream):boolean; override;
@@ -10412,6 +10413,27 @@ begin
 
  fOnNodeFilter:=nil;
 
+ fNewLightMap:=TpvScene3D.TGroup.TLights.Create;
+ fNewLightMap.OwnsObjects:=false;
+
+ fNewImageMap:=TpvScene3D.TImages.Create;
+ fNewImageMap.OwnsObjects:=false;
+
+ fNewImages:=TpvScene3D.TImages.Create;
+ fNewImages.OwnsObjects:=false;
+
+ fNewSamplerMap:=TpvScene3D.TSamplers.Create;
+ fNewSamplerMap.OwnsObjects:=false;
+
+ fNewSamplers:=TpvScene3D.TSamplers.Create;
+ fNewSamplers.OwnsObjects:=false;
+
+ fNewTextureMap:=TpvScene3D.TTextures.Create;
+ fNewTextureMap.OwnsObjects:=false;
+
+ fNewTextures:=TpvScene3D.TTextures.Create;
+ fNewTextures.OwnsObjects:=false;
+
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
@@ -10419,6 +10441,20 @@ var Material:TpvScene3D.TMaterial;
 begin
 
  Unload;
+
+ FreeAndNil(fNewLightMap);
+
+ FreeAndNil(fNewImageMap);
+
+ FreeAndNil(fNewImages);
+
+ FreeAndNil(fNewSamplerMap);
+
+ FreeAndNil(fNewSamplers);
+
+ FreeAndNil(fNewTextureMap);
+
+ FreeAndNil(fNewTextures);
 
  while fInstances.Count>0 do begin
   fInstances[fInstances.Count-1].Free;
@@ -11472,6 +11508,89 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.CleanUp;
+var Texture:TpvScene3D.TTexture;
+    Sampler:TpvScene3D.TSampler;
+    Image:TpvScene3D.TImage;
+begin
+
+ try
+
+  try
+   if assigned(fNewTextures) then begin
+    try
+     fSceneInstance.fTextureListLock.Acquire;
+     try
+      for Texture in fNewTextures do begin
+       Texture.DecRef;
+      end;
+     finally
+      fSceneInstance.fTextureListLock.Release;
+     end;
+    finally
+     FreeAndNil(fNewTextures);
+    end;
+   end;
+  finally
+   FreeAndNil(fNewTextureMap);
+  end;
+
+ finally
+
+  try
+
+   try
+    if assigned(fNewSamplers) then begin
+     try
+      fSceneInstance.fSamplerListLock.Acquire;
+      try
+       for Sampler in fNewSamplers do begin
+        Sampler.DecRef;
+       end;
+      finally
+       fSceneInstance.fSamplerListLock.Release;
+      end;
+     finally
+      FreeAndNil(fNewSamplers);
+     end;
+    end;
+   finally
+    FreeAndNil(fNewSamplerMap);
+   end;
+
+  finally
+
+   try
+
+    try
+     if assigned(fNewImages) then begin
+      try
+       fSceneInstance.fImageListLock.Acquire;
+       try
+        for Image in fNewImages do begin
+         Image.DecRef;
+        end;
+       finally
+        fSceneInstance.fImageListLock.Release;
+       end;
+      finally
+       FreeAndNil(fNewImages);
+      end;
+     end;
+    finally
+     FreeAndNil(fNewImageMap);
+    end;
+
+   finally
+    FreeAndNil(fNewLightMap);
+   end;
+
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.Finish;
 begin
 
@@ -11978,127 +12097,44 @@ begin
 
  POCACodeString:='';
 
- fNewLightMap:=TpvScene3D.TGroup.TLights.Create;
- fNewLightMap.OwnsObjects:=false;
  try
 
   if aSourceDocument.ExtensionsUsed.IndexOf('KHR_lights_punctual')>=0 then begin
    ProcessLights;
   end;
 
-  fNewImageMap:=TpvScene3D.TImages.Create;
-  fNewImageMap.OwnsObjects:=false;
-  try
+  ProcessImages;
 
-   fNewImages:=TpvScene3D.TImages.Create;
-   fNewImages.OwnsObjects:=false;
-   try
+  ProcessSamplers;
 
-    ProcessImages;
+  ProcessTextures;
 
-    fNewSamplerMap:=TpvScene3D.TSamplers.Create;
-    fNewSamplerMap.OwnsObjects:=false;
-    try
+  ProcessMaterials;
 
-     fNewSamplers:=TpvScene3D.TSamplers.Create;
-     fNewSamplers.OwnsObjects:=false;
-     try
+  ProcessCameras;
 
-      ProcessSamplers;
+  ProcessMeshes;
 
-      fNewTextureMap:=TpvScene3D.TTextures.Create;
-      fNewTextureMap.OwnsObjects:=false;
-      try
+  ProcessSkins;
 
-       fNewTextures:=TpvScene3D.TTextures.Create;
-       fNewTextures.OwnsObjects:=false;
-       try
+  ProcessNodes;
 
-        ProcessTextures;
+  ProcessScenes;
 
-        ProcessMaterials;
+  ProcessAnimations;
 
-        ProcessCameras;
+  ExecuteCode;
 
-        ProcessMeshes;
-
-        ProcessSkins;
-
-        ProcessNodes;
-
-        ProcessScenes;
-
-        ProcessAnimations;
-
-        ExecuteCode;
-
-        if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
-         fScene:=fScenes[aSourceDocument.Scene];
-        end else if fScenes.Count>0 then begin
-         fScene:=fScenes[0];
-        end else begin
-         fScene:=nil;
-        end;
-
-       finally
-        try
-         fSceneInstance.fTextureListLock.Acquire;
-         try
-          for Texture in fNewTextures do begin
-           Texture.DecRef;
-          end;
-         finally
-          fSceneInstance.fTextureListLock.Release;
-         end;
-        finally
-         FreeAndNil(fNewTextures);
-        end;
-       end;
-
-      finally
-       FreeAndNil(fNewTextureMap);
-      end;
-
-     finally
-      try
-       fSceneInstance.fSamplerListLock.Acquire;
-       try
-        for Sampler in fNewSamplers do begin
-         Sampler.DecRef;
-        end;
-       finally
-        fSceneInstance.fSamplerListLock.Release;
-       end;
-      finally
-       FreeAndNil(fNewSamplers);
-      end;
-     end;
-
-    finally
-     FreeAndNil(fNewSamplerMap);
-    end;
-
-   finally
-    try
-     fSceneInstance.fImageListLock.Acquire;
-     try
-      for Image in fNewImages do begin
-       Image.DecRef;
-      end;
-     finally
-      fSceneInstance.fImageListLock.Release;
-     end;
-    finally
-     FreeAndNil(fNewImages);
-    end;
-   end;
-
-  finally
-   FreeAndNil(fNewImageMap);
+  if (aSourceDocument.Scene>=0) and (aSourceDocument.Scene<fScenes.Count) then begin
+   fScene:=fScenes[aSourceDocument.Scene];
+  end else if fScenes.Count>0 then begin
+   fScene:=fScenes[0];
+  end else begin
+   fScene:=nil;
   end;
 
  finally
-  FreeAndNil(fNewLightMap);
+  CleanUp;
  end;
 
  Finish;
