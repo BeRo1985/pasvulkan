@@ -236,6 +236,7 @@ type EpvScene3D=class(Exception);
             TInt16Vector3=array[0..2] of TpvInt16;
             TInt16Vector4=array[0..3] of TpvInt16;
             PUInt32Vector4=^TUInt32Vector4;
+            TFloatDynamicArray=TpvDynamicArray<TpvFloat>;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
             PSizeIntDynamicArray=^TSizeIntDynamicArray;
@@ -758,6 +759,10 @@ type EpvScene3D=class(Exception);
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromDefaultParticleTexture;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
+             published
+              property Kind:TKind read fKind write fKind;
+              property ResourceDataStream:TMemoryStream read fResourceDataStream write fResourceDataStream;
+              property Texture:TpvVulkanTexture read fTexture write fTexture;
             end;
             TImageClass=class of TImage;
             TImages=TpvObjectGenericList<TImage>;
@@ -793,6 +798,11 @@ type EpvScene3D=class(Exception);
               procedure AssignFromDefault;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
              published
+              property MinFilter:TVkFilter read fMinFilter write fMinFilter;
+              property MagFilter:TVkFilter read fMagFilter write fMagFilter;
+              property MipmapMode:TVkSamplerMipmapMode read fMipmapMode write fMipmapMode;
+              property AddressModeS:TVkSamplerAddressMode read fAddressModeS write fAddressModeS;
+              property AddressModeT:TVkSamplerAddressMode read fAddressModeT write fAddressModeT;
               property Sampler:TpvVulkanSampler read fSampler;
             end;
             TSamplers=TpvObjectGenericList<TSampler>;
@@ -1118,9 +1128,6 @@ type EpvScene3D=class(Exception);
               fLock:TPasMPSpinLock;
               fGeneration:TpvUInt64;
               fVisible:boolean;
-{             fShaderDataUniformBlockBuffer:TpvVulkanBuffer;
-              fVulkanDescriptorPool:TpvVulkanDescriptorPool;
-              fVulkanDescriptorSet:TpvVulkanDescriptorSet;}
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
               destructor Destroy; override;
@@ -1134,6 +1141,11 @@ type EpvScene3D=class(Exception);
               procedure AssignFromEmpty;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMaterial:TPasGLTF.TMaterial;const aTextureMap:TTextures);
               procedure FillShaderData;
+             public
+              property Data:TData read fData write fData;
+              property ShaderData:TShaderData read fShaderData write fShaderData;
+             published
+              property Visible:boolean read fVisible write fVisible;
             end;
             TMaterials=TpvObjectGenericList<TMaterial>;
             TCameraData=record
@@ -1667,6 +1679,9 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvDouble;
                      function GetAnimationEndTime:TpvDouble;
+                    public
+                     property Channels:TChannels read fChannels write fChannels;
+                     property DefaultChannels:TDefaultChannels read fDefaultChannels write fDefaultChannels;
                     published
                      property Index:TpvSizeInt read fIndex;
                    end;
@@ -1732,7 +1747,7 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TPrimitives;
                      fBoundingBox:TpvAABB;
                      fBoundingSphere:TpvSphere;
-                     fWeights:TpvFloatDynamicArray;
+                     fWeights:TpvScene3D.TFloatDynamicArray;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
@@ -1742,6 +1757,13 @@ type EpvScene3D=class(Exception);
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                     published
                      property Index:TpvSizeInt read fIndex;
+                    public
+                     property Primitives:TPrimitives read fPrimitives write fPrimitives;
+                     property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
+                     property BoundingSphere:TpvSphere read fBoundingSphere write fBoundingSphere;
+                     property Weights:TpvScene3D.TFloatDynamicArray read fWeights write fWeights;
+                     property NodeMeshInstances:TpvSizeInt read fNodeMeshInstances;
+                     property ReferencedByNodes:TReferencedByNodes read fReferencedByNodes;
                    end;
                    TMeshes=TpvObjectGenericList<TMesh>;
                    TSkin=class(TGroupObject)
@@ -1756,8 +1778,13 @@ type EpvScene3D=class(Exception);
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
+                    public
+                     property InverseBindMatrices:TMatrix4x4DynamicArray read fInverseBindMatrices write fInverseBindMatrices;
+                     property Matrices:TMatrix4x4DynamicArray read fMatrices write fMatrices;
+                     property Joints:TSizeIntDynamicArray read fJoints write fJoints;
                     published
                      property Index:TpvSizeInt read fIndex;
+                     property Skeleton:TpvSizeInt read fSkeleton write fSkeleton;
                    end;
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
@@ -1810,7 +1837,7 @@ type EpvScene3D=class(Exception);
                      fCamera:TCamera;
                      fSkin:TSkin;
                      fLight:TpvScene3D.TGroup.TLight;
-                     fWeights:TpvFloatDynamicArray;
+                     fWeights:TpvScene3D.TFloatDynamicArray;
                      fWeightsOffset:TPasGLTFSizeInt;
                      fJoint:TPasGLTFSizeInt;
                      fLightIndex:TPasGLTFSizeInt;
@@ -1830,10 +1857,11 @@ type EpvScene3D=class(Exception);
                      property Index:TpvSizeInt read fIndex;
                      property Flags:TNodeFlags read fFlags write fFlags;
                      property Children:TNodes read fChildren;
-                     property Camera:TCamera read fCamera;
-                     property Mesh:TMesh read fMesh;
+                     property Camera:TCamera read fCamera write fCamera;
+                     property Mesh:TMesh read fMesh write fMesh;
                      property NodeMeshInstanceIndex:TPasGLTFSizeInt read fNodeMeshInstanceIndex;
-                     property Skin:TSkin read fSkin;
+                     property Skin:TSkin read fSkin write fSkin;
+                     property Light:TpvScene3D.TGroup.TLight read fLight write fLight;
                    end;
                    { TUsedVisibleDrawNodes }
                    TUsedVisibleDrawNodes=TpvObjectGenericList<TpvScene3D.TGroup.TNode>;
@@ -8843,6 +8871,7 @@ begin
  inherited Create(aGroup);
  fGroup:=aGroup;
  fIndex:=aIndex;
+ fWeights.Initialize;
  fPrimitives:=nil;
  fNodeMeshInstances:=0;
  fReferencedByNodes.Initialize;
@@ -8878,6 +8907,7 @@ begin
   end;
  end;
  fPrimitives:=nil;
+ fWeights.Finalize;
  fReferencedByNodes.Finalize;
  inherited Destroy;
 end;
@@ -9823,15 +9853,15 @@ begin
 
   begin
    // Process morph target weights
-   SetLength(fWeights,aSourceMesh.Weights.Count);
-   for WeightIndex:=0 to length(fWeights)-1 do begin
-    fWeights[WeightIndex]:=aSourceMesh.Weights[WeightIndex];
+   fWeights.Resize(aSourceMesh.Weights.Count);
+   for WeightIndex:=0 to fWeights.Count-1 do begin
+    fWeights.Items[WeightIndex]:=aSourceMesh.Weights[WeightIndex];
    end;
-   OldCount:=length(fWeights);
+   OldCount:=fWeights.Count;
    if OldCount<MaxCountTargets then begin
-    SetLength(fWeights,MaxCountTargets);
-    for WeightIndex:=OldCount to length(fWeights)-1 do begin
-     fWeights[WeightIndex]:=0.0;
+    fWeights.Resize(MaxCountTargets);
+    for WeightIndex:=OldCount to fWeights.Count-1 do begin
+     fWeights.Items[WeightIndex]:=0.0;
     end;
    end;
   end;
@@ -9851,25 +9881,27 @@ begin
  inherited Create(aGroup);
  fIndex:=aIndex;
  fJointMatrixOffset:=0;
+ fInverseBindMatrices.Initialize;
+ fMatrices.Initialize;
+ fJoints.Initialize;
 end;
 
 destructor TpvScene3D.TGroup.TSkin.Destroy;
 begin
+ fInverseBindMatrices.Finalize;
+ fMatrices.Finalize;
+ fJoints.Finalize;
  inherited Destroy;
 end;
 
 procedure TpvScene3D.TGroup.TSkin.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
 var JointIndex,OldCount:TPasGLTFSizeInt;
-    JSONItem:TPasJSONItem;
-    JSONObject:TPasJSONItemObject;
     InverseBindMatrices:TPasGLTF.TMatrix4x4DynamicArray;
 begin
 
  fName:=aSourceSkin.Name;
 
  fSkeleton:=aSourceSkin.Skeleton;
-
- fInverseBindMatrices.Initialize;
 
  if aSourceSkin.InverseBindMatrices>=0 then begin
   InverseBindMatrices:=aSourceDocument.Accessors[aSourceSkin.InverseBindMatrices].DecodeAsMatrix4x4Array(false);
@@ -9884,10 +9916,8 @@ begin
   end;
  end;
 
- fMatrices.Initialize;
  fMatrices.Resize(aSourceSkin.Joints.Count);
 
- fJoints.Initialize;
  fJoints.Resize(aSourceSkin.Joints.Count);
  for JointIndex:=0 to fJoints.Count-1 do begin
   fJoints.Items[JointIndex]:=aSourceSkin.Joints.Items[JointIndex];
@@ -10022,6 +10052,8 @@ begin
  fUsedByScenesList:=TUsedByScenesList.Create;
  fUsedByScenesList.OwnsObjects:=false;
 
+ fWeights.Initialize;
+
  fUsedJoints.Initialize;
 
  fMesh:=nil;
@@ -10051,6 +10083,8 @@ begin
 
  fUsedJoints.Finalize;
 
+ fWeights.Finalize;
+
  FreeAndNil(fUsedByScenesList);
 
  FreeAndNil(fSplittedChildren);
@@ -10069,6 +10103,8 @@ procedure TpvScene3D.TGroup.TNode.Finish;
 var WeightIndex,Count,JointMatrixOffset:TpvSizeInt;
 begin
 
+ fWeights.Finish;
+
  if assigned(fMesh) then begin
 
   if assigned(fSkin) then begin
@@ -10079,14 +10115,14 @@ begin
 
   fNodeMeshInstanceIndex:=fMesh.CreateNodeMeshInstance(fIndex,fWeightsOffset,JointMatrixOffset);
 
-  Count:=length(fWeights);
+  Count:=fWeights.Count;
 
-  if Count<length(fMesh.fWeights) then begin
+  if Count<fMesh.fWeights.Count then begin
 
-   SetLength(fWeights,length(fMesh.fWeights));
+   fWeights.Resize(Mesh.fWeights.Count);
 
-   for WeightIndex:=Count to length(fMesh.fWeights)-1 do begin
-    fWeights[WeightIndex]:=fMesh.fWeights[WeightIndex];
+   for WeightIndex:=Count to fMesh.fWeights.Count-1 do begin
+    fWeights.Items[WeightIndex]:=fMesh.fWeights.Items[WeightIndex];
    end;
 
   end;
@@ -10099,13 +10135,13 @@ begin
 
  fWeightsOffset:=fGroup.fCountNodeWeights;
 
- inc(fGroup.fCountNodeWeights,length(fWeights));
+ inc(fGroup.fCountNodeWeights,fWeights.Count);
 
  fFlags:=[];
  if assigned(fSkin) then begin
   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated);
  end;
- if length(fWeights)>0 then begin
+ if fWeights.Count>0 then begin
   Include(fFlags,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated);
  end;
 
@@ -10159,9 +10195,9 @@ begin
 
  fScale:=TpvVector3(pointer(@aSourceNode.Scale)^);
 
- SetLength(fWeights,aSourceNode.Weights.Count);
- for WeightIndex:=0 to length(fWeights)-1 do begin
-  fWeights[WeightIndex]:=aSourceNode.Weights[WeightIndex];
+ fWeights.Resize(aSourceNode.Weights.Count);
+ for WeightIndex:=0 to fWeights.Count-1 do begin
+  fWeights.Items[WeightIndex]:=aSourceNode.Weights.Items[WeightIndex];
  end;
 
  if (aLightMap.Count>0) and (fLightIndex>=0) and (fLightIndex<aLightMap.Count) then begin
@@ -13433,11 +13469,11 @@ begin
   Node:=fGroup.fNodes[Index];
   InstanceNode^.Processed:=false;
   InstanceNode^.Flags:=[];
-  SetLength(InstanceNode^.WorkWeights,length(Node.fWeights));
-  SetLength(InstanceNode^.OverwriteWeightsSum,length(Node.fWeights));
+  SetLength(InstanceNode^.WorkWeights,Node.fWeights.Count);
+  SetLength(InstanceNode^.OverwriteWeightsSum,Node.fWeights.Count);
   SetLength(InstanceNode^.Overwrites,fGroup.fAnimations.Count+1);
   for OtherIndex:=0 to fGroup.fAnimations.Count do begin
-   SetLength(InstanceNode^.Overwrites[OtherIndex].Weights,length(Node.fWeights));
+   SetLength(InstanceNode^.Overwrites[OtherIndex].Weights,Node.fWeights.Count);
   end;
   for OtherIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
    InstanceNode^.PotentiallyVisibleSetNodeIndices[OtherIndex]:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
@@ -15575,15 +15611,15 @@ var CullFace,Blend:TPasGLTFInt32;
       TranslationSum.Add(Node.fTranslation,Factor);
       ScaleSum.Add(Node.fScale,Factor);
       AddRotation(Node.fRotation,Factor);
-      if length(Node.fWeights)>0 then begin
+      if Node.fWeights.Count>0 then begin
        if FirstWeights then begin
         FirstWeights:=false;
         for OtherIndex:=0 to length(InstanceNode^.OverwriteWeightsSum)-1 do begin
          InstanceNode^.OverwriteWeightsSum[OtherIndex]:=0.0;
         end;
        end;
-       for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Node.fWeights))-1 do begin
-        InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights[OtherIndex]*Factor);
+       for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+        InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
        end;
        WeightsFactorSum:=WeightsFactorSum+Factor;
       end;
@@ -15617,8 +15653,8 @@ var CullFace,Blend:TPasGLTFInt32;
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultWeights in Overwrite^.Flags then begin
-        for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Node.fWeights))-1 do begin
-         InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights[OtherIndex]*Factor);
+        for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),Node.fWeights.Count)-1 do begin
+         InstanceNode^.OverwriteWeightsSum[OtherIndex]:=InstanceNode^.OverwriteWeightsSum[OtherIndex]+(Node.fWeights.Items[OtherIndex]*Factor);
         end;
        end else begin
         for OtherIndex:=0 to Min(length(InstanceNode^.OverwriteWeightsSum),length(Overwrite^.Weights))-1 do begin
@@ -15639,20 +15675,20 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
    if WeightsFactorSum>0.0 then begin
     Factor:=1.0/WeightsFactorSum;
-    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
+    for Index:=0 to Min(length(InstanceNode^.WorkWeights),Node.fWeights.Count)-1 do begin
      InstanceNode^.WorkWeights[Index]:=InstanceNode^.OverwriteWeightsSum[Index]*Factor;
     end;
    end else begin
-    for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
-     InstanceNode^.WorkWeights[Index]:=Node.fWeights[Index];
+    for Index:=0 to Min(length(InstanceNode^.WorkWeights),Node.fWeights.Count)-1 do begin
+     InstanceNode^.WorkWeights[Index]:=Node.fWeights.Items[Index];
     end;
    end;
   end else begin
    Translation:=Node.fTranslation;
    Scale:=Node.fScale;
    Rotation:=Node.fRotation;
-   for Index:=0 to Min(length(InstanceNode^.WorkWeights),length(Node.fWeights))-1 do begin
-    InstanceNode^.WorkWeights[Index]:=Node.fWeights[Index];
+   for Index:=0 to Min(length(InstanceNode^.WorkWeights),Node.fWeights.Count)-1 do begin
+    InstanceNode^.WorkWeights[Index]:=Node.fWeights.Items[Index];
    end;
   end;
   Matrix:=TpvMatrix4x4.CreateScale(Scale)*
@@ -15681,7 +15717,7 @@ var CullFace,Blend:TPasGLTFInt32;
     fSkins[Node.fSkin.Index].Used:=true;
    end;
   end;
-  Dirty:=Dirty or (assigned(Node.fSkin) or (length(Node.fWeights)>0));
+  Dirty:=Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0));
   if aInFlightFrameIndex>=0 then begin
    if assigned(Node.fLight) then begin
     InstanceLight:=fLights[Node.fLight.fIndex];
@@ -16653,7 +16689,7 @@ begin
        (aWithDynamicMeshs or
          ((not aWithDynamicMeshs) and
           ((not assigned(GroupNode.Skin)) and
-           (length(GroupNode.fWeights)=0) and
+           (GroupNode.fWeights.Count=0) and
            ((GroupInstanceNode^.CountOverwrites=0) or
             ((GroupInstanceNode^.CountOverwrites=1) and
              ((GroupInstanceNode^.Overwrites[0].Flags=[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults]))))))) and
