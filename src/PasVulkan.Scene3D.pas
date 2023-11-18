@@ -1821,10 +1821,10 @@ type EpvScene3D=class(Exception);
                      fDrawChoreographyBatchItemIndices:TSizeIntDynamicArray;
                      fDrawChoreographyBatchUniqueItemIndices:TSizeIntDynamicArray;
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
+                     procedure Finish;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
-                     procedure Finish;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
                      property Index:TpvSizeInt read fIndex;
