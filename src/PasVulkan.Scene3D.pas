@@ -239,8 +239,10 @@ type EpvScene3D=class(Exception);
             TFloatDynamicArray=TpvDynamicArray<TpvFloat>;
             TFloatDynamicArrayList=TpvDynamicArrayList<TpvFloat>;
             TMatrix4x4DynamicArray=TpvDynamicArray<TpvMatrix4x4>;
+            TMatrix4x4DynamicArrayList=TpvDynamicArrayList<TpvMatrix4x4>;
             TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
             PSizeIntDynamicArray=^TSizeIntDynamicArray;
+            TSizeIntDynamicArrayList=TpvDynamicArrayList<TpvSizeInt>;
             TSizeIntDynamicArrayEx=array of TpvSizeInt;
             TView=packed record
              ViewMatrix:TpvMatrix4x4;
@@ -1772,20 +1774,19 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fSkeleton:TpvSizeInt;
                      fJointMatrixOffset:TPasGLTFSizeInt;
-                     fInverseBindMatrices:TMatrix4x4DynamicArray;
-                     fMatrices:TMatrix4x4DynamicArray;
-                     fJoints:TSizeIntDynamicArray;
+                     fInverseBindMatrices:TpvScene3D.TMatrix4x4DynamicArrayList;
+                     fMatrices:TpvScene3D.TMatrix4x4DynamicArrayList;
+                     fJoints:TpvScene3D.TSizeIntDynamicArrayList;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
-                    public
-                     property InverseBindMatrices:TMatrix4x4DynamicArray read fInverseBindMatrices write fInverseBindMatrices;
-                     property Matrices:TMatrix4x4DynamicArray read fMatrices write fMatrices;
-                     property Joints:TSizeIntDynamicArray read fJoints write fJoints;
                     published
                      property Index:TpvSizeInt read fIndex;
                      property Skeleton:TpvSizeInt read fSkeleton write fSkeleton;
+                     property InverseBindMatrices:TpvScene3D.TMatrix4x4DynamicArrayList read fInverseBindMatrices;
+                     property Matrices:TpvScene3D.TMatrix4x4DynamicArrayList read fMatrices;
+                     property Joints:TpvScene3D.TSizeIntDynamicArrayList read fJoints;
                    end;
                    TSkins=TpvObjectGenericList<TSkin>;
                    TSkinDynamicArray=TpvDynamicArray<TSkin>;
@@ -9883,16 +9884,16 @@ begin
  inherited Create(aGroup);
  fIndex:=aIndex;
  fJointMatrixOffset:=0;
- fInverseBindMatrices.Initialize;
- fMatrices.Initialize;
- fJoints.Initialize;
+ fInverseBindMatrices:=TpvScene3D.TMatrix4x4DynamicArrayList.Create;
+ fMatrices:=TpvScene3D.TMatrix4x4DynamicArrayList.Create;
+ fJoints:=TpvScene3D.TSizeIntDynamicArrayList.Create;
 end;
 
 destructor TpvScene3D.TGroup.TSkin.Destroy;
 begin
- fInverseBindMatrices.Finalize;
- fMatrices.Finalize;
- fJoints.Finalize;
+ FreeAndNil(fInverseBindMatrices);
+ FreeAndNil(fMatrices);
+ FreeAndNil(fJoints);
  inherited Destroy;
 end;
 
@@ -9908,10 +9909,9 @@ begin
  if aSourceSkin.InverseBindMatrices>=0 then begin
   InverseBindMatrices:=aSourceDocument.Accessors[aSourceSkin.InverseBindMatrices].DecodeAsMatrix4x4Array(false);
   try
-   fInverseBindMatrices.Count:=length(InverseBindMatrices);
-   SetLength(fInverseBindMatrices.Items,fInverseBindMatrices.Count);
+   fInverseBindMatrices.Resize(length(InverseBindMatrices));
    if fInverseBindMatrices.Count>0 then begin
-    Move(InverseBindMatrices[0],fInverseBindMatrices.Items[0],length(InverseBindMatrices)*SizeOf(TpvMatrix4x4));
+    Move(InverseBindMatrices[0],fInverseBindMatrices.ItemArray[0],length(InverseBindMatrices)*SizeOf(TpvMatrix4x4));
    end;
   finally
    InverseBindMatrices:=nil;
@@ -9922,7 +9922,7 @@ begin
 
  fJoints.Resize(aSourceSkin.Joints.Count);
  for JointIndex:=0 to fJoints.Count-1 do begin
-  fJoints.Items[JointIndex]:=aSourceSkin.Joints.Items[JointIndex];
+  fJoints.ItemArray[JointIndex]:=aSourceSkin.Joints.Items[JointIndex];
  end;
 
  OldCount:=fInverseBindMatrices.Count;
@@ -15762,8 +15762,8 @@ var CullFace,Blend:TPasGLTFInt32;
    InstanceSkin:=@fSkins[SkinIndex];
    if InstanceSkin^.Used and (Skin.fJoints.Count>0) then begin
     for Index:=0 to Skin.fJoints.Count-1 do begin
-     Assert(fGroup.fNodes[Skin.fJoints.Items[Index]].Index=Skin.fJoints.Items[Index]);
-     fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.Items[Index]*fNodes[Skin.fJoints.Items[Index]].WorkMatrix;
+     Assert(fGroup.fNodes[Skin.fJoints.ItemArray[Index]].Index=Skin.fJoints.ItemArray[Index]);
+     fNodeMatrices[Skin.fJointMatrixOffset+Index]:=Skin.fInverseBindMatrices.ItemArray[Index]*fNodes[Skin.fJoints.ItemArray[Index]].WorkMatrix;
     end;
    end;
   end;
