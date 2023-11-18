@@ -11778,7 +11778,7 @@ end;
 procedure TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh);
 begin
  if assigned(aMesh) then begin
-  fMeshs.Add(aMesh);
+  fMeshes.Add(aMesh);
  end;
 end;
 
