@@ -2526,6 +2526,10 @@ type EpvScene3D=class(Exception);
               procedure AddImage(const aImage:TpvScene3D.TImage);
               procedure AddSampler(const aSampler:TpvScene3D.TSampler);
               procedure AddTexture(const aTexture:TpvScene3D.TTexture);
+              procedure AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
+              procedure AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
+             public
+              procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
              public
@@ -11608,6 +11612,8 @@ begin
 
  if not fReady then begin
 
+  FinalizeMaterials(true);
+
   PostProcessAnimations;
 
   MarkAnimatedElements;
@@ -11742,6 +11748,74 @@ begin
  end;
 end;
 
+procedure TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation);
+begin
+ if assigned(aAnimation) then begin
+  fAnimations.Add(aAnimation);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera);
+begin
+ if assigned(aCamera) then begin
+  fCameras.Add(aCamera);
+ end;
+end;
+
+procedure TpvScene3D.TGroup.FinalizeMaterials(const aDoLock:Boolean);
+var Index,MaterialIDMapArrayIndex:TpvSizeInt;
+    Material:TpvScene3D.TMaterial;
+    MaterialIDMapArray:TMaterialIDMapArray;
+begin
+
+ if length(fMaterialMap)=0 then begin
+
+  if aDoLock then begin
+   fSceneInstance.fMaterialListLock.Acquire;
+  end;
+  try
+
+   SetLength(fMaterialMap,fMaterials.Count+1);
+
+   fMaterialMap[0]:=fSceneInstance.fEmptyMaterial.fID;
+
+   for Index:=0 to fMaterials.Count-1 do begin
+
+    Material:=fMaterials[Index];
+    try
+
+     fMaterialMap[Index+1]:=Material.fID;
+
+     if (length(trim(Material.fName))>0) and not fMaterialNameMapArrayIndexHashMap.ExistKey(Material.fName) then begin
+      fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Index);
+     end;
+
+     MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
+     if MaterialIDMapArrayIndex<0 then begin
+      MaterialIDMapArray:=TMaterialIDMapArray.Create;
+      MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
+      fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
+     end else begin
+      MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
+     end;
+     MaterialIDMapArray.Add(Index);
+
+    finally
+     Material.IncRef;
+    end;
+
+   end;
+
+  finally
+   if aDoLock then begin
+    fSceneInstance.fMaterialListLock.Release;
+   end;
+  end;
+
+ end;
+
+end;
+
 procedure TpvScene3D.TGroup.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument);
 var POCACodeString:TpvUTF8String;
  procedure ProcessLights;
@@ -11818,29 +11892,20 @@ var POCACodeString:TpvUTF8String;
   end;
  end;
  procedure ProcessMaterials;
- var Index,MaterialIDMapArrayIndex:TpvSizeInt;
-     SourceMaterial:TPasGLTF.TMaterial;
-     Material,
-     HashedMaterial:TpvScene3D.TMaterial;
+ var Index:TpvSizeInt;
+     Material,HashedMaterial:TpvScene3D.TMaterial;
      HashData:TpvScene3D.TMaterial.THashData;
-     MaterialIDMapArray:TMaterialIDMapArray;
  begin
-
-  SetLength(fMaterialMap,aSourceDocument.Materials.Count+1);
-
-  fMaterialMap[0]:=fSceneInstance.fEmptyMaterial.fID;
 
   fSceneInstance.fMaterialListLock.Acquire;
   try
 
    for Index:=0 to aSourceDocument.Materials.Count-1 do begin
 
-    SourceMaterial:=aSourceDocument.Materials[Index];
-
     Material:=TpvScene3D.TMaterial.Create(ResourceManager,fSceneInstance);
     try
 
-     Material.AssignFromGLTF(aSourceDocument,SourceMaterial,fNewTextureMap);
+     Material.AssignFromGLTF(aSourceDocument,aSourceDocument.Materials[Index],fNewTextureMap);
 
      HashData:=Material.fData;
 
@@ -11857,30 +11922,9 @@ var POCACodeString:TpvUTF8String;
      FreeAndNil(Material);
     end;
 
-    Material:=fMaterials[Index];
-    try
-
-     fMaterialMap[Index+1]:=Material.fID;
-
-     if length(trim(Material.fName))>0 then begin
-      fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Index);
-     end;
-
-     MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
-     if MaterialIDMapArrayIndex<0 then begin
-      MaterialIDMapArray:=TMaterialIDMapArray.Create;
-      MaterialIDMapArrayIndex:=fMaterialIDMapArrays.Add(MaterialIDMapArray);
-      fMaterialIDMapArrayIndexHashMap.Add(Material.fID,MaterialIDMapArrayIndex);
-     end else begin
-      MaterialIDMapArray:=fMaterialIDMapArrays[MaterialIDMapArrayIndex];
-     end;
-     MaterialIDMapArray.Add(Index);
-
-    finally
-     Material.IncRef;
-    end;
-
    end;
+
+   FinalizeMaterials(false);
 
   finally
    fSceneInstance.fMaterialListLock.Release;
@@ -11889,16 +11933,14 @@ var POCACodeString:TpvUTF8String;
  end;
  procedure ProcessAnimations;
  var Index:TpvSizeInt;
-     SourceAnimation:TPasGLTF.TAnimation;
      Animation:TpvScene3D.TGroup.TAnimation;
  begin
   for Index:=0 to aSourceDocument.Animations.Count-1 do begin
-   SourceAnimation:=aSourceDocument.Animations[Index];
    Animation:=TAnimation.Create(self,Index);
    try
-    Animation.AssignFromGLTF(aSourceDocument,SourceAnimation);
+    Animation.AssignFromGLTF(aSourceDocument,aSourceDocument.Animations[Index]);
    finally
-    fAnimations.Add(Animation);
+    AddAnimation(Animation);
    end;
   end;
  end;
@@ -11957,12 +11999,12 @@ var POCACodeString:TpvUTF8String;
    SourceCamera:=aSourceDocument.Cameras[Index];
    Camera:=TCamera.Create(self,Index);
    try
-    if length(trim(Camera.fName))>0 then begin
-     fCameraNameIndexHashMap.Add(Camera.fName,Index);
+    if length(trim(SourceCamera.Name))>0 then begin
+     fCameraNameIndexHashMap.Add(SourceCamera.Name,Index);
     end;
     Camera.AssignFromGLTF(aSourceDocument,SourceCamera);
    finally
-    fCameras.Add(Camera);
+    AddCamera(Camera);
    end;
   end;
  end;
@@ -11975,8 +12017,8 @@ var POCACodeString:TpvUTF8String;
    SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self,Index);
    try
-    if length(trim(Mesh.fName))>0 then begin
-     fMeshNameIndexHashMap.Add(Mesh.fName,Index);
+    if length(trim(SourceMesh.fName))>0 then begin
+     fMeshNameIndexHashMap.Add(SourceMesh.fName,Index);
     end;
     Mesh.AssignFromGLTF(aSourceDocument,SourceMesh,fMaterials);
    finally
