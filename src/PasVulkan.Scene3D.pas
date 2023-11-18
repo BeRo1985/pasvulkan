@@ -10388,13 +10388,15 @@ begin
 
  fMorphTargetVertices.Initialize;
 
+ fMorphTargetVertices.Clear;
+
+ fMorphTargetCount:=0;
+
  fJointBlocks.Initialize;
 
  fJointBlockOffsets:=nil;
 
  fSkinStorageBufferSize:=0;
-
- fMorphTargetCount:=0;
 
  fCachedVertexBufferMemoryBarriers:=nil;
 
@@ -11960,8 +11962,6 @@ var POCACodeString:TpvUTF8String;
      SourceMesh:TPasGLTF.TMesh;
      Mesh:TMesh;
  begin
-  fMorphTargetVertices.Clear;
-  fMorphTargetCount:=0;
   for Index:=0 to aSourceDocument.Meshes.Count-1 do begin
    SourceMesh:=aSourceDocument.Meshes[Index];
    Mesh:=TMesh.Create(self,Index);
