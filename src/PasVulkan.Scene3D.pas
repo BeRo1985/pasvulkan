@@ -16468,7 +16468,7 @@ begin
    fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
    if fUseRenderInstances then begin
-    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(TpvVector3.InlineableCreate(-16777216.0,-16777216.0,-16777216.0),TpvVector3.InlineableCreate(16777216.0,16777216.0,16777216.0)),TpvVector3.Null,TpvVector3.AllAxis);
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(-TpvVector3.AllMaxAxis,TpvVector3.AllMaxAxis,TpvVector3.Null,TpvVector3.AllAxis);
    end else begin
     fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
    end;
