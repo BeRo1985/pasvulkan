@@ -1744,7 +1744,6 @@ type EpvScene3D=class(Exception);
                                          Position:TpvVector3;
                                          Normal:TpvVector3;
                                          Tangent:TpvVector3;
-                                         Count:TpvUInt32;
                                         end;
                                         PTargetVertex=^TTargetVertex;
                                         TTargetVertices=TpvDynamicArrayList<TTargetVertex>;
@@ -9119,14 +9118,17 @@ var PrimitiveIndex,
     VertexIndex,
     IndexIndex,
     UntilIndexIndex,
+    PrimitiveTargetIndex,
     VertexIndex0,
     VertexIndex1,
     VertexIndex2:TpvSizeInt;
 //  MorphTargetVertexIndex:TpvUInt32;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    PrimitiveTarget:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
+    PrimitiveTargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
     Vertex:TpvScene3D.PVertex;
 //  MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
-    Positions,Normals,Tangents,Bitangents:TpvVector3Array;
+    Positions,Normals,Tangents,Bitangents,TargetPositions,TargetNormals,TargetTangents:TpvVector3Array;
     TexCoords:TpvVector2Array;
     Area:TpvScalar;
     Normal,Tangent,Bitangent,p1p0,p2p0:TpvVector3;
@@ -9140,6 +9142,9 @@ begin
  Tangents:=nil;
  Bitangents:=nil;
  TexCoords:=nil;
+ TargetPositions:=nil;
+ TargetNormals:=nil;
+ TargetTangents:=nil;
  try
 
   for PrimitiveIndex:=0 to fPrimitives.Count-1 do begin
@@ -9148,17 +9153,13 @@ begin
 
    if Primitive.PrimitiveTopology=TpvScene3D.TPrimitiveTopology.Triangles then begin
 
-    Positions:=nil;
-    Normals:=nil;
-    Tangents:=nil;
-    Bitangents:=nil;
-    TexCoords:=nil;
-
-    SetLength(Positions,Primitive.CountVertices);
-    SetLength(Normals,Primitive.CountVertices);
-    SetLength(Tangents,Primitive.CountVertices);
-    SetLength(Bitangents,Primitive.CountVertices);
-    SetLength(TexCoords,Primitive.CountVertices);
+    if length(Positions)<Primitive.CountVertices then begin
+     SetLength(Positions,Primitive.CountVertices*2);
+     SetLength(Normals,Primitive.CountVertices*2);
+     SetLength(Tangents,Primitive.CountVertices*2);
+     SetLength(Bitangents,Primitive.CountVertices*2);
+     SetLength(TexCoords,Primitive.CountVertices*2);
+    end;
 
     for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
      Vertex:=@Group.Vertices.ItemArray[VertexIndex];
@@ -9286,6 +9287,127 @@ begin
 
    end;
 
+   for PrimitiveTargetIndex:=0 to Primitive.fTargets.Count-1 do begin
+
+    PrimitiveTarget:=Primitive.fTargets[PrimitiveTargetIndex];
+
+    if Primitive.fCountVertices=PrimitiveTarget.fVertices.Count then begin
+
+     if length(TargetPositions)<Primitive.CountVertices then begin
+      SetLength(TargetPositions,Primitive.CountVertices*2);
+      SetLength(TargetNormals,Primitive.CountVertices*2);
+      SetLength(TargetTangents,Primitive.CountVertices*2);
+     end;
+
+     for VertexIndex:=0 to PrimitiveTarget.fVertices.Count-1 do begin
+      PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex];
+      TargetPositions[VertexIndex]:=Positions[VertexIndex]+PrimitiveTargetVertex^.Position;
+      TargetNormals[VertexIndex]:=TpvVector3.Null;
+      TargetTangents[VertexIndex]:=TpvVector3.Null;
+     end;
+
+     IndexIndex:=Primitive.StartBufferIndexOffset;
+     UntilIndexIndex:=Primitive.StartBufferIndexOffset+Primitive.CountIndices;
+     while (IndexIndex+2)<UntilIndexIndex do begin
+      VertexIndex0:=Group.fIndices.ItemArray[IndexIndex+0]-Primitive.StartBufferVertexOffset;
+      VertexIndex1:=Group.fIndices.ItemArray[IndexIndex+1]-Primitive.StartBufferVertexOffset;
+      VertexIndex2:=Group.fIndices.ItemArray[IndexIndex+2]-Primitive.StartBufferVertexOffset;
+      if (VertexIndex0>=0) and (VertexIndex0<Primitive.fCountVertices) and
+         (VertexIndex1>=0) and (VertexIndex1<Primitive.fCountVertices) and
+         (VertexIndex2>=0) and (VertexIndex2<Primitive.fCountVertices) then begin
+       Normal:=(TargetPositions[VertexIndex1]-TargetPositions[VertexIndex0]).Cross(TargetPositions[VertexIndex2]-TargetPositions[VertexIndex1]); // non-normalized weighted normal
+       TargetNormals[VertexIndex0]:=TargetNormals[VertexIndex0]+Normal;
+       TargetNormals[VertexIndex1]:=TargetNormals[VertexIndex1]+Normal;
+       TargetNormals[VertexIndex2]:=TargetNormals[VertexIndex2]+Normal;
+      end;
+      inc(IndexIndex,3);
+     end;
+
+     for VertexIndex:=0 to Primitive.CountVertices-1 do begin
+      TargetNormals[VertexIndex]:=TargetNormals[VertexIndex].Normalize;
+     end;
+
+     IndexIndex:=Primitive.StartBufferIndexOffset;
+     UntilIndexIndex:=Primitive.StartBufferIndexOffset+Primitive.CountIndices;
+     while (IndexIndex+2)<UntilIndexIndex do begin
+      VertexIndex0:=Group.fIndices.ItemArray[IndexIndex+0]-Primitive.StartBufferVertexOffset;
+      VertexIndex1:=Group.fIndices.ItemArray[IndexIndex+1]-Primitive.StartBufferVertexOffset;
+      VertexIndex2:=Group.fIndices.ItemArray[IndexIndex+2]-Primitive.StartBufferVertexOffset;
+      if (VertexIndex0>=0) and (VertexIndex0<Primitive.fCountVertices) and
+         (VertexIndex1>=0) and (VertexIndex1<Primitive.fCountVertices) and
+         (VertexIndex2>=0) and (VertexIndex2<Primitive.fCountVertices) then begin
+       p0:=@TargetPositions[VertexIndex0];
+       p1:=@TargetPositions[VertexIndex1];
+       p2:=@TargetPositions[VertexIndex2];
+       t0:=@TexCoords[VertexIndex0];
+       t1:=@TexCoords[VertexIndex1];
+       t2:=@TexCoords[VertexIndex2];
+       p1p0:=p1^-p0^;
+       p2p0:=p2^-p0^;
+       t1t0:=t1^-t0^;
+       t2t0:=t2^-t0^;
+       Normal:=(p1p0.Cross(p2p0)).Normalize;
+       if TargetNormals[VertexIndex0].Dot(Normal)<0.0 then begin
+        Normal:=-Normal;
+       end;
+{$if true}
+       Area:=(t2t0[0]*t1t0[1])-(t1t0[0]*t2t0[1]);
+       if IsZero(Area) then begin
+        Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]));
+        Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]));
+        Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]));
+        Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]));
+        Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]));
+        Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]));
+        Tangent:=Tangent.Normalize;
+        Bitangent:=Bitangent.Normalize;
+       end else begin
+        Tangent[0]:=((t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]))/Area;
+        Tangent[1]:=((t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]))/Area;
+        Tangent[2]:=((t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]))/Area;
+        Bitangent[0]:=((t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]))/Area;
+        Bitangent[1]:=((t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]))/Area;
+        Bitangent[2]:=((t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]))/Area;
+       end;
+       if (Tangent.Cross(Bitangent)).Dot(Normal)<0.0 then begin
+        Tangent:=-Tangent;
+        Bitangent:=-Bitangent;
+       end;
+{$else}
+       Tangent[0]:=(t1t0[1]*p2p0[0])-(t2t0[1]*p1p0[0]);
+       Tangent[1]:=(t1t0[1]*p2p0[1])-(t2t0[1]*p1p0[1]);
+       Tangent[2]:=(t1t0[1]*p2p0[2])-(t2t0[1]*p1p0[2]);
+       Bitangent[0]:=(t1t0[0]*p2p0[0])-(t2t0[0]*p1p0[0]);
+       Bitangent[1]:=(t1t0[0]*p2p0[1])-(t2t0[0]*p1p0[1]);
+       Bitangent[2]:=(t1t0[0]*p2p0[2])-(t2t0[0]*p1p0[2]);
+       if (Tangent.Cross(Bitangent)).Dot(Normal)<0.0 then begin
+        Tangent:=-Tangent.xyz;
+        Bitangent:=-Bitangent;
+       end;
+{$ifend}
+       TargetTangents[VertexIndex0]:=TargetTangents[VertexIndex0]+Tangent;
+       TargetTangents[VertexIndex1]:=TargetTangents[VertexIndex1]+Tangent;
+       TargetTangents[VertexIndex2]:=TargetTangents[VertexIndex2]+Tangent;
+{      TargetBitangents[VertexIndex0]:=TargetBitangents[VertexIndex0]+Bitangent;
+       TargetBitangents[VertexIndex1]:=TargetBitangents[VertexIndex1]+Bitangent;
+       TargetBitangents[VertexIndex2]:=TargetBitangents[VertexIndex2]+Bitangent;}
+      end;
+      inc(IndexIndex,3);
+     end;
+
+     for VertexIndex:=0 to PrimitiveTarget.fVertices.Count-1 do begin
+      Vertex:=@Group.Vertices.ItemArray[Primitive.StartBufferVertexOffset+VertexIndex];
+      PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex];
+      PrimitiveTargetVertex^.Normal:=TargetNormals[VertexIndex]-OctDecode(Vertex^.Normal);
+      Tangent:=TargetTangents[VertexIndex].Normalize;
+      Tangent:=(Tangent-(Normal*Tangent.Dot(Normal))).Normalize;
+      PrimitiveTargetVertex^.Tangent:=Tangent-OctDecode(Vertex^.Tangent);
+     end;
+
+    end;
+
+   end;
+
   end;
 
  finally
@@ -9294,6 +9416,9 @@ begin
   Tangents:=nil;
   Bitangents:=nil;
   TexCoords:=nil;
+  TargetPositions:=nil;
+  TargetNormals:=nil;
+  TargetTangents:=nil;
  end;
 
 end;
@@ -10218,7 +10343,6 @@ begin
           DestinationMeshPrimitiveTargetVertex^.Tangent.x:=TemporaryTangents[VertexIndex,0]-TangentSpaceMatrix.Tangent.x;
           DestinationMeshPrimitiveTargetVertex^.Tangent.y:=TemporaryTangents[VertexIndex,1]-TangentSpaceMatrix.Tangent.y;
           DestinationMeshPrimitiveTargetVertex^.Tangent.z:=TemporaryTangents[VertexIndex,2]-TangentSpaceMatrix.Tangent.z;
-          DestinationMeshPrimitiveTargetVertex^.Count:=DestinationMeshPrimitive.fTargets.Count;
          end;
         end;
 
