@@ -1787,9 +1787,16 @@ type EpvScene3D=class(Exception);
                             fCountVertices:TpvSizeUInt;
                             fCountIndices:TpvSizeUInt;
                             fNodeMeshPrimitiveInstances:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances;
+                            fTemporaryVertices:TpvScene3D.TGroup.TGroupVertices;
+                            fTemporaryIndices:TpvScene3D.TGroup.TGroupIndices;
                            public
                             constructor Create(const aMesh:TMesh); reintroduce;
                             destructor Destroy; override;
+                            function AddDirectVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
+                            function AddDirectIndex(const aIndex:TpvUInt32):TpvSizeInt;
+                            function AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
+                            function AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
+                            procedure Finish;
                            published
                             property PrimitiveTopology:TpvScene3D.TPrimitiveTopology read fPrimitiveTopology write fPrimitiveTopology;
                             property MaterialID:TpvInt64 read fMaterialID write fMaterialID;
@@ -9113,16 +9120,83 @@ begin
 
  fNodeMeshPrimitiveInstances:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances.Create(true);
 
+ fTemporaryVertices:=nil;
+
+ fTemporaryIndices:=nil;
+
 end;
 
 destructor TpvScene3D.TGroup.TMesh.TPrimitive.Destroy;
 begin
+
+ FreeAndNil(fTemporaryVertices);
+
+ FreeAndNil(fTemporaryIndices);
 
  FreeAndNil(fNodeMeshPrimitiveInstances);
 
  FreeAndNil(fTargets);
 
  inherited Destroy;
+
+end;
+
+function TpvScene3D.TGroup.TMesh.TPrimitive.AddDirectVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
+begin
+ if fCountVertices=0 then begin
+  fStartBufferVertexOffset:=fMesh.fGroup.fVertices.Count;
+ end;
+ result:=fMesh.fGroup.fVertices.Add(aVertex);
+ inc(fCountVertices);
+end;
+
+function TpvScene3D.TGroup.TMesh.TPrimitive.AddDirectIndex(const aIndex:TpvUInt32):TpvSizeInt;
+begin
+ if fCountIndices=0 then begin
+  fStartBufferIndexOffset:=fMesh.fGroup.fIndices.Count;
+ end;
+ result:=fMesh.fGroup.fIndices.Add(aIndex);
+ inc(fCountIndices);
+end;
+
+function TpvScene3D.TGroup.TMesh.TPrimitive.AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
+begin
+ if not assigned(fTemporaryVertices) then begin
+  fTemporaryVertices:=TpvScene3D.TGroup.TGroupVertices.Create;
+ end;
+ result:=fTemporaryVertices.Add(aVertex);
+end;
+
+function TpvScene3D.TGroup.TMesh.TPrimitive.AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
+begin
+ if not assigned(fTemporaryIndices) then begin
+  fTemporaryIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
+ end;
+ result:=fTemporaryIndices.Add(aIndex);
+end;
+
+procedure TpvScene3D.TGroup.TMesh.TPrimitive.Finish;
+var Index:TpvSizeInt;
+begin
+
+ if assigned(fTemporaryVertices) and assigned(fTemporaryIndices) then begin
+
+  StartBufferVertexOffset:=fMesh.fGroup.fVertices.Count;
+  CountVertices:=fTemporaryVertices.Count;
+  fMesh.fGroup.fVertices.Add(fTemporaryVertices);
+
+  StartBufferIndexOffset:=fMesh.fGroup.fIndices.Count;
+  CountIndices:=fTemporaryIndices.Count;
+  for Index:=0 to fTemporaryIndices.Count-1 do begin
+   inc(fTemporaryIndices.ItemArray[Index],StartBufferVertexOffset);
+  end;
+  fMesh.fGroup.fIndices.Add(fTemporaryIndices);
+
+ end;
+
+ FreeAndNil(fTemporaryVertices);
+
+ FreeAndNil(fTemporaryIndices);
 
 end;
 
