@@ -17063,18 +17063,11 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aPotentiallyVisibleSetCulling:boolean;
                                               const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                                               const aFrustumCullMask:TpvUInt32);
-type TAABBTreeStackItem=record
-      NodeIndex:TpvSizeInt;
-      Mask:TpvUInt32;
-     end;
-     PAABBTreeStackItem=^TAABBTreeStackItem;
-     TAABBTreeStack=TpvDynamicFastStack<TAABBTreeStackItem>;
 var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyBatchItemIndex,
-    DrawChoreographyBatchItemElementIndex,FirstInstance,InstancesCount{,NodeIndex}:TpvSizeInt;
+    DrawChoreographyBatchItemElementIndex,FirstInstance,InstancesCount:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-    //Mask:TpvUInt32;
-    Masks:array[-1..15] of TpvUInt32;
+    Masks:array[-1..31] of TpvUInt32;
     RendererInstanceID:TpvUInt32;
     HaveNodeFilter:Boolean;
     GroupOnNodeFilter,GlobalOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
@@ -17083,15 +17076,11 @@ var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyB
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     DrawChoreographyBatchItemMaterialAlphaModeBuckets:PDrawChoreographyBatchItemMaterialAlphaModeBuckets;
     PotentiallyVisible,DoCulling:boolean;
-{   AABBTreeState:TpvBVHDynamicAABBTree.PState;
-    AABBTreeNode:TpvBVHDynamicAABBTree.PTreeNode;}
     AABBTreeSkipList:TpvScene3D.TGroup.TInstance.PAABBTreeSkipList;
     AABBTreeSkipListItem:TpvScene3D.TGroup.TInstance.PAABBTreeSkipListItem;
     SkipListItem:TpvScene3D.TGroup.TScene.PSkipListItem;
     DrawChoreographyBatchItemIndices:PSizeIntDynamicArray;
     DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
-{   AABBTreeStack:TAABBTreeStack;
-    AABBTreeStackItem:PAABBTreeStackItem;}
 begin
 
  FirstInstance:=0;
@@ -17113,8 +17102,6 @@ begin
    DrawChoreographyBatchItemMaterialAlphaModeBuckets:=@TpvScene3DRendererInstance(aRendererInstance).DrawChoreographyBatchItemFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
    if assigned(fAABBTree) then begin
-
-//  AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
 
     AABBTreeSkipList:=@fAABBTreeSkipLists[aInFlightFrameIndex];
 
@@ -17138,21 +17125,13 @@ begin
        SkipListItemCount:=length(Scene.fSkipList);
        while SkipListItemIndex<SkipListItemCount do begin
         SkipListItem:=@Scene.fSkipList[SkipListItemIndex];
-        if SkipListItem^.NodeIndex>=0 then begin
-         Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
-         InstanceNode:=@fNodes[SkipListItem^.NodeIndex];
-         if (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-             ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
-             ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
-          fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5]:=fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5] or (TpvUInt32(1) shl (SkipListItem^.NodeIndex and 31));
-          inc(SkipListItemIndex);
-         end else begin
-          if SkipListItem^.SkipCount<=0 then begin
-           break;
-          end else begin
-           inc(SkipListItemIndex,SkipListItem^.SkipCount);
-          end;
-         end;
+        Node:=fGroup.fNodes[SkipListItem^.NodeIndex];
+        InstanceNode:=@fNodes[SkipListItem^.NodeIndex];
+        if (((not assigned(fOnNodeFilter)) or fOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+            ((not assigned(GroupOnNodeFilter)) or GroupOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode)) and
+            ((not assigned(GlobalOnNodeFilter)) or GlobalOnNodeFilter(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,Group,self,Node,InstanceNode))) then begin
+         fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5]:=fCullVisibleBitmaps[aInFlightFrameIndex][SkipListItem^.NodeIndex shr 5] or (TpvUInt32(1) shl (SkipListItem^.NodeIndex and 31));
+         inc(SkipListItemIndex);
         end else begin
          if SkipListItem^.SkipCount<=0 then begin
           break;
@@ -17163,156 +17142,6 @@ begin
        end;
 
       end;
-
-{     AABBTreeStack.Initialize;
-      try
-
-       if AABBTreeState^.Root>=0 then begin
-        AABBTreeStackItem:=AABBTreeStack.PushIndirect;
-        AABBTreeStackItem^.NodeIndex:=AABBTreeState^.Root;
-        AABBTreeStackItem^.Mask:=TpvUInt32($ffffffff);
-       end;
-
-       while AABBTreeStack.PopIndirect(AABBTreeStackItem) do begin
-
-        NodeIndex:=AABBTreeStackItem^.NodeIndex;
-
-        Mask:=AABBTreeStackItem^.Mask;
-
-        while NodeIndex>=0 do begin
-
-         AABBTreeNode:=@AABBTreeState^.TreeNodes[NodeIndex];
-
-         PotentiallyVisible:=true;
-
-         if DoCulling then begin
-
-          if aPotentiallyVisibleSetCulling then begin
-
-           if (TpvPtrUInt(AABBTreeNode^.UserData) and TpvUInt32($80000000))<>0 then begin
-
-            PotentiallyVisibleSetNodeIndex:=TpvPtrUInt(AABBTreeNode^.UserData) and TpvUInt32($7fffffff);
-            if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-             PotentiallyVisible:=false;
-             for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-              ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
-              if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-                 fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-               PotentiallyVisible:=true;
-               break;
-              end;
-             end;
-            end;
-
-           end else if (TpvPtrUInt(AABBTreeNode^.UserData)>=1) and (TpvPtrUInt(AABBTreeNode^.UserData)<=TpvUInt32($7fffffff)) then begin
-
-            PotentiallyVisibleSetNodeIndex:=fNodes[TpvPtrUInt(AABBTreeNode^.UserData)-1].PotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
-            if PotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex then begin
-             PotentiallyVisible:=false;
-             for ViewIndex:=aViewBaseIndex to (aViewBaseIndex+aCountViews)-1 do begin
-              ViewPotentiallyVisibleSetNodeIndex:=aViewNodeIndices[ViewIndex];
-              if (ViewPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
-                 fSceneInstance.fPotentiallyVisibleSet.GetNodeVisibility(PotentiallyVisibleSetNodeIndex,ViewPotentiallyVisibleSetNodeIndex) then begin
-               PotentiallyVisible:=true;
-               break;
-              end;
-             end;
-            end;
-
-           end;
-
-          end;
-
-          if PotentiallyVisible and (length(aFrustums)>0) then begin
-           if (TpvPtrUInt(AABBTreeNode^.UserData)>=1) and (TpvPtrUInt(AABBTreeNode^.UserData)<=TpvUInt32($7fffffff)) then begin
-            InstanceNode:=@fNodes[TpvPtrUInt(AABBTreeNode^.UserData)-1];
-            if length(aFrustums)=1 then begin
-             if AABBTreeSkipListItem^.Level<=High(Masks) then begin
-              PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
-             end else begin
-              PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
-             end;
-            end else begin
-             PotentiallyVisible:=false;
-             for FrustumIndex:=0 to length(aFrustums)-1 do begin
-              if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-               PotentiallyVisible:=true;
-               break;
-              end;
-             end;
-            end;
-           end else begin
-            if length(aFrustums)=1 then begin
-             PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(AABBTreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-            end else begin
-             PotentiallyVisible:=false;
-             for FrustumIndex:=0 to length(aFrustums)-1 do begin
-              if aFrustums[FrustumIndex].AABBInFrustum(AABBTreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-               PotentiallyVisible:=true;
-               break;
-              end;
-             end;
-            end;
-           end;
-          end;
-
-         end;
-
-         if PotentiallyVisible then begin
-
-          if (TpvPtrUInt(AABBTreeNode^.UserData)>=1) and (TpvPtrUInt(AABBTreeNode^.UserData)<=TpvUInt32($7fffffff)) then begin
-
-           Node:=fGroup.fNodes[TpvPtrUInt(AABBTreeNode^.UserData)-1];
-
-           if (not HaveNodeFilter) or
-              ((fCullVisibleBitmaps[aInFlightFrameIndex][Node.Index shr 5] and (TpvUInt32(1) shl (Node.Index and 31))<>0)) then begin
-
-            InstanceNode:=@fNodes[TpvPtrUInt(AABBTreeNode^.UserData)-1];
-
-            DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
-            for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
-             DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
-             DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
-             if DrawChoreographyBatchItem.fMaterial.fVisible and
-                (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
-               (DrawChoreographyBatchItem.fCountIndices>0) then begin
-              DrawChoreographyBatchItemMaterialAlphaModeBuckets^[DrawChoreographyBatchItem.fAlphaMode,
-                                                                 DrawChoreographyBatchItem.fPrimitiveTopology,
-                                                                 DoubleSidedFaceCullingModes[DrawChoreographyBatchItem.fDoubleSided,
-                                                                                             InstanceNode^.InverseFrontFaces]].Add(DrawChoreographyBatchItem);
-             end;
-            end;
-
-           end;
-
-          end;
-
-          if AABBTreeNode^.Children[0]>=0 then begin
-           if AABBTreeNode^.Children[1]>=0 then begin
-            AABBTreeStackItem:=AABBTreeStack.PushIndirect;
-            AABBTreeStackItem^.NodeIndex:=AABBTreeNode^.Children[1];
-            AABBTreeStackItem^.Mask:=Mask;
-           end;
-           NodeIndex:=AABBTreeNode^.Children[0];
-           continue;
-          end else begin
-           if AABBTreeNode^.Children[1]>=0 then begin
-            NodeIndex:=AABBTreeNode^.Children[1];
-            continue;
-           end;
-          end;
-
-         end;
-
-         break;
-
-        end;
-
-       end;
-
-      finally
-       AABBTreeStack.Finalize;
-      end; //}
 
       Masks[-1]:=TpvUInt32($ffffffff);
 
@@ -17446,7 +17275,7 @@ begin
 
        end;
 
-      end;//}
+      end;
 
      finally
       if HaveNodeFilter then begin
