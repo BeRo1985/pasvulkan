@@ -72,11 +72,12 @@ uses SysUtils,
 type TpvDynamicArray<T>=record
       public
        type PT=^T;
+            TItemArray=array of T;
       private
        function GetItem(const pIndex:TpvSizeInt):T; inline;
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T); inline;
       public
-       Items:array of T;
+       Items:TItemArray;
        Count:TpvSizeInt;
        procedure Initialize;
        procedure Finalize;
@@ -95,7 +96,9 @@ type TpvDynamicArray<T>=record
        function AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
        procedure Exchange(const aIndexA,aIndexB:TpvSizeInt); inline;
        procedure Delete(const aIndex:TpvSizeInt);
+      public
        property DefaultItems[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
+       property ItemArray:TItemArray read Items;
      end;
 
      TpvDynamicStack<T>=record
@@ -193,8 +196,8 @@ type TpvDynamicArray<T>=record
        function Memory:TpvPointer; inline;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
-       property ItemArray:TItemArray read fItems;
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
+       property ItemArray:TItemArray read fItems;
      end;
 
      TpvBaseList=class
