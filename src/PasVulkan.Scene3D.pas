@@ -1721,11 +1721,13 @@ type EpvScene3D=class(Exception);
                                         end;
                                         PTargetVertex=^TTargetVertex;
                                         TTargetVertices=TpvDynamicArrayList<TTargetVertex>;
-                                  public
+                                  private
                                    fVertices:TTargetVertices;
                                   public
                                    constructor Create; reintroduce;
                                    destructor Destroy; override;
+                                  published
+                                   property Vertices:TTargetVertices read fVertices;
                                  end;
                                  TTargets=TpvObjectGenericList<TTarget>;
                                  { TNodeMeshPrimitiveInstance }
