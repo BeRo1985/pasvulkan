@@ -1801,7 +1801,7 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
-                     fMorphTargetReady:TPasMPBool32;
+                     fMorphTargetVerticesReady:TPasMPBool32;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
@@ -9078,7 +9078,7 @@ begin
  fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
  fPrimitives:=TpvScene3D.TGroup.TMesh.TPrimitives.Create(true);
  fNodeMeshInstances:=0;
- fMorphTargetReady:=false;
+ fMorphTargetVerticesReady:=false;
  fReferencedByNodes:=TpvScene3D.TGroup.TMesh.TReferencedByNodes.Create;
 end;
 
@@ -9450,25 +9450,25 @@ begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
 
-  if not fMorphTargetReady then begin
+  if not fMorphTargetVerticesReady then begin
    Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
   end;
 
   if Primitive.fTargets.Count>0 then begin
 
-   if not fMorphTargetReady then begin
+   if not fMorphTargetVerticesReady then begin
     inc(fGroup.fMorphTargetCount,Primitive.fTargets.Count);
    end;
 
    for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
     Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
-    if not fMorphTargetReady then begin
+    if not fMorphTargetVerticesReady then begin
      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
     end;
     for TargetIndex:=0 to Primitive.fTargets.Count-1 do begin
      PrimitiveTarget:=Primitive.fTargets[TargetIndex];
      PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex-Primitive.fStartBufferVertexOffset];
-     if fMorphTargetReady then begin
+     if fMorphTargetVerticesReady then begin
       MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex+TargetIndex;
      end else begin
       MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
@@ -9505,7 +9505,7 @@ begin
 
  end;
 
- fMorphTargetReady:=true;
+ fMorphTargetVerticesReady:=true;
 
 end;
 
