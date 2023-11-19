@@ -9132,6 +9132,7 @@ begin
   for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
 
    Vertex:=@Group.Vertices.ItemArray[VertexIndex];
+
    fBoundingBox.DirectCombineVector3(Vertex^.Position);
 
    MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
@@ -14040,8 +14041,8 @@ begin
      fSceneInstance.fVulkanNodeMatricesBufferData[Index].Resize(fVulkanNodeMatricesBufferOffset+fVulkanNodeMatricesBufferCount);
     end;
 
-    if fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].Count<(fVulkanMorphTargetVertexBufferOffset+fVulkanMorphTargetVertexBufferCount) then begin
-     fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].Resize(fVulkanMorphTargetVertexBufferOffset+fVulkanMorphTargetVertexBufferCount);
+    if fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].Count<(fVulkanMorphTargetVertexWeightsBufferOffset+fVulkanMorphTargetVertexWeightsBufferCount) then begin
+     fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[Index].Resize(fVulkanMorphTargetVertexWeightsBufferOffset+fVulkanMorphTargetVertexWeightsBufferCount);
     end;
 
    end;
