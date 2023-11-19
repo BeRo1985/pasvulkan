@@ -9496,14 +9496,12 @@ begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
 
-  if assigned(Primitive.fMaterial) then begin
-   if Primitive.fMaterial=fGroup.fSceneInstance.EmptyMaterial then begin
-    Primitive.fMaterialID:=-1;
-   end else begin
+  if Primitive.fMaterialID<0 then begin
+   if assigned(Primitive.fMaterial) and (Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial) then begin
     Primitive.fMaterialID:=fGroup.AddMaterial(Primitive.fMaterial,true,true);
+   end else begin
+    Primitive.fMaterialID:=-1;
    end;
-  end else begin
-   Primitive.fMaterialID:=-1;
   end;
 
   if not fMorphTargetVerticesReady then begin
