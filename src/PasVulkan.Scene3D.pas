@@ -2384,6 +2384,8 @@ type EpvScene3D=class(Exception);
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
                      fRenderInstances:TRenderInstances;
+                     fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
+                     fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
                      fPerInFlightFrameRenderInstances:TPerInFlightFrameRenderInstances;
                     public
                      fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
@@ -13822,6 +13824,14 @@ begin
   fScenes.Add(TpvScene3D.TGroup.TInstance.TScene.Create(self,fGroup.fScenes[Index]));
  end;
 
+ fDrawChoreographyBatchItems:=TpvScene3D.TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchItems.OwnsObjects:=true;
+ fDrawChoreographyBatchItems.GroupInstanceClone(fGroup.fDrawChoreographyBatchItems,self,false);
+
+ fDrawChoreographyBatchUniqueItems:=TpvScene3D.TDrawChoreographyBatchItems.Create;
+ fDrawChoreographyBatchUniqueItems.OwnsObjects:=true;
+ fDrawChoreographyBatchUniqueItems.GroupInstanceClone(fGroup.fDrawChoreographyBatchUniqueItems,self,true);
+
  if fGroup.fDynamicAABBTreeCulling then begin
   fAABBTree:=TpvBVHDynamicAABBTree.Create;
  end else begin
@@ -13906,6 +13916,10 @@ begin
    fAABBTreeProxy:=-1;
   end;
  end;
+
+ FreeAndNil(fDrawChoreographyBatchItems);
+
+ FreeAndNil(fDrawChoreographyBatchUniqueItems);
 
  FreeAndNil(fScenes);
 
@@ -17041,7 +17055,7 @@ procedure TpvScene3D.TGroup.TInstance.Prepare(const aInFlightFrameIndex:TpvSizeI
                                               const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                                               const aFrustumCullMask:TpvUInt32);
 var ViewIndex,FrustumIndex,SkipListItemIndex,SkipListItemCount,DrawChoreographyBatchItemIndex,
-    FirstInstance,InstancesCount:TpvSizeInt;
+    DrawChoreographyBatchItemElementIndex,FirstInstance,InstancesCount:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
     Masks:array[-1..15] of TpvUInt32;
@@ -17209,7 +17223,8 @@ begin
 
           DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
           for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
-           DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex]];
+           DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
+           DrawChoreographyBatchItem:={InstanceScene.}fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
            if DrawChoreographyBatchItem.fMaterial.fVisible and
               (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
              (DrawChoreographyBatchItem.fCountIndices>0) then begin
@@ -17315,7 +17330,8 @@ begin
 
       DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
       for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
-       DrawChoreographyBatchItem:=InstanceScene.fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex]];
+       DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
+       DrawChoreographyBatchItem:={InstanceScene.}fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
        if DrawChoreographyBatchItem.fMaterial.fVisible and
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
          (DrawChoreographyBatchItem.fCountIndices>0) then begin
