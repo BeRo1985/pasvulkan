@@ -9593,6 +9593,17 @@ begin
    end;
   end;
 
+  if not assigned(Primitive.fMaterial) then begin
+   if Primitive.fMaterialID<0 then begin
+    Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
+   end else begin
+    Primitive.fMaterial:=fGroup.fMaterials[Primitive.fMaterialID];
+{   if Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial then begin
+     Primitive.fMaterial.IncRef;
+    end;}
+   end;
+  end;
+
   if not fMorphTargetVerticesReady then begin
    Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
   end;
@@ -9627,6 +9638,13 @@ begin
       MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
      end;
     end;
+   end;
+
+  end else begin
+
+   for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+    Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
+    Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
    end;
 
   end;
