@@ -1801,6 +1801,7 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
+                     fMorphTargetReady:TPasMPBool32;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
@@ -9047,16 +9048,24 @@ end;
 constructor TpvScene3D.TGroup.TMesh.TPrimitive.Create;
 begin
  inherited Create;
+
  fMaterial:=nil;
+
  fTargets:=TpvScene3D.TGroup.TMesh.TPrimitive.TTargets.Create(true);
+
  fNodeMeshPrimitiveInstances:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances.Create(true);
+
 end;
 
 destructor TpvScene3D.TGroup.TMesh.TPrimitive.Destroy;
 begin
+
  FreeAndNil(fNodeMeshPrimitiveInstances);
+
  FreeAndNil(fTargets);
+
  inherited Destroy;
+
 end;
 
 { TpvScene3D.TGroup.TMesh }
@@ -9069,6 +9078,7 @@ begin
  fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
  fPrimitives:=TpvScene3D.TGroup.TMesh.TPrimitives.Create(true);
  fNodeMeshInstances:=0;
+ fMorphTargetReady:=false;
  fReferencedByNodes:=TpvScene3D.TGroup.TMesh.TReferencedByNodes.Create;
 end;
 
@@ -9122,12 +9132,10 @@ var PrimitiveIndex,
     VertexIndex0,
     VertexIndex1,
     VertexIndex2:TpvSizeInt;
-//  MorphTargetVertexIndex:TpvUInt32;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     PrimitiveTarget:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget;
     PrimitiveTargetVertex:TpvScene3D.TGroup.TMesh.TPrimitive.TTarget.PTargetVertex;
     Vertex:TpvScene3D.PVertex;
-//  MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
     Positions,Normals,Tangents,Bitangents,TargetPositions,TargetNormals,TargetTangents:TpvVector3Array;
     TexCoords:TpvVector2Array;
     Area:TpvScalar;
@@ -9425,10 +9433,13 @@ end;
 
 procedure TpvScene3D.TGroup.TMesh.Finish;
 var PrimitiveIndex,
-    VertexIndex:TpvSizeInt;
+    VertexIndex,
+    TargetIndex:TpvSizeInt;
     MorphTargetVertexIndex:TpvUInt32;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     Vertex:TpvScene3D.PVertex;
+    PrimitiveTarget:TMesh.TPrimitive.TTarget;
+    PrimitiveTargetVertex:TMesh.TPrimitive.TTarget.PTargetVertex;
     MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
 begin
 
@@ -9438,6 +9449,44 @@ begin
  for PrimitiveIndex:=0 to fPrimitives.Count-1 do begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
+
+  if not fMorphTargetReady then begin
+   Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
+  end;
+
+  if Primitive.fTargets.Count>0 then begin
+
+   if not fMorphTargetReady then begin
+    inc(fGroup.fMorphTargetCount,Primitive.fTargets.Count);
+   end;
+
+   for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+    Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
+    if not fMorphTargetReady then begin
+     Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
+    end;
+    for TargetIndex:=0 to Primitive.fTargets.Count-1 do begin
+     PrimitiveTarget:=Primitive.fTargets[TargetIndex];
+     PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex-Primitive.fStartBufferVertexOffset];
+     if fMorphTargetReady then begin
+      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex+TargetIndex;
+     end else begin
+      MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
+     end;
+     MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+     MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Position,0.0);
+     MorphTargetVertex^.Normal:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Normal,0.0);
+     MorphTargetVertex^.Tangent:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Tangent,0.0);
+     MorphTargetVertex^.Index:=Primitive.fMorphTargetBaseIndex+TargetIndex;
+     if (TargetIndex+1)<Primitive.fTargets.Count then begin
+      MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
+     end else begin
+      MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+     end;
+    end;
+   end;
+
+  end;
 
   for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
 
@@ -9455,6 +9504,8 @@ begin
   end;
 
  end;
+
+ fMorphTargetReady:=true;
 
 end;
 
