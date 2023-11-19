@@ -10394,6 +10394,9 @@ begin
 
  if (aLightMap.Count>0) and (fLightIndex>=0) and (fLightIndex<aLightMap.Count) then begin
   aLightMap[fLightIndex].fNodes.Add(self);
+  fLight:=aLightMap[fLightIndex];
+ end else begin
+  fLight:=nil;
  end;
 
 end;
