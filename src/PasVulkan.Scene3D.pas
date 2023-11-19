@@ -2506,14 +2506,8 @@ type EpvScene3D=class(Exception);
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
-                   TNodeNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TCameraNodeIndices=TpvGenericList<TpvSizeInt>;
-                   TCameraNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
-                   TAnimationNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
-                   TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
-                   TSkinNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
-                   TLightNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
-                   TSceneNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fReady:boolean;
               fCulling:boolean;
@@ -2528,19 +2522,19 @@ type EpvScene3D=class(Exception);
               fMaterialIDMapArrays:TpvScene3D.TGroup.TMaterialIDMapArrays;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCountInstanceAnimationChannels:TpvSizeInt;
-              fAnimationNameIndexHashMap:TpvScene3D.TGroup.TAnimationNameIndexHashMap;
+              fAnimationNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fCameras:TpvScene3D.TGroup.TCameras;
-              fCameraNameIndexHashMap:TpvScene3D.TGroup.TCameraNameIndexHashMap;
+              fCameraNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fMeshes:TpvScene3D.TGroup.TMeshes;
-              fMeshNameIndexHashMap:TpvScene3D.TGroup.TMeshNameIndexHashMap;
+              fMeshNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fSkins:TpvScene3D.TGroup.TSkins;
-              fSkinNameIndexHashMap:TpvScene3D.TGroup.TSkinNameIndexHashMap;
+              fSkinNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fLights:TpvScene3D.TGroup.TLights;
-              fLightNameIndexHashMap:TpvScene3D.TGroup.TLightNameIndexHashMap;
+              fLightNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fNodes:TpvScene3D.TGroup.TNodes;
-              fNodeNameIndexHashMap:TpvScene3D.TGroup.TNodeNameIndexHashMap;
+              fNodeNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fScenes:TpvScene3D.TGroup.TScenes;
-              fSceneNameIndexHashMap:TpvScene3D.TGroup.TSceneNameIndexHashMap;
+              fSceneNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fScene:TpvScene3D.TGroup.TScene;
               fVertices:TGroupVertices;
               fIndices:TGroupIndices;
@@ -10582,22 +10576,22 @@ begin
  fAnimations:=TAnimations.Create;
  fAnimations.OwnsObjects:=true;
 
- fAnimationNameIndexHashMap:=TpvScene3D.TGroup.TAnimationNameIndexHashMap.Create(-1);
+ fAnimationNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fCameras:=TCameras.Create;
  fCameras.OwnsObjects:=true;
 
- fCameraNameIndexHashMap:=TCameraNameIndexHashMap.Create(-1);
+ fCameraNameIndexHashMap:=TNameIndexHashMap.Create(-1);
 
  fMeshes:=TMeshes.Create;
  fMeshes.OwnsObjects:=true;
 
- fMeshNameIndexHashMap:=TMeshNameIndexHashMap.Create(-1);
+ fMeshNameIndexHashMap:=TNameIndexHashMap.Create(-1);
 
  fSkins:=TSkins.Create;
  fSkins.OwnsObjects:=true;
 
- fSkinNameIndexHashMap:=TpvScene3D.TGroup.TSkinNameIndexHashMap.Create(-1);
+ fSkinNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=true;
@@ -10605,7 +10599,7 @@ begin
  fLights:=TpvScene3D.TGroup.TLights.Create;
  fLights.OwnsObjects:=true;
 
- fLightNameIndexHashMap:=TpvScene3D.TGroup.TSkinNameIndexHashMap.Create(-1);
+ fLightNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fScenes:=TScenes.Create;
  fScenes.OwnsObjects:=true;
@@ -10650,9 +10644,9 @@ begin
  fInstances:=TInstances.Create;
  fInstances.OwnsObjects:=false;
 
- fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNodeNameIndexHashMap.Create(-1);
+ fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
- fSceneNameIndexHashMap:=TpvScene3D.TGroup.TSceneNameIndexHashMap.Create(-1);
+ fSceneNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fCameraNodeIndices:=TpvScene3D.TGroup.TCameraNodeIndices.Create;
 
