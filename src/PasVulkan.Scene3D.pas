@@ -337,6 +337,10 @@ type EpvScene3D=class(Exception);
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
              public
               class function Create:TVertex; static;
+              procedure SetNormal(const aNormal:TpvVector3);
+              procedure SetTangent(const aTangent:TpvVector3);
+              procedure SetTangentSpaceVectors(const aTangent,aBitangent,aNormal:TpvVector3);
+              procedure SetTangentSpace(const aTangentSpace:TpvMatrix3x3);
              public
               case boolean of
                false:(
@@ -3827,6 +3831,32 @@ begin
  result.Color0.z:=1.0;
  result.Color0.w:=1.0;
  result.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+end;
+
+procedure TpvScene3D.TVertex.SetNormal(const aNormal:TpvVector3);
+begin
+ Normal:=OctEncode(aNormal);
+end;
+
+procedure TpvScene3D.TVertex.SetTangent(const aTangent:TpvVector3);
+begin
+ Tangent:=OctEncode(aTangent);
+end;
+
+procedure TpvScene3D.TVertex.SetTangentSpaceVectors(const aTangent,aBitangent,aNormal:TpvVector3);
+begin
+ Normal:=OctEncode(aNormal);
+ Tangent:=OctEncode(aTangent);
+ if (OctDecode(Normal).Cross(OctDecode(Tangent))).Dot(aBitangent)<0.0 then begin
+  Flags:=Flags or (1 shl 0);
+ end else begin
+  Flags:=Flags and not (1 shl 0);
+ end;
+end;
+
+procedure TpvScene3D.TVertex.SetTangentSpace(const aTangentSpace:TpvMatrix3x3);
+begin
+ SetTangentSpaceVectors(aTangentSpace.Tangent,aTangentSpace.Bitangent,aTangentSpace.Normal);
 end;
 
 { TpvScene3D.TDebugPrimitiveVertex }
