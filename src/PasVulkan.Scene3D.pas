@@ -1899,7 +1899,7 @@ type EpvScene3D=class(Exception);
                      fUsedJoints:TpvScene3D.TGroup.TNode.TUsedJoints;
                      procedure Finish;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceNode:TPasGLTF.TNode;const aLightMap:TpvScene3D.TGroup.TLights);
                     published
@@ -2509,6 +2509,7 @@ type EpvScene3D=class(Exception);
                    TNodeNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TCameraNodeIndices=TpvGenericList<TpvSizeInt>;
                    TCameraNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TAnimationNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fReady:boolean;
@@ -2524,10 +2525,11 @@ type EpvScene3D=class(Exception);
               fMaterialIDMapArrays:TpvScene3D.TGroup.TMaterialIDMapArrays;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCountInstanceAnimationChannels:TpvSizeInt;
+              fAnimationNameIndexHashMap:TpvScene3D.TGroup.TAnimationNameIndexHashMap;
               fCameras:TpvScene3D.TGroup.TCameras;
-              fCameraNameIndexHashMap:TCameraNameIndexHashMap;
+              fCameraNameIndexHashMap:TpvScene3D.TGroup.TCameraNameIndexHashMap;
               fMeshes:TpvScene3D.TGroup.TMeshes;
-              fMeshNameIndexHashMap:TMeshNameIndexHashMap;
+              fMeshNameIndexHashMap:TpvScene3D.TGroup.TMeshNameIndexHashMap;
               fSkins:TpvScene3D.TGroup.TSkins;
               fLights:TpvScene3D.TGroup.TLights;
               fNodes:TpvScene3D.TGroup.TNodes;
@@ -2598,6 +2600,12 @@ type EpvScene3D=class(Exception);
              public
               procedure CleanUp;
               procedure Finish;
+             public
+              function GetMaterialID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetCameraID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetMeshID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetNodeID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetAnimationID(const aName:TpvUTF8String):TpvSizeInt;
              public
               function AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
               function AddImage(const aImage:TpvScene3D.TImage;const aForceNew:Boolean=false):TpvSizeInt;
@@ -10190,6 +10198,14 @@ begin
 
  fLight:=nil;
 
+ fMatrix:=TpvMatrix4x4.Identity;
+
+ fTranslation:=TpvVector3.Origin;
+
+ fRotation:=TpvQuaternion.Identity;
+
+ fScale:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+
  fDrawChoreographyBatchItemIndices.Initialize;
 
  fDrawChoreographyBatchUniqueItemIndices.Initialize;
@@ -10516,6 +10532,8 @@ begin
  fAnimations:=TAnimations.Create;
  fAnimations.OwnsObjects:=true;
 
+ fAnimationNameIndexHashMap:=TpvScene3D.TGroup.TAnimationNameIndexHashMap.Create(-1);
+
  fCameras:=TCameras.Create;
  fCameras.OwnsObjects:=true;
 
@@ -10655,6 +10673,8 @@ begin
 
  FreeAndNil(fObjects);
 
+ FreeAndNil(fAnimationNameIndexHashMap);
+
  FreeAndNil(fCameraNameIndexHashMap);
 
  FreeAndNil(fMeshNameIndexHashMap);
@@ -10749,6 +10769,31 @@ begin
    fAdded:=false;
   end;
  end;
+end;
+
+function TpvScene3D.TGroup.GetMaterialID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fMaterialNameMapArrayIndexHashMap[aName];
+end;
+
+function TpvScene3D.TGroup.GetCameraID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fCameraNameIndexHashMap[aName];
+end;
+
+function TpvScene3D.TGroup.GetMeshID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fMeshNameIndexHashMap[aName];
+end;
+
+function TpvScene3D.TGroup.GetNodeID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fNodeNameIndexHashMap[aName];
+end;
+
+function TpvScene3D.TGroup.GetAnimationID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fAnimationNameIndexHashMap[aName];
 end;
 
 procedure TpvScene3D.TGroup.LoadData;
@@ -10905,15 +10950,10 @@ begin
   fNodes[Index].Finish;
  end;
 
- fNodeNameIndexHashMap.Clear;
-
  fCameraNodeIndices.Clear;
 
  for Index:=0 to fNodes.Count-1 do begin
   Node:=fNodes[Index];
-  if (length(trim(Node.fName))>0) and not fNodeNameIndexHashMap.ExistKey(Node.fName) then begin
-   fNodeNameIndexHashMap.Add(Node.fName,Index);
-  end;
   if assigned(Node.Camera) then begin
    fCameraNodeIndices.Add(Index);
   end;
@@ -12075,6 +12115,9 @@ function TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnim
 begin
  if assigned(aAnimation) then begin
   result:=fAnimations.Add(aAnimation);
+  if (length(trim(aAnimation.fName))>0) and not fAnimationNameIndexHashMap.ExistKey(aAnimation.fName) then begin
+   fAnimationNameIndexHashMap.Add(aAnimation.fName,result);
+  end;
  end else begin
   result:=-1;
  end;
@@ -12084,6 +12127,9 @@ function TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):Tp
 begin
  if assigned(aCamera) then begin
   result:=fCameras.Add(aCamera);
+  if (length(trim(aCamera.fName))>0) and not fCameraNameIndexHashMap.ExistKey(aCamera.fName) then begin
+   fCameraNameIndexHashMap.Add(aCamera.fName,result);
+  end;
  end else begin
   result:=-1;
  end;
@@ -12093,6 +12139,14 @@ function TpvScene3D.TGroup.AddNode(const aNode:TpvScene3D.TGroup.TNode):TpvSizeI
 begin
  if assigned(aNode) then begin
   result:=fNodes.Add(aNode);
+  if aNode.fIndex<0 then begin
+   aNode.fIndex:=result;
+  end else if aNode.Index<>result then begin
+   raise EpvScene3D.Create('Node index mismatch');
+  end;
+  if (length(trim(aNode.fName))>0) and not fNodeNameIndexHashMap.ExistKey(aNode.fName) then begin
+   fNodeNameIndexHashMap.Add(aNode.fName,result);
+  end;
  end else begin
   result:=-1;
  end;
@@ -12314,9 +12368,6 @@ var POCACodeString:TpvUTF8String;
    SourceCamera:=aSourceDocument.Cameras[Index];
    Camera:=TCamera.Create(self,Index);
    try
-    if length(trim(SourceCamera.Name))>0 then begin
-     fCameraNameIndexHashMap.Add(SourceCamera.Name,Index);
-    end;
     Camera.AssignFromGLTF(aSourceDocument,SourceCamera);
    finally
     AddCamera(Camera);
