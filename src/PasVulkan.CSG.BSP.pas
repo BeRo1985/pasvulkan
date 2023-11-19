@@ -4996,7 +4996,7 @@ begin
        PointerToVertex:=@fVertices.Items[Index];
        Index0:=PositionUniqueVerticesHashMap[PointerToVertex^.Position];
        if Index0<0 then begin
-        Index0:=PositionUniqueVerticesBuckets.AddNewIndex;
+        Index0:=PositionUniqueVerticesBuckets.AddNew;
         PositionUniqueVerticesBuckets.Items[Index0].Initialize;
         PositionUniqueVerticesHashMap[PointerToVertex^.Position]:=Index0;
         PositionUniqueVerticesPositions.Add(PointerToVertex^.Position);
@@ -5087,7 +5087,7 @@ begin
 
             begin
              NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index0]];
-             NormalItemIndex:=NormalList^.AddNewIndex;
+             NormalItemIndex:=NormalList^.AddNew;
              NormalListItem:=@NormalList^.Items[NormalItemIndex];
              NormalListItem^.PolygonNormal:=PolygonNormal;
              NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d12);
@@ -5095,7 +5095,7 @@ begin
 
             begin
              NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index1]];
-             NormalItemIndex:=NormalList^.AddNewIndex;
+             NormalItemIndex:=NormalList^.AddNew;
              NormalListItem:=@NormalList^.Items[NormalItemIndex];
              NormalListItem^.PolygonNormal:=PolygonNormal;
              NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d20);
@@ -5103,7 +5103,7 @@ begin
 
             begin
              NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index2]];
-             NormalItemIndex:=NormalList^.AddNewIndex;
+             NormalItemIndex:=NormalList^.AddNew;
              NormalListItem:=@NormalList^.Items[NormalItemIndex];
              NormalListItem^.PolygonNormal:=PolygonNormal;
              NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d01);
@@ -5113,7 +5113,7 @@ begin
 
             begin
              NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index0]];
-             NormalItemIndex:=NormalList^.AddNewIndex;
+             NormalItemIndex:=NormalList^.AddNew;
              NormalListItem:=@NormalList^.Items[NormalItemIndex];
              NormalListItem^.PolygonNormal:=PolygonNormal;
              NormalListItem^.VertexNormal:=CurrentNormal;
@@ -5121,7 +5121,7 @@ begin
 
             begin
              NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index1]];
-             NormalItemIndex:=NormalList^.AddNewIndex;
+             NormalItemIndex:=NormalList^.AddNew;
              NormalListItem:=@NormalList^.Items[NormalItemIndex];
              NormalListItem^.PolygonNormal:=PolygonNormal;
              NormalListItem^.VertexNormal:=CurrentNormal;
@@ -5129,7 +5129,7 @@ begin
 
             begin
              NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index2]];
-             NormalItemIndex:=NormalList^.AddNewIndex;
+             NormalItemIndex:=NormalList^.AddNew;
              NormalListItem:=@NormalList^.Items[NormalItemIndex];
              NormalListItem^.PolygonNormal:=PolygonNormal;
              NormalListItem^.VertexNormal:=CurrentNormal;
@@ -5494,7 +5494,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
        end;
       end else begin
        if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
-        EdgesIndex:=EdgesList.AddNewIndex;
+        EdgesIndex:=EdgesList.AddNew;
         Edges:=@EdgesList.Items[EdgesIndex];
         Edges^.Initialize;
         EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
@@ -5527,7 +5527,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
       Edge:=@Edges^.Items[EdgesIndex];
       begin
        if not VertexIndexToEdgeStartHashMap.TryGet(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
-        VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNewIndex;
+        VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
         VertexIndexToEdgeStartHashMap.Add(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
         VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
        end;
@@ -5535,7 +5535,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
       end;
       begin
        if not VertexIndexToEdgeEndHashMap.TryGet(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
-        VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNewIndex;
+        VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
         VertexIndexToEdgeEndHashMap.Add(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
         VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
        end;
@@ -5662,7 +5662,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
     end;
 
     if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
-     EdgesIndex:=EdgesList.AddNewIndex;
+     EdgesIndex:=EdgesList.AddNew;
      Edges:=@EdgesList.Items[EdgesIndex];
      Edges^.Initialize;
      EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
@@ -5674,7 +5674,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
 
     begin
      if not VertexIndexToEdgeStartHashMap.TryGet(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
-      VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNewIndex;
+      VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
       VertexIndexToEdgeStartHashMap.Add(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
       VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
      end;
@@ -5683,7 +5683,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
 
     begin
      if not VertexIndexToEdgeEndHashMap.TryGet(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
-      VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNewIndx;
+      VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
       VertexIndexToEdgeEndHashMap.Add(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
       VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
      end;
@@ -5888,7 +5888,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
       if (CountPolygonVertices>0) and
          ((Index+(CountPolygonVertices-1))<Count) then begin
        if CountPolygonVertices>2 then begin
-        PolygonIndex:=Polygons.AddNewIndex;
+        PolygonIndex:=Polygons.AddNew;
         Polygon:=@Polygons.Items[PolygonIndex];
         Polygon^.Indices.Initialize;
         Polygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
@@ -6036,7 +6036,7 @@ procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=f
        if (CountPolygonVertices>0) and
           ((Index+(CountPolygonVertices-1))<Count) then begin
         if CountPolygonVertices>2 then begin
-         PolygonIndex:=Polygons.AddNewIndex;
+         PolygonIndex:=Polygons.AddNew;
          Polygon:=@Polygons.Items[PolygonIndex];
          Polygon^.Indices.Initialize;
          Polygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
@@ -6455,7 +6455,7 @@ var Index,Count,CountPolygonVertices,
    end;
    HashIndex:=HashTableItem^.Next;
   end;
-  result:=PolygonPlanes.AddNewIndex;
+  result:=PolygonPlanes.AddNew;
   PolygonPlane:=@PolygonPlanes.Items[result];
   PolygonPlane^.Plane:=aPlane;
   PolygonPlane^.PolygonIndices.Initialize;
@@ -6506,7 +6506,7 @@ begin
        if (CountPolygonVertices>0) and
           ((Index+(CountPolygonVertices-1))<Count) then begin
         if CountPolygonVertices>2 then begin
-         InputPolygonIndex:=InputPolygons.AddNewIndex;
+         InputPolygonIndex:=InputPolygons.AddNew;
          InputPolygon:=@InputPolygons.Items[InputPolygonIndex];
          InputPolygon^.Indices.Initialize;
          InputPolygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
