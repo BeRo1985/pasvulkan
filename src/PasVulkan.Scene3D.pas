@@ -333,25 +333,29 @@ type EpvScene3D=class(Exception);
              Jitter:TpvVector4;
             end;
             PVertexStagePushConstants=^TVertexStagePushConstants;
+            { TVertex }
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
-             case boolean of
-              false:(
-               Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
-               NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
-               Normal:TInt16Vector2;                 // + 4 = 20 (signed 16-bit oct-encoded normal)
-               Tangent:TInt16Vector2;                // + 4 = 24 (signed 16-bit oct-encoded tangent)
-               TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
-               Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
-               MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
-               JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
-               CountJointBlocks:TpvUInt16;           // + 2 = 58 (unsigned 16-bit count of joint blocks)
-               Flags:TpvUInt16;                      // + 2 = 60 (unsigned 16-bit flags)
-               MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 24-bit material ID)
-              );                                     //  ==   ==
-              true:(                                 //  80   80 per vertex
-               Padding:array[0..63] of TpvUInt8;
-              );
+             public
+              class function Create:TVertex; static;
+             public
+              case boolean of
+               false:(
+                Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
+                NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
+                Normal:TInt16Vector2;                 // + 4 = 20 (signed 16-bit oct-encoded normal)
+                Tangent:TInt16Vector2;                // + 4 = 24 (signed 16-bit oct-encoded tangent)
+                TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+                TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
+                Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
+                MorphTargetVertexBaseIndex:TpvUInt32; // + 4 = 52 (unsigned 32-bit morph target vertex base index)
+                JointBlockBaseIndex:TpvUInt32;        // + 4 = 56 (unsigned 32-bit joint block base index)
+                CountJointBlocks:TpvUInt16;           // + 2 = 58 (unsigned 16-bit count of joint blocks)
+                Flags:TpvUInt16;                      // + 2 = 60 (unsigned 16-bit flags)
+                MaterialID:TpvUInt32;                 // + 4 = 64 (unsigned 24-bit material ID)
+               );                                     //  ==   ==
+               true:(                                 //  80   80 per vertex
+                Padding:array[0..63] of TpvUInt8;
+               );
             end;
             PVertex=^TVertex;
             TVertices=array of TVertex;
@@ -3809,6 +3813,18 @@ begin
   result.z:=z*Factor;
   result.w:=w*Factor;
  end;
+end;
+
+{ TpvScene3D.TVertex }
+
+class function TpvScene3D.TVertex.Create:TpvScene3D.TVertex;
+begin
+ FillChar(result,SizeOf(TpvScene3D.TVertex),#0);
+ result.Color0.x:=1.0;
+ result.Color0.y:=1.0;
+ result.Color0.z:=1.0;
+ result.Color0.w:=1.0;
+ result.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
 end;
 
 { TpvScene3D.TDebugPrimitiveVertex }
