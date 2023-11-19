@@ -9490,6 +9490,11 @@ begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
 
+  if not assigned(Primitive.Material) then begin
+   Primitive.Material:=fGroup.fSceneInstance.EmptyMaterial;
+   Primitive.Material.IncRef;
+  end;
+
   if not fMorphTargetVerticesReady then begin
    Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
   end;
