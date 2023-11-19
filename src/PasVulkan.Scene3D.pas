@@ -1328,6 +1328,7 @@ type EpvScene3D=class(Exception);
             end;
             PMorphTargetVertex=^TMorphTargetVertex;
             TMorphTargetVertexDynamicArray=TpvDynamicArray<TMorphTargetVertex>;
+            TMorphTargetVertexDynamicArrayList=TpvDynamicArrayList<TMorphTargetVertex>;
             TIndicesDynamicArray=TpvDynamicArray<TVkUInt32>;
             TJointBlocksDynamicArray=TpvDynamicArray<TJointBlock>;
             TMatricesDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
@@ -2541,7 +2542,7 @@ type EpvScene3D=class(Exception);
               fDrawChoreographyBatchCondensedUniqueIndices:TpvScene3D.TGroup.TGroupIndices;
               fJointBlocks:TpvScene3D.TGroup.TGroupJointBlocks;
               fJointBlockOffsets:TSizeIntDynamicArrayEx;
-              fMorphTargetVertices:TMorphTargetVertexDynamicArray;
+              fMorphTargetVertices:TpvScene3D.TMorphTargetVertexDynamicArrayList;
               fMorphTargetCount:TpvSizeInt;
               fCountNodeWeights:TpvSizeInt;
               fCountJointNodeMatrices:TpvSizeInt;
@@ -2636,6 +2637,11 @@ type EpvScene3D=class(Exception);
               function CreateInstance(const aHeadless:Boolean=false):TpvScene3D.TGroup.TInstance;
              public
               property BoundingBox:TpvAABB read fBoundingBox;
+             public
+              property Vertices:TpvScene3D.TGroup.TGroupVertices read fVertices;
+              property Indices:TpvScene3D.TGroup.TGroupIndices read fIndices;
+              property MorphTargetVertices:TpvScene3D.TMorphTargetVertexDynamicArrayList read fMorphTargetVertices;
+             public
               property NodeIndexByName[const aNodeName:TpvUTF8String]:TpvSizeInt read GetNodeIndexByName;
               property NodeByName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByName;
               property CameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices read fCameraNodeIndices;
@@ -7727,7 +7733,7 @@ begin
     fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                       fSceneInstance.fVulkanStagingCommandBuffer,
                                                       fSceneInstance.fVulkanStagingFence,
-                                                      fSceneInstance.fVulkanMorphTargetVertexBufferData.Items[0],
+                                                      fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[0],
                                                       fVulkanMorphTargetVertexBuffer,
                                                       0,
                                                       fSceneInstance.fVulkanMorphTargetVertexBufferData.Count*SizeOf(TMorphTargetVertex));
@@ -7881,7 +7887,7 @@ begin
         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                           fSceneInstance.fVulkanStagingCommandBuffer,
                                                           fSceneInstance.fVulkanStagingFence,
-                                                          fSceneInstance.fVulkanMorphTargetVertexBufferData.Items[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
+                                                          fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
                                                           fVulkanMorphTargetVertexBuffer,
                                                           GroupInstance.fVulkanMorphTargetVertexBufferOffset*SizeOf(TMorphTargetVertex),
                                                           GroupInstance.fVulkanMorphTargetVertexBufferCount*SizeOf(TMorphTargetVertex));
@@ -9140,7 +9146,7 @@ begin
       WeightIndex:=0;
       MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
       while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-       MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+       MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
        MorphTargetVertex^.Index:=aWeightsOffset+WeightIndex;
        inc(WeightIndex);
        if MorphTargetVertex^.Next=TpvUInt32($ffffffff) then begin
@@ -9206,7 +9212,7 @@ begin
       while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
        NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
        fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex]:=fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
-       MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex];
+       MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[NewMorphTargetVertexIndex];
  //    MorphTargetVertex^.Index:=(MorphTargetVertex^.Index-Primitive^.MorphTargetBaseIndex)+NodeMeshPrimitiveInstance^.MorphTargetBaseIndex;
        MorphTargetVertex^.Index:=aWeightsOffset+WeightIndex;
        inc(WeightIndex);
@@ -10010,7 +10016,7 @@ begin
          DestinationMeshPrimitiveTarget:=DestinationMeshPrimitive.fTargets[TargetIndex];
          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex-DestinationMeshPrimitive.fStartBufferVertexOffset];
          MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
-         MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+         MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
          MorphTargetVertex^.Position:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
          MorphTargetVertex^.Normal:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Normal,0.0);
          MorphTargetVertex^.Tangent:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Tangent,0.0);
@@ -10626,7 +10632,7 @@ begin
 
  fDrawChoreographyBatchCondensedUniqueIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
- fMorphTargetVertices.Initialize;
+ fMorphTargetVertices:=TpvScene3D.TMorphTargetVertexDynamicArrayList.Create;
 
  fMorphTargetVertices.Clear;
 
@@ -10781,7 +10787,7 @@ begin
 
  FreeAndNil(fVertices);
 
- fMorphTargetVertices.Finalize;
+ FreeAndNil(fMorphTargetVertices);
 
  FreeAndNil(fJointBlocks);
 
@@ -11635,7 +11641,7 @@ begin
         // there are no more morph target vertices to process.
         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
         while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-         MorphTargetVertex:=@fMorphTargetVertices.Items[MorphTargetVertexIndex];
+         MorphTargetVertex:=@fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
          AABB.DirectCombineVector3(Vertex^.Position+MorphTargetVertex^.Position.xyz); // Assume a weight value of 1.0 for an approximate result
          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
         end;
@@ -14033,8 +14039,8 @@ begin
    end;
 
    for Index:=0 to fGroup.fMorphTargetVertices.Count-1 do begin
-    SrcMorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[Index];
-    DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.Items[fVulkanMorphTargetVertexBufferOffset+Index];
+    SrcMorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[Index];
+    DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset+Index];
     DstMorphTargetVertex^:=SrcMorphTargetVertex^;
     inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
     if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
@@ -16289,7 +16295,7 @@ var CullFace,Blend:TPasGLTFInt32;
      Position:=Vertex^.Position;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
      while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-      MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+      MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
       Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
       MorphTargetVertexIndex:=MorphTargetVertex^.Next;
      end;
@@ -16914,7 +16920,7 @@ begin
         Normal:=OctDecode(Vertex^.Normal);
         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
         while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-         MorphTargetVertex:=@Group.fMorphTargetVertices.Items[MorphTargetVertexIndex];
+         MorphTargetVertex:=@Group.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
          Position:=Position+(MorphTargetVertex^.Position.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
          Normal:=Normal+(MorphTargetVertex^.Normal.xyz*fMorphTargetVertexWeights[MorphTargetVertex^.Index]);
          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
