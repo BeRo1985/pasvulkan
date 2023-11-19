@@ -1663,19 +1663,19 @@ type EpvScene3D=class(Exception);
                           end;
                           PChannel=^TChannel;
                           TChannels=array of TChannel;
-                          TDefaultChannel=record
+                          { TDefaultChannel }
+                          TDefaultChannel=class
                            public
                             Target:TpvScene3D.TGroup.TAnimation.TChannel.TTarget;
                             TargetIndex:TpvSizeInt;
                             TargetSubIndex:TpvSizeInt;
                             TargetInstanceIndex:TpvSizeInt;
                           end;
-                          PDefaultChannel=^TDefaultChannel;
-                          TDefaultChannels=array of TDefaultChannel;
+                          TDefaultChannels=TpvObjectGenericList<TDefaultChannel>;
                     private
                      fIndex:TpvSizeInt;
                      fChannels:TChannels;
-                     fDefaultChannels:TDefaultChannels;
+                     fDefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
@@ -1684,9 +1684,9 @@ type EpvScene3D=class(Exception);
                      function GetAnimationEndTime:TpvDouble;
                     public
                      property Channels:TChannels read fChannels write fChannels;
-                     property DefaultChannels:TDefaultChannels read fDefaultChannels write fDefaultChannels;
                     published
                      property Index:TpvSizeInt read fIndex;
+                     property DefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels read fDefaultChannels;
                    end;
                    TAnimations=TpvObjectGenericList<TAnimation>;
                    { TCamera }
@@ -8629,13 +8629,13 @@ begin
  inherited Create(aGroup);
  fIndex:=aIndex;
  fChannels:=nil;
- fDefaultChannels:=nil;
+ fDefaultChannels:=TpvScene3D.TGroup.TAnimation.TDefaultChannels.Create(true);
 end;
 
 destructor TpvScene3D.TGroup.TAnimation.Destroy;
 begin
  fChannels:=nil;
- fDefaultChannels:=nil;
+ FreeAndNil(fDefaultChannels);
  inherited Destroy;
 end;
 
@@ -10924,7 +10924,7 @@ var Index,ChannelIndex,TargetIndex,CountDefaultChannels,
     SourceAnimation:TPasGLTF.TAnimation;
     Animation:TpvScene3D.TGroup.TAnimation;
     Channel:TpvScene3D.TGroup.TAnimation.PChannel;
-    DefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
+    DefaultChannel:TpvScene3D.TGroup.TAnimation.TDefaultChannel;
     MaterialHashMap:TMaterialHashMap;
     MaterialArrayList:TMaterialArrayList;
     TargetHashMap:TTargetHashMap;
@@ -11100,29 +11100,28 @@ begin
           end;
          end;
          if CountDefaultChannels>0 then begin
-          SetLength(Animation.fDefaultChannels,CountDefaultChannels);
-          CountDefaultChannels:=0;
+          Animation.fDefaultChannels.Clear;
           for TargetIndex:=0 to TargetArrayList.Count-1 do begin
            if (TargetUsedBitmap[TargetIndex shr 5] and (TpvUInt32(1) shl (TargetIndex and 31)))=0 then begin
-            DefaultChannel:=@Animation.fDefaultChannels[CountDefaultChannels];
-            inc(CountDefaultChannels);
+            DefaultChannel:=TpvScene3D.TGroup.TAnimation.TDefaultChannel.Create;
+            Animation.fDefaultChannels.Add(DefaultChannel);
             begin
              CompactCode:=TargetArrayList[TargetIndex];
-             DefaultChannel^.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 48)));
-             DefaultChannel^.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 16) and TpvUInt64($ffffffff)))-1;
-             DefaultChannel^.TargetSubIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 0) and TpvUInt64($ffff)))-1;
+             DefaultChannel.Target:=TpvScene3D.TGroup.TAnimation.TChannel.TTarget(TpvInt32(TpvUInt64(TpvUInt64(CompactCode) shr 48)));
+             DefaultChannel.TargetIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 16) and TpvUInt64($ffffffff)))-1;
+             DefaultChannel.TargetSubIndex:=TpvSizeInt(TpvUInt64(TpvUInt64(TpvUInt64(CompactCode) shr 0) and TpvUInt64($ffff)))-1;
             end;
             begin
-             CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(AnimationChannelTargetOverwriteGroupMap[DefaultChannel^.Target])) and TpvUInt64($ffff)) shl 48) or
-                          (TpvUInt64(TpvUInt64(TpvInt64(DefaultChannel^.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
-                          (TpvUInt64(TpvUInt64(TpvInt64(DefaultChannel^.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
+             CompactCode:=(TpvUInt64(TpvUInt64(TpvInt32(AnimationChannelTargetOverwriteGroupMap[DefaultChannel.Target])) and TpvUInt64($ffff)) shl 48) or
+                          (TpvUInt64(TpvUInt64(TpvInt64(DefaultChannel.TargetIndex)+1) and TpvUInt64($ffffffff)) shl 16) or
+                          (TpvUInt64(TpvUInt64(TpvInt64(DefaultChannel.TargetSubIndex)+1) and TpvUInt64($ffff)) shl 0);
              InstanceChannelTargetIndex:=InstanceChannelTargetHashMap[CompactCode];
              if InstanceChannelTargetIndex<0 then begin
               InstanceChannelTargetIndex:=fCountInstanceAnimationChannels;
               inc(fCountInstanceAnimationChannels);
               InstanceChannelTargetHashMap[CompactCode]:=InstanceChannelTargetIndex;
              end;
-             DefaultChannel^.TargetInstanceIndex:=InstanceChannelTargetIndex;
+             DefaultChannel.TargetInstanceIndex:=InstanceChannelTargetIndex;
             end;
            end;
           end;
@@ -13585,7 +13584,7 @@ begin
    for OtherIndex:=0 to length(fAnimations[Index].fLastIndices)-1 do begin
     fAnimations[Index].fLastIndices[OtherIndex]:=0;
    end;
-   SetLength(fAnimations[Index].fChannelOverwrites,length(Animation.fChannels)+length(Animation.fDefaultChannels));
+   SetLength(fAnimations[Index].fChannelOverwrites,length(Animation.fChannels)+Animation.fDefaultChannels.Count);
   end;
  end;
 
@@ -14433,7 +14432,7 @@ var CullFace,Blend:TPasGLTFInt32;
      TargetSubIndex:TpvSizeInt;
      Animation:TpvScene3D.TGroup.TAnimation;
      AnimationChannel:TpvScene3D.TGroup.TAnimation.PChannel;
-     AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.PDefaultChannel;
+     AnimationDefaultChannel:TpvScene3D.TGroup.TAnimation.TDefaultChannel;
      InstanceAnimation:TpvScene3D.TGroup.TInstance.TAnimation;
      InstanceAnimationChannelOverwrite:TpvScene3D.TGroup.TInstance.TAnimation.PChannelOverwrite;
      //Node:TpvScene3D.TGroup.TNode;
@@ -15204,13 +15203,13 @@ var CullFace,Blend:TPasGLTFInt32;
 
   if InstanceAnimation.Complete then begin
 
-   for ChannelIndex:=0 to length(Animation.fDefaultChannels)-1 do begin
+   for ChannelIndex:=0 to Animation.fDefaultChannels.Count-1 do begin
 
-    AnimationDefaultChannel:=@Animation.fDefaultChannels[ChannelIndex];
+    AnimationDefaultChannel:=Animation.fDefaultChannels[ChannelIndex];
 
-    if AnimationDefaultChannel^.TargetInstanceIndex>=0 then begin
+    if AnimationDefaultChannel.TargetInstanceIndex>=0 then begin
 
-     case AnimationDefaultChannel^.Target of
+     case AnimationDefaultChannel.Target of
 
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Rotation,
@@ -15220,11 +15219,11 @@ var CullFace,Blend:TPasGLTFInt32;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeRotation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeScale,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeWeights:begin
-       if (AnimationDefaultChannel^.TargetIndex>=0) and (AnimationDefaultChannel^.TargetIndex<length(fNodes)) then begin
-        Node:=@fNodes[AnimationDefaultChannel^.TargetIndex];
+       if (AnimationDefaultChannel.TargetIndex>=0) and (AnimationDefaultChannel.TargetIndex<length(fNodes)) then begin
+        Node:=@fNodes[AnimationDefaultChannel.TargetIndex];
         NodeOverwrite:=nil;
         if aFactor>=-0.5 then begin
-         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
+         InstanceChannelIndex:=AnimationDefaultChannel.TargetInstanceIndex;
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
@@ -15249,7 +15248,7 @@ var CullFace,Blend:TPasGLTFInt32;
            end;
           end;
           if assigned(NodeOverwrite) then begin
-           case AnimationDefaultChannel^.Target of
+           case AnimationDefaultChannel.Target of
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.Translation,
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerNodeTranslation:begin
              NodeOverwrite^.Flags:=NodeOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation,
@@ -15284,11 +15283,11 @@ var CullFace,Blend:TPasGLTFInt32;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightRange,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle:begin
-       if (AnimationDefaultChannel^.TargetIndex>=0) and (AnimationDefaultChannel^.TargetIndex<fLights.Count) then begin
-        Light:=fLights[AnimationDefaultChannel^.TargetIndex];
+       if (AnimationDefaultChannel.TargetIndex>=0) and (AnimationDefaultChannel.TargetIndex<fLights.Count) then begin
+        Light:=fLights[AnimationDefaultChannel.TargetIndex];
         LightOverwrite:=nil;
         if aFactor>=-0.5 then begin
-         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
+         InstanceChannelIndex:=AnimationDefaultChannel.TargetInstanceIndex;
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
@@ -15313,7 +15312,7 @@ var CullFace,Blend:TPasGLTFInt32;
            end;
           end;
           if assigned(LightOverwrite) then begin
-           case AnimationDefaultChannel^.Target of
+           case AnimationDefaultChannel.Target of
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerPunctualLightColor:begin
              LightOverwrite^.Flags:=LightOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultColor,
                                                            TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color];
@@ -15351,11 +15350,11 @@ var CullFace,Blend:TPasGLTFInt32;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveYFov,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZFar,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraPerspectiveZNear:begin
-       if (AnimationDefaultChannel^.TargetIndex>=0) and (AnimationDefaultChannel^.TargetIndex<fCameras.Count) then begin
-        Camera:=fCameras[AnimationDefaultChannel^.TargetIndex];
+       if (AnimationDefaultChannel.TargetIndex>=0) and (AnimationDefaultChannel.TargetIndex<fCameras.Count) then begin
+        Camera:=fCameras[AnimationDefaultChannel.TargetIndex];
         CameraOverwrite:=nil;
         if aFactor>=-0.5 then begin
-         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
+         InstanceChannelIndex:=AnimationDefaultChannel.TargetInstanceIndex;
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
@@ -15378,7 +15377,7 @@ var CullFace,Blend:TPasGLTFInt32;
            end;
           end;
           if assigned(CameraOverwrite) then begin
-           case AnimationDefaultChannel^.Target of
+           case AnimationDefaultChannel.Target of
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerCameraOrthographicXMag:begin
              CameraOverwrite^.Flags:=CameraOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicXMag,
                                                              TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag];
@@ -15448,12 +15447,12 @@ var CullFace,Blend:TPasGLTFInt32;
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
-       if (AnimationDefaultChannel^.TargetIndex>=0) and (AnimationDefaultChannel^.TargetIndex<fMaterials.Count) then begin
-        Material:=fMaterials[AnimationDefaultChannel^.TargetIndex];
-        TargetSubIndex:=AnimationDefaultChannel^.TargetSubIndex;
+       if (AnimationDefaultChannel.TargetIndex>=0) and (AnimationDefaultChannel.TargetIndex<fMaterials.Count) then begin
+        Material:=fMaterials[AnimationDefaultChannel.TargetIndex];
+        TargetSubIndex:=AnimationDefaultChannel.TargetSubIndex;
         MaterialOverwrite:=nil;
         if (aFactor>=-0.5) and assigned(Material) then begin
-         InstanceChannelIndex:=AnimationDefaultChannel^.TargetInstanceIndex;
+         InstanceChannelIndex:=AnimationDefaultChannel.TargetInstanceIndex;
          if (InstanceChannelIndex>=0) and (InstanceChannelIndex<length(InstanceAnimation.fChannelOverwrites)) then begin
           InstanceAnimationChannelOverwrite:=@InstanceAnimation.fChannelOverwrites[InstanceChannelIndex];
           if InstanceAnimationChannelOverwrite^<0 then begin
@@ -15479,7 +15478,7 @@ var CullFace,Blend:TPasGLTFInt32;
            end;
           end;
           if assigned(MaterialOverwrite) then begin
-           case AnimationDefaultChannel^.Target of
+           case AnimationDefaultChannel.Target of
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRMetallicRoughnessBaseColorFactor:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor,
                                                                  TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor];
