@@ -1796,7 +1796,6 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
                      fBoundingBox:TpvAABB;
-                     fBoundingSphere:TpvSphere;
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
@@ -1810,7 +1809,6 @@ type EpvScene3D=class(Exception);
                     public
                      property Primitives:TpvScene3D.TGroup.TMesh.TPrimitives read fPrimitives;
                      property BoundingBox:TpvAABB read fBoundingBox write fBoundingBox;
-                     property BoundingSphere:TpvSphere read fBoundingSphere write fBoundingSphere;
                      property Weights:TpvScene3D.TFloatDynamicArrayList read fWeights;
                      property NodeMeshInstances:TpvSizeInt read fNodeMeshInstances;
                      property ReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes read fReferencedByNodes;
@@ -9314,8 +9312,6 @@ begin
   fBoundingBox:=TpvAABB.Create(TpvVector3.InlineableCreate(Infinity,Infinity,Infinity),
                                TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity));
 
-  fBoundingSphere:=TpvSphere.Create(TpvVector3.Origin,Infinity);
-
   BoundingBoxFirst:=true;
 
  //DestinationMesh^.JointBlocks:=nil;
@@ -10054,8 +10050,6 @@ begin
  finally
   FreeMem(MaxJointBlocks);
  end;
-
- fBoundingSphere:=TpvSphere.CreateFromAABB(fBoundingBox);
 
 end;
 
