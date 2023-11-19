@@ -1745,7 +1745,7 @@ type EpvScene3D=class(Exception);
                            private
                             fPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                             fMaterialID:TpvInt64;
-                            fMaterial:TMaterial;
+                            fMaterial:TpvScene3D.TMaterial;
                             fTargets:TpvScene3D.TGroup.TMesh.TPrimitive.TTargets;
                             fMorphTargetBaseIndex:TpvSizeUInt;
                             fStartBufferVertexOffset:TpvSizeUInt;
@@ -1759,7 +1759,7 @@ type EpvScene3D=class(Exception);
                            published
                             property PrimitiveTopology:TpvScene3D.TPrimitiveTopology read fPrimitiveTopology write fPrimitiveTopology;
                             property MaterialID:TpvInt64 read fMaterialID write fMaterialID;
-                            property Material:TMaterial read fMaterial write fMaterial;
+                            property Material:TpvScene3D.TMaterial read fMaterial write fMaterial;
                             property Targets:TpvScene3D.TGroup.TMesh.TPrimitive.TTargets read fTargets;
                             property MorphTargetBaseIndex:TpvSizeUInt read fMorphTargetBaseIndex write fMorphTargetBaseIndex;
                             property StartBufferVertexOffset:TpvSizeUInt read fStartBufferVertexOffset write fStartBufferVertexOffset;
@@ -2949,6 +2949,7 @@ type EpvScene3D=class(Exception);
        property WhiteTexture:TTexture read fWhiteTexture;
        property DefaultParticleImage:TImage read fDefaultParticleImage;
        property DefaultParticleTexture:TTexture read fDefaultParticleTexture;
+       property EmptyMaterial:TpvScene3D.TMaterial read fEmptyMaterial;
        property Lights:TInFlightFrameLights read fLights;
        property CountLights:TCountInFlightFrameLights read fCountLights;
       published
