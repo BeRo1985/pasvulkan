@@ -1816,7 +1816,7 @@ type EpvScene3D=class(Exception);
                      fPrimitives:TpvScene3D.TGroup.TMesh.TPrimitives;
                      fBoundingBox:TpvAABB;
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
-                     fMorphTargetVerticesReady:TPasMPBool32;
+                     fReady:TPasMPBool32;
                      fGeneration:TpvUInt64;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
@@ -9213,7 +9213,7 @@ begin
  fPrimitives:=TpvScene3D.TGroup.TMesh.TPrimitives.Create(true);
  fNodeMeshInstances:=0;
  fGeneration:=0;
- fMorphTargetVerticesReady:=false;
+ fReady:=false;
  fReferencedByNodes:=TpvScene3D.TGroup.TMesh.TReferencedByNodes.Create;
 end;
 
@@ -9585,44 +9585,46 @@ begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
 
-  if Primitive.fMaterialID<0 then begin
-   if assigned(Primitive.fMaterial) and (Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial) then begin
-    Primitive.fMaterialID:=fGroup.AddMaterial(Primitive.fMaterial,true,true);
-   end else begin
-    Primitive.fMaterialID:=-1;
-   end;
-  end;
+  if not fReady then begin
 
-  if not assigned(Primitive.fMaterial) then begin
    if Primitive.fMaterialID<0 then begin
-    Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
-   end else begin
-    Primitive.fMaterial:=fGroup.fMaterials[Primitive.fMaterialID];
-{   if Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial then begin
-     Primitive.fMaterial.IncRef;
-    end;}
+    if assigned(Primitive.fMaterial) and (Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial) then begin
+     Primitive.fMaterialID:=fGroup.AddMaterial(Primitive.fMaterial,true,true);
+    end else begin
+     Primitive.fMaterialID:=-1;
+    end;
    end;
-  end;
 
-  if not fMorphTargetVerticesReady then begin
+   if not assigned(Primitive.fMaterial) then begin
+    if Primitive.fMaterialID<0 then begin
+     Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
+    end else begin
+     Primitive.fMaterial:=fGroup.fMaterials[Primitive.fMaterialID];
+     if Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial then begin
+      Primitive.fMaterial.IncRef;
+     end;
+    end;
+   end;
+
    Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
+
   end;
 
   if Primitive.fTargets.Count>0 then begin
 
-   if not fMorphTargetVerticesReady then begin
+   if not fReady then begin
     inc(fGroup.fMorphTargetCount,Primitive.fTargets.Count);
    end;
 
    for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
     Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
-    if not fMorphTargetVerticesReady then begin
+    if not fReady then begin
      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
     end;
     for TargetIndex:=0 to Primitive.fTargets.Count-1 do begin
      PrimitiveTarget:=Primitive.fTargets[TargetIndex];
      PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex-Primitive.fStartBufferVertexOffset];
-     if fMorphTargetVerticesReady then begin
+     if fReady then begin
       MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex+TargetIndex;
      end else begin
       MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
@@ -9666,7 +9668,7 @@ begin
 
  end;
 
- fMorphTargetVerticesReady:=true;
+ fReady:=true;
 
  TPasMPInterlocked.Increment(fGeneration);
 
