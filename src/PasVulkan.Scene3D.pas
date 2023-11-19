@@ -2511,6 +2511,9 @@ type EpvScene3D=class(Exception);
                    TCameraNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TAnimationNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TMeshNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TSkinNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TLightNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
+                   TSceneNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
              private
               fReady:boolean;
               fCulling:boolean;
@@ -2531,9 +2534,13 @@ type EpvScene3D=class(Exception);
               fMeshes:TpvScene3D.TGroup.TMeshes;
               fMeshNameIndexHashMap:TpvScene3D.TGroup.TMeshNameIndexHashMap;
               fSkins:TpvScene3D.TGroup.TSkins;
+              fSkinNameIndexHashMap:TpvScene3D.TGroup.TSkinNameIndexHashMap;
               fLights:TpvScene3D.TGroup.TLights;
+              fLightNameIndexHashMap:TpvScene3D.TGroup.TLightNameIndexHashMap;
               fNodes:TpvScene3D.TGroup.TNodes;
+              fNodeNameIndexHashMap:TpvScene3D.TGroup.TNodeNameIndexHashMap;
               fScenes:TpvScene3D.TGroup.TScenes;
+              fSceneNameIndexHashMap:TpvScene3D.TGroup.TSceneNameIndexHashMap;
               fScene:TpvScene3D.TGroup.TScene;
               fVertices:TGroupVertices;
               fIndices:TGroupIndices;
@@ -2553,7 +2560,6 @@ type EpvScene3D=class(Exception);
               fUsedVisibleDrawNodes:TUsedVisibleDrawNodes;
               fDrawChoreographyBatchItems:TDrawChoreographyBatchItems;
               fDrawChoreographyBatchUniqueItems:TDrawChoreographyBatchItems;
-              fNodeNameIndexHashMap:TpvScene3D.TGroup.TNodeNameIndexHashMap;
               fCameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices;
               fCachedVertexBufferMemoryBarriers:TVkBufferMemoryBarrierArray;
               fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
@@ -2601,11 +2607,14 @@ type EpvScene3D=class(Exception);
               procedure CleanUp;
               procedure Finish;
              public
+              function GetLightID(const aName:TpvUTF8String):TpvSizeInt;
               function GetMaterialID(const aName:TpvUTF8String):TpvSizeInt;
               function GetCameraID(const aName:TpvUTF8String):TpvSizeInt;
               function GetMeshID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetSkinID(const aName:TpvUTF8String):TpvSizeInt;
               function GetNodeID(const aName:TpvUTF8String):TpvSizeInt;
               function GetAnimationID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetSceneID(const aName:TpvUTF8String):TpvSizeInt;
              public
               function AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
               function AddImage(const aImage:TpvScene3D.TImage;const aForceNew:Boolean=false):TpvSizeInt;
@@ -2617,6 +2626,7 @@ type EpvScene3D=class(Exception);
               function AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
               function AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):TpvSizeInt;
               function AddNode(const aNode:TpvScene3D.TGroup.TNode):TpvSizeInt;
+              function AddScene(const aScene:TpvScene3D.TGroup.TScene):TpvSizeInt;
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
@@ -3495,10 +3505,14 @@ type { TPOCAScene3DGroup }
        constructor Create(const aInstance:PPOCAInstance;const aContext:PPOCAContext;const aPrototype,aConstructor:PPOCAValue;const aExpandable:boolean); override;
        destructor Destroy; override;
       published
+       function getLightID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getMaterialID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getCameraID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getMeshID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function getSkinID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function getNodeID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function getAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+       function getSceneID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
        function createAnimation(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
      end;
 
@@ -3512,6 +3526,15 @@ end;
 destructor TPOCAScene3DGroup.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TPOCAScene3DGroup.getLightID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fLightNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
 end;
 
 function TPOCAScene3DGroup.getMaterialID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
@@ -3541,10 +3564,37 @@ begin
  end;
 end;
 
+function TPOCAScene3DGroup.getSkinID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fSkinNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
+end;
+
 function TPOCAScene3DGroup.getNodeID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
   result.Num:=fGroup.fNodeNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
+end;
+
+function TPOCAScene3DGroup.getAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fAnimationNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+ end else begin
+  result.Num:=-1;
+ end;
+end;
+
+function TPOCAScene3DGroup.getSceneID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
+begin
+ if aCountArguments>0 then begin
+  result.Num:=fGroup.fSceneNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
  end else begin
   result.Num:=-1;
  end;
@@ -3560,7 +3610,7 @@ begin
    Animation.fName:=POCAGetStringValue(aContext,aArguments^[0]);
   end;
  finally
-  fGroup.fAnimations.Add(Animation);
+  fGroup.AddAnimation(Animation);
  end;
  POCAScene3DGroupAnimation:=TPOCAScene3DGroupAnimation.Create(aContext^.Instance,aContext,nil,nil,false);
  POCAScene3DGroupAnimation.fAnimation:=Animation;
@@ -10547,11 +10597,15 @@ begin
  fSkins:=TSkins.Create;
  fSkins.OwnsObjects:=true;
 
+ fSkinNameIndexHashMap:=TpvScene3D.TGroup.TSkinNameIndexHashMap.Create(-1);
+
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=true;
 
  fLights:=TpvScene3D.TGroup.TLights.Create;
  fLights.OwnsObjects:=true;
+
+ fLightNameIndexHashMap:=TpvScene3D.TGroup.TSkinNameIndexHashMap.Create(-1);
 
  fScenes:=TScenes.Create;
  fScenes.OwnsObjects:=true;
@@ -10597,6 +10651,8 @@ begin
  fInstances.OwnsObjects:=false;
 
  fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNodeNameIndexHashMap.Create(-1);
+
+ fSceneNameIndexHashMap:=TpvScene3D.TGroup.TSceneNameIndexHashMap.Create(-1);
 
  fCameraNodeIndices:=TpvScene3D.TGroup.TCameraNodeIndices.Create;
 
@@ -10679,6 +10735,10 @@ begin
 
  FreeAndNil(fMeshNameIndexHashMap);
 
+ FreeAndNil(fSkinNameIndexHashMap);
+
+ FreeAndNil(fLightNameIndexHashMap);
+
  if not (assigned(fSceneInstance) and ((not assigned(fSceneInstance.fMaterials)) or (fSceneInstance.fMaterials.Count=0))) then begin
   if assigned(fSceneInstance) then begin
    fSceneInstance.fMaterialListLock.Acquire;
@@ -10722,6 +10782,8 @@ begin
  fCachedVertexBufferMemoryBarriers:=nil;
 
  FreeAndNil(fNodeNameIndexHashMap);
+
+ FreeAndNil(fSceneNameIndexHashMap);
 
  FreeAndNil(fCameraNodeIndices);
 
@@ -10771,6 +10833,11 @@ begin
  end;
 end;
 
+function TpvScene3D.TGroup.GetLightID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fLightNameIndexHashMap[aName];
+end;
+
 function TpvScene3D.TGroup.GetMaterialID(const aName:TpvUTF8String):TpvSizeInt;
 begin
  result:=fMaterialNameMapArrayIndexHashMap[aName];
@@ -10786,6 +10853,11 @@ begin
  result:=fMeshNameIndexHashMap[aName];
 end;
 
+function TpvScene3D.TGroup.GetSkinID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fSkinNameIndexHashMap[aName];
+end;
+
 function TpvScene3D.TGroup.GetNodeID(const aName:TpvUTF8String):TpvSizeInt;
 begin
  result:=fNodeNameIndexHashMap[aName];
@@ -10794,6 +10866,11 @@ end;
 function TpvScene3D.TGroup.GetAnimationID(const aName:TpvUTF8String):TpvSizeInt;
 begin
  result:=fAnimationNameIndexHashMap[aName];
+end;
+
+function TpvScene3D.TGroup.GetSceneID(const aName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fSceneNameIndexHashMap[aName];
 end;
 
 procedure TpvScene3D.TGroup.LoadData;
@@ -11920,6 +11997,9 @@ function TpvScene3D.TGroup.AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSi
 begin
  if assigned(aLight) then begin
   result:=fLights.Add(aLight);
+  if (length(trim(aLight.fName))>0) and not fLightNameIndexHashMap.ExistKey(aLight.fName) then begin
+   fLightNameIndexHashMap.Add(aLight.fName,result);
+  end;
  end else begin
   result:=-1;
  end;
@@ -12083,6 +12163,9 @@ begin
      Material:=nil;
     end;
    end;
+   if (length(trim(aMaterial.fName))>0) and not fMaterialNameMapArrayIndexHashMap.ExistKey(aMaterial.fName) then begin
+    fMaterialNameMapArrayIndexHashMap.Add(aMaterial.fName,result);
+   end;
   finally
    FreeAndNil(Material);
   end;
@@ -12095,6 +12178,9 @@ function TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeI
 begin
  if assigned(aMesh) then begin
   result:=fMeshes.Add(aMesh);
+  if (length(trim(aMesh.fName))>0) and not fMeshNameIndexHashMap.ExistKey(aMesh.fName) then begin
+   fMeshNameIndexHashMap.Add(aMesh.fName,result);
+  end;
  end else begin
   result:=-1;
  end;
@@ -12106,6 +12192,9 @@ begin
  Skin:=aSkin;
  if assigned(Skin) then begin
   result:=fSkins.Add(Skin);
+  if (length(trim(aSkin.fName))>0) and not fSkinNameIndexHashMap.ExistKey(aSkin.fName) then begin
+   fSkinNameIndexHashMap.Add(aSkin.fName,result);
+  end;
  end else begin
   result:=-1;
  end;
@@ -12146,6 +12235,18 @@ begin
   end;
   if (length(trim(aNode.fName))>0) and not fNodeNameIndexHashMap.ExistKey(aNode.fName) then begin
    fNodeNameIndexHashMap.Add(aNode.fName,result);
+  end;
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvScene3D.TGroup.AddScene(const aScene:TpvScene3D.TGroup.TScene):TpvSizeInt;
+begin
+ if assigned(aScene) then begin
+  result:=fScenes.Add(aScene);
+  if (length(trim(aScene.fName))>0) and not fSceneNameIndexHashMap.ExistKey(aScene.fName) then begin
+   fSceneNameIndexHashMap.Add(aScene.fName,result);
   end;
  end else begin
   result:=-1;
@@ -12382,9 +12483,6 @@ var POCACodeString:TpvUTF8String;
    Mesh:=TMesh.Create(self,Index);
    try
     Mesh.AssignFromGLTF(aSourceDocument,aSourceDocument.Meshes[Index],fMaterials);
-    if length(trim(Mesh.fName))>0 then begin
-     fMeshNameIndexHashMap.Add(Mesh.fName,Index);
-    end;
    finally
     AddMesh(Mesh);
    end;
@@ -12519,7 +12617,7 @@ var POCACodeString:TpvUTF8String;
    try
     Scene.AssignFromGLTF(aSourceDocument,SourceScene);
    finally
-    fScenes.Add(Scene);
+    AddScene(Scene);
    end;
   end;
  end;
