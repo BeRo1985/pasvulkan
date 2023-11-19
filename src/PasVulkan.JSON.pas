@@ -209,7 +209,7 @@ begin
      for JSONItemObjectProperty in TPasJSONItemObject(aJSONItem) do begin
       if assigned(JSONItemObjectProperty.Value) and (JSONItemObjectProperty.Value is TPasJSONItemObject) then begin
        JSONItemObject:=TPasJSONItemObject(JSONItemObjectProperty.Value);
-       OtherIndex:=ObjectItemDynamicArray.AddNew;
+       OtherIndex:=ObjectItemDynamicArray.AddNewIndex;
        ObjectItem:=@ObjectItemDynamicArray.Items[OtherIndex];
        ObjectItem^.Index:=OtherIndex;
        ObjectItem^.Name:=JSONItemObjectProperty.Key;

@@ -5229,7 +5229,7 @@ begin
        if (DrawChoreographyBatchItem.fCountIndices>0) and
           (TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]>0) then begin
 
-        GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray.AddNew;
+        GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray.AddNewIndex;
         GPUDrawIndexedIndirectCommand:=@GPUDrawIndexedIndirectCommandDynamicArray.Items[GPUDrawIndexedIndirectCommandIndex];
         GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.indexCount:=DrawChoreographyBatchItem.CountIndices;
         GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.instanceCount:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex];
@@ -5253,7 +5253,7 @@ begin
 
       if DrawChoreographyBatchRange.CountCommands>0 then begin
 
-       DrawChoreographyBatchRangeIndex:=DrawChoreographyBatchRangeDynamicArray.AddNew;
+       DrawChoreographyBatchRangeIndex:=DrawChoreographyBatchRangeDynamicArray.AddNewIndex;
        DrawChoreographyBatchRangeItem:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
        DrawChoreographyBatchRangeItem^.AlphaMode:=DrawChoreographyBatchRange.AlphaMode;
        DrawChoreographyBatchRangeItem^.PrimitiveTopology:=DrawChoreographyBatchRange.PrimitiveTopology;

@@ -13076,7 +13076,7 @@ procedure TpvVulkanBuffer.CopyFrom(var aCopyBatchItemArray:TpvVulkanBufferCopyBa
 var Index:TpvSizeInt;
     CopyBatchItem:PpvVulkanBufferCopyBatchItem;
 begin
- Index:=aCopyBatchItemArray.AddNew;
+ Index:=aCopyBatchItemArray.AddNewIndex;
  CopyBatchItem:=@aCopyBatchItemArray.Items[Index];
  CopyBatchItem^.SourceBuffer:=aSourceBuffer.Handle;
  CopyBatchItem^.DestinationBuffer:=Handle;

@@ -902,7 +902,7 @@ var ShaderVariables:TShaderVariables;
       end;
      end;
      if not assigned(ShaderVariable) then begin
-      OtherIndex:=ShaderVariables.AddNew;
+      OtherIndex:=ShaderVariables.AddNewIndex;
       ShaderVariable:=@ShaderVariables.Items[OtherIndex];
       ShaderVariable^.StorageClass:=Variable^.StorageClass;
       ShaderVariable^.Location:=Variable^.Location;
@@ -967,7 +967,7 @@ var ShaderVariables:TShaderVariables;
       end;
      end;
      if not assigned(ShaderVariable) then begin
-      OtherIndex:=ShaderVariables.AddNew;
+      OtherIndex:=ShaderVariables.AddNewIndex;
       ShaderVariable:=@ShaderVariables.Items[OtherIndex];
       ShaderVariable^.StorageClass:=Variable^.StorageClass;
       ShaderVariable^.Location:=Variable^.Location;

@@ -27751,7 +27751,7 @@ type TFilter=record
  function Add(const aFileName:TpvUTF8String;const aDirectory:Boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
  var ListItem:PListItem;
  begin
-  result:=fListItems.AddNew;
+  result:=fListItems.AddNewIndex;
   ListItem:=@fListItems.Items[result];
   ListItem^.FileName:=aFileName;
   ListItem^.LowerCaseFileName:=TpvUTF8String(LowerCase(String(aFileName)));

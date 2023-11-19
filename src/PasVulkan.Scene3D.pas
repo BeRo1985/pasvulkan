@@ -1499,9 +1499,9 @@ type EpvScene3D=class(Exception);
               type TNode=class;
                    TMesh=class;
                    TScene=class;
-                   TGroupVertices=TpvDynamicArray<TVertex>;
-                   TGroupIndices=TpvDynamicArray<TVkUInt32>;
-                   TGroupJointBlocks=TpvDynamicArray<TJointBlock>;
+                   TGroupVertices=TpvDynamicArrayList<TVertex>;
+                   TGroupIndices=TpvDynamicArrayList<TVkUInt32>;
+                   TGroupJointBlocks=TpvDynamicArrayList<TJointBlock>;
                    TMorphTargetShaderStorageBufferObject=record
                     Count:TpvSizeInt;
                     Size:TpvSizeInt;
@@ -1803,6 +1803,7 @@ type EpvScene3D=class(Exception);
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
+                     function CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -2534,11 +2535,11 @@ type EpvScene3D=class(Exception);
               fScenes:TpvScene3D.TGroup.TScenes;
               fSceneNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fScene:TpvScene3D.TGroup.TScene;
-              fVertices:TGroupVertices;
-              fIndices:TGroupIndices;
-              fDrawChoreographyBatchCondensedIndices:TGroupIndices;
-              fDrawChoreographyBatchCondensedUniqueIndices:TGroupIndices;
-              fJointBlocks:TGroupJointBlocks;
+              fVertices:TpvScene3D.TGroup.TGroupVertices;
+              fIndices:TpvScene3D.TGroup.TGroupIndices;
+              fDrawChoreographyBatchCondensedIndices:TpvScene3D.TGroup.TGroupIndices;
+              fDrawChoreographyBatchCondensedUniqueIndices:TpvScene3D.TGroup.TGroupIndices;
+              fJointBlocks:TpvScene3D.TGroup.TGroupJointBlocks;
               fJointBlockOffsets:TSizeIntDynamicArrayEx;
               fMorphTargetVertices:TMorphTargetVertexDynamicArray;
               fMorphTargetCount:TpvSizeInt;
@@ -2975,6 +2976,8 @@ type EpvScene3D=class(Exception);
                             const aLifeTime:TpvScalar;
                             const aTextureID:TpvUInt32;
                             const aAdditiveBlending:boolean):TpvSizeInt;
+      public
+       function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
       public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
@@ -9081,6 +9084,12 @@ begin
  inherited Destroy;
 end;
 
+function TpvScene3D.TGroup.TMesh.CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+begin
+ result:=TpvScene3D.TGroup.TMesh.TPrimitive.Create;
+ fPrimitives.Add(result);
+end;
+
 function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
 var PrimitiveIndex,
     VertexIndex,
@@ -9124,7 +9133,7 @@ begin
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=Primitive.fStartBufferVertexOffset;
     NodeMeshPrimitiveInstance.fStartBufferIndexOffset:=Primitive.fStartBufferIndexOffset;
     for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-     Vertex:=@fGroup.fVertices.Items[VertexIndex];
+     Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
      Vertex^.NodeIndex:=aNodeIndex+1;
      Vertex^.MaterialID:=MaterialID;
      if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
@@ -9185,9 +9194,9 @@ begin
 
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=fGroup.fVertices.Count;
     for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-     OldVertex:=fGroup.fVertices.Items[VertexIndex];
+     OldVertex:=fGroup.fVertices.ItemArray[VertexIndex];
      NewVertexIndex:=fGroup.fVertices.Add(OldVertex);
-     Vertex:=@fGroup.fVertices.Items[NewVertexIndex];
+     Vertex:=@fGroup.fVertices.ItemArray[NewVertexIndex];
      Vertex^.NodeIndex:=aNodeIndex+1;
      Vertex^.MaterialID:=MaterialID;
      if Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff) then begin
@@ -9195,7 +9204,7 @@ begin
       MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
       Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
       while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-       NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
+       NewMorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
        fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex]:=fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
        MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[NewMorphTargetVertexIndex];
  //    MorphTargetVertex^.Index:=(MorphTargetVertex^.Index-Primitive^.MorphTargetBaseIndex)+NodeMeshPrimitiveInstance^.MorphTargetBaseIndex;
@@ -9215,8 +9224,8 @@ begin
      if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
       Vertex^.JointBlockBaseIndex:=fGroup.fJointBlocks.Count;
       for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
-       NewJointBlockIndex:=fGroup.fJointBlocks.AddNew;
-       fGroup.fJointBlocks.Items[NewJointBlockIndex]:=fGroup.fJointBlocks.Items[OldVertex.JointBlockBaseIndex+JointBlockIndex];
+       NewJointBlockIndex:=fGroup.fJointBlocks.AddNewIndex;
+       fGroup.fJointBlocks.ItemArray[NewJointBlockIndex]:=fGroup.fJointBlocks.ItemArray[OldVertex.JointBlockBaseIndex+JointBlockIndex];
        if length(fGroup.fJointBlockOffsets)<=NewJointBlockIndex then begin
         Old:=length(fGroup.fJointBlockOffsets);
         SetLength(fGroup.fJointBlockOffsets,(NewJointBlockIndex+1)*2);
@@ -9984,7 +9993,7 @@ begin
       DestinationMeshPrimitive.fStartBufferIndexOffset:=fGroup.fIndices.Count;
       fGroup.fIndices.Add(DestinationMeshPrimitiveIndices);
       for IndexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferIndexOffset) to fGroup.fIndices.Count-1 do begin
-       inc(fGroup.fIndices.Items[IndexIndex],DestinationMeshPrimitive.fStartBufferVertexOffset);
+       inc(fGroup.fIndices.ItemArray[IndexIndex],DestinationMeshPrimitive.fStartBufferVertexOffset);
       end;
       DestinationMeshPrimitive.fCountIndices:=TpvSizeUInt(fGroup.fIndices.Count)-DestinationMeshPrimitive.fStartBufferIndexOffset;
 
@@ -9995,12 +10004,12 @@ begin
        inc(fGroup.fMorphTargetCount,DestinationMeshPrimitive.fTargets.Count);
 
        for VertexIndex:=TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset) to TpvSizeInt(DestinationMeshPrimitive.fStartBufferVertexOffset+DestinationMeshPrimitive.fCountVertices)-1 do begin
-        Vertex:=@fGroup.fVertices.Items[VertexIndex];
+        Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
         Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
         for TargetIndex:=0 to DestinationMeshPrimitive.fTargets.Count-1 do begin
          DestinationMeshPrimitiveTarget:=DestinationMeshPrimitive.fTargets[TargetIndex];
          DestinationMeshPrimitiveTargetVertex:=@DestinationMeshPrimitiveTarget.fVertices.ItemArray[VertexIndex-DestinationMeshPrimitive.fStartBufferVertexOffset];
-         MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNew;
+         MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
          MorphTargetVertex:=@fGroup.fMorphTargetVertices.Items[MorphTargetVertexIndex];
          MorphTargetVertex^.Position:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Position,0.0);
          MorphTargetVertex^.Normal:=TpvVector4.Create(DestinationMeshPrimitiveTargetVertex^.Normal,0.0);
@@ -10609,13 +10618,13 @@ begin
  fScenes:=TScenes.Create;
  fScenes.OwnsObjects:=true;
 
- fVertices.Initialize;
+ fVertices:=TpvScene3D.TGroup.TGroupVertices.Create;
 
- fIndices.Initialize;
+ fIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
- fDrawChoreographyBatchCondensedIndices.Initialize;
+ fDrawChoreographyBatchCondensedIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
- fDrawChoreographyBatchCondensedUniqueIndices.Initialize;
+ fDrawChoreographyBatchCondensedUniqueIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
  fMorphTargetVertices.Initialize;
 
@@ -10623,7 +10632,7 @@ begin
 
  fMorphTargetCount:=0;
 
- fJointBlocks.Initialize;
+ fJointBlocks:=TpvScene3D.TGroup.TGroupJointBlocks.Create;
 
  fJointBlockOffsets:=nil;
 
@@ -10764,17 +10773,17 @@ begin
 
  fMaterialMap:=nil;
 
- fDrawChoreographyBatchCondensedIndices.Finalize;
+ FreeAndNil(fDrawChoreographyBatchCondensedIndices);
 
- fDrawChoreographyBatchCondensedUniqueIndices.Finalize;
+ FreeAndNil(fDrawChoreographyBatchCondensedUniqueIndices);
 
- fIndices.Finalize;
+ FreeAndNil(fIndices);
 
- fVertices.Finalize;
+ FreeAndNil(fVertices);
 
  fMorphTargetVertices.Finalize;
 
- fJointBlocks.Finalize;
+ FreeAndNil(fJointBlocks);
 
  fJointBlockOffsets:=nil;
 
@@ -11049,28 +11058,28 @@ begin
 
   for Index:=0 to Min(fJointBlocks.Count,length(fJointBlockOffsets))-1 do begin
 
-   if IsZero(fJointBlocks.Items[Index].Weights.x) then begin
-    fJointBlocks.Items[Index].Joints[0]:=0;
+   if IsZero(fJointBlocks.ItemArray[Index].Weights.x) then begin
+    fJointBlocks.ItemArray[Index].Joints[0]:=0;
    end else begin
-    inc(fJointBlocks.Items[Index].Joints[0],fJointBlockOffsets[Index]);
+    inc(fJointBlocks.ItemArray[Index].Joints[0],fJointBlockOffsets[Index]);
    end;
 
-   if IsZero(fJointBlocks.Items[Index].Weights.y) then begin
-    fJointBlocks.Items[Index].Joints[1]:=0;
+   if IsZero(fJointBlocks.ItemArray[Index].Weights.y) then begin
+    fJointBlocks.ItemArray[Index].Joints[1]:=0;
    end else begin
-    inc(fJointBlocks.Items[Index].Joints[1],fJointBlockOffsets[Index]);
+    inc(fJointBlocks.ItemArray[Index].Joints[1],fJointBlockOffsets[Index]);
    end;
 
-   if IsZero(fJointBlocks.Items[Index].Weights.z) then begin
-    fJointBlocks.Items[Index].Joints[2]:=0;
+   if IsZero(fJointBlocks.ItemArray[Index].Weights.z) then begin
+    fJointBlocks.ItemArray[Index].Joints[2]:=0;
    end else begin
-    inc(fJointBlocks.Items[Index].Joints[2],fJointBlockOffsets[Index]);
+    inc(fJointBlocks.ItemArray[Index].Joints[2],fJointBlockOffsets[Index]);
    end;
 
-   if IsZero(fJointBlocks.Items[Index].Weights.w) then begin
-    fJointBlocks.Items[Index].Joints[3]:=0;
+   if IsZero(fJointBlocks.ItemArray[Index].Weights.w) then begin
+    fJointBlocks.ItemArray[Index].Joints[3]:=0;
    end else begin
-    inc(fJointBlocks.Items[Index].Joints[3],fJointBlockOffsets[Index]);
+    inc(fJointBlocks.ItemArray[Index].Joints[3],fJointBlockOffsets[Index]);
    end;
   end;
 
@@ -11611,7 +11620,7 @@ begin
       // Iterate over each vertex of the primitive
       for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
 
-       Vertex:=@fVertices.Items[VertexIndex];
+       Vertex:=@fVertices.ItemArray[VertexIndex];
 
        // Check if the vertex has joint blocks
        if Vertex^.CountJointBlocks>0 then begin
@@ -11634,7 +11643,7 @@ begin
         // Iterate over joint blocks that influence the current vertex
         for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
 
-         JointBlock:=@fJointBlocks.Items[JointBlockIndex];
+         JointBlock:=@fJointBlocks.ItemArray[JointBlockIndex];
 
          // Process each joint in the joint block
          for JointIndex:=0 to 3 do begin
@@ -11658,7 +11667,7 @@ begin
 
             // If no, add the joint to the used joints list with initial data
 
-            UsedJointIndex:=Node.fUsedJoints.AddNew;
+            UsedJointIndex:=Node.fUsedJoints.AddNewIndex;
 
             JointIndexHashMap.Add(Joint,UsedJointIndex);
 
@@ -11756,7 +11765,7 @@ begin
  for DrawChoreographyBatchItem in fDrawChoreographyBatchItems do begin
   StartIndex:=DrawChoreographyBatchItem.fStartIndex;
   DrawChoreographyBatchItem.fStartIndex:=fDrawChoreographyBatchCondensedIndices.Count;
-  fDrawChoreographyBatchCondensedIndices.Add(copy(fIndices.Items,StartIndex,DrawChoreographyBatchItem.fCountIndices));
+  fDrawChoreographyBatchCondensedIndices.Add(copy(fIndices.ItemArray,StartIndex,DrawChoreographyBatchItem.fCountIndices));
  end;
  fDrawChoreographyBatchCondensedIndices.Finish;
 
@@ -12629,7 +12638,7 @@ var POCACodeString:TpvUTF8String;
      try
       Node.AssignFromGLTF(aSourceDocument,SourceNode,fNewLightMap);
       begin
-       NodeIndex:=NodeChildNodeIndices.AddNew;
+       NodeIndex:=NodeChildNodeIndices.AddNewIndex;
        ChildNodeIndices:=@NodeChildNodeIndices.Items[NodeIndex];
        ChildNodeIndices^.Initialize;
        ChildNodeIndices^.Resize(SourceNode.Children.Count);
@@ -13983,7 +13992,7 @@ begin
 
    for Index:=0 to fGroup.fVertices.Count-1 do begin
 
-    SrcVertex:=@fGroup.fVertices.Items[Index];
+    SrcVertex:=@fGroup.fVertices.ItemArray[Index];
 
     DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
     DstDynamicVertex^.Position:=SrcVertex^.Position;
@@ -14034,7 +14043,7 @@ begin
    end;
 
    for Index:=0 to fGroup.fJointBlocks.Count-1 do begin
-    SrcJointBlock:=@fGroup.fJointBlocks.Items[Index];
+    SrcJointBlock:=@fGroup.fJointBlocks.ItemArray[Index];
     DstJointBlock:=@fSceneInstance.fVulkanJointBlockBufferData.Items[fVulkanJointBlockBufferOffset+Index];
     DstJointBlock^:=SrcJointBlock^;
     inc(DstJointBlock^.Joints[0],fVulkanNodeMatricesBufferOffset);
@@ -16276,7 +16285,7 @@ var CullFace,Blend:TPasGLTFInt32;
    for PrimitiveIndex:=0 to Mesh.fPrimitives.Count-1 do begin
     Primitive:=Mesh.fPrimitives[PrimitiveIndex];
     for VertexIndex:=Primitive.fStartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-     Vertex:=@Group.fVertices.Items[VertexIndex];
+     Vertex:=@Group.fVertices.ItemArray[VertexIndex];
      Position:=Vertex^.Position;
      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
      while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
@@ -16288,7 +16297,7 @@ var CullFace,Blend:TPasGLTFInt32;
      if Vertex^.CountJointBlocks>0 then begin
       Matrix:=TpvMatrix4x4.Identity;
       for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
-       JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
+       JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
        for JointIndex:=0 to 3 do begin
         Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
        end;
@@ -16681,7 +16690,7 @@ begin
            fSceneInstance.fPotentiallyVisibleSet.fNodes[RenderInstance.fPotentiallyVisibleSetNodeIndex].fAABB.Contains(RenderInstance.fBoundingBox))) then begin
        RenderInstance.fPotentiallyVisibleSetNodeIndex:=fGroup.fSceneInstance.fPotentiallyVisibleSet.GetNodeIndexByAABB(RenderInstance.fBoundingBox);
       end;
-      PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNew;
+      PerInFlightFrameRenderInstanceIndex:=fPerInFlightFrameRenderInstances[aInFlightFrameIndex].AddNewIndex;
       PerInFlightFrameRenderInstance:=@fPerInFlightFrameRenderInstances[aInFlightFrameIndex].Items[PerInFlightFrameRenderInstanceIndex];
       PerInFlightFrameRenderInstance^.PotentiallyVisibleSetNodeIndex:=RenderInstance.fPotentiallyVisibleSetNodeIndex;
       PerInFlightFrameRenderInstance^.BoundingBox:=RenderInstance.fBoundingBox;
@@ -16899,7 +16908,7 @@ begin
       TpvScene3D.TPrimitiveTopology.Triangles:begin
        SetLength(BakedVertices,Primitive.fCountVertices);
        for VertexIndex:=Primitive.fStartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-        Vertex:=@Group.fVertices.Items[VertexIndex];
+        Vertex:=@Group.fVertices.ItemArray[VertexIndex];
         BakedVertex:=@BakedVertices[VertexIndex-Primitive.fStartBufferVertexOffset];
         Position:=Vertex^.Position;
         Normal:=OctDecode(Vertex^.Normal);
@@ -16915,7 +16924,7 @@ begin
         if Vertex^.CountJointBlocks>0 then begin
          Matrix:=TpvMatrix4x4.Identity;
          for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
-          JointBlock:=@fGroup.fJointBlocks.Items[JointBlockIndex];
+          JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
           for JointIndex:=0 to 3 do begin
            Matrix:=Matrix+((fNodeMatrices[JointBlock^.Joints[JointIndex]]*InverseMatrix)*JointBlock^.Weights[JointIndex]);
           end;
@@ -19363,7 +19372,7 @@ begin
      if TreeNode^.UserData<>0 then begin
       Light:=TpvScene3D.TLight(Pointer(TreeNode^.UserData));
       if aLightItemArray.Count<MaxVisibleLights then begin
-       Light.fLightItemIndex:=aLightItemArray.AddNew;
+       Light.fLightItemIndex:=aLightItemArray.AddNewIndex;
        LightItem:=@aLightItemArray.Items[Light.fLightItemIndex];
        LightItem^.Type_:=TpvUInt32(Light.fDataPointer^.Type_);
        LightItem^.ShadowMapIndex:=0;
@@ -20809,6 +20818,12 @@ begin
  end else begin
   Particle^.TextureID:=aTextureID;
  end;
+end;
+
+function TpvScene3D.CreateGroup(const aName:TpvUTF8String):TpvScene3D.TGroup;
+begin
+ result:=TpvScene3D.TGroup.Create(ResourceManager,self,nil);
+ result.fName:=aName;
 end;
 
 initialization

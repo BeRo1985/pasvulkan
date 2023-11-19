@@ -5692,7 +5692,7 @@ type TEventBeforeAfter=(Event,Before,After);
     end;
    end;
    if not assigned(WaitingSemaphore) then begin
-    WaitingSemaphoreIndex:=aWaitingCommandBuffer.fWaitingSemaphores.AddNew;
+    WaitingSemaphoreIndex:=aWaitingCommandBuffer.fWaitingSemaphores.AddNewIndex;
     WaitingSemaphore:=@aWaitingCommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
     WaitingSemaphore^.SignallingCommandBuffer:=aSignallingCommandBuffer;
     WaitingSemaphore^.DstStageMask:=0;
@@ -6433,7 +6433,7 @@ type TEventBeforeAfter=(Event,Before,After);
         end;
         if not Found then begin
          ImageResourceType:=ResourceType as TImageResourceType;
-         AttachmentIndex:=PhysicalRenderPass.fAttachments.AddNew;
+         AttachmentIndex:=PhysicalRenderPass.fAttachments.AddNewIndex;
          Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
          Attachment^.Resource:=ResourceTransition.fResource;
          Attachment^.Persistent:=ImageResourceType.fPersistent;
@@ -6778,7 +6778,7 @@ type TEventBeforeAfter=(Event,Before,After);
    for Queue in fQueues do begin
     for CommandBuffer in Queue.fCommandBuffers do begin
      if CommandBuffer.fWaitingSemaphores.Count=0 then begin
-      WaitingSemaphoreIndex:=CommandBuffer.fWaitingSemaphores.AddNew;
+      WaitingSemaphoreIndex:=CommandBuffer.fWaitingSemaphores.AddNewIndex;
       WaitingSemaphore:=@CommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
       WaitingSemaphore^.SignallingCommandBuffer:=nil;
       WaitingSemaphore^.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);

@@ -70,6 +70,8 @@ uses SysUtils,
      Generics.Collections;
 
 type TpvDynamicArray<T>=record
+      public
+       type PT=^T;
       private
        function GetItem(const pIndex:TpvSizeInt):T; inline;
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T); inline;
@@ -83,7 +85,8 @@ type TpvDynamicArray<T>=record
        procedure Finish;
        procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>); overload;
        procedure Assign(const aItems:array of T); overload;
-       function AddNew:TpvSizeInt; overload;
+       function AddNew:PT; overload;
+       function AddNewIndex:TpvSizeInt; overload;
        function Insert(const aIndex:TpvSizeInt;const aItem:T):TpvSizeInt; overload;
        function Add(const aItem:T):TpvSizeInt; overload;
        function Add(const aItems:array of T):TpvSizeInt; overload;
@@ -177,8 +180,10 @@ type TpvDynamicArray<T>=record
        procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>); overload;
        procedure Assign(const aItems:array of T); overload;
        function AddNew:PT;
+       function AddNewIndex:TpvSizeInt;
        function Add(const pItem:T):TpvSizeInt; overload;
        function Add(const pItems:TpvDynamicArrayList<T>):TpvSizeInt; overload;
+       function Add(const pItems:array of T):TpvSizeInt; overload;
        function AddRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
        function AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
@@ -820,7 +825,17 @@ begin
  end;
 end;
 
-function TpvDynamicArray<T>.AddNew:TpvSizeInt;
+function TpvDynamicArray<T>.AddNew:PT;
+begin
+ if length(Items)<(Count+1) then begin
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
+ end;
+ System.Initialize(Items[Count]);
+ result:=@Items[Count];
+ inc(Count);
+end;
+
+function TpvDynamicArray<T>.AddNewIndex:TpvSizeInt;
 begin
  result:=Count;
  if length(Items)<(Count+1) then begin
@@ -1268,6 +1283,16 @@ begin
  result:=@fItems[fCount-1];
 end;
 
+function TpvDynamicArrayList<T>.AddNewIndex:TpvSizeInt;
+begin
+ result:=fCount;
+ inc(fCount);
+ if fAllocated<fCount then begin
+  fAllocated:=fCount+fCount;
+  SetLength(fItems,fAllocated);
+ end;
+end;
+
 function TpvDynamicArrayList<T>.Add(const pItem:T):TpvSizeInt;
 begin
  result:=fCount;
@@ -1291,6 +1316,22 @@ begin
   end;
   for Index:=0 to pItems.Count-1 do begin
    fItems[result+index]:=pItems.fItems[Index];
+  end;
+ end;
+end;
+
+function TpvDynamicArrayList<T>.Add(const pItems:array of T):TpvSizeInt; overload;
+var Index:TpvSizeInt;
+begin
+ result:=fCount;
+ if length(pItems)>0 then begin
+  inc(fCount,length(pItems));
+  if fAllocated<fCount then begin
+   fAllocated:=fCount+fCount;
+   SetLength(fItems,fAllocated);
+  end;
+  for Index:=0 to length(pItems)-1 do begin
+   fItems[result+index]:=pItems[Index];
   end;
  end;
 end;
