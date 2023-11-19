@@ -7077,7 +7077,7 @@ begin
   if fAABBTreeProxy<0 then begin
    fAABBTreeProxy:=fSceneInstance.fLightAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
-   fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
+   fSceneInstance.fLightAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
   end;
   TPasMPInterlocked.Increment(fSceneInstance.fLightAABBTreeGeneration);
  end else begin
@@ -16393,7 +16393,7 @@ begin
        if InstanceNode^.AABBTreeProxy<0 then begin
         InstanceNode^.AABBTreeProxy:=fAABBTree.CreateProxy(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvPtrInt(Node.fIndex)+1);
        end else begin
-        fAABBTree.MoveProxy(InstanceNode^.AABBTreeProxy,InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvVector3.Origin);
+        fAABBTree.MoveProxy(InstanceNode^.AABBTreeProxy,InstanceNode^.BoundingBoxes[aInFlightFrameIndex],TpvVector3.Null,TpvVector3.AllAxis);
        end;
       end else if InstanceNode^.AABBTreeProxy>=0 then begin
        fAABBTree.DestroyProxy(InstanceNode^.AABBTreeProxy);
@@ -16468,9 +16468,9 @@ begin
    fAABBTreeProxy:=fGroup.fSceneInstance.fAABBTree.CreateProxy(fBoundingBox,TpvPtrInt(Pointer(self)));
   end else begin
    if fUseRenderInstances then begin
-    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(TpvVector3.InlineableCreate(-16777216.0,-16777216.0,-16777216.0),TpvVector3.InlineableCreate(16777216.0,16777216.0,16777216.0)),TpvVector3.Create(1.0,1.0,1.0));
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,TpvAABB.Create(TpvVector3.InlineableCreate(-16777216.0,-16777216.0,-16777216.0),TpvVector3.InlineableCreate(16777216.0,16777216.0,16777216.0)),TpvVector3.Null,TpvVector3.AllAxis);
    end else begin
-    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Create(1.0,1.0,1.0));
+    fGroup.fSceneInstance.fAABBTree.MoveProxy(fAABBTreeProxy,fBoundingBox,TpvVector3.Null,TpvVector3.AllAxis);
    end;
   end;
 

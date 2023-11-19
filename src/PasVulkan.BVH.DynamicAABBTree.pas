@@ -209,7 +209,8 @@ type EpvBVHDynamicAABBTree=class(Exception);
        procedure RemoveLeaf(const aLeaf:TpvSizeInt);
        function CreateProxy(const aAABB:TpvAABB;const aUserData:TpvPtrInt):TpvSizeInt;
        procedure DestroyProxy(const aNodeID:TpvSizeInt);
-       function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean;
+       function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement,aMargin:TpvVector3):boolean; overload;
+       function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean; overload;
        procedure Rebalance(const aIterations:TpvSizeInt);
        procedure RebuildBottomUp;
        procedure RebuildTopDown;
@@ -807,7 +808,7 @@ begin
  Dirty:=true;
 end;
 
-function TpvBVHDynamicAABBTree.MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean;
+function TpvBVHDynamicAABBTree.MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement,aMargin:TpvVector3):boolean;
 var Node:PTreeNode;
     b:TpvAABB;
     d:TpvVector3;
@@ -816,8 +817,9 @@ begin
  result:=not Node^.AABB.Contains(aAABB);
  if result then begin
   RemoveLeaf(aNodeID);
-  b.Min:=aAABB.Min-ThresholdAABBVector;
-  b.Max:=aAABB.Max+ThresholdAABBVector;
+  d:=ThresholdAABBVector+aMargin;
+  b.Min:=aAABB.Min-d;
+  b.Max:=aAABB.Max+d;
   d:=aDisplacement*AABBMULTIPLIER;
   if d.x<0.0 then begin
    b.Min.x:=b.Min.x+d.x;
@@ -838,6 +840,11 @@ begin
   InsertLeaf(aNodeID);
   Dirty:=true;
  end;
+end;
+
+function TpvBVHDynamicAABBTree.MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TpvAABB;const aDisplacement:TpvVector3):boolean;
+begin
+ result:=MoveProxy(aNodeID,aAABB,aDisplacement,TpvVector3.Null);
 end;
 
 procedure TpvBVHDynamicAABBTree.Rebalance(const aIterations:TpvSizeInt);
