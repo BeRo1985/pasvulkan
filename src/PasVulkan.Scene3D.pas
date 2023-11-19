@@ -1809,6 +1809,7 @@ type EpvScene3D=class(Exception);
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      function CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+                     procedure Finish;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                     published
                      property Index:TpvSizeInt read fIndex;
@@ -9112,6 +9113,40 @@ begin
  fPrimitives.Add(result);
 end;
 
+procedure TpvScene3D.TGroup.TMesh.Finish;
+var PrimitiveIndex,
+    VertexIndex:TpvSizeInt;
+    MorphTargetVertexIndex:TpvUInt32;
+    Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    Vertex:TpvScene3D.PVertex;
+    MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
+begin
+
+ fBoundingBox:=TpvAABB.Create(TpvVector3.InlineableCreate(Infinity,Infinity,Infinity),
+                              TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity));
+
+ for PrimitiveIndex:=0 to fPrimitives.Count-1 do begin
+
+  Primitive:=fPrimitives[PrimitiveIndex];
+
+  for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+
+   Vertex:=@Group.Vertices.ItemArray[VertexIndex];
+   fBoundingBox.DirectCombineVector3(Vertex^.Position);
+
+   MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+   while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
+    MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+    fBoundingBox.DirectCombineVector3(Vertex^.Position+MorphTargetVertex^.Position.xyz); // Assume a weight value of 1.0 for an approximate result
+    MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+   end;
+
+  end;
+
+ end;
+
+end;
+
 function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
 var PrimitiveIndex,
     VertexIndex,
@@ -9192,7 +9227,6 @@ begin
    end;
 
   end;
-
 
  end else begin
 
