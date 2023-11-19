@@ -1809,6 +1809,7 @@ type EpvScene3D=class(Exception);
                      fBoundingBox:TpvAABB;
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
                      fMorphTargetVerticesReady:TPasMPBool32;
+                     fGeneration:TpvUInt64;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
@@ -9118,6 +9119,7 @@ begin
  fWeights:=TpvScene3D.TFloatDynamicArrayList.Create;
  fPrimitives:=TpvScene3D.TGroup.TMesh.TPrimitives.Create(true);
  fNodeMeshInstances:=0;
+ fGeneration:=0;
  fMorphTargetVerticesReady:=false;
  fReferencedByNodes:=TpvScene3D.TGroup.TMesh.TReferencedByNodes.Create;
 end;
@@ -9490,9 +9492,15 @@ begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
 
-  if not assigned(Primitive.Material) then begin
-   Primitive.Material:=fGroup.fSceneInstance.EmptyMaterial;
-   Primitive.Material.IncRef;
+  if not assigned(Primitive.fMaterial) then begin
+   Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
+   Primitive.fMaterial.IncRef;
+  end;
+
+  if Primitive.fMaterial=fGroup.fSceneInstance.EmptyMaterial then begin
+   Primitive.fMaterialID:=-1;
+  end else begin
+   Primitive.fMaterialID:=Primitive.fMaterial.fID;
   end;
 
   if not fMorphTargetVerticesReady then begin
@@ -9551,6 +9559,8 @@ begin
  end;
 
  fMorphTargetVerticesReady:=true;
+
+ TPasMPInterlocked.Increment(fGeneration);
 
 end;
 
@@ -10521,6 +10531,8 @@ begin
  finally
   FreeMem(MaxJointBlocks);
  end;
+
+ TPasMPInterlocked.Increment(fGeneration);
 
 end;
 
