@@ -1699,7 +1699,7 @@ type EpvScene3D=class(Exception);
                      fChannels:TpvScene3D.TGroup.TAnimation.TChannels;
                      fDefaultChannels:TpvScene3D.TGroup.TAnimation.TDefaultChannels;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceAnimation:TPasGLTF.TAnimation);
                      function GetAnimationBeginTime:TpvDouble;
@@ -1717,7 +1717,7 @@ type EpvScene3D=class(Exception);
                      fCameraData:TpvScene3D.TCameraData;
                      fPointerToCameraData:TpvScene3D.PCameraData;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
                     public
@@ -1802,7 +1802,7 @@ type EpvScene3D=class(Exception);
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceMesh:TPasGLTF.TMesh;const aMaterialMap:TpvScene3D.TMaterials);
                     published
@@ -1825,7 +1825,7 @@ type EpvScene3D=class(Exception);
                      fMatrices:TpvScene3D.TMatrix4x4DynamicArrayList;
                      fJoints:TpvScene3D.TSizeIntDynamicArrayList;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSkin:TPasGLTF.TSkin);
                     published
@@ -1844,7 +1844,7 @@ type EpvScene3D=class(Exception);
                      fIndex:TpvSizeInt;
                      fNodes:TNodes;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceLight:TPasJSONItemObject);
                     public
@@ -1942,7 +1942,7 @@ type EpvScene3D=class(Exception);
                      fSkipList:TSkipList;
                      procedure ConstructSkipList;
                     public
-                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
+                     constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceScene:TPasGLTF.TScene);
                     published
@@ -2621,6 +2621,14 @@ type EpvScene3D=class(Exception);
               function AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):TpvSizeInt;
               function AddNode(const aNode:TpvScene3D.TGroup.TNode):TpvSizeInt;
               function AddScene(const aScene:TpvScene3D.TGroup.TScene):TpvSizeInt;
+             public
+              function CreateLight(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TLight;
+              function CreateMesh(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TMesh;
+              function CreateSkin(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TSkin;
+              function CreateAnimation(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TAnimation;
+              function CreateCamera(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TCamera;
+              function CreateNode(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TNode;
+              function CreateScene(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TScene;
              public
               procedure FinalizeMaterials(const aDoLock:Boolean=true);
              public
@@ -11991,6 +11999,11 @@ function TpvScene3D.TGroup.AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSi
 begin
  if assigned(aLight) then begin
   result:=fLights.Add(aLight);
+  if aLight.fIndex<0 then begin
+   aLight.fIndex:=result;
+  end else if aLight.Index<>result then begin
+   raise EpvScene3D.Create('Light index mismatch');
+  end;
   if (length(trim(aLight.fName))>0) and not fLightNameIndexHashMap.ExistKey(aLight.fName) then begin
    fLightNameIndexHashMap.Add(aLight.fName,result);
   end;
@@ -12172,6 +12185,11 @@ function TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeI
 begin
  if assigned(aMesh) then begin
   result:=fMeshes.Add(aMesh);
+  if aMesh.fIndex<0 then begin
+   aMesh.fIndex:=result;
+  end else if aMesh.Index<>result then begin
+   raise EpvScene3D.Create('Mesh index mismatch');
+  end;
   if (length(trim(aMesh.fName))>0) and not fMeshNameIndexHashMap.ExistKey(aMesh.fName) then begin
    fMeshNameIndexHashMap.Add(aMesh.fName,result);
   end;
@@ -12186,6 +12204,11 @@ begin
  Skin:=aSkin;
  if assigned(Skin) then begin
   result:=fSkins.Add(Skin);
+  if aSkin.fIndex<0 then begin
+   aSkin.fIndex:=result;
+  end else if aSkin.Index<>result then begin
+   raise EpvScene3D.Create('Skin index mismatch');
+  end;
   if (length(trim(aSkin.fName))>0) and not fSkinNameIndexHashMap.ExistKey(aSkin.fName) then begin
    fSkinNameIndexHashMap.Add(aSkin.fName,result);
   end;
@@ -12198,6 +12221,11 @@ function TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnim
 begin
  if assigned(aAnimation) then begin
   result:=fAnimations.Add(aAnimation);
+  if aAnimation.fIndex<0 then begin
+   aAnimation.fIndex:=result;
+  end else if aAnimation.Index<>result then begin
+   raise EpvScene3D.Create('Animation index mismatch');
+  end;
   if (length(trim(aAnimation.fName))>0) and not fAnimationNameIndexHashMap.ExistKey(aAnimation.fName) then begin
    fAnimationNameIndexHashMap.Add(aAnimation.fName,result);
   end;
@@ -12210,6 +12238,11 @@ function TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):Tp
 begin
  if assigned(aCamera) then begin
   result:=fCameras.Add(aCamera);
+  if aCamera.fIndex<0 then begin
+   aCamera.fIndex:=result;
+  end else if aCamera.Index<>result then begin
+   raise EpvScene3D.Create('Camera index mismatch');
+  end;
   if (length(trim(aCamera.fName))>0) and not fCameraNameIndexHashMap.ExistKey(aCamera.fName) then begin
    fCameraNameIndexHashMap.Add(aCamera.fName,result);
   end;
@@ -12239,11 +12272,86 @@ function TpvScene3D.TGroup.AddScene(const aScene:TpvScene3D.TGroup.TScene):TpvSi
 begin
  if assigned(aScene) then begin
   result:=fScenes.Add(aScene);
+  if aScene.fIndex<0 then begin
+   aScene.fIndex:=result;
+  end else if aScene.Index<>result then begin
+   raise EpvScene3D.Create('Scene index mismatch');
+  end;
   if (length(trim(aScene.fName))>0) and not fSceneNameIndexHashMap.ExistKey(aScene.fName) then begin
    fSceneNameIndexHashMap.Add(aScene.fName,result);
   end;
  end else begin
   result:=-1;
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateLight(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TLight;
+begin
+ result:=TpvScene3D.TGroup.TLight.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddLight(result);
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateMesh(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TMesh;
+begin
+ result:=TpvScene3D.TGroup.TMesh.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddMesh(result);
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateSkin(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TSkin;
+begin
+ result:=TpvScene3D.TGroup.TSkin.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddSkin(result);
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateAnimation(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TAnimation;
+begin
+ result:=TpvScene3D.TGroup.TAnimation.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddAnimation(result);
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateCamera(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TCamera;
+begin
+ result:=TpvScene3D.TGroup.TCamera.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddCamera(result);
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateNode(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TNode;
+begin
+ result:=TpvScene3D.TGroup.TNode.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddNode(result);
+ end;
+end;
+
+function TpvScene3D.TGroup.CreateScene(const aName:TpvUTF8String=''):TpvScene3D.TGroup.TScene;
+begin
+ result:=TpvScene3D.TGroup.TScene.Create(self);
+ try
+  result.fName:=aName;
+ finally
+  AddScene(result);
  end;
 end;
 
