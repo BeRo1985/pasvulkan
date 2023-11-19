@@ -9187,8 +9187,10 @@ begin
 
   StartBufferIndexOffset:=fMesh.fGroup.fIndices.Count;
   CountIndices:=fTemporaryIndices.Count;
-  for Index:=0 to fTemporaryIndices.Count-1 do begin
-   inc(fTemporaryIndices.ItemArray[Index],StartBufferVertexOffset);
+  if StartBufferVertexOffset>0 then begin
+   for Index:=0 to fTemporaryIndices.Count-1 do begin
+    inc(fTemporaryIndices.ItemArray[Index],StartBufferVertexOffset);
+   end;
   end;
   fMesh.fGroup.fIndices.Add(fTemporaryIndices);
 

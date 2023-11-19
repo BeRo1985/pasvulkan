@@ -1318,7 +1318,7 @@ begin
    SetLength(fItems,fAllocated);
   end;
   for Index:=0 to pItems.Count-1 do begin
-   fItems[result+index]:=pItems.fItems[Index];
+   fItems[result+Index]:=pItems.fItems[Index];
   end;
  end;
 end;
@@ -1334,7 +1334,7 @@ begin
    SetLength(fItems,fAllocated);
   end;
   for Index:=0 to length(pItems)-1 do begin
-   fItems[result+index]:=pItems[Index];
+   fItems[result+Index]:=pItems[Index];
   end;
  end;
 end;
