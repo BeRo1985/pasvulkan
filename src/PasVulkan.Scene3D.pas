@@ -17223,37 +17223,33 @@ begin
 
           end;
 
-          if PotentiallyVisible then begin
+          if PotentiallyVisible and (length(aFrustums)>0) then begin
            if (TpvPtrUInt(AABBTreeNode^.UserData)>=1) and (TpvPtrUInt(AABBTreeNode^.UserData)<=TpvUInt32($7fffffff)) then begin
             InstanceNode:=@fNodes[TpvPtrUInt(AABBTreeNode^.UserData)-1];
-            if length(aFrustums)>0 then begin
-             if length(aFrustums)=1 then begin
-              if AABBTreeSkipListItem^.Level<=High(Masks) then begin
-               PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
-              end else begin
-               PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
-              end;
+            if length(aFrustums)=1 then begin
+             if AABBTreeSkipListItem^.Level<=High(Masks) then begin
+              PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
              end else begin
-              PotentiallyVisible:=false;
-              for FrustumIndex:=0 to length(aFrustums)-1 do begin
-               if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-                PotentiallyVisible:=true;
-                break;
-               end;
+              PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+             end;
+            end else begin
+             PotentiallyVisible:=false;
+             for FrustumIndex:=0 to length(aFrustums)-1 do begin
+              if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+               PotentiallyVisible:=true;
+               break;
               end;
              end;
             end;
            end else begin
-            if length(aFrustums)>0 then begin
-             if length(aFrustums)=1 then begin
-              PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(AABBTreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
-             end else begin
-              PotentiallyVisible:=false;
-              for FrustumIndex:=0 to length(aFrustums)-1 do begin
-               if aFrustums[FrustumIndex].AABBInFrustum(AABBTreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-                PotentiallyVisible:=true;
-                break;
-               end;
+            if length(aFrustums)=1 then begin
+             PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(AABBTreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+            end else begin
+             PotentiallyVisible:=false;
+             for FrustumIndex:=0 to length(aFrustums)-1 do begin
+              if aFrustums[FrustumIndex].AABBInFrustum(AABBTreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+               PotentiallyVisible:=true;
+               break;
               end;
              end;
             end;
@@ -17370,41 +17366,37 @@ begin
 
         end;
 
-        if PotentiallyVisible then begin
+        if PotentiallyVisible and (length(aFrustums)>0) then begin
          if (AABBTreeSkipListItem^.UserData>=1) and (AABBTreeSkipListItem^.UserData<=TpvUInt32($7fffffff)) then begin
           InstanceNode:=@fNodes[AABBTreeSkipListItem^.UserData-1];
-          if length(aFrustums)>0 then begin
-           if length(aFrustums)=1 then begin
-            if AABBTreeSkipListItem^.Level<=High(Masks) then begin
-             PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
-            end else begin
-             PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
-            end;
+          if length(aFrustums)=1 then begin
+           if AABBTreeSkipListItem^.Level<=High(Masks) then begin
+            PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex],Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
            end else begin
-            PotentiallyVisible:=false;
-            for FrustumIndex:=0 to length(aFrustums)-1 do begin
-             if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
-              PotentiallyVisible:=true;
-              break;
-             end;
+            PotentiallyVisible:=aFrustums[0].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT;
+           end;
+          end else begin
+           PotentiallyVisible:=false;
+           for FrustumIndex:=0 to length(aFrustums)-1 do begin
+            if aFrustums[FrustumIndex].AABBInFrustum(InstanceNode^.BoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+             PotentiallyVisible:=true;
+             break;
             end;
            end;
           end;
          end else begin
-          if length(aFrustums)>0 then begin
-           if length(aFrustums)=1 then begin
-            if AABBTreeSkipListItem^.Level<=High(Masks) then begin
-             PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(AABBTreeSkipListItem^.AABB,Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
-            end else begin
-             PotentiallyVisible:=aFrustums[0].AABBInFrustum(AABBTreeSkipListItem^.AABB)<>TpvFrustum.COMPLETE_OUT;
-            end;
+          if length(aFrustums)=1 then begin
+           if AABBTreeSkipListItem^.Level<=High(Masks) then begin
+            PotentiallyVisible:=(Masks[AABBTreeSkipListItem^.Level-1]=$40000000) or not ((((Masks[AABBTreeSkipListItem^.Level] and $80000000)<>0) and (aFrustums[0].AABBInFrustum(AABBTreeSkipListItem^.AABB,Masks[AABBTreeSkipListItem^.Level])=TpvFrustum.COMPLETE_OUT)));
            end else begin
-            PotentiallyVisible:=false;
-            for FrustumIndex:=0 to length(aFrustums)-1 do begin
-             if aFrustums[FrustumIndex].AABBInFrustum(AABBTreeSkipListItem^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-              PotentiallyVisible:=true;
-              break;
-             end;
+            PotentiallyVisible:=aFrustums[0].AABBInFrustum(AABBTreeSkipListItem^.AABB)<>TpvFrustum.COMPLETE_OUT;
+           end;
+          end else begin
+           PotentiallyVisible:=false;
+           for FrustumIndex:=0 to length(aFrustums)-1 do begin
+            if aFrustums[FrustumIndex].AABBInFrustum(AABBTreeSkipListItem^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+             PotentiallyVisible:=true;
+             break;
             end;
            end;
           end;
@@ -19854,14 +19846,29 @@ begin
      TreeNode:=@aTreeNodes[NodeIndex];
 
      if length(aFrustums)>0 then begin
-      if length(aFrustums)=1 then begin
-       PotentiallyVisible:=not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+      if TreeNode^.UserData<>0 then begin
+       GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
+       if length(aFrustums)=1 then begin
+        PotentiallyVisible:=(Mask=$40000000) or not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(GroupInstance.fBoundingBoxes[aInFlightFrameIndex],Mask)=TpvFrustum.COMPLETE_OUT)));
+       end else begin
+        PotentiallyVisible:=false;
+        for Index:=0 to length(aFrustums)-1 do begin
+         if aFrustums[Index].AABBInFrustum(GroupInstance.fBoundingBoxes[aInFlightFrameIndex])<>TpvFrustum.COMPLETE_OUT then begin
+          PotentiallyVisible:=true;
+          break;
+         end;
+        end;
+       end;
       end else begin
-       PotentiallyVisible:=false;
-       for Index:=0 to length(aFrustums)-1 do begin
-        if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
-         PotentiallyVisible:=true;
-         break;
+       if length(aFrustums)=1 then begin
+        PotentiallyVisible:=(Mask=$40000000) or not ((((Mask and $80000000)<>0) and (aFrustums[0].AABBInFrustum(TreeNode^.AABB,Mask)=TpvFrustum.COMPLETE_OUT)));
+       end else begin
+        PotentiallyVisible:=false;
+        for Index:=0 to length(aFrustums)-1 do begin
+         if aFrustums[Index].AABBInFrustum(TreeNode^.AABB)<>TpvFrustum.COMPLETE_OUT then begin
+          PotentiallyVisible:=true;
+          break;
+         end;
         end;
        end;
       end;
