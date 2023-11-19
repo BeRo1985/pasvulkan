@@ -9273,8 +9273,8 @@ begin
      end;}
     end;
 
-    for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-     Vertex:=@Group.Vertices.ItemArray[VertexIndex];
+    for VertexIndex:=0 to Primitive.fCountVertices-1 do begin
+     Vertex:=@Group.Vertices.ItemArray[Primitive.StartBufferVertexOffset+VertexIndex];
      Vertex^.Normal:=OctEncode(Normals[VertexIndex]);
      Vertex^.Tangent:=OctEncode(Tangents[VertexIndex]);
      if (OctDecode(Vertex^.Normal).Cross(OctDecode(Vertex^.Tangent))).Dot(Bitangents[VertexIndex])<0.0 then begin
