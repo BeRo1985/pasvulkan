@@ -1694,12 +1694,13 @@ type EpvScene3D=class(Exception);
                     private
                      fIndex:TpvSizeInt;
                      fCameraData:TpvScene3D.TCameraData;
+                     fPointerToCameraData:TpvScene3D.PCameraData;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt); reintroduce;
                      destructor Destroy; override;
                      procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceCamera:TPasGLTF.TCamera);
                     public
-                     property CameraData:TpvScene3D.TCameraData read fCameraData write fCameraData;
+                     property CameraData:TpvScene3D.PCameraData read fPointerToCameraData;
                     published
                      property Index:TpvSizeInt read fIndex;
                    end;
@@ -8855,6 +8856,7 @@ constructor TpvScene3D.TGroup.TCamera.Create(const aGroup:TGroup;const aIndex:Tp
 begin
  inherited Create(aGroup);
  fIndex:=aIndex;
+ fPointerToCameraData:=@fCameraData;
 end;
 
 destructor TpvScene3D.TGroup.TCamera.Destroy;
