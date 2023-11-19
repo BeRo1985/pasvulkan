@@ -2520,6 +2520,7 @@ type EpvScene3D=class(Exception);
                    end;
                    TInstances=TpvObjectGenericList<TInstance>;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
+                   TMaterialIndexHashMap=TpvHashMap<TMaterial,TpvSizeInt>;
                    TNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
                    TCameraNodeIndices=TpvGenericList<TpvSizeInt>;
              private
@@ -2534,6 +2535,7 @@ type EpvScene3D=class(Exception);
               fMaterialIDMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap;
               fMaterialNameMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap;
               fMaterialIDMapArrays:TpvScene3D.TGroup.TMaterialIDMapArrays;
+              fMaterialIndexHashMap:TpvScene3D.TGroup.TMaterialIndexHashMap;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCountInstanceAnimationChannels:TpvSizeInt;
               fAnimationNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
@@ -2628,7 +2630,7 @@ type EpvScene3D=class(Exception);
               function AddImage(const aImage:TpvScene3D.TImage;const aForceNew:Boolean=false):TpvSizeInt;
               function AddSampler(const aSampler:TpvScene3D.TSampler;const aForceNew:Boolean=false):TpvSizeInt;
               function AddTexture(const aTexture:TpvScene3D.TTexture;const aForceNew:Boolean=false):TpvSizeInt;
-              function AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean=false):TpvSizeInt;
+              function AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean=false;const aDoubleCheck:Boolean=false):TpvSizeInt;
               function AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeInt;
               function AddSkin(const aSkin:TpvScene3D.TGroup.TSkin):TpvSizeInt;
               function AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
@@ -9092,6 +9094,8 @@ begin
 
  fMaterial:=nil;
 
+ fMaterialID:=-1;
+
  fTargets:=TpvScene3D.TGroup.TMesh.TPrimitive.TTargets.Create(true);
 
  fNodeMeshPrimitiveInstances:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances.Create(true);
@@ -9492,15 +9496,14 @@ begin
 
   Primitive:=fPrimitives[PrimitiveIndex];
 
-  if not assigned(Primitive.fMaterial) then begin
-   Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
-   Primitive.fMaterial.IncRef;
-  end;
-
-  if Primitive.fMaterial=fGroup.fSceneInstance.EmptyMaterial then begin
-   Primitive.fMaterialID:=-1;
+  if assigned(Primitive.fMaterial) then begin
+   if Primitive.fMaterial=fGroup.fSceneInstance.EmptyMaterial then begin
+    Primitive.fMaterialID:=-1;
+   end else begin
+    Primitive.fMaterialID:=fGroup.AddMaterial(Primitive.fMaterial,true,true);
+   end;
   end else begin
-   Primitive.fMaterialID:=Primitive.fMaterial.fID;
+   Primitive.fMaterialID:=-1;
   end;
 
   if not fMorphTargetVerticesReady then begin
@@ -11058,6 +11061,8 @@ begin
 
  fMaterialNameMapArrayIndexHashMap:=TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap.Create(-1);
 
+ fMaterialIndexHashMap:=TpvScene3D.TGroup.TMaterialIndexHashMap.Create(-1);
+
  fMaterialIDMapArrays:=TpvScene3D.TGroup.TMaterialIDMapArrays.Create;
  fMaterialIDMapArrays.OwnsObjects:=true;
 
@@ -11240,6 +11245,8 @@ begin
  FreeAndNil(fMaterialsToDuplicate);
 
  FreeAndNil(fMaterialNameMapArrayIndexHashMap);
+
+ FreeAndNil(fMaterialIndexHashMap);
 
  FreeAndNil(fMaterialIDMapArrayIndexHashMap);
 
@@ -12626,12 +12633,15 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean):TpvSizeInt;
+function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean;const aDoubleCheck:Boolean):TpvSizeInt;
 var Material,HashedMaterial:TpvScene3D.TMaterial;
     HashData:TpvScene3D.TMaterial.THashData;
 begin
  Material:=aMaterial;
  if assigned(Material) then begin
+  if aDoubleCheck and fMaterialIndexHashMap.TryGet(Material,result) then begin
+   exit;
+  end;
   try
    HashData:=Material.fData;
    if aForceNew then begin
@@ -12639,14 +12649,17 @@ begin
      fSceneInstance.fMaterialHashMap[HashData]:=Material;
     end;
     result:=fMaterials.Add(Material);
+    fMaterialIndexHashMap.Add(Material,result);
     Material:=nil;
    end else begin
     HashedMaterial:=fSceneInstance.fMaterialHashMap[HashData];
     if assigned(HashedMaterial) then begin
      result:=fMaterials.Add(HashedMaterial);
+     fMaterialIndexHashMap.Add(HashedMaterial,result);
     end else begin
      fSceneInstance.fMaterialHashMap[HashData]:=Material;
      result:=fMaterials.Add(Material);
+     fMaterialIndexHashMap.Add(Material,result);
      Material:=nil;
     end;
    end;
@@ -12975,7 +12988,7 @@ var POCACodeString:TpvUTF8String;
     try
      Material.AssignFromGLTF(aSourceDocument,aSourceDocument.Materials[Index],fNewTextureMap);
     finally
-     AddMaterial(Material,false);
+     AddMaterial(Material,false,false);
     end;
    end;
    FinalizeMaterials(false);
