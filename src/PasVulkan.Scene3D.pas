@@ -17224,7 +17224,7 @@ begin
           DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
           for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
            DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
-           DrawChoreographyBatchItem:={InstanceScene.}fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
+           DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
            if DrawChoreographyBatchItem.fMaterial.fVisible and
               (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
              (DrawChoreographyBatchItem.fCountIndices>0) then begin
@@ -17331,7 +17331,7 @@ begin
       DrawChoreographyBatchItemIndices:=@Node.fDrawChoreographyBatchItemIndices;
       for DrawChoreographyBatchItemIndex:=0 to DrawChoreographyBatchItemIndices^.Count-1 do begin
        DrawChoreographyBatchItemElementIndex:=DrawChoreographyBatchItemIndices^.Items[DrawChoreographyBatchItemIndex];
-       DrawChoreographyBatchItem:={InstanceScene.}fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
+       DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemElementIndex];
        if DrawChoreographyBatchItem.fMaterial.fVisible and
           (DrawChoreographyBatchItem.fAlphaMode in aMaterialAlphaModes) and
          (DrawChoreographyBatchItem.fCountIndices>0) then begin
