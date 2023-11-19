@@ -1776,6 +1776,7 @@ type EpvScene3D=class(Exception);
                                  end;
                                  TNodeMeshPrimitiveInstances=TpvObjectGenericList<TNodeMeshPrimitiveInstance>;
                            private
+                            fMesh:TMesh;
                             fPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                             fMaterialID:TpvInt64;
                             fMaterial:TpvScene3D.TMaterial;
@@ -1787,7 +1788,7 @@ type EpvScene3D=class(Exception);
                             fCountIndices:TpvSizeUInt;
                             fNodeMeshPrimitiveInstances:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances;
                            public
-                            constructor Create; reintroduce;
+                            constructor Create(const aMesh:TMesh); reintroduce;
                             destructor Destroy; override;
                            published
                             property PrimitiveTopology:TpvScene3D.TPrimitiveTopology read fPrimitiveTopology write fPrimitiveTopology;
@@ -9088,15 +9089,27 @@ end;
 
 { TpvScene3D.TGroup.TMesh.TPrimitive }
 
-constructor TpvScene3D.TGroup.TMesh.TPrimitive.Create;
+constructor TpvScene3D.TGroup.TMesh.TPrimitive.Create(const aMesh:TMesh);
 begin
  inherited Create;
+
+ fMesh:=aMesh;
 
  fMaterial:=nil;
 
  fMaterialID:=-1;
 
  fTargets:=TpvScene3D.TGroup.TMesh.TPrimitive.TTargets.Create(true);
+
+ fMorphTargetBaseIndex:=0;
+
+ fStartBufferVertexOffset:=0;
+
+ fStartBufferIndexOffset:=0;
+
+ fCountVertices:=0;
+
+ fCountIndices:=0;
 
  fNodeMeshPrimitiveInstances:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstances.Create(true);
 
@@ -9165,7 +9178,7 @@ end;
 
 function TpvScene3D.TGroup.TMesh.CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
 begin
- result:=TpvScene3D.TGroup.TMesh.TPrimitive.Create;
+ result:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
  fPrimitives.Add(result);
 end;
 
@@ -9814,7 +9827,7 @@ begin
 
       SourceMeshPrimitive:=aSourceMesh.Primitives.Items[PrimitiveIndex];
 
-      DestinationMeshPrimitive:=TMesh.TPrimitive.Create;
+      DestinationMeshPrimitive:=TMesh.TPrimitive.Create(self);
       fPrimitives.Add(DestinationMeshPrimitive);
 
       fGroup.fSceneInstance.fMaterialListLock.Acquire;
