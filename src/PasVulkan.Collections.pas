@@ -178,6 +178,7 @@ type TpvDynamicArray<T>=record
        constructor Create;
        destructor Destroy; override;
        procedure Clear;
+       procedure ClearNoFree;
        procedure Resize(const aCount:TpvSizeInt);
        procedure Finish;
        procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>); overload;
@@ -1208,6 +1209,11 @@ begin
  SetLength(fItems,0);
  fCount:=0;
  fAllocated:=0;
+end;
+
+procedure TpvDynamicArrayList<T>.ClearNoFree;
+begin
+ fCount:=0;
 end;
 
 procedure TpvDynamicArrayList<T>.SetCount(const pNewCount:TpvSizeInt);
