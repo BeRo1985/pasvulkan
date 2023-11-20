@@ -250,7 +250,6 @@ var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,N
     Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
     Vertex:PVertex;
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
-    v0,v1,v2:TpvFibonacciSphere.PVector;
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
     Points:TVectors;
 begin
@@ -353,10 +352,7 @@ begin
       i2:=AdjacentVertices[0];
      end;
      if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-      v0:=@Points[i0];
-      v1:=@Points[i1];
-      v2:=@Points[i2];
-      if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin // Only add triangles with vertices in counter-clockwise order
+      if ((Points[i1]-Points[i0]).Cross(Points[i2]-Points[i0])).Dot(Points[i0])<0.0 then begin // Only add triangles with vertices in counter-clockwise order
        fIndices.Add(i0);
        fIndices.Add(i1);
        fIndices.Add(i2);
