@@ -69,6 +69,7 @@ type { TpvFibonacciSphere }
      TpvFibonacciSphere=class
       public             
        const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
+             GoldenRatioMinusOne=0.61803398874989485; // ((1.0+sqrt(5.0))/2.0)-1.0
              GoldenAngle=2.39996322972865332; // PI*(3.0-sqrt(5.0)) (golden angle) 
              Sqrt5=2.236067977499789696; // sqrt(5.0)
              OneOverSqrt5=0.447213595499957939; // 1.0/sqrt(5.0)
@@ -98,6 +99,7 @@ type { TpvFibonacciSphere }
              function Cross(const aVector:TVector):TVector;
             end; 
             PVector=^TVector;
+            TVectors=array of TpvFibonacciSphere.TVector;
             TVertex=record
              Position:TpvVector3;
              Normal:TpvVector3;
@@ -105,17 +107,14 @@ type { TpvFibonacciSphere }
              Bitangent:TpvVector3;
              TexCoord:TpvVector2;
             end;
-            PVertex=^TVertex;
-            TVertices=TpvDynamicArrayList<TVertex>;
+            PVertex=^TpvFibonacciSphere.TVertex;
+            TVertices=TpvDynamicArrayList<TpvFibonacciSphere.TVertex>;
             TIndices=TpvDynamicArrayList<TpvUInt32>;
       private
        fCountPoints:TpvSizeInt;
        fRadius:TpvDouble;
        fVertices:TVertices;
        fIndices:TIndices;
-       function MADFrac(const a,b:TpvDouble):TpvDouble; inline;
-       function ForwardSphericalFibonacci(const aIndex:TpvSizeInt):TpvFibonacciSphere.TVector;
-       procedure DelaunayAdjacency(const aIndex:TpvSizeInt;const aOutIndices:TpvFibonacciSphere.TIndices);
       public
        constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0);
        destructor Destroy; override;
@@ -245,106 +244,21 @@ begin
  inherited Destroy;
 end;
 
-function TpvFibonacciSphere.MADFrac(const a,b:TpvDouble):TpvDouble;
-begin
- result:=(a*b)-Floor(a*b);
-end;
-
-function TpvFibonacciSphere.ForwardSphericalFibonacci(const aIndex:TpvSizeInt):TpvFibonacciSphere.TVector;
-var Phi,Z,SinTheta,PhiSinus,PhiCosinus:TpvDouble;
-begin
- Phi:=TwoPI*MADFrac(aIndex,GoldenRatio-1.0);
- Z:=1.0-(((aIndex shl 1) or 1)/fCountPoints);
- SinTheta:=sqrt(1.0-sqr(Z));
- SinCos(Phi,PhiSinus,PhiCosinus);
- result:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta);
-end; 
- 
-procedure TpvFibonacciSphere.DelaunayAdjacency(const aIndex:TpvSizeInt;const aOutIndices:TIndices);
-var Index,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK:TpvSizeInt;
-    CosTheta,Z,SquaredDistance:TpvDouble;
-    NearestSample,CurrentSample,NearestToCurrentSample,PreviousSample,NextSample:TpvFibonacciSphere.TVector;
-    NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
-begin
-
- CosTheta:=1.0-(((aIndex shl 1) or 1)/fCountPoints);
- 
- z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
-
- NearestSample:=ForwardSphericalFibonacci(aIndex);
-
- CountNearestSamples:=0;
-
- for Index:=0 to 11 do begin
-  
-  r:=Index-Trunc(Floor(Index/6)*6);
-  c:=(5-abs(5-(r shl 1)))+Floor(Trunc(r)/3);
-  k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*IfThen(Index<6,1,-1))+aIndex;
-
-  CurrentSample:=ForwardSphericalFibonacci(k);
-  NearestToCurrentSample:=CurrentSample-NearestSample;
-  SquaredDistance:=NearestToCurrentSample.SquaredLength;
-
-  if (k>=0) and (k<fCountPoints) and (SquaredDistance<=(20.0*PI)/(Sqrt5*fCountPoints)) then begin
-   NearestSamples[CountNearestSamples]:=k;
-   inc(CountNearestSamples);
-  end;
- 
- end;
-
- CountAdjacentVertices:=0;
-
- for Index:=0 to CountNearestSamples-1 do begin
-  
-  k:=NearestSamples[Index];
-
-  if Index>0 then begin
-   PreviousK:=NearestSamples[Index-1];
-  end else begin
-   PreviousK:=NearestSamples[CountNearestSamples-1];
-  end; 
-
-  if (Index+1)<CountNearestSamples then begin
-   NextK:=NearestSamples[Index+1];
-  end else begin
-   NextK:=NearestSamples[0];
-  end;
-
-  PreviousSample:=ForwardSphericalFibonacci(PreviousK);
-  CurrentSample:=ForwardSphericalFibonacci(k);
-  NextSample:=ForwardSphericalFibonacci(NextK);
-
-  if PreviousSample.SquaredDistance(NextSample)>PreviousSample.SquaredDistance(CurrentSample) then begin
-   AdjacentVertices[CountAdjacentVertices]:=k;
-   inc(CountAdjacentVertices);
-  end;
-  
- end;
-
- if (Index=0) and (CountAdjacentVertices>0) then begin
-  dec(CountAdjacentVertices); // Special case for the pole
- end;
-
- aOutIndices.ClearNoFree;
- for Index:=0 to CountAdjacentVertices-1 do begin
-  aOutIndices.Add(AdjacentVertices[Index]);
- end; 
-
-end;
-
 procedure TpvFibonacciSphere.Generate;
-var Index,OtherIndex,i0,i1,i2:TpvSizeInt;
+var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
+    i0,i1,i2:TpvSizeInt;
+    Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
     Vertex:PVertex;
-    Vector,Normal,Tangent,Bitangent,v0v1,v0v2:TpvFibonacciSphere.TVector;
+    Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
     v0,v1,v2:TpvFibonacciSphere.PVector;
-    NeighbourIndices:TpvFibonacciSphere.TIndices;
-    Positions:array of TpvFibonacciSphere.TVector;
+    NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
+    Points:TVectors;
 begin
  
- Positions:=nil;
+ Points:=nil;
  try
 
-  SetLength(Positions,fCountPoints);   
+  SetLength(Points,fCountPoints);
 
   // Generate vertices (the easy part)
   begin
@@ -352,9 +266,15 @@ begin
    fVertices.Clear;
 
    for Index:=0 to fCountPoints-1 do begin
-     
-     Vector:=ForwardSphericalFibonacci(Index).Normalize;
-     Positions[Index]:=Vector;
+
+     Phi:=TwoPI*((Index*GoldenRatioMinusOne)-Floor(Index*GoldenRatioMinusOne));
+     Z:=1.0-(((Index shl 1) or 1)/fCountPoints);
+     SinTheta:=sqrt(1.0-sqr(Z));
+     SinCos(Phi,PhiSinus,PhiCosinus);
+     Vector:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta).Normalize;
+
+     Points[Index]:=Vector;
+
      Normal:=Vector;
      Tangent:=TpvFibonacciSphere.TVector.InlineableCreate(-Normal.z,0.0,Normal.x).Normalize;
      Bitangent:=Normal.Cross(Tangent).Normalize;
@@ -373,51 +293,87 @@ begin
   // Generate indices (the not so easy part) 
   begin 
 
-   NeighbourIndices:=TpvFibonacciSphere.TIndices.Create;
-   try
-     
-    fIndices.Clear;
+   fIndices.Clear;
 
-    for Index:=0 to fCountPoints-1 do begin
-    
-     DelaunayAdjacency(Index,NeighbourIndices);
+   for Index:=0 to fCountPoints-1 do begin
 
-     i0:=Index;
+    CosTheta:=1.0-(((Index shl 1) or 1)/fCountPoints);
 
-     // Add triangles from the neighbours
-     for OtherIndex:=0 to NeighbourIndices.Count-1 do begin
-      i1:=NeighbourIndices[OtherIndex];
-      if (OtherIndex+1)<NeighbourIndices.Count then begin
-       i2:=NeighbourIndices[OtherIndex+1];
-      end else begin
-       i2:=NeighbourIndices[0];
-      end;
-      if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-       v0:=@Positions[i0];
-       v1:=@Positions[i1];
-       v2:=@Positions[i2];
-       if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin // Only add triangles with vertices in counter-clockwise order
-        fIndices.Add(i0);
-        fIndices.Add(i1);
-        fIndices.Add(i2);
-       end else begin
-        fIndices.Add(i0);
-        fIndices.Add(i2);
-        fIndices.Add(i1);
-       end;
-      end; 
+    z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
+
+    CountNearestSamples:=0;
+
+    for OtherIndex:=0 to 11 do begin
+     r:=OtherIndex-Trunc(Floor(OtherIndex/6)*6);
+     c:=(5-abs(5-(r shl 1)))+Floor(Trunc(r)/3);
+     k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*IfThen(OtherIndex<6,1,-1))+Index;
+     if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(20.0*PI)/(Sqrt5*fCountPoints)) then begin
+      NearestSamples[CountNearestSamples]:=k;
+      inc(CountNearestSamples);
+     end;
+    end;
+
+    CountAdjacentVertices:=0;
+
+    for OtherIndex:=0 to CountNearestSamples-1 do begin
+
+     k:=NearestSamples[OtherIndex];
+
+     if OtherIndex>0 then begin
+      PreviousK:=NearestSamples[OtherIndex-1];
+     end else begin
+      PreviousK:=NearestSamples[CountNearestSamples-1];
+     end;
+
+     if (OtherIndex+1)<CountNearestSamples then begin
+      NextK:=NearestSamples[OtherIndex+1];
+     end else begin
+      NextK:=NearestSamples[0];
+     end;
+
+     if Points[PreviousK].SquaredDistance(Points[NextK])>Points[PreviousK].SquaredDistance(Points[k]) then begin
+      AdjacentVertices[CountAdjacentVertices]:=k;
+      inc(CountAdjacentVertices);
      end;
 
     end;
 
-   finally
-    FreeAndNil(NeighbourIndices);
-   end; 
+    if (OtherIndex=0) and (CountAdjacentVertices>0) then begin
+     dec(CountAdjacentVertices); // Special case for the pole
+    end;
+
+    i0:=Index;
+
+    // Add triangles from the adjacent neighbours
+    for OtherIndex:=0 to CountAdjacentVertices-1 do begin
+     i1:=AdjacentVertices[OtherIndex];
+     if (OtherIndex+1)<CountAdjacentVertices then begin
+      i2:=AdjacentVertices[OtherIndex+1];
+     end else begin
+      i2:=AdjacentVertices[0];
+     end;
+     if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
+      v0:=@Points[i0];
+      v1:=@Points[i1];
+      v2:=@Points[i2];
+      if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin // Only add triangles with vertices in counter-clockwise order
+       fIndices.Add(i0);
+       fIndices.Add(i1);
+       fIndices.Add(i2);
+      end else begin
+       fIndices.Add(i0);
+       fIndices.Add(i2);
+       fIndices.Add(i1);
+      end;
+     end;
+    end;
+
+   end;
 
   end;
 
  finally
-  Positions:=nil;
+  Points:=nil;
  end; 
 
 end;
