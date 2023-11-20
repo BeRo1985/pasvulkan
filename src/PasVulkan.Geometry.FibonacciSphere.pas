@@ -260,7 +260,7 @@ begin
 
   SetLength(Points,fCountPoints);
 
-  // Generate vertices (the easy part)
+  // Generate vertices (the comparatively yet easy part)
   begin
 
    fVertices.Clear;
