@@ -368,12 +368,12 @@ begin
      if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
       if ((Points[i1]-Points[i0]).Cross(Points[i2]-Points[i0])).Dot(Points[i0])<0.0 then begin // Only add triangles with vertices in counter-clockwise order
        fIndices.Add(i0);
-       fIndices.Add(i1);
        fIndices.Add(i2);
+       fIndices.Add(i1);
       end else begin
        fIndices.Add(i0);
-       fIndices.Add(i2);
        fIndices.Add(i1);
+       fIndices.Add(i2);
       end;
      end;
     end;
