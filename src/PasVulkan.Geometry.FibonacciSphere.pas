@@ -107,9 +107,11 @@ type { TpvFibonacciSphere }
              Normal:TpvVector3;
              Tangent:TpvVector3;
              Bitangent:TpvVector3;
-             TexCoord:TpvVector2;
+             CylindricalEqualAreaUV:TpvVector2;
              WebMercatorLongitudeLatitude:TpvVector2;
              WebMercatorLongitudeLatitudeUV:TpvVector2;
+             EquirectangularUV:TpvVector2;
+             OctahedralUV:TpvVector2;
             end;
             PVertex=^TpvFibonacciSphere.TVertex;
             TVertices=TpvDynamicArrayList<TpvFibonacciSphere.TVertex>;
@@ -119,6 +121,7 @@ type { TpvFibonacciSphere }
        fRadius:TpvDouble;
        fVertices:TVertices;
        fIndices:TIndices;
+       class function OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2; static;
       public
        constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0);
        destructor Destroy; override;
@@ -248,6 +251,29 @@ begin
  inherited Destroy;
 end;
 
+class function TpvFibonacciSphere.OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2;
+var Vector:TpvVector3;
+    x,y,s,tx,ty:TpvScalar;
+begin
+ Vector:=aVector.Normalize;
+ s:=abs(Vector.x)+abs(Vector.y)+abs(Vector.z);
+ x:=Vector.x/s;
+ y:=Vector.y/s;
+ if Vector.z<0.0 then begin
+  tx:=1.0-abs(y);
+  if x<0.0 then begin
+   tx:=-tx;
+  end;
+  ty:=1.0-abs(x);
+  if y<0.0 then begin
+   ty:=-ty;
+  end;
+  x:=tx;
+  y:=ty;
+ end;
+ result:=TpvVector2.InlineableCreate((x*0.5)+0.5,(y*0.5)+0.5);
+end;
+
 procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
     i0,i1,i2:TpvSizeInt;
@@ -296,9 +322,11 @@ begin
     Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
     Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
-    Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5);
+    Vertex^.CylindricalEqualAreaUV:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5);
     Vertex^.WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
     Vertex^.WebMercatorLongitudeLatitudeUV:=TpvVector2.Create((Vertex^.WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((Vertex^.WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
+    Vertex^.EquirectangularUV:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(Vector.y*0.5)+0.5);
+    Vertex^.OctahedralUV:=OctahedralProjectionMappingEncode(Vertex^.Normal);
 
    end;
 
