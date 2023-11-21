@@ -19629,8 +19629,7 @@ begin
  result.xy:=(result.xy*2.0)-TpvVector2.InlineableCreate(1.0,1.0);
  result.z:=(1.0-abs(result.x))-abs(result.y);
  if result.z<0 then begin
-  result.xy:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*
-             TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
+  result.xy:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
  end;
  result:=result.Normalize;
 end;
