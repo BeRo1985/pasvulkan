@@ -74,6 +74,8 @@ type { TpvFibonacciSphere }
              Sqrt5=2.236067977499789696; // sqrt(5.0)
              OneOverSqrt5=0.447213595499957939; // 1.0/sqrt(5.0)
              PImulSqrt5=7.024814731040726393; // PI*sqrt(5.0)
+             PImul20=62.831853071795864769; // PI*20.0
+             PImul20overSqrt5=28.099258924162905573; // (PI*20.0)/sqrt(5.0)
              HalfPI=1.570796326794896619; // PI/2.0
              TwoPI=6.283185307179586477; // PI*2.0
              LogGoldenRatio=0.481211825059603447; // ln((1.0+sqrt(5.0))/2.0) (log of golden ratio)
@@ -303,10 +305,13 @@ begin
     CountNearestSamples:=0;
 
     for OtherIndex:=0 to 11 do begin
-     r:=OtherIndex-Trunc(Floor(OtherIndex/6)*6);
-     c:=(5-abs(5-(r shl 1)))+Floor(Trunc(r)/3);
-     k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*IfThen(OtherIndex<6,1,-1))+Index;
-     if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(20.0*PI)/(Sqrt5*fCountPoints)) then begin
+     r:=OtherIndex-(((OtherIndex*$56) shr 9)*6); // OtherIndex mod 6
+     c:=(5-abs(5-(r shl 1)))+
+        (($38 shr r) and 1); // ((r*$56) shr 8); // (r div 3);
+     k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*
+         (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
+        )+Index;
+     if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
       NearestSamples[CountNearestSamples]:=k;
       inc(CountNearestSamples);
      end;
