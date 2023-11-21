@@ -80,7 +80,14 @@ type { TpvFibonacciSphere }
              TwoPI=6.283185307179586477; // PI*2.0
              LogGoldenRatio=0.481211825059603447; // ln((1.0+sqrt(5.0))/2.0) (log of golden ratio)
              OneOverLogGoldenRatio=2.0780869212350275376; // 1.0/ln((1.0+sqrt(5.0))/2.0) (1.0/log of golden ratio)
-       type { TVector }
+       type TTextureProjectionMapping=
+             (
+              Equirectangular,
+              CylindricalEqualArea,
+              Octahedral,
+              WebMercator
+             );
+            { TVector }
             TVector=record
              x:TpvDouble;
              y:TpvDouble;
@@ -107,11 +114,7 @@ type { TpvFibonacciSphere }
              Normal:TpvVector3;
              Tangent:TpvVector3;
              Bitangent:TpvVector3;
-             CylindricalEqualAreaUV:TpvVector2;
-             WebMercatorLongitudeLatitude:TpvVector2;
-             WebMercatorLongitudeLatitudeUV:TpvVector2;
-             EquirectangularUV:TpvVector2;
-             OctahedralUV:TpvVector2;
+             TexCoord:TpvVector2;
             end;
             PVertex=^TpvFibonacciSphere.TVertex;
             TVertices=TpvDynamicArrayList<TpvFibonacciSphere.TVertex>;
@@ -119,15 +122,17 @@ type { TpvFibonacciSphere }
       private
        fCountPoints:TpvSizeInt;
        fRadius:TpvDouble;
+       fTextureProjectionMapping:TTextureProjectionMapping;
        fVertices:TVertices;
        fIndices:TIndices;
       public
-       constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0);
+       constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0;const aTextureProjectionMapping:TTextureProjectionMapping=TTextureProjectionMapping.Equirectangular);
        destructor Destroy; override;
        procedure Generate(const aUseGoldenRatio:Boolean=true);
       published 
        property CountPoints:TpvSizeInt read fCountPoints;
        property Radius:TpvDouble read fRadius;
+       property TextureProjectionMapping:TTextureProjectionMapping read fTextureProjectionMapping write fTextureProjectionMapping;
        property Vertices:TVertices read fVertices;
        property Indices:TIndices read fIndices;
      end;
@@ -234,11 +239,12 @@ end;
 
 { TpvFibonacciSphere }
 
-constructor TpvFibonacciSphere.Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0);
+constructor TpvFibonacciSphere.Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble;const aTextureProjectionMapping:TTextureProjectionMapping);
 begin
  inherited Create;
  fCountPoints:=Max(32,aCountPoints);
  fRadius:=aRadius;
+ fTextureProjectionMapping:=aTextureProjectionMapping;
  fVertices:=TVertices.Create;
  fIndices:=TIndices.Create;
 end;
@@ -258,6 +264,7 @@ var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,N
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
     Points:TVectors;
+    WebMercatorLongitudeLatitude:TpvVector2;
 begin
  
  Points:=nil;
@@ -298,11 +305,25 @@ begin
     Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
     Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
-    Vertex^.CylindricalEqualAreaUV:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5);
-    Vertex^.WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
-    Vertex^.WebMercatorLongitudeLatitudeUV:=TpvVector2.Create((Vertex^.WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((Vertex^.WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
-    Vertex^.EquirectangularUV:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(Vector.y*0.5)+0.5);
-    Vertex^.OctahedralUV:=OctahedralProjectionMappingEncode(Vertex^.Normal);
+
+    case fTextureProjectionMapping of
+     TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
+      Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5); // or 1.0-(ArcCos(Vector.y)/PI) 
+     end;
+     TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
+      Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(Vector.y*0.5)+0.5);
+     end;
+     TpvFibonacciSphere.TTextureProjectionMapping.Octahedral:begin
+      Vertex^.TexCoord:=OctahedralProjectionMappingEncode(Vertex^.Normal);
+     end;
+     TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
+      WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
+      Vertex^.TexCoord:=TpvVector2.Create((WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
+     end;
+     else begin
+      Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
+     end;
+    end;
 
    end;
 
