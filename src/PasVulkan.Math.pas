@@ -19617,14 +19617,14 @@ begin
 end;
 
 function OctahedralProjectionMappingDecode(const aVector:TpvVector2):TpvVector3;
+var ix,iy:TpvInt32;
 begin
- result.xy:=aVector;
- if ((floor(result.x)+floor(result.y)) and 1)<>0 then begin
-  result.x:=1.0-frac(result.x);
-  result.y:=1.0-frac(result.y);
- end else begin
-  result.x:=frac(result.x);
-  result.y:=frac(result.y);
+ ix:=floor(aVector.x);
+ iy:=floor(aVector.y);
+ result.x:=aVector.x-ix;
+ result.y:=aVector.y-iy;
+ if ((ix+iy) and 1)<>0 then begin
+  result.xy:=TpvVector2.InlineableCreate(1.0,1.0)-result.xy;
  end;
  result.xy:=(result.xy*2.0)-TpvVector2.InlineableCreate(1.0,1.0);
  result.z:=(1.0-abs(result.x))-abs(result.y);
