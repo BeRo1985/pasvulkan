@@ -181,6 +181,7 @@ type PpvScalar=^TpvScalar;
        function Length:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function SquaredLength:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Abs:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function DistanceTo(const aToVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Dot(const aWithVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross(const aVector:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1718,6 +1719,12 @@ function SolveCubic(const a,b,c,d:TpvDouble;out r0,r1,r2:TpvDouble):TpvSizeInt;
 function SolveQuartic(const a,b,c,d,e:TpvDouble;out r0,r1,r2,r3:TpvDouble):TpvSizeInt;
 function SolveRootsInInterval(const aCoefs:array of TpvDouble;const aMin,aMax:TpvDouble):TpvDoubleDynamicArray;
 
+function EncodeNormalAsUInt32(const aNormal:TpvVector3):TpvUInt32;
+function DecodeNormalFromUInt32(const aNormal:TpvUInt32):TpvVector3;
+
+function OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2;
+function OctahedralProjectionMappingDecode(const aVector:TpvVector2):TpvVector3;
+
 implementation
 
 function RoundDownToPowerOfTwo(x:TpvUInt32):TpvUInt32;
@@ -2471,6 +2478,12 @@ begin
   result.x:=0.0;
   result.y:=0.0;
  end;
+end;
+
+function TpvVector2.Abs:TpvVector2;
+begin
+ result.x:=System.Abs(x);
+ result.y:=System.Abs(y);
 end;
 
 function TpvVector2.DistanceTo(const aToVector:TpvVector2):TpvScalar;
@@ -19587,6 +19600,29 @@ begin
   t:=result.x;
   result.x:=(1.0-abs(result.y))*SignNonZero(t);
   result.y:=(1.0-abs(t))*SignNonZero(result.y);
+ end;
+ result:=result.Normalize;
+end;
+
+function OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2;
+var Vector:TpvVector3;
+begin
+ Vector:=aVector.Normalize;
+ result:=Vector.xy/(abs(Vector.x)+abs(Vector.y)+abs(Vector.z));
+ if Vector.z<0.0 then begin
+  result:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*
+           TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
+ end;
+ result:=(result*0.5)+TpvVector2.InlineableCreate(0.5,0.5);
+end;
+
+function OctahedralProjectionMappingDecode(const aVector:TpvVector2):TpvVector3;
+begin
+ result.xy:=(aVector*2.0)-TpvVector2.InlineableCreate(1.0,1.0);
+ result.z:=(1.0-abs(result.x))-abs(result.y);
+ if result.z<0 then begin
+  result.xy:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*
+             TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
  end;
  result:=result.Normalize;
 end;

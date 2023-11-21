@@ -121,7 +121,6 @@ type { TpvFibonacciSphere }
        fRadius:TpvDouble;
        fVertices:TVertices;
        fIndices:TIndices;
-       class function OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2; static;
       public
        constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0);
        destructor Destroy; override;
@@ -249,29 +248,6 @@ begin
  FreeAndNil(fVertices);
  FreeAndNil(fIndices);
  inherited Destroy;
-end;
-
-class function TpvFibonacciSphere.OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2;
-var Vector:TpvVector3;
-    x,y,s,tx,ty:TpvScalar;
-begin
- Vector:=aVector.Normalize;
- s:=abs(Vector.x)+abs(Vector.y)+abs(Vector.z);
- x:=Vector.x/s;
- y:=Vector.y/s;
- if Vector.z<0.0 then begin
-  tx:=1.0-abs(y);
-  if x<0.0 then begin
-   tx:=-tx;
-  end;
-  ty:=1.0-abs(x);
-  if y<0.0 then begin
-   ty:=-ty;
-  end;
-  x:=tx;
-  y:=ty;
- end;
- result:=TpvVector2.InlineableCreate((x*0.5)+0.5,(y*0.5)+0.5);
 end;
 
 procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
