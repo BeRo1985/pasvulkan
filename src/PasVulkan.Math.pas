@@ -19623,12 +19623,8 @@ begin
   result.x:=1.0-frac(result.x);
   result.y:=1.0-frac(result.y);
  end else begin
-  if result.x>1.0 then begin
-   result.x:=frac(result.x);
-  end;
-  if result.y>1.0 then begin
-   result.y:=frac(result.y);
-  end;
+  result.x:=frac(result.x);
+  result.y:=frac(result.y);
  end;
  result.xy:=(result.xy*2.0)-TpvVector2.InlineableCreate(1.0,1.0);
  result.z:=(1.0-abs(result.x))-abs(result.y);
