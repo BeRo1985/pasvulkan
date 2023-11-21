@@ -108,6 +108,8 @@ type { TpvFibonacciSphere }
              Tangent:TpvVector3;
              Bitangent:TpvVector3;
              TexCoord:TpvVector2;
+             LongitudeLatitude:TpvVector2;
+             LongitudeLatitudeUV:TpvVector2;
             end;
             PVertex=^TpvFibonacciSphere.TVertex;
             TVertices=TpvDynamicArrayList<TpvFibonacciSphere.TVertex>;
@@ -294,7 +296,9 @@ begin
     Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
     Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
-    Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)+PI)/TwoPI,ArcCos(Vector.y)/PI);
+    Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5);
+    Vertex^.LongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
+    Vertex^.LongitudeLatitudeUV:=TpvVector2.Create((Vertex^.LongitudeLatitude.x+PI)/TwoPI,Ln(Tan((Vertex^.LongitudeLatitude.y*0.5)+(PI*0.25)))+PI/TwoPI);
 
    end;
 
