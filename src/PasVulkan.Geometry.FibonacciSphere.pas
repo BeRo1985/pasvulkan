@@ -82,10 +82,11 @@ type { TpvFibonacciSphere }
              OneOverLogGoldenRatio=2.0780869212350275376; // 1.0/ln((1.0+sqrt(5.0))/2.0) (1.0/log of golden ratio)
        type TTextureProjectionMapping=
              (
-              Equirectangular,
-              CylindricalEqualArea,
-              Octahedral,
-              WebMercator
+              Equirectangular,            // Equirectangular projection mapping
+              CylindricalEqualArea,       // Lambert cylindrical equal-area projection mapping
+              Octahedral,                 // Octahedral projection mapping
+              WebMercator,                // Google's Web Mercator projection
+              Spherical                   // The GL_SPHERE_MAP projection from old OpenGL times 
              );
             { TVector }
             TVector=record
@@ -319,6 +320,9 @@ begin
      TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
       WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
       Vertex^.TexCoord:=TpvVector2.Create((WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
+     end;
+     TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
+      Vertex^.TexCoord:=(TpvVector2.InlineableCreate(Vector.xz)/(TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0))+TpvVector2.InlineableCreate(0.5,0.5);
      end;
      else begin
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
