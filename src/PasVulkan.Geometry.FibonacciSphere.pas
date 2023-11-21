@@ -120,7 +120,7 @@ type { TpvFibonacciSphere }
       public
        constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0);
        destructor Destroy; override;
-       procedure Generate;
+       procedure Generate(const aUseGoldenRatio:Boolean=true);
       published 
        property CountPoints:TpvSizeInt read fCountPoints;
        property Radius:TpvDouble read fRadius;
@@ -246,7 +246,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFibonacciSphere.Generate;
+procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
     i0,i1,i2:TpvSizeInt;
     Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
@@ -266,26 +266,35 @@ begin
 
    fVertices.Clear;
 
+   Phi:=0.0;
+
    for Index:=0 to fCountPoints-1 do begin
 
-     Phi:=TwoPI*((Index*GoldenRatioMinusOne)-Floor(Index*GoldenRatioMinusOne));
-     Z:=1.0-(((Index shl 1) or 1)/fCountPoints);
-     SinTheta:=sqrt(1.0-sqr(Z));
-     SinCos(Phi,PhiSinus,PhiCosinus);
-     Vector:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta).Normalize;
+    if aUseGoldenRatio then begin
+     Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
+    end else begin
+     Phi:=Phi+GoldenAngle;
+     if Phi>=TwoPI then begin
+      Phi:=Phi-TwoPI;
+     end;
+    end;
+    Z:=1.0-(((Index shl 1) or 1)/fCountPoints); // Z:=1.0-(((Index+0.5)*2.0)/fCountPoints);
+    SinTheta:=sqrt(1.0-sqr(Z));
+    SinCos(Phi,PhiSinus,PhiCosinus);
+    Vector:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta).Normalize;
 
-     Points[Index]:=Vector;
+    Points[Index]:=Vector;
 
-     Normal:=Vector;
-     Tangent:=TpvFibonacciSphere.TVector.InlineableCreate(-Normal.z,0.0,Normal.x).Normalize;
-     Bitangent:=Normal.Cross(Tangent).Normalize;
+    Normal:=Vector;
+    Tangent:=TpvFibonacciSphere.TVector.InlineableCreate(-Normal.z,0.0,Normal.x).Normalize;
+    Bitangent:=Normal.Cross(Tangent).Normalize;
 
-     Vertex:=fVertices.AddNew;
-     Vertex^.Position:=TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z)*fRadius;
-     Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
-     Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
-     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
-     Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)+PI)/TwoPI,ArcCos(Vector.y)/PI);
+    Vertex:=fVertices.AddNew;
+    Vertex^.Position:=TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z)*fRadius;
+    Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
+    Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
+    Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
+    Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)+PI)/TwoPI,ArcCos(Vector.y)/PI);
 
    end;
 
