@@ -2406,7 +2406,7 @@ type EpvScene3D=class(Exception);
                      fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
                      fUploaded:boolean;
                      fDirtyCounter:TPasMPInt32;
-                     fUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                     fPrepreparedForUploadMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -2448,7 +2448,6 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
-                     procedure PostProcessNewMeshData(const aInFlightFrameIndex:TpvSizeInt);
                      procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
                      procedure PreparePerInFlightFrameRenderInstances(const aInFlightFrameIndex:TpvSizeInt;
                                                                       const aRenderPassIndex:TpvSizeInt;
@@ -2560,6 +2559,7 @@ type EpvScene3D=class(Exception);
               fMeshNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fMeshContentGeneration:TpvUInt64;
               fUpdatedMeshContentGeneration:TpvUInt64;
+              fUpdatedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
               fSkins:TpvScene3D.TGroup.TSkins;
               fSkinNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fLights:TpvScene3D.TGroup.TLights;
@@ -11345,6 +11345,10 @@ begin
 
  fUpdatedMeshContentGeneration:=High(TpvUInt64)-1;
 
+ for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  fUpdatedMeshContentGenerations[InFlightFrameIndex]:=High(TpvUInt64)-1;
+ end;
+
  fSkins:=TSkins.Create;
  fSkins.OwnsObjects:=true;
 
@@ -12727,6 +12731,7 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Finish;
+var InFlightFrameIndex:TpvSizeInt;
 begin
 
  if not fReady then begin
@@ -12758,6 +12763,10 @@ begin
   ConstructSkipLists;
 
   fUpdatedMeshContentGeneration:=fMeshContentGeneration;
+
+  for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+   fUpdatedMeshContentGenerations[InFlightFrameIndex]:=fMeshContentGeneration;
+  end;
 
   fReady:=true;
 
@@ -13645,6 +13654,8 @@ begin
   end;
 
   fUpdatedMeshContentGeneration:=fMeshContentGeneration;
+
+  fUpdatedMeshContentGenerations[aInFlightFrameIndex]:=fUpdatedMeshContentGeneration;
 
  end;
 
@@ -14542,7 +14553,7 @@ begin
  fDuplicatedMaterials.OwnsObjects:=false;
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-  fUploadedMeshContentGenerations[Index]:=High(TpvUInt64)-1;
+  fPrepreparedForUploadMeshContentGenerations[Index]:=High(TpvUInt64)-1;
  end;
 
  fRenderInstanceLock:=0;
@@ -14889,7 +14900,7 @@ begin
  end;
 
  for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
-  fUploadedMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
+  fPrepreparedForUploadMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
  end;
 
  fScenes:=TpvScene3D.TGroup.TInstance.TScenes.Create;
@@ -15184,66 +15195,6 @@ begin
  end else begin
   result:=nil;
  end;
-end;
-
-procedure TpvScene3D.TGroup.TInstance.PostProcessNewMeshData(const aInFlightFrameIndex:TpvSizeInt);
-var Index:TpvSizeInt;
-    Generation:TpvUInt64;
-    SrcVertex:TpvScene3D.PVertex;
-    DstDynamicVertex:PGPUDynamicVertex;
-    DstStaticVertex:PGPUStaticVertex;
-    SrcMorphTargetVertex,DstMorphTargetVertex:PMorphTargetVertex;
-begin
-
- if not fHeadless then begin
-
-  if (fUploadedMeshContentGenerations[aInFlightFrameIndex]<>fGroup.fUpdatedMeshContentGeneration) and
-     (fVulkanVertexBufferOffset>=0) then begin
-
-   fUploadedMeshContentGenerations[aInFlightFrameIndex]:=fGroup.fUpdatedMeshContentGeneration;
-
-   repeat
-    Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
-   until Generation<>0;
-
-   for Index:=0 to fGroup.fFrameVertices[aInFlightFrameIndex].Count-1 do begin
-
-    SrcVertex:=@fGroup.fFrameVertices[aInFlightFrameIndex].ItemArray[Index];
-
-    DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
-    DstDynamicVertex^.Position:=SrcVertex^.Position;
-    DstDynamicVertex^.Normal:=SrcVertex^.Normal;
-    DstDynamicVertex^.Tangent:=SrcVertex^.Tangent;
-    DstDynamicVertex^.Flags:=SrcVertex^.Flags;
-    DstDynamicVertex^.Generation:=Generation;
-
-    DstStaticVertex:=@fSceneInstance.fVulkanStaticVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
-    DstStaticVertex^.TexCoord0:=SrcVertex^.TexCoord0;
-    DstStaticVertex^.TexCoord1:=SrcVertex^.TexCoord1;
-    DstStaticVertex^.Color0:=SrcVertex^.Color0;
-    DstStaticVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
-    DstStaticVertex^.Unused0:=0;
-
-   end;
-
-   if fVulkanMorphTargetVertexBufferOffset>=0 then begin
-    for Index:=0 to fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count-1 do begin
-     SrcMorphTargetVertex:=@fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].ItemArray[Index];
-     DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset+Index];
-     DstMorphTargetVertex^:=SrcMorphTargetVertex^;
-     inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
-     if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
-      inc(DstMorphTargetVertex^.Next,fVulkanMorphTargetVertexBufferOffset);
-     end;
-    end;
-   end;
-
-  end;
-
-  TPasMPInterlocked.Write(fHasNewMeshData,TpvUInt32($ffffffff));
-
- end;
-
 end;
 
 procedure TpvScene3D.TGroup.TInstance.LoadData;
@@ -17728,14 +17679,64 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
+var Index:TpvSizeInt;
+    Generation:TpvUInt64;
+    SrcVertex:TpvScene3D.PVertex;
+    DstDynamicVertex:PGPUDynamicVertex;
+    DstStaticVertex:PGPUStaticVertex;
+    SrcMorphTargetVertex,DstMorphTargetVertex:PMorphTargetVertex;
 begin
-
- PostProcessNewMeshData(aInFlightFrameIndex);
 
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
     assigned(fActiveScenes[aInFlightFrameIndex]) and
     not fHeadless then begin
+
+  if (fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]<>fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex]) and
+     (fVulkanVertexBufferOffset>=0) then begin
+
+   fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]:=fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex];
+
+   repeat
+    Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
+   until Generation<>0;
+
+   for Index:=0 to fGroup.fFrameVertices[aInFlightFrameIndex].Count-1 do begin
+
+    SrcVertex:=@fGroup.fFrameVertices[aInFlightFrameIndex].ItemArray[Index];
+
+    DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
+    DstDynamicVertex^.Position:=SrcVertex^.Position;
+    DstDynamicVertex^.Normal:=SrcVertex^.Normal;
+    DstDynamicVertex^.Tangent:=SrcVertex^.Tangent;
+    DstDynamicVertex^.Flags:=SrcVertex^.Flags;
+    DstDynamicVertex^.Generation:=Generation;
+
+    DstStaticVertex:=@fSceneInstance.fVulkanStaticVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
+    DstStaticVertex^.TexCoord0:=SrcVertex^.TexCoord0;
+    DstStaticVertex^.TexCoord1:=SrcVertex^.TexCoord1;
+    DstStaticVertex^.Color0:=SrcVertex^.Color0;
+    DstStaticVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
+    DstStaticVertex^.Unused0:=0;
+
+   end;
+
+   if fVulkanMorphTargetVertexBufferOffset>=0 then begin
+    for Index:=0 to fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count-1 do begin
+     SrcMorphTargetVertex:=@fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].ItemArray[Index];
+     DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset+Index];
+     DstMorphTargetVertex^:=SrcMorphTargetVertex^;
+     inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
+     if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
+      inc(DstMorphTargetVertex^.Next,fVulkanMorphTargetVertexBufferOffset);
+     end;
+    end;
+   end;
+
+  end;
+
+  TPasMPInterlocked.Write(fHasNewMeshData,TpvUInt32($ffffffff));
+
  end;
 
 end;
