@@ -2405,8 +2405,9 @@ type EpvScene3D=class(Exception);
                      fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
                      fUploaded:boolean;
                      fDirtyCounter:TPasMPInt32;
-                     fPrepreparedForUploadMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
-                     fUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                     fPreparedMeshContentGeneration:TpvUInt64;
+                     fFramePreparedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                     fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -2559,7 +2560,7 @@ type EpvScene3D=class(Exception);
               fMeshNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fMeshContentGeneration:TpvUInt64;
               fUpdatedMeshContentGeneration:TpvUInt64;
-              fUpdatedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+              fFrameUpdatedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
               fSkins:TpvScene3D.TGroup.TSkins;
               fSkinNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fLights:TpvScene3D.TGroup.TLights;
@@ -8001,9 +8002,9 @@ begin
 
     for GroupInstance in fSceneInstance.fGroupInstances do begin
 
-     if GroupInstance.fUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex] then begin
+     if GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex] then begin
 
-      GroupInstance.fUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex];
+      GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
 
       if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
@@ -11343,7 +11344,7 @@ begin
  fUpdatedMeshContentGeneration:=High(TpvUInt64)-1;
 
  for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
-  fUpdatedMeshContentGenerations[InFlightFrameIndex]:=High(TpvUInt64)-1;
+  fFrameUpdatedMeshContentGenerations[InFlightFrameIndex]:=High(TpvUInt64)-1;
  end;
 
  fSkins:=TSkins.Create;
@@ -12762,7 +12763,7 @@ begin
   fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
   for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
-   fUpdatedMeshContentGenerations[InFlightFrameIndex]:=fMeshContentGeneration;
+   fFrameUpdatedMeshContentGenerations[InFlightFrameIndex]:=fMeshContentGeneration;
   end;
 
   fReady:=true;
@@ -13633,26 +13634,28 @@ begin
   end;
 
   if Updated then begin
-
    for Instance in fInstances do begin
     for NodeIndex:=0 to length(Instance.fNodes)-1 do begin
      inc(Instance.fNodes[NodeIndex].CacheVerticesGeneration);
     end;
    end;
-
-   if assigned(fFrameVertices[aInFlightFrameIndex]) then begin
-    fFrameVertices[aInFlightFrameIndex].Assign(fVertices);
-   end;
-
-   if assigned(fFrameMorphTargetVertices[aInFlightFrameIndex]) then begin
-    fFrameMorphTargetVertices[aInFlightFrameIndex].Assign(fMorphTargetVertices);
-   end;
-
   end;
 
   fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
-  fUpdatedMeshContentGenerations[aInFlightFrameIndex]:=fUpdatedMeshContentGeneration;
+ end;
+
+ if fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]<>fMeshContentGeneration then begin
+
+  if assigned(fFrameVertices[aInFlightFrameIndex]) then begin
+   fFrameVertices[aInFlightFrameIndex].Assign(fVertices);
+  end;
+
+  if assigned(fFrameMorphTargetVertices[aInFlightFrameIndex]) then begin
+   fFrameMorphTargetVertices[aInFlightFrameIndex].Assign(fMorphTargetVertices);
+  end;
+
+  fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]:=fMeshContentGeneration;
 
  end;
 
@@ -14549,9 +14552,11 @@ begin
  fDuplicatedMaterials:=TpvScene3D.TMaterials.Create;
  fDuplicatedMaterials.OwnsObjects:=false;
 
+ fPreparedMeshContentGeneration:=High(TpvUInt64)-1;
+
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-  fPrepreparedForUploadMeshContentGenerations[Index]:=High(TpvUInt64)-1;
-  fUploadedMeshContentGenerations[Index]:=High(TpvUInt64)-1;
+  fFramePreparedMeshContentGenerations[Index]:=High(TpvUInt64)-1;
+  fFrameUploadedMeshContentGenerations[Index]:=High(TpvUInt64)-1;
  end;
 
  fRenderInstanceLock:=0;
@@ -14895,9 +14900,11 @@ begin
 
  end;
 
+ fPreparedMeshContentGeneration:=fGroup.fUpdatedMeshContentGeneration;
+
  for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
-  fPrepreparedForUploadMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
-  fUploadedMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
+  fFramePreparedMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
+  fFrameUploadedMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
  end;
 
  fScenes:=TpvScene3D.TGroup.TInstance.TScenes.Create;
@@ -17689,7 +17696,7 @@ begin
     assigned(fActiveScenes[aInFlightFrameIndex]) and
     not fHeadless then begin
 
-  if (fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]<>fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex]) and
+  if (fPreparedMeshContentGeneration<>fGroup.fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]) and
      (fVulkanVertexBufferOffset>=0) then begin
 
    repeat
@@ -17728,9 +17735,11 @@ begin
     end;
    end;
 
-   fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]:=fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex];
+   fPreparedMeshContentGeneration:=fGroup.fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex];
 
   end;
+
+  fFramePreparedMeshContentGenerations[aInFlightFrameIndex]:=fPreparedMeshContentGeneration;
 
  end;
 
