@@ -1769,6 +1769,7 @@ type EpvScene3D=class(Exception);
                                    fMorphTargetBaseIndex:TpvSizeUInt;
                                    fStartBufferVertexOffset:TpvSizeUInt;
                                    fStartBufferIndexOffset:TpvSizeUInt;
+                                   fGeneration:TpvUInt64;
                                   published
                                    property MorphTargetBaseIndex:TpvSizeUInt read fMorphTargetBaseIndex write fMorphTargetBaseIndex;
                                    property StartBufferVertexOffset:TpvSizeUInt read fStartBufferVertexOffset write fStartBufferVertexOffset;
@@ -1818,9 +1819,11 @@ type EpvScene3D=class(Exception);
                      fWeights:TpvScene3D.TFloatDynamicArrayList;
                      fReady:TPasMPBool32;
                      fGeneration:TpvUInt64;
+                     fUpdatedGeneration:TpvUInt64;
                      fNodeMeshInstances:TpvSizeInt;
                      fReferencedByNodes:TpvScene3D.TGroup.TMesh.TReferencedByNodes;
                      function CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
+                     procedure UpdateNodeMeshInstances;
                     public
                      constructor Create(const aGroup:TGroup;const aIndex:TpvSizeInt=-1); reintroduce;
                      destructor Destroy; override;
@@ -9213,6 +9216,7 @@ begin
  fPrimitives:=TpvScene3D.TGroup.TMesh.TPrimitives.Create(true);
  fNodeMeshInstances:=0;
  fGeneration:=0;
+ fUpdatedGeneration:=High(TpvUInt64)-1;
  fReady:=false;
  fReferencedByNodes:=TpvScene3D.TGroup.TMesh.TReferencedByNodes.Create;
 end;
@@ -9713,9 +9717,11 @@ begin
 
    NodeMeshPrimitiveInstance:=TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance.Create;
    try
+
     NodeMeshPrimitiveInstance.fMorphTargetBaseIndex:=Primitive.fMorphTargetBaseIndex;
     NodeMeshPrimitiveInstance.fStartBufferVertexOffset:=Primitive.fStartBufferVertexOffset;
     NodeMeshPrimitiveInstance.fStartBufferIndexOffset:=Primitive.fStartBufferIndexOffset;
+
     for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
      Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
      Vertex^.NodeIndex:=aNodeIndex+1;
@@ -9734,6 +9740,7 @@ begin
        end;
       end;
      end;
+
      if (Vertex^.JointBlockBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.CountJointBlocks>0) then begin
       for JointBlockIndex:=0 to TpvSizeInt(Vertex^.CountJointBlocks)-1 do begin
        NewJointBlockIndex:=Vertex^.JointBlockBaseIndex+JointBlockIndex;
@@ -9749,6 +9756,9 @@ begin
       Vertex^.CountJointBlocks:=0;
      end;
     end;
+
+    NodeMeshPrimitiveInstance.fGeneration:=fGeneration;
+
    finally
     Primitive.fNodeMeshPrimitiveInstances.Add(NodeMeshPrimitiveInstance);
    end;
@@ -9828,11 +9838,90 @@ begin
      fGroup.fIndices.Add((fGroup.fIndices.Items[IndexIndex]-Primitive.fStartBufferVertexOffset)+NodeMeshPrimitiveInstance.fStartBufferVertexOffset);
     end;
 
+    NodeMeshPrimitiveInstance.fGeneration:=fGeneration;
+
    finally
     Primitive.fNodeMeshPrimitiveInstances.Add(NodeMeshPrimitiveInstance);
    end;
 
   end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.TGroup.TMesh.UpdateNodeMeshInstances;
+var PrimitiveIndex,VertexIndex:TpvSizeInt;
+    OriginalMorphTargetVertexIndex,
+    MorphTargetVertexIndex,
+    MaterialID:TpvUInt32;
+    Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    NodeMeshPrimitiveInstance:TpvScene3D.TGroup.TMesh.TPrimitive.TNodeMeshPrimitiveInstance;
+    OriginalVertex,Vertex:PVertex;
+    OriginalMorphTargetVertex,
+    MorphTargetVertex:PMorphTargetVertex;
+begin
+
+ if fUpdatedGeneration<>fGeneration then begin
+
+  for PrimitiveIndex:=0 to fPrimitives.Count-1 do begin
+
+   Primitive:=fPrimitives[PrimitiveIndex];
+
+   MaterialID:=Primitive.fMaterialID+1; // +1 because 0 = empty material
+
+   for NodeMeshPrimitiveInstance in Primitive.fNodeMeshPrimitiveInstances do begin
+
+    if NodeMeshPrimitiveInstance.fGeneration<>fGeneration then begin
+
+     if NodeMeshPrimitiveInstance.fStartBufferVertexOffset<>Primitive.fStartBufferVertexOffset then begin
+
+      for VertexIndex:=0 to TpvSizeInt(Primitive.fCountVertices)-1 do begin
+
+       OriginalVertex:=@fGroup.fVertices.ItemArray[Primitive.fStartBufferVertexOffset+VertexIndex];
+
+       Vertex:=@fGroup.fVertices.ItemArray[NodeMeshPrimitiveInstance.fStartBufferVertexOffset+VertexIndex];
+
+       Vertex^.Position:=OriginalVertex^.Position;
+       Vertex^.Normal:=OriginalVertex^.Normal;
+       Vertex^.TexCoord0:=OriginalVertex^.TexCoord0;
+       Vertex^.TexCoord1:=OriginalVertex^.TexCoord1;
+       Vertex^.Color0:=OriginalVertex^.Color0;
+       Vertex^.Flags:=OriginalVertex^.Flags;
+
+       Vertex^.MaterialID:=MaterialID;
+
+       if (OriginalVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) then begin
+        OriginalMorphTargetVertexIndex:=OriginalVertex^.MorphTargetVertexBaseIndex;
+        MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+        while (OriginalMorphTargetVertexIndex<>TpvUInt32($ffffffff)) and (MorphTargetVertexIndex<>TpvUInt32($ffffffff)) do begin
+         OriginalMorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[OriginalMorphTargetVertexIndex];
+         MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+         MorphTargetVertex^.Position:=OriginalMorphTargetVertex^.Position;
+         MorphTargetVertex^.Normal:=OriginalMorphTargetVertex^.Normal;
+         MorphTargetVertex^.Tangent:=OriginalMorphTargetVertex^.Tangent;
+         if (OriginalMorphTargetVertex^.Next=TpvUInt32($ffffffff)) or (MorphTargetVertex^.Next=TpvUInt32($ffffffff)) then begin
+          break;
+         end else begin
+          OriginalMorphTargetVertexIndex:=OriginalMorphTargetVertex^.Next;
+          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+         end;
+        end;
+       end;
+
+      end;
+
+     end;
+
+     NodeMeshPrimitiveInstance.fGeneration:=fGeneration;
+
+    end;
+
+   end;
+
+  end;
+
+  fUpdatedGeneration:=fGeneration;
 
  end;
 
