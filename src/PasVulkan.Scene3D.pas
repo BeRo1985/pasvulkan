@@ -1453,7 +1453,7 @@ type EpvScene3D=class(Exception);
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
               function Check:Boolean;
-              procedure Update;
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure UpdateReleaseFrameCounter;
             end;
             TVulkanLongTermStaticBufferDataArray=array[0..MaxInFlightFrames-1] of TVulkanLongTermStaticBufferData;
@@ -1467,7 +1467,7 @@ type EpvScene3D=class(Exception);
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
-              procedure Update;
+              procedure Update(const aInFlightFrameIndex:TpvSizeInt);
              published
               property BufferData:TVulkanLongTermStaticBufferData read fBufferData;
             end;
@@ -1512,6 +1512,7 @@ type EpvScene3D=class(Exception);
                    TMesh=class;
                    TScene=class;
                    TGroupVertices=TpvDynamicArrayList<TVertex>;
+                   TFrameGroupVertices=array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TGroupVertices;
                    TGroupIndices=TpvDynamicArrayList<TVkUInt32>;
                    TGroupJointBlocks=TpvDynamicArrayList<TJointBlock>;
                    TMorphTargetShaderStorageBufferObject=record
@@ -2382,7 +2383,7 @@ type EpvScene3D=class(Exception);
                      fPreviousActive:boolean;
                      fUseRenderInstances:boolean;
                      fIsNewInstance:TPasMPBool32;
-                     fHasNewMeshData:TPasMPBool32;
+                     fHasNewMeshData:TPasMPUInt32;
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
                      fDuplicatedMaterials:TpvScene3D.TMaterials;
@@ -2405,7 +2406,7 @@ type EpvScene3D=class(Exception);
                      fOnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter;
                      fUploaded:boolean;
                      fDirtyCounter:TPasMPInt32;
-                     fUploadedMeshContentGeneration:TpvUInt64;
+                     fUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -2447,7 +2448,7 @@ type EpvScene3D=class(Exception);
                      function GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
                      procedure SetScene(const aScene:TpvSizeInt);
                      function GetScene:TpvScene3D.TGroup.TScene;
-                     procedure PrepareUploadNewMeshData;
+                     procedure PostProcessNewMeshData(const aInFlightFrameIndex:TpvSizeInt);
                      procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
                      procedure PreparePerInFlightFrameRenderInstances(const aInFlightFrameIndex:TpvSizeInt;
                                                                       const aRenderPassIndex:TpvSizeInt;
@@ -2569,12 +2570,14 @@ type EpvScene3D=class(Exception);
               fSceneNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fScene:TpvScene3D.TGroup.TScene;
               fVertices:TpvScene3D.TGroup.TGroupVertices;
+              fFrameVertices:TpvScene3D.TGroup.TFrameGroupVertices;
               fIndices:TpvScene3D.TGroup.TGroupIndices;
               fDrawChoreographyBatchCondensedIndices:TpvScene3D.TGroup.TGroupIndices;
               fDrawChoreographyBatchCondensedUniqueIndices:TpvScene3D.TGroup.TGroupIndices;
               fJointBlocks:TpvScene3D.TGroup.TGroupJointBlocks;
               fJointBlockOffsets:TSizeIntDynamicArrayEx;
               fMorphTargetVertices:TpvScene3D.TMorphTargetVertexDynamicArrayList;
+              fFrameMorphTargetVertices:array[0..MaxInFlightFrames-1] of TpvScene3D.TMorphTargetVertexDynamicArrayList;
               fMorphTargetCount:TpvSizeInt;
               fCountNodeWeights:TpvSizeInt;
               fCountJointNodeMatrices:TpvSizeInt;
@@ -2671,6 +2674,7 @@ type EpvScene3D=class(Exception);
               property BoundingBox:TpvAABB read fBoundingBox;
              public
               property Vertices:TpvScene3D.TGroup.TGroupVertices read fVertices;
+              property FrameVertices:TpvScene3D.TGroup.TFrameGroupVertices read fFrameVertices;
               property Indices:TpvScene3D.TGroup.TGroupIndices read fIndices;
               property MorphTargetVertices:TpvScene3D.TMorphTargetVertexDynamicArrayList read fMorphTargetVertices;
              public
@@ -7652,7 +7656,7 @@ begin
           (assigned(fVulkanJointBlockBuffer) and ((Max(1,fSceneInstance.fVulkanJointBlockBufferData.Count)*SizeOf(TJointBlock))<=fVulkanJointBlockBuffer.Size)));
 end;
 
-procedure TpvScene3D.TVulkanLongTermStaticBufferData.Update;
+procedure TpvScene3D.TVulkanLongTermStaticBufferData.Update(const aInFlightFrameIndex:TpvSizeInt);
 var GroupInstance:TpvScene3D.TGroup.TInstance;
 begin
 
@@ -7850,7 +7854,7 @@ begin
     try
      for GroupInstance in fSceneInstance.fNewInstances do begin
       TPasMPInterlocked.Write(GroupInstance.fIsNewInstance,TPasMPBool32(false));
-      TPasMPInterlocked.Write(GroupInstance.fHasNewMeshData,TPasMPBool32(false));
+      TPasMPInterlocked.Write(GroupInstance.fHasNewMeshData,0);
      end;
     finally
      fSceneInstance.fNewInstances.Clear;
@@ -7921,7 +7925,7 @@ begin
 
       if TPasMPInterlocked.CompareExchange(GroupInstance.fIsNewInstance,TPasMPBool32(false),TPasMPBool32(true)) then begin
 
-       GroupInstance.fHasNewMeshData:=false;
+       TPasMPInterlocked.BitwiseAnd(GroupInstance.fHasNewMeshData,not (TpvUInt32(1) shl aInFlightFrameIndex));
 
        if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
@@ -8000,7 +8004,9 @@ begin
 
     for GroupInstance in fSceneInstance.fGroupInstances do begin
 
-     if TPasMPInterlocked.CompareExchange(GroupInstance.fHasNewMeshData,TPasMPBool32(false),TPasMPBool32(true)) then begin
+     if (GroupInstance.fHasNewMeshData and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
+
+      TPasMPInterlocked.BitwiseAnd(GroupInstance.fHasNewMeshData,not (TpvUInt32(1) shl aInFlightFrameIndex));
 
       if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
@@ -8087,7 +8093,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TVulkanLongTermStaticBuffers.Update;
+procedure TpvScene3D.TVulkanLongTermStaticBuffers.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Index:TpvSizeInt;
 begin
  if not fBufferDataArray[fCurrentIndex].Check then begin
@@ -8097,7 +8103,7 @@ begin
   end;
  end;
  fBufferData:=fBufferDataArray[fCurrentIndex];
- fBufferData.Update;
+ fBufferData.Update(aInFlightFrameIndex);
  for Index:=0 to MaxInFlightFrames-1 do begin
   if Index<>fCurrentIndex then begin
    fBufferDataArray[Index].UpdateReleaseFrameCounter;
@@ -11287,6 +11293,7 @@ end;
 { TpvScene3D.TGroup }
 
 constructor TpvScene3D.TGroup.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil);
+var InFlightFrameIndex:TpvSizeInt;
 begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
@@ -11356,6 +11363,10 @@ begin
 
  fVertices:=TpvScene3D.TGroup.TGroupVertices.Create;
 
+ for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  fFrameVertices[InFlightFrameIndex]:=TpvScene3D.TGroup.TGroupVertices.Create;
+ end;
+
  fIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
  fDrawChoreographyBatchCondensedIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
@@ -11365,6 +11376,10 @@ begin
  fMorphTargetVertices:=TpvScene3D.TMorphTargetVertexDynamicArrayList.Create;
 
  fMorphTargetVertices.Clear;
+
+ for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  fFrameMorphTargetVertices[InFlightFrameIndex]:=TpvScene3D.TMorphTargetVertexDynamicArrayList.Create;
+ end;
 
  fMorphTargetCount:=0;
 
@@ -11426,7 +11441,8 @@ begin
 end;
 
 destructor TpvScene3D.TGroup.Destroy;
-var Material:TpvScene3D.TMaterial;
+var InFlightFrameIndex:TpvInt32;
+    Material:TpvScene3D.TMaterial;
 begin
 
  Unload;
@@ -11518,6 +11534,14 @@ begin
  FreeAndNil(fIndices);
 
  FreeAndNil(fVertices);
+
+ for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  FreeAndNil(fFrameVertices[InFlightFrameIndex]);
+ end;
+
+ for InFlightFrameIndex:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  FreeAndNil(fFrameMorphTargetVertices[InFlightFrameIndex]);
+ end;
 
  FreeAndNil(fMorphTargetVertices);
 
@@ -13601,13 +13625,19 @@ begin
    end;
   end;
 
-  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
-
   if Updated then begin
-   for Instance in fInstances do begin
-    Instance.PrepareUploadNewMeshData;
+
+   if assigned(fFrameVertices[aInFlightFrameIndex]) then begin
+    fFrameVertices[aInFlightFrameIndex].Assign(fVertices);
    end;
+
+   if assigned(fFrameMorphTargetVertices[aInFlightFrameIndex]) then begin
+    fFrameMorphTargetVertices[aInFlightFrameIndex].Assign(fMorphTargetVertices);
+   end;
+
   end;
+
+  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
 
  end;
 
@@ -14504,7 +14534,9 @@ begin
  fDuplicatedMaterials:=TpvScene3D.TMaterials.Create;
  fDuplicatedMaterials.OwnsObjects:=false;
 
- fUploadedMeshContentGeneration:=High(TpvUInt64)-1;
+ for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
+  fUploadedMeshContentGenerations[Index]:=High(TpvUInt64)-1;
+ end;
 
  fRenderInstanceLock:=0;
 
@@ -14693,7 +14725,7 @@ begin
 
  SetLength(fCacheVerticesNodeDirtyBitmap,((length(fNodes)+31) shr 5)+1);
 
- fHasNewMeshData:=false;
+ fHasNewMeshData:=0;
 
  fOnNodeFilter:=nil;
 
@@ -14849,7 +14881,9 @@ begin
 
  end;
 
- fUploadedMeshContentGeneration:=fGroup.fUpdatedMeshContentGeneration;
+ for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
+  fUploadedMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
+ end;
 
  fScenes:=TpvScene3D.TGroup.TInstance.TScenes.Create;
  fScenes.OwnsObjects:=true;
@@ -15145,7 +15179,7 @@ begin
  end;
 end;
 
-procedure TpvScene3D.TGroup.TInstance.PrepareUploadNewMeshData;
+procedure TpvScene3D.TGroup.TInstance.PostProcessNewMeshData(const aInFlightFrameIndex:TpvSizeInt);
 var Index:TpvSizeInt;
     Generation:TpvUInt64;
     SrcVertex:TpvScene3D.PVertex;
@@ -15156,17 +15190,18 @@ begin
 
  if not fHeadless then begin
 
-  if fUploadedMeshContentGeneration<>fGroup.fUpdatedMeshContentGeneration then begin
+  if (fUploadedMeshContentGenerations[aInFlightFrameIndex]<>fGroup.fUpdatedMeshContentGeneration) and
+     (fVulkanVertexBufferOffset>=0) then begin
 
-   fUploadedMeshContentGeneration:=fGroup.fUpdatedMeshContentGeneration;
+   fUploadedMeshContentGenerations[aInFlightFrameIndex]:=fGroup.fUpdatedMeshContentGeneration;
 
    repeat
     Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
    until Generation<>0;
 
-   for Index:=0 to fGroup.fVertices.Count-1 do begin
+   for Index:=0 to fGroup.fFrameVertices[aInFlightFrameIndex].Count-1 do begin
 
-    SrcVertex:=@fGroup.fVertices.ItemArray[Index];
+    SrcVertex:=@fGroup.fFrameVertices[aInFlightFrameIndex].ItemArray[Index];
 
     DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
     DstDynamicVertex^.Position:=SrcVertex^.Position;
@@ -15184,19 +15219,21 @@ begin
 
    end;
 
-   for Index:=0 to fGroup.fMorphTargetVertices.Count-1 do begin
-    SrcMorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[Index];
-    DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset+Index];
-    DstMorphTargetVertex^:=SrcMorphTargetVertex^;
-    inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
-    if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
-     inc(DstMorphTargetVertex^.Next,fVulkanMorphTargetVertexBufferOffset);
+   if fVulkanMorphTargetVertexBufferOffset>=0 then begin
+    for Index:=0 to fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count-1 do begin
+     SrcMorphTargetVertex:=@fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].ItemArray[Index];
+     DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset+Index];
+     DstMorphTargetVertex^:=SrcMorphTargetVertex^;
+     inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
+     if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
+      inc(DstMorphTargetVertex^.Next,fVulkanMorphTargetVertexBufferOffset);
+     end;
     end;
    end;
 
   end;
 
-  TPasMPInterlocked.Write(fHasNewMeshData,TPasMPBool32(true));
+  TPasMPInterlocked.Write(fHasNewMeshData,TpvUInt32($ffffffff));
 
  end;
 
@@ -17685,11 +17722,15 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
 begin
+
+ PostProcessNewMeshData(aInFlightFrameIndex);
+
  if (aInFlightFrameIndex>=0) and
     fActives[aInFlightFrameIndex] and
     assigned(fActiveScenes[aInFlightFrameIndex]) and
     not fHeadless then begin
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.GetBakedMeshProcessMorphSkinNode(const aBakedMesh:TpvScene3D.TBakedMesh;
@@ -20396,7 +20437,7 @@ begin
   end;
 
   begin
-   fVulkanLongTermStaticBuffers.Update;
+   fVulkanLongTermStaticBuffers.Update(aInFlightFrameIndex);
    fVulkanShortTermDynamicBuffers.Update(aInFlightFrameIndex);
   end;
 

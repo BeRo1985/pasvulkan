@@ -1264,8 +1264,10 @@ procedure TpvDynamicArrayList<T>.Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynam
 var Index:TpvSizeInt;
 begin
  fCount:=aFrom.fCount;
- fAllocated:=fCount;
- SetLength(fItems,fCount);
+ if fAllocated<fCount then begin
+  fAllocated:=fCount;
+  SetLength(fItems,fCount);
+ end;
  for Index:=0 to fCount-1 do begin
   fItems[Index]:=aFrom.fItems[Index];
  end;
