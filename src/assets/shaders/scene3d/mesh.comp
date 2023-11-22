@@ -107,6 +107,7 @@ layout(set = 1, binding = 4, std430) buffer OutRayTracingVertices {
 
 /* clang-format on */
 
+// Octahedron normal vector decoding
 vec3 octDecode(vec2 oct) {
   vec3 v = vec3(oct.xy, 1.0 - (abs(oct.x) + abs(oct.y)));
   if (v.z < 0.0) {
@@ -124,6 +125,7 @@ void main() {
 
     {
 
+      // Read vertex data
       InPackedVertex inPackedVertex = inVertices[vertexIndex];
       const vec3 inPosition = uintBitsToFloat(inPackedVertex.positionMorphTargetVertexBaseIndex.xyz);
       const uint inMorphTargetVertexBaseIndex = inPackedVertex.positionMorphTargetVertexBaseIndex.w;
@@ -136,12 +138,15 @@ void main() {
       const uint inFlags = inPackedVertex.normalTangentFlagsGeneration.z;
       const uint inGeneration = inPackedVertex.normalTangentFlagsGeneration.w;
 
+      // Get node matrix
       mat4 nodeMatrix = nodeMatrices[inNodeIndex];
 
+      // Get model node matrix and multiply it with the node matrix
       mat4 modelNodeMatrix = nodeMatrices[inRootNode] * nodeMatrix;
 	  
       vec3 position = inPosition;
 
+      // Decode tangent space
       mat3 tangentSpace;
       {
         vec3 tangent = octDecode(inTangent);
@@ -150,6 +155,7 @@ void main() {
       }
       // mat3 tangentSpace = mat3(inTangent.xyz, cross(inTangent.xyz, inNormal) * inTangent.w, inNormal);
 
+      // Process morph target vertices (a linked list of morph target vertices)
       if (inMorphTargetVertexBaseIndex != 0xffffffffu) {
         vec4 normal = vec4(tangentSpace[2], 0.0f);
         vec4 tangent = vec4(tangentSpace[0], sign(dot(cross(tangentSpace[2], tangentSpace[0]), tangentSpace[1])));
@@ -168,6 +174,7 @@ void main() {
         tangentSpace = mat3(tangent.xyz, normalize(cross(normal.xyz, tangent.xyz) * tangent.w), normal.xyz);
       }
 
+      // Process joints (an array list of joint blocks with 4 joints and 4 weights each)  
       if (inCountJointBlocks > 0u) {
         mat4 inverseNodeMatrix = inverse(nodeMatrix);
         mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -186,13 +193,17 @@ void main() {
         modelNodeMatrix *= skinMatrix;
       }
 
+      // Construct normal matrix
       mat3 normalMatrix = transpose(inverse(mat3(modelNodeMatrix)));
 
+      // Transform tangent space
       tangentSpace = normalMatrix * tangentSpace;
 
+      // Transform position
       vec4 p = modelNodeMatrix * vec4(position.xyz, 1.0);
       position = p.xyz / p.w;
 
+      // Write out vertex data
       {
 	  
         vec3 tangent = normalize(tangentSpace[0]);
