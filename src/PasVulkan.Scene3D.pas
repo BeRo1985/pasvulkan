@@ -2383,7 +2383,6 @@ type EpvScene3D=class(Exception);
                      fPreviousActive:boolean;
                      fUseRenderInstances:boolean;
                      fIsNewInstance:TPasMPBool32;
-                     fHasNewMeshData:TPasMPUInt32;
                      fScene:TPasGLTFSizeInt;
                      fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
                      fDuplicatedMaterials:TpvScene3D.TMaterials;
@@ -2407,6 +2406,7 @@ type EpvScene3D=class(Exception);
                      fUploaded:boolean;
                      fDirtyCounter:TPasMPInt32;
                      fPrepreparedForUploadMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                     fUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -7854,7 +7854,6 @@ begin
     try
      for GroupInstance in fSceneInstance.fNewInstances do begin
       TPasMPInterlocked.Write(GroupInstance.fIsNewInstance,TPasMPBool32(false));
-      TPasMPInterlocked.Write(GroupInstance.fHasNewMeshData,0);
      end;
     finally
      fSceneInstance.fNewInstances.Clear;
@@ -7924,8 +7923,6 @@ begin
      for GroupInstance in fSceneInstance.fNewInstances do begin
 
       if TPasMPInterlocked.CompareExchange(GroupInstance.fIsNewInstance,TPasMPBool32(false),TPasMPBool32(true)) then begin
-
-       TPasMPInterlocked.BitwiseAnd(GroupInstance.fHasNewMeshData,not (TpvUInt32(1) shl aInFlightFrameIndex));
 
        if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
@@ -8004,9 +8001,9 @@ begin
 
     for GroupInstance in fSceneInstance.fGroupInstances do begin
 
-     if (GroupInstance.fHasNewMeshData and (TpvUInt32(1) shl aInFlightFrameIndex))<>0 then begin
+     if GroupInstance.fUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex] then begin
 
-      TPasMPInterlocked.BitwiseAnd(GroupInstance.fHasNewMeshData,not (TpvUInt32(1) shl aInFlightFrameIndex));
+      GroupInstance.fUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex];
 
       if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
@@ -14554,6 +14551,7 @@ begin
 
  for Index:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
   fPrepreparedForUploadMeshContentGenerations[Index]:=High(TpvUInt64)-1;
+  fUploadedMeshContentGenerations[Index]:=High(TpvUInt64)-1;
  end;
 
  fRenderInstanceLock:=0;
@@ -14743,8 +14741,6 @@ begin
 
  SetLength(fCacheVerticesNodeDirtyBitmap,((length(fNodes)+31) shr 5)+1);
 
- fHasNewMeshData:=0;
-
  fOnNodeFilter:=nil;
 
  if not aHeadless then begin
@@ -14901,6 +14897,7 @@ begin
 
  for Index:=0 to fSceneInstance.CountInFlightFrames-1 do begin
   fPrepreparedForUploadMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
+  fUploadedMeshContentGenerations[Index]:=fGroup.fUpdatedMeshContentGeneration;
  end;
 
  fScenes:=TpvScene3D.TGroup.TInstance.TScenes.Create;
@@ -17695,8 +17692,6 @@ begin
   if (fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]<>fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex]) and
      (fVulkanVertexBufferOffset>=0) then begin
 
-   fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]:=fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex];
-
    repeat
     Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
    until Generation<>0;
@@ -17733,9 +17728,9 @@ begin
     end;
    end;
 
-  end;
+   fPrepreparedForUploadMeshContentGenerations[aInFlightFrameIndex]:=fGroup.fUpdatedMeshContentGenerations[aInFlightFrameIndex];
 
-  TPasMPInterlocked.Write(fHasNewMeshData,TpvUInt32($ffffffff));
+  end;
 
  end;
 
