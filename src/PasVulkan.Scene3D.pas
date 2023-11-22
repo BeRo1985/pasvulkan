@@ -13610,7 +13610,8 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.Update(const aInFlightFrameIndex:TpvSizeInt);
-var Instance:TpvScene3D.TGroup.TInstance;
+var NodeIndex:TpvSizeInt;
+    Instance:TpvScene3D.TGroup.TInstance;
     Mesh:TpvScene3D.TGroup.TMesh;
     Updated:boolean;
 begin
@@ -13626,6 +13627,12 @@ begin
   end;
 
   if Updated then begin
+
+   for Instance in fInstances do begin
+    for NodeIndex:=0 to length(Instance.fNodes)-1 do begin
+     inc(Instance.fNodes[NodeIndex].CacheVerticesGeneration);
+    end;
+   end;
 
    if assigned(fFrameVertices[aInFlightFrameIndex]) then begin
     fFrameVertices[aInFlightFrameIndex].Assign(fVertices);
