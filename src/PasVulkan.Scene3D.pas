@@ -7863,6 +7863,17 @@ begin
     fSceneInstance.fNewInstanceListLock.Release;
    end;
 
+   fSceneInstance.fGroupInstanceListLock.Acquire;
+   try
+    for GroupInstance in fSceneInstance.fGroupInstances do begin
+     if GroupInstance.fGroup.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+      GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
+     end;
+    end;
+   finally
+    fSceneInstance.fGroupInstanceListLock.Release;
+   end;
+
    begin
 
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
@@ -7985,6 +7996,8 @@ begin
                                                           GroupInstance.fVulkanJointBlockBufferCount*SizeOf(TJointBlock));
        end;
 
+       GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
+
       end;
 
      end;
@@ -8002,7 +8015,8 @@ begin
 
     for GroupInstance in fSceneInstance.fGroupInstances do begin
 
-     if GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex] then begin
+     if (GroupInstance.fGroup.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and
+        (GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex]) then begin
 
       GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
 
