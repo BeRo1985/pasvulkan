@@ -85,8 +85,9 @@ type { TpvFibonacciSphere }
               Equirectangular,            // Equirectangular projection mapping
               CylindricalEqualArea,       // Lambert cylindrical equal-area projection mapping
               Octahedral,                 // Octahedral projection mapping
-              WebMercator,                // Google's Web Mercator projection
-              Spherical                   // The GL_SPHERE_MAP projection from old OpenGL times 
+              WebMercator,                // Web Mercator projection
+              Spherical,                  // The GL_SPHERE_MAP projection from old OpenGL times 
+              HEALPix                     // Hierarchical Equal Area isoLatitude Pixelization of a sphere
              );
             { TVector }
             TVector=record
@@ -139,6 +140,32 @@ type { TpvFibonacciSphere }
      end;
 
 implementation
+
+function DirectionToHEALPix(const aDirection:TpvVector3):TpvVector2;
+const Phi0=0.729727656226966363; // ArcSin(2.0/3.0)
+      PImul3Over8=1.178097245096172464; // PI*3.0/8.0
+      OneOverPI=0.3183098861837906715; // 1.0/PI
+      HalfPI=1.570796326794896619; // PI/2.0
+      FORTPI=0.7853981633974483096; // PI/4.0                   
+var LongitudeLatitude:TpvVector2;
+    Lam,Phi,LamC,Sigma:TpvDouble;
+    CN:TpvInt32;
+begin
+ LongitudeLatitude.x:=ArcTan2(aDirection.z,aDirection.x);
+ LongitudeLatitude.y:=ArcSin(aDirection.y);
+ Lam:=LongitudeLatitude.x;
+ Phi:=LongitudeLatitude.y;
+ if abs(Phi)<=Phi0 then begin
+  result.x:=Lam;
+  result.y:=PImul3Over8*sin(Phi);
+ end else begin
+  Sigma:=sqrt((1.0-abs(sin(Phi)))*3.0);
+  CN:=Min(Floor(((Lam*2.0)*OneOverPI)+2.0),3);
+  LamC:=((-3.0)*FORTPI)+(CN*HalfPI);    
+  result.x:=(LamC*(1.0-Sigma))+(Lam*Sigma);
+  result.y:=Sign(Phi)*FORTPI*(2.0-Sigma);
+ end;
+end;                
 
 { TpvFibonacciSphere.TVector }
 
@@ -322,7 +349,10 @@ begin
       Vertex^.TexCoord:=TpvVector2.Create((WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
      end;
      TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
-      Vertex^.TexCoord:=(TpvVector2.InlineableCreate(Vector.xz)/(TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0))+TpvVector2.InlineableCreate(0.5,0.5);
+      Vertex^.TexCoord:=(TpvVector2.InlineableCreate(Vector.x,Vector.z)/(TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0))+TpvVector2.InlineableCreate(0.5,0.5);
+     end;
+     TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
+      Vertex^.TexCoord:=DirectionToHEALPix(TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z));
      end;
      else begin
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
