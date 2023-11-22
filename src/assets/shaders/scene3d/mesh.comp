@@ -86,7 +86,7 @@ layout(set = 0, binding = 3, std430) buffer JointBlocks {
 
 layout(set = 1, binding = 0, std430) buffer OutVertices {
   OutPackedVertex outVertices[]; // In the dynamic descriptor set, since for to get the velocity vectors we need also to know the previous frame's vertex positions,
-};                               //  especially for animated vertices and the like, where simple MVP matrix reprojections are not enough.  
+};                               // especially for animated vertices and the like, where simple MVP matrix reprojections are not enough.  
 
 layout(set = 1, binding = 1, std430) buffer OutGenerations {
   uint outGenerations[]; // In the dynamic descriptor set, because we need to know the previous frame's generation to avoid wrong velocity vectors at new vertices.
