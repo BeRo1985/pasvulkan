@@ -13532,7 +13532,14 @@ end;
 
 procedure TpvScene3D.TGroup.Update(const aInFlightFrameIndex:TpvSizeInt);
 var Instance:TpvScene3D.TGroup.TInstance;
+    Mesh:TpvScene3D.TGroup.TMesh;
 begin
+ if fUpdatedMeshContentGeneration<>fMeshContentGeneration then begin
+  for Mesh in fMeshes do begin
+   Mesh.UpdateNodeMeshInstances;
+  end;
+  fUpdatedMeshContentGeneration:=fMeshContentGeneration;
+ end;
  for Instance in fInstances do begin
   Instance.Update(aInFlightFrameIndex);
  end;
