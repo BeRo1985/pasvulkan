@@ -2554,6 +2554,8 @@ type EpvScene3D=class(Exception);
               fCameraNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fMeshes:TpvScene3D.TGroup.TMeshes;
               fMeshNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fMeshContentGeneration:TpvUInt64;
+              fUpdatedMeshContentGeneration:TpvUInt64;
               fSkins:TpvScene3D.TGroup.TSkins;
               fSkinNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
               fLights:TpvScene3D.TGroup.TLights;
@@ -9676,6 +9678,8 @@ begin
 
  TPasMPInterlocked.Increment(fGeneration);
 
+ TPasMPInterlocked.Increment(fGroup.fMeshContentGeneration);
+
 end;
 
 function TpvScene3D.TGroup.TMesh.CreateNodeMeshInstance(const aNodeIndex,aWeightsOffset,aJointNodeOffset:TpvUInt32):TpvSizeInt;
@@ -11276,6 +11280,10 @@ begin
  fMeshes.OwnsObjects:=true;
 
  fMeshNameIndexHashMap:=TNameIndexHashMap.Create(-1);
+
+ fMeshContentGeneration:=0;
+
+ fUpdatedMeshContentGeneration:=High(TpvUInt64)-1;
 
  fSkins:=TSkins.Create;
  fSkins.OwnsObjects:=true;
