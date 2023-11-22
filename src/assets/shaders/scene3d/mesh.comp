@@ -34,10 +34,24 @@ struct MorphTargetVertex {
    vec4 position;
    vec4 normal;
    vec4 tangent;
-   uvec4 metaData; // x = index, y = next
+   uvec4 metaData; // x = index, y = next, zw = unused 
 };
 
-// Static descriptor set
+// Static descriptor set. Explanation:
+//   1. Contains data resources primarily processed on or by the GPU itself, without continuous streaming
+//      from the CPU. However, the CPU can still update these resources from time to time, not every frame.
+//      The updates are done in a way that the GPU doesn’t have to wait for the CPU to finish, by updating
+//      only the data ranges not currently used by the GPU at the time of the update. For example by 
+//      reusing data ranges, which were used by old deleted objects, for new objects, since buffers can 
+//      always only grow in size, never shrink, in this implementation.   
+//   2. Unlike dynamic resources, these do not change with every frame.
+//   3. Resource reallocations is triggered by buffer size changes and the like. 
+//      In such cases, new larger buffers are allocated along with a new revamped static descriptor set,
+//      while the GPU is still working on the current frame with the old static descriptor set, which
+//      will be delayed-destroyed once the GPU is done with it, together with the old buffers. 
+//      This new static descriptor set is then used for all subsequent frames until the next buffer size change.
+//   4. This allows the GPU to continue working on the current frame, while the CPU prepares the new static 
+//      descriptor set and buffers for upcoming frames.
 
 layout(set = 0, binding = 0, std430) buffer InVertices {
   InPackedVertex inVertices[];
@@ -60,29 +74,36 @@ layout(set = 0, binding = 3, std430) buffer JointBlocks {
   JointBlock jointBlocks[];
 };
 
-// Dynamic descriptor set
+// Dynamic descriptor set. Explanation:
+//   1. Contains data resources that are streamed from the CPU to the GPU every frame, or, which are highly 
+//      per-frame-dependent, even on GPU side, for example for differentiating between temporal data.
+//   2. These resources change with every frame, in contrast to the static set.
+//   3. Utilizes in-flight-frame-wise buffering, often double or triple buffered, but never more than that, 
+//      but also never less than that, to avoid CPU-GPU synchronization stalls, and because the current
+//      mesh data pipeline implementation requires at least double buffering, for velocity vectors and
+//      the like, which are temporally dependent on the previous frame. 
+//   4. This setup ensures efficient frame-by-frame data streaming and synchronization between CPU and GPU.
 
 layout(set = 1, binding = 0, std430) buffer OutVertices {
-  OutPackedVertex outVertices[];
+  OutPackedVertex outVertices[]; // In the dynamic descriptor set, since for to get the velocity vectors we need also to know the previous frame's vertex positions, especially for animated vertices and the like, where simple MVP matrix reprojections are not enough.  
 };
 
 layout(set = 1, binding = 1, std430) buffer OutGenerations {
-  uint outGenerations[];
+  uint outGenerations[]; // In the dynamic descriptor set, because we need to know the previous frame's generation to avoid wrong velocity vectors at new vertices
 };
 
 layout(set = 1, binding = 2, std430) buffer NodeMatrices {
-  mat4 nodeMatrices[];
-};
+  mat4 nodeMatrices[]; // Here it should be clear, why we need to double buffer the node matrices. :-)
 
 layout(set = 1, binding = 3, std430) buffer MorphTargetWeights {
-  float morphTargetWeights[];
+  float morphTargetWeights[]; // Also here it should be clear, why we need to double buffer the morph target weights. :-)
 };
 
 #ifdef RAYTRACING
 layout(set = 1, binding = 4, std430) buffer OutRayTracingVertices {
-  OutRayTracingVertex outRayTracingVertices[];
-};
-#endif
+  OutRayTracingVertex outRayTracingVertices[]; // This could also be in the static descriptor set, but for now it's in the dynamic one, just to be consistent 
+};                                             // with the other dynamic buffers. But maybe I will move it to the static one later, since it's not really needed 
+#endif                                         // in the dynamic one, in order to save some memory in the long run.   
 
 /* clang-format on */
 
