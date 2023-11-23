@@ -2879,7 +2879,7 @@ type EpvScene3D=class(Exception);
       public
        fVulkanShortTermDynamicBuffers:TVulkanShortTermDynamicBuffers;
       private
-       fInFlightFrameMeshDataContentTransferQueues:TpvInFlightFrameTransferQueues;
+       fInFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues;
       private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
@@ -2939,7 +2939,7 @@ type EpvScene3D=class(Exception);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure UploadFrameMeshData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure UploadFrameData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                const aViewBaseIndex:TpvSizeInt;
                                const aCountViews:TpvSizeInt;
@@ -3052,7 +3052,7 @@ type EpvScene3D=class(Exception);
       public
        property MaxCullObjectID:TpvUInt32 read fMaxCullObjectID;
       public
-       property InFlightFrameMeshDataContentTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameMeshDataContentTransferQueues;
+       property InFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameDataTransferQueues;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -8028,7 +8028,7 @@ begin
 
       if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
-       fSceneInstance.fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
+       fSceneInstance.fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
                                                                                              fSceneInstance.fVulkanStagingCommandBuffer,
                                                                                              fSceneInstance.fVulkanStagingFence,
                                                                                              fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
@@ -8036,7 +8036,7 @@ begin
                                                                                              fVulkanDynamicVertexBuffer,
                                                                                              GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUDynamicVertex));
 
-       fSceneInstance.fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
+       fSceneInstance.fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
                                                                                              fSceneInstance.fVulkanStagingCommandBuffer,
                                                                                              fSceneInstance.fVulkanStagingFence,
                                                                                              fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
@@ -8063,7 +8063,7 @@ begin
       end;
 
       if GroupInstance.fVulkanMorphTargetVertexBufferCount>0 then begin
-       fSceneInstance.fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
+       fSceneInstance.fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
                                                                                              fSceneInstance.fVulkanStagingCommandBuffer,
                                                                                              fSceneInstance.fVulkanStagingFence,
                                                                                              fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
@@ -18770,7 +18770,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
   for Index:=0 to fCountInFlightFrames-1 do begin
-   fInFlightFrameMeshDataContentTransferQueues[Index]:=TpvTransferQueue.Create(fVulkanDevice);
+   fInFlightFrameDataTransferQueues[Index]:=TpvTransferQueue.Create(fVulkanDevice);
   end;
  end;
 
@@ -19264,7 +19264,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
   for Index:=0 to fCountInFlightFrames-1 do begin
-   FreeAndNil(fInFlightFrameMeshDataContentTransferQueues[Index]);
+   FreeAndNil(fInFlightFrameDataTransferQueues[Index]);
   end;
  end;
 
@@ -20480,8 +20480,8 @@ end;
 
 procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
 begin
- if assigned(fVulkanDevice) and assigned(fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex]) then begin
-  fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex].Reset;
+ if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
+  fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
  end;
 end;
 
@@ -20773,7 +20773,7 @@ begin
                                       SizeOf(TpvScene3D.TParticleVertex)*Min(fCountInFlightFrameParticleVertices[aInFlightFrameIndex],TpvScene3D.MaxParticleVertices));
   end;
 
-{ fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex].Execute(fVulkanStagingQueue,
+{ fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Execute(fVulkanStagingQueue,
                                                                            fVulkanStagingCommandBuffer,
                                                                            fVulkanStagingFence);}
 
@@ -20781,10 +20781,10 @@ begin
 
 end;
 
-procedure TpvScene3D.UploadFrameMeshData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3D.UploadFrameData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
- if assigned(fVulkanDevice) and assigned(fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex]) then begin
-  fInFlightFrameMeshDataContentTransferQueues[aInFlightFrameIndex].Flush(aCommandBuffer);
+ if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
+  fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Flush(aCommandBuffer);
  end;
 end;
 
