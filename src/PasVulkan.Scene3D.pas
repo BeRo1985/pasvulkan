@@ -2879,6 +2879,8 @@ type EpvScene3D=class(Exception);
       public
        fVulkanShortTermDynamicBuffers:TVulkanShortTermDynamicBuffers;
       private
+       fInFlightFrameTransferQueues:TpvInFlightFrameTransferQueues;
+      private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -3048,6 +3050,8 @@ type EpvScene3D=class(Exception);
        property VulkanStagingFence:TpvVulkanFence read fVulkanStagingFence;
       public
        property MaxCullObjectID:TpvUInt32 read fMaxCullObjectID;
+      public
+       property InFlightFrameTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameTransferQueues;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -18740,6 +18744,12 @@ begin
 
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
+ if assigned(fVulkanDevice) then begin
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   fInFlightFrameTransferQueues[Index]:=TpvTransferQueue.Create(fVulkanDevice);
+  end;
+ end;
+
  for Index:=0 to fCountInFlightFrames-1 do begin
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Initialize;
   fGlobalVulkanInstanceMatrixDynamicArrays[Index].Resize(65536);
@@ -19227,6 +19237,12 @@ begin
  FreeAndNil(fMaterialDataGenerationLock);
 
  FreeAndNil(fPotentiallyVisibleSet);
+
+ if assigned(fVulkanDevice) then begin
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   FreeAndNil(fInFlightFrameTransferQueues[Index]);
+  end;
+ end;
 
  fObjectListLock.Acquire;
  try
