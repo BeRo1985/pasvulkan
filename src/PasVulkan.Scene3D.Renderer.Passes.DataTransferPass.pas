@@ -99,7 +99,7 @@ constructor TpvScene3DRendererPassesDataTransferPass.Create(const aFrameGraph:Tp
 begin
  inherited Create(aFrameGraph);
  fInstance:=aInstance;
- Name:='MeshDataTransferPass';
+ Name:='DataTransferPass';
 end;
 
 destructor TpvScene3DRendererPassesDataTransferPass.Destroy;
