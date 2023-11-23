@@ -119,9 +119,9 @@ type { TpvTransferQueue }
                        const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                        const aTransferFence:TpvVulkanFence;
                        const aSourceData;
-                       const aSourceSize:TpvSizeInt;
                        const aDestinationBuffer:TpvVulkanBuffer;
-                       const aDestinationOffset:TpvSizeInt);
+                       const aDestinationOffset:TpvSizeInt;
+                       const aSize:TpvSizeInt);
         procedure Flush(aCommandBuffer:TpvVulkanCommandBuffer); // for example for embedding into a command buffer of the frame graph, so it's in sync with the frame graph.
         procedure Execute(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence); // for direct execution
      end;
@@ -234,20 +234,20 @@ procedure TpvTransferQueue.Queue(const aTransferQueue:TpvVulkanQueue;
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
                                  const aSourceData;
-                                 const aSourceSize:TpvSizeInt;
                                  const aDestinationBuffer:TpvVulkanBuffer;
-                                 const aDestinationOffset:TpvSizeInt);
+                                 const aDestinationOffset:TpvSizeInt;
+                                 const aSize:TpvSizeInt);
 var QueueItem:TpvTransferQueue.PQueueItem;
     Block:TpvTransferQueue.TBlock;
     SourceRemain,SourceOffset,ToDo:TpvSizeInt;
 begin
 
- if aSourceSize>0 then begin
+ if aSize>0 then begin
 
   fLock.Acquire;
   try
 
-   SourceRemain:=aSourceSize;
+   SourceRemain:=aSize;
    SourceOffset:=0;
 
    while SourceRemain>0 do begin
