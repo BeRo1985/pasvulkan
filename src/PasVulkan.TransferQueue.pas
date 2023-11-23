@@ -271,101 +271,105 @@ begin
  fLock.Acquire;
  try
 
-  // Using a memory barrier to ensure that all previous host writes are visible to the transfer queue, where 
-  // a global memory barrier is using here for simplicity, but it could be more fine-grained with buffer
-  // memory barriers, but it would be more complex, since we would need to track all used buffers and their
-  // usage flags and so on. So we use a global memory barrier here just for the sake of simplicity, so long
-  // as it works. Indeed, vkQueueSubmit() already has also an implicit host memory barrier, but safe is safe.
-  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-  MemoryBarrier.pNext:=nil;
-  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                    0,
-                                    1,
-                                    @MemoryBarrier,
-                                    0,
-                                    nil,
-                                    0,
-                                    nil);    
+  if fQueueItems.Count>0 then begin
 
-  // If there are more than one transfer commands, we can sort and merge them
-  if fQueueItems.Count>1 then begin
+   // Using a memory barrier to ensure that all previous host writes are visible to the transfer queue, where
+   // a global memory barrier is using here for simplicity, but it could be more fine-grained with buffer
+   // memory barriers, but it would be more complex, since we would need to track all used buffers and their
+   // usage flags and so on. So we use a global memory barrier here just for the sake of simplicity, so long
+   // as it works. Indeed, vkQueueSubmit() already has also an implicit host memory barrier, but safe is safe.
+   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   MemoryBarrier.pNext:=nil;
+   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     0,
+                                     1,
+                                     @MemoryBarrier,
+                                     0,
+                                     nil,
+                                     0,
+                                     nil);
 
-   // Sort all transfer commands by destination buffer and destination offset
-   TpvTypedSort<TpvTransferQueue.TQueueItem>.IntroSort(@fQueueItems.ItemArray[0],0,fQueueItems.Count-1,TpvTransferQueueFlushCompareQueueItems);
+   // If there are more than one transfer commands, we can sort and merge them
+   if fQueueItems.Count>1 then begin
 
-   // Merge all transfer commands into one single commands as much as possible for better performance
-   Index:=0;
-   while (Index+1)<fQueueItems.Count do begin
+    // Sort all transfer commands by destination buffer and destination offset
+    TpvTypedSort<TpvTransferQueue.TQueueItem>.IntroSort(@fQueueItems.ItemArray[0],0,fQueueItems.Count-1,TpvTransferQueueFlushCompareQueueItems);
+
+    // Merge all transfer commands into one single commands as much as possible for better performance
+    Index:=0;
+    while (Index+1)<fQueueItems.Count do begin
+     QueueItem:=@fQueueItems.ItemArray[Index];
+     OtherQueueItem:=@fQueueItems.ItemArray[Index+1];
+     if (QueueItem^.SourceBlock=OtherQueueItem^.SourceBlock) and
+        ((QueueItem^.SourceOffset+QueueItem^.Size)=OtherQueueItem^.SourceOffset) and
+        (QueueItem^.DestinationBuffer=OtherQueueItem^.DestinationBuffer) and
+        ((QueueItem^.DestinationOffset+QueueItem^.Size)=OtherQueueItem^.DestinationOffset) then begin
+      inc(QueueItem^.Size,OtherQueueItem^.Size);
+      fQueueItems.Delete(Index+1);
+     end else begin
+      inc(Index);
+     end;
+    end;
+
+   end;
+
+   // Execute the actual transfer commands
+   for Index:=0 to fQueueItems.Count-1 do begin
     QueueItem:=@fQueueItems.ItemArray[Index];
-    OtherQueueItem:=@fQueueItems.ItemArray[Index+1];
-    if (QueueItem^.SourceBlock=OtherQueueItem^.SourceBlock) and
-       ((QueueItem^.SourceOffset+QueueItem^.Size)=OtherQueueItem^.SourceOffset) and
-       (QueueItem^.DestinationBuffer=OtherQueueItem^.DestinationBuffer) and
-       ((QueueItem^.DestinationOffset+QueueItem^.Size)=OtherQueueItem^.DestinationOffset) then begin
-     inc(QueueItem^.Size,OtherQueueItem^.Size);
-     fQueueItems.Delete(Index+1);
-    end else begin
-     inc(Index);
+    if QueueItem^.Size>0 then begin
+     Region.srcOffset:=QueueItem^.SourceOffset;
+     Region.dstOffset:=QueueItem^.DestinationOffset;
+     Region.size:=QueueItem^.Size;
+     aCommandBuffer.CmdCopyBuffer(QueueItem^.SourceBlock.fBuffer.Handle,
+                                  QueueItem^.DestinationBuffer.Handle,
+                                  1,
+                                  @Region);
     end;
    end;
 
-  end; 
+   // Using a memory barrier to ensure that all previous transfer writes are visible to the rest of the GPU, where
+   // a global memory barrier is using here for simplicity as well, for the reasons mentioned above.
+   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   MemoryBarrier.pNext:=nil;
+   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
+   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or
+                                TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or
+                                TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                     0,
+                                     1,
+                                     @MemoryBarrier,
+                                     0,
+                                     nil,
+                                     0,
+                                     nil);
 
-  // Execute the actual transfer commands
-  for Index:=0 to fQueueItems.Count-1 do begin
-   QueueItem:=@fQueueItems.ItemArray[Index];
-   if QueueItem^.Size>0 then begin
-    Region.srcOffset:=QueueItem^.SourceOffset;
-    Region.dstOffset:=QueueItem^.DestinationOffset;
-    Region.size:=QueueItem^.Size;
-    aCommandBuffer.CmdCopyBuffer(QueueItem^.SourceBlock.fBuffer.Handle,
-                                 QueueItem^.DestinationBuffer.Handle,
-                                 1,
-                                 @Region);
-   end;
+   fQueueItems.ClearNoFree;
+   fCurrentBlockIndex:=-1;
+   fOffset:=0;
+
   end;
-
-  // Using a memory barrier to ensure that all previous transfer writes are visible to the rest of the GPU, where
-  // a global memory barrier is using here for simplicity as well, for the reasons mentioned above.
-  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-  MemoryBarrier.pNext:=nil;
-  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or
-                               TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or
-                               TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT);
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-                                    0,
-                                    1,
-                                    @MemoryBarrier,
-                                    0,
-                                    nil,
-                                    0,
-                                    nil);
-
-  fQueueItems.ClearNoFree;
-  fCurrentBlockIndex:=-1;
-  fOffset:=0;
 
  finally
   fLock.Release;
