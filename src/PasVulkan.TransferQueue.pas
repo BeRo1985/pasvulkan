@@ -206,7 +206,7 @@ begin
  fLock.Acquire;
  try
  
-  if (fCurrentBlockIndex<0) or ((fOffset+aSize)>fBlockSize) then begin
+  if (fCurrentBlockIndex<0) or ((fOffset+aSourceSize)>fBlockSize) then begin
    fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
    fOffset:=0;
   end;
@@ -227,7 +227,7 @@ begin
                                fOffset,
                                aSourceSize);
 
-  inc(fOffset,aSize);
+  inc(fOffset,aSourceSize);
 
  finally
   fLock.Release;
@@ -244,17 +244,19 @@ begin
  end else begin
   if a.DestinationOffset<b.DestinationOffset then begin
    result:=-1;
-  end else if a^.DestinationOffset>b.DestinationOffset then begin
+  end else if a.DestinationOffset>b.DestinationOffset then begin
    result:=1;
   end else begin
    result:=0;
   end;
  end;
+end;
 
 procedure TpvTransferQueue.Flush(aCommandBuffer:TpvVulkanCommandBuffer);
 var Index:TpvSizeInt;
     QueueItem,OtherQueueItem:PQueueItem;
-    MemoryBarrier:TpvVulkanMemoryBarrier;
+    MemoryBarrier:TVkMemoryBarrier;
+    Region:TVkBufferCopy;
 begin
 
  fLock.Acquire;
@@ -273,10 +275,8 @@ begin
                                TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
                                TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  MemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  MemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  aCommandBuffer.CmdPipelineBarrier(VK_PIPELINE_STAGE_HOST_BIT,
-                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     0,
                                     1,
                                     @MemoryBarrier,
@@ -289,13 +289,13 @@ begin
   if fQueueItems.Count>1 then begin
 
    // Sort all transfer commands by destination buffer and destination offset
-   TpvTypedSort<TpvTransferQueueFlushCompareQueueItems>.IntroSort(@fQueueItems.ItemArray[0],0,fQueueItems.Count-1,TpvTransferQueueFlushCompareQueueItems);
+   TpvTypedSort<TpvTransferQueue.TQueueItem>.IntroSort(@fQueueItems.ItemArray[0],0,fQueueItems.Count-1,TpvTransferQueueFlushCompareQueueItems);
 
    // Merge all transfer commands into one single commands as much as possible for better performance
    Index:=0;
    while (Index+1)<fQueueItems.Count do begin
-    QueueItem:=@fQueueItems.Items[Index];
-    OtherQueueItem:=@fQueueItems.Items[Index+1];
+    QueueItem:=@fQueueItems.ItemArray[Index];
+    OtherQueueItem:=@fQueueItems.ItemArray[Index+1];
     if (QueueItem^.SourceBlock=OtherQueueItem^.SourceBlock) and
        ((QueueItem^.SourceOffset+QueueItem^.Size)=OtherQueueItem^.SourceOffset) and
        (QueueItem^.DestinationBuffer=OtherQueueItem^.DestinationBuffer) and
@@ -311,12 +311,14 @@ begin
 
   // Execute the actual transfer commands
   for Index:=0 to fQueueItems.Count-1 do begin
-   QueueItem:=@fQueueItems.Items[Index];
+   QueueItem:=@fQueueItems.ItemArray[Index];
+   Region.srcOffset:=QueueItem^.SourceOffset;
+   Region.dstOffset:=QueueItem^.DestinationOffset;
+   Region.size:=QueueItem^.Size;
    aCommandBuffer.CmdCopyBuffer(QueueItem^.SourceBlock.fBuffer.Handle,
                                 QueueItem^.DestinationBuffer.Handle,
-                                QueueItem^.SourceOffset,
-                                QueueItem^.DestinationOffset,
-                                QueueItem^.Size);
+                                1,
+                                @Region);
   end;
 
   // Using a memory barrier to ensure that all previous transfer writes are visible to the rest of the GPU, where
@@ -340,10 +342,8 @@ begin
                                TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or
                                TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or
                                TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT);
-  MemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  MemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  aCommandBuffer.CmdPipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
                                     0,
                                     1,
                                     @MemoryBarrier,
@@ -372,7 +372,7 @@ begin
 
  aTransferCommandBuffer.EndRecording;
 
- aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aFence,true);
+ aTransferCommandBuffer.Execute(aTransferQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),nil,nil,aTransferFence,true);
 
 end; 
  

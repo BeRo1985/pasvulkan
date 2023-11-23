@@ -90,6 +90,7 @@ uses {$ifdef Windows}
      PasVulkan.PooledObject,
      PasVulkan.Frustum,
      PasVulkan.BufferRangeAllocator,
+     PasVulkan.TransferQueue,
      POCA;
 
 type EpvScene3D=class(Exception);
