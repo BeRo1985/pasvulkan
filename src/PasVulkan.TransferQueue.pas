@@ -101,7 +101,7 @@ type { TpvTransferQueue }
             TQueueItems=TpvDynamicArrayList<TQueueItem>;
       private
        fDevice:TpvVulkanDevice;
-       fLock:TPasMPCriticalSection;
+       fLock:TPasMPSlimReaderWriterLock;
        fBlockSize:TpvSizeInt;
        fBlocks:TBlocks;
        fQueueItems:TQueueItems;
@@ -163,7 +163,7 @@ begin
  
  fDevice:=aDevice;
  
- fLock:=TPasMPCriticalSection.Create;
+ fLock:=TPasMPSlimReaderWriterLock.Create;
 
  fBlockSize:=64 shl 20; // 64 MB
 
