@@ -8027,7 +8027,23 @@ begin
 
       if GroupInstance.fVulkanVertexBufferCount>0 then begin
 
-       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+       fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
+                                                                              fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                              fSceneInstance.fVulkanStagingFence,
+                                                                              @fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
+                                                                              GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUDynamicVertex),
+                                                                              fVulkanDynamicVertexBuffer,
+                                                                              GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUDynamicVertex));
+
+       fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
+                                                                              fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                              fSceneInstance.fVulkanStagingFence,
+                                                                              @fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
+                                                                              GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUStaticVertex),
+                                                                              fVulkanStaticVertexBuffer,
+                                                                              GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUStaticVertex));
+
+{      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                          fSceneInstance.fVulkanStagingCommandBuffer,
                                                          fSceneInstance.fVulkanStagingFence,
                                                          fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
@@ -8042,17 +8058,24 @@ begin
                                                          fVulkanStaticVertexBuffer,
                                                          GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUStaticVertex),
                                                          GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUStaticVertex));
-
+      }
       end;
 
       if GroupInstance.fVulkanMorphTargetVertexBufferCount>0 then begin
-       fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+       fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
+                                                                              fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                              fSceneInstance.fVulkanStagingFence,
+                                                                              @fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
+                                                                              GroupInstance.fVulkanMorphTargetVertexBufferCount*SizeOf(TMorphTargetVertex),
+                                                                              fVulkanMorphTargetVertexBuffer,
+                                                                              GroupInstance.fVulkanMorphTargetVertexBufferOffset*SizeOf(TMorphTargetVertex));
+{      fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                          fSceneInstance.fVulkanStagingCommandBuffer,
                                                          fSceneInstance.fVulkanStagingFence,
                                                          fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
                                                          fVulkanMorphTargetVertexBuffer,
                                                          GroupInstance.fVulkanMorphTargetVertexBufferOffset*SizeOf(TMorphTargetVertex),
-                                                         GroupInstance.fVulkanMorphTargetVertexBufferCount*SizeOf(TMorphTargetVertex));
+                                                         GroupInstance.fVulkanMorphTargetVertexBufferCount*SizeOf(TMorphTargetVertex));}
       end;
 
      end;
@@ -8068,6 +8091,10 @@ begin
  end;
 
  fReleaseFrameCounter:=fSceneInstance.fCountInFlightFrames+1; // The decrementing counter is used to determine if the buffer is still in use by the GPU or not
+
+ fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Execute(fSceneInstance.fVulkanStagingQueue,
+                                                                          fSceneInstance.fVulkanStagingCommandBuffer,
+                                                                          fSceneInstance.fVulkanStagingFence);
 
 end;
 

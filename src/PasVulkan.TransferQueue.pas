@@ -208,7 +208,10 @@ begin
  try
  
   if (fCurrentBlockIndex<0) or ((fOffset+aSourceSize)>fBlockSize) then begin
-   fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
+   inc(fCurrentBlockIndex);
+   if fCurrentBlockIndex>=fBlocks.Count then begin
+    fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
+   end; 
    fOffset:=0;
   end;
 
@@ -223,7 +226,7 @@ begin
   fDevice.MemoryStaging.Upload(aTransferQueue,
                                aTransferCommandBuffer,
                                aTransferFence,
-                               aSourceData,
+                               aSourceData^,
                                Block.fBuffer,
                                fOffset,
                                aSourceSize);
