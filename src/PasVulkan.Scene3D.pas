@@ -8030,7 +8030,7 @@ begin
        fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
                                                                               fSceneInstance.fVulkanStagingCommandBuffer,
                                                                               fSceneInstance.fVulkanStagingFence,
-                                                                              @fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
+                                                                              fSceneInstance.fVulkanDynamicVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
                                                                               GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUDynamicVertex),
                                                                               fVulkanDynamicVertexBuffer,
                                                                               GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUDynamicVertex));
@@ -8038,7 +8038,7 @@ begin
        fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
                                                                               fSceneInstance.fVulkanStagingCommandBuffer,
                                                                               fSceneInstance.fVulkanStagingFence,
-                                                                              @fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
+                                                                              fSceneInstance.fVulkanStaticVertexBufferData.Items[GroupInstance.fVulkanVertexBufferOffset],
                                                                               GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUStaticVertex),
                                                                               fVulkanStaticVertexBuffer,
                                                                               GroupInstance.fVulkanVertexBufferOffset*SizeOf(TGPUStaticVertex));
@@ -8065,7 +8065,7 @@ begin
        fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Queue(fSceneInstance.fVulkanStagingQueue,
                                                                               fSceneInstance.fVulkanStagingCommandBuffer,
                                                                               fSceneInstance.fVulkanStagingFence,
-                                                                              @fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
+                                                                              fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[GroupInstance.fVulkanMorphTargetVertexBufferOffset],
                                                                               GroupInstance.fVulkanMorphTargetVertexBufferCount*SizeOf(TMorphTargetVertex),
                                                                               fVulkanMorphTargetVertexBuffer,
                                                                               GroupInstance.fVulkanMorphTargetVertexBufferOffset*SizeOf(TMorphTargetVertex));

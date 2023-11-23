@@ -114,7 +114,7 @@ type { TpvTransferQueue }
        procedure Queue(const aTransferQueue:TpvVulkanQueue;
                        const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                        const aTransferFence:TpvVulkanFence;
-                       const aSourceData:TpvPointer;
+                       const aSourceData;
                        const aSourceSize:TpvSizeInt;
                        const aDestinationBuffer:TpvVulkanBuffer;
                        const aDestinationOffset:TpvSizeInt);
@@ -196,7 +196,7 @@ end;
 procedure TpvTransferQueue.Queue(const aTransferQueue:TpvVulkanQueue;
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
-                                 const aSourceData:TpvPointer;
+                                 const aSourceData;
                                  const aSourceSize:TpvSizeInt;
                                  const aDestinationBuffer:TpvVulkanBuffer;
                                  const aDestinationOffset:TpvSizeInt);
@@ -204,37 +204,42 @@ var QueueItem:TpvTransferQueue.PQueueItem;
     Block:TpvTransferQueue.TBlock;
 begin
 
- fLock.Acquire;
- try
- 
-  if (fCurrentBlockIndex<0) or ((fOffset+aSourceSize)>fBlockSize) then begin
-   inc(fCurrentBlockIndex);
-   if fCurrentBlockIndex>=fBlocks.Count then begin
-    fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
-   end; 
-   fOffset:=0;
+ if aSourceSize>0 then begin
+
+  fLock.Acquire;
+  try
+
+   if (fCurrentBlockIndex<0) or ((fOffset+aSourceSize)>fBlockSize) then begin
+    inc(fCurrentBlockIndex);
+    if fCurrentBlockIndex>=fBlocks.Count then begin
+     fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
+    end;
+    fOffset:=0;
+   end;
+
+   Block:=fBlocks[fCurrentBlockIndex];
+
+   QueueItem:=fQueueItems.AddNew;
+   QueueItem^.SourceBlock:=Block;
+   QueueItem^.SourceOffset:=fOffset;
+   QueueItem^.DestinationBuffer:=aDestinationBuffer;
+   QueueItem^.DestinationOffset:=aDestinationOffset;
+   QueueItem^.Size:=aSourceSize;
+
+   fDevice.MemoryStaging.Upload(aTransferQueue,
+                                aTransferCommandBuffer,
+                                aTransferFence,
+                                aSourceData,
+                                Block.fBuffer,
+                                fOffset,
+                                aSourceSize);
+
+   inc(fOffset,aSourceSize);
+
+  finally
+   fLock.Release;
   end;
 
-  Block:=fBlocks[fCurrentBlockIndex];
-
-  QueueItem:=fQueueItems.AddNew;
-  QueueItem^.SourceBlock:=Block;
-  QueueItem^.SourceOffset:=fOffset;
-  QueueItem^.DestinationBuffer:=aDestinationBuffer;
-  QueueItem^.DestinationOffset:=aDestinationOffset;
-
-  fDevice.MemoryStaging.Upload(aTransferQueue,
-                               aTransferCommandBuffer,
-                               aTransferFence,
-                               aSourceData^,
-                               Block.fBuffer,
-                               fOffset,
-                               aSourceSize);
-
-  inc(fOffset,aSourceSize);
-
- finally
-  fLock.Release;
  end;
 
 end;
@@ -316,13 +321,15 @@ begin
   // Execute the actual transfer commands
   for Index:=0 to fQueueItems.Count-1 do begin
    QueueItem:=@fQueueItems.ItemArray[Index];
-   Region.srcOffset:=QueueItem^.SourceOffset;
-   Region.dstOffset:=QueueItem^.DestinationOffset;
-   Region.size:=QueueItem^.Size;
-   aCommandBuffer.CmdCopyBuffer(QueueItem^.SourceBlock.fBuffer.Handle,
-                                QueueItem^.DestinationBuffer.Handle,
-                                1,
-                                @Region);
+   if QueueItem^.Size>0 then begin
+    Region.srcOffset:=QueueItem^.SourceOffset;
+    Region.dstOffset:=QueueItem^.DestinationOffset;
+    Region.size:=QueueItem^.Size;
+    aCommandBuffer.CmdCopyBuffer(QueueItem^.SourceBlock.fBuffer.Handle,
+                                 QueueItem^.DestinationBuffer.Handle,
+                                 1,
+                                 @Region);
+   end;
   end;
 
   // Using a memory barrier to ensure that all previous transfer writes are visible to the rest of the GPU, where
