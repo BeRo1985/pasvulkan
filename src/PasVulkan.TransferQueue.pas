@@ -202,6 +202,7 @@ procedure TpvTransferQueue.Queue(const aTransferQueue:TpvVulkanQueue;
                                  const aDestinationOffset:TpvSizeInt);
 var QueueItem:TpvTransferQueue.PQueueItem;
     Block:TpvTransferQueue.TBlock;
+    SourceRemain,SourceOffset,ToDo:TpvSizeInt;
 begin
 
  if aSourceSize>0 then begin
@@ -209,32 +210,48 @@ begin
   fLock.Acquire;
   try
 
-   if (fCurrentBlockIndex<0) or ((fOffset+aSourceSize)>fBlockSize) then begin
-    inc(fCurrentBlockIndex);
-    if fCurrentBlockIndex>=fBlocks.Count then begin
-     fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
+   SourceRemain:=aSourceSize;
+   SourceOffset:=0;
+
+   while SourceRemain>0 do begin
+
+    if (fCurrentBlockIndex<0) or (fOffset>=fBlockSize) then begin
+     inc(fCurrentBlockIndex);
+     if fCurrentBlockIndex>=fBlocks.Count then begin
+      fCurrentBlockIndex:=fBlocks.Add(TpvTransferQueue.TBlock.Create(self));
+     end;
+     fOffset:=0;
+    end;    
+
+    Block:=fBlocks[fCurrentBlockIndex];
+
+    ToDo:=fBlockSize-fOffset;
+    if ToDo>SourceRemain then begin
+     ToDo:=SourceRemain;
     end;
-    fOffset:=0;
-   end;
 
-   Block:=fBlocks[fCurrentBlockIndex];
+    QueueItem:=fQueueItems.AddNew;
+    QueueItem^.SourceBlock:=Block;
+    QueueItem^.SourceOffset:=fOffset;
+    QueueItem^.DestinationBuffer:=aDestinationBuffer;
+    QueueItem^.DestinationOffset:=aDestinationOffset+SourceOffset;
+    QueueItem^.Size:=ToDo;
 
-   QueueItem:=fQueueItems.AddNew;
-   QueueItem^.SourceBlock:=Block;
-   QueueItem^.SourceOffset:=fOffset;
-   QueueItem^.DestinationBuffer:=aDestinationBuffer;
-   QueueItem^.DestinationOffset:=aDestinationOffset;
-   QueueItem^.Size:=aSourceSize;
+    fDevice.MemoryStaging.Upload(aTransferQueue,
+                                 aTransferCommandBuffer,
+                                 aTransferFence,
+                                 pointer(TpvPtrUInt(TpvPtrUInt(@aSourceData)+TpvPtrUInt(SourceOffset)))^,
+                                 Block.fBuffer,
+                                 fOffset,
+                                 ToDo);
 
-   fDevice.MemoryStaging.Upload(aTransferQueue,
-                                aTransferCommandBuffer,
-                                aTransferFence,
-                                aSourceData,
-                                Block.fBuffer,
-                                fOffset,
-                                aSourceSize);
+    inc(fOffset,ToDo);
 
-   inc(fOffset,aSourceSize);
+    dec(SourceRemain,ToDo);
+    
+    inc(SourceOffset,ToDo);
+
+   end; 
 
   finally
    fLock.Release;
