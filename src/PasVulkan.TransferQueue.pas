@@ -68,6 +68,7 @@ uses SysUtils,
      PasMP,
      PasVulkan.Types,
      PasVulkan.Framework,
+     PasVulkan.Application,
      PasVulkan.Collections,
      PasVulkan.Utils;
 
@@ -120,6 +121,8 @@ type { TpvTransferQueue }
         procedure Flush(aCommandBuffer:TpvVulkanCommandBuffer); // for example for embedding into a command buffer of the frame graph, so it's in sync with the frame graph.
         procedure Execute(const aTransferQueue:TpvVulkanQueue;const aTransferCommandBuffer:TpvVulkanCommandBuffer;const aTransferFence:TpvVulkanFence); // for direct execution
      end;
+
+     TpvInFlightFrameTransferQueues=array[0..MaxInFlightFrames-1] of TpvTransferQueue;
 
 implementation
 
