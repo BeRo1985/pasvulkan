@@ -107,6 +107,10 @@ type { TpvTransferQueue }
        fQueueItems:TQueueItems;
        fCurrentBlockIndex:TpvSizeInt;
        fOffset:TpvSizeInt;
+       fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+       fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+       fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+       fMemoryPreferredNotPropertyFlags:TVkMemoryPropertyFlags;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -137,10 +141,10 @@ begin
                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                  [],
-                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                 0,
-                                 0,
+                                 fTransferQueue.fMemoryRequiredPropertyFlags,
+                                 fTransferQueue.fMemoryPreferredPropertyFlags,
+                                 fTransferQueue.fMemoryAvoidPropertyFlags,
+                                 fTransferQueue.fMemoryPreferredNotPropertyFlags,
                                  0,
                                  0,
                                  0,
@@ -162,10 +166,43 @@ begin
  inherited Create;
  
  fDevice:=aDevice;
- 
- fLock:=TPasMPSlimReaderWriterLock.Create;
 
- fBlockSize:=64 shl 20; // 64 MB
+ case fDevice.PhysicalDevice.Properties.vendorID of
+  TpvUInt32(TpvVulkanVendorID.AMD),
+  TpvUInt32(TpvVulkanVendorID.NVIDIA),
+  TpvUInt32(TpvVulkanVendorID.Intel):begin
+   // For desktop/notebook GPUs, like NVIDIA, AMD and Intel GPUs
+   if fDevice.MemoryManager.MaximumMemoryMappableNonDeviceLocalHeapSize>=(16 shl 20) then begin
+    fBlockSize:=Min(Max(TpvUInt64(fDevice.MemoryManager.MaximumMemoryMappableNonDeviceLocalHeapSize shr 6),TpvUInt64(16 shl 20)),TpvUInt64(128 shl 20));
+    fMemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    fMemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    fMemoryAvoidPropertyFlags:=0;
+    fMemoryPreferredNotPropertyFlags:=0;
+   end else if fDevice.MemoryManager.MaximumMemoryMappableDeviceLocalHeapSize>=(16 shl 20) then begin
+    fBlockSize:=Min(Max(TpvUInt64(fDevice.MemoryManager.MaximumMemoryMappableDeviceLocalHeapSize shr 6),TpvUInt64(16 shl 20)),TpvUInt64(128 shl 20));
+    fMemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    fMemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    fMemoryAvoidPropertyFlags:=0;
+    fMemoryPreferredNotPropertyFlags:=0;
+   end else begin
+    fBlockSize:=16 shl 20; // 16MB
+    fMemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    fMemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    fMemoryAvoidPropertyFlags:=0;
+    fMemoryPreferredNotPropertyFlags:=0;
+   end;
+  end;
+  else begin
+   // And for other (mobile) GPUs, like for example Mali, Adreno and PowerVR
+   fBlockSize:=8 shl 20; // 8MB
+   fMemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+   fMemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+   fMemoryAvoidPropertyFlags:=0;
+   fMemoryPreferredNotPropertyFlags:=0;
+  end;
+ end;
+
+ fLock:=TPasMPSlimReaderWriterLock.Create;
 
  fBlocks:=TBlocks.Create(true);
 

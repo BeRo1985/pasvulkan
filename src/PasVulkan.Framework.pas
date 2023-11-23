@@ -13624,13 +13624,13 @@ begin
     if fDevice.fMemoryManager.fMaximumMemoryMappableNonDeviceLocalHeapSize>=(32 shl 20) then begin
      fSize:=Min(Max(TpvUInt64(fDevice.fMemoryManager.fMaximumMemoryMappableNonDeviceLocalHeapSize shr 5),TpvUInt64(32 shl 20)),TpvUInt64(256 shl 20));
      MemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-     MemoryPreferredPropertyFlags:=0;
+     MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
      MemoryAvoidPropertyFlags:=0;
      MemoryPreferredNotPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     end else if fDevice.fMemoryManager.fMaximumMemoryMappableDeviceLocalHeapSize>=(32 shl 20) then begin
      fSize:=Min(Max(TpvUInt64(fDevice.fMemoryManager.fMaximumMemoryMappableDeviceLocalHeapSize shr 5),TpvUInt64(32 shl 20)),TpvUInt64(256 shl 20));
      MemoryRequiredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-     MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+     MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
      MemoryAvoidPropertyFlags:=0;
      MemoryPreferredNotPropertyFlags:=0;
     end else begin
