@@ -808,7 +808,8 @@ type { TpvScene3DRendererInstance }
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
+uses PasVulkan.Scene3D.Renderer.Passes.MeshDataTransferPass,
+     PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
      PasVulkan.Scene3D.Renderer.Passes.MeshCullPass0ComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CullDepthResolveComputePass,
@@ -903,6 +904,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.MeshComputePass,
 
 type TpvScene3DRendererInstancePasses=class
       private
+       fMeshDataTransferPass:TpvScene3DRendererPassesMeshDataTransferPass;
        fMeshComputePass:TpvScene3DRendererPassesMeshComputePass;
        fMeshCullPass0ComputePass:TpvScene3DRendererPassesMeshCullPass0ComputePass;
        fCullDepthRenderPass:TpvScene3DRendererPassesCullDepthRenderPass;
@@ -2846,7 +2848,10 @@ begin
                                   1
                                  );}
 
+ TpvScene3DRendererInstancePasses(fPasses).fMeshDataTransferPass:=TpvScene3DRendererPassesMeshDataTransferPass.Create(fFrameGraph,self);
+
  TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass:=TpvScene3DRendererPassesMeshComputePass.Create(fFrameGraph,self);
+ TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshDataTransferPass);
 
  if Renderer.GPUCulling then begin
 
