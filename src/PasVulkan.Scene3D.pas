@@ -8092,10 +8092,6 @@ begin
 
  fReleaseFrameCounter:=fSceneInstance.fCountInFlightFrames+1; // The decrementing counter is used to determine if the buffer is still in use by the GPU or not
 
- fSceneInstance.fInFlightFrameTransferQueues[aInFlightFrameIndex].Execute(fSceneInstance.fVulkanStagingQueue,
-                                                                          fSceneInstance.fVulkanStagingCommandBuffer,
-                                                                          fSceneInstance.fVulkanStagingFence);
-
 end;
 
 procedure TpvScene3D.TVulkanLongTermStaticBufferData.UpdateReleaseFrameCounter;
@@ -20772,6 +20768,10 @@ begin
                                       0,
                                       SizeOf(TpvScene3D.TParticleVertex)*Min(fCountInFlightFrameParticleVertices[aInFlightFrameIndex],TpvScene3D.MaxParticleVertices));
   end;
+
+  fInFlightFrameTransferQueues[aInFlightFrameIndex].Execute(fVulkanStagingQueue,
+                                                            fVulkanStagingCommandBuffer,
+                                                            fVulkanStagingFence);
 
  end;
 
