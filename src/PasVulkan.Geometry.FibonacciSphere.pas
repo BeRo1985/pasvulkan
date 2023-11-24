@@ -338,14 +338,17 @@ begin
     case fTextureProjectionMapping of
 
      TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
+      // Equirectangular projection mapping
       Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5); // or 1.0-(ArcCos(Vector.y)/PI) 
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
+      // Lambert cylindrical equal-area projection mapping
       Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(Vector.y*0.5)+0.5);
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.Octahedral:begin
+      // Octahedral projection mapping
       TemporaryVector:=Vertex^.Normal;
       Vertex^.TexCoord:=TemporaryVector.xy/(abs(TemporaryVector.x)+abs(TemporaryVector.y)+abs(TemporaryVector.z));
       if TemporaryVector.z<0.0 then begin
@@ -356,19 +359,23 @@ begin
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
+      // Web Mercator projection
       WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
       Vertex^.TexCoord:=TpvVector2.Create((WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
+      // The GL_SPHERE_MAP projection from old OpenGL times
       Vertex^.TexCoord:=(TpvVector2.InlineableCreate(Vector.x,Vector.z)/(TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0))+TpvVector2.InlineableCreate(0.5,0.5);
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
+      // Hierarchical Equal Area isoLatitude Pixelization of a sphere
       Vertex^.TexCoord:=DirectionToHEALPix(TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z));
      end;
 
      else begin
+      // No projection mapping (should never happen)
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
      end;
 
