@@ -430,7 +430,7 @@ begin
       // Cassini Soldner projection mapping
       Theta:=ArcSin(SinTheta);
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(
-                         (ArcSin((Cos(Pji)*Sin(Theta)))/PI)+0.5,
+                         (ArcSin((Cos(Phi)*Sin(Theta)))/PI)+0.5,
                          ((ArcTan2(Sin(Phi),Cos(Phi)*Cos(Theta)))/TwoPI)+0.5
                         );
      end;
