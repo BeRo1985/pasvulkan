@@ -286,7 +286,7 @@ end;
 
 procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
-    i0,i1,i2,t:TpvSizeInt;
+    TriangleIndex:TpvSizeInt;
     Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
     Vertex:PVertex;
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
@@ -297,6 +297,7 @@ var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,N
     TemporaryVector:TpvVector3;
     v0,v1,v2:TpvFibonacciSphere.PVector;
     WrapX,WrapY:boolean;
+    TriangleIndices:array[0..2] of TpvSizeInt;
 begin
  
  Points:=nil;
@@ -504,85 +505,66 @@ begin
     begin
 
      for OtherIndex:=0 to CountAdjacentVertices-1 do begin
-      i0:=Index;
-      i1:=AdjacentVertices[OtherIndex];
+
+      TriangleIndices[0]:=Index;
+
+      TriangleIndices[1]:=AdjacentVertices[OtherIndex];
+
       if (OtherIndex+1)<CountAdjacentVertices then begin
-       i2:=AdjacentVertices[OtherIndex+1];
+       TriangleIndices[2]:=AdjacentVertices[OtherIndex+1];
       end else begin
-       i2:=AdjacentVertices[0];
+       TriangleIndices[2]:=AdjacentVertices[0];
       end;
-      if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-       v0:=@Points[i0];
-       v1:=@Points[i1];
-       v2:=@Points[i2];
+
+      // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
+      if (TriangleIndices[1]>TriangleIndices[0]) and (TriangleIndices[2]>TriangleIndices[0]) then begin
+
+       v0:=@Points[TriangleIndices[0]];
+       v1:=@Points[TriangleIndices[1]];
+       v2:=@Points[TriangleIndices[2]];
+
        begin
         // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
         // If so, it duplicates the vertices of that triangle and adjusts their texture coordinates for
         // a repeating texture sampler.
-        WrapX:=(abs(fVertices.ItemArray[i1].TexCoord.x-fVertices.ItemArray[i0].TexCoord.x)>0.5) or
-               (abs(fVertices.ItemArray[i2].TexCoord.x-fVertices.ItemArray[i1].TexCoord.x)>0.5) or
-               (abs(fVertices.ItemArray[i0].TexCoord.x-fVertices.ItemArray[i2].TexCoord.x)>0.5);
-        WrapY:=(abs(fVertices.ItemArray[i1].TexCoord.y-fVertices.ItemArray[i0].TexCoord.y)>0.5) or
-               (abs(fVertices.ItemArray[i2].TexCoord.y-fVertices.ItemArray[i1].TexCoord.y)>0.5) or
-               (abs(fVertices.ItemArray[i0].TexCoord.y-fVertices.ItemArray[i2].TexCoord.y)>0.5);
+        WrapX:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.x-fVertices.ItemArray[TriangleIndices[0]].TexCoord.x)>0.5) or
+               (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.x-fVertices.ItemArray[TriangleIndices[1]].TexCoord.x)>0.5) or
+               (abs(fVertices.ItemArray[TriangleIndices[0]].TexCoord.x-fVertices.ItemArray[TriangleIndices[2]].TexCoord.x)>0.5);
+        WrapY:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.y-fVertices.ItemArray[TriangleIndices[0]].TexCoord.y)>0.5) or
+               (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.y-fVertices.ItemArray[TriangleIndices[1]].TexCoord.y)>0.5) or
+               (abs(fVertices.ItemArray[TriangleIndices[0]].TexCoord.y-fVertices.ItemArray[TriangleIndices[2]].TexCoord.y)>0.5);
         if WrapX or WrapY then begin
-         if (WrapX and (fVertices.ItemArray[i0].TexCoord.x>0.5)) or
-            (WrapY and (fVertices.ItemArray[i0].TexCoord.y>0.5)) then begin
-          if WrappedIndices[i0]<0 then begin
-           WrappedIndices[i0]:=fVertices.AddNewIndex;
-           Vertex:=@fVertices.ItemArray[WrappedIndices[i0]];
-           Vertex^:=fVertices.ItemArray[i0];
-           if WrapX and (fVertices.ItemArray[i0].TexCoord.x>0.5) then begin
-            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+         for TriangleIndex:=0 to 2 do begin
+          if (WrapX and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.x>0.5)) or
+             (WrapY and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.y>0.5)) then begin
+           if WrappedIndices[TriangleIndices[TriangleIndex]]<0 then begin
+            WrappedIndices[TriangleIndices[TriangleIndex]]:=fVertices.AddNewIndex;
+            Vertex:=@fVertices.ItemArray[WrappedIndices[TriangleIndices[TriangleIndex]]];
+            Vertex^:=fVertices.ItemArray[TriangleIndices[TriangleIndex]];
+            if WrapX and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.x>0.5) then begin
+             Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+            end;
+            if WrapY and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.y>0.5) then begin
+             Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
+            end;
            end;
-           if WrapY and (fVertices.ItemArray[i0].TexCoord.y>0.5) then begin
-            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
-           end;
+           TriangleIndices[TriangleIndex]:=WrappedIndices[TriangleIndices[TriangleIndex]];
           end;
-          i0:=WrappedIndices[i0];
-         end;
-         if (WrapX and (fVertices.ItemArray[i1].TexCoord.x>0.5)) or
-            (WrapY and (fVertices.ItemArray[i1].TexCoord.y>0.5)) then begin
-          if WrappedIndices[i1]<0 then begin
-           WrappedIndices[i1]:=fVertices.AddNewIndex;
-           Vertex:=@fVertices.ItemArray[WrappedIndices[i1]];
-           Vertex^:=fVertices.ItemArray[i1];
-           if WrapX and (fVertices.ItemArray[i1].TexCoord.x>0.5) then begin
-            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
-           end;
-           if WrapY and (fVertices.ItemArray[i1].TexCoord.y>0.5) then begin
-            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
-           end;
-          end;
-          i1:=WrappedIndices[i1];
-         end;
-         if (WrapX and (fVertices.ItemArray[i2].TexCoord.x>0.5)) or
-            (WrapY and (fVertices.ItemArray[i2].TexCoord.y>0.5)) then begin
-          if WrappedIndices[i2]<0 then begin
-           WrappedIndices[i2]:=fVertices.AddNewIndex;
-           Vertex:=@fVertices.ItemArray[WrappedIndices[i2]];
-           Vertex^:=fVertices.ItemArray[i2];
-           if WrapX and (fVertices.ItemArray[i2].TexCoord.x>0.5) then begin
-            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
-           end;
-           if WrapY and (fVertices.ItemArray[i2].TexCoord.y>0.5) then begin
-            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
-           end;
-          end;
-          i2:=WrappedIndices[i2];
          end;
         end;
        end;
-       if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin // Only add triangles with vertices in counter-clockwise order
-        fIndices.Add(i0);
-        fIndices.Add(i2);
-        fIndices.Add(i1);
-       end else begin
-        fIndices.Add(i0);
-        fIndices.Add(i1);
-        fIndices.Add(i2);
+
+       // Only add triangles with vertices in counter-clockwise order
+       if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin
+        TpvSwap<TpvSizeInt>.Swap(TriangleIndices[1],TriangleIndices[2]);
        end;
+
+       fIndices.Add(TriangleIndices[0]);
+       fIndices.Add(TriangleIndices[1]);
+       fIndices.Add(TriangleIndices[2]);
+
       end;
+
      end;
 
     end;
