@@ -287,7 +287,7 @@ end;
 procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
     i0,i1,i2,t:TpvSizeInt;
-    Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta,MinTexDistance:TpvDouble;
+    Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
     Vertex:PVertex;
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
@@ -439,8 +439,6 @@ begin
 
    fIndices.Clear;
 
-   MinTexDistance:=Infinity;
-
    for Index:=0 to fCountPoints-1 do begin
 
     // Get the nearest sample points
@@ -460,17 +458,12 @@ begin
           (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
          )+Index;
       if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
-       if not SameValue(fVertices.ItemArray[Index].TexCoord.x,fVertices.ItemArray[OtherIndex].TexCoord.x) then begin
-        MinTexDistance:=Min(MinTexDistance,abs(fVertices.ItemArray[Index].TexCoord.x-fVertices.ItemArray[OtherIndex].TexCoord.x));
-       end;
        NearestSamples[CountNearestSamples]:=k;
        inc(CountNearestSamples);
       end;
      end;
 
     end;
-
-    MinTexDistance:=PImul20overSqrt5/fCountPoints;
 
     // Get the adjacent vertices
     begin
@@ -523,34 +516,35 @@ begin
        v2:=@Points[i2];
        begin
         // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
-        // If so, it duplicates the vertices of that triangle and adjusts their texture coordinates.
+        // If so, it duplicates the vertices of that triangle and adjusts their texture coordinates for
+        // a repeating texture sampler.
         if (abs(fVertices.ItemArray[i1].TexCoord.x-fVertices.ItemArray[i0].TexCoord.x)>0.5) or
            (abs(fVertices.ItemArray[i2].TexCoord.x-fVertices.ItemArray[i1].TexCoord.x)>0.5) or
            (abs(fVertices.ItemArray[i0].TexCoord.x-fVertices.ItemArray[i2].TexCoord.x)>0.5) then begin
-         if fVertices.ItemArray[i0].TexCoord.x<0.5 then begin
+         if fVertices.ItemArray[i0].TexCoord.x>0.5 then begin
           if WrappedIndices[i0]<0 then begin
            WrappedIndices[i0]:=fVertices.AddNewIndex;
            Vertex:=@fVertices.ItemArray[WrappedIndices[i0]];
            Vertex^:=fVertices.ItemArray[i0];
-           Vertex^.TexCoord.x:=Vertex^.TexCoord.x+1.0;
+           Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
           end;
           i0:=WrappedIndices[i0];
          end;
-         if fVertices.ItemArray[i1].TexCoord.x<0.5 then begin
+         if fVertices.ItemArray[i1].TexCoord.x>0.5 then begin
           if WrappedIndices[i1]<0 then begin
            WrappedIndices[i1]:=fVertices.AddNewIndex;
            Vertex:=@fVertices.ItemArray[WrappedIndices[i1]];
            Vertex^:=fVertices.ItemArray[i1];
-           Vertex^.TexCoord.x:=Vertex^.TexCoord.x+1.0;
+           Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
           end;
           i1:=WrappedIndices[i1];
          end;
-         if fVertices.ItemArray[i2].TexCoord.x<0.5 then begin
+         if fVertices.ItemArray[i2].TexCoord.x>0.5 then begin
           if WrappedIndices[i2]<0 then begin
            WrappedIndices[i2]:=fVertices.AddNewIndex;
            Vertex:=@fVertices.ItemArray[WrappedIndices[i2]];
            Vertex^:=fVertices.ItemArray[i2];
-           Vertex^.TexCoord.x:=Vertex^.TexCoord.x+1.0;
+           Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
           end;
           i2:=WrappedIndices[i2];
          end;
