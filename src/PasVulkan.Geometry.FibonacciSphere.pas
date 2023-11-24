@@ -306,29 +306,39 @@ begin
 
    fVertices.Clear;
 
+   // Start initial Phi value
    Phi:=0.0;
 
    for Index:=0 to fCountPoints-1 do begin
 
+    // Advance Phi
     if aUseGoldenRatio then begin
      Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
     end else begin
      Phi:=Phi+GoldenAngle;
-     if Phi>=TwoPI then begin
-      Phi:=Phi-TwoPI;
-     end;
     end;
+
+    // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
+    // coordinates later)
+    if Phi>=PI then begin
+     Phi:=Phi-TwoPI;
+    end;
+
+    // Calculate the actual fibonacci sphere point sample vector
     Z:=1.0-(((Index shl 1) or 1)/fCountPoints); // Z:=1.0-(((Index+0.5)*2.0)/fCountPoints);
     SinTheta:=sqrt(1.0-sqr(Z));
     SinCos(Phi,PhiSinus,PhiCosinus);
     Vector:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta).Normalize;
 
+    // Store the vector in an temporary point array later for the generation of the triangle indices
     Points[Index]:=Vector;
 
+    // Generate the tangent space vector
     Normal:=Vector;
     Tangent:=TpvFibonacciSphere.TVector.InlineableCreate(-Normal.z,0.0,Normal.x).Normalize;
     Bitangent:=Normal.Cross(Tangent).Normalize;
 
+    // Add it as a mesh vertex
     Vertex:=fVertices.AddNew;
 
     Vertex^.Position:=TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z)*fRadius;
@@ -339,22 +349,32 @@ begin
     
     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
 
+    // Calculate the texture coordinates, where we've already the Phi value, so avoid recalculate it
+    // by Phi:=ArcTan2(Vector.z,Vector.x) here
     case fTextureProjectionMapping of
 
      TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
       // Equirectangular projection mapping
-      Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5); // or 1.0-(ArcCos(Vector.y)/PI) 
+      Vertex^.TexCoord:=TpvVector2.InlineableCreate(
+                         ({ArcTan2(Vector.z,Vector.x)}Phi/TwoPI)+0.5,
+                         (ArcSin(Vector.y)/PI)+0.5 // or 1.0-(ArcCos(Vector.y)/PI) or something as this like
+                        );
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
       // Lambert cylindrical equal-area projection mapping
-      Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(Vector.y*0.5)+0.5);
+      Vertex^.TexCoord:=TpvVector2.InlineableCreate(
+                         ({ArcTan2(Vector.z,Vector.x)}Phi/TwoPI)+0.5,
+                         (Vector.y*0.5)+0.5
+                        );
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.Octahedral:begin
       // Octahedral projection mapping
       TemporaryVector:=Vertex^.Normal;
-      Vertex^.TexCoord:=TemporaryVector.xy/(abs(TemporaryVector.x)+abs(TemporaryVector.y)+abs(TemporaryVector.z));
+      Vertex^.TexCoord:=TemporaryVector.xy/(abs(TemporaryVector.x)+
+                                            abs(TemporaryVector.y)+
+                                            abs(TemporaryVector.z));
       if TemporaryVector.z<0.0 then begin
        Vertex^.TexCoord:=(TpvVector2.InlineableCreate(1.0,1.0)-Vertex^.TexCoord.yx.Abs)*
                           TpvVector2.InlineableCreate(SignNonZero(Vertex^.TexCoord.x),SignNonZero(Vertex^.TexCoord.y));
@@ -364,13 +384,25 @@ begin
 
      TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
       // Web Mercator projection
-      WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
-      Vertex^.TexCoord:=TpvVector2.Create((WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
+      WebMercatorLongitudeLatitude:=TpvVector2.Create(
+                                     {ArcTan2(Vector.z,Vector.x)}Phi,
+                                     ArcTan2(
+                                      Vector.y,
+                                      sqrt(sqr(Vector.x)+sqr(Vector.z))
+                                     )
+                                    );
+      Vertex^.TexCoord:=TpvVector2.Create(
+                         (WebMercatorLongitudeLatitude.x+PI)/TwoPI,
+                         (Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI
+                        );
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
       // The GL_SPHERE_MAP projection from old OpenGL times
-      Vertex^.TexCoord:=(TpvVector2.InlineableCreate(Vector.x,Vector.z)/(TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0))+TpvVector2.InlineableCreate(0.5,0.5);
+      Vertex^.TexCoord:=(
+                         TpvVector2.InlineableCreate(Vector.x,Vector.z)/
+                         (TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0)
+                        )+TpvVector2.InlineableCreate(0.5,0.5);
      end;
 
      TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
@@ -396,75 +428,89 @@ begin
 
    for Index:=0 to fCountPoints-1 do begin
 
-    CosTheta:=1.0-(((Index shl 1) or 1)/fCountPoints);
+    // Get the nearest sample points
+    begin
 
-    z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
+     CosTheta:=1.0-(((Index shl 1) or 1)/fCountPoints);
 
-    CountNearestSamples:=0;
+     z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
 
-    for OtherIndex:=0 to 11 do begin
-     r:=OtherIndex-(((OtherIndex*$56) shr 9)*6); // OtherIndex mod 6
-     c:=(5-abs(5-(r shl 1)))+
-        (($38 shr r) and 1); // ((r*$56) shr 8); // (r div 3);
-     k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*
-         (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
-        )+Index;
-     if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
-      NearestSamples[CountNearestSamples]:=k;
-      inc(CountNearestSamples);
-     end;
-    end;
+     CountNearestSamples:=0;
 
-    CountAdjacentVertices:=0;
-
-    for OtherIndex:=0 to CountNearestSamples-1 do begin
-
-     k:=NearestSamples[OtherIndex];
-
-     if OtherIndex>0 then begin
-      PreviousK:=NearestSamples[OtherIndex-1];
-     end else begin
-      PreviousK:=NearestSamples[CountNearestSamples-1];
-     end;
-
-     if (OtherIndex+1)<CountNearestSamples then begin
-      NextK:=NearestSamples[OtherIndex+1];
-     end else begin
-      NextK:=NearestSamples[0];
-     end;
-
-     if Points[PreviousK].SquaredDistance(Points[NextK])>Points[PreviousK].SquaredDistance(Points[k]) then begin
-      AdjacentVertices[CountAdjacentVertices]:=k;
-      inc(CountAdjacentVertices);
-     end;
-
-    end;
-
-    if (OtherIndex=0) and (CountAdjacentVertices>0) then begin
-     dec(CountAdjacentVertices); // Special case for the pole
-    end;
-
-    i0:=Index;
-
-    // Add triangles from the adjacent neighbours
-    for OtherIndex:=0 to CountAdjacentVertices-1 do begin
-     i1:=AdjacentVertices[OtherIndex];
-     if (OtherIndex+1)<CountAdjacentVertices then begin
-      i2:=AdjacentVertices[OtherIndex+1];
-     end else begin
-      i2:=AdjacentVertices[0];
-     end;
-     if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-      if ((Points[i1]-Points[i0]).Cross(Points[i2]-Points[i0])).Dot(Points[i0])<0.0 then begin // Only add triangles with vertices in counter-clockwise order
-       fIndices.Add(i0);
-       fIndices.Add(i2);
-       fIndices.Add(i1);
-      end else begin
-       fIndices.Add(i0);
-       fIndices.Add(i1);
-       fIndices.Add(i2);
+     for OtherIndex:=0 to 11 do begin
+      r:=OtherIndex-(((OtherIndex*$56) shr 9)*6); // OtherIndex mod 6
+      c:=(5-abs(5-(r shl 1)))+
+         (($38 shr r) and 1); // ((r*$56) shr 8); // (r div 3);
+      k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*
+          (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
+         )+Index;
+      if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
+       NearestSamples[CountNearestSamples]:=k;
+       inc(CountNearestSamples);
       end;
      end;
+
+    end;
+
+    // Get the adjacent vertices
+    begin
+
+     CountAdjacentVertices:=0;
+
+     for OtherIndex:=0 to CountNearestSamples-1 do begin
+
+      k:=NearestSamples[OtherIndex];
+
+      if OtherIndex>0 then begin
+       PreviousK:=NearestSamples[OtherIndex-1];
+      end else begin
+       PreviousK:=NearestSamples[CountNearestSamples-1];
+      end;
+
+      if (OtherIndex+1)<CountNearestSamples then begin
+       NextK:=NearestSamples[OtherIndex+1];
+      end else begin
+       NextK:=NearestSamples[0];
+      end;
+
+      if Points[PreviousK].SquaredDistance(Points[NextK])>Points[PreviousK].SquaredDistance(Points[k]) then begin
+       AdjacentVertices[CountAdjacentVertices]:=k;
+       inc(CountAdjacentVertices);
+      end;
+
+     end;
+
+     if (OtherIndex=0) and (CountAdjacentVertices>0) then begin
+      dec(CountAdjacentVertices); // Special case for the pole
+     end;
+
+    end;
+
+    // Generate and add triangle indices from the adjacent neighbours
+    begin
+
+     i0:=Index;
+
+     for OtherIndex:=0 to CountAdjacentVertices-1 do begin
+      i1:=AdjacentVertices[OtherIndex];
+      if (OtherIndex+1)<CountAdjacentVertices then begin
+       i2:=AdjacentVertices[OtherIndex+1];
+      end else begin
+       i2:=AdjacentVertices[0];
+      end;
+      if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
+       if ((Points[i1]-Points[i0]).Cross(Points[i2]-Points[i0])).Dot(Points[i0])<0.0 then begin // Only add triangles with vertices in counter-clockwise order
+        fIndices.Add(i0);
+        fIndices.Add(i2);
+        fIndices.Add(i1);
+       end else begin
+        fIndices.Add(i0);
+        fIndices.Add(i1);
+        fIndices.Add(i2);
+       end;
+      end;
+     end;
+
     end;
 
    end;
