@@ -330,9 +330,13 @@ begin
     Bitangent:=Normal.Cross(Tangent).Normalize;
 
     Vertex:=fVertices.AddNew;
+
     Vertex^.Position:=TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z)*fRadius;
+    
     Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
+    
     Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
+    
     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
 
     case fTextureProjectionMapping of
