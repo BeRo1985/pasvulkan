@@ -63,7 +63,7 @@ unit PasVulkan.Geometry.FibonacciSphere;
 
 interface
 
-uses Classes,SysUtils,Math,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections;
+uses Classes,SysUtils,Math,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
 
 type { TpvFibonacciSphere }
      TpvFibonacciSphere=class
@@ -286,19 +286,28 @@ end;
 
 procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
-    i0,i1,i2:TpvSizeInt;
-    Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
+    i0,i1,i2,t:TpvSizeInt;
+    Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta,MinTexDistance:TpvDouble;
     Vertex:PVertex;
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
     Points:TVectors;
+    Phis:array of TpvDouble;
+    WrappedIndices:array of TpvSizeInt;
     TemporaryVector:TpvVector3;
+    v0,v1,v2:TpvFibonacciSphere.PVector;
 begin
  
  Points:=nil;
+ Phis:=nil;
+ WrappedIndices:=nil;
  try
 
   SetLength(Points,fCountPoints);
+  SetLength(Phis,fCountPoints);
+  SetLength(WrappedIndices,fCountPoints);
+
+  FillChar(WrappedIndices[0],fCountPoints*SizeOf(TpvSizeInt),#$ff); // fill with -1 values
 
   // Generate vertices (the comparatively yet easy part)
   begin
@@ -331,6 +340,7 @@ begin
 
     // Store the vector in an temporary point array later for the generation of the triangle indices
     Points[Index]:=Vector;
+    Phis[Index]:=Phi;
 
     // Generate the tangent space vector
     Normal:=Vector;
@@ -429,6 +439,8 @@ begin
 
    fIndices.Clear;
 
+   MinTexDistance:=Infinity;
+
    for Index:=0 to fCountPoints-1 do begin
 
     // Get the nearest sample points
@@ -448,12 +460,17 @@ begin
           (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
          )+Index;
       if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
+       if not SameValue(fVertices.ItemArray[Index].TexCoord.x,fVertices.ItemArray[OtherIndex].TexCoord.x) then begin
+        MinTexDistance:=Min(MinTexDistance,abs(fVertices.ItemArray[Index].TexCoord.x-fVertices.ItemArray[OtherIndex].TexCoord.x));
+       end;
        NearestSamples[CountNearestSamples]:=k;
        inc(CountNearestSamples);
       end;
      end;
 
     end;
+
+    MinTexDistance:=PImul20overSqrt5/fCountPoints;
 
     // Get the adjacent vertices
     begin
@@ -492,10 +509,8 @@ begin
     // Generate and add triangle indices from the adjacent neighbours
     begin
 
-     i0:=Index;
-
-     // TODO: Add texture coordinate wrapping correction together with vertex duplication, when needed.
      for OtherIndex:=0 to CountAdjacentVertices-1 do begin
+      i0:=Index;
       i1:=AdjacentVertices[OtherIndex];
       if (OtherIndex+1)<CountAdjacentVertices then begin
        i2:=AdjacentVertices[OtherIndex+1];
@@ -503,7 +518,45 @@ begin
        i2:=AdjacentVertices[0];
       end;
       if (i1>i0) and (i2>i0) then begin // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-       if ((Points[i1]-Points[i0]).Cross(Points[i2]-Points[i0])).Dot(Points[i0])<0.0 then begin // Only add triangles with vertices in counter-clockwise order
+       v0:=@Points[i0];
+       v1:=@Points[i1];
+       v2:=@Points[i2];
+       begin
+        // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
+        // If so, it duplicates the vertices of that triangle and adjusts their texture coordinates.
+        if (abs(fVertices.ItemArray[i1].TexCoord.x-fVertices.ItemArray[i0].TexCoord.x)>0.5) or
+           (abs(fVertices.ItemArray[i2].TexCoord.x-fVertices.ItemArray[i1].TexCoord.x)>0.5) or
+           (abs(fVertices.ItemArray[i0].TexCoord.x-fVertices.ItemArray[i2].TexCoord.x)>0.5) then begin
+         if fVertices.ItemArray[i0].TexCoord.x<0.5 then begin
+          if WrappedIndices[i0]<0 then begin
+           WrappedIndices[i0]:=fVertices.AddNewIndex;
+           Vertex:=@fVertices.ItemArray[WrappedIndices[i0]];
+           Vertex^:=fVertices.ItemArray[i0];
+           Vertex^.TexCoord.x:=Vertex^.TexCoord.x+1.0;
+          end;
+          i0:=WrappedIndices[i0];
+         end;
+         if fVertices.ItemArray[i1].TexCoord.x<0.5 then begin
+          if WrappedIndices[i1]<0 then begin
+           WrappedIndices[i1]:=fVertices.AddNewIndex;
+           Vertex:=@fVertices.ItemArray[WrappedIndices[i1]];
+           Vertex^:=fVertices.ItemArray[i1];
+           Vertex^.TexCoord.x:=Vertex^.TexCoord.x+1.0;
+          end;
+          i1:=WrappedIndices[i1];
+         end;
+         if fVertices.ItemArray[i2].TexCoord.x<0.5 then begin
+          if WrappedIndices[i2]<0 then begin
+           WrappedIndices[i2]:=fVertices.AddNewIndex;
+           Vertex:=@fVertices.ItemArray[WrappedIndices[i2]];
+           Vertex^:=fVertices.ItemArray[i2];
+           Vertex^.TexCoord.x:=Vertex^.TexCoord.x+1.0;
+          end;
+          i2:=WrappedIndices[i2];
+         end;
+        end;
+       end;
+       if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin // Only add triangles with vertices in counter-clockwise order
         fIndices.Add(i0);
         fIndices.Add(i2);
         fIndices.Add(i1);
@@ -519,11 +572,12 @@ begin
 
    end;
 
-
   end;
 
  finally
   Points:=nil;
+  Phis:=nil;
+  WrappedIndices:=nil;
  end; 
 
 end;
