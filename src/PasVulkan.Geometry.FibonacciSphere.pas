@@ -130,7 +130,7 @@ type { TpvFibonacciSphere }
       public
        constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0;const aTextureProjectionMapping:TTextureProjectionMapping=TTextureProjectionMapping.Equirectangular);
        destructor Destroy; override;
-       procedure Generate(const aUseGoldenRatio:Boolean=true);
+       procedure Generate(const aUseGoldenRatio:Boolean=true;const aFixTextureCoordinateSeams:Boolean=true);
       published 
        property CountPoints:TpvSizeInt read fCountPoints;
        property Radius:TpvDouble read fRadius;
@@ -284,7 +284,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean);
+procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean;const aFixTextureCoordinateSeams:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
     TriangleIndex:TpvSizeInt;
     Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
@@ -523,7 +523,7 @@ begin
        v1:=@Points[TriangleIndices[1]];
        v2:=@Points[TriangleIndices[2]];
 
-       begin
+       if aFixTextureCoordinateSeams then begin
         // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
         // If so, the vertices of that triangle will be duplicated and its texture coordinates adjusted for
         // a repeating texture sampler.
