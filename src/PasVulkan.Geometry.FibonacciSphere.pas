@@ -87,7 +87,8 @@ type { TpvFibonacciSphere }
               Octahedral,                 // Octahedral projection mapping
               WebMercator,                // Web Mercator projection
               Spherical,                  // The GL_SPHERE_MAP projection from old OpenGL times 
-              HEALPix                     // Hierarchical Equal Area isoLatitude Pixelization of a sphere
+              HEALPix,                    // Hierarchical Equal Area isoLatitude Pixelization of a sphere
+              CassiniSoldner              // Cassini Soldner projection mapping
              );
             { TVector }
             TVector=record
@@ -287,7 +288,7 @@ end;
 procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean;const aFixTextureCoordinateSeams:Boolean);
 var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
     TriangleIndex:TpvSizeInt;
-    Phi,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
+    Phi,Theta,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
     Vertex:PVertex;
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
@@ -423,6 +424,15 @@ begin
      TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
       // Hierarchical Equal Area isoLatitude Pixelization of a sphere
       Vertex^.TexCoord:=DirectionToHEALPix(TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z));
+     end;
+
+     TpvFibonacciSphere.TTextureProjectionMapping.CassiniSoldner:begin
+      // Cassini Soldner projection mapping
+      Theta:=ArcSin(SinTheta);
+      Vertex^.TexCoord:=TpvVector2.InlineableCreate(
+                         (ArcSin((Cos(Pji)*Sin(Theta)))/PI)+0.5,
+                         ((ArcTan2(Sin(Phi),Cos(Phi)*Cos(Theta)))/TwoPI)+0.5
+                        );
      end;
 
      else begin
