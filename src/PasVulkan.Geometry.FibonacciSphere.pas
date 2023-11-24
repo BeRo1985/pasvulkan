@@ -494,6 +494,7 @@ begin
 
      i0:=Index;
 
+     // TODO: Add texture coordinate wrapping correction together with vertex duplication, when needed.
      for OtherIndex:=0 to CountAdjacentVertices-1 do begin
       i1:=AdjacentVertices[OtherIndex];
       if (OtherIndex+1)<CountAdjacentVertices then begin
@@ -517,6 +518,7 @@ begin
     end;
 
    end;
+
 
   end;
 
