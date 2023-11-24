@@ -525,7 +525,7 @@ begin
 
        begin
         // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
-        // If so, it duplicates the vertices of that triangle and adjusts their texture coordinates for
+        // If so, the vertices of that triangle will be duplicated and its texture coordinates adjusted for
         // a repeating texture sampler.
         WrapX:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.x-fVertices.ItemArray[TriangleIndices[0]].TexCoord.x)>0.5) or
                (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.x-fVertices.ItemArray[TriangleIndices[1]].TexCoord.x)>0.5) or
