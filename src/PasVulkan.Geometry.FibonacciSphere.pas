@@ -292,6 +292,7 @@ var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,N
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
     Points:TVectors;
+    TemporaryVector:TpvVector3;
     WebMercatorLongitudeLatitude:TpvVector2;
 begin
  
@@ -335,28 +336,42 @@ begin
     Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
 
     case fTextureProjectionMapping of
+
      TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
       Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(ArcSin(Vector.y)/PI)+0.5); // or 1.0-(ArcCos(Vector.y)/PI) 
      end;
+
      TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
       Vertex^.TexCoord:=TpvVector2.InlineableCreate((ArcTan2(Vector.z,Vector.x)/TwoPI)+0.5,(Vector.y*0.5)+0.5);
      end;
+
      TpvFibonacciSphere.TTextureProjectionMapping.Octahedral:begin
-      Vertex^.TexCoord:=OctahedralProjectionMappingEncode(Vertex^.Normal);
+      TemporaryVector:=Vertex^.Normal;
+      Vertex^.TexCoord:=TemporaryVector.xy/(abs(TemporaryVector.x)+abs(TemporaryVector.y)+abs(TemporaryVector.z));
+      if TemporaryVector.z<0.0 then begin
+       Vertex^.TexCoord:=(TpvVector2.InlineableCreate(1.0,1.0)-Vertex^.TexCoord.yx.Abs)*
+                          TpvVector2.InlineableCreate(SignNonZero(Vertex^.TexCoord.x),SignNonZero(Vertex^.TexCoord.y));
+      end;
+      Vertex^.TexCoord:=(Vertex^.TexCoord*0.5)+TpvVector2.InlineableCreate(0.5,0.5);
      end;
+
      TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
       WebMercatorLongitudeLatitude:=TpvVector2.Create(ArcTan2(Vector.z,Vector.x),ArcTan2(Vector.y,sqrt(sqr(Vector.x)+sqr(Vector.z))));
       Vertex^.TexCoord:=TpvVector2.Create((WebMercatorLongitudeLatitude.x+PI)/TwoPI,(Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI);
      end;
+
      TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
       Vertex^.TexCoord:=(TpvVector2.InlineableCreate(Vector.x,Vector.z)/(TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0))+TpvVector2.InlineableCreate(0.5,0.5);
      end;
+
      TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
       Vertex^.TexCoord:=DirectionToHEALPix(TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z));
      end;
+
      else begin
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
      end;
+
     end;
 
    end;
