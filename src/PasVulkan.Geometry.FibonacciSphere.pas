@@ -293,7 +293,6 @@ var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,N
     NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
     Points:TVectors;
     TemporaryVector:TpvVector3;
-    WebMercatorLongitudeLatitude:TpvVector2;
 begin
  
  Points:=nil;
@@ -356,7 +355,7 @@ begin
      TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
       // Equirectangular projection mapping
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(
-                         ({ArcTan2(Vector.z,Vector.x)}Phi/TwoPI)+0.5,
+                         (Phi/TwoPI)+0.5,
                          (ArcSin(Vector.y)/PI)+0.5 // or 1.0-(ArcCos(Vector.y)/PI) or something as this like
                         );
      end;
@@ -364,7 +363,7 @@ begin
      TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
       // Lambert cylindrical equal-area projection mapping
       Vertex^.TexCoord:=TpvVector2.InlineableCreate(
-                         ({ArcTan2(Vector.z,Vector.x)}Phi/TwoPI)+0.5,
+                         (Phi/TwoPI)+0.5,
                          (Vector.y*0.5)+0.5
                         );
      end;
@@ -384,16 +383,20 @@ begin
 
      TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
       // Web Mercator projection
-      WebMercatorLongitudeLatitude:=TpvVector2.Create(
-                                     {ArcTan2(Vector.z,Vector.x)}Phi,
-                                     ArcTan2(
-                                      Vector.y,
-                                      sqrt(sqr(Vector.x)+sqr(Vector.z))
-                                     )
-                                    );
       Vertex^.TexCoord:=TpvVector2.Create(
-                         (WebMercatorLongitudeLatitude.x+PI)/TwoPI,
-                         (Ln(Tan((WebMercatorLongitudeLatitude.y*0.5)+(PI*0.25)))+PI)/TwoPI
+                         (Phi/TwoPI)+0.5,
+                         (Ln(
+                           Tan(
+                            (
+                             ArcTan2(
+                              Vector.y,
+                              sqrt(sqr(Vector.x)+sqr(Vector.z))
+                             )*0.5
+                            )+
+                            (PI*0.25)
+                           )
+                          )+PI
+                         )/TwoPI
                         );
      end;
 
