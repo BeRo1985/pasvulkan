@@ -296,6 +296,7 @@ var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,N
     WrappedIndices:array of TpvSizeInt;
     TemporaryVector:TpvVector3;
     v0,v1,v2:TpvFibonacciSphere.PVector;
+    WrapX,WrapY:boolean;
 begin
  
  Points:=nil;
@@ -518,33 +519,55 @@ begin
         // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
         // If so, it duplicates the vertices of that triangle and adjusts their texture coordinates for
         // a repeating texture sampler.
-        if (abs(fVertices.ItemArray[i1].TexCoord.x-fVertices.ItemArray[i0].TexCoord.x)>0.5) or
-           (abs(fVertices.ItemArray[i2].TexCoord.x-fVertices.ItemArray[i1].TexCoord.x)>0.5) or
-           (abs(fVertices.ItemArray[i0].TexCoord.x-fVertices.ItemArray[i2].TexCoord.x)>0.5) then begin
-         if fVertices.ItemArray[i0].TexCoord.x>0.5 then begin
+        WrapX:=(abs(fVertices.ItemArray[i1].TexCoord.x-fVertices.ItemArray[i0].TexCoord.x)>0.5) or
+               (abs(fVertices.ItemArray[i2].TexCoord.x-fVertices.ItemArray[i1].TexCoord.x)>0.5) or
+               (abs(fVertices.ItemArray[i0].TexCoord.x-fVertices.ItemArray[i2].TexCoord.x)>0.5);
+        WrapY:=(abs(fVertices.ItemArray[i1].TexCoord.y-fVertices.ItemArray[i0].TexCoord.y)>0.5) or
+               (abs(fVertices.ItemArray[i2].TexCoord.y-fVertices.ItemArray[i1].TexCoord.y)>0.5) or
+               (abs(fVertices.ItemArray[i0].TexCoord.y-fVertices.ItemArray[i2].TexCoord.y)>0.5);
+        if WrapX or WrapY then begin
+         if (WrapX and (fVertices.ItemArray[i0].TexCoord.x>0.5)) or
+            (WrapY and (fVertices.ItemArray[i0].TexCoord.y>0.5)) then begin
           if WrappedIndices[i0]<0 then begin
            WrappedIndices[i0]:=fVertices.AddNewIndex;
            Vertex:=@fVertices.ItemArray[WrappedIndices[i0]];
            Vertex^:=fVertices.ItemArray[i0];
-           Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           if WrapX and (fVertices.ItemArray[i0].TexCoord.x>0.5) then begin
+            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           end;
+           if WrapY and (fVertices.ItemArray[i0].TexCoord.y>0.5) then begin
+            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
+           end;
           end;
           i0:=WrappedIndices[i0];
          end;
-         if fVertices.ItemArray[i1].TexCoord.x>0.5 then begin
+         if (WrapX and (fVertices.ItemArray[i1].TexCoord.x>0.5)) or
+            (WrapY and (fVertices.ItemArray[i1].TexCoord.y>0.5)) then begin
           if WrappedIndices[i1]<0 then begin
            WrappedIndices[i1]:=fVertices.AddNewIndex;
            Vertex:=@fVertices.ItemArray[WrappedIndices[i1]];
            Vertex^:=fVertices.ItemArray[i1];
-           Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           if WrapX and (fVertices.ItemArray[i1].TexCoord.x>0.5) then begin
+            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           end;
+           if WrapY and (fVertices.ItemArray[i1].TexCoord.y>0.5) then begin
+            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
+           end;
           end;
           i1:=WrappedIndices[i1];
          end;
-         if fVertices.ItemArray[i2].TexCoord.x>0.5 then begin
+         if (WrapX and (fVertices.ItemArray[i2].TexCoord.x>0.5)) or
+            (WrapY and (fVertices.ItemArray[i2].TexCoord.y>0.5)) then begin
           if WrappedIndices[i2]<0 then begin
            WrappedIndices[i2]:=fVertices.AddNewIndex;
            Vertex:=@fVertices.ItemArray[WrappedIndices[i2]];
            Vertex^:=fVertices.ItemArray[i2];
-           Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           if WrapX and (fVertices.ItemArray[i2].TexCoord.x>0.5) then begin
+            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           end;
+           if WrapY and (fVertices.ItemArray[i2].TexCoord.y>0.5) then begin
+            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
+           end;
           end;
           i2:=WrappedIndices[i2];
          end;
