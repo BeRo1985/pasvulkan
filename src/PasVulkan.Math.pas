@@ -1529,7 +1529,8 @@ function CastUInt32ToFloat(const v:TpvUInt32):TpvFloat; {$ifdef CAN_INLINE}inlin
 function SignNonZero(const v:TpvFloat):TpvInt32; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Determinant4x4(const v0,v1,v2,v3:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
+function OldSolveQuadraticRoots(const a,b,c:TpvScalar;out t0,t1:TpvScalar):boolean;
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t0,t1:TpvScalar):boolean;
 function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
@@ -2051,7 +2052,7 @@ begin
          (v0.y*v1.x*v2.z*v3.w)+(v0.x*v1.y*v2.z*v3.w);
 end;
 
-function SolveQuadraticRoots(const a,b,c:TpvScalar;out t1,t2:TpvScalar):boolean;
+function OldSolveQuadraticRoots(const a,b,c:TpvScalar;out t0,t1:TpvScalar):boolean;
 var a2,d,InverseDenominator:TpvScalar;
 begin
  result:=false;
@@ -2065,20 +2066,65 @@ begin
   end else begin
    InverseDenominator:=1.0/a2;
    if abs(d)<EPSILON then begin
-    t1:=(-b)*InverseDenominator;
-    t2:=t1;
+    t0:=(-b)*InverseDenominator;
+    t1:=t0;
    end else begin
     d:=sqrt(d);
-    t1:=((-b)+d)*InverseDenominator;
-    t2:=((-b)-d)*InverseDenominator;
-    if t1>t2 then begin
-     d:=t1;
-     t1:=t2;
-     t2:=d;
+    t0:=((-b)+d)*InverseDenominator;
+    t1:=((-b)-d)*InverseDenominator;
+    if t0>t1 then begin
+     d:=t0;
+     t0:=t1;
+     t1:=d;
     end;
    end;
    result:=true;
   end;
+ end;
+end;
+
+// The SolveQuadraticRoots function offers a significant improvement over the OldSolveQuadraticRoots
+// function in terms of numerical stability and accuracy. In computing, especially for floating-point
+// numbers, the representation and precision of real numbers are limited, which can lead to issues
+// like loss of significance and catastrophic cancellation. This problem is particularly acute when
+// dealing with values that are very close in magnitude but have opposite signs.
+// The OldSolveQuadraticRoots function uses a direct approach to calculate the roots of the quadratic
+// equation, which suffers from these numerical stability issues. Specifically, when 'b' and the
+// square root of the discriminant ('d') in the quadratic formula have values close to each other
+// but opposite in sign, it can lead to significant errors due to rounding and cancellation.
+// The SolveQuadraticRoots function addresses this by using an alternative formulation:
+// q = -0.5 * (b + sign(b) * sqrt(b^2 - 4ac))
+// t0 = q / a
+// t1 = c / q
+// This approach ensures that the terms added to compute 'q' always have the same sign, thus avoiding
+// the catastrophic cancellation that can occur in the OldSolveQuadraticRoots function. By doing so,
+// SolveQuadraticRoots provides more reliable and accurate results, particularly in edge cases where
+// precision is crucial.
+function SolveQuadraticRoots(const a,b,c:TpvScalar;out t0,t1:TpvScalar):boolean;
+var d,q,t:TpvScalar;
+begin
+ d:=sqr(b)-(4.0*(a*c));
+ if d<0.0 then begin
+  result:=false;
+ end else begin
+  if d=0.0 then begin
+   t0:=((-0.5)*b)/a;
+   t1:=t0;
+  end else begin
+   if b>0 then begin
+    q:=(-0.5)*(b+sqrt(d));
+   end else begin
+    q:=(-0.5)*(b-sqrt(d));
+   end;
+   t0:=q/a;
+   t1:=c/q;
+   if t0>t1 then begin
+    t:=t0;
+    t0:=t1;
+    t1:=t;
+   end;
+  end;
+  result:=true;
  end;
 end;
 
@@ -15608,39 +15654,69 @@ end;
 
 function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
 var SphereCenterToRayOrigin:TpvVector3;
-    a,b,c,t1,t2:TpvScalar;
+    a,b,c,t0,t1:TpvScalar;
 begin
- result:=false;
  SphereCenterToRayOrigin:=Origin-Center;
  a:=Direction.SquaredLength;
  b:=2.0*SphereCenterToRayOrigin.Dot(Direction);
  c:=SphereCenterToRayOrigin.SquaredLength-sqr(Radius);
- if SolveQuadraticRoots(a,b,c,t1,t2) then begin
-  if t1<0.0 then begin
-   if t2<0.0 then begin
-    // sphere is behind, abort
+ if SolveQuadraticRoots(a,b,c,t0,t1) then begin
+  if t0<0.0 then begin
+   if t1<0.0 then begin
+    // Sphere is behind, abort
+    result:=false;
     exit;
    end else begin
-    // inside sphere
-    Time:=t2;
+    // Inside sphere
+    Time:=t1;
     result:=true;
    end;
   end else begin
-   if t2<0.0 then begin
-    // inside sphere
-    Time:=t1;
+   if t1<0.0 then begin
+    // Inside sphere
+    Time:=t0;
    end else begin
-    // sphere is ahead, return the nearest value
-    if t1<t2 then begin
-     Time:=t1;
+    // Sphere is ahead, return the nearest value
+    if t0<t1 then begin
+     Time:=t0;
     end else begin
-     Time:=t2;
+     Time:=t1;
     end;
    end;
    result:=true;
   end;
+ end else begin
+  result:=false;
  end;
 end;
+
+{function TpvSphere.RayIntersection(const Origin,Direction:TpvVector3;out Time:TpvScalar):boolean;
+var SphereCenterToRayOrigin:TpvVector3;
+    a,b,c,t0,t1,t:TpvScalar;
+begin
+ SphereCenterToRayOrigin:=Origin-Center;
+ a:=Direction.SquaredLength;
+ b:=2.0*SphereCenterToRayOrigin.Dot(Direction);
+ c:=SphereCenterToRayOrigin.SquaredLength-sqr(Radius);
+ if SolveQuadraticRoots(a,b,c,t0,t1) then begin
+  if t0>t1 then begin
+   t:=t0;
+   t0:=t1;
+   t1:=t;
+  end;
+  if t0<0.0 then begin
+   t0:=t1;
+   if t0<0.0 then begin
+    result:=false;
+    exit;
+   end;
+  end;
+  Time:=t0;
+  result:=true;
+ end else begin
+  result:=false;
+ end;
+end;}
 
 function TpvSphere.Extends(const WithSphere:TpvSphere):TpvSphere;
 var x0,y0,z0,r0,x1,y1,z1,r1,xn,yn,zn,dn,t:TpvScalar;
