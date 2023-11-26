@@ -134,7 +134,7 @@ type { TpvFibonacciSphere }
        destructor Destroy; override;
        procedure Generate(const aUseGoldenRatio:Boolean=true;const aFixTextureCoordinateSeams:Boolean=true);
        procedure ExportToOBJ(const aStream:TStream); overload;
-       procedure ExportToOBJ(const aFileName:TpvUT8String); overload;
+       procedure ExportToOBJ(const aFileName:TpvUTF8String); overload;
       published 
        property CountPoints:TpvSizeInt read fCountPoints;
        property Radius:TpvDouble read fRadius;
@@ -598,7 +598,7 @@ begin
 end;
 
 procedure TpvFibonacciSphere.ExportToOBJ(const aStream:TStream);
-const NewLine:TpvUTF8String={$ifdef Windows}#13#10{$else}#10{$endif}
+const NewLine:TpvUTF8String={$ifdef Windows}#13#10{$else}#10{$endif};
  procedure WriteString(const aString:TpvUTF8String);
  begin
   aStream.WriteBuffer(aString[1],Length(aString));
@@ -627,9 +627,9 @@ begin
  end;
 
  for Index:=0 to fIndices.Count div 3-1 do begin
-  s:='f '+IntToStr(fIndices[(Index*3)+0]+1)+'/'+IntToStr(fIndices[(Index*3)+0]+1)+'/'+IntToStr(fIndices([Index*3)+0]+1)+' '+
-          IntToStr(fIndices[(Index*3)+1]+1)+'/'+IntToStr(fIndices[(Index*3)+1]+1)+'/'+IntToStr(f(Indices[Index*3)+1]+1)+' '+
-          IntToStr(fIndices[(Index*3)+2]+1)+'/'+IntToStr(fIndices[(Index*3)+2]+1)+'/'+IntToStr((fIndices[Index*3)+2]+1)+NewLine;
+  s:='f '+IntToStr(fIndices[(Index*3)+0]+1)+'/'+IntToStr(fIndices[(Index*3)+0]+1)+'/'+IntToStr(fIndices[(Index*3)+0]+1)+' '+
+          IntToStr(fIndices[(Index*3)+1]+1)+'/'+IntToStr(fIndices[(Index*3)+1]+1)+'/'+IntToStr(fIndices[(Index*3)+1]+1)+' '+
+          IntToStr(fIndices[(Index*3)+2]+1)+'/'+IntToStr(fIndices[(Index*3)+2]+1)+'/'+IntToStr(fIndices[(Index*3)+2]+1)+NewLine;
   WriteString(s);
  end; 
  
