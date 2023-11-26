@@ -118,6 +118,7 @@ type { TpvFibonacciSphere }
              Tangent:TpvVector3;
              Bitangent:TpvVector3;
              TexCoord:TpvVector2;
+             PointIndex:TpvInt32;
             end;
             PVertex=^TpvFibonacciSphere.TVertex;
             TVertices=TpvDynamicArrayList<TpvFibonacciSphere.TVertex>;
@@ -441,6 +442,9 @@ begin
      end;
 
     end;
+
+    // Store the point index
+    Vertex^.PointIndex:=Index;
 
    end;
 
