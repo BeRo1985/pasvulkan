@@ -26,7 +26,7 @@ vec4 textureOctahedralMap(const in sampler2D tex, vec3 direction) {
   ivec2 texSize = textureSize(tex, 0).xy;
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
   if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
-   // Handle edges with bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
+   // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
    uv *= texSize;
    ivec2 baseCoord = ivec2(floor(uv));
    vec2 fractionalPart = uv - vec2(baseCoord);
