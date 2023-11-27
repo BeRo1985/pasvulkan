@@ -1,7 +1,7 @@
 #ifndef TEXTUREUTILS_GLSL
 #define TEXTUREUTILS_GLSL
 
-vec4 cubicForTextureBicubic(const in float v){
+vec4 textureBicubicCoefficents(const in float v){
   vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v, s = n * n * n;
   vec3 t = vec3(s.x, s.y - (4.0 * s.x), (s.z - (4.0 * s.y)) + (6.0 * s.x));
   return vec4(t, 6.0 - dot(t, vec3(1.0))) * (1.0 / 6.0);
@@ -11,8 +11,8 @@ vec4 textureBicubic(const in sampler2D tex, const in vec2 texCoords, const in in
   vec2 texSize = textureSize(tex, lod),
        uv = (texCoords * texSize) - vec2(0.5),
        fxy = fract(uv);
-  vec4 xcubic = cubicForTextureBicubic(fxy.x),
-       ycubic = cubicForTextureBicubic(fxy.y),
+  vec4 xcubic = textureBicubicCoefficents(fxy.x),
+       ycubic = textureBicubicCoefficents(fxy.y),
        s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw),
        offset = (((uv - fxy).xxyy + vec2(-0.5, +1.5).xyxy) + 
                  (vec4(xcubic.yw, ycubic.yw) / s)) * 
@@ -21,6 +21,11 @@ vec4 textureBicubic(const in sampler2D tex, const in vec2 texCoords, const in in
   return mix(mix(textureLod(tex, offset.yw, f.z), textureLod(tex, offset.xw, f.z), f.x), 
              mix(textureLod(tex, offset.yz, f.z), textureLod(tex, offset.xz, f.z), f.x), f.y);
 }           
+
+vec4 textureCatmullRomCoefficents(const in float v){
+  float t = v, tt = t * t, ttt = tt * t;
+  return vec4((tt - (ttt * 0.5)) - (0.5 * t), ((ttt * 1.5) - (tt * 2.5)) + 1.0, ((tt * 2.0) - (ttt * 1.5)) + (t * 0.5), (ttt * 0.5) - (tt * 0.5));  
+}
 
 // based on: https://www.decarpentier.nl/2d-catmull-rom-in-4-samples
 vec4 textureCatmullRom(const in sampler2D tex, const in vec2 uv, const in int lod){
