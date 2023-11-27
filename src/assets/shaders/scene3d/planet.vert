@@ -1,4 +1,4 @@
-#version 450
+#version 450 core
 
 #pragma shader_stage(vertex)
 
