@@ -1576,6 +1576,16 @@ begin
   fVulkanGLSLCFound:=false;
  end;
 
+{$ifndef Windows}
+ if not fVulkanGLSLCFound then begin
+  fVulkanGLSLCPath:='/usr/bin/glslc';
+  fVulkanGLSLCFound:=FileExists(ExcludeTrailingPathDelimiter(String(fVulkanGLSLCPath)));
+  if fVulkanGLSLCFound then begin
+   fVulkanSDKFound:=true;
+  end;
+ end;
+{$endif}
+
 end;
 
 destructor TScreenMain.Destroy;

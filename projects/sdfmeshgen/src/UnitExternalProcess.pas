@@ -164,14 +164,14 @@ begin
     ChildProcess.Parameters.Add(String(aParameters[Index]));
    end;
    ChildProcess.Execute;
-   while ChildProcess.Running do begin
+{  while ChildProcess.Running do begin
     Count:=ChildProcess.Output.NumBytesAvailable;
     if Count>0 then begin
      SetLength(TempString,Count);
      ChildProcess.Output.ReadBuffer(TempString[1],Count);
      aOutput:=aOutput+UnicodeString(TempString);
     end;
-   end;
+   end;}
    ChildProcess.WaitOnExit;
    result:=ChildProcess.ExitCode;
   finally
