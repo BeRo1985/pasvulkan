@@ -22,7 +22,7 @@ ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSiz
 vec4 textureOctahedralMap(const in sampler2D tex, vec3 direction) {
   direction = normalize(direction); // just for to make sure that it is normalized 
   vec2 uv = direction.xy / (abs(direction.x) + abs(direction.y) + abs(direction.z));
-  uv = (v.z < 0.0) ? ((1.0 - abs(uv.yx)) * vec2((uv.x >= 0.0) ? 1.0 : -1.0, (uv.y >= 0.0) ? 1.0 : -1.0)) : uv;
+  uv = (direction.z < 0.0) ? ((1.0 - abs(uv.yx)) * vec2((uv.x >= 0.0) ? 1.0 : -1.0, (uv.y >= 0.0) ? 1.0 : -1.0)) : uv;
   uv = fma(uv, vec2(0.5), vec2(0.5));
   ivec2 texSize = textureSize(tex, 0).xy;
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
