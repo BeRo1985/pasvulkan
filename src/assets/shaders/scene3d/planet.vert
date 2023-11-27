@@ -1,5 +1,11 @@
 #version 450
 
+#pragma shader_stage(vertex)
+
+#extension GL_EXT_multiview : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 tangent;
@@ -9,8 +15,15 @@ layout(location = 0) out OutBlock {
 } outBlock;
 
 layout(push_constant) uniform PushConstants {
-  float bottomRadius;
+  int viewBaseIndex;
+  int countViews;
   int countQuadPointsInOneDirection; 
+  int countAllViews;
+  float bottomRadius;
+  float topRadius;
+  float resolutionX;  
+  float resolutionY;  
+  vec2 jitter;
 } pushConstants;
 
 int countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
