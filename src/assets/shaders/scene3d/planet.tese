@@ -5,6 +5,7 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(quads, equal_spacing, ccw) in;
 
@@ -67,7 +68,9 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 0, binding = 1) uniform samplerCube uTextureHeightMap; // xyz = normal, w = height
+layout(set = 0, binding = 1) uniform sampler2D uTextureHeightMap; // xyz = normal, w = height
+
+#include "octahedralmap.glsl"
 
 int viewIndex = pushConstants.viewBaseIndex + int(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
@@ -161,7 +164,7 @@ void main(){
   
   mat3 tangentSpace = mat3(tangent, bitangent, normal);
  
-  vec4 nm = texture(uTextureHeightMap, normal);
+  vec4 nm = textureOctahedralMap(uTextureHeightMap, normal);
   
   position += tangentSpace[2] * nm.w;
 

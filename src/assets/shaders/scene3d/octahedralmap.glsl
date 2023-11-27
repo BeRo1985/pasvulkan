@@ -15,7 +15,7 @@ vec3 octDecode(vec2 oct) {
 #endif
 
 ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {
-  ivec2 wrapped = mod(mod(texel, texSize) + texSize, texSize);
+  ivec2 wrapped = ((texel % texSize) + texSize) % texSize;
   return ((((texel.x / texSize.x) + (texel.y / texSize.y)) & 1) != 0) ? (texSize - (wrapped + ivec2(1))) : wrapped;
 }
 
