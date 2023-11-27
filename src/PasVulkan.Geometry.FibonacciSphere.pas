@@ -318,7 +318,8 @@ begin
   // Generate vertices (the comparatively yet easy part)
   begin
 
-   fVertices.Clear;
+   fVertices.Resize(fCountPoints);
+   fVertices.ClearNoFree;
 
    // Start initial Phi value
    Phi:=0.0;
@@ -455,7 +456,8 @@ begin
   // Generate indices (the not so easy part) 
   begin 
 
-   fIndices.Clear;
+   fIndices.Resize(fCountPoints*6);
+   fIndices.ClearNoFree;
 
    for Index:=0 to fCountPoints-1 do begin
 
@@ -588,6 +590,9 @@ begin
    end;
 
   end;
+
+  fVertices.Finish;
+  fIndices.Finish;
 
  finally
   Points:=nil;

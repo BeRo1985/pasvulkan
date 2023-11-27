@@ -1797,6 +1797,7 @@ type EpvScene3D=class(Exception);
                             destructor Destroy; override;
                             function AddDirectVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
                             function AddDirectIndex(const aIndex:TpvUInt32):TpvSizeInt;
+                            function AddIndirectVertex:TpvScene3D.PVertex;
                             function AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
                             function AddIndex(const aIndex:TpvUInt32):TpvSizeInt;
                             procedure Finish;
@@ -8048,7 +8049,7 @@ begin
                                             GroupInstance.fVulkanVertexBufferCount*SizeOf(TGPUStaticVertex));
       end;
 
-      if GroupInstance.fVulkanDrawIndexBufferCount>0 then begin
+{     if GroupInstance.fVulkanDrawIndexBufferCount>0 then begin
        InFlightFrameDataTransferQueue.Queue(fSceneInstance.fVulkanStagingQueue,
                                             fSceneInstance.fVulkanStagingCommandBuffer,
                                             fSceneInstance.fVulkanStagingFence,
@@ -8086,7 +8087,7 @@ begin
                                             fVulkanJointBlockBuffer,
                                             GroupInstance.fVulkanJointBlockBufferOffset*SizeOf(TJointBlock),
                                             GroupInstance.fVulkanJointBlockBufferCount*SizeOf(TJointBlock));
-      end;
+      end;}
 
      end;
 
@@ -9271,6 +9272,14 @@ begin
  inc(fCountIndices);
 end;
 
+function TpvScene3D.TGroup.TMesh.TPrimitive.AddIndirectVertex:TpvScene3D.PVertex;
+begin
+ if not assigned(fTemporaryVertices) then begin
+  fTemporaryVertices:=TpvScene3D.TGroup.TGroupVertices.Create;
+ end;
+ result:=fTemporaryVertices.AddNew;
+end;
+
 function TpvScene3D.TGroup.TMesh.TPrimitive.AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
 begin
  if not assigned(fTemporaryVertices) then begin
@@ -9691,90 +9700,98 @@ var PrimitiveIndex,
     MorphTargetVertex:TpvScene3D.PMorphTargetVertex;
 begin
 
- fBoundingBox:=TpvAABB.Create(TpvVector3.InlineableCreate(Infinity,Infinity,Infinity),
-                              TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity));
+ begin
 
- for PrimitiveIndex:=0 to fPrimitives.Count-1 do begin
+  fBoundingBox:=TpvAABB.Create(TpvVector3.InlineableCreate(Infinity,Infinity,Infinity),
+                               TpvVector3.InlineableCreate(-Infinity,-Infinity,-Infinity));
 
-  Primitive:=fPrimitives[PrimitiveIndex];
+  for PrimitiveIndex:=0 to fPrimitives.Count-1 do begin
 
-  if not fReady then begin
-
-   if Primitive.fMaterialID<0 then begin
-    if assigned(Primitive.fMaterial) and (Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial) then begin
-     Primitive.fMaterialID:=fGroup.AddMaterial(Primitive.fMaterial,true,true);
-    end else begin
-     Primitive.fMaterialID:=-1;
-    end;
-   end;
-
-   if not assigned(Primitive.fMaterial) then begin
-    if Primitive.fMaterialID<0 then begin
-     Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
-    end else begin
-     Primitive.fMaterial:=fGroup.fMaterials[Primitive.fMaterialID];
-     if Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial then begin
-      Primitive.fMaterial.IncRef;
-     end;
-    end;
-   end;
-
-   Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
-
-  end;
-
-  if Primitive.fTargets.Count>0 then begin
+   Primitive:=fPrimitives[PrimitiveIndex];
 
    if not fReady then begin
-    inc(fGroup.fMorphTargetCount,Primitive.fTargets.Count);
+
+    if Primitive.fMaterialID<0 then begin
+     if assigned(Primitive.fMaterial) and (Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial) then begin
+      Primitive.fMaterialID:=fGroup.AddMaterial(Primitive.fMaterial,true,true);
+     end else begin
+      Primitive.fMaterialID:=-1;
+     end;
+    end;
+
+    if not assigned(Primitive.fMaterial) then begin
+     if Primitive.fMaterialID<0 then begin
+      Primitive.fMaterial:=fGroup.fSceneInstance.EmptyMaterial;
+     end else begin
+      Primitive.fMaterial:=fGroup.fMaterials[Primitive.fMaterialID];
+      if Primitive.fMaterial<>fGroup.fSceneInstance.EmptyMaterial then begin
+       Primitive.fMaterial.IncRef;
+      end;
+     end;
+    end;
+
+    Primitive.fMorphTargetBaseIndex:=fGroup.fMorphTargetCount;
+
    end;
 
-   for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-    Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
+   if Primitive.fTargets.Count>0 then begin
+
     if not fReady then begin
-     Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
+     inc(fGroup.fMorphTargetCount,Primitive.fTargets.Count);
     end;
-    for TargetIndex:=0 to Primitive.fTargets.Count-1 do begin
-     PrimitiveTarget:=Primitive.fTargets[TargetIndex];
-     PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex-Primitive.fStartBufferVertexOffset];
-     if fReady then begin
-      MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex+TargetIndex;
-     end else begin
-      MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
+
+    for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+     Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
+     if not fReady then begin
+      Vertex^.MorphTargetVertexBaseIndex:=fGroup.fMorphTargetVertices.Count;
      end;
+     for TargetIndex:=0 to Primitive.fTargets.Count-1 do begin
+      PrimitiveTarget:=Primitive.fTargets[TargetIndex];
+      PrimitiveTargetVertex:=@PrimitiveTarget.fVertices.ItemArray[VertexIndex-Primitive.fStartBufferVertexOffset];
+      if fReady then begin
+       MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex+TargetIndex;
+      end else begin
+       MorphTargetVertexIndex:=fGroup.fMorphTargetVertices.AddNewIndex;
+      end;
+      MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+      MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Position,0.0);
+      MorphTargetVertex^.Normal:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Normal,0.0);
+      MorphTargetVertex^.Tangent:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Tangent,0.0);
+      MorphTargetVertex^.Index:=Primitive.fMorphTargetBaseIndex+TargetIndex;
+      if (TargetIndex+1)<Primitive.fTargets.Count then begin
+       MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
+      end else begin
+       MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
+      end;
+     end;
+    end;
+
+   end else begin
+
+    if not fReady then begin
+
+     for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+      Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
+      Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
+     end;
+
+    end;
+
+   end;
+
+   for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
+
+    Vertex:=@Group.Vertices.ItemArray[VertexIndex];
+
+    fBoundingBox.DirectCombineVector3(Vertex^.Position);
+
+    MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+    while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
      MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-     MorphTargetVertex^.Position:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Position,0.0);
-     MorphTargetVertex^.Normal:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Normal,0.0);
-     MorphTargetVertex^.Tangent:=TpvVector4.InlineableCreate(PrimitiveTargetVertex^.Tangent,0.0);
-     MorphTargetVertex^.Index:=Primitive.fMorphTargetBaseIndex+TargetIndex;
-     if (TargetIndex+1)<Primitive.fTargets.Count then begin
-      MorphTargetVertex^.Next:=MorphTargetVertexIndex+1;
-     end else begin
-      MorphTargetVertex^.Next:=TpvUInt32($ffffffff);
-     end;
+     fBoundingBox.DirectCombineVector3(Vertex^.Position+MorphTargetVertex^.Position.xyz); // Assume a weight value of 1.0 for an approximate result
+     MorphTargetVertexIndex:=MorphTargetVertex^.Next;
     end;
-   end;
 
-  end else begin
-
-   for VertexIndex:=TpvSizeInt(Primitive.fStartBufferVertexOffset) to TpvSizeInt(Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-    Vertex:=@fGroup.fVertices.ItemArray[VertexIndex];
-    Vertex^.MorphTargetVertexBaseIndex:=TpvUInt32($ffffffff);
-   end;
-
-  end;
-
-  for VertexIndex:=Primitive.StartBufferVertexOffset to (Primitive.fStartBufferVertexOffset+Primitive.fCountVertices)-1 do begin
-
-   Vertex:=@Group.Vertices.ItemArray[VertexIndex];
-
-   fBoundingBox.DirectCombineVector3(Vertex^.Position);
-
-   MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
-   while MorphTargetVertexIndex<>TpvUInt32($ffffffff) do begin
-    MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-    fBoundingBox.DirectCombineVector3(Vertex^.Position+MorphTargetVertex^.Position.xyz); // Assume a weight value of 1.0 for an approximate result
-    MorphTargetVertexIndex:=MorphTargetVertex^.Next;
    end;
 
   end;
@@ -9989,37 +10006,45 @@ begin
 
      if NodeMeshPrimitiveInstance.fStartBufferVertexOffset<>Primitive.fStartBufferVertexOffset then begin
 
-      for VertexIndex:=0 to TpvSizeInt(Primitive.fCountVertices)-1 do begin
+      if Primitive.fCountVertices>0 then begin
 
-       OriginalVertex:=@fGroup.fVertices.ItemArray[Primitive.fStartBufferVertexOffset+VertexIndex];
+       OriginalVertex:=@fGroup.fVertices.ItemArray[Primitive.fStartBufferVertexOffset];
 
-       Vertex:=@fGroup.fVertices.ItemArray[NodeMeshPrimitiveInstance.fStartBufferVertexOffset+VertexIndex];
+       Vertex:=@fGroup.fVertices.ItemArray[NodeMeshPrimitiveInstance.fStartBufferVertexOffset];
 
-       Vertex^.Position:=OriginalVertex^.Position;
-       Vertex^.Normal:=OriginalVertex^.Normal;
-       Vertex^.TexCoord0:=OriginalVertex^.TexCoord0;
-       Vertex^.TexCoord1:=OriginalVertex^.TexCoord1;
-       Vertex^.Color0:=OriginalVertex^.Color0;
-       Vertex^.Flags:=OriginalVertex^.Flags;
+       for VertexIndex:=0 to TpvSizeInt(Primitive.fCountVertices)-1 do begin
 
-       Vertex^.MaterialID:=MaterialID;
+        Vertex^.Position:=OriginalVertex^.Position;
+        Vertex^.Normal:=OriginalVertex^.Normal;
+        Vertex^.TexCoord0:=OriginalVertex^.TexCoord0;
+        Vertex^.TexCoord1:=OriginalVertex^.TexCoord1;
+        Vertex^.Color0:=OriginalVertex^.Color0;
+        Vertex^.Flags:=OriginalVertex^.Flags;
 
-       if (OriginalVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) then begin
-        OriginalMorphTargetVertexIndex:=OriginalVertex^.MorphTargetVertexBaseIndex;
-        MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
-        while (OriginalMorphTargetVertexIndex<>TpvUInt32($ffffffff)) and (MorphTargetVertexIndex<>TpvUInt32($ffffffff)) do begin
-         OriginalMorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[OriginalMorphTargetVertexIndex];
-         MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
-         MorphTargetVertex^.Position:=OriginalMorphTargetVertex^.Position;
-         MorphTargetVertex^.Normal:=OriginalMorphTargetVertex^.Normal;
-         MorphTargetVertex^.Tangent:=OriginalMorphTargetVertex^.Tangent;
-         if (OriginalMorphTargetVertex^.Next=TpvUInt32($ffffffff)) or (MorphTargetVertex^.Next=TpvUInt32($ffffffff)) then begin
-          break;
-         end else begin
-          OriginalMorphTargetVertexIndex:=OriginalMorphTargetVertex^.Next;
-          MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+        Vertex^.MaterialID:=MaterialID;
+
+        if (OriginalVertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) and (Vertex^.MorphTargetVertexBaseIndex<>TpvUInt32($ffffffff)) then begin
+         OriginalMorphTargetVertexIndex:=OriginalVertex^.MorphTargetVertexBaseIndex;
+         MorphTargetVertexIndex:=Vertex^.MorphTargetVertexBaseIndex;
+         while (OriginalMorphTargetVertexIndex<>TpvUInt32($ffffffff)) and (MorphTargetVertexIndex<>TpvUInt32($ffffffff)) do begin
+          OriginalMorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[OriginalMorphTargetVertexIndex];
+          MorphTargetVertex:=@fGroup.fMorphTargetVertices.ItemArray[MorphTargetVertexIndex];
+          MorphTargetVertex^.Position:=OriginalMorphTargetVertex^.Position;
+          MorphTargetVertex^.Normal:=OriginalMorphTargetVertex^.Normal;
+          MorphTargetVertex^.Tangent:=OriginalMorphTargetVertex^.Tangent;
+          if (OriginalMorphTargetVertex^.Next=TpvUInt32($ffffffff)) or (MorphTargetVertex^.Next=TpvUInt32($ffffffff)) then begin
+           break;
+          end else begin
+           OriginalMorphTargetVertexIndex:=OriginalMorphTargetVertex^.Next;
+           MorphTargetVertexIndex:=MorphTargetVertex^.Next;
+          end;
          end;
         end;
+
+        inc(OriginalVertex);
+
+        inc(Vertex);
+
        end;
 
       end;
@@ -13700,11 +13725,11 @@ begin
  if fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]<>fMeshContentGeneration then begin
 
   if assigned(fFrameVertices[aInFlightFrameIndex]) then begin
-   fFrameVertices[aInFlightFrameIndex].Assign(fVertices);
+   fFrameVertices[aInFlightFrameIndex].FastAssign(fVertices);
   end;
 
   if assigned(fFrameMorphTargetVertices[aInFlightFrameIndex]) then begin
-   fFrameMorphTargetVertices[aInFlightFrameIndex].Assign(fMorphTargetVertices);
+   fFrameMorphTargetVertices[aInFlightFrameIndex].FastAssign(fMorphTargetVertices);
   end;
 
   fFrameUpdatedMeshContentGenerations[aInFlightFrameIndex]:=fMeshContentGeneration;
@@ -17755,35 +17780,50 @@ begin
     Generation:=TPasMPInterlocked.Increment(fGroup.fSceneInstance.fMeshGenerationCounter);
    until Generation<>0;
 
-   for Index:=0 to fGroup.fFrameVertices[aInFlightFrameIndex].Count-1 do begin
+   begin
 
-    SrcVertex:=@fGroup.fFrameVertices[aInFlightFrameIndex].ItemArray[Index];
+    SrcVertex:=@fGroup.fFrameVertices[aInFlightFrameIndex].ItemArray[0];
 
-    DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
-    DstDynamicVertex^.Position:=SrcVertex^.Position;
-    DstDynamicVertex^.Normal:=SrcVertex^.Normal;
-    DstDynamicVertex^.Tangent:=SrcVertex^.Tangent;
-    DstDynamicVertex^.Flags:=SrcVertex^.Flags;
-    DstDynamicVertex^.Generation:=Generation;
+    DstDynamicVertex:=@fSceneInstance.fVulkanDynamicVertexBufferData.Items[fVulkanVertexBufferOffset];
 
-    DstStaticVertex:=@fSceneInstance.fVulkanStaticVertexBufferData.Items[fVulkanVertexBufferOffset+Index];
-    DstStaticVertex^.TexCoord0:=SrcVertex^.TexCoord0;
-    DstStaticVertex^.TexCoord1:=SrcVertex^.TexCoord1;
-    DstStaticVertex^.Color0:=SrcVertex^.Color0;
-    DstStaticVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
-    DstStaticVertex^.Unused0:=0;
+    DstStaticVertex:=@fSceneInstance.fVulkanStaticVertexBufferData.Items[fVulkanVertexBufferOffset];
+
+    for Index:=0 to fGroup.fFrameVertices[aInFlightFrameIndex].Count-1 do begin
+
+     DstDynamicVertex^.Position:=SrcVertex^.Position;
+     DstDynamicVertex^.Normal:=SrcVertex^.Normal;
+     DstDynamicVertex^.Tangent:=SrcVertex^.Tangent;
+     DstDynamicVertex^.Flags:=SrcVertex^.Flags;
+     DstDynamicVertex^.Generation:=Generation;
+
+     DstStaticVertex^.TexCoord0:=SrcVertex^.TexCoord0;
+     DstStaticVertex^.TexCoord1:=SrcVertex^.TexCoord1;
+     DstStaticVertex^.Color0:=SrcVertex^.Color0;
+     DstStaticVertex^.MaterialID:=fMaterialMap[SrcVertex^.MaterialID];
+     //DstStaticVertex^.Unused0:=0;
+
+     inc(SrcVertex);
+
+     inc(DstDynamicVertex);
+
+     inc(DstStaticVertex);
+
+    end;
 
    end;
 
-   if fVulkanMorphTargetVertexBufferOffset>=0 then begin
+   if (fVulkanMorphTargetVertexBufferOffset>=0) and
+      (fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count>0) then begin
+    SrcMorphTargetVertex:=@fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].ItemArray[0];
+    DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset];
     for Index:=0 to fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].Count-1 do begin
-     SrcMorphTargetVertex:=@fGroup.fFrameMorphTargetVertices[aInFlightFrameIndex].ItemArray[Index];
-     DstMorphTargetVertex:=@fSceneInstance.fVulkanMorphTargetVertexBufferData.ItemArray[fVulkanMorphTargetVertexBufferOffset+Index];
      DstMorphTargetVertex^:=SrcMorphTargetVertex^;
      inc(DstMorphTargetVertex^.Index,fVulkanMorphTargetVertexWeightsBufferOffset);
      if DstMorphTargetVertex^.Next<>TpvUInt32($ffffffff) then begin
       inc(DstMorphTargetVertex^.Next,fVulkanMorphTargetVertexBufferOffset);
      end;
+     inc(SrcMorphTargetVertex);
+     inc(DstMorphTargetVertex);
     end;
    end;
 
