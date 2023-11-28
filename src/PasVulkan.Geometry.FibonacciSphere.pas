@@ -328,15 +328,25 @@ begin
 
     // Advance Phi
     if aUseGoldenRatio then begin
-     Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
-    end else begin
-     Phi:=Phi+GoldenAngle;
-    end;
 
-    // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
-    // coordinates later)
-    if Phi>=PI then begin
-     Phi:=Phi-TwoPI;
+     Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
+
+     // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
+     // coordinates later)
+     if Phi>=PI then begin
+      Phi:=Phi-TwoPI;
+     end;
+
+    end else begin
+
+     Phi:=Phi-GoldenAngle; // subtract instead add, to match the golden ratio based method in its output Phi values
+
+     // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
+     // coordinates later)
+     if Phi<=PI then begin
+      Phi:=Phi+TwoPI;
+     end;
+
     end;
 
     // Calculate the actual fibonacci sphere point sample vector
