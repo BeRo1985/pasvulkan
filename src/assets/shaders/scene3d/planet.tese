@@ -105,6 +105,10 @@ void main(){
     octDecode(textureCatmullRomOctahedralMap(uTextures[1], normal).xy)
   );
 
+  tbn[0] = normalize(tbn[0] - dot(tbn[0], tbn[2]) * tbn[2]);
+  tbn[1] = normalize(tbn[1] - dot(tbn[1], tbn[0]) * tbn[0]);
+  tbn[1] = normalize(tbn[1] - dot(tbn[1], tbn[2]) * tbn[2]);
+  
   vec3 worldSpacePosition = position;
 
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
