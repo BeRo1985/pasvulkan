@@ -18,6 +18,8 @@ layout(push_constant) uniform PushConstants {
   uint countPoints;
 } pushConstants;
 
+/* clang-format on */
+
 void main(){
   uint index = uint(gl_GlobalInvocationID.x);
   if(index < pushConstants.countPoints){

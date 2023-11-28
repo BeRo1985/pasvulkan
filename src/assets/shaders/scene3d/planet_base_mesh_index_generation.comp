@@ -22,6 +22,8 @@ layout(push_constant) uniform PushConstants {
   uint countPoints;
 } pushConstants;
 
+/* clang-format on */
+
 float squaredDistance(const in vec3 a, const in vec3 b){
   vec3 t = a - b;
   return dot(t, t);
