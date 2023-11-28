@@ -8,10 +8,7 @@
 
 layout(location = 0) out OutBlock {
   vec3 position;
-  vec3 tangent;
-  vec3 bitangent;
   vec3 normal;
-  vec3 uvw;   
 } outBlock;
 
 layout(push_constant) uniform PushConstants {
@@ -52,8 +49,7 @@ const float HalfPI = 1.5707963267948966, // 1.570796326794896619231,
             
 vec3 getNormal(mat3 m, vec2 uv){
   vec3 unitCube = m * vec3((uv - vec2(0.5)) * 2.0, 1.0),
-#define MODE 0
-#if MODE == 1
+#if 1
        // Spherified Cube
        // http://mathproofs.blogspot.com/2005/07/mapping-cube-to-sphere.html
        // http://petrocket.blogspot.com/2010/04/sphere-to-cube-mapping.html
@@ -72,65 +68,9 @@ vec3 getNormal(mat3 m, vec2 uv){
   return normal; 
 }
 
-#define TBN_METHOD 0
-
-#if TBN_METHOD == 0
+#if 0
 const mat3 tangentTransformMatrix = mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0.0), vec3(1.0, 0.0, 0.0)),
            bitangentTransformMatrix = mat3(vec3(-1.0, 0.0, 0.0), vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
-#else
-void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
-#if TBN_METHOD == 1
-  vec3 c = vec3(1.0, n.y, -n.x) * (n.y / (1.0 + abs(n.z))),
-       d = vec3(n.y, c.yz) * ((n.z >= 0.0) ? 1.0 : -1.0);
-  t = vec3(vec2(n.z, 0.0) + d.yz, -n.x);
-  b = vec3(c.z, 1.0 - c.y, -d.x);
-#elif TBN_METHOD == 2
-  float s = (n.z >= 0.0) ? 1.0 : -1.0, 
-        c = n.y / (1.0 + abs(n.z)), 
-        d = n.y * c, e = -n.x * c;
-  t = vec3(n.z + (s * d), (s * e), -n.x);
-  b = vec3(e, 1.0 - d, -s * n.y);
-#elif TBN_METHOD == 3
-  float a = 1.0 / (1.0 + n.z),
-        c = -(n.x *n.y * a);
-  t = vec3(1.0 - (n.x * n.x * a), c, -n.x);
-  b = vec3(c, 1.0 - (n.y * n.y * a), -n.y);	
-#elif TBN_METHOD == 4
-  float sz = sign(n.z),
-        a  = 1.0f / (sz + n.z),
-        sx = sz * n.x;
-  t = vec3(1.0 - ((sx * n.x) * a), sx * n.y * a, -sx);
-  b = vec3(n.x * n.y * a, sz - ((n.y * n.y) * a), -n.y);
-#elif TBN_METHOD == 5
-  t = normalize(cross(n, vec3(0.0, 0.0, 1.0))), //0.57735026919
-  b = cross(n, normalize(t - (dot(t, n) * n)));
-  t = cross(b, n); 
-#elif TBN_METHOD == 6
-  float theta = atan(n.z, n.x), 
-        phi = asin(n.y);
-  t = normalize(vec3(cos(theta) * sin(phi),
-                     -cos(phi),
-                     sin(theta) * sin(phi))),
-  b = normalize(vec3(sin(theta) * cos(phi),
-                     0.0,
-                    -cos(theta) * cos(phi)));
-  b = cross(n, normalize(t - (dot(t, n) * n)));
-  t = cross(b, n);
-#else 
-  vec3 t0 = cross(vec3(0.0, 0.0, 1.0), n),
-       t1 = cross(vec3(0.0, 1.0, 0.0), n);
-  t = normalize(length(t0) < length(t1) ? t1 : t0),
-  b = cross(n, normalize(t - (dot(t, n) * n)));
-  t = normalize(cross(b, n));
-#endif
-}
-
-mat3 getTangentSpaceFromNormal(vec3 n){
-  n = normalize(n);
-  vec3 t, b;
-  getTangentSpaceBasisFromNormal(n, t, b);
-  return mat3(t, b, n);
-}  
 #endif
 
 void main(){                 
@@ -146,11 +86,7 @@ void main(){
     mat3 normalMatrix = sideMatrices[sideIndex];       
     vec3 normal = getNormal(normalMatrix, uv),
          position = normal * pushConstants.bottomRadius;
-#if TBN_METHOD > 0
-    vec3 tangent,                                     
-         bitangent;
-    getTangentSpaceBasisFromNormal(normal, tangent, bitangent);
-#else
+#if 0
     vec3 tangent = getNormal(normalMatrix * tangentTransformMatrix, uv),
          bitangent = getNormal(normalMatrix * bitangentTransformMatrix, uv);
     tangent = normalize(tangent - (dot(tangent, normal) * normal));
@@ -159,13 +95,8 @@ void main(){
     bitangent = cross(normal, tangent);
 #endif
     outBlock.position = position;    
-    outBlock.tangent = tangent;
-    outBlock.bitangent = bitangent;
     outBlock.normal = normal;
-    outBlock.uvw = normal; 
   }else{
-    outBlock.position = vec3(0.0);
-    outBlock.normal = vec3(0.0);
-    outBlock.uvw = vec3(0.0);                       
+    outBlock.position = outBlock.normal = vec3(0.0);
   }  
 }

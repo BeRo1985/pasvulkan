@@ -11,10 +11,7 @@ layout(quads, equal_spacing, ccw) in;
 
 layout(location = 0) in InBlock {
   vec3 position;
-  vec3 tangent;
-  vec3 bitangent;
   vec3 normal;
-  vec3 uvw;   
 } inBlocks[];
 
 layout(location = 0) out OutBlock {
@@ -22,7 +19,6 @@ layout(location = 0) out OutBlock {
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
-  vec3 uvw;   
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -71,6 +67,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 layout(set = 0, binding = 1) uniform sampler2D uTextureHeightMap; // xyz = normal, w = height
 
 #include "octahedralmap.glsl"
+#include "tangentspacebasis.glsl" 
 
 int viewIndex = pushConstants.viewBaseIndex + int(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
@@ -91,43 +88,17 @@ void main(){
 
   vec3 position = mix(mix(inBlocks[0].position, inBlocks[1].position, gl_TessCoord.x),
                       mix(inBlocks[3].position, inBlocks[2].position, gl_TessCoord.x), 
-                      gl_TessCoord.y),
+                      gl_TessCoord.y);
   
-       tangent = normalize(mix(mix(inBlocks[0].tangent, inBlocks[1].tangent, gl_TessCoord.x), 
-                               mix(inBlocks[3].tangent, inBlocks[2].tangent, gl_TessCoord.x), 
-                               gl_TessCoord.y)),
-  
-       bitangent = normalize(mix(mix(inBlocks[0].bitangent, inBlocks[1].bitangent, gl_TessCoord.x), 
-                                 mix(inBlocks[3].bitangent, inBlocks[2].bitangent, gl_TessCoord.x), 
-                                 gl_TessCoord.y)),
-  
-       normal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
+  vec3 normal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
                               mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
-                              gl_TessCoord.y)),
-
-       uvw = mix(mix(inBlocks[0].uvw, inBlocks[1].uvw, gl_TessCoord.x), 
-                 mix(inBlocks[3].uvw, inBlocks[2].uvw, gl_TessCoord.x), 
-                     gl_TessCoord.y);
-                     
-#if 1
-
-//tangent = cross(bitangent = cross(normal, normalize(tangent - (dot(tangent, normal) * normal))), normal);
-/*vec3 bitangent = normalize(cross(vec3(0.0, 1.0, 0.0), normal)),
-                tangent = normalize(cross(normal, bitangent));
-  tangent = normalize(tangent - (tangent * dot(tangent, normal)));
-  bitangent = normalize(bitangent - (bitangent * dot(bitangent, normal)));      */
-  
-  mat3 tangentSpace = mat3(tangent, bitangent, normal);
+                              gl_TessCoord.y));
  
-  vec4 nm = textureCatmullRomOctahedralMap(uTextureHeightMap, normal);
+  vec4 texel = textureCatmullRomOctahedralMap(uTextureHeightMap, normal);
   
-  position += tangentSpace[2] * nm.w;
+  position += normal * texel.w;
 
-  normal = nm.xyz;
-
-  tangent = cross(bitangent = cross(normal, normalize(tangent - (dot(tangent, normal) * normal))), normal); // recalculate tangent and bitangent
-    
-#endif
+  mat3 tbn = getTangentSpaceFromNormal(texel.xyz);
 
   vec3 worldSpacePosition = position;
 
@@ -135,10 +106,9 @@ void main(){
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
-  outBlock.tangent = tangent;
-  outBlock.bitangent = bitangent;
-  outBlock.normal = normal;
-  outBlock.uvw = uvw;
+  outBlock.tangent = tbn[0]; 
+  outBlock.bitangent = tbn[1];
+  outBlock.normal = tbn[2]; 
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;

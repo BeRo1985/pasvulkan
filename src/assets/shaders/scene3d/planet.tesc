@@ -1,4 +1,4 @@
-#version 450
+#version 450 core
 
 #pragma shader_stage(tesscontrol)
 
@@ -10,18 +10,12 @@ layout(vertices = 4) out;
 
 layout(location = 0) in InBlock {
   vec3 position;
-  vec3 tangent;
-  vec3 bitangent;
   vec3 normal;
-	vec3 uvw;
 } inBlocks[];
 
 layout(location = 0) out OutBlock {
   vec3 position;
-  vec3 tangent;
-  vec3 bitangent;
   vec3 normal;
-	vec3 uvw;
 } outBlocks[];
 
 layout(push_constant) uniform PushConstants {
@@ -131,8 +125,5 @@ void main(){
     gl_TessLevelInner[1] = -1.0;
   }
   outBlocks[gl_InvocationID].position = inBlocks[gl_InvocationID].position;
-	outBlocks[gl_InvocationID].tangent = inBlocks[gl_InvocationID].tangent;
-	outBlocks[gl_InvocationID].bitangent = inBlocks[gl_InvocationID].bitangent;
 	outBlocks[gl_InvocationID].normal = inBlocks[gl_InvocationID].normal;
-	outBlocks[gl_InvocationID].uvw = inBlocks[gl_InvocationID].uvw;    
 }   
