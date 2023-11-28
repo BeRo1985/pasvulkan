@@ -10,7 +10,7 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, r32f) uniform image2D uTextureHeightMap;
+layout(set = 0, binding = 0, r32f) uniform image2D uImageHeightMap;
 
 layout(push_constant) uniform PushConstants {
   vec4 positionRadius; // xyz = position, w = radius
@@ -26,16 +26,16 @@ void main(){
   
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
 
-  ivec2 texSize = imageSize(uTextureHeightMap);
+  ivec2 texSize = imageSize(uImageHeightMap);
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
   
     imageStore(
-      uTextureHeightMap, 
+      uImageHeightMap, 
       texel, 
       vec4(
         clamp(
-          imageLoad(uTextureHeightMap, texel).x + (            
+          imageLoad(uImageHeightMap, texel).x + (            
             smoothstep(
               0.0,
               -pushConstants.innerRadiusValueMinMax.x,                

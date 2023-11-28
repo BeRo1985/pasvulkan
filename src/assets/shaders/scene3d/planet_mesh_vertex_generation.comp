@@ -1,0 +1,70 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer FibonacciSpherePoints {
+  vec4 vectors[]; // actually vec3, but we need to align to vec4
+} fibonacciSpherePoints;
+
+struct FibonacciSphereVertex {
+  vec4 positionBitangentSign; // xyz = position, w = sign of bitangent
+  vec4 normalTangent; // xy = normal, zw = tangent, both octahedral 
+};
+
+layout(set = 0, binding = 1, std430) buffer FibonacciSphereVertices {
+  FibonacciSphereVertex vertices[];
+} fibonacciSphereVertices;
+
+layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
+layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rg16_snorm octahedral
+layout(set = 0, binding = 4) uniform sampler2D uTextureTangentBitangentMap; // rgba16_snorm octahedral wise 
+
+layout(push_constant) uniform PushConstants {
+  uint countPoints;
+  float radius;
+} pushConstants;
+
+/* clang-format on */
+
+#include "octahedralmap.glsl"
+#include "octahedral.glsl"
+
+void main(){
+  
+  uint index = uint(gl_GlobalInvocationID.x);
+  
+  if(index < pushConstants.countPoints){
+
+    vec3 vector = normalize(fibonacciSpherePoints.vectors[index].xyz);
+
+    float height = textureCatmullRomOctahedralMap(uTextureHeightMap, vector).x;
+    
+    vec2 rawNormal = textureOctahedralMap(uTextureNormalMap, vector).xy;
+    vec4 rawTangentBitangent = textureOctahedralMap(uTextureTangentBitangentMap, vector);
+
+    vec3 normal = octDecode(rawNormal);
+    vec3 tangent = octDecode(rawTangentBitangent.xy);
+    vec3 bitangent = octDecode(rawTangentBitangent.zw);
+    
+    fibonacciSphereVertices.vertices[index] = FibonacciSphereVertex( 
+      vec4(
+        (vector * pushConstants.radius) * (1.0 + height), 
+        (dot(bitangent, cross(normal, tangent)) < 0.0) ? -1.0 : 1.0
+      ), 
+      vec4(
+        rawNormal, 
+        rawTangentBitangent.xy
+      )
+    ); 
+
+  }
+
+}
