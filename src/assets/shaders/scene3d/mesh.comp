@@ -94,6 +94,7 @@ layout(set = 1, binding = 1, std430) buffer OutGenerations {
 
 layout(set = 1, binding = 2, std430) buffer NodeMatrices {
   mat4 nodeMatrices[]; // Here it should be clear, why we need to double buffer the node matrices. :-)
+};
 
 layout(set = 1, binding = 3, std430) buffer MorphTargetWeights {
   float morphTargetWeights[]; // Also here it should be clear, why we need to double buffer the morph target weights. :-)

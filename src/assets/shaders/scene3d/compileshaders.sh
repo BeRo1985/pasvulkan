@@ -304,6 +304,27 @@ compileshaderarguments=(
   "-V voxel_mesh_visualization.geom -o ${tempPath}/voxel_mesh_visualization_geom.spv"
   "-V voxel_mesh_visualization.frag -o ${tempPath}/voxel_mesh_visualization_frag.spv"
 
+  "-V planet_base_mesh_index_generation.comp -o ${tempPath}/planet_base_mesh_index_generation_comp.spv"
+  "-V planet_base_mesh_vertex_generation.comp -o ${tempPath}/planet_base_mesh_vertex_generation_comp.spv"
+  "-V planet_mesh_vertex_generation.comp -o ${tempPath}/planet_mesh_vertex_generation_comp.spv"
+
+  "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
+  "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
+
+  "-V planet_tangentspace_generation.comp -o ${tempPath}/planet_tangentspace_generation_comp.spv"
+
+  "-V planet.vert -o ${tempPath}/planet_vert.spv"
+  "-V planet.vert -DVELOCITY -o ${tempPath}/planet_velocity_vert.spv"
+
+  "-V planet.tesc -o ${tempPath}/planet_tesc.spv"
+  "-V planet.tesc -DVELOCITY -o ${tempPath}/planet_velocity_tesc.spv"
+
+  "-V planet.tese -o ${tempPath}/planet_tese.spv"
+  "-V planet.tese -DVELOCITY -o ${tempPath}/planet_velocity_tese.spv"
+
+  "-V planet.frag -o ${tempPath}/planet_frag.spv"
+  "-V planet.frag -DVELOCITY -o ${tempPath}/planet_velocity_frag.spv"
+
 )
 
 #############################################

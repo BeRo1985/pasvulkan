@@ -25,7 +25,7 @@ layout(location = 0) out OutBlock {
   vec2 jitter;
 #ifdef VELOCITY
   vec4 previousClipSpace;
-  vec4 outCurrentClipSpace;
+  vec4 currentClipSpace;
 #endif  
 } outBlock;
 
