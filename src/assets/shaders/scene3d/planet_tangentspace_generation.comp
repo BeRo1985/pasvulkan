@@ -14,12 +14,15 @@ layout(set = 0, binding = 0, r16f) readonly uniform image2D uTextureHeightMap;
 layout(set = 0, binding = 1, rg16_snorm) writeonly uniform image2D uImageNormalMap;
 layout(set = 0, binding = 2, rgba16_snorm) writeonly uniform image2D uImageTangentBitangentMap;
 
+/* clang-format on */
+
 #include "octahedralmap.glsl"
 #include "octahedral.glsl"
 
 void main(){
   
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
   ivec2 texSize = imageSize(uTextureHeightMap);
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
@@ -39,7 +42,7 @@ void main(){
     vec3 tangent = normalize(p01 - p00);
     vec3 bitangent = normalize(p11 - p10);
     vec3 normal = normalize(cross(tangent, bitangent));
-
+    
     imageStore(uImageNormalMap, texel, vec3(octEncode(normal), 0.0).xyzz);
 
     imageStore(uImageTangentBitangentMap, texel, vec4(octEncode(tangent), octEncode(bitangent)));
