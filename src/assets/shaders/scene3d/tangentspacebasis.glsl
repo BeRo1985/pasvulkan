@@ -37,7 +37,7 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
   // https://graphics.pixar.com/library/OrthonormalB/paper.pdf good, but it has sudden changes in the tangent space basis because of
   // the sign function, so it is not so good usable in my opinion as the paper authors claim, since I do need smooth transitions
   // between all input neuighboor normals, and that isn't the case with this method. 
-  float s = sign(sign(n.z) + 0.5),
+  float s = (n.z >= 0.0) ? 1.0 : -1.0,
         a = -1.0 / (s + n.z),
         c = n.x * n.y * a;
   t = vec3((((s * (n.x * n.x))) * a) + 1.0, s * c, (-s) * n.x);
