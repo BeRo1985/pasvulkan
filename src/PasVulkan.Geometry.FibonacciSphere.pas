@@ -70,7 +70,8 @@ type { TpvFibonacciSphere }
       public             
        const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
              GoldenRatioMinusOne=0.61803398874989485; // ((1.0+sqrt(5.0))/2.0)-1.0
-             GoldenAngle=2.39996322972865332; // PI*(3.0-sqrt(5.0)) (golden angle) 
+             NegGoldenRatioMinusOne=-0.61803398874989485; // -(((1.0+sqrt(5.0))/2.0)-1.0)
+             GoldenAngle=2.39996322972865332; // PI*(3.0-sqrt(5.0)) (golden angle)
              Sqrt5=2.236067977499789696; // sqrt(5.0)
              OneOverSqrt5=0.447213595499957939; // 1.0/sqrt(5.0)
              PImulSqrt5=7.024814731040726393; // PI*sqrt(5.0)
@@ -328,25 +329,17 @@ begin
 
     // Advance Phi
     if aUseGoldenRatio then begin
-
      Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
-
-     // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
-     // coordinates later)
-     if Phi>=PI then begin
-      Phi:=Phi-TwoPI;
-     end;
-
     end else begin
+     Phi:=Phi-GoldenAngle; // subtract to match the golden ratio based method in its Phi output values
+    end;
 
-     Phi:=Phi-GoldenAngle; // subtract instead add, to match the golden ratio based method in its output Phi values
-
-     // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
-     // coordinates later)
-     if Phi<=-PI then begin
-      Phi:=Phi+TwoPI;
-     end;
-
+    // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
+    // coordinates later)
+    if Phi<=-PI then begin
+     Phi:=Phi+TwoPI;
+    end else if Phi>=PI then begin
+     Phi:=Phi-TwoPI;
     end;
 
     // Calculate the actual fibonacci sphere point sample vector
