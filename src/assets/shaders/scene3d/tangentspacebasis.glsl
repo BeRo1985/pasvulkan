@@ -6,8 +6,8 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
   float s = sign(sign(n.z) + 0.5),
         a = -1.0 / (s + n.z),
         c = n.x * n.y * a;
-  t = vec3(1.0 + s * n.x * n.x * a, s * c, -s * n.x);
-  b = vec3(c, s + n.y * n.y * a, -n.y);  
+  t = vec3((((s * (n.x * n.x))) * a) + 1.0, s * c, (-s) * n.x);
+  b = vec3(c, ((n.y * n.y) * a) + s, -n.y);  
 }
 
 mat3 getTangentSpaceFromNormal(vec3 n){
