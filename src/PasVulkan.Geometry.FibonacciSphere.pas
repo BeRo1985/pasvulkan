@@ -343,7 +343,7 @@ begin
 
      // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
      // coordinates later)
-     if Phi<=PI then begin
+     if Phi<=-PI then begin
       Phi:=Phi+TwoPI;
      end;
 
