@@ -4,7 +4,7 @@
 #define TBN_METHOD 0 
 void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
 #if TBN_METHOD == 0
-  // Not the fastest, but it is a very stable as well as a very simple method
+  // Not the fastest, but it is a stable as well as a pretty simple method
   b = normalize(cross(n, t = normalize(n.zxy - dot(n.zxy, n))));
   t = normalize(cross(b, n));
 #elif TBN_METHOD == 1
