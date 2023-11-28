@@ -48,16 +48,13 @@ void main(){
     float height = textureCatmullRomOctahedralMap(uTextureHeightMap, vector).x;
     
     vec2 rawNormal = textureOctahedralMap(uTextureNormalMap, vector).xy;
+
     vec4 rawTangentBitangent = textureOctahedralMap(uTextureTangentBitangentMap, vector);
 
-    vec3 normal = octDecode(rawNormal);
-    vec3 tangent = octDecode(rawTangentBitangent.xy);
-    vec3 bitangent = octDecode(rawTangentBitangent.zw);
-    
     fibonacciSphereVertices.vertices[index] = FibonacciSphereVertex( 
       vec4(
         (vector * pushConstants.radius) * (1.0 + height), 
-        (dot(bitangent, cross(normal, tangent)) < 0.0) ? -1.0 : 1.0
+        (dot(octDecode(rawTangentBitangent.zw), cross(octDecode(rawNormal), octDecode(rawTangentBitangent.xy))) < 0.0) ? -1.0 : 1.0
       ), 
       vec4(
         rawNormal, 
