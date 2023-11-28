@@ -95,7 +95,7 @@ void main(){
                               mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
                               gl_TessCoord.y));
  
-  position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).w;
+  position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).x;
  
   vec4 tangentBitangent = textureCatmullRomOctahedralMap(uTextures[2], normal);
 
