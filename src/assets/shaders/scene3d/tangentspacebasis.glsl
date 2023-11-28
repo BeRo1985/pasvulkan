@@ -4,6 +4,11 @@
 #define TBN_METHOD 0 
 void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
 #if TBN_METHOD == 0
+  // Not the fastest, but it is a stable as well as a very simple method, and it has no sudden changes in the tangent space basis  
+  t = vec3(n.z, -n.yx);            
+  b = normalize(cross(n, t = normalize(t - dot(t, n))));
+  t = normalize(cross(b, n));
+#elif TBN_METHOD == 1
   // Revised frisvad, https://jcgt.org/published/0006/01/02/paper.pdf
   const double dthreshold = -0.9999999999776;
   const float rthreshold = -0.7;
@@ -51,7 +56,7 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
       b = vec3(0.0, 1.0, 0.0);
     }
   }    
-#elif TBN_METHOD == 1
+#elif TBN_METHOD == 2
   // frisvad, http://orbit.dtu.dk/fedora/objects/orbit:113874/datastreams/file_75b66578-222e-4c7d-abdf-f7e255100209/
   // No sudden changes in the tangent space basis, but it has a singularity case at n.z is near -1.0
   if(n.z < -0.999805696){
@@ -81,7 +86,7 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
     b = normalize(vec3(c, 1.0 - ((n.y * n.y) * a), -n.y));	
 #endif
   }
-#elif TBN_METHOD == 2
+#elif TBN_METHOD == 3
   // https://graphics.pixar.com/library/OrthonormalB/paper.pdf good, but it has sudden changes in the tangent space basis because of
   // the sign function, so it is not so good usable in my opinion as the paper authors claim, since I do need smooth transitions
   // between all input neuighboor normals, and that isn't the case with this method. 
@@ -90,7 +95,7 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
         c = (n.x * n.y) * a;
   t = vec3((((s * (n.x * n.x))) * a) + 1.0, s * c, (-s) * n.x);
   b = vec3(c, ((n.y * n.y) * a) + s, -n.y);  
-#elif TBN_METHOD == 3
+#elif TBN_METHOD == 4
   // No sudden changes as well, but computatlionally expensive because of the trigonometric functions as a argument against using this method
   float theta = atan(n.z, n.x), 
         phi = asin(n.y);
