@@ -1,0 +1,110 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer FibonacciSpherePoints {
+  vec4 vectors[]; // actually vec3, but we need to align to vec4
+} fibonacciSpherePoints;
+
+layout(set = 0, binding = 1, std430) buffer FibonacciSphereTriangleIndices {
+  uint indices[]; // 1-based, because 0 is the count of indices, to save a second buffer just for the count
+} fibonacciSphereTriangleIndices;
+
+layout(push_constant) uniform PushConstants {
+  uint countPoints;
+} pushConstants;
+
+float squaredDistance(const in vec3 a, const in vec3 b){
+  vec3 t = a - b;
+  return dot(t, t);
+} 
+
+void main(){
+  uint index = uint(gl_GlobalInvocationID.x);
+  if(index < pushConstants.countPoints){
+
+    const float GoldenRatio = 1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)   
+    const float OneOverSqrt5 = 0.447213595499957939; // 1.0 / sqrt(5.0) 
+    const float PImulSqrt5 = 7.024814731040726393; // PI * sqrt(5.0)
+    const float PImul20 = 62.831853071795864769; // PI * 20.0
+    const float PImul20overSqrt5 = 28.099258924162905573; // (PI * 20.0) / sqrt(5.0)
+    const float OneOverLogGoldenRatio = 2.0780869212350275376; // 1.0 / ln((1.0 + sqrt(5.0)) / 2.0) (1.0 / log of golden ratio)
+
+    float cosTheta = 1.0 - (float(uint((index << 1u) | 1u)) / float(pushConstants.countPoints));
+
+    float z = max(0.0, round(0.5 * log(float(pushConstants.countPoints) * PImulSqrt5 * (1.0 - (cosTheta * cosTheta))) * OneOverLogGoldenRatio));
+
+    // Get the nearest sample points
+    uint countNearestSamples = 0u;
+    uint nearestSamples[12u];
+    for(uint otherIndex = 0; otherIndex < 12u; otherIndex++){
+      uint r = otherIndex - (((otherIndex * 0x56u) >> 9u) * 6u); // otherIndex % 6u;
+      uint c = uint(int(5 - abs(5 - (int(r) << 1)))) + ((0x38u >> r) & 1u); // ((r * 0x56u) >> 8u); // (r / 3u);
+      uint k = (uint(round(pow(GoldenRatio, float(z + c) - 2.0) * OneOverSqrt5)) * 
+                (1 - int(uint(((0xfc0u >> otherIndex) & 1u) << 1u))) // ((otherIndex < 6u) ? 1 : -1)
+               ) + index;
+      vec3 t = fibonacciSpherePoints.vectors[k].xyz - fibonacciSpherePoints.vectors[index].xyz;
+      if((k < pushConstants.countPoints) && (dot(t, t) <= (PImul20overSqrt5 / float(pushConstants.countPoints)))){
+        nearestSamples[countNearestSamples] = k;
+        countNearestSamples++;
+      }
+    }
+
+    // Get the adjacent vertices
+    uint countAdjacentVertices = 0u;
+    uint adjacentVertices[12u];
+    for(uint otherIndex = 0u; otherIndex < countNearestSamples; otherIndex++){
+      uint k = nearestSamples[otherIndex];
+      uint previousK = (otherIndex > 0u) ? nearestSamples[otherIndex - 1u] : nearestSamples[countNearestSamples - 1u];
+      uint nextK = ((otherIndex + 1u) < countNearestSamples) ? nearestSamples[otherIndex + 1u] : nearestSamples[0u];
+      if(squaredDistance(fibonacciSpherePoints.vectors[previousK].xyz, fibonacciSpherePoints.vectors[nextK].xyz) > squaredDistance(fibonacciSpherePoints.vectors[previousK].xyz, fibonacciSpherePoints.vectors[k].xyz)){
+        adjacentVertices[countAdjacentVertices] = k;
+        countAdjacentVertices++;
+      }
+    }
+
+    if((index == 0u) && (countAdjacentVertices > 0u)){
+      countAdjacentVertices--; // Special case for the pole
+    }
+
+    // Generate and add triangle indices from the adjacent neighbours
+    for(uint otherIndex = 0u; otherIndex < countAdjacentVertices; otherIndex++){
+      
+      uvec3 triangleIndices = uvec3(
+        index,
+        adjacentVertices[otherIndex],
+        ((otherIndex + 1u) < countAdjacentVertices) ? adjacentVertices[otherIndex + 1u] : adjacentVertices[0u]
+      );
+
+      // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
+      if(all(greaterThan(triangleIndices.yz, triangleIndices.xx))){
+        
+        vec3 v0 = fibonacciSpherePoints.vectors[triangleIndices.x].xyz;
+        vec3 v1 = fibonacciSpherePoints.vectors[triangleIndices.y].xyz;
+        vec3 v2 = fibonacciSpherePoints.vectors[triangleIndices.z].xyz;
+        
+        // Only add triangles with vertices in counter-clockwise order
+        if(dot(cross(v1 - v0, v2 - v0), v0) < 0.0){
+          triangleIndices.yz = triangleIndices.zy; // swap to ensure the winding order is counter-clockwise 
+        }
+
+        uint triangleIndex = atomicAdd(fibonacciSphereTriangleIndices.indices[0], 3u) + 1u; // plus 1, because index 0 is the count of indices
+        fibonacciSphereTriangleIndices.indices[triangleIndex + 0u] = triangleIndices.x;
+        fibonacciSphereTriangleIndices.indices[triangleIndex + 1u] = triangleIndices.y;
+        fibonacciSphereTriangleIndices.indices[triangleIndex + 2u] = triangleIndices.z;
+
+      }
+
+    }
+
+  }
+
+}
