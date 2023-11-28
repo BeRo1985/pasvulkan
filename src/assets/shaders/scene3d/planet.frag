@@ -11,14 +11,13 @@ layout(location = 0) in InBlock {
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
-  vec3 uvw;   
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
   vec2 jitter;
 #ifdef VELOCITY
   vec4 previousClipSpace;
-  vec4 outCurrentClipSpace;
+  vec4 currentClipSpace;
 #endif  
 } inBlock;
 
@@ -29,10 +28,10 @@ layout(location = 1) out vec2 outVelocity;
 
 void main(){
 
-  outFragColor = vec4(inBlock.uvw, 1.0);
+  outFragColor = vec4(inBlock.normal, 1.0);
 
 #ifdef VELOCITY
-  outVelocity = (inBlock.outCurrentClipSpace.xy / inBlock.outCurrentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);
+  outVelocity = (inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);
 #endif
 
 }
