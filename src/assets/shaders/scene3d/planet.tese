@@ -64,8 +64,9 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 0, binding = 1) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map
+layout(set = 0, binding = 1) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+#include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
@@ -95,8 +96,14 @@ void main(){
                               gl_TessCoord.y));
  
   position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).w;
+ 
+  vec4 tangentBitangent = textureCatmullRomOctahedralMap(uTextures[2], normal);
 
-  mat3 tbn = getTangentSpaceFromNormal(octDecode(textureCatmullRomOctahedralMap(uTextures[1], normal).xy));
+  mat3 tbn = mat3(
+    octDecode(tangentBitangent.xy),
+    octDecode(tangentBitangent.zw),
+    octDecode(textureCatmullRomOctahedralMap(uTextures[1], normal).xy)
+  );
 
   vec3 worldSpacePosition = position;
 
