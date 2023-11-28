@@ -64,7 +64,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
-layout(set = 0, binding = 1) uniform sampler2D uTextureHeightMap; // xyz = normal, w = height
+layout(set = 0, binding = 1) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map
 
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
@@ -94,11 +94,9 @@ void main(){
                               mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
                               gl_TessCoord.y));
  
-  vec4 texel = textureCatmullRomOctahedralMap(uTextureHeightMap, normal);
-  
-  position += normal * texel.w;
+  position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).w;
 
-  mat3 tbn = getTangentSpaceFromNormal(texel.xyz);
+  mat3 tbn = getTangentSpaceFromNormal(octDecode(textureCatmullRomOctahedralMap(uTextures[1], normal).xy));
 
   vec3 worldSpacePosition = position;
 

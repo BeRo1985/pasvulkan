@@ -1,5 +1,7 @@
 #version 450 core
 
+#pragma shader_stage(fragment)
+
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -19,7 +21,6 @@ layout(location = 0) in InBlock {
   vec4 outCurrentClipSpace;
 #endif  
 } inBlock;
-
 
 layout(location = 0) out vec4 outFragColor;
 #ifdef VELOCITY
