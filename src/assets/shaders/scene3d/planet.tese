@@ -119,7 +119,7 @@ void main(){
   
   mat3 tangentSpace = mat3(tangent, bitangent, normal);
  
-  vec4 nm = textureOctahedralMap(uTextureHeightMap, normal);
+  vec4 nm = textureCatmullRomOctahedralMap(uTextureHeightMap, normal);
   
   position += tangentSpace[2] * nm.w;
 
