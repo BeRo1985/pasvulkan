@@ -26,10 +26,10 @@ void main(){
 
     vec2 invTexSize = vec2(1.0) / vec2(texSize);  
      
-    ivec2 xy00 = texel + ivec2(-1, 0);
-    ivec2 xy01 = texel + ivec2(1, 0);
-    ivec2 xy10 = texel + ivec2(0, -1);
-    ivec2 xy11 = texel + ivec2(0, 1);
+    ivec2 xy00 = wrapOctahedralTexelCoordinates(texel + ivec2(-1, 0), texSize);
+    ivec2 xy01 = wrapOctahedralTexelCoordinates(texel + ivec2(1, 0), texSize);
+    ivec2 xy10 = wrapOctahedralTexelCoordinates(texel + ivec2(0, -1), texSize);
+    ivec2 xy11 = wrapOctahedralTexelCoordinates(texel + ivec2(0, 1), texSize);
 
     vec3 p00 = octDecode(fma(vec2(xy00) * invTexSize, vec2(2.0), vec2(-1.0))) * (1.0 + imageLoad(uTextureHeightMap, xy00).x);
     vec3 p01 = octDecode(fma(vec2(xy01) * invTexSize, vec2(2.0), vec2(-1.0))) * (1.0 + imageLoad(uTextureHeightMap, xy01).x);
