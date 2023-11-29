@@ -544,6 +544,13 @@ begin
                                       false);
   fDescriptorSet.Flush;
 
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout.Handle,
+                                             nil,
+                                             0);
  end;
 
 end;
@@ -551,6 +558,8 @@ end;
 destructor TpvScene3DPlanet.THeightMapRandomInitialization.Destroy;
 begin
  
+ FreeAndNil(fPipeline);
+
  FreeAndNil(fDescriptorSet);
 
  FreeAndNil(fDescriptorPool);
