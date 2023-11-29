@@ -121,7 +121,6 @@ type TpvScene3DPlanets=class;
        fScene3D:TObject;
        fHeightMapResolution:TpvInt32;
        fCountSpherePoints:TpvSizeInt;
-       fModelMatrix:TpvMatrix4x4;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
@@ -142,8 +141,6 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
-      public
-       property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -187,6 +184,8 @@ begin
  end else begin
   fHeightMap:=nil;
  end;
+
+ fModelMatrix:=TpvMatrix4x4.Identity;
 
  if assigned(TpvScene3D(fPlanet.fScene3D).VulkanDevice) then begin
 
@@ -446,6 +445,8 @@ begin
 
  end;
 
+ aInFlightFrameData.fModelMatrix:=fModelMatrix;
+
 end;
 
 { TpvScene3DPlanet }
@@ -466,8 +467,6 @@ begin
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
  fCountSpherePoints:=Min(Max(aCountSpherePoints,32),16777216);
-
- fModelMatrix:=TpvMatrix4x4.Identity;
 
  fBottomRadius:=aBottomRadius;
 
