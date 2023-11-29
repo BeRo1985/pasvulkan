@@ -2762,6 +2762,7 @@ type EpvScene3D=class(Exception);
        fDefaultNormalMapTexture:TTexture;
        fDefaultParticleImage:TImage;
        fDefaultParticleTexture:TTexture;
+       fGeneralComputeSampler:TpvVulkanSampler;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -3063,6 +3064,7 @@ type EpvScene3D=class(Exception);
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -19022,6 +19024,24 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
+  fGeneralComputeSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+                                                  VK_FILTER_LINEAR,
+                                                  VK_FILTER_LINEAR,
+                                                  VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+                                                  0.0,
+                                                  false,
+                                                  1.0,
+                                                  false,
+                                                  VK_COMPARE_OP_ALWAYS,
+                                                  0.0,
+                                                  65535.0,
+                                                  VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                                                  false);
+  fVulkanDevice.DebugUtils.SetObjectName(fGeneralComputeSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralComputeSampler');
+
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
   // Group - Vertices
@@ -19226,6 +19246,8 @@ begin
  end;
 
  FreeAndNil(fLightAABBTree);
+
+ FreeAndNil(fGeneralComputeSampler);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 
