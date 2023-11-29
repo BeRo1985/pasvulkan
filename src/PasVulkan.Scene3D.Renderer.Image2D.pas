@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Image3D;
+unit PasVulkan.Scene3D.Renderer.Image2D;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -71,19 +71,18 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application;
 
-type { TpvScene3DRendererImage3D }
-     TpvScene3DRendererImage3D=class
+type { TpvScene3DRendererImage2D }
+     TpvScene3DRendererImage2D=class
       private
        fVulkanImage:TpvVulkanImage;
        fVulkanImageView:TpvVulkanImageView;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
-       fDepth:TpvInt32;
        fFormat:TVkFormat;
       public
 
-       constructor Create(const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+       constructor Create(const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
 
        destructor Destroy; override;
 
@@ -97,17 +96,15 @@ type { TpvScene3DRendererImage3D }
 
        property Height:TpvInt32 read fHeight;
 
-       property Depth:TpvInt32 read fDepth;
-
        property Format:TVkFormat read fFormat;
 
      end;
 
 implementation
 
-{ TpvScene3DRendererImage3D }
+{ TpvScene3DRendererImage2D }
 
-constructor TpvScene3DRendererImage3D.Create(const aWidth,aHeight,aDepth:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
+constructor TpvScene3DRendererImage2D.Create(const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -126,8 +123,6 @@ begin
 
  fHeight:=aHeight;
 
- fDepth:=aDepth;
-
  fFormat:=aFormat;
 
  case aFormat of
@@ -143,15 +138,15 @@ begin
   end;
  end;
 
- ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_3D);
+ ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      0, //TVkImageCreateFlags(VK_IMAGE_CREATE_3D_ARRAY_COMPATIBLE_BIT),
-                                     VK_IMAGE_TYPE_3D,
+                                     VK_IMAGE_TYPE_2D,
                                      aFormat,
                                      aWidth,
                                      aHeight,
-                                     aDepth,
+                                     1,
                                      1,
                                      1,
                                      aSampleBits,
@@ -256,7 +251,7 @@ begin
 
 end;
 
-destructor TpvScene3DRendererImage3D.Destroy;
+destructor TpvScene3DRendererImage2D.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);
