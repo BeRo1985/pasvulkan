@@ -91,6 +91,7 @@ uses {$ifdef Windows}
      PasVulkan.Frustum,
      PasVulkan.BufferRangeAllocator,
      PasVulkan.TransferQueue,
+     PasVulkan.Scene3D.Planet,
      POCA;
 
 type EpvScene3D=class(Exception);
