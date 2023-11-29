@@ -101,7 +101,8 @@ type { TpvScene3DPlanet }
               destructor Destroy; override; 
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData;
-                                   const aSrcQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED;
+                                   const aFromSrcQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED;
+                                   const aToSrcQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED;
                                    const aDstQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED);
              published
               property Planet:TpvScene3DPlanet read fPlanet;
@@ -205,7 +206,8 @@ end;
 
 procedure TpvScene3DPlanet.TData.TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                             const aInFlightFrameData:TData;
-                                            const aSrcQueueFamilyIndex:TpvUInt32;
+                                            const aFromSrcQueueFamilyIndex:TpvUInt32;
+                                            const aToSrcQueueFamilyIndex:TpvUInt32;
                                             const aDstQueueFamilyIndex:TpvUInt32);
 var Index,CountImageMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
@@ -229,8 +231,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                        aSrcQueueFamilyIndex,
-                                                        aDstQueueFamilyIndex,
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
                                                         fHeightMapImage.Image,
                                                         ImageSubresourceRange);
 
@@ -238,8 +240,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                        aSrcQueueFamilyIndex,
-                                                        aDstQueueFamilyIndex,
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
                                                         fNormalMapImage.Image,
                                                         ImageSubresourceRange);      
 
@@ -247,8 +249,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                        aSrcQueueFamilyIndex,
-                                                        aDstQueueFamilyIndex,
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
                                                         fTangentBitangentMapImage.Image,
                                                         ImageSubresourceRange); 
 
@@ -256,8 +258,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                        aSrcQueueFamilyIndex,
-                                                        aDstQueueFamilyIndex,
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
                                                         aInFlightFrameData.fHeightMapImage.Image,
                                                         ImageSubresourceRange);
 
@@ -265,8 +267,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                        aSrcQueueFamilyIndex,
-                                                        aDstQueueFamilyIndex,
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
                                                         aInFlightFrameData.fNormalMapImage.Image,
                                                         ImageSubresourceRange);
 
@@ -274,8 +276,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                        aSrcQueueFamilyIndex,
-                                                        aDstQueueFamilyIndex,
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
                                                         aInFlightFrameData.fTangentBitangentMapImage.Image,
                                                         ImageSubresourceRange);                                                     
 
