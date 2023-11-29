@@ -121,6 +121,9 @@ type { TpvScene3DPlanet }
        fHeightMapScale:TpvFloat; // Scale factor for the height map
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
+       fReleaseFrameCounter:TpvInt32;
+       fReady:TPasMPBool32;
+       fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
       public
        constructor Create(const aScene3D:TObject;
                           const aHeightMapResolution:TpvInt32=2048;
@@ -129,6 +132,8 @@ type { TpvScene3DPlanet }
                           const aTopRadius:TpvFloat=6471000.0;
                           const aHeightMapScale:TpvFloat=1000.0); reintroduce;
        destructor Destroy; override;
+       procedure Release;
+       function HandleRelease:boolean;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -453,6 +458,14 @@ begin
   fInFlightFrameDataList.Add(TData.Create(self,InFlightFrameIndex));
  end;
 
+ fReleaseFrameCounter:=-1;
+
+ fReady:=true;
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+  fInFlightFrameReady[InFlightFrameIndex]:=false;
+ end; 
+
 end;
 
 destructor TpvScene3DPlanet.Destroy;
@@ -464,6 +477,26 @@ begin
 
  inherited Destroy;
 
+end;
+
+procedure TpvScene3DPlanet.Release;
+begin
+ if fReleaseFrameCounter<0 then begin
+  fReleaseFrameCounter:=TpvScene3D(fScene3D).CountInFlightFrames;
+  fReady:=false;
+ end;
+end;
+
+function TpvScene3DPlanet.HandleRelease:boolean;
+begin
+ if fReleaseFrameCounter>0 then begin
+  result:=TPasMPInterlocked.Decrement(fReleaseFrameCounter)=0;
+  if result then begin
+   Free;
+  end;
+ end else begin
+  result:=false;
+ end; 
 end;
 
 end.
