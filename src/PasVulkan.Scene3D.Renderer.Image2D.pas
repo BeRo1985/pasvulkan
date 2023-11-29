@@ -162,8 +162,8 @@ begin
                                     );
 
  MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
-                                                                                         RequiresDedicatedAllocation,
-                                                                                         PrefersDedicatedAllocation);
+                                                                      RequiresDedicatedAllocation,
+                                                                      PrefersDedicatedAllocation);
 
  MemoryBlockFlags:=[];
 
