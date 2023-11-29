@@ -78,7 +78,7 @@ type { TpvScene3DRendererOrderIndependentTransparencyBuffer }
        fVulkanBufferView:TpvVulkanBufferView;
       public
 
-       constructor Create(const aSize:TpvInt32;const aFormat:TVkFormat;const aBufferUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
+       constructor Create(const aDevice:TpvVulkanDevice;const aSize:TpvInt32;const aFormat:TVkFormat;const aBufferUsage:TVkBufferUsageFlags=TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
 
        destructor Destroy; override;
 
@@ -94,12 +94,12 @@ implementation
 
 { TpvScene3DRendererOrderIndependentTransparencyBuffer }
 
-constructor TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(const aSize:TpvInt32;const aFormat:TVkFormat;const aBufferUsage:TVkBufferUsageFlags);
+constructor TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(const aDevice:TpvVulkanDevice;const aSize:TpvInt32;const aFormat:TVkFormat;const aBufferUsage:TVkBufferUsageFlags);
 begin
 
  inherited Create;
 
- fVulkanBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+ fVulkanBuffer:=TpvVulkanBuffer.Create(aDevice,
                                        aSize,
                                        aBufferUsage,
                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -116,7 +116,7 @@ begin
 
  if (aBufferUsage and (TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or
                        TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)))<>0 then begin
-  fVulkanBufferView:=TpvVulkanBufferView.Create(pvApplication.VulkanDevice,
+  fVulkanBufferView:=TpvVulkanBufferView.Create(aDevice,
                                                 fVulkanBuffer,aFormat,
                                                 0,
                                                 TVkDeviceSize(VK_WHOLE_SIZE));

@@ -86,7 +86,7 @@ type { TpvScene3DRendererMipmappedArray2DImage }
 
        VulkanImageViews:array of TpvVulkanImageView;
 
-       constructor Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL));
 
        destructor Destroy; override;
 
@@ -114,7 +114,7 @@ implementation
 
 { TpvScene3DRendererMipmappedArray2DImage }
 
-constructor TpvScene3DRendererMipmappedArray2DImage.Create(const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
+constructor TpvScene3DRendererMipmappedArray2DImage.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight,aLayers:TpvInt32;const aFormat:TVkFormat;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout);
 var MipMapLevelIndex:TpvInt32;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -152,7 +152,7 @@ begin
              (aFormat<>VK_FORMAT_R8_SRGB) and
              (aFormat<>VK_FORMAT_B8G8R8A8_SRGB);
 
- fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
+ fVulkanImage:=TpvVulkanImage.Create(aDevice,
                                      0, //TVkImageCreateFlags(VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
                                      aFormat,
@@ -174,7 +174,7 @@ begin
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
 
- MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
+ MemoryRequirements:=aDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                                          RequiresDedicatedAllocation,
                                                                                          PrefersDedicatedAllocation);
 
@@ -184,7 +184,7 @@ begin
   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
  end;
 
- fMemoryBlock:=pvApplication.VulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+ fMemoryBlock:=aDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                             MemoryRequirements.size,
                                                                             MemoryRequirements.alignment,
                                                                             MemoryRequirements.memoryTypeBits,
@@ -204,22 +204,22 @@ begin
 
  fMemoryBlock.AssociatedObject:=self;
 
- VulkanCheckResult(pvApplication.VulkanDevice.Commands.BindImageMemory(pvApplication.VulkanDevice.Handle,
+ VulkanCheckResult(aDevice.Commands.BindImageMemory(aDevice.Handle,
                                                                        fVulkanImage.Handle,
                                                                        fMemoryBlock.MemoryChunk.Handle,
                                                                        fMemoryBlock.Offset));
 
- Queue:=pvApplication.VulkanDevice.GraphicsQueue;
+ Queue:=aDevice.GraphicsQueue;
 
- CommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                          pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+ CommandPool:=TpvVulkanCommandPool.Create(aDevice,
+                                          aDevice.GraphicsQueueFamilyIndex,
                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  try
 
   CommandBuffer:=TpvVulkanCommandBuffer.Create(CommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   try
 
-   Fence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+   Fence:=TpvVulkanFence.Create(aDevice);
    try
 
     FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
@@ -237,7 +237,7 @@ begin
                            Fence,
                            true);
 
-    fVulkanImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
+    fVulkanImageView:=TpvVulkanImageView.Create(aDevice,
                                                 fVulkanImage,
                                                 ImageViewType,
                                                 aFormat,
@@ -251,7 +251,7 @@ begin
                                                 0,
                                                 aLayers);
 
-    fVulkanArrayImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
+    fVulkanArrayImageView:=TpvVulkanImageView.Create(aDevice,
                                                      fVulkanImage,
                                                      TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY),
                                                      aFormat,
@@ -268,7 +268,7 @@ begin
     SetLength(VulkanImageViews,fMipMapLevels);
 
     for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
-     VulkanImageViews[MipMapLevelIndex]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
+     VulkanImageViews[MipMapLevelIndex]:=TpvVulkanImageView.Create(aDevice,
                                                                    fVulkanImage,
                                                                    ImageViewType,
                                                                    aFormat,

@@ -155,6 +155,17 @@ begin
   fHeightMap:=nil;
  end;
 
+ if assigned(fPlanet.fScene3D.VulkanDevice) then begin
+
+  fHeightMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fScene3D.VulkanDevice,
+                                                    fPlanet.fHeightMapResolution,
+                                                    fPlanet.fHeightMapResolution,
+                                                    VK_FORMAT_R32_SFLOAT,
+                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                    VK_IMAGE_LAYOUT_GENERAL);
+  
+  end;
+
 end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
