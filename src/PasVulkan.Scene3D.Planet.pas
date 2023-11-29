@@ -938,6 +938,10 @@ begin
  end; 
 end;
 
+procedure TpvScene3DPlanet.Execute(const aInFlightFrameIndex:TpvSizeInt);
+begin
+end;
+
 { TpvScene3DPlanets }
 
 constructor TpvScene3DPlanets.Create(const aScene3D:TObject);
