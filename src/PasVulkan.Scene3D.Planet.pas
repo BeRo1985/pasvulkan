@@ -345,6 +345,78 @@ begin
 
   //////////////////////////// 
 
+  begin
+
+   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        fHeightMapImage.Image,
+                                                        ImageSubresourceRange);
+
+   ImageMemoryBarriers[1]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        fNormalMapImage.Image,
+                                                        ImageSubresourceRange);
+
+   ImageMemoryBarriers[2]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        fTangentBitangentMapImage.Image,
+                                                        ImageSubresourceRange);
+
+   ImageMemoryBarriers[3]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        aInFlightFrameData.fHeightMapImage.Image,
+                                                        ImageSubresourceRange);
+
+   ImageMemoryBarriers[4]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        aInFlightFrameData.fNormalMapImage.Image,
+                                                        ImageSubresourceRange);   
+
+   ImageMemoryBarriers[5]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        aInFlightFrameData.fTangentBitangentMapImage.Image,
+                                                        ImageSubresourceRange);
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT),
+                                     0,
+                                     0,
+                                     nil,
+                                     0,nil,
+                                     6,@ImageMemoryBarriers[0]);
+      
+  end;
+
+  ////////////////////////////
+
  end;
 
 end;
