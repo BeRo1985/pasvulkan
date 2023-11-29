@@ -466,7 +466,7 @@ begin
 
  fCenter:=TpvVector3.Origin;
 
- fCenterProperty:=TpvVector3Property.Create(fCenter);
+ fCenterProperty:=TpvVector3Property.Create(@fCenter);
 
  fBottomRadius:=aBottomRadius;
 
