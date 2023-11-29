@@ -715,7 +715,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_modification.comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_modification_comp.spv');
   try
    fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
@@ -875,7 +875,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_tangentspace_generation.comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_tangentspace_generation_comp.spv');
   try
    fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
