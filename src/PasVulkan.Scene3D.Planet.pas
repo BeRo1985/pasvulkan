@@ -80,7 +80,9 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D;
 
-type { TpvScene3DPlanet }
+type TpvScene3DPlanets=class;
+
+     { TpvScene3DPlanet }
      TpvScene3DPlanet=class
       public
        type THeightValue=TpvFloat;
@@ -132,6 +134,8 @@ type { TpvScene3DPlanet }
                           const aTopRadius:TpvFloat=6471000.0;
                           const aHeightMapScale:TpvFloat=1000.0); reintroduce;
        destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
       published
@@ -142,6 +146,18 @@ type { TpvScene3DPlanet }
        property TopRadius:TpvFloat read fTopRadius;
        property Data:TData read fData;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
+     end;
+
+     TpvScene3DPlanets=class(TpvObjectGenericList<TpvScene3DPlanet>)
+      private
+       fScene3D:TObject;
+       fLock:TPasMPCriticalSection;
+      public
+       constructor Create(const aScene3D:TObject); reintroduce;
+       destructor Destroy; override;
+      published
+       property Scene3D:TObject read fScene3D;
+       property Lock:TPasMPCriticalSection read fLock;
      end;
 
 implementation
@@ -479,6 +495,36 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fScene3D) then begin
+  TpvScene3D(fScene3D).Planets.Lock.Acquire;
+  try  
+   TpvScene3D(fScene3D).Planets.Add(self); 
+  finally 
+   TpvScene3D(fScene3D).Planets.Lock.Release;
+  end; 
+ end;
+end;
+
+procedure TpvScene3DPlanet.BeforeDestruction;
+var Index:TpvSizeInt;
+begin
+ if assigned(fScene3D) then begin
+  TpvScene3D(fScene3D).Planets.Lock.Acquire;
+  try  
+   Index:=TpvScene3D(fScene3D).Planets.IndexOf(self);
+   if Index>=0 then begin
+    TpvScene3D(fScene3D).Planets.Extract(Index); // not delete ir remove, since we don't want to free ourself here already.
+   end;
+  finally 
+   TpvScene3D(fScene3D).Planets.Lock.Release;
+  end; 
+ end; 
+ inherited BeforeDestruction;
+end;
+
 procedure TpvScene3DPlanet.Release;
 begin
  if fReleaseFrameCounter<0 then begin
@@ -498,6 +544,21 @@ begin
   result:=false;
  end; 
 end;
+
+{ TpvScene3DPlanets }
+
+constructor TpvScene3DPlanets.Create(const aScene3D:TObject);
+begin
+ inherited Create(true);
+ fScene3D:=aScene3D;
+ fLock:=TPasMPCriticalSection.Create;
+end;
+
+destructor TpvScene3DPlanets.Destroy;
+begin
+ FreeAndNil(fLock);
+ inherited Destroy;
+end; 
 
 end.
 

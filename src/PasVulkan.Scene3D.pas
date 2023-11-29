@@ -2883,6 +2883,8 @@ type EpvScene3D=class(Exception);
       private
        fInFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues;
       private
+       fPlanets:TpvScene3DPlanets;
+      private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -3055,6 +3057,8 @@ type EpvScene3D=class(Exception);
        property MaxCullObjectID:TpvUInt32 read fMaxCullObjectID;
       public
        property InFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameDataTransferQueues;
+      public
+       property Planets:TpvScene3DPlanets read fPlanets;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -18811,6 +18815,8 @@ begin
 
  fMeshGenerationCounter:=1;
 
+ fPlanets:=TpvScene3DPlanets.Create(self);
+
  fNewInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
 
  fNewInstances:=TpvScene3D.TGroup.TInstances.Create;
@@ -19226,6 +19232,8 @@ begin
  FreeAndNil(fMeshComputeVulkanDescriptorSet1Layout);
 
  FreeAndNil(fGlobalVulkanDescriptorSetLayout);
+
+ FreeAndNil(fPlanets);
 
  while fGroupInstances.Count>0 do begin
   fGroupInstances[fGroupInstances.Count-1].Free;
