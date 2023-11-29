@@ -78,29 +78,114 @@ uses Classes,
      PasVulkan.CircularDoublyLinkedList,
      PasVulkan.VirtualReality,
      PasVulkan.Scene3D,
-     PasVulkan.Scene3D.Renderer.Globals;
+     PasVulkan.Scene3D.Renderer.Globals,
+     PasVulkan.Scene3D.Renderer.Image2D;
 
-type TpvScene3DPlanet=class
+type { TpvScene3DPlanet }
+     TpvScene3DPlanet=class
       public
-       fScene3D:TpvScene3D;
+       type THeightValue=TpvFloat;
+            PHeightValue=^THeightValue;
+            THeightMap=array of THeightValue;
+            { TData }
+            TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
+             private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
+              fPlanet:TpvScene3DPlanet;
+              fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
+              fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
+              fHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
+              fNormalMapImage:TpvScene3DRendererImage2D; // R16G16_SFLOAT (octahedral)
+              fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)
+             public 
+              constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
+              destructor Destroy; override; 
+             published
+              property Planet:TpvScene3DPlanet read fPlanet;
+              property InFlightFrameIndex:TpvInt32 read fInFlightFrameIndex;
+              property HeightMap:THeightMap read fHeightMap;              
+              property HeightMapImage:TpvScene3DRendererImage2D read fHeightMapImage;
+              property NormalMapImage:TpvScene3DRendererImage2D read fNormalMapImage;
+              property TangentBitangentMapImage:TpvScene3DRendererImage2D read fTangentBitangentMapImage; 
+            end;
+            TInFlightFrameDataList=TpvObjectGenericList<TData>;
       private
+       fScene3D:TpvScene3D;
+       fHeightMapResolution:TpvInt32;
+       fData:TData;
+       fInFlightFrameDataList:TInFlightFrameDataList;
       public
-       constructor Create(const aScene3D:TpvScene3D); reintroduce;
+       constructor Create(const aScene3D:TpvScene3D;
+                          const aHeightMapResolution:TpvInt32=2048); reintroduce;
        destructor Destroy; override;
       published
        property Scene3D:TpvScene3D read fScene3D;
+       property HeightMapResolution:TpvInt32 read fHeightMapResolution;
+       property Data:TData read fData;
+       property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
      end;
 
 implementation
 
-constructor TpvScene3DPlanet.Create(const aScene3D:TpvScene3D);
+{ TpvScene3DPlanet.TData }
+
+constructor TpvScene3DPlanet.TData.Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32);
 begin
+  
  inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fInFlightFrameIndex:=aInFlightFrameIndex;
+
+ if fInFlightFrameIndex<0 then begin
+  fHeightMap:=nil;
+  SetLength(fHeightMap,fPlanet.fHeightMapResolution*fPlanet.fHeightMapResolution);
+ end else begin
+  fHeightMap:=nil;
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TData.Destroy;
+begin
+ fHeightMap:=nil;
+ FreeAndNil(fHeightMapImage);
+ FreeAndNil(fNormalMapImage);
+ FreeAndNil(fTangentBitangentMapImage);
+ inherited Destroy;
+end;
+
+{ TpvScene3DPlanet }
+
+constructor TpvScene3DPlanet.Create(const aScene3D:TpvScene3D;const aHeightMapResolution:TpvInt32);
+var InFlightFrameIndex:TpvSizeInt;
+begin
+
+ inherited Create;
+
  fScene3D:=aScene3D;
+
+ fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
+
+ fData:=TData.Create(self,-1);
+
+ fInFlightFrameDataList:=TInFlightFrameDataList.Create(true);
+ for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+  fInFlightFrameDataList.Add(TData.Create(self,InFlightFrameIndex));
+ end;
+
 end;
 
 destructor TpvScene3DPlanet.Destroy;
 begin
+ 
+ FreeAndNil(fData);
+ 
+ FreeAndNil(fInFlightFrameDataList);
+
  inherited Destroy;
+
+end;
+
 end.
 
