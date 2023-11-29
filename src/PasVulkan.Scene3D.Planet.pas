@@ -153,6 +153,11 @@ type TpvScene3DPlanets=class;
             end; 
       private
        fScene3D:TObject;
+       fVulkanDevice:TpvVulkanDevice;
+       fVulkanComputeQueue:TpvVulkanQueue;
+       fVulkanFence:TpvVulkanFence;
+       fVulkanCommandPool:TpvVulkanCommandPool;
+       fVulkanCommandBuffer:TpvVulkanCommandBuffer;
        fHeightMapResolution:TpvInt32;
        fCountSpherePoints:TpvSizeInt;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
@@ -163,6 +168,7 @@ type TpvScene3DPlanets=class;
        fReleaseFrameCounter:TpvInt32;
        fReady:TPasMPBool32;
        fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
+       fHeightMapRandomInitialization:THeightMapRandomInitialization;
       public
       constructor Create(const aScene3D:TObject;     
                           const aHeightMapResolution:TpvInt32=2048;
@@ -175,6 +181,7 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
+       procedure Execute(const aInFlightFrameIndex:TpvSizeInt); 
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -274,7 +281,7 @@ procedure TpvScene3DPlanet.TData.TransferTo(const aCommandBuffer:TpvVulkanComman
 var Index,CountImageMemoryBarriers:TpvSizeInt;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
-    ImageBlit:TVkImageBlit;
+    ImageCopy:TVkImageCopy;
 begin
   
  if assigned(TpvScene3D(fPlanet.fScene3D).VulkanDevice) then begin
@@ -359,48 +366,42 @@ begin
 
   begin
     
-   FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
-   ImageBlit.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-   ImageBlit.srcSubresource.mipLevel:=0;
-   ImageBlit.srcSubresource.baseArrayLayer:=0;
-   ImageBlit.srcSubresource.layerCount:=1;
-   ImageBlit.srcOffsets[0].x:=0;
-   ImageBlit.srcOffsets[0].y:=0;
-   ImageBlit.srcOffsets[0].z:=0;
-   ImageBlit.srcOffsets[1].x:=fPlanet.fHeightMapResolution;
-   ImageBlit.srcOffsets[1].y:=fPlanet.fHeightMapResolution;
-   ImageBlit.srcOffsets[1].z:=1;
-   ImageBlit.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-   ImageBlit.dstSubresource.mipLevel:=0;
-   ImageBlit.dstSubresource.baseArrayLayer:=0;
-   ImageBlit.dstSubresource.layerCount:=1;
-   ImageBlit.dstOffsets[0].x:=0;
-   ImageBlit.dstOffsets[0].y:=0;
-   ImageBlit.dstOffsets[0].z:=0;
-   ImageBlit.dstOffsets[1].x:=fPlanet.fHeightMapResolution;
-   ImageBlit.dstOffsets[1].y:=fPlanet.fHeightMapResolution;
-   ImageBlit.dstOffsets[1].z:=1;
-
-   aCommandBuffer.CmdBlitImage(fHeightMapImage.VulkanImage.Handle,
+   FillChar(ImageCopy,SizeOf(TVkImageCopy),#0);
+   ImageCopy.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageCopy.srcSubresource.mipLevel:=0;
+   ImageCopy.srcSubresource.baseArrayLayer:=0;
+   ImageCopy.srcSubresource.layerCount:=1;
+   ImageCopy.srcOffset.x:=0;
+   ImageCopy.srcOffset.y:=0;
+   ImageCopy.srcOffset.z:=0;
+   ImageCopy.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+   ImageCopy.dstSubresource.mipLevel:=0;
+   ImageCopy.dstSubresource.baseArrayLayer:=0;
+   ImageCopy.dstSubresource.layerCount:=1;
+   ImageCopy.dstOffset.x:=0;
+   ImageCopy.dstOffset.y:=0;
+   ImageCopy.dstOffset.z:=0;
+   ImageCopy.extent.width:=fPlanet.fHeightMapResolution;
+   ImageCopy.extent.height:=fPlanet.fHeightMapResolution;
+   ImageCopy.extent.depth:=1;
+   
+   aCommandBuffer.CmdCopyImage(fHeightMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                aInFlightFrameData.fHeightMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               1,@ImageBlit,
-                               VK_FILTER_NEAREST);
+                               1,@ImageCopy);
 
-   aCommandBuffer.CmdBlitImage(fNormalMapImage.VulkanImage.Handle,
+   aCommandBuffer.CmdCopyImage(fNormalMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                aInFlightFrameData.fNormalMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               1,@ImageBlit,
-                               VK_FILTER_NEAREST);
+                               1,@ImageCopy);
 
-   aCommandBuffer.CmdBlitImage(fTangentBitangentMapImage.VulkanImage.Handle,
+   aCommandBuffer.CmdCopyImage(fTangentBitangentMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               1,@ImageBlit,
-                               VK_FILTER_NEAREST);         
+                               1,@ImageCopy);         
 
   end;
 
@@ -688,6 +689,8 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   fInFlightFrameReady[InFlightFrameIndex]:=false;
  end; 
+
+
 
 end;
 
