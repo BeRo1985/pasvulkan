@@ -110,6 +110,8 @@ type TpvScene3DPlanets=class;
               fHeightMapInitialized:TPasMPBool32;
               fHeightMapGeneration:TpvUInt64;
               fTangentSpaceGeneration:TpvUInt64;
+              fBashMeshInitialized:TPasMPBool32;
+              fMeshGeneration:TpvUInt64;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -379,6 +381,10 @@ begin
  fHeightMapGeneration:=0;
 
  fTangentSpaceGeneration:=High(TpvUInt64);
+
+ fBashMeshInitialized:=false;
+
+ fMeshGeneration:=High(TpvUInt64);
 
  fModelMatrix:=TpvMatrix4x4.Identity;
 
@@ -2031,6 +2037,17 @@ begin
  if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
   fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
   fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
+ end;
+
+ if not fData.fBaseMeshInitialized then begin
+  fBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+  fBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
+  fData.fBaseMeshInitialized:=true;
+ end;
+
+ if fData.fMeshGeneration<>fData.fTangentSpaceGeneration then begin
+  fMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+  fData.fMeshGeneration:=fData.fTangentSpaceGeneration;
  end;
 
  // Update in-flight frame data if necessary
