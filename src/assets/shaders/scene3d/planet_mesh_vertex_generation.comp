@@ -31,6 +31,8 @@ layout(push_constant) uniform PushConstants {
   uint countPoints;
   float planetGroundRadius; // planet ground radius
   float heightMapScale; // scale of height map
+  uint dummy;
+  vec4 center; // center of planet
 } pushConstants;
 
 /* clang-format on */
@@ -54,7 +56,7 @@ void main(){
 
     fibonacciSphereVertices.vertices[index] = FibonacciSphereVertex( 
       vec4(
-        vector * fma(height, pushConstants.heightMapScale, pushConstants.planetGroundRadius), // (heightMapValue * heightMapScale) + planetGroundRadius
+        pushConstants.center.xyz + (vector * fma(height, pushConstants.heightMapScale, pushConstants.planetGroundRadius)), // (heightMapValue * heightMapScale) + planetGroundRadius
         (dot(octDecode(rawTangentBitangent.zw), cross(octDecode(rawNormal), octDecode(rawTangentBitangent.xy))) < 0.0) ? -1.0 : 1.0
       ), 
       vec4(

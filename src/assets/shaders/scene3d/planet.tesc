@@ -30,6 +30,7 @@ layout(push_constant) uniform PushConstants {
   float heightMapScale;
   float dummy;
   vec2 jitter;
+  vec4 center;
 } pushConstants;
 
 vec2 resolution = vec2(pushConstants.resolutionX, pushConstants.resolutionY);

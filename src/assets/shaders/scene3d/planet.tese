@@ -53,6 +53,7 @@ layout(push_constant) uniform PushConstants {
   float heightMapScale;
   float dummy;
   vec2 jitter;
+  vec4 center;
 } pushConstants;
 
 struct View {

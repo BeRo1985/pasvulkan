@@ -23,6 +23,7 @@ layout(push_constant) uniform PushConstants {
   float heightMapScale;
   float dummy;
   vec2 jitter;
+  vec4 center;
 } pushConstants;
 
 int countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
@@ -87,7 +88,7 @@ void main(){
                    offsets[3 - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);
     mat3 normalMatrix = sideMatrices[sideIndex];       
     vec3 normal = getNormal(normalMatrix, uv),
-         position = normal * pushConstants.bottomRadius;
+         position = pushConstants.center.xyz + (normal * pushConstants.bottomRadius);
 #if 0
     vec3 tangent = getNormal(normalMatrix * tangentTransformMatrix, uv),
          bitangent = getNormal(normalMatrix * bitangentTransformMatrix, uv);
