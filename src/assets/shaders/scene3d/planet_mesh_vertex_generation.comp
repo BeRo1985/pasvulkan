@@ -28,11 +28,11 @@ layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rg16_snorm 
 layout(set = 0, binding = 4) uniform sampler2D uTextureTangentBitangentMap; // rgba16_snorm octahedral wise 
 
 layout(push_constant) uniform PushConstants {
+  mat4 modelMatrix;
   uint countPoints;
   float planetGroundRadius; // planet ground radius
   float heightMapScale; // scale of height map
   uint dummy;
-  vec4 center; // center of planet
 } pushConstants;
 
 /* clang-format on */
@@ -56,7 +56,7 @@ void main(){
 
     fibonacciSphereVertices.vertices[index] = FibonacciSphereVertex( 
       vec4(
-        pushConstants.center.xyz + (vector * fma(height, pushConstants.heightMapScale, pushConstants.planetGroundRadius)), // (heightMapValue * heightMapScale) + planetGroundRadius
+        (pushConstants.modelMatrix * vec4(vector * fma(height, pushConstants.heightMapScale, pushConstants.planetGroundRadius), 1.0)).xyz, // (heightMapValue * heightMapScale) + planetGroundRadius
         (dot(octDecode(rawTangentBitangent.zw), cross(octDecode(rawNormal), octDecode(rawTangentBitangent.xy))) < 0.0) ? -1.0 : 1.0
       ), 
       vec4(

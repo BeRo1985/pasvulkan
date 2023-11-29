@@ -19,18 +19,23 @@ layout(location = 0) out OutBlock {
 } outBlocks[];
 
 layout(push_constant) uniform PushConstants {
+
+  mat4 modelMatrix;
+  
   int viewBaseIndex;
   int countViews;
   int countQuadPointsInOneDirection; 
   int countAllViews;
+  
   float bottomRadius;
   float topRadius;
   float resolutionX;  
   float resolutionY;  
+  
   float heightMapScale;
   float dummy;
   vec2 jitter;
-  vec4 center;
+
 } pushConstants;
 
 vec2 resolution = vec2(pushConstants.resolutionX, pushConstants.resolutionY);

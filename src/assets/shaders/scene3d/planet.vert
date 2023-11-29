@@ -12,18 +12,23 @@ layout(location = 0) out OutBlock {
 } outBlock;
 
 layout(push_constant) uniform PushConstants {
+  
+  mat4 modelMatrix;
+  
   int viewBaseIndex;
   int countViews;
   int countQuadPointsInOneDirection; 
   int countAllViews;
+  
   float bottomRadius;
   float topRadius;
   float resolutionX;  
   float resolutionY;  
+  
   float heightMapScale;
   float dummy;
   vec2 jitter;
-  vec4 center;
+
 } pushConstants;
 
 int countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
@@ -88,7 +93,7 @@ void main(){
                    offsets[3 - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);
     mat3 normalMatrix = sideMatrices[sideIndex];       
     vec3 normal = getNormal(normalMatrix, uv),
-         position = pushConstants.center.xyz + (normal * pushConstants.bottomRadius);
+         position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
 #if 0
     vec3 tangent = getNormal(normalMatrix * tangentTransformMatrix, uv),
          bitangent = getNormal(normalMatrix * bitangentTransformMatrix, uv);
