@@ -580,9 +580,9 @@ procedure TpvScene3DPlanet.THeightMapRandomInitialization.Execute(const aCommand
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
- ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                   VK_IMAGE_LAYOUT_GENERAL,
                                                   VK_QUEUE_FAMILY_IGNORED,
                                                   VK_QUEUE_FAMILY_IGNORED,
