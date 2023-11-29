@@ -77,7 +77,6 @@ uses Classes,
      PasVulkan.Collections,
      PasVulkan.CircularDoublyLinkedList,
      PasVulkan.VirtualReality,
-     PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D;
 
@@ -114,7 +113,7 @@ type { TpvScene3DPlanet }
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
       private
-       fScene3D:TpvScene3D;
+       fScene3D:TObject;
        fHeightMapResolution:TpvInt32;
        fCountSpherePoints:TpvSizeInt;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
@@ -123,7 +122,7 @@ type { TpvScene3DPlanet }
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
       public
-       constructor Create(const aScene3D:TpvScene3D;
+       constructor Create(const aScene3D:TObject;
                           const aHeightMapResolution:TpvInt32=2048;
                           const aCountSpherePoints:TpvSizeInt=65536;
                           const aBottomRadius:TpvFloat=6371000.0;
@@ -131,7 +130,7 @@ type { TpvScene3DPlanet }
                           const aHeightMapScale:TpvFloat=1000.0); reintroduce;
        destructor Destroy; override;
       published
-       property Scene3D:TpvScene3D read fScene3D;
+       property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
        property CountSpherePoints:TpvSizeInt read fCountSpherePoints;
        property BottomRadius:TpvFloat read fBottomRadius;
@@ -141,6 +140,8 @@ type { TpvScene3DPlanet }
      end;
 
 implementation
+
+uses PasVulkan.Scene3D;
 
 { TpvScene3DPlanet.TData }
 
@@ -160,23 +161,23 @@ begin
   fHeightMap:=nil;
  end;
 
- if assigned(fPlanet.fScene3D.VulkanDevice) then begin
+ if assigned(TpvScene3D(fPlanet.fScene3D).VulkanDevice) then begin
 
-  fHeightMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fScene3D.VulkanDevice,
+  fHeightMapImage:=TpvScene3DRendererImage2D.Create((TpvScene3D(fPlanet.fScene3D).VulkanDevice,
                                                     fPlanet.fHeightMapResolution,
                                                     fPlanet.fHeightMapResolution,
                                                     VK_FORMAT_R32_SFLOAT,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  fNormalMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fScene3D.VulkanDevice,
+  fNormalMapImage:=TpvScene3DRendererImage2D.Create((TpvScene3D(fPlanet.fScene3D).VulkanDevice,
                                                     fPlanet.fHeightMapResolution,
                                                     fPlanet.fHeightMapResolution,
                                                     VK_FORMAT_R16G16_SFLOAT,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  fTangentBitangentMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fScene3D.VulkanDevice,
+  fTangentBitangentMapImage:=TpvScene3DRendererImage2D.Create((TpvScene3D(fPlanet.fScene3D).VulkanDevice,
                                                               fPlanet.fHeightMapResolution,
                                                               fPlanet.fHeightMapResolution,
                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -215,7 +216,7 @@ var Index,CountImageMemoryBarriers:TpvSizeInt;
     ImageBlit:TVkImageBlit;
 begin
   
- if assigned(fPlanet.fScene3D.VulkanDevice) then begin
+ if assigned((TpvScene3D(fPlanet.fScene3D).VulkanDevice) then begin
 
   ImageSubresourceRange:=TVkImageSubresourceRange.Create(VK_IMAGE_ASPECT_COLOR_BIT,
                                                          0,
@@ -423,7 +424,7 @@ end;
 
 { TpvScene3DPlanet }
 
-constructor TpvScene3DPlanet.Create(const aScene3D:TpvScene3D;
+constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aHeightMapResolution:TpvInt32;
                                     const aCountSpherePoints:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
@@ -449,7 +450,7 @@ begin
  fData:=TData.Create(self,-1);
 
  fInFlightFrameDataList:=TInFlightFrameDataList.Create(true);
- for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   fInFlightFrameDataList.Add(TData.Create(self,InFlightFrameIndex));
  end;
 
