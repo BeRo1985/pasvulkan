@@ -111,15 +111,26 @@ type { TpvScene3DPlanet }
       private
        fScene3D:TpvScene3D;
        fHeightMapResolution:TpvInt32;
+       fCountSpherePoints:TpvSizeInt;
+       fBottomRadius:TpvFloat; // Start of the lowest planet ground
+       fTopRadius:TpvFloat; // End of the atmosphere
+       fHeightMapScale:TpvFloat; // Scale factor for the height map
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
       public
        constructor Create(const aScene3D:TpvScene3D;
-                          const aHeightMapResolution:TpvInt32=2048); reintroduce;
+                          const aHeightMapResolution:TpvInt32=2048;
+                          const aCountSpherePoints:TpvSizeInt=65536;
+                          const aBottomRadius:TpvFloat=6371000.0;
+                          const aTopRadius:TpvFloat=6471000.0;
+                          const aHeightMapScale:TpvFloat=1000.0); reintroduce;
        destructor Destroy; override;
       published
        property Scene3D:TpvScene3D read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
+       property CountSpherePoints:TpvSizeInt read fCountSpherePoints;
+       property BottomRadius:TpvFloat read fBottomRadius;
+       property TopRadius:TpvFloat read fTopRadius;
        property Data:TData read fData;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
      end;
@@ -157,7 +168,12 @@ end;
 
 { TpvScene3DPlanet }
 
-constructor TpvScene3DPlanet.Create(const aScene3D:TpvScene3D;const aHeightMapResolution:TpvInt32);
+constructor TpvScene3DPlanet.Create(const aScene3D:TpvScene3D;
+                                    const aHeightMapResolution:TpvInt32;
+                                    const aCountSpherePoints:TpvSizeInt;
+                                    const aBottomRadius:TpvFloat;
+                                    const aTopRadius:TpvFloat;
+                                    const aHeightMapScale:TpvFloat);
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -166,6 +182,14 @@ begin
  fScene3D:=aScene3D;
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
+
+ fCountSpherePoints:=Min(Max(aCountSpherePoints,32),16777216);
+
+ fBottomRadius:=aBottomRadius;
+
+ fTopRadius:=aTopRadius;
+
+ fHeightMapScale:=aHeightMapScale;
 
  fData:=TData.Create(self,-1);
 
