@@ -552,7 +552,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_random_initialization.comp.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_random_initialization_comp.spv');
   try
    fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally

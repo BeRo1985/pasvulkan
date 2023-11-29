@@ -19,7 +19,7 @@ layout(set = 0, binding = 2, rgba16_snorm) writeonly uniform image2D uImageTange
 layout(push_constant) uniform PushConstants {
   float planetGroundRadius; // planet ground radius
   float heightMapScale; // scale of height map
-} pushConstants
+} pushConstants;
 
 #include "octahedralmap.glsl"
 #include "octahedral.glsl"
