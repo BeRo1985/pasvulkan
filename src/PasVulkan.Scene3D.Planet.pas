@@ -1922,10 +1922,22 @@ begin
 
  fTangentSpaceGeneration:=TTangentSpaceGeneration.Create(self);
 
+ fBaseMeshVertexGeneration:=TBaseMeshVertexGeneration.Create(self);
+
+ fBaseMeshIndexGeneration:=TBaseMeshIndexGeneration.Create(self);
+
+ fMeshVertexGeneration:=TMeshVertexGeneration.Create(self);
+
 end;
 
 destructor TpvScene3DPlanet.Destroy;
 begin
+ 
+ FreeAndNil(fMeshVertexGeneration);
+
+ FreeAndNil(fBaseMeshIndexGeneration);
+
+ FreeAndNil(fBaseMeshVertexGeneration);
  
  FreeAndNil(fTangentSpaceGeneration);
 
