@@ -119,6 +119,28 @@ type TpvScene3DPlanets=class;
               property Ready:TPasMPBool32 read fReady write fReady;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
+            { THeightMapRandomInitialization }
+            THeightMapRandomInitialization=class
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fCommandPool:TpvVulkanCommandPool;
+              fCommandBuffer:TpvVulkanCommandBuffer;
+              fFence:TpvVulkanFence;
+             public 
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aQueue:TpvVulkanQueue;
+                                const aCommandBuffer:TpvVulkanCommandBuffer;
+                                const aFence:TpvVulkanFence);
+            end; 
       private
        fScene3D:TObject;
        fHeightMapResolution:TpvInt32;
@@ -451,6 +473,29 @@ begin
 
  aInFlightFrameData.fReady:=fReady;
 
+end;
+
+{ TpvScene3DPlanet.THeightMapRandomInitialization }
+
+constructor TpvScene3DPlanet.THeightMapRandomInitialization.Create(const aPlanet:TpvScene3DPlanet);
+begin
+  
+  inherited Create;
+
+  fPlanet:=aPlanet;
+
+end;
+
+destructor TpvScene3DPlanet.THeightMapRandomInitialization.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3DPlanet.THeightMapRandomInitialization.Execute(const aQueue:TpvVulkanQueue;
+                                                                  const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                  const aFence:TpvVulkanFence);
+begin
+  
 end;
 
 { TpvScene3DPlanet }
