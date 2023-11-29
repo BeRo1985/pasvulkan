@@ -96,8 +96,9 @@ type TpvScene3DPlanets=class;
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererImage2D; // R16G16_SFLOAT (octahedral)
-              fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)
+              fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)              
               fModelMatrix:TpvMatrix4x4;
+              fReady:TPasMPBool32;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -115,6 +116,7 @@ type TpvScene3DPlanets=class;
               property TangentBitangentMapImage:TpvScene3DRendererImage2D read fTangentBitangentMapImage; 
              public
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
+              property Ready:TPasMPBool32 read fReady write fReady;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
       private
@@ -446,6 +448,8 @@ begin
  end;
 
  aInFlightFrameData.fModelMatrix:=fModelMatrix;
+
+ aInFlightFrameData.fReady:=fReady;
 
 end;
 
