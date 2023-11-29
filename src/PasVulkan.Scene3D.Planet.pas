@@ -118,6 +118,8 @@ type TpvScene3DPlanets=class;
        fScene3D:TObject;
        fHeightMapResolution:TpvInt32;
        fCountSpherePoints:TpvSizeInt;
+       fCenter:TpvVector3;
+       fCenterProperty:TpvVector3Property;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
@@ -127,7 +129,7 @@ type TpvScene3DPlanets=class;
        fReady:TPasMPBool32;
        fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
       public
-       constructor Create(const aScene3D:TObject;
+      constructor Create(const aScene3D:TObject;     
                           const aHeightMapResolution:TpvInt32=2048;
                           const aCountSpherePoints:TpvSizeInt=65536;
                           const aBottomRadius:TpvFloat=6371000.0;
@@ -140,6 +142,7 @@ type TpvScene3DPlanets=class;
        function HandleRelease:boolean;
       published
        property Scene3D:TObject read fScene3D;
+       property Center:TpvVector3Property read fCenterProperty;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
        property CountSpherePoints:TpvSizeInt read fCountSpherePoints;
        property BottomRadius:TpvFloat read fBottomRadius;
@@ -461,6 +464,10 @@ begin
 
  fCountSpherePoints:=Min(Max(aCountSpherePoints,32),16777216);
 
+ fCenter:=TpvVector3.Origin;
+
+ fCenterProperty:=TpvVector3Property.Create(fCenter);
+
  fBottomRadius:=aBottomRadius;
 
  fTopRadius:=aTopRadius;
@@ -490,6 +497,8 @@ begin
  FreeAndNil(fData);
  
  FreeAndNil(fInFlightFrameDataList);
+
+ FreeAndNil(fCenterProperty);
 
  inherited Destroy;
 
