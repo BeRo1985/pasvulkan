@@ -1749,6 +1749,8 @@ begin
                                              0);
 
   fPushConstants.CountPoints:=fPlanet.fCountSpherePoints;
+  fPushConstants.PlanetGroundRadius:=fPlanet.fBottomRadius;
+  fPushConstants.HeightMapScale:=fPlanet.fHeightMapScale;
 
  end;
 
@@ -1851,6 +1853,8 @@ begin
                                       @fDescriptorSet.Handle,
                                       0,
                                       nil);
+
+ fPushConstants.ModelMatrix:=fPlanet.fData.fModelMatrix;
 
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
