@@ -218,6 +218,8 @@ type TpvScene3DPlanets=class;
        fReady:TPasMPBool32;
        fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
        fHeightMapRandomInitialization:THeightMapRandomInitialization;
+       fHeightMapModification:THeightMapModification;
+       fTangentSpaceGeneration:TTangentSpaceGeneration;
       public
       constructor Create(const aScene3D:TObject;     
                           const aHeightMapResolution:TpvInt32=2048;
@@ -1147,17 +1149,27 @@ begin
   fInFlightFrameReady[InFlightFrameIndex]:=false;
  end; 
 
+ fHeightMapRandomInitialization:=THeightMapRandomInitialization.Create(self);
 
+ fHeightMapModification:=THeightMapModification.Create(self);
+
+ fTangentSpaceGeneration:=TTangentSpaceGeneration.Create(self);
 
 end;
 
 destructor TpvScene3DPlanet.Destroy;
 begin
  
- FreeAndNil(fData);
- 
+ FreeAndNil(fTangentSpaceGeneration);
+
+ FreeAndNil(fHeightMapModification);
+
+ FreeAndNil(fHeightMapRandomInitialization);
+
  FreeAndNil(fInFlightFrameDataList);
 
+ FreeAndNil(fData);
+ 
  inherited Destroy;
 
 end;
