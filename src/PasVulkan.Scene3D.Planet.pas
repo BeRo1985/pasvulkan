@@ -147,9 +147,7 @@ type TpvScene3DPlanets=class;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
-              procedure Execute(const aQueue:TpvVulkanQueue;
-                                const aCommandBuffer:TpvVulkanCommandBuffer;
-                                const aFence:TpvVulkanFence);
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end; 
@@ -569,12 +567,72 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.THeightMapRandomInitialization.Execute(const aQueue:TpvVulkanQueue;
-                                                                  const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                  const aFence:TpvVulkanFence);
+procedure TpvScene3DPlanet.THeightMapRandomInitialization.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
-  
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(0,
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                 0,
+                                                                                 1,
+                                                                                 0,
+                                                                                 1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier); 
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ aCommandBuffer.CmdDispatch((fPlanet.fHeightMapResolution+15) shr 4,
+                            (fPlanet.fHeightMapResolution+15) shr 4,
+                            1);                            
+
+ ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                  VK_IMAGE_LAYOUT_GENERAL,
+                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  VK_QUEUE_FAMILY_IGNORED,
+                                                  fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                  TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                 0,
+                                                                                 1,
+                                                                                 0,
+                                                                                 1));
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);                                                                                                                                                                                                 
+
 end;
+
 
 { TpvScene3DPlanet }
 
