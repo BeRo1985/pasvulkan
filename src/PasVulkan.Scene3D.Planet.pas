@@ -99,6 +99,9 @@ type TpvScene3DPlanets=class;
               fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)              
               fModelMatrix:TpvMatrix4x4;
               fReady:TPasMPBool32;
+              fHeightMapInitialized:TPasMPBool32;
+              fHeightMapGeneration:TpvUInt64;
+              fTangentSpaceGeneration:TpvUInt64;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -277,6 +280,12 @@ begin
  end else begin
   fHeightMap:=nil;
  end;
+
+ fHeightMapInitialized:=false;
+
+ fHeightMapGeneration:=0;
+
+ fTangentSpaceGeneration:=High(TpvUInt64);
 
  fModelMatrix:=TpvMatrix4x4.Identity;
 
@@ -1148,7 +1157,7 @@ begin
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   fInFlightFrameReady[InFlightFrameIndex]:=false;
  end; 
-
+ 
  fHeightMapRandomInitialization:=THeightMapRandomInitialization.Create(self);
 
  fHeightMapModification:=THeightMapModification.Create(self);
@@ -1225,7 +1234,38 @@ begin
 end;
 
 procedure TpvScene3DPlanet.Execute(const aInFlightFrameIndex:TpvSizeInt);
+var Dirty:TPasMPBool32;
+    InFlightFrameData:TData;
 begin
+
+ Dirty:=false;
+
+ if not fData.fHeightMapInitialized then begin
+  fHeightMapRandomInitialization.Execute(fVulkanCommandBuffer);  
+  Dirty:=true;
+ end;
+
+ if Dirty then begin
+  inc(fData.fHeightMapGeneration); // Pump the generation counter, if something has changed. 
+ end;
+
+ // Update normals, tangents and bitangents if necessary
+ if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
+  fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
+  fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
+ end;
+
+ // Update in-flight frame data if necessary
+ InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+ if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
+  fData.TransferTo(fVulkanCommandBuffer,
+                   InFlightFrameData,
+                   VK_QUEUE_FAMILY_IGNORED,
+                   VK_QUEUE_FAMILY_IGNORED,
+                   VK_QUEUE_FAMILY_IGNORED);
+  InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+ end;
+
 end;
 
 { TpvScene3DPlanets }
