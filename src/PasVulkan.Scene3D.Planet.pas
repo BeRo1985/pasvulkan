@@ -548,7 +548,7 @@ begin
                                              pvApplication.VulkanPipelineCache,
                                              TVkPipelineCreateFlags(0),
                                              fComputeShaderStage,
-                                             fPipelineLayout.Handle,
+                                             fPipelineLayout,
                                              nil,
                                              0);
  end;
