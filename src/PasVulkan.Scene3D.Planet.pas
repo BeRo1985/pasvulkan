@@ -163,7 +163,29 @@ begin
                                                     VK_FORMAT_R32_SFLOAT,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_GENERAL);
+
+  fNormalMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fScene3D.VulkanDevice,
+                                                    fPlanet.fHeightMapResolution,
+                                                    fPlanet.fHeightMapResolution,
+                                                    VK_FORMAT_R16G16_SFLOAT,
+                                                    VK_SAMPLE_COUNT_1_BIT,
+                                                    VK_IMAGE_LAYOUT_GENERAL); 
+
+  fTangentBitangentMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fScene3D.VulkanDevice,
+                                                              fPlanet.fHeightMapResolution,
+                                                              fPlanet.fHeightMapResolution,
+                                                              VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                              VK_SAMPLE_COUNT_1_BIT,
+                                                              VK_IMAGE_LAYOUT_GENERAL);
   
+  end else begin
+
+    HeightMapImage:=nil;
+
+   fNormalMapImage:=nil;
+
+   fTangentBitangentMapImage:=nil;
+   
   end;
 
 end;
