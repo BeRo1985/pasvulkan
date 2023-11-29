@@ -189,7 +189,8 @@ type TpvScene3DPlanets=class;
 
 implementation
 
-uses PasVulkan.Scene3D;
+uses PasVulkan.Scene3D,
+     PasVulkan.VirtualFileSystem;
 
 { TpvScene3DPlanet.TData }
 
@@ -483,6 +484,10 @@ begin
   inherited Create;
 
   fPlanet:=aPlanet;
+
+  fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+
+
 
 end;
 
