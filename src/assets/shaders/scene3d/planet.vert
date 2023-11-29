@@ -20,6 +20,8 @@ layout(push_constant) uniform PushConstants {
   float topRadius;
   float resolutionX;  
   float resolutionY;  
+  float heightMapScale;
+  float dummy;
   vec2 jitter;
 } pushConstants;
 
