@@ -12,6 +12,14 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32f) writeonly uniform image2D uImageHeightMap;
 
+layout(push_constant) uniform PushConstants {
+  int octaves;
+  float scale;
+  float amplitude;
+  float lacunarity;
+  float gain;
+} pushConstants;
+
 /* clang-format on */
 
 #include "octahedralmap.glsl"
@@ -87,11 +95,11 @@ void main(){
     
     float height = fbm3(
       fma(p, vec3(0.5), vec3(0.5)), 
-      5, 
-      4.0, 
-      1.0,
-      2.0, 
-      0.5
+      pushConstants.octaves,
+      pushConstants.scale,
+      pushConstants.amplitude,  
+      pushConstants.lacunarity,
+      pushConstants.gain
     );
 
     imageStore(uImageHeightMap, texel, vec4(height));

@@ -121,6 +121,15 @@ type TpvScene3DPlanets=class;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { THeightMapRandomInitialization }
             THeightMapRandomInitialization=class
+             public 
+              type TPushConstants=packed record
+                    Octaves:TpvInt32;
+                    Scale:TpvFloat;
+                    Amplitude:TpvFloat;
+                    Lacunarity:TpvFloat;
+                    Gain:TpvFloat;
+                   end;
+                   PPushConstants=^TPushConstants;
              private
               fPlanet:TpvScene3DPlanet;
               fVulkanDevice:TpvVulkanDevice;
@@ -134,12 +143,15 @@ type TpvScene3DPlanets=class;
               fCommandPool:TpvVulkanCommandPool;
               fCommandBuffer:TpvVulkanCommandBuffer;
               fFence:TpvVulkanFence;
+              fPushConstants:TPushConstants;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
               procedure Execute(const aQueue:TpvVulkanQueue;
                                 const aCommandBuffer:TpvVulkanCommandBuffer;
                                 const aFence:TpvVulkanFence);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end; 
       private
        fScene3D:TObject;
@@ -479,6 +491,7 @@ end;
 { TpvScene3DPlanet.THeightMapRandomInitialization }
 
 constructor TpvScene3DPlanet.THeightMapRandomInitialization.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
 begin
   
  inherited Create;
@@ -489,13 +502,62 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_random_initialization.comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fFirstPassComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.THeightMapRandomInitialization.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1,VK_SHADER_STAGE_COMPUTE_BIT);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(VK_SHADER_STAGE_COMPUTE_BIT,0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,1);
+  fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1);
+  fDescriptorPool.Initialize;
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fVulkanDevice,fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                      [fPlanet.fData.fHeightMapImage.DescriptorImageInfo],
+                                      [],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
  end;
 
 end;
 
 destructor TpvScene3DPlanet.THeightMapRandomInitialization.Destroy;
 begin
+ 
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+ 
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
  inherited Destroy;
+
 end;
 
 procedure TpvScene3DPlanet.THeightMapRandomInitialization.Execute(const aQueue:TpvVulkanQueue;
