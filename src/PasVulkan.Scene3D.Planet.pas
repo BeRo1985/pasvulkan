@@ -551,6 +551,13 @@ begin
                                              fPipelineLayout,
                                              nil,
                                              0);
+
+  fPushConstants.Octaves:=8;
+  fPushConstants.Scale:=4.0;
+  fPushConstants.Amplitude:=1.0;
+  fPushConstants.Lacunarity:=2.0;
+  fPushConstants.Gain:=0.5;
+
  end;
 
 end;
