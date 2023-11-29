@@ -633,7 +633,6 @@ begin
 
 end;
 
-
 { TpvScene3DPlanet }
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
