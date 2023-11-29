@@ -481,13 +481,15 @@ end;
 constructor TpvScene3DPlanet.THeightMapRandomInitialization.Create(const aPlanet:TpvScene3DPlanet);
 begin
   
-  inherited Create;
+ inherited Create;
 
-  fPlanet:=aPlanet;
+ fPlanet:=aPlanet;
 
-  fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
 
+ if assigned(fVulkanDevice) then begin
 
+ end;
 
 end;
 
