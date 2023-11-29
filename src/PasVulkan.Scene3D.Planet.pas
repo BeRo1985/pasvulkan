@@ -268,7 +268,11 @@ type TpvScene3DPlanets=class;
             TMeshVertexGeneration=class
              public
               type TPushConstants=packed record
+                    ModelMatrix:TpvMatrix4x4;
                     CountPoints:TpvUInt32;
+                    PlanetGroundRadius:TpvFloat;
+                    HeightMapScale:TpvFloat;
+                    Dummy:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
               private
