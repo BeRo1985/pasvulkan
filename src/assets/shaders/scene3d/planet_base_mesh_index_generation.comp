@@ -207,6 +207,7 @@ void main(){
             readIndex++;
           }
         }
+        countAllVertices = writeIndex;
   
         // Now, we can calculate the centroid of the vertices
         vec3 allVerticesCentroid = vec3(0.0);
