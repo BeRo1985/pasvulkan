@@ -2588,8 +2588,8 @@ begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
  try
   if fCommandBufferLevel=0 then begin
-   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-   aCommandBuffer.BeginRecording;
+   fVulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   fVulkanCommandBuffer.BeginRecording;
   end;
   inc(fCommandBufferLevel);
  finally
@@ -2604,13 +2604,13 @@ begin
   if fCommandBufferLevel>0 then begin
    dec(fCommandBufferLevel);
    if fCommandBufferLevel=0 then begin
-    aCommandBuffer.EndRecording;
-    aCommandBuffer.Execute(aVulkanQueue,
-                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                           nil,
-                           nil,
-                           aVulkanFence,
-                           true);
+    fVulkanCommandBuffer.EndRecording;
+    fVulkanCommandBuffer.Execute(fVulkanQueue,
+                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                 nil,
+                                 nil,
+                                 fVulkanFence,
+                                 true);
    end;
   end;
  finally
