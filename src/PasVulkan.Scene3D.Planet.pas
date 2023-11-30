@@ -2715,7 +2715,7 @@ begin
   InFlightFrameData:=nil;
  end;
 
- if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
+ if (fData.fVisualMeshGeneration<>fData.fHeightMapGeneration) or
     (assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration)) then begin
 
   BeginUpdate;
