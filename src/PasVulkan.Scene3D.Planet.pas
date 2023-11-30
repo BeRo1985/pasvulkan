@@ -121,10 +121,7 @@ type TpvScene3DPlanets=class;
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                   const aInFlightFrameData:TData;
-                                   const aFromSrcQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED;
-                                   const aToSrcQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED;
-                                   const aDstQueueFamilyIndex:TpvUInt32=VK_QUEUE_FAMILY_IGNORED);
+                                   const aInFlightFrameData:TData);
              published
               property Planet:TpvScene3DPlanet read fPlanet;
               property InFlightFrameIndex:TpvInt32 read fInFlightFrameIndex;
@@ -645,11 +642,9 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TData.TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                            const aInFlightFrameData:TData;
-                                            const aFromSrcQueueFamilyIndex:TpvUInt32;
-                                            const aToSrcQueueFamilyIndex:TpvUInt32;
-                                            const aDstQueueFamilyIndex:TpvUInt32);
+                                            const aInFlightFrameData:TData);
 var Index,CountImageMemoryBarriers:TpvSizeInt;
+    SrcQueueFamilyIndex,DstQueueFamilyIndex:TpvUInt32;
     ImageSubresourceRange:TVkImageSubresourceRange;
     ImageMemoryBarriers:array[0..5] of TVkImageMemoryBarrier;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier; 
@@ -658,6 +653,14 @@ var Index,CountImageMemoryBarriers:TpvSizeInt;
 begin
   
  if assigned(fPlanet.fVulkanDevice) then begin
+
+  if fPlanet.fVulkanDevice.ComputeQueueFamilyIndex=fPlanet.fVulkanDevice.UniversalQueueFamilyIndex then begin
+   SrcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+   DstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+  end else begin
+   SrcQueueFamilyIndex:=fPlanet.fVulkanDevice.UniversalQueueFamilyIndex;
+   DstQueueFamilyIndex:=fPlanet.fVulkanDevice.ComputeQueueFamilyIndex;
+  end;
 
   ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                          0,
@@ -673,8 +676,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fHeightMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -682,8 +685,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fNormalMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);      
 
@@ -691,8 +694,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange); 
 
@@ -700,8 +703,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        SrcQueueFamilyIndex,
+                                                        DstQueueFamilyIndex,
                                                         aInFlightFrameData.fHeightMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -709,8 +712,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        SrcQueueFamilyIndex,
+                                                        DstQueueFamilyIndex,
                                                         aInFlightFrameData.fNormalMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -718,39 +721,39 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                        SrcQueueFamilyIndex,
+                                                        DstQueueFamilyIndex,
                                                         aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);          
 
    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
                                                           fVisualMeshVertexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
    BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
                                                           fVisualBaseMeshQuadIndexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
    BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),
                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                          SrcQueueFamilyIndex,
+                                                          DstQueueFamilyIndex,
                                                           aInFlightFrameData.fVisualMeshVertexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
    BufferMemoryBarriers[3]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT),
                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
+                                                          SrcQueueFamilyIndex,
+                                                          DstQueueFamilyIndex,
                                                           aInFlightFrameData.fVisualBaseMeshQuadIndexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);    
@@ -831,8 +834,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fHeightMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -840,8 +843,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fNormalMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -849,8 +852,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                        IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
                                                         fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -858,8 +861,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                        DstQueueFamilyIndex,
+                                                        SrcQueueFamilyIndex,
                                                         aInFlightFrameData.fHeightMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
@@ -867,8 +870,8 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                        DstQueueFamilyIndex,
+                                                        SrcQueueFamilyIndex,
                                                         aInFlightFrameData.fNormalMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);   
 
@@ -876,39 +879,39 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                        IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                        DstQueueFamilyIndex,
+                                                        SrcQueueFamilyIndex,
                                                         aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
    BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
                                                           fVisualMeshVertexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
    BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                          IfThen(aFromSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aFromSrcQueueFamilyIndex),
+                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                          VK_QUEUE_FAMILY_IGNORED,
                                                           fVisualBaseMeshQuadIndexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
    BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                          DstQueueFamilyIndex,
+                                                          SrcQueueFamilyIndex,
                                                           aInFlightFrameData.fVisualMeshVertexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);                                                       
 
    BufferMemoryBarriers[3]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aDstQueueFamilyIndex),
-                                                          IfThen(aToSrcQueueFamilyIndex=aDstQueueFamilyIndex,VK_QUEUE_FAMILY_IGNORED,aToSrcQueueFamilyIndex),
+                                                          DstQueueFamilyIndex,
+                                                          SrcQueueFamilyIndex,
                                                           aInFlightFrameData.fVisualBaseMeshQuadIndexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);  
@@ -2723,11 +2726,7 @@ begin
 
   if assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
     InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
-    fData.TransferTo(fVulkanCommandBuffer,
-                     InFlightFrameData,
-                     fVulkanDevice.ComputeQueueFamilyIndex,
-                     fVulkanDevice.UniversalQueueFamilyIndex,
-                     fVulkanDevice.ComputeQueueFamilyIndex);
+    fData.TransferTo(fVulkanCommandBuffer,InFlightFrameData);
    end;
 
   finally
