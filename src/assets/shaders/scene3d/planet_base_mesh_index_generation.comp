@@ -168,7 +168,6 @@ void main(){
     // Generate quads from the adjacent triangles                                                              //
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // Merge triangles to quads, or generate quads in another way 
     uvec4 adjacentQuads[12u];
     uint countAdjacentQuads = 0u;
     uint processedBitmap = 0u;
