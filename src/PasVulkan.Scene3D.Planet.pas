@@ -311,7 +311,7 @@ type TpvScene3DPlanets=class;
       private
        fScene3D:TObject;
        fVulkanDevice:TpvVulkanDevice;
-       fVulkanComputeQueue:TpvVulkanQueue;
+       fVulkanQueue:TpvVulkanQueue;
        fVulkanFence:TpvVulkanFence;
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanCommandBuffer:TpvVulkanCommandBuffer;
@@ -335,6 +335,8 @@ type TpvScene3DPlanets=class;
        fPhysicsBaseMeshVertexGeneration:TBaseMeshVertexGeneration;
        fPhysicsBaseMeshIndexGeneration:TBaseMeshIndexGeneration;
        fPhysicsMeshVertexGeneration:TMeshVertexGeneration;
+       fCommandBufferLevel:TpvInt32;
+       fCommandBufferLock:TPasMPInt32;
       public
       constructor Create(const aScene3D:TObject;     
                           const aHeightMapResolution:TpvInt32=2048;
@@ -348,6 +350,8 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
+       procedure BeginUpdate;
+       procedure EndUpdate;
        procedure Initialize;
        procedure Update;
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt); 
@@ -2427,6 +2431,8 @@ begin
 
  fScene3D:=aScene3D;
 
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
  fCountVisualSpherePoints:=Min(Max(aCountVisualSpherePoints,32),16777216);
@@ -2438,6 +2444,20 @@ begin
  fTopRadius:=aTopRadius;
 
  fHeightMapScale:=aHeightMapScale;
+
+ if assigned(fVulkanDevice) then begin
+  
+  fVulkanQueue:=fVulkanDevice.ComputeQueue;
+
+  fVulkanCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                  fVulkanDevice.ComputeQueueFamilyIndex,
+                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  fVulkanCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool);
+
+  fVulkanFence:=TpvVulkanFence.Create(fVulkanDevice);
+
+ end;
 
  fData:=TData.Create(self,-1);
 
@@ -2472,11 +2492,15 @@ begin
 
  fPhysicsMeshVertexGeneration:=TMeshVertexGeneration.Create(self,true);
 
+ fCommandBufferLevel:=0;
+
+ fCommandBufferLock:=0;
+
 end;
 
 destructor TpvScene3DPlanet.Destroy;
 begin
-
+ 
  FreeAndNil(fPhysicsMeshVertexGeneration);
 
  FreeAndNil(fPhysicsBaseMeshIndexGeneration);
@@ -2498,6 +2522,12 @@ begin
  FreeAndNil(fInFlightFrameDataList);
 
  FreeAndNil(fData);
+
+ FreeAndNil(fVulkanFence);
+
+ FreeAndNil(fVulkanCommandBuffer);
+
+ FreeAndNil(fVulkanCommandPool);
  
  inherited Destroy;
 
@@ -2524,7 +2554,7 @@ begin
   try  
    Index:=TpvScene3D(fScene3D).Planets.IndexOf(self);
    if Index>=0 then begin
-    TpvScene3D(fScene3D).Planets.Extract(Index); // not delete ir remove, since we don't want to free ourself here already.
+    TpvScene3D(fScene3D).Planets.Extract(Index); // not delete or remove, since we don't want to free ourself here already.
    end;
   finally 
    TpvScene3D(fScene3D).Planets.Lock.Release;
@@ -2553,18 +2583,60 @@ begin
  end; 
 end;
 
+procedure TpvScene3DPlanet.BeginUpdate;
+begin
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
+ try
+  if fCommandBufferLevel=0 then begin
+   aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aCommandBuffer.BeginRecording;
+  end;
+  inc(fCommandBufferLevel);
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCommandBufferLock);
+ end;
+end;
+
+procedure TpvScene3DPlanet.EndUpdate;
+begin
+ TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
+ try
+  if fCommandBufferLevel>0 then begin
+   dec(fCommandBufferLevel);
+   if fCommandBufferLevel=0 then begin
+    aCommandBuffer.EndRecording;
+    aCommandBuffer.Execute(aVulkanQueue,
+                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                           nil,
+                           nil,
+                           aVulkanFence,
+                           true);
+   end;
+  end;
+ finally
+  TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fCommandBufferLock);
+ end;
+end;
+
 procedure TpvScene3DPlanet.Initialize;
 begin
 
  if not fData.fInitialized then begin
 
-  fHeightMapRandomInitialization.Execute(fVulkanCommandBuffer);  
+  BeginUpdate;
+  try
 
-  fVisualBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
-  fVisualBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
+   fHeightMapRandomInitialization.Execute(fVulkanCommandBuffer);
 
-  fPhysicsBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
-  fPhysicsBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
+   fVisualBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+   fVisualBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
+
+   fPhysicsBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+   fPhysicsBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
+
+  finally
+   EndUpdate;
+  end;
 
   fData.fInitialized:=true;
 
@@ -2575,16 +2647,27 @@ end;
 procedure TpvScene3DPlanet.Update;
 begin
 
- if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
-  fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
-  fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
- end;
+ if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
+    (fData.fPhysicsMeshGeneration<>fData.fTangentSpaceGeneration) then begin
 
- if fData.fPhysicsMeshGeneration<>fData.fTangentSpaceGeneration then begin
-  fData.fPhysicsMeshGeneration:=fData.fTangentSpaceGeneration;
-  fPhysicsMeshVertexGeneration.Execute(fVulkanCommandBuffer);
- end;
+  BeginUpdate;
+  try
 
+   if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
+    fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
+    fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
+   end;
+
+   if fData.fPhysicsMeshGeneration<>fData.fTangentSpaceGeneration then begin
+    fData.fPhysicsMeshGeneration:=fData.fTangentSpaceGeneration;
+    fPhysicsMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+   end;
+
+  finally
+   EndUpdate;
+  end;
+
+ end;
 end;
 
 procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
@@ -2595,18 +2678,25 @@ begin
  if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
     (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
 
-  if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
-   fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
-   fVisualMeshVertexGeneration.Execute(fVulkanCommandBuffer);
-  end;
+  BeginUpdate;
+  try
 
-  if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
-   InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
-   fData.TransferTo(fVulkanCommandBuffer,
-                    InFlightFrameData,
-                    VK_QUEUE_FAMILY_IGNORED,
-                    VK_QUEUE_FAMILY_IGNORED,
-                    VK_QUEUE_FAMILY_IGNORED);
+   if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
+    fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
+    fVisualMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+   end;
+
+   if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
+    InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+    fData.TransferTo(fVulkanCommandBuffer,
+                     InFlightFrameData,
+                     fVulkanDevice.ComputeQueueFamilyIndex,
+                     fVulkanDevice.UniversalQueueFamilyIndex,
+                     fVulkanDevice.ComputeQueueFamilyIndex);
+   end;
+
+  finally
+   EndUpdate;
   end;
 
  end;
