@@ -1612,12 +1612,12 @@ begin
 
  aCommandBuffer.CmdFillBuffer(fPlanet.fData.fBaseMeshTriangleIndexBuffer.Handle,
                               0,
-                              VK_WHOLE_SIZE,
+                              SizeOf(TpvUInt32), // only the first uint32 needs to be cleared, since it is the count of indices
                               0);
 
  aCommandBuffer.CmdFillBuffer(fPlanet.fData.fBaseMeshQuadIndexBuffer.Handle,
                               0,
-                              VK_WHOLE_SIZE,
+                              SizeOf(TpvUInt32), // only the first uint32 needs to be cleared, since it is the count of indices
                               0);
   
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
