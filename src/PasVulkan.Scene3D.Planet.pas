@@ -305,7 +305,8 @@ type TpvScene3DPlanets=class;
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanCommandBuffer:TpvVulkanCommandBuffer;
        fHeightMapResolution:TpvInt32;
-       fCountSpherePoints:TpvSizeInt;
+       fCountVisualSpherePoints:TpvSizeInt;
+       fCountPhysicsSpherePoints:TpvSizeInt;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
@@ -323,7 +324,8 @@ type TpvScene3DPlanets=class;
       public
       constructor Create(const aScene3D:TObject;     
                           const aHeightMapResolution:TpvInt32=2048;
-                          const aCountSpherePoints:TpvSizeInt=65536;
+                          const aCountVisualSpherePoints:TpvSizeInt=65536;
+                          const aCountPhysicsSpherePoints:TpvSizeInt=65536;
                           const aBottomRadius:TpvFloat=6371000.0;
                           const aTopRadius:TpvFloat=6471000.0;
                           const aHeightMapScale:TpvFloat=1000.0); reintroduce;
@@ -336,7 +338,8 @@ type TpvScene3DPlanets=class;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
-       property CountSpherePoints:TpvSizeInt read fCountSpherePoints;
+       property CountVisualSpherePoints:TpvSizeInt read fCountVisualSpherePoints;
+       property CountPhysicsSpherePoints:TpvSizeInt read fCountPhysicsSpherePoints;
        property BottomRadius:TpvFloat read fBottomRadius;
        property TopRadius:TpvFloat read fTopRadius;
        property Data:TData read fData;
@@ -431,7 +434,7 @@ begin
 
    // Don't need to be accessible from the CPU, because it's only used for the initial vertex data without height map modifications
    fBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                                 fPlanet.fCountSpherePoints*SizeOf(TpvVector4),
+                                                 fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                  TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                  [],
@@ -448,7 +451,7 @@ begin
     
    // But this does need to be accessible from the CPU for the download of that data for the physics engine and so on. 
    fBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                                ((fPlanet.fCountSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
+                                                ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                 [],
@@ -465,7 +468,7 @@ begin
 
    // But this does need to be accessible not from the CPU, since it's for rendering only
    fBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                                    ((fPlanet.fCountSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
+                                                    ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                     [],
@@ -482,7 +485,7 @@ begin
         
    // And this also does need to be accessible from the CPU for the download of that data for the physics engine and so on. 
    fMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                             fPlanet.fCountSpherePoints*SizeOf(TFibonacciSphereVertex),
+                                             fPlanet.fCountVisualSpherePoints*SizeOf(TFibonacciSphereVertex),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                              [],
@@ -1367,7 +1370,7 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.CountPoints:=fPlanet.fCountSpherePoints;
+  fPushConstants.CountPoints:=fPlanet.fCountVisualSpherePoints;
 
  end;
 
@@ -1429,7 +1432,7 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
- aCommandBuffer.CmdDispatch((fPlanet.fCountSpherePoints+255) shr 8,
+ aCommandBuffer.CmdDispatch((fPlanet.fCountVisualSpherePoints+255) shr 8,
                             1,
                             1);
 
@@ -1548,7 +1551,7 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.CountPoints:=fPlanet.fCountSpherePoints;
+  fPushConstants.CountPoints:=fPlanet.fCountVisualSpherePoints;
 
  end;
 
@@ -1659,7 +1662,7 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
- aCommandBuffer.CmdDispatch((fPlanet.fCountSpherePoints+255) shr 8,
+ aCommandBuffer.CmdDispatch((fPlanet.fCountVisualSpherePoints+255) shr 8,
                             1,
                             1);
 
@@ -1820,7 +1823,7 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.CountPoints:=fPlanet.fCountSpherePoints;
+  fPushConstants.CountPoints:=fPlanet.fCountVisualSpherePoints;
   fPushConstants.PlanetGroundRadius:=fPlanet.fBottomRadius;
   fPushConstants.HeightMapScale:=fPlanet.fHeightMapScale;
 
@@ -1934,7 +1937,7 @@ begin
                                  SizeOf(TPushConstants),
                                  @fPushConstants);
 
- aCommandBuffer.CmdDispatch((fPlanet.fCountSpherePoints+255) shr 8,
+ aCommandBuffer.CmdDispatch((fPlanet.fCountVisualSpherePoints+255) shr 8,
                             1,
                             1);
 
@@ -1973,7 +1976,9 @@ begin
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
- fCountSpherePoints:=Min(Max(aCountSpherePoints,32),16777216);
+ fCountVisualSpherePoints:=Min(Max(aCountVisualSpherePoints,32),16777216);
+
+ fCountPhysicsSpherePoints:=Min(Max(aCountPhysicsSpherePoints,32),16777216);
 
  fBottomRadius:=aBottomRadius;
 
