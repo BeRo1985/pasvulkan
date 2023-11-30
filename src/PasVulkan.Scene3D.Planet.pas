@@ -112,12 +112,12 @@ type TpvScene3DPlanets=class;
               fPhysicsMeshVertexBuffer:TpvVulkanBuffer; // TFibonacciSphereVertex wise
               fModelMatrix:TpvMatrix4x4;
               fReady:TPasMPBool32;
-              fHeightMapInitialized:TPasMPBool32;
+              fInitialized:TPasMPBool32;
               fHeightMapGeneration:TpvUInt64;
               fTangentSpaceGeneration:TpvUInt64;
-              fBaseMeshInitialized:TPasMPBool32;
-              fMeshGeneration:TpvUInt64;
-             public 
+              fVisualMeshGeneration:TpvUInt64;
+              fPhysicsMeshGeneration:TpvUInt64;
+             public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
@@ -348,7 +348,9 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
-       procedure Execute(const aInFlightFrameIndex:TpvSizeInt); 
+       procedure Initialize;
+       procedure Update;
+       procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt); 
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -395,15 +397,15 @@ begin
   fHeightMap:=nil;
  end;
 
- fHeightMapInitialized:=false;
+ fInitialized:=false;
 
  fHeightMapGeneration:=0;
 
  fTangentSpaceGeneration:=High(TpvUInt64);
 
- fBaseMeshInitialized:=false;
+ fVisualMeshGeneration:=High(TpvUInt64);
 
- fMeshGeneration:=High(TpvUInt64);
+ fPhysicsMeshGeneration:=High(TpvUInt64);
 
  fModelMatrix:=TpvMatrix4x4.Identity;
 
@@ -2551,51 +2553,62 @@ begin
  end; 
 end;
 
-procedure TpvScene3DPlanet.Execute(const aInFlightFrameIndex:TpvSizeInt);
-var Dirty:TPasMPBool32;
-    InFlightFrameData:TData;
+procedure TpvScene3DPlanet.Initialize;
 begin
 
- Dirty:=false;
+ if not fData.fInitialized then begin
 
- if not fData.fHeightMapInitialized then begin
   fHeightMapRandomInitialization.Execute(fVulkanCommandBuffer);  
-  Dirty:=true;
- end;
 
- if Dirty then begin
-  inc(fData.fHeightMapGeneration); // Pump the generation counter, if something has changed. 
- end;
-
- // Update normals, tangents and bitangents if necessary
- if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
-  fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
-  fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
- end;
-
- if not fData.fBaseMeshInitialized then begin
   fVisualBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
   fVisualBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
+
   fPhysicsBaseMeshVertexGeneration.Execute(fVulkanCommandBuffer);
   fPhysicsBaseMeshIndexGeneration.Execute(fVulkanCommandBuffer);
-  fData.fBaseMeshInitialized:=true;
+
+  fData.fInitialized:=true;
+
  end;
 
- if fData.fMeshGeneration<>fData.fTangentSpaceGeneration then begin
-  fVisualMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+end;
+
+procedure TpvScene3DPlanet.Update;
+begin
+
+ if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
+  fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
+  fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
+ end;
+
+ if fData.fPhysicsMeshGeneration<>fData.fTangentSpaceGeneration then begin
+  fData.fPhysicsMeshGeneration:=fData.fTangentSpaceGeneration;
   fPhysicsMeshVertexGeneration.Execute(fVulkanCommandBuffer);
-  fData.fMeshGeneration:=fData.fTangentSpaceGeneration;
  end;
 
- // Update in-flight frame data if necessary
+end;
+
+procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
+var InFlightFrameData:TData;
+begin
+
  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
- if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
-  fData.TransferTo(fVulkanCommandBuffer,
-                   InFlightFrameData,
-                   VK_QUEUE_FAMILY_IGNORED,
-                   VK_QUEUE_FAMILY_IGNORED,
-                   VK_QUEUE_FAMILY_IGNORED);
-  InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+ if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
+    (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
+
+  if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
+   fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
+   fVisualMeshVertexGeneration.Execute(fVulkanCommandBuffer);
+  end;
+
+  if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
+   InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+   fData.TransferTo(fVulkanCommandBuffer,
+                    InFlightFrameData,
+                    VK_QUEUE_FAMILY_IGNORED,
+                    VK_QUEUE_FAMILY_IGNORED,
+                    VK_QUEUE_FAMILY_IGNORED);
+  end;
+
  end;
 
 end;
