@@ -103,7 +103,8 @@ type TpvScene3DPlanets=class;
               fNormalMapImage:TpvScene3DRendererImage2D; // R16G16_SFLOAT (octahedral)
               fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)   
               fBaseMeshVertexBuffer:TpvVulkanBuffer; // vec4 wise, where only xyz is used, w is unused in the moment
-              fBaseMeshIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices            
+              fBaseMeshTriangleIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices            
+              fBaseMeshQuadIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of quad indices and the rest are the quad indices
               fMeshVertexBuffer:TpvVulkanBuffer; // TFibonacciSphereVertex wise
               fModelMatrix:TpvMatrix4x4;
               fReady:TPasMPBool32;
@@ -128,7 +129,8 @@ type TpvScene3DPlanets=class;
               property NormalMapImage:TpvScene3DRendererImage2D read fNormalMapImage;
               property TangentBitangentMapImage:TpvScene3DRendererImage2D read fTangentBitangentMapImage; 
               property BaseMeshVertexBuffer:TpvVulkanBuffer read fBaseMeshVertexBuffer;
-              property BaseMeshIndexBuffer:TpvVulkanBuffer read fBaseMeshIndexBuffer; 
+              property BaseMeshTriangleIndexBuffer:TpvVulkanBuffer read fBaseMeshTriangleIndexBuffer; 
+              property BaseMeshQuadIndexBuffer:TpvVulkanBuffer read fBaseMeshQuadIndexBuffer;
               property MeshVertexBuffer:TpvVulkanBuffer read fMeshVertexBuffer;
              public
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
@@ -396,7 +398,9 @@ begin
 
  fBaseMeshVertexBuffer:=nil;
 
- fBaseMeshIndexBuffer:=nil;
+ fBaseMeshTriangleIndexBuffer:=nil;
+
+ fBaseMeshQuadIndexBuffer:=nil;
 
  fMeshVertexBuffer:=nil;
 
@@ -443,7 +447,7 @@ begin
                                                 );
     
    // But this does need to be accessible from the CPU for the download of that data for the physics engine and so on. 
-   fBaseMeshIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
                                                 ((fPlanet.fCountSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -459,6 +463,23 @@ begin
                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
                                                );
 
+   // But this does need to be accessible not from the CPU, since it's for rendering only
+   fBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+                                                    ((fPlanet.fCountSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                    [],
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    []
+                                                   );
+        
    // And this also does need to be accessible from the CPU for the download of that data for the physics engine and so on. 
    fMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
                                              fPlanet.fCountSpherePoints*SizeOf(TFibonacciSphereVertex),
@@ -493,7 +514,8 @@ begin
  FreeAndNil(fNormalMapImage);
  FreeAndNil(fTangentBitangentMapImage);
  FreeAndNil(fBaseMeshVertexBuffer);
- FreeAndNil(fBaseMeshIndexBuffer);
+ FreeAndNil(fBaseMeshTriangleIndexBuffer);
+ FreeAndNil(fBaseMeshQuadIndexBuffer);
  FreeAndNil(fMeshVertexBuffer);
  inherited Destroy;
 end;
@@ -1466,6 +1488,12 @@ begin
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
                                   0);
+  fDescriptorSetLayout.AddBinding(2,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
   fDescriptorSetLayout.Initialize;
 
   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
@@ -1476,7 +1504,7 @@ begin
   fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   1);
-  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3);
   fDescriptorPool.Initialize;
 
   fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
@@ -1495,7 +1523,17 @@ begin
                                       1,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                       [],
-                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fBaseMeshIndexBuffer.Handle,
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fBaseMeshTriangleIndexBuffer.Handle,
+                                                                      0,
+                                                                      VK_WHOLE_SIZE)],
+                                      [],
+                                      false); 
+  fDescriptorSet.WriteToDescriptorSet(2,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                      [],
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fBaseMeshQuadIndexBuffer.Handle,
                                                                       0,
                                                                       VK_WHOLE_SIZE)],
                                       [],
@@ -1538,7 +1576,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TBaseMeshIndexGeneration.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
-var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+var BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
 begin
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -1553,15 +1591,23 @@ begin
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fPlanet.fData.fBaseMeshIndexBuffer.Handle,
+                                                        fPlanet.fData.fBaseMeshTriangleIndexBuffer.Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
+
+ BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fBaseMeshQuadIndexBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);                                                         
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
-                                   2,@BufferMemoryBarriers[0],
+                                   3,@BufferMemoryBarriers[0],
                                    0,nil);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
@@ -1584,46 +1630,33 @@ begin
                             1,
                             1);
 
- // Only fBaseMeshIndexBuffer was written to.
+ // Only fBaseMeshTriangleIndexBuffer and fBaseMeshQuadIndexBuffer are modified, so only these two buffers need to be barriered
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fPlanet.fData.fBaseMeshIndexBuffer.Handle,
+                                                        fPlanet.fData.fBaseMeshTriangleIndexBuffer.Handle,
                                                         0,
                                                         VK_WHOLE_SIZE);
+
+ BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fBaseMeshQuadIndexBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);                                                        
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
-                                   1,@BufferMemoryBarriers[0],
+                                   2,@BufferMemoryBarriers[0],
                                    0,nil);
 
 end;
 
 { TpvScene3DPlanet.TMeshVertexGeneration } 
-
-(* with:
-
-layout(set = 0, binding = 0, std430) buffer FibonacciSpherePoints { // input
-  vec4 vectors[]; // actually vec3, but we need to align to vec4
-} fibonacciSpherePoints;
-
-struct FibonacciSphereVertex {
-  vec4 positionBitangentSign; // xyz = position, w = sign of bitangent
-  vec4 normalTangent; // xy = normal, zw = tangent, both octahedral 
-};
-
-layout(set = 0, binding = 1, std430) buffer FibonacciSphereVertices { // output
-  FibonacciSphereVertex vertices[];
-} fibonacciSphereVertices;
-
-layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
-layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rg16_snorm octahedral
-layout(set = 0, binding = 4) uniform sampler2D uTextureTangentBitangentMap; // rgba16_snorm octahedral wise 
-
-*)
 
 constructor TpvScene3DPlanet.TMeshVertexGeneration.Create(const aPlanet:TpvScene3DPlanet);
 var Stream:TStream;
