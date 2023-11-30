@@ -450,54 +450,57 @@ begin
 
    // All only-visual buffers doesn't need to be accessible from the CPU, just from the GPU itself
     
-   fVisualBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                                 fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
-                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                 [],
-                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                 0,
-                                                 0,
-                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                 0,
-                                                 0,
-                                                 0,
-                                                 0,
-                                                 []
-                                                );
-    
-   fVisualBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                                ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
-                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                [],
-                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                0,
-                                                0,
-                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                0,
-                                                0,
-                                                0,
-                                                0,
-                                                []
-                                               );
-    
+   if fInFlightFrameIndex<0 then begin
 
+    fVisualBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+                                                        fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        []
+                                                       );
+           
+    fVisualBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+                                                               ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
+                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                               [],
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                               0,
+                                                               0,
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               []
+                                                              );
+
+   end;
+   
    fVisualBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
-                                                    ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
-                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                    [],
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                    0,
-                                                    0,
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    []
-                                                   );
+                                                          ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                          [],
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                          0,
+                                                          0,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          []
+                                                         );
        
    fVisualMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
                                                    fPlanet.fCountVisualSpherePoints*SizeOf(TFibonacciSphereVertex),
