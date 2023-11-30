@@ -436,28 +436,34 @@ begin
 
  fPhysicsMeshVertexBuffer:=nil;
 
- if assigned(TpvScene3D(fPlanet.fScene3D).VulkanDevice) then begin
+ if assigned(fPlanet.fVulkanDevice) then begin
 
-  fHeightMapImage:=TpvScene3DRendererImage2D.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+  fHeightMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                     fPlanet.fHeightMapResolution,
                                                     fPlanet.fHeightMapResolution,
                                                     VK_FORMAT_R32_SFLOAT,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_DEVICE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
 
-  fNormalMapImage:=TpvScene3DRendererImage2D.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+  fNormalMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                     fPlanet.fHeightMapResolution,
                                                     fPlanet.fHeightMapResolution,
                                                     VK_FORMAT_R16G16_SFLOAT,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_DEVICE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');                                                  
 
-  fTangentBitangentMapImage:=TpvScene3DRendererImage2D.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+  fTangentBitangentMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
                                                               fPlanet.fHeightMapResolution,
                                                               fPlanet.fHeightMapResolution,
                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
                                                               VK_SAMPLE_COUNT_1_BIT,
                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.Image');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_DEVICE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.ImageView');                                                             
 
   begin
 
@@ -465,7 +471,7 @@ begin
     
    if fInFlightFrameIndex<0 then begin
 
-    fVisualBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+    fVisualBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -480,8 +486,9 @@ begin
                                                         0,
                                                         []
                                                        );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualBaseMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fVisualBaseMeshVertexBuffer');                                                   
            
-    fVisualBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+    fVisualBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                                ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -496,10 +503,11 @@ begin
                                                                0,
                                                                []
                                                               );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualBaseMeshTriangleIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fVisualBaseMeshTriangleIndexBuffer');
 
    end;
    
-   fVisualBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fVisualBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                           ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -514,8 +522,9 @@ begin
                                                           0,
                                                           []
                                                          );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualBaseMeshQuadIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fVisualBaseMeshQuadIndexBuffer');
        
-   fVisualMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fVisualMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fCountVisualSpherePoints*SizeOf(TFibonacciSphereVertex),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -530,13 +539,14 @@ begin
                                                    0,
                                                    []
                                                   );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fVisualMeshVertexBuffer');
         
   end;
 
   if fInFlightFrameIndex<0 then begin
 
    // Don't need to be accessible from the CPU, because it's only used for the initial vertex data without height map modifications
-   fPhysicsBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fPhysicsBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -551,9 +561,10 @@ begin
                                                         0,
                                                         []
                                                        );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsBaseMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsBaseMeshVertexBuffer');
     
    // But this does need to be accessible from the CPU for the download of that data for the physics engine and so on. 
-   fPhysicsBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fPhysicsBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                                ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -568,9 +579,10 @@ begin
                                                                0,
                                                                [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
                                                               );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsBaseMeshTriangleIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsBaseMeshTriangleIndexBuffer');
 
    // But this does need to be accessible not from the CPU, since it's unused in the moment
-   fPhysicsBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fPhysicsBaseMeshQuadIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                            ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -585,9 +597,10 @@ begin
                                                            0,
                                                            []
                                                           );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsBaseMeshQuadIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsBaseMeshQuadIndexBuffer');
                
    // And this also does need to be accessible from the CPU for the download of that data for the physics engine and so on. 
-   fPhysicsMeshVertexBuffer:=TpvVulkanBuffer.Create(TpvScene3D(fPlanet.fScene3D).VulkanDevice,
+   fPhysicsMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                     fPlanet.fCountVisualSpherePoints*SizeOf(TFibonacciSphereVertex),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -602,6 +615,7 @@ begin
                                                     0,
                                                     [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
                                                    );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsMeshVertexBuffer');
 
   end;
 
@@ -639,7 +653,7 @@ var Index,CountImageMemoryBarriers:TpvSizeInt;
     BufferCopy:TVkBufferCopy;
 begin
   
- if assigned(TpvScene3D(fPlanet.fScene3D).VulkanDevice) then begin
+ if assigned(fPlanet.fVulkanDevice) then begin
 
   ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                                          0,
@@ -934,7 +948,7 @@ begin
 
  fPlanet:=aPlanet;
 
- fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=fPlanet.fVulkanDevice;
 
  if assigned(fVulkanDevice) then begin
 
@@ -1097,7 +1111,7 @@ begin
 
  fPlanet:=aPlanet;
 
- fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=fPlanet.fVulkanDevice;
 
  if assigned(fVulkanDevice) then begin
 
@@ -1257,7 +1271,7 @@ begin
 
  fPlanet:=aPlanet;
 
- fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=fPlanet.fVulkanDevice;
 
  if assigned(fVulkanDevice) then begin
 
@@ -1503,7 +1517,7 @@ begin
 
  fPhysics:=aPhysics;
 
- fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=fPlanet.fVulkanDevice;
 
  if assigned(fVulkanDevice) then begin
 
@@ -1709,7 +1723,7 @@ begin
 
  fPhysics:=aPhysics;
 
- fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=fPlanet.fVulkanDevice;
 
  if assigned(fVulkanDevice) then begin
 
@@ -2086,7 +2100,7 @@ begin
 
  fPhysics:=aPhysics;
 
- fVulkanDevice:=TpvScene3D(fPlanet.fScene3D).VulkanDevice;
+ fVulkanDevice:=fPlanet.fVulkanDevice;
 
  if assigned(fVulkanDevice) then begin
 
