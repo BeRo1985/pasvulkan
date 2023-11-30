@@ -2709,9 +2709,14 @@ procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
 
- InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+ if aInFlightFrameIndex>=0 then begin
+  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+ end else begin
+  InFlightFrameData:=nil;
+ end;
+
  if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
-    (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
+    (assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration)) then begin
 
   BeginUpdate;
   try
@@ -2721,7 +2726,7 @@ begin
     fVisualMeshVertexGeneration.Execute(fVulkanCommandBuffer);
    end;
 
-   if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
+  if assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
     InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
     fData.TransferTo(fVulkanCommandBuffer,
                      InFlightFrameData,
