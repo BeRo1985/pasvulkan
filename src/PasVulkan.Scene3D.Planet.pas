@@ -654,6 +654,8 @@ begin
   
  if assigned(fPlanet.fVulkanDevice) then begin
 
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet TransferTo',[0.25,0.25,0.5]);
+
   ////////////////////////////
 
   ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
@@ -1045,6 +1047,8 @@ begin
   end;
 
   ////////////////////////////
+
+  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
  end;
 
