@@ -177,83 +177,88 @@ void main(){
       // The with adjacent vertices approach                                                                    //
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-      // Add the current vertex to the list of adjacent vertices as a new allVertices array
-      uint allVertices[13u];
-      uint countAllVertices = 0u;
-      allVertices[countAllVertices++] = index;
-      for(uint otherIndex = 0u; otherIndex < countAdjacentVertices; otherIndex++){
-        allVertices[countAllVertices++] = adjacentVertices[otherIndex];
-      }
+      // Only generate quads if there are at least 3 adjacent vertices and 4 vertices in total, otherwise it wouldn't work
+      if(countAdjacentVertices >= 3u){
+  
+        // Add the current vertex to the list of adjacent vertices as a new allVertices array
+        uint allVertices[13u];
+        uint countAllVertices = 0u;
+        allVertices[countAllVertices++] = index;
+        for(uint otherIndex = 0u; otherIndex < countAdjacentVertices; otherIndex++){
+          allVertices[countAllVertices++] = adjacentVertices[otherIndex];
+        }
 
-      // Sort vertices by index
-      for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-        for(uint otherOtherIndex = otherIndex + 1u; otherOtherIndex < countAllVertices; otherOtherIndex++){
-          if(allVertices[otherIndex] > allVertices[otherOtherIndex]){
-            uint temp = allVertices[otherIndex];
-            allVertices[otherIndex] = allVertices[otherOtherIndex];
-            allVertices[otherOtherIndex] = temp;
+        // Sort vertices by index
+        for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
+          for(uint otherOtherIndex = otherIndex + 1u; otherOtherIndex < countAllVertices; otherOtherIndex++){
+            if(allVertices[otherIndex] > allVertices[otherOtherIndex]){
+              uint temp = allVertices[otherIndex];
+              allVertices[otherIndex] = allVertices[otherOtherIndex];
+              allVertices[otherOtherIndex] = temp;
+            }
           }
         }
-      }
 
-      // Remove duplicate vertices in-place
-      uint readIndex = 0u, writeIndex = 0u;
-      while(readIndex < countAllVertices){
-        allVertices[writeIndex++] = allVertices[readIndex++];
-        while((readIndex < countAllVertices) && (allVertices[readIndex] == allVertices[readIndex - 1u])){
-          readIndex++;
-        }
-      }
- 
-      // Now, we can calculate the centroid of the vertices
-      vec3 allVerticesCentroid = vec3(0.0);
-      for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-        allVerticesCentroid += fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz;
-      }
-      allVerticesCentroid /= float(countAllVertices);
-
-      // Find the plane normal of the vertices as reference direction for the winding order sorting
-      vec3 adjacentVerticesPlaneNormal = vec3(0.0);
-      for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-        adjacentVerticesPlaneNormal += cross(fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz - allVerticesCentroid,
-                                             fibonacciSpherePoints.vectors[allVertices[((otherIndex + 1u) < countAllVertices) ? otherIndex + 1u : 0u]].xyz - allVerticesCentroid);
-      }
-      adjacentVerticesPlaneNormal = normalize(adjacentVerticesPlaneNormal);
-
-      // Sort vertices, so that are in counter-clockwise order
-      for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-        for(uint otherOtherIndex = otherIndex + 1u; otherOtherIndex < countAllVertices; otherOtherIndex++){
-          vec3 v0 = fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz - allVerticesCentroid;
-          vec3 v1 = fibonacciSpherePoints.vectors[allVertices[otherOtherIndex]].xyz - allVerticesCentroid;
-          if(dot(cross(v0, v1), adjacentVerticesPlaneNormal) < 0.0){
-            uint temp = allVertices[otherIndex];
-            allVertices[otherIndex] = allVertices[otherOtherIndex];
-            allVertices[otherOtherIndex] = temp;
+        // Remove duplicate vertices in-place
+        uint readIndex = 0u, writeIndex = 0u;
+        while(readIndex < countAllVertices){
+          allVertices[writeIndex++] = allVertices[readIndex++];
+          while((readIndex < countAllVertices) && (allVertices[readIndex] == allVertices[readIndex - 1u])){
+            readIndex++;
           }
         }
-      }
+  
+        // Now, we can calculate the centroid of the vertices
+        vec3 allVerticesCentroid = vec3(0.0);
+        for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
+          allVerticesCentroid += fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz;
+        }
+        allVerticesCentroid /= float(countAllVertices);
 
-      // Generate and add quad indices from the adjacent vertices
-      for(uint otherIndex = 2u; (otherIndex + 1u) < countAllVertices; otherIndex++){
-                
-        uvec4 quadIndices = uvec4(
-          allVertices[0],
-          allVertices[otherIndex - 1u],
-          allVertices[otherIndex],
-          allVertices[otherIndex + 1u]
-        );
+        // Find the plane normal of the vertices as reference direction for the winding order sorting
+        vec3 adjacentVerticesPlaneNormal = vec3(0.0);
+        for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
+          adjacentVerticesPlaneNormal += cross(fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz - allVerticesCentroid,
+                                              fibonacciSpherePoints.vectors[allVertices[((otherIndex + 1u) < countAllVertices) ? otherIndex + 1u : 0u]].xyz - allVerticesCentroid);
+        }
+        adjacentVerticesPlaneNormal = normalize(adjacentVerticesPlaneNormal);
 
-        vec3 v0 = fibonacciSpherePoints.vectors[quadIndices.x].xyz;
-        vec3 v1 = fibonacciSpherePoints.vectors[quadIndices.y].xyz;
-        vec3 v2 = fibonacciSpherePoints.vectors[quadIndices.z].xyz;
-        vec3 v3 = fibonacciSpherePoints.vectors[quadIndices.w].xyz;
-        
-        // Only add quads with vertices in counter-clockwise order
-        if(dot(cross(v1 - v0, v2 - v0), v3 - v0) < 0.0){
-          quadIndices.yzw = quadIndices.zyw; // swap to ensure the winding order is counter-clockwise 
+        // Sort vertices, so that are in counter-clockwise order
+        for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
+          for(uint otherOtherIndex = otherIndex + 1u; otherOtherIndex < countAllVertices; otherOtherIndex++){
+            vec3 v0 = fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz - allVerticesCentroid;
+            vec3 v1 = fibonacciSpherePoints.vectors[allVertices[otherOtherIndex]].xyz - allVerticesCentroid;
+            if(dot(cross(v0, v1), adjacentVerticesPlaneNormal) < 0.0){
+              uint temp = allVertices[otherIndex];
+              allVertices[otherIndex] = allVertices[otherOtherIndex];
+              allVertices[otherOtherIndex] = temp;
+            }
+          }
         }
 
-        adjacentQuads[countAdjacentQuads++] = quadIndices;
+        // Generate and add quad indices from the adjacent vertices
+        for(uint otherIndex = 2u; (otherIndex + 1u) < countAllVertices; otherIndex++){
+                  
+          uvec4 quadIndices = uvec4(
+            allVertices[0],
+            allVertices[otherIndex - 1u],
+            allVertices[otherIndex],
+            allVertices[otherIndex + 1u]
+          );
+
+          vec3 v0 = fibonacciSpherePoints.vectors[quadIndices.x].xyz;
+          vec3 v1 = fibonacciSpherePoints.vectors[quadIndices.y].xyz;
+          vec3 v2 = fibonacciSpherePoints.vectors[quadIndices.z].xyz;
+          vec3 v3 = fibonacciSpherePoints.vectors[quadIndices.w].xyz;
+          
+          // Only add quads with vertices in counter-clockwise order
+          if(dot(cross(v1 - v0, v2 - v0), v3 - v0) < 0.0){
+            quadIndices.yzw = quadIndices.zyw; // swap to ensure the winding order is counter-clockwise 
+          }
+
+          adjacentQuads[countAdjacentQuads++] = quadIndices;
+
+        }
 
       }
 
