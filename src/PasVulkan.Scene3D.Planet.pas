@@ -1359,8 +1359,8 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.PlanetGroundRadius:=0.0;
-  fPushConstants.HeightMapScale:=0.0;
+  fPushConstants.PlanetGroundRadius:=fPlanet.fBottomRadius;
+  fPushConstants.HeightMapScale:=fPlanet.fHeightMapScale;
 
  end;
 
