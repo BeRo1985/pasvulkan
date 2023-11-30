@@ -109,6 +109,7 @@ void main(){
 #endif
 
 #if 1
+#if 0
     // The tangent and bitangent vectors are derived from the surface normal using spherical coordinates.
     //
     // The surface normal is assumed to be normalized and represented as 'normal', where its components are (x, y, z).
@@ -144,6 +145,24 @@ void main(){
     bitangent = normalize(vec3(sinCosThetaPhi.y * sinCosThetaPhi.z, -sinCosThetaPhi.w, sinCosThetaPhi.x * sinCosThetaPhi.z));
   //tangent = normalize(cross(normalize(bitangent - (dot(bitangent, normal) * normal)), normal));
   //bitangent = normalize(cross(normal, tangent));
+#else
+    // This alternative method calculates the tangent and bitangent vectors without using trigonometry,
+    // which is a common technique in real-time graphics to avoid costly computations.
+    // The cross product is used to generate vectors that are perpendicular to each other and the original normal.
+    // First, the tangent vector is found by crossing the 'up' vector of the world (0, 1, 0) with the normal.
+    // This gives a vector that is perpendicular to both the 'up' vector and the normal, lying in the plane of the surface.
+    // This operation assumes that the normal is not parallel to the 'up' vector; if it is, the cross product will be zero,
+    // and another non-parallel vector should be chosen as the 'up' vector.
+    // After finding the tangent, the bitangent is calculated as the cross product of the normal and the tangent.
+    // This produces a vector that is perpendicular to both the normal and the tangent, completing the orthogonal triad.
+    // The resulting tangent and bitangent are then normalized to ensure they are unit vectors.
+    // This method ensures that the tangent, bitangent, and normal are all orthogonal to each other,
+    // which is necessary for correct per-pixel lighting and texture mapping in shading languages.
+    // Note that this method assumes a right-handed coordinate system.
+    // If a left-handed system is used, the order of the cross product should be reversed to maintain the handedness.
+    tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
+    bitangent = normalize(cross(normal, tangent));
+#endif
 #endif
 
     imageStore(uImageNormalMap, texel, vec3(octEncode(normal), 0.0).xyzz);

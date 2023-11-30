@@ -144,6 +144,23 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
 #endif
 //t = normalize(cross(normalize(b - (dot(b, n) * n)), n));
 //b = normalize(cross(n, t));
+#elif TBN_METHOD == 5
+  // This alternative method calculates the tangent and bitangent vectors without using trigonometry,
+  // which is a common technique in real-time graphics to avoid costly computations.
+  // The cross product is used to generate vectors that are perpendicular to each other and the original normal.
+  // First, the tangent vector is found by crossing the 'up' vector of the world (0, 1, 0) with the normal.
+  // This gives a vector that is perpendicular to both the 'up' vector and the normal, lying in the plane of the surface.
+  // This operation assumes that the normal is not parallel to the 'up' vector; if it is, the cross product will be zero,
+  // and another non-parallel vector should be chosen as the 'up' vector, for example (0, 0, 1).
+  // After finding the tangent, the bitangent is calculated as the cross product of the normal and the tangent.
+  // This produces a vector that is perpendicular to both the normal and the tangent, completing the orthogonal triad.
+  // The resulting tangent and bitangent are then normalized to ensure they are unit vectors.
+  // This method ensures that the tangent, bitangent, and normal are all orthogonal to each other,
+  // which is necessary for correct per-pixel lighting and texture mapping in shading languages.
+  // Note that this method assumes a right-handed coordinate system.
+  // If a left-handed system is used, the order of the cross product should be reversed to maintain the handedness.
+  t = normalize(cross((abs(n.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), n));
+  b = normalize(cross(n, t));
 #else 
   #error "TBN_METHOD not defined"
 #endif
