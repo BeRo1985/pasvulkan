@@ -1,7 +1,7 @@
 #ifndef TANGENTSPACEBASIS_GLSL
 #define TANGENTSPACEBASIS_GLSL
 
-#define TBN_METHOD 0 
+#define TBN_METHOD 1
 void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
 #if TBN_METHOD == 0
   // Not the fastest, but it is a stable as well as a pretty simple method
@@ -96,16 +96,54 @@ void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
   b = vec3(c, ((n.y * n.y) * a) + s, -n.y);  
 #elif TBN_METHOD == 4
   // No sudden changes as well, but computatlionally expensive because of the trigonometric functions as a argument against using this method
-  float theta = atan(n.z, n.x), 
-        phi = asin(n.y);
-  t = normalize(vec3(cos(theta) * sin(phi),
-                     -cos(phi),
-                     sin(theta) * sin(phi)));
-  b = normalize(vec3(sin(theta) * cos(phi),
+  //
+  // The tangent and bitangent vectors are derived from the surface normal using spherical coordinates.
+  //
+  // The surface normal is assumed to be normalized and represented as 'normal', where its components are (x, y, z).
+  // The spherical coordinates (theta, phi) are derived from the normal.
+  // Theta is the angle from the z-axis, calculated using asin(normal.y).
+  // Phi is the angle from the x-axis in the xy-plane, calculated using atan(normal.z, normal.x).
+  // To get the tangent (T), we calculate the partial derivative of P with respect to phi (∂P/∂phi),
+  // which, after simplification (ignoring the radius r), gives us T = (-sin(phi), 0, cos(phi)).
+  // For the bitangent (B), we calculate the partial derivative of P with respect to theta (∂P/∂theta),
+  // which simplifies to B = (cos(theta)cos(phi), -sin(theta), cos(theta)sin(phi)).
+  //
+  // Or more in detail:
+  //
+  // The tangent (T) and bitangent (B) are calculated using the derivatives of spherical coordinates.
+  //
+  // For a point P on a sphere, expressed in spherical coordinates (r, theta, phi), where:
+  // Px = r * cos(theta) * cos(phi)
+  // Py = r * sin(theta)
+  // Pz = r * cos(theta) * sin(phi)
+  //
+  // The tangent T is obtained by differentiating P with respect to phi:
+  // T = ∂P/∂phi = vec3(-r * cos(theta) * sin(phi), 0, r * cos(theta) * cos(phi))
+  // After normalizing and ignoring the radius r (since it cancels out), we have:
+  // T = vec3(-sin(phi), 0, cos(phi))
+  //
+  // Similarly, the bitangent B is obtained by differentiating P with respect to theta:
+  // B = ∂P/∂theta = vec3(-r * sin(theta) * cos(phi), r * cos(theta), -r * sin(theta) * sin(phi))
+  // Again, normalizing and ignoring r gives us:
+  // B = vec3(-sin(theta) * cos(phi), cos(theta), -sin(theta) * sin(phi))
+  //
+#if 1
+  // Optimized variant
+  vec4 sinCosThetaPhi = sin(vec4(vec2(atan(n.z, n.x), asin(n.y)).xxyy + vec2(0.0, 1.5707963267948966).xyxy));
+  t = normalize(vec3(sinCosThetaPhi.x * sinCosThetaPhi.w, 0.0, -sinCosThetaPhi.y * sinCosThetaPhi.w));
+  b = normalize(vec3(sinCosThetaPhi.y * sinCosThetaPhi.z, -sinCosThetaPhi.w, sinCosThetaPhi.x * sinCosThetaPhi.z));
+#else
+  // Readable variant 
+  float theta = atan(n.z, n.x), phi = asin(n.y);
+  t = normalize(vec3(sin(theta) * cos(phi),
                      0.0,
                      -cos(theta) * cos(phi)));
-  t = normalize(cross(normalize(b - (dot(b, n) * n)), n));
-  b = normalize(cross(n, t));
+  b = normalize(vec3(cos(theta) * sin(phi),
+                     -cos(phi),
+                     sin(theta) * sin(phi)));
+#endif
+//t = normalize(cross(normalize(b - (dot(b, n) * n)), n));
+//b = normalize(cross(n, t));
 #else 
   #error "TBN_METHOD not defined"
 #endif
