@@ -111,7 +111,7 @@ type TpvScene3DPlanets=class;
               fHeightMapInitialized:TPasMPBool32;
               fHeightMapGeneration:TpvUInt64;
               fTangentSpaceGeneration:TpvUInt64;
-              fBashMeshInitialized:TPasMPBool32;
+              fBaseMeshInitialized:TPasMPBool32;
               fMeshGeneration:TpvUInt64;
              public 
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
@@ -387,7 +387,7 @@ begin
 
  fTangentSpaceGeneration:=High(TpvUInt64);
 
- fBashMeshInitialized:=false;
+ fBaseMeshInitialized:=false;
 
  fMeshGeneration:=High(TpvUInt64);
 
@@ -1963,7 +1963,8 @@ end;
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aHeightMapResolution:TpvInt32;
-                                    const aCountSpherePoints:TpvSizeInt;
+                                    const aCountVisualSpherePoints:TpvSizeInt;
+                                    const aCountPhysicsSpherePoints:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
                                     const aTopRadius:TpvFloat;
                                     const aHeightMapScale:TpvFloat);
