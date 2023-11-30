@@ -2683,7 +2683,7 @@ procedure TpvScene3DPlanet.Update;
 begin
 
  if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
-    (fData.fPhysicsMeshGeneration<>fData.fTangentSpaceGeneration) then begin
+    (fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration) then begin
 
   BeginUpdate;
   try
@@ -2693,8 +2693,8 @@ begin
     fTangentSpaceGeneration.Execute(fVulkanCommandBuffer);
    end;
 
-   if fData.fPhysicsMeshGeneration<>fData.fTangentSpaceGeneration then begin
-    fData.fPhysicsMeshGeneration:=fData.fTangentSpaceGeneration;
+   if fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration then begin
+    fData.fPhysicsMeshGeneration:=fData.fHeightMapGeneration;
     fPhysicsMeshVertexGeneration.Execute(fVulkanCommandBuffer);
    end;
 
