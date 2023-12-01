@@ -20255,9 +20255,22 @@ var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     LightBuffer:TpvScene3D.TLightBuffer;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
+    Planet:TpvScene3DPlanet;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
+
+ fPlanets.Lock.Acquire;
+ try
+  for Index:=0 to fPlanets.Count-1 do begin
+   Planet:=fPlanets[Index];
+   if Planet.Ready then begin
+    Planet.Update(aInFlightFrameIndex);
+   end;
+  end;
+ finally
+  fPlanets.Lock.Release;
+ end;
 
  for Group in fGroups do begin
   Group.Update(aInFlightFrameIndex);
@@ -20460,9 +20473,22 @@ var Index,ItemID:TpvSizeInt;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
     MaterialIDDirtyMap:TpvScene3D.PMaterialIDDirtyMap;
+    Planet:TpvScene3DPlanet;
 begin
 
  if assigned(fVulkanDevice) then begin
+
+  fPlanets.Lock.Acquire;
+  try
+   for Index:=0 to fPlanets.Count-1 do begin
+    Planet:=fPlanets[Index];
+    if Planet.Ready then begin
+     Planet.FrameUpdate(aInFlightFrameIndex);
+    end;
+   end;
+  finally
+   fPlanets.Lock.Release;
+  end;
 
   for Group in fGroups do begin
    Group.PrepareFrame(aInFlightFrameIndex);

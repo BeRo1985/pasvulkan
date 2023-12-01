@@ -378,7 +378,7 @@ type TpvScene3DPlanets=class;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize;
-       procedure Update;
+       procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -3249,7 +3249,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.Update;
+procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
 
  if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
