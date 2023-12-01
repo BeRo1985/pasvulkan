@@ -2779,6 +2779,8 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets;
+       fVulkanBeginFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+       fVulkanEndFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightMetaInfoStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;}
@@ -2940,8 +2942,8 @@ type EpvScene3D=class(Exception);
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt);
+       procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
+       procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrameData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -19163,6 +19165,13 @@ begin
 
  end;
 
+ if assigned(fVulkanDevice) then begin
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   fVulkanBeginFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanEndFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+  end;
+ end;
+
  fLightAABBTree:=TpvBVHDynamicAABBTree.Create;
 
  fLightAABBTreeGeneration:=0;
@@ -19213,6 +19222,11 @@ begin
  end;
 
  Unload;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fVulkanBeginFrameSemaphores[Index]);
+  FreeAndNil(fVulkanEndFrameSemaphores[Index]);
+ end;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
@@ -20558,15 +20572,114 @@ begin
 
 end;
 
-procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    SubmitInfo:TVkSubmitInfo;
+    WaitDstStageFlags:TVkPipelineStageFlags;
 begin
- if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
-  fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
+
+ if assigned(fVulkanDevice) then begin
+
+  if assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
+   fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
+  end;
+
+  fPlanets.Lock.Acquire;
+  try
+   for PlanetIndex:=0 to fPlanets.Count-1 do begin
+    Planet:=fPlanets[PlanetIndex];
+    if Planet.Ready then begin
+     Planet.BeginFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
+    end;
+   end;
+  finally
+   fPlanets.Lock.Release;
+  end;
+
+  if assigned(aWaitFence) then begin
+
+   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   SubmitInfo.pNext:=nil;
+   if assigned(aWaitSemaphore) then begin
+    WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    SubmitInfo.waitSemaphoreCount:=1;
+    SubmitInfo.pWaitSemaphores:=@aWaitSemaphore.Handle;
+    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+   end else begin
+    SubmitInfo.waitSemaphoreCount:=0;
+    SubmitInfo.pWaitSemaphores:=nil;
+    SubmitInfo.pWaitDstStageMask:=nil;
+   end;
+   SubmitInfo.commandBufferCount:=0;
+   SubmitInfo.pCommandBuffers:=nil;
+   SubmitInfo.signalSemaphoreCount:=1;
+   SubmitInfo.pSignalSemaphores:=@fVulkanBeginFrameSemaphores[aInFlightFrameIndex].Handle;
+
+   fVulkanDevice.UniversalQueue.Submit(1,@SubmitInfo,aWaitFence);
+
+   aWaitSemaphore:=fVulkanBeginFrameSemaphores[aInFlightFrameIndex];
+
+  end;
+
  end;
+
 end;
 
-procedure TpvScene3D.EndFrame(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    SubmitInfo:TVkSubmitInfo;
+    WaitDstStageFlags:TVkPipelineStageFlags;
 begin
+
+ if assigned(fVulkanDevice) then begin
+
+  if assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
+   fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
+  end;
+
+  fPlanets.Lock.Acquire;
+  try
+   for PlanetIndex:=0 to fPlanets.Count-1 do begin
+    Planet:=fPlanets[PlanetIndex];
+    if Planet.Ready then begin
+     Planet.EndFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
+    end;
+   end;
+  finally
+   fPlanets.Lock.Release;
+  end;
+
+  if assigned(aWaitFence) then begin
+
+   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   SubmitInfo.pNext:=nil;
+   if assigned(aWaitSemaphore) then begin
+    WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    SubmitInfo.waitSemaphoreCount:=1;
+    SubmitInfo.pWaitSemaphores:=@aWaitSemaphore.Handle;
+    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+   end else begin
+    SubmitInfo.waitSemaphoreCount:=0;
+    SubmitInfo.pWaitSemaphores:=nil;
+    SubmitInfo.pWaitDstStageMask:=nil;
+   end;
+   SubmitInfo.commandBufferCount:=0;
+   SubmitInfo.pCommandBuffers:=nil;
+   SubmitInfo.signalSemaphoreCount:=1;
+   SubmitInfo.pSignalSemaphores:=@fVulkanEndFrameSemaphores[aInFlightFrameIndex].Handle;
+
+   fVulkanDevice.UniversalQueue.Submit(1,@SubmitInfo,aWaitFence);
+
+   aWaitSemaphore:=fVulkanEndFrameSemaphores[aInFlightFrameIndex];
+
+  end;
+
+ end;
+
 end;
 
 procedure TpvScene3D.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);

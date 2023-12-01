@@ -588,7 +588,7 @@ begin
 
  InFlightFrameState:=@fInFlightFrameStates[InFlightFrameIndex];
 
- fScene3D.BeginFrame(InFlightFrameIndex);
+ fScene3D.BeginFrame(InFlightFrameIndex,aWaitSemaphore,nil);
 
  fRendererInstance.UploadFrame(InFlightFrameIndex);
 
@@ -598,9 +598,9 @@ begin
                              pvApplication.DrawInFlightFrameIndex,
                              pvApplication.DrawFrameCounter,
                              aWaitSemaphore,
-                             aWaitFence);
+                             nil);
 
- fScene3D.EndFrame(InFlightFrameIndex);
+ fScene3D.EndFrame(InFlightFrameIndex,aWaitSemaphore,aWaitFence);
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,false);
 

@@ -153,6 +153,7 @@ begin
                                      VK_IMAGE_TILING_OPTIMAL,
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT) or
                                      IfThen(aStorage,TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT),TVkImageUsageFlags(0)) or
+                                     TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                      VK_SHARING_MODE_EXCLUSIVE,
                                      0,
