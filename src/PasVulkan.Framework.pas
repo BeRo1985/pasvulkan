@@ -389,7 +389,6 @@ type EpvVulkanException=class(Exception);
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
-       fToolPropertiesEXT:TVkPhysicalDeviceToolPropertiesEXT;
        fSamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
        fConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -464,7 +463,6 @@ type EpvVulkanException=class(Exception);
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
-       property ToolPropertiesEXT:TVkPhysicalDeviceToolPropertiesEXT read fToolPropertiesEXT;
        property SamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT read fSamplerFilterMinmaxPropertiesEXT;
        property ConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT read fConservativeRasterizationPropertiesEXT;
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
@@ -8075,6 +8073,10 @@ var Index,SubIndex:TpvInt32;
     ExtensionProperties:TVkExtensionPropertiesArray;
     ExtensionProperty:PpvVulkanAvailableExtension;
     MultiviewSupportEnabled:boolean;
+    GetPhysicalDeviceToolPropertiesEXT:TvkGetPhysicalDeviceToolPropertiesEXT;
+    ToolCount:TVkUInt32;
+    ToolPropertiesArray:array of TVkPhysicalDeviceToolPropertiesEXT;
+    ToolProperties:PVkPhysicalDeviceToolPropertiesEXT;
 begin
  inherited Create;
 
@@ -8411,13 +8413,6 @@ begin
   fProperties2KHR.pNext:=@fMultiDrawPropertiesEXT;
  end;
 
- FillChar(fToolPropertiesEXT,SizeOf(TVkPhysicalDeviceToolPropertiesEXT),#0);
- fToolPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT;
- if fAvailableExtensionNames.IndexOf(VK_EXT_TOOLING_INFO_EXTENSION_NAME)>=0 then begin
-  fToolPropertiesEXT.pNext:=fProperties2KHR.pNext;
-  fProperties2KHR.pNext:=@fToolPropertiesEXT;
- end;
-
  FillChar(fSamplerFilterMinmaxPropertiesEXT,SizeOf(TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT),#0);
  fSamplerFilterMinmaxPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT;
  if (((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
@@ -8468,9 +8463,60 @@ begin
  fFragmentShaderPixelInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE;
  fFragmentShaderShadingRateInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE;
 
- fRenderDocDetected:=LowerCase(PAnsiChar(@fToolPropertiesEXT.name[0]))='renderdoc';
+ fRenderDocDetected:=false;
 
- fNVIDIANsightGraphicsDetected:=LowerCase(PAnsiChar(@fToolPropertiesEXT.name[0]))='nvidia nsight graphics';
+ fNVIDIANsightGraphicsDetected:=false;
+
+ if fAvailableExtensionNames.IndexOf(VK_EXT_TOOLING_INFO_EXTENSION_NAME)>=0 then begin
+
+  if assigned(fInstance.Commands.Commands.GetPhysicalDeviceToolProperties) then begin
+   GetPhysicalDeviceToolPropertiesEXT:=fInstance.Commands.Commands.GetPhysicalDeviceToolProperties;
+  end else begin
+   GetPhysicalDeviceToolPropertiesEXT:=fInstance.Commands.Commands.GetPhysicalDeviceToolPropertiesEXT;
+  end;
+
+  if assigned(GetPhysicalDeviceToolPropertiesEXT) then begin
+
+   ToolPropertiesArray:=nil;
+   try
+
+    ToolCount:=0;
+
+    if GetPhysicalDeviceToolPropertiesEXT(fPhysicalDeviceHandle,@ToolCount,nil)=VK_SUCCESS then begin
+
+     if ToolCount>0 then begin
+
+      SetLength(ToolPropertiesArray,Count);
+
+      FillChar(ToolPropertiesArray[0],SizeOf(TVkPhysicalDeviceToolPropertiesEXT)*ToolCount,#0);
+
+      if GetPhysicalDeviceToolPropertiesEXT(fPhysicalDeviceHandle,@ToolCount,@ToolPropertiesArray[0])=VK_SUCCESS then begin
+
+       for Index:=0 to length(ToolPropertiesArray)-1 do begin
+
+        ToolProperties:=@ToolPropertiesArray[Index];
+
+        if LowerCase(PAnsiChar(@ToolProperties^.name[0]))='renderdoc' then begin
+         fRenderDocDetected:=true;
+        end else if LowerCase(PAnsiChar(@ToolProperties^.name[0]))='nvidia nsight graphics' then begin
+         fNVIDIANsightGraphicsDetected:=true;
+        end;
+
+       end;
+
+      end;
+
+     end;
+
+    end;
+
+   finally
+    ToolPropertiesArray:=nil;
+   end;
+
+  end;
+
+ end;
 
 end;
 
