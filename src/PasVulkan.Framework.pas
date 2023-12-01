@@ -389,6 +389,7 @@ type EpvVulkanException=class(Exception);
        fMultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR;
        fMultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT;
        fMultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT;
+       fToolPropertiesEXT:TVkPhysicalDeviceToolPropertiesEXT;
        fSamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT;
        fConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
        fDescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
@@ -419,6 +420,8 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderSampleInterlock:boolean;
        fFragmentShaderPixelInterlock:boolean;
        fFragmentShaderShadingRateInterlock:boolean;
+       fRenderDocDetected:boolean;
+       fNVIDIANsightGraphicsDetected:boolean;
       public
        constructor Create(const aInstance:TpvVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
@@ -461,6 +464,7 @@ type EpvVulkanException=class(Exception);
        property MultiviewPropertiesKHR:TVkPhysicalDeviceMultiviewPropertiesKHR read fMultiviewPropertiesKHR;
        property MultiDrawFeaturesEXT:TVkPhysicalDeviceMultiDrawFeaturesEXT read fMultiDrawFeaturesEXT;
        property MultiDrawPropertiesEXT:TVkPhysicalDeviceMultiDrawPropertiesEXT read fMultiDrawPropertiesEXT;
+       property ToolPropertiesEXT:TVkPhysicalDeviceToolPropertiesEXT read fToolPropertiesEXT;
        property SamplerFilterMinmaxPropertiesEXT:TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT read fSamplerFilterMinmaxPropertiesEXT;
        property ConservativeRasterizationPropertiesEXT:TVkPhysicalDeviceConservativeRasterizationPropertiesEXT read fConservativeRasterizationPropertiesEXT;
        property DescriptorIndexingFeaturesEXT:TVkPhysicalDeviceDescriptorIndexingFeaturesEXT read fDescriptorIndexingFeaturesEXT;
@@ -494,6 +498,8 @@ type EpvVulkanException=class(Exception);
        property FragmentShaderSampleInterlock:boolean read fFragmentShaderSampleInterlock;
        property FragmentShaderPixelInterlock:boolean read fFragmentShaderPixelInterlock;
        property FragmentShaderShadingRateInterlock:boolean read fFragmentShaderShadingRateInterlock;
+       property RenderDocDetected:boolean read fRenderDocDetected;
+       property NVIDIANsightGraphicsDetected:boolean read fNVIDIANsightGraphicsDetected;
      end;
 
      PpvVulkanSurfacePlatform=^TpvVulkanSurfacePlatform;
@@ -8405,6 +8411,13 @@ begin
   fProperties2KHR.pNext:=@fMultiDrawPropertiesEXT;
  end;
 
+ FillChar(fToolPropertiesEXT,SizeOf(TVkPhysicalDeviceToolPropertiesEXT),#0);
+ fToolPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT;
+ if fAvailableExtensionNames.IndexOf(VK_EXT_TOOLING_INFO_EXTENSION_NAME)>=0 then begin
+  fToolPropertiesEXT.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fToolPropertiesEXT;
+ end;
+
  FillChar(fSamplerFilterMinmaxPropertiesEXT,SizeOf(TVkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT),#0);
  fSamplerFilterMinmaxPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT;
  if (((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_2) and
@@ -8454,6 +8467,10 @@ begin
  fFragmentShaderSampleInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderSampleInterlock<>VK_FALSE;
  fFragmentShaderPixelInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderPixelInterlock<>VK_FALSE;
  fFragmentShaderShadingRateInterlock:=fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock<>VK_FALSE;
+
+ fRenderDocDetected:=LowerCase(PAnsiChar(@fToolPropertiesEXT.name[0]))='renderdoc';
+
+ fNVIDIANsightGraphicsDetected:=LowerCase(PAnsiChar(@fToolPropertiesEXT.name[0]))='nvidia nsight graphics';
 
 end;
 

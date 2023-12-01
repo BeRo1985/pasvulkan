@@ -7669,6 +7669,13 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
+  if fVulkanDebugging and
+     fVulkanDebuggingEnabled and
+     fVulkanValidation and
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_TOOLING_INFO_EXTENSION_NAME)>=0) then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_TOOLING_INFO_EXTENSION_NAME);
+  end;
+
   fVulkanNVIDIADiagnosticConfigExtensionFound:=fVulkanNVIDIAAfterMath and
                                                (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME)>=0);
   if fVulkanNVIDIADiagnosticConfigExtensionFound then begin
