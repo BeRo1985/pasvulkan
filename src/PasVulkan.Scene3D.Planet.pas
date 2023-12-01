@@ -450,6 +450,7 @@ begin
                                                     fPlanet.fHeightMapResolution,
                                                     fPlanet.fHeightMapResolution,
                                                     VK_FORMAT_R32_SFLOAT,
+                                                    fInFlightFrameIndex<0,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
@@ -459,6 +460,7 @@ begin
                                                     fPlanet.fHeightMapResolution,
                                                     fPlanet.fHeightMapResolution,
                                                     VK_FORMAT_R16G16_SFLOAT,
+                                                    fInFlightFrameIndex<0,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
@@ -468,6 +470,7 @@ begin
                                                               fPlanet.fHeightMapResolution,
                                                               fPlanet.fHeightMapResolution,
                                                               VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                              fInFlightFrameIndex<0,
                                                               VK_SAMPLE_COUNT_1_BIT,
                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.Image');
