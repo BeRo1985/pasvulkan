@@ -325,6 +325,7 @@ type TpvScene3DPlanets=class;
        fHeightMapScale:TpvFloat; // Scale factor for the height map
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
+       fInitialAcquireReleaseOnUniversalQueueState:TpvUInt32;
        fReleaseFrameCounter:TpvInt32;
        fReady:TPasMPBool32;
        fInFlightFrameReady:array[0..MaxInFlightFrames-1] of TPasMPBool32;
@@ -352,13 +353,13 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
-       procedure InitialAcquireReleaseOnUniversalQueue;
+       procedure InitialAcquireReleaseOnUniversalQueue(const aInFlightFrameIndex:TpvSizeInt=-1;const aCommandBuffer:TpvVulkanCommandBuffer=nil);
        procedure BeginUpdate;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize;
        procedure Update;
-       procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt); 
+       procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -696,7 +697,7 @@ begin
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
-                                                          fVisualBaseMeshVertexBuffer.Handle,
+                                                          fVisualMeshVertexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
@@ -756,7 +757,7 @@ begin
                                                           0,
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
-                                                          fVisualBaseMeshVertexBuffer.Handle,
+                                                          fVisualMeshVertexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
 
@@ -2755,6 +2756,8 @@ begin
   fInFlightFrameDataList.Add(TData.Create(self,InFlightFrameIndex));
  end;
 
+ fInitialAcquireReleaseOnUniversalQueueState:=0;
+
  fReleaseFrameCounter:=-1;
 
  fReady:=true;
@@ -2878,35 +2881,59 @@ begin
  end; 
 end;
 
-procedure TpvScene3DPlanet.InitialAcquireReleaseOnUniversalQueue;
+procedure TpvScene3DPlanet.InitialAcquireReleaseOnUniversalQueue(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer=nil);
 var InFlightFrameIndex:TpvSizeInt;
     Data:TData;
+    CommandBuffer:TpvVulkanCommandBuffer;
 begin
  
  if assigned(fVulkanDevice) and (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) then begin
- 
-  fVulkanUniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)); 
-  fVulkanUniversalCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-  fVulkanDevice.DebugUtils.CmdBufLabelBegin(fVulkanUniversalCommandBuffer,'Planet InitialAcquireReleaseOnUniversalQueue',[0.25,0.25,0.25,1.0]);
+  if assigned(aCommandBuffer) then begin
 
-  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
-   Data:=fInFlightFrameDataList[InFlightFrameIndex];
-   if assigned(Data) then begin
-    Data.InitialAcquireReleaseOnUniversalQueue(fVulkanUniversalCommandBuffer);
+   CommandBuffer:=aCommandBuffer;
+
+  end else begin
+
+   fVulkanUniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   fVulkanUniversalCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+   CommandBuffer:=fVulkanUniversalCommandBuffer;
+
+  end;
+
+  fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'Planet InitialAcquireReleaseOnUniversalQueue',[0.25,0.25,0.25,1.0]);
+
+  if aInFlightFrameIndex>=0 then begin
+   Data:=fInFlightFrameDataList[aInFlightFrameIndex];
+   if assigned(Data) and ((fInitialAcquireReleaseOnUniversalQueueState and (TpvUInt32(1) shl aInFlightFrameIndex))=0) then begin
+    fInitialAcquireReleaseOnUniversalQueueState:=fInitialAcquireReleaseOnUniversalQueueState or (TpvUInt32(1) shl aInFlightFrameIndex);
+    Data.InitialAcquireReleaseOnUniversalQueue(CommandBuffer);
+   end;
+  end else begin
+   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+    Data:=fInFlightFrameDataList[InFlightFrameIndex];
+    if assigned(Data) and ((fInitialAcquireReleaseOnUniversalQueueState and (TpvUInt32(1) shl InFlightFrameIndex))=0) then begin
+     fInitialAcquireReleaseOnUniversalQueueState:=fInitialAcquireReleaseOnUniversalQueueState or (TpvUInt32(1) shl InFlightFrameIndex);
+     Data.InitialAcquireReleaseOnUniversalQueue(CommandBuffer);
+    end;
    end;
   end;
 
-  fVulkanDevice.DebugUtils.CmdBufLabelEnd(fVulkanUniversalCommandBuffer);
+  fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
 
-  fVulkanUniversalCommandBuffer.EndRecording;
+  if not assigned(aCommandBuffer) then begin
 
-  fVulkanUniversalCommandBuffer.Execute(fVulkanUniversalQueue,
-                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                        nil,
-                                        nil,
-                                        fVulkanUniversalFence,
-                                        true);
+   fVulkanUniversalCommandBuffer.EndRecording;
+
+   fVulkanUniversalCommandBuffer.Execute(fVulkanUniversalQueue,
+                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                         nil,
+                                         nil,
+                                         fVulkanUniversalFence,
+                                         true);
+
+  end;
 
  end;
 
@@ -3040,7 +3067,7 @@ begin
     fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
    end;
 
-  if assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
+   if assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration) then begin
     InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
     fData.TransferTo(fVulkanComputeCommandBuffer,InFlightFrameData);
    end;
