@@ -872,7 +872,9 @@ begin
                                                           fVisualBaseMeshQuadIndexBuffer.Handle,
                                                           0,
                                                           VK_WHOLE_SIZE);
-
+   
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnUniversalQueue',[0.5,0.25,0.25,1.0]);
+    
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or 
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or 
@@ -884,6 +886,8 @@ begin
                                      0,nil,
                                      2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
   end;
 
@@ -952,6 +956,8 @@ begin
                                                           0,
                                                           VK_WHOLE_SIZE); 
 
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnUniversalQueue',[0.5,0.25,0.25,1.0]);
+
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or 
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
@@ -962,7 +968,9 @@ begin
                                      0,
                                      0,nil,
                                      2,@BufferMemoryBarriers[0],
-                                     3,@ImageMemoryBarriers[0]);           
+                                     3,@ImageMemoryBarriers[0]);    
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);       
 
   end;
 
@@ -1031,12 +1039,16 @@ begin
                                                           0,
                                                           VK_WHOLE_SIZE);
 
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnComputeQueue',[0.5,0.25,0.25,1.0]);
+
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
                                      0,nil,
                                      2,@BufferMemoryBarriers[0],
-                                     3,@ImageMemoryBarriers[0]);      
+                                     3,@ImageMemoryBarriers[0]);    
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);  
 
   end;
 
@@ -1105,12 +1117,16 @@ begin
                                                           0,
                                                           VK_WHOLE_SIZE);   
 
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnComputeQueue',[0.5,0.25,0.25,1.0]);
+
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                      0,
                                      0,nil,
                                      2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);   
+
+   fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
   end;
 
