@@ -476,7 +476,7 @@ begin
 
    // All only-visual buffers doesn't need to be accessible from the CPU, just from the GPU itself
     
-   if fInFlightFrameIndex<0 then begin
+  {if fInFlightFrameIndex<0 then}begin
 
     fVisualBaseMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
@@ -665,7 +665,7 @@ begin
    // Acquire                //
    ////////////////////////////
 
-   ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
+{  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(0,
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_IMAGE_LAYOUT_UNDEFINED,
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -719,6 +719,7 @@ begin
                                      0,nil,
                                      2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);
+//}
 
    ////////////////////////////
    // Release                //
@@ -1018,7 +1019,7 @@ begin
    BufferCopy.dstOffset:=0;
    BufferCopy.size:=fVisualBaseMeshVertexBuffer.Size;
    aCommandBuffer.CmdCopyBuffer(fVisualBaseMeshVertexBuffer.Handle,
-                                aInFlightFrameData.fVisualMeshVertexBuffer.Handle,
+                                aInFlightFrameData.fVisualBaseMeshVertexBuffer.Handle,
                                 1,
                                 @BufferCopy);
 
