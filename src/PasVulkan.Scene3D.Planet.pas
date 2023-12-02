@@ -2865,7 +2865,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_render_pass_vert.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_vert.spv');
   try
    fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
@@ -2874,7 +2874,7 @@ begin
 
   fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fVertexShaderModule');
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_render_pass_tesc.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_tesc.spv');
   try
    fTessellationControlShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
@@ -2883,7 +2883,7 @@ begin
 
   fVulkanDevice.DebugUtils.SetObjectName(fTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationControlShaderModule');
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_render_pass_tese.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_tese.spv');
   try
    fTessellationEvaluationShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
@@ -2892,7 +2892,7 @@ begin
 
   fVulkanDevice.DebugUtils.SetObjectName(fTessellationEvaluationShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationEvaluationShaderModule');
 
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_render_pass_frag.spv');
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_frag.spv');
   try
    fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
