@@ -150,7 +150,11 @@ inherited Create(aFrameGraph);
 
  Name:='ForwardRenderPass';
 
- MultiviewMask:=fInstance.SurfaceMultiviewMask;
+ if fInstance.SurfaceMultiviewMask=1 then begin
+  MultiviewMask:=0;
+ end else begin
+  MultiviewMask:=fInstance.SurfaceMultiviewMask;
+ end;
 
  Queue:=aFrameGraph.UniversalQueue;
 
