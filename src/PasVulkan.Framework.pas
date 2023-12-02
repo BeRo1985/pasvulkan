@@ -7693,15 +7693,27 @@ begin
  fApplicationInfo.applicationVersion:=aApplicationVersion;
  fApplicationInfo.pEngineName:=PVkChar(fEngineName);
  fApplicationInfo.engineVersion:=aEngineVersion;
+
+ // Assign the provided API version to fApplicationInfo.apiVersion
  fApplicationInfo.apiVersion:=aAPIVersion;
 
  if ApplicationInfo.apiVersion=0 then begin
-  fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
+
+  // If the apiVersion is not specified (0), set default and check for available versions
+
+  fApplicationInfo.apiVersion:=VK_API_VERSION_1_0; // Default to Vulkan API version 1.0
+
+   // Get the highest available instance version
   if assigned(fVulkan.Commands.EnumerateInstanceVersion) and
      (fVulkan.EnumerateInstanceVersion(@fApplicationInfo.apiVersion)<>VK_SUCCESS) then begin
+   // If unsuccessful in getting a higher version, stick to Vulkan API version 1.0
    fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
   end;
+
  end;
+
+ // Ensure the API version is at least Vulkan 1.0, without considering patch version, and
+ // if the API version exceeds Vulkan 1.3, cap the version to Vulkan 1.3 (for now)
  if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)<VK_API_VERSION_1_0 then begin
   fApplicationInfo.apiVersion:=VK_API_VERSION_1_0;
  end else if (fApplicationInfo.apiVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)>VK_API_VERSION_1_3 then begin
