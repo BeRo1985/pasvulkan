@@ -51,10 +51,17 @@
  ******************************************************************************)
 unit PasVulkan.Application;
 {$i PasVulkan.inc}
-{$ifndef fpc}
+{$ifdef fpc}
+ {$if defined(FPC_VERSION) and (FPC_VERSION>=3)}
+  {$define HAS_NAMETHREADFORDEBUGGING}
+ {$ifend}
+{$else}
  {$ifdef conditionalexpressions}
   {$if CompilerVersion>=24.0}
    {$legacyifend on}
+  {$ifend}
+  {$if CompilerVersion>=31.0}
+   {$define HAS_NAMETHREADFORDEBUGGING}
   {$ifend}
  {$endif}
 {$endif}
@@ -1215,6 +1222,29 @@ type EpvApplication=class(Exception)
        DebugUtils=1
       );
 
+     { TpvApplicationUpdateThread }
+
+     TpvApplicationUpdateThread=class(TPasMPThread)
+      private
+       fApplication:TpvApplication;
+       fEvent:TPasMPSimpleEvent;
+       fDoneEvent:TPasMPSimpleEvent;
+       fFPUExceptionMask:TFPUExceptionMask;
+       fFPUPrecisionMode:TFPUPrecisionMode;
+       fFPURoundingMode:TFPURoundingMode;
+       fInvoked:TPasMPBool32;
+      protected
+       procedure Execute; override;
+      public
+       constructor Create(const aApplication:TpvApplication); reintroduce;
+       destructor Destroy; override;
+       procedure Shutdown;
+       procedure Invoke;
+       procedure WaitForDone;
+      published
+       property Invoked:TPasMPBool32 read fInvoked;
+     end;
+
      { TpvApplication }
 
      TpvApplication=class
@@ -1619,6 +1649,8 @@ type EpvApplication=class(Exception)
        fVulkanNVIDIADeviceDiagnosticsConfigCreateInfoNV:TVkDeviceDiagnosticsConfigCreateInfoNV;
 
        fUniverse:TObject;
+
+       fUpdateThread:TpvApplicationUpdateThread;
 
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fNativeEventQueue:TpvApplicationNativeEventQueue;
@@ -6902,6 +6934,85 @@ begin
 end;
 {$ifend}
 
+constructor TpvApplicationUpdateThread.Create(const aApplication:TpvApplication);
+begin
+ fApplication:=aApplication;
+ fEvent:=TPasMPSimpleEvent.Create;
+ fDoneEvent:=TPasMPSimpleEvent.Create;
+ fFPUExceptionMask:=GetExceptionMask;
+ fFPUPrecisionMode:=GetPrecisionMode;
+ fFPURoundingMode:=GetRoundMode;
+ fInvoked:=false;
+ inherited Create(false);
+end;
+
+destructor TpvApplicationUpdateThread.Destroy;
+begin
+ Shutdown;
+ FreeAndNil(fEvent);
+ FreeAndNil(fDoneEvent);
+ inherited Destroy;
+end;
+
+procedure TpvApplicationUpdateThread.Shutdown;
+begin
+ if not Finished then begin
+  Terminate;
+  fEvent.SetEvent;
+  WaitFor;
+ end;
+end;
+
+procedure TpvApplicationUpdateThread.Invoke;
+begin
+ if not fInvoked then begin
+  fInvoked:=true;
+  fEvent.SetEvent;
+ end;
+end;
+
+procedure TpvApplicationUpdateThread.WaitForDone;
+begin
+ if fInvoked then begin
+  fDoneEvent.WaitFor;
+  fInvoked:=false;
+ end;
+end;
+
+procedure TpvApplicationUpdateThread.Execute;
+var ExceptionString:String;
+begin
+{$ifdef HAS_NAMETHREADFORDEBUGGING}
+ NameThreadForDebugging('TpvApplicationUpdateThread');
+{$endif}
+ ReturnValue:=0;
+ Priority:=TThreadPriority.tpHigher;
+ try
+  SetExceptionMask(fFPUExceptionMask);
+  SetPrecisionMode(fFPUPrecisionMode);
+  SetRoundMode(fFPURoundingMode);
+  while not Terminated do begin
+   fEvent.WaitFor;
+   if Terminated then begin
+    fDoneEvent.SetEvent;
+    break;
+   end else begin
+    fApplication.UpdateJobFunction(nil,0);
+    fDoneEvent.SetEvent;
+   end;
+  end;
+ except
+  on e:Exception do begin
+   ExceptionString:={$ifdef fpc}DumpExceptionCallStack{$else}DumpException{$endif}(e);
+{$if defined(fpc) and defined(android) and (defined(Release) or not defined(Debug))}
+   __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString(ExceptionString)));
+{$ifend}
+   TpvApplication.Log(LOG_ERROR,'TpvApplicationUpdateThread.Execute',ExceptionString);
+   raise;
+  end;
+ end;
+end;
+
 constructor TpvApplication.Create;
 var FrameIndex:TpvInt32;
 begin
@@ -7522,6 +7633,9 @@ begin
 {$ifend}
  try
   if assigned(fVulkanDevice) then begin
+   if assigned(fUpdateThread) and fUpdateThread.fInvoked then begin
+    fUpdateThread.WaitForDone;
+   end;
    fVulkanDevice.WaitIdle;
    for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
     if (Index<length(fVulkanPresentCompleteFencesReady)) and fVulkanPresentCompleteFencesReady[Index] then begin
@@ -9409,6 +9523,10 @@ begin
         end;
        end;
 
+       if assigned(fUpdateThread) and fUpdateThread.fInvoked then begin
+        fUpdateThread.WaitForDone;
+       end;
+
        fVulkanDevice.WaitIdle;
 
        if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
@@ -10423,8 +10541,6 @@ begin
 end;
 
 procedure TpvApplication.ProcessMessages;
-{-$define TpvApplicationUpdateJobOnMainThread}
-{$define TpvApplicationDrawJobOnMainThread}
 var Index,Counter,Tries:TpvInt32;
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
     SDLJoystick:PSDL_Joystick;
@@ -10439,13 +10555,7 @@ var Index,Counter,Tries:TpvInt32;
  {$ifend}
 {$ifend}
     OK,Found:boolean;
-{$if defined(TpvApplicationUpdateJobOnMainThread)}
-    DrawJob:PPasMPJob;
-{$elseif defined(TpvApplicationDrawJobOnMainThread)}
     UpdateJob:PPasMPJob;
-{$else}
-    Jobs:array[0..1] of PPasMPJob;
-{$ifend}
     DoSkipNextFrameForRendering,ReadyForSwapChainLatency:boolean;
 begin
 
@@ -11288,7 +11398,9 @@ begin
    fUpdateInFlightFrameIndex:=fCurrentInFlightFrameIndex;
 
    Check(fUpdateDeltaTime);
-   UpdateJobFunction(nil,0);
+
+   fUpdateThread.Invoke;
+   fUpdateThread.WaitForDone;
 
    inc(fFrameCounter);
 
@@ -11298,6 +11410,8 @@ begin
    if fSwapChainImageCounterIndex>=fCountSwapChainImages then begin
     dec(fSwapChainImageCounterIndex,fCountSwapChainImages);
    end;
+
+   VulkanWaitIdle;
 
   end else if ReadyForSwapChainLatency then begin
 
@@ -11336,9 +11450,10 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+       {UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+        fPasMPInstance.Run(UpdateJob);}
 
-        fPasMPInstance.Run(UpdateJob);
+        fUpdateThread.Invoke;
 
        end else begin
 
@@ -11352,7 +11467,8 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        UpdateJobFunction(nil,0);
+        fUpdateThread.Invoke;
+        fUpdateThread.WaitForDone;
 
        end;
 
@@ -11383,8 +11499,11 @@ begin
       end;
 
      finally
-      if assigned(UpdateJob) then begin
+{     if assigned(UpdateJob) then begin
        fPasMPInstance.WaitRelease(UpdateJob);
+      end;}
+      if fUpdateThread.fInvoked then begin
+       fUpdateThread.WaitForDone;
       end;
      end;
 
@@ -11427,27 +11546,16 @@ begin
 
         BeginFrame(fUpdateDeltaTime);
 
- {$if defined(TpvApplicationUpdateJobOnMainThread)}
-        DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
-        try
-         fPasMPInstance.Run(DrawJob);
-         UpdateJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
-        finally
-         fPasMPInstance.WaitRelease(DrawJob);
-        end;
- {$elseif defined(TpvApplicationDrawJobOnMainThread)}
-        UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+{       UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
         try
          fPasMPInstance.Run(UpdateJob);
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
         finally
          fPasMPInstance.WaitRelease(UpdateJob);
-        end;
- {$else}
-        Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
-        Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
-        fPasMPInstance.Invoke(Jobs);
- {$ifend}
+        end;}
+        fUpdateThread.Invoke;
+        DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+        fUpdateThread.WaitForDone;
 
         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
 
@@ -11463,7 +11571,8 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        UpdateJobFunction(nil,0);
+        fUpdateThread.Invoke;
+        fUpdateThread.WaitForDone;
 
         BeginFrame(fUpdateDeltaTime);
 
@@ -13028,8 +13137,19 @@ begin
 {$ifend}
            try
 
-            while not fTerminated do begin
-             ProcessMessages;
+            fUpdateThread:=TpvApplicationUpdateThread.Create(self);
+            try
+
+             while not fTerminated do begin
+              ProcessMessages;
+             end;
+
+            finally
+             try
+              fUpdateThread.Shutdown;
+             finally
+              FreeAndNil(fUpdateThread);
+             end;
             end;
 
            finally

@@ -77,7 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox,
      PasVulkan.Scene3D.Renderer.VoxelVisualization,
-     PasVulkan.Scene3D.Renderer.VoxelMeshVisualization;
+     PasVulkan.Scene3D.Renderer.VoxelMeshVisualization,
+     PasVulkan.Scene3D.Planet;
 
 type { TpvScene3DRendererPassesForwardRenderPass }
      TpvScene3DRendererPassesForwardRenderPass=class(TpvFrameGraph.TRenderPass)
@@ -122,6 +123,8 @@ type { TpvScene3DRendererPassesForwardRenderPass }
        fVulkanDebugPrimitiveGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
        fSkyBox:TpvScene3DRendererSkyBox;
+       fPlanetDepthPrePass:TpvScene3DPlanet.TRenderPass;
+       fPlanetOpaquePass:TpvScene3DPlanet.TRenderPass;
        fVoxelVisualization:TpvScene3DRendererVoxelVisualization;
        fVoxelMeshVisualization:TpvScene3DRendererVoxelMeshVisualization;
       public
@@ -461,6 +464,18 @@ begin
                                           fInstance.Renderer.Scene3D,
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);
 
+ if fUseDepthPrepass then begin
+  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                           fInstance,
+                                                           fInstance.Renderer.Scene3D,
+                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass);
+ end;
+
+ fPlanetOpaquePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                        fInstance,
+                                                        fInstance.Renderer.Scene3D,
+                                                        TpvScene3DPlanet.TRenderPass.TMode.Opaque);
+
  fVoxelVisualization:=nil;
  fVoxelMeshVisualization:=nil;
 
@@ -481,6 +496,12 @@ begin
  FreeAndNil(fVoxelVisualization);
 
  FreeAndNil(fVoxelMeshVisualization);
+
+ if fUseDepthPrepass then begin
+  FreeAndNil(fPlanetDepthPrePass);
+ end; 
+
+ FreeAndNil(fPlanetOpaquePass);
 
  FreeAndNil(fSkyBox);
 
@@ -1018,6 +1039,18 @@ begin
                            fInstance.ScaledWidth,
                            fInstance.ScaledHeight,
                            fInstance.Renderer.SurfaceSampleCountFlagBits);
+ 
+ if fUseDepthPrepass then begin
+  fPlanetDepthPrePass.AllocateResources(fVulkanRenderPass,
+                                        fInstance.ScaledWidth,
+                                        fInstance.ScaledHeight,
+                                        fInstance.Renderer.SurfaceSampleCountFlagBits);
+ end;
+
+ fPlanetOpaquePass.AllocateResources(fVulkanRenderPass,
+                                     fInstance.ScaledWidth,
+                                     fInstance.ScaledHeight,
+                                     fInstance.Renderer.SurfaceSampleCountFlagBits);
 
  if assigned(fVoxelVisualization) then begin
   fVoxelVisualization.AllocateResources(fVulkanRenderPass,
@@ -1049,6 +1082,10 @@ begin
   fVoxelMeshVisualization.ReleaseResources;
  end;
  fSkyBox.ReleaseResources;
+ if fUseDepthPrepass then begin
+  fPlanetDepthPrePass.ReleaseResources;
+ end;
+ fPlanetOpaquePass.ReleaseResources;
  FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
  for DepthPrePass:=false to fUseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -1154,6 +1191,11 @@ begin
 
    if fUseDepthPrepass then begin
 
+    fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
+                             InFlightFrameState^.FinalViewIndex,
+                             InFlightFrameState^.CountFinalViews,
+                             aCommandBuffer);
+
     fInstance.Renderer.Scene3D.Draw(fInstance,
                                     fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                     -1,
@@ -1187,11 +1229,17 @@ begin
 
    end;   //*)
 
-{}fSkyBox.Draw(aInFlightFrameIndex,
-               InFlightFrameState^.FinalViewIndex,
-               InFlightFrameState^.CountFinalViews,
-               aCommandBuffer);
-   fOnSetRenderPassResourcesDone:=false;//{}
+   fSkyBox.Draw(aInFlightFrameIndex,
+                InFlightFrameState^.FinalViewIndex,
+                InFlightFrameState^.CountFinalViews,
+                aCommandBuffer);
+
+   fPlanetOpaquePass.Draw(aInFlightFrameIndex,
+                          InFlightFrameState^.FinalViewIndex,
+                          InFlightFrameState^.CountFinalViews,
+                          aCommandBuffer);
+
+   fOnSetRenderPassResourcesDone:=false;
 
    fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[false,TpvScene3D.TMaterial.TAlphaMode.Opaque],

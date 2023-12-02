@@ -417,6 +417,7 @@ type TpvScene3DPlanets=class;
        fPhysicsMeshVertexGeneration:TMeshVertexGeneration;
        fCommandBufferLevel:TpvInt32;
        fCommandBufferLock:TPasMPInt32;
+       fComputeQueueLock:TPasMPInt32;
        fSharingMode:TVkSharingMode;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -2942,7 +2943,9 @@ begin
    end;
   end;
 
-  fVulkanDevice.DebugUtils.SetObjectName(fFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fFragmentShaderModule');
+  if assigned(fFragmentShaderModule) then begin
+   fVulkanDevice.DebugUtils.SetObjectName(fFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fFragmentShaderModule');
+  end;
 
   fVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
 
@@ -3261,6 +3264,8 @@ begin
 
  fCommandBufferLock:=0;
 
+ fComputeQueueLock:=0;
+
  if assigned(fVulkanDevice) then begin
 
   fDescriptorPool:=TpvScene3DPlanet.CreatePlanetDescriptorPool(fVulkanDevice,TpvScene3D(fScene3D).CountInFlightFrames);
@@ -3464,11 +3469,11 @@ begin
    if fCommandBufferLevel=0 then begin
     fVulkanComputeCommandBuffer.EndRecording;
     fVulkanComputeCommandBuffer.Execute(fVulkanComputeQueue,
-                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                 nil,
-                                 nil,
-                                 fVulkanComputeFence,
-                                 true);
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                        nil,
+                                        nil,
+                                        fVulkanComputeFence,
+                                        true);
    end;
   end;
  finally
@@ -3483,11 +3488,11 @@ begin
   if fCommandBufferLevel=1 then begin
    fVulkanComputeCommandBuffer.EndRecording;
    fVulkanComputeCommandBuffer.Execute(fVulkanComputeQueue,
-                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                nil,
-                                nil,
-                                fVulkanComputeFence,
-                                true);
+                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                       nil,
+                                       nil,
+                                       fVulkanComputeFence,
+                                       true);
    fVulkanComputeCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    fVulkanComputeCommandBuffer.BeginRecording;
   end;
@@ -3546,6 +3551,7 @@ begin
   end;
 
  end;
+
 end;
 
 procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
