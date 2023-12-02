@@ -9637,6 +9637,16 @@ begin
 
  try
 
+  if assigned(fUpdateThread) then begin
+   if fUpdateThread.fInvoked then begin
+    fUpdateThread.WaitForDone;
+   end;
+  end else begin
+   while fInUpdateJobFunction do begin
+    TPasMP.Yield;
+   end;
+  end;
+
   if (fVulkanFrameFencesReady and (TpvUInt32(1) shl (fVulkanFrameFenceCounter and 3)))<>0 then begin
    fVulkanFrameFences[fVulkanFrameFenceCounter and 3].Reset;
   end;
