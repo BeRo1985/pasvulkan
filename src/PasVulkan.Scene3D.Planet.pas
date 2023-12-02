@@ -3168,7 +3168,7 @@ begin
 
    Planet:=TpvScene3D(fScene3D).Planets[PlanetIndex];
 
-   if Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+   if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
 
     {if Planet.fData.fVisible then}begin
 
@@ -3200,7 +3200,7 @@ begin
      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
      fPushConstants.CountViews:=aCountViews;
      fPushConstants.CountQuadPointsInOneDirection:=128;
-     fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRenderer).InFlightFrameStates[aInFlightFrameIndex].CountViews;
+     fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;
      fPushConstants.HeightMapScale:=Planet.fHeightMapScale;
@@ -3208,7 +3208,7 @@ begin
      fPushConstants.ResolutionY:=Planet.fHeightMapResolution;
      fPushConstants.Dummy:=0;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-      fPushConstants.Jitter:=TpvScene3DRendererInstance(fRenderer).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
+      fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
      end else begin
       fPushConstants.Jitter:=TpvVector2.Null;
      end;
@@ -3220,7 +3220,9 @@ begin
                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      0,
                                      SizeOf(TPushConstants),
-                                     @fPushConstants); 
+                                     @fPushConstants);
+
+     aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
 
     end;
 
@@ -3669,6 +3671,8 @@ begin
   finally
    EndUpdate;
   end;
+
+  fInFlightFrameReady[aInFlightFrameIndex]:=true;
 
  end;
 
