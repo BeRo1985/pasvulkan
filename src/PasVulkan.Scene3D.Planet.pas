@@ -3122,9 +3122,7 @@ begin
  fPipeline.DepthStencilState.DepthTestEnable:=true;
  fPipeline.DepthStencilState.DepthWriteEnable:=true;
  case fMode of
-  TpvScene3DPlanet.TRenderPass.TMode.ShadowMap:begin
-   fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
-  end;
+  TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
    fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
   end;
