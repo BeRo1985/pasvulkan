@@ -3222,7 +3222,7 @@ begin
                                      SizeOf(TPushConstants),
                                      @fPushConstants);
 
-     aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
+     aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
 
     end;
 
