@@ -1652,6 +1652,8 @@ type EpvApplication=class(Exception)
 
        fUpdateThread:TpvApplicationUpdateThread;
 
+       fInUpdateJobFunction:TPasMPBool32;
+
 {$if not (defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless))}
        fNativeEventQueue:TpvApplicationNativeEventQueue;
 
@@ -7633,8 +7635,14 @@ begin
 {$ifend}
  try
   if assigned(fVulkanDevice) then begin
-   if assigned(fUpdateThread) and fUpdateThread.fInvoked then begin
-    fUpdateThread.WaitForDone;
+   if assigned(fUpdateThread) then begin
+    if fUpdateThread.fInvoked then begin
+     fUpdateThread.WaitForDone;
+    end;
+   end else begin
+    while fInUpdateJobFunction do begin
+     TPasMP.Yield;
+    end;
    end;
    fVulkanDevice.WaitIdle;
    for Index:=0 to Max(length(fVulkanPresentCompleteFencesReady),length(fVulkanWaitFences))-1 do begin
@@ -9510,6 +9518,16 @@ begin
       TAcquireVulkanBackBufferState.RecreateSwapChain,
       TAcquireVulkanBackBufferState.RecreateSurface:begin
 
+       if assigned(fUpdateThread) then begin
+        if fUpdateThread.fInvoked then begin
+         fUpdateThread.WaitForDone;
+        end;
+       end else begin
+        while fInUpdateJobFunction do begin
+         TPasMP.Yield;
+        end;
+       end;
+
        for ImageIndex:=0 to fCountSwapChainImages-1 do begin
         if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
          fVulkanPresentCompleteFences[ImageIndex].WaitFor;
@@ -9521,10 +9539,6 @@ begin
          fVulkanWaitFences[ImageIndex].Reset;
          fVulkanWaitFencesReady[ImageIndex]:=false;
         end;
-       end;
-
-       if assigned(fUpdateThread) and fUpdateThread.fInvoked then begin
-        fUpdateThread.WaitForDone;
        end;
 
        fVulkanDevice.WaitIdle;
@@ -10241,7 +10255,12 @@ end;
 
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
- Update(fUpdateDeltaTime);
+ TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(true));
+ try
+  Update(fUpdateDeltaTime);
+ finally
+  TPasMPInterlocked.Write(fInUpdateJobFunction,TPasMPBool32(false));
+ end;
 end;
 
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
@@ -11399,8 +11418,12 @@ begin
 
    Check(fUpdateDeltaTime);
 
-   fUpdateThread.Invoke;
-   fUpdateThread.WaitForDone;
+   if assigned(fUpdateThread) then begin
+    fUpdateThread.Invoke;
+    fUpdateThread.WaitForDone;
+   end else begin
+    UpdateJobFunction(nil,0);
+   end;
 
    inc(fFrameCounter);
 
@@ -11450,10 +11473,12 @@ begin
 
         Check(fUpdateDeltaTime);
 
-       {UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
-        fPasMPInstance.Run(UpdateJob);}
-
-        fUpdateThread.Invoke;
+        if assigned(fUpdateThread) then begin
+         fUpdateThread.Invoke;
+        end else begin
+         UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+         fPasMPInstance.Run(UpdateJob);
+        end;
 
        end else begin
 
@@ -11467,8 +11492,12 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        fUpdateThread.Invoke;
-        fUpdateThread.WaitForDone;
+        if assigned(fUpdateThread) then begin
+         fUpdateThread.Invoke;
+         fUpdateThread.WaitForDone;
+        end else begin
+         UpdateJobFunction(nil,0);
+        end;
 
        end;
 
@@ -11499,11 +11528,14 @@ begin
       end;
 
      finally
-{     if assigned(UpdateJob) then begin
-       fPasMPInstance.WaitRelease(UpdateJob);
-      end;}
-      if fUpdateThread.fInvoked then begin
-       fUpdateThread.WaitForDone;
+      if assigned(fUpdateThread) then begin
+       if fUpdateThread.fInvoked then begin
+        fUpdateThread.WaitForDone;
+       end;
+      end else begin
+       if assigned(UpdateJob) then begin
+        fPasMPInstance.WaitRelease(UpdateJob);
+       end;
       end;
      end;
 
@@ -11546,16 +11578,19 @@ begin
 
         BeginFrame(fUpdateDeltaTime);
 
-{       UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
-        try
-         fPasMPInstance.Run(UpdateJob);
+        if assigned(fUpdateThread) then begin
+         fUpdateThread.Invoke;
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
-        finally
-         fPasMPInstance.WaitRelease(UpdateJob);
-        end;}
-        fUpdateThread.Invoke;
-        DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
-        fUpdateThread.WaitForDone;
+         fUpdateThread.WaitForDone;
+        end else begin
+         UpdateJob:=fPasMPInstance.Acquire(UpdateJobFunction);
+         try
+          fPasMPInstance.Run(UpdateJob);
+          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+         finally
+          fPasMPInstance.WaitRelease(UpdateJob);
+         end;
+        end;
 
         FinishFrame(fSwapChainImageIndex,fVulkanWaitSemaphore,fVulkanWaitFence);
 
@@ -11571,8 +11606,12 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        fUpdateThread.Invoke;
-        fUpdateThread.WaitForDone;
+        if assigned(fUpdateThread) then begin
+         fUpdateThread.Invoke;
+         fUpdateThread.WaitForDone;
+        end else begin
+         UpdateJobFunction(nil,0);
+        end;
 
         BeginFrame(fUpdateDeltaTime);
 
@@ -13145,10 +13184,12 @@ begin
              end;
 
             finally
-             try
-              fUpdateThread.Shutdown;
-             finally
-              FreeAndNil(fUpdateThread);
+             if assigned(fUpdateThread) then begin
+              try
+               fUpdateThread.Shutdown;
+              finally
+               FreeAndNil(fUpdateThread);
+              end;
              end;
             end;
 
