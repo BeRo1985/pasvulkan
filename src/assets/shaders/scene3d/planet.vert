@@ -15,10 +15,10 @@ layout(push_constant) uniform PushConstants {
   
   mat4 modelMatrix;
   
-  int viewBaseIndex;
-  int countViews;
-  int countQuadPointsInOneDirection; 
-  int countAllViews;
+  uint viewBaseIndex;
+  uint countViews;
+  uint countQuadPointsInOneDirection; 
+  uint countAllViews;
   
   float bottomRadius;
   float topRadius;
@@ -31,9 +31,9 @@ layout(push_constant) uniform PushConstants {
 
 } pushConstants;
 
-int countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
-int countSideQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
-int countTotalVertices = countSideQuads * (6 * 4);
+uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
+uint countSideQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
+uint countTotalVertices = countSideQuads * (6u * 4u);
 
 const ivec2 offsets[4] = ivec2[](
   ivec2(0, 0),  
@@ -82,15 +82,15 @@ const mat3 tangentTransformMatrix = mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0
 #endif
 
 void main(){                 
-  int vertexIndex = gl_VertexIndex;
+  uint vertexIndex = uint(gl_VertexIndex);
   if(vertexIndex < countTotalVertices){   
-    int quadIndex = vertexIndex >> 2,
-        quadVertexIndex = vertexIndex & 3,  
-        sideIndex = (quadIndex / countSideQuads) % 6,
-        sideQuadIndex = quadIndex % countSideQuads;
-    vec2 uv = vec2(ivec2(sideQuadIndex % countQuadPointsInOneDirection,
+    uint quadIndex = vertexIndex >> 2u,
+         quadVertexIndex = vertexIndex & 3u,  
+         sideIndex = (quadIndex / countSideQuads) % 6u,
+         sideQuadIndex = quadIndex % countSideQuads;
+    vec2 uv = vec2(uvec2(sideQuadIndex % countQuadPointsInOneDirection,
                         sideQuadIndex / countQuadPointsInOneDirection) + 
-                   offsets[3 - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);
+                   offsets[3u - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);
     mat3 normalMatrix = sideMatrices[sideIndex];       
     vec3 normal = getNormal(normalMatrix, uv),
          position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;

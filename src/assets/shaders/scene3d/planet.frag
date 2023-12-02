@@ -26,6 +26,10 @@ layout(location = 0) out vec4 outFragColor;
 layout(location = 1) out vec2 outVelocity;
 #endif
 
+// Per planet descriptor set
+
+//layout(set = 1, binding = 0) uniform sampler2D u
+
 void main(){
 
   outFragColor = vec4(inBlock.normal, 1.0);

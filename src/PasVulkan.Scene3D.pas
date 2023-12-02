@@ -2763,6 +2763,7 @@ type EpvScene3D=class(Exception);
        fDefaultParticleImage:TImage;
        fDefaultParticleTexture:TTexture;
        fGeneralComputeSampler:TpvVulkanSampler;
+       fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -3067,6 +3068,7 @@ type EpvScene3D=class(Exception);
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
+       property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -19044,6 +19046,8 @@ begin
                                                   false);
   fVulkanDevice.DebugUtils.SetObjectName(fGeneralComputeSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralComputeSampler');
 
+  fPlanetDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(fVulkanDevice);
+
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
   // Group - Vertices
@@ -19262,6 +19266,8 @@ begin
  FreeAndNil(fLightAABBTree);
 
  FreeAndNil(fGeneralComputeSampler);
+
+ FreeAndNil(fPlanetDescriptorSetLayout);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 
@@ -19772,7 +19778,10 @@ begin
          fLightBuffers[Index].Upload;
         end;
 
-        fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
+        fGlobalVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                                    TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
+                                                                    TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
+                                                                    length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*3);
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*5);
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));

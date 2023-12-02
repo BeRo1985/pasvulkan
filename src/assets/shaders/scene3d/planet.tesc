@@ -22,10 +22,10 @@ layout(push_constant) uniform PushConstants {
 
   mat4 modelMatrix;
   
-  int viewBaseIndex;
-  int countViews;
-  int countQuadPointsInOneDirection; 
-  int countAllViews;
+  uint viewBaseIndex;
+  uint countViews;
+  uint countQuadPointsInOneDirection; 
+  uint countAllViews;
   
   float bottomRadius;
   float topRadius;
@@ -48,10 +48,10 @@ struct View {
 };
 
 layout(set = 0, binding = 0, std140) uniform uboViews {
-  View views[256]; // 65536 / (64 * 4) = 256
+  View views[256];
 } uView;
 
-int viewIndex = pushConstants.viewBaseIndex + int(gl_ViewIndex);
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;

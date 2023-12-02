@@ -45,10 +45,10 @@ layout(push_constant) uniform PushConstants {
 
   mat4 modelMatrix;
   
-  int viewBaseIndex;
-  int countViews;
-  int countQuadPointsInOneDirection; 
-  int countAllViews;
+  uint viewBaseIndex;
+  uint countViews;
+  uint countQuadPointsInOneDirection; 
+  uint countAllViews;
   
   float bottomRadius;
   float topRadius;
@@ -68,17 +68,21 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
+// Global descriptor set
+
 layout(set = 0, binding = 0, std140) uniform uboViews {
-  View views[256]; // 65536 / (64 * 4) = 256
+  View views[256];
 } uView;
 
-layout(set = 0, binding = 1) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+// Per planet descriptor set
+
+layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
-int viewIndex = pushConstants.viewBaseIndex + int(gl_ViewIndex);
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
