@@ -6,6 +6,10 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#ifdef EXTERNAL_VERTICES
+layout(location = 0) in vec3 inVector;
+#endif
+
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
@@ -46,6 +50,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix; 
 
+#ifndef EXTERNAL_VERTICES
 uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
 uint countSideQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
 uint countTotalVertices = countSideQuads * (6u * 4u);
@@ -90,13 +95,29 @@ vec3 getNormal(mat3 m, vec2 uv){
 #endif
   return normal; 
 }
+#endif
 
 #if 0
 const mat3 tangentTransformMatrix = mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0.0), vec3(1.0, 0.0, 0.0)),
            bitangentTransformMatrix = mat3(vec3(-1.0, 0.0, 0.0), vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
 #endif
 
-void main(){                 
+void main(){          
+#ifdef EXTERNAL_VERTICES
+  vec3 normal = normalize(inVector),
+       position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
+#if 0
+  vec3 tangent = getNormal(normalMatrix * tangentTransformMatrix, uv),
+       bitangent = getNormal(normalMatrix * bitangentTransformMatrix, uv);
+  tangent = normalize(tangent - (dot(tangent, normal) * normal));
+  bitangent = normalize(bitangent - (dot(bitangent, normal) * normal));
+  tangent = cross(bitangent, normal);
+  bitangent = cross(normal, tangent);
+#endif
+  outBlock.position = position;    
+  outBlock.normal = normal;
+  outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
+#else       
   uint vertexIndex = uint(gl_VertexIndex);
   if(vertexIndex < countTotalVertices){   
 #ifdef TRIANGLES
@@ -130,4 +151,5 @@ void main(){
   }else{
     outBlock.position = outBlock.normal = vec3(0.0);
   }  
+#endif
 }
