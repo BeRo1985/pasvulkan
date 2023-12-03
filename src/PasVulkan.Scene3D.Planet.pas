@@ -88,7 +88,16 @@ type TpvScene3DPlanets=class;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
-            TFibonacciSphereVertex=packed record
+            TSourcePrimitiveMode=
+             (
+              NormalizedCubeTriangles,
+              NormalizedCubeQuads,
+              FibonacciSphereTriangles,
+              FibonacciSphereQuads
+             );
+            PSourcePrimitiveMode=^TSourcePrimitiveMode;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles;
+       type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
             end;
@@ -2886,7 +2895,18 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  Kind:='triangles_';
+  case TpvScene3DPlanet.SourcePrimitiveMode of
+   TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles:begin
+    Kind:='triangles_';
+   end;
+   TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles,
+   TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereQuads:begin
+    Kind:='externals_';
+   end;
+   else begin
+    Kind:='';
+   end;
+  end;
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_vert.spv');
@@ -3191,7 +3211,15 @@ begin
  fPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
  fPipeline.DepthStencilState.StencilTestEnable:=false;
 
- fPipeline.TessellationState.PatchControlPoints:=3;
+ case TpvScene3DPlanet.SourcePrimitiveMode of
+  TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
+  TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+   fPipeline.TessellationState.PatchControlPoints:=3;
+  end;
+  else begin
+   fPipeline.TessellationState.PatchControlPoints:=4;
+  end;
+ end;
 
  fPipeline.Initialize;
 
@@ -3273,7 +3301,18 @@ begin
                                      SizeOf(TPushConstants),
                                      @fPushConstants);
 
-     aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*6,1,0,0);
+     case TpvScene3DPlanet.SourcePrimitiveMode of
+      TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles:begin
+       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*6,1,0,0);
+      end;
+      TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads:begin
+       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
+      end;
+      TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+      end;
+      TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereQuads:begin
+      end;
+     end;
 
     end;
 
