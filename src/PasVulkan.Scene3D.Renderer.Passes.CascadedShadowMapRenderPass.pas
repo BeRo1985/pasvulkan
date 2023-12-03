@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
@@ -102,6 +103,7 @@ type { TpvScene3DRendererPassesCascadedShadowMapRenderPass }
        fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
        fVulkanGraphicsPipelines:array[TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+       fPlanetShadowMapPass:TpvScene3DPlanet.TRenderPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -216,11 +218,18 @@ begin
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
+ fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                          fInstance,
+                                                          fInstance.Renderer.Scene3D,
+                                                          TpvScene3DPlanet.TRenderPass.TMode.ShadowMap);
+
 end;
 
 procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.ReleasePersistentResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
+
+ FreeAndNil(fPlanetShadowMapPass);
 
  FreeAndNil(fVulkanPipelineShaderStageMeshVertex);
 
@@ -412,6 +421,11 @@ begin
 
  end;
 
+ fPlanetShadowMapPass.AllocateResources(fVulkanRenderPass,
+                                        fInstance.ScaledWidth,
+                                        fInstance.ScaledHeight,
+                                        fInstance.Renderer.ShadowMapSampleCountFlagBits);
+
 end;
 
 procedure TpvScene3DRendererPassesCascadedShadowMapRenderPass.ReleaseVolatileResources;
@@ -420,6 +434,7 @@ var Index:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
+ fPlanetShadowMapPass.ReleaseResources;
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
    for FaceCullingMode:=Low(TpvScene3D.TFaceCullingMode) to High(TpvScene3D.TFaceCullingMode) do begin
@@ -473,6 +488,11 @@ begin
   fOnSetRenderPassResourcesDone:=false;
 
   if fInstance.Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None then begin
+
+   fPlanetShadowMapPass.Draw(aInFlightFrameIndex,
+                             InFlightFrameState^.CascadedShadowMapViewIndex,
+                             InFlightFrameState^.CountCascadedShadowMapViews,
+                             aCommandBuffer);
 
    fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Opaque],
