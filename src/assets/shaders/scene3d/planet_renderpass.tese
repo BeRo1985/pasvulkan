@@ -19,7 +19,7 @@ layout(location = 0) out OutBlock {
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
-  vec2 edge; 
+  vec3 edge;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -131,7 +131,7 @@ void main(){
   outBlock.tangent = tbn[0]; 
   outBlock.bitangent = tbn[1];
   outBlock.normal = tbn[2]; 
-  outBlock.edge = fma(vec2(gl_TessCoord.x, gl_TessCoord.y), vec2(2.0), vec2(-1.0));
+  outBlock.edge = vec3(0.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;

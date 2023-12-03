@@ -356,10 +356,12 @@ type TpvScene3DPlanets=class;
               fVertexShaderModule:TpvVulkanShaderModule;
               fTessellationControlShaderModule:TpvVulkanShaderModule;
               fTessellationEvaluationShaderModule:TpvVulkanShaderModule;
+              fGeometryShaderModule:TpvVulkanShaderModule;
               fFragmentShaderModule:TpvVulkanShaderModule;
               fVertexShaderStage:TpvVulkanPipelineShaderStage;
               fTessellationControlShaderStage:TpvVulkanPipelineShaderStage;
               fTessellationEvaluationShaderStage:TpvVulkanPipelineShaderStage;
+              fGeometryShaderStage:TpvVulkanPipelineShaderStage;
               fFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
@@ -2919,19 +2921,42 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fTessellationEvaluationShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationEvaluationShaderModule');
 
   case fMode of
+   
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
    TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass:begin     
+   
+    fGeometryShaderModule:=nil; // No geometry shader in these cases
+    
     fFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
+
    end; 
+   
    TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+   
+    fGeometryShaderModule:=nil; // No geometry shader in these case
+   
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpasd_rsm_frag.spv');
     try
      fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally
      FreeAndNil(Stream);
     end;
+
    end; 
+
    else begin
+
+    if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_geom.spv');
+    end else begin 
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_geom.spv');
+    end;
+    try
+     fGeometryShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+    finally
+     FreeAndNil(Stream);
+    end;
+
     if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_frag.spv');
     end else begin 
@@ -2942,6 +2967,7 @@ begin
     finally
      FreeAndNil(Stream);
     end;
+
    end;
   end;
 
@@ -2954,6 +2980,12 @@ begin
   fTessellationControlShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,fTessellationControlShaderModule,'main');
 
   fTessellationEvaluationShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,fTessellationEvaluationShaderModule,'main');
+ 
+  if assigned(fGeometryShaderModule) then begin
+   fGeometryShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fGeometryShaderModule,'main');
+  end else begin
+   fGeometryShaderStage:=nil;
+  end;
 
   if assigned(fFragmentShaderModule) then begin
    fFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
@@ -3030,6 +3062,8 @@ begin
 
  FreeAndNil(fFragmentShaderStage);
 
+ FreeAndNil(fGeometryShaderStage);
+
  FreeAndNil(fTessellationEvaluationShaderStage);
 
  FreeAndNil(fTessellationControlShaderStage);
@@ -3037,6 +3071,8 @@ begin
  FreeAndNil(fVertexShaderStage);
 
  FreeAndNil(fFragmentShaderModule);
+
+ FreeAndNil(fGeometryShaderModule);
 
  FreeAndNil(fTessellationEvaluationShaderModule);
 
@@ -3070,6 +3106,9 @@ begin
  fPipeline.AddStage(fVertexShaderStage);
  fPipeline.AddStage(fTessellationControlShaderStage);
  fPipeline.AddStage(fTessellationEvaluationShaderStage);
+ if assigned(fGeometryShaderStage) then begin
+  fPipeline.AddStage(fGeometryShaderStage);
+ end;
  if assigned(fFragmentShaderStage) then begin
   fPipeline.AddStage(fFragmentShaderStage);
  end;
