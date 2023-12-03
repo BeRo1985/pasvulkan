@@ -3338,13 +3338,13 @@ begin
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
-       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsBaseMeshTriangleIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsBaseMeshVertexBuffer.Handle,@Offsets);
+       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualBaseMeshTriangleIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualBaseMeshVertexBuffer.Handle,@Offsets);
        aCommandBuffer.CmdDrawIndexed(Planet.fData.fCountTriangleIndices,1,0,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereQuads:begin
-       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsBaseMeshQuadIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsBaseMeshVertexBuffer.Handle,@Offsets);
+       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualBaseMeshQuadIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualBaseMeshVertexBuffer.Handle,@Offsets);
        aCommandBuffer.CmdDrawIndexed(Planet.fData.fCountQuadIndices,1,0,0,0);
       end;
      end;
@@ -3747,7 +3747,7 @@ begin
   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
                                        fVulkanComputeFence,
-                                       fData.fPhysicsBaseMeshTriangleIndexBuffer,
+                                       fData.fVisualBaseMeshTriangleIndexBuffer,
                                        0,
                                        fData.fCountTriangleIndices,
                                        SizeOf(TVkUInt32));
@@ -3756,7 +3756,7 @@ begin
   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
                                        fVulkanComputeFence,
-                                       fData.fPhysicsBaseMeshQuadIndexBuffer,
+                                       fData.fVisualBaseMeshQuadIndexBuffer,
                                        0,
                                        fData.fCountQuadIndices,
                                        SizeOf(TVkUInt32));
