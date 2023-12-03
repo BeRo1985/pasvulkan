@@ -11,6 +11,7 @@ layout(location = 0) in InBlock {
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
+  vec2 edge; 
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -30,9 +31,14 @@ layout(location = 1) out vec2 outVelocity;
 
 //layout(set = 1, binding = 0) uniform sampler2D u
 
+float edgeFactor(){
+   vec2 a = smoothstep(vec2(0.0), (abs(dFdx(inBlock.edge)) + abs(dFdy(inBlock.edge))) * 1.414, inBlock.edge);
+   return min(a.x, a.y);
+}          
+
 void main(){
 
-  outFragColor = vec4(inBlock.normal, 1.0);
+  outFragColor = vec4(fma(inBlock.normal, vec3(0.5), vec3(0.5)) * edgeFactor(), 1.0);
 
 #ifdef VELOCITY
   outVelocity = (inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);

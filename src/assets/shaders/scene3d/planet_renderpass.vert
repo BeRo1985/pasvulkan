@@ -27,7 +27,7 @@ layout(push_constant) uniform PushConstants {
   float resolutionY;  
   
   float heightMapScale;
-  float dummy;
+  float tessellationFactor;
   vec2 jitter;
 
 } pushConstants;

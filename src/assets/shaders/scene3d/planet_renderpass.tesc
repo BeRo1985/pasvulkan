@@ -34,7 +34,7 @@ layout(push_constant) uniform PushConstants {
   float resolutionY;  
   
   float heightMapScale;
-  float dummy;
+  float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   vec2 jitter;
 
 } pushConstants;
@@ -67,33 +67,24 @@ float remap(const in float value,
 }
 
 float AdaptiveTessellation(vec3 p0, vec3 p1){
-#ifdef DoShadowMap
+#ifdef SHADOW_MAP
   return 64.0;
 #else
-//return 1.0;
-  float distanceToCamera = length(viewMatrix * vec4(mix(p0, p1, 0.5), 1.0)),
-        tesselationTriangleSize = mix(mix(128.0, 
-                                          1.0, 
-                                          pow(1.0 - clamp(remap(distanceToCamera , 128.0, 1024.0, 0.0, 1.0), 0.0, 1.0), 2.0)),
-                                      1.0,
-                                      1.0 - clamp(remap(distanceToCamera, 0.0, 512.0, 0.0, 1.0), 0.0, 1.0));
-// tesselationTriangleSize = -log2(clamp(distanceToCamera * 0.005, 0.0, 1.0));
-  vec4 vc = viewMatrix * vec4((p0 + p1) * 0.5, 1.0),
-       vr = vec2(length(p1 - p0) * 0.5, 0.0).xyyy,
+  vec4 vc = viewMatrix * vec4(mix(p0, p1, 0.5), 1.0),
+       vr = vec2(distance(p0, p1) * 0.5, 0.0).xxyy,
        v0 = projectionMatrix * (vc - vr),
        v1 = projectionMatrix * (vc + vr),
-       v = ((vec4(v0.xy / v0.w, v1.xy / v1.w) * 0.5) + vec4(0.5)) * resolution.xyxy;
- 	return clamp(distance(v.xy, v.zw) / tesselationTriangleSize, 1.0, 64.0);
-/*  return min(clamp(distance(v.xy, v.zw) / tesselationTriangleSize, 1.0, 64.0),
-             mix(1.0, 64.0, pow(1.0 - clamp(remap(length(viewMatrix * vec4(mix(p0, p1, 0.5), 1.0)), 2048.0, 4096.0, 0.0, 1.0), 0.0, 1.0), 8.0)));*/
+       v = fma(vec4(v0.xy / v0.w, v1.xy / v1.w), vec4(0.5), vec4(0.5)) * resolution.xyxy;
+ 	return clamp(distance(v.xy, v.zw) * pushConstants.tessellationFactor, 1.0, 64.0);
 #endif
 }
 void main(){	 
   bool visible = true;
-#ifndef DoShadowMap
+#ifndef SHADOW_MAP
   vec3 aabbMin = min(min(min(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position), inBlocks[3].position),
-       aabbMax = max(max(max(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position), inBlocks[3].position);
-  vec4 sphere = vec4((aabbMin + aabbMax) * 0.5, length(aabbMax - aabbMin) * 0.5);
+       aabbMax = max(max(max(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position), inBlocks[3].position),
+       aabbCenter = mix(aabbMin, aabbMax, 0.5);
+  vec4 sphere = vec4(aabbCenter, length(aabbMax - aabbCenter));
   if(distance(sphere.xyz, inverseViewMatrix[3].xyz) < 65536.0){
 #if 0
     for(int i = 0; i < 6; i++){
@@ -110,10 +101,6 @@ void main(){
                                    inBlocks[2].planetCenterToCamera + 
                                    inBlocks[3].planetCenterToCamera) * 0.25,
            planetCenterToCameraDirection = normalize(planetCenterToCamera);
-/*    float thresholdAngle = mix(10.0, // at ground 
-                                 120.0, // in space
-                                 pow(clamp((length(planetCenterToCamera) - pushConstants.bottomRadius) / (pushConstants.topRadius - pushConstants.bottomRadius), 0.0, 1.0), 4.0));
-      if(dot(quadNormal, planetCenterToCameraDirection) < cos(radians(thresholdAngle) * 0.5)){*/
       if(dot(quadNormal, planetCenterToCameraDirection) < 0.0){
         visible = false;
       }    
@@ -123,12 +110,12 @@ void main(){
   }             
 #endif
   if(visible){
-	  gl_TessLevelOuter[0] = AdaptiveTessellation(inBlocks[0].position, inBlocks[3].position);
+	  gl_TessLevelOuter[0] = AdaptiveTessellation(inBlocks[3].position, inBlocks[0].position);
 	  gl_TessLevelOuter[1] = AdaptiveTessellation(inBlocks[0].position, inBlocks[1].position);
 	  gl_TessLevelOuter[2] = AdaptiveTessellation(inBlocks[1].position, inBlocks[2].position);
-	  gl_TessLevelOuter[3] = AdaptiveTessellation(inBlocks[3].position, inBlocks[2].position);
-	  gl_TessLevelInner[0] = (gl_TessLevelOuter[1] + gl_TessLevelOuter[3]) * 0.5;
-    gl_TessLevelInner[1] = (gl_TessLevelOuter[0] + gl_TessLevelOuter[2]) * 0.5;
+	  gl_TessLevelOuter[3] = AdaptiveTessellation(inBlocks[2].position, inBlocks[3].position);
+	  gl_TessLevelInner[0] = mix(gl_TessLevelOuter[0], gl_TessLevelOuter[3], 0.5);
+    gl_TessLevelInner[1] = mix(gl_TessLevelOuter[2], gl_TessLevelOuter[2], 0.5);
   }else{
 	  gl_TessLevelOuter[0] = -1.0;
 	  gl_TessLevelOuter[1] = -1.0;   

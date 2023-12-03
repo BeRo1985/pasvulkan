@@ -342,7 +342,7 @@ type TpvScene3DPlanets=class;
                     ResolutionX:TpvFloat;
                     ResolutionY:TpvFloat;
                     HeightMapScale:TpvFloat;
-                    Dummy:TpvFloat;
+                    TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
                    end;
                    PPushConstants=^TPushConstants;
@@ -367,6 +367,8 @@ type TpvScene3DPlanets=class;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fPipeline:TpvVulkanGraphicsPipeline;
               fPushConstants:TPushConstants;
+              fWidth:TpvInt32;
+              fHeight:TpvInt32;
              public
               constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aMode:TpvScene3DPlanet.TRenderPass.TMode); reintroduce;
               destructor Destroy; override;
@@ -3052,6 +3054,9 @@ procedure TpvScene3DPlanet.TRenderPass.AllocateResources(const aRenderPass:TpvVu
                                                          const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits);
 begin                                                         
 
+ fWidth:=aWidth;
+ fHeight:=aHeight;
+
  fPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
                                              TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
                                              0,
@@ -3204,9 +3209,9 @@ begin
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;
      fPushConstants.HeightMapScale:=Planet.fHeightMapScale;
-     fPushConstants.ResolutionX:=Planet.fHeightMapResolution;
-     fPushConstants.ResolutionY:=Planet.fHeightMapResolution;
-     fPushConstants.Dummy:=0;
+     fPushConstants.ResolutionX:=fWidth;
+     fPushConstants.ResolutionY:=fHeight;
+     fPushConstants.TessellationFactor:=1.0/16.0;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
      end else begin
