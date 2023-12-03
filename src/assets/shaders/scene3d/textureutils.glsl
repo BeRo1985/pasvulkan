@@ -27,21 +27,7 @@ vec4 textureCatmullRomCoefficents(const in float v){
 
 #if 1
 #if 1
-// Catmull-Rom in 4 samples
-vec4 textureCatmullRom(const in sampler2D tex, in vec2 uv, const in int lod){
-  vec2 texSize = textureSize(tex, lod);
-  uv = fma(uv, texSize, vec2(-0.5));
-  vec2 fuv = fract(uv);
-  vec4 xCoefficients = textureCatmullRomCoefficents(fuv.x),
-       yCoefficients = textureCatmullRomCoefficents(fuv.y),
-       sums = vec4(xCoefficients.xz + xCoefficients.yw, yCoefficients.xz + yCoefficients.yw),
-       samplePositions = (((uv - fuv).xxyy + vec2(-0.5, +1.5).xyxy) + (vec4(xCoefficients.yw, yCoefficients.yw) / sums)) / texSize.xxyy;
-  vec3 f = vec3(sums.x / (sums.x + sums.y), sums.z / (sums.z + sums.w), float(lod));
-  return mix(mix(textureLod(tex, samplePositions.yw, f.z), textureLod(tex, samplePositions.xw, f.z), f.x), 
-             mix(textureLod(tex, samplePositions.yz, f.z), textureLod(tex, samplePositions.xz, f.z), f.x), f.y);
-}
-#else
-// Catmull-Rom in 9 samples
+// Catmull-Rom in 9 samples - the most correct one in comparison to the others visually 
 vec4 textureCatmullRom(const in sampler2D tex, const in vec2 uv, const in int lod){
   vec2 texSize = textureSize(tex, lod);
   vec2 samplePos = uv * texSize;
@@ -64,6 +50,20 @@ vec4 textureCatmullRom(const in sampler2D tex, const in vec2 uv, const in int lo
          (((textureLod(tex, vec2(p00.x,  p33.y), float(lod)) * w0.x) +
            (textureLod(tex, vec2(p12.x, p33.y), float(lod)) * w4.x) +
            (textureLod(tex, vec2(p33.x,  p33.y), float(lod)) * w3.x)) * w3.y);
+}
+#else
+// Catmull-Rom in 4 samples
+vec4 textureCatmullRom(const in sampler2D tex, in vec2 uv, const in int lod){
+  vec2 texSize = textureSize(tex, lod);
+  uv = fma(uv, texSize, vec2(-0.5));
+  vec2 fuv = fract(uv);
+  vec4 xCoefficients = textureCatmullRomCoefficents(fuv.x),
+       yCoefficients = textureCatmullRomCoefficents(fuv.y),
+       sums = vec4(xCoefficients.xz + xCoefficients.yw, yCoefficients.xz + yCoefficients.yw),
+       samplePositions = (((uv - fuv).xxyy + vec2(-0.5, +1.5).xyxy) + (vec4(xCoefficients.yw, yCoefficients.yw) / sums)) / texSize.xxyy;
+  vec3 f = vec3(sums.x / (sums.x + sums.y), sums.z / (sums.z + sums.w), float(lod));
+  return mix(mix(textureLod(tex, samplePositions.yw, f.z), textureLod(tex, samplePositions.xw, f.z), f.x), 
+             mix(textureLod(tex, samplePositions.yz, f.z), textureLod(tex, samplePositions.xz, f.z), f.x), f.y);
 }
 #endif
 #else
