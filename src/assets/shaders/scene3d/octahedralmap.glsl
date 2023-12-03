@@ -59,7 +59,7 @@ vec4 textureCatmullRomOctahedralMap(const in sampler2D tex, vec3 direction) {
             (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 1,  2), texSize), 0) * xCoefficients.z) + 
             (texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2( 2,  2), texSize), 0) * xCoefficients.w)) * yCoefficients.w);
   }else{
-    // Non-edge texels can be sampled directly with an optimized catmull rom interpolation using just four bilinear textureLod calls
+    // Non-edge texels can be sampled directly with an optimized catmull rom interpolation using just nine bilinear textureLod calls
     return textureCatmullRom(tex, uv, 0);
   }
 }
