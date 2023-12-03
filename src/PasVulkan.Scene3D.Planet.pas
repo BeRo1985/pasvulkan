@@ -3199,7 +3199,7 @@ begin
      fPushConstants.ModelMatrix:=Planet.fData.fModelMatrix;
      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
      fPushConstants.CountViews:=aCountViews;
-     fPushConstants.CountQuadPointsInOneDirection:=128;
+     fPushConstants.CountQuadPointsInOneDirection:=32;
      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;

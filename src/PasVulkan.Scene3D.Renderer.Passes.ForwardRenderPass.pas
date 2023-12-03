@@ -1195,10 +1195,10 @@ begin
 
    if fUseDepthPrepass then begin
 
-    fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
+{   fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
                              InFlightFrameState^.FinalViewIndex,
                              InFlightFrameState^.CountFinalViews,
-                             aCommandBuffer);
+                             aCommandBuffer);}
 
     fInstance.Renderer.Scene3D.Draw(fInstance,
                                     fVulkanGraphicsPipelines[true,TpvScene3D.TMaterial.TAlphaMode.Opaque],

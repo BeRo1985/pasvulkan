@@ -7,19 +7,17 @@ vec4 textureBicubicCoefficents(const in float v){
   return vec4(t, 6.0 - dot(t, vec3(1.0))) * (1.0 / 6.0);
 }
 
-vec4 textureBicubic(const in sampler2D tex, const in vec2 texCoords, const in int lod){
-  vec2 texSize = textureSize(tex, lod),
-       uv = (texCoords * texSize) - vec2(0.5),
-       fxy = fract(uv);
-  vec4 xcubic = textureBicubicCoefficents(fxy.x),
-       ycubic = textureBicubicCoefficents(fxy.y),
-       s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw),
-       offset = (((uv - fxy).xxyy + vec2(-0.5, +1.5).xyxy) + 
-                 (vec4(xcubic.yw, ycubic.yw) / s)) * 
-                (vec2(1.0) / texSize).xxyy;
-  vec3 f = vec3(s.x / (s.x + s.y), s.z / (s.z + s.w), float(lod));
-  return mix(mix(textureLod(tex, offset.yw, f.z), textureLod(tex, offset.xw, f.z), f.x), 
-             mix(textureLod(tex, offset.yz, f.z), textureLod(tex, offset.xz, f.z), f.x), f.y);
+vec4 textureBicubic(const in sampler2D tex, in vec2 uv, const in int lod){
+  vec2 texSize = textureSize(tex, lod);
+  uv = fma(uv, texSize, vec2(-0.5));
+  vec2 fuv = fract(uv);
+  vec4 xCoefficients = textureBicubicCoefficents(fuv.x),
+       yCoefficients = textureBicubicCoefficents(fuv.y),
+       sums = vec4(xCoefficients.xz + xCoefficients.yw, yCoefficients.xz + yCoefficients.yw),
+       samplePositions = (((uv - fuv).xxyy + vec2(-0.5, +1.5).xyxy) + (vec4(xCoefficients.yw, yCoefficients.yw) / sums)) / texSize.xxyy;
+  vec3 f = vec3(sums.x / (sums.x + sums.y), sums.z / (sums.z + sums.w), float(lod));
+  return mix(mix(textureLod(tex, samplePositions.yw, f.z), textureLod(tex, samplePositions.xw, f.z), f.x), 
+             mix(textureLod(tex, samplePositions.yz, f.z), textureLod(tex, samplePositions.xz, f.z), f.x), f.y);
 }           
 
 vec4 textureCatmullRomCoefficents(const in float v){
@@ -27,7 +25,49 @@ vec4 textureCatmullRomCoefficents(const in float v){
   return vec4((tt - (ttt * 0.5)) - (0.5 * t), ((ttt * 1.5) - (tt * 2.5)) + 1.0, ((tt * 2.0) - (ttt * 1.5)) + (t * 0.5), (ttt * 0.5) - (tt * 0.5));  
 }
 
-// based on: https://www.decarpentier.nl/2d-catmull-rom-in-4-samples
+#if 1
+#if 1
+// Catmull-Rom in 4 samples
+vec4 textureCatmullRom(const in sampler2D tex, in vec2 uv, const in int lod){
+  vec2 texSize = textureSize(tex, lod);
+  uv = fma(uv, texSize, vec2(-0.5));
+  vec2 fuv = fract(uv);
+  vec4 xCoefficients = textureCatmullRomCoefficents(fuv.x),
+       yCoefficients = textureCatmullRomCoefficents(fuv.y),
+       sums = vec4(xCoefficients.xz + xCoefficients.yw, yCoefficients.xz + yCoefficients.yw),
+       samplePositions = (((uv - fuv).xxyy + vec2(-0.5, +1.5).xyxy) + (vec4(xCoefficients.yw, yCoefficients.yw) / sums)) / texSize.xxyy;
+  vec3 f = vec3(sums.x / (sums.x + sums.y), sums.z / (sums.z + sums.w), float(lod));
+  return mix(mix(textureLod(tex, samplePositions.yw, f.z), textureLod(tex, samplePositions.xw, f.z), f.x), 
+             mix(textureLod(tex, samplePositions.yz, f.z), textureLod(tex, samplePositions.xz, f.z), f.x), f.y);
+}
+#else
+// Catmull-Rom in 9 samples
+vec4 textureCatmullRom(const in sampler2D tex, const in vec2 uv, const in int lod){
+  vec2 texSize = textureSize(tex, lod);
+  vec2 samplePos = uv * texSize;
+  vec2 p11 = floor(samplePos - vec2(0.5)) + vec2(0.5);
+  vec2 t = samplePos - p11, tt = t * t, ttt = tt * t;
+  vec2 w0 = (tt - (ttt * 0.5)) - (0.5 * t);
+  vec2 w1 = ((ttt * 1.5) - (tt * 2.5)) + vec2(1.0);
+  vec2 w2 = ((tt * 2.0) - (ttt * 1.5)) + (t * 0.5);
+  vec2 w3 = (ttt * 0.5) - (tt * 0.5);  
+  vec2 w4 = w1 + w2;
+  vec2 p00 = (p11 - vec2(1.0)) / texSize;
+  vec2 p33 = (p11 + vec2(2.0)) / texSize;
+  vec2 p12 = (p11 + (w2 / w4)) / texSize;
+  return (((textureLod(tex, vec2(p00.x,  p00.y), float(lod)) * w0.x) +
+           (textureLod(tex, vec2(p12.x, p00.y), float(lod)) * w4.x) +
+           (textureLod(tex, vec2(p33.x,  p00.y), float(lod)) * w3.x)) * w0.y) +
+         (((textureLod(tex, vec2(p00.x,  p12.y), float(lod)) * w0.x) +
+           (textureLod(tex, vec2(p12.x, p12.y), float(lod)) * w4.x) +
+           (textureLod(tex, vec2(p33.x,  p12.y), float(lod)) * w3.x)) * w4.y) +
+         (((textureLod(tex, vec2(p00.x,  p33.y), float(lod)) * w0.x) +
+           (textureLod(tex, vec2(p12.x, p33.y), float(lod)) * w4.x) +
+           (textureLod(tex, vec2(p33.x,  p33.y), float(lod)) * w3.x)) * w3.y);
+}
+#endif
+#else
+// based on: https://www.decarpentier.nl/2d-catmull-rom-in-4-samples - but is buggy
 vec4 textureCatmullRom(const in sampler2D tex, const in vec2 uv, const in int lod){
   vec2 texSize = textureSize(tex, lod);
   vec2 h = fma(fract(fma(uv, texSize * 0.5, vec2(-0.25))), vec2(2.0), vec2(-1.0));
@@ -42,6 +82,7 @@ vec4 textureCatmullRom(const in sampler2D tex, const in vec2 uv, const in int lo
   return (textureLod(tex, p.xy, float(lod)) * w.x) + (textureLod(tex, p.zy, float(lod)) * w.y) +
          (textureLod(tex, p.xw, float(lod)) * w.z) + (textureLod(tex, p.zw, float(lod)) * w.w);
 }
+#endif
 
 vec4 textureTriplanar(const in sampler2D t, const in vec3 p, const in vec3 n, const in float k, const in vec3 gx, const in vec3 gy){
 //vec2 r = textureSize(t, 0);
