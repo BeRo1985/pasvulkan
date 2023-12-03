@@ -67,6 +67,7 @@ uses Classes,
      Math,
      PasMP,
      Vulkan,
+     PasDblStrUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -117,6 +118,8 @@ type TpvScene3DPlanets=class;
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
+              fVisualVertices:TpvVector4Array;
+              fVisualIndices:TpvUInt32DynamicArray;
               fHeightMapImage:TpvScene3DRendererImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererImage2D; // R16G16_SFLOAT (octahedral)
               fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)   
@@ -452,6 +455,8 @@ type TpvScene3DPlanets=class;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize;
+       procedure ExportToOBJ(const aStream:TStream); overload;
+       procedure ExportToOBJ(const aFileName:TpvUTF8String); overload;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -485,6 +490,7 @@ implementation
 uses PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Geometry.FibonacciSphere,
      PasVulkan.VirtualFileSystem;
 
 { TpvScene3DPlanet.TData }
@@ -617,7 +623,7 @@ begin
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualBaseMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fVisualBaseMeshVertexBuffer');                                                   
            
     fVisualBaseMeshTriangleIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                               ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
+                                                               ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                BufferSharingMode,
                                                                BufferQueueFamilyIndices,
@@ -3608,6 +3614,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.Initialize;
+var FibonacciSphere:TpvFibonacciSphere;
 begin
 
  if not fData.fInitialized then begin
@@ -3631,6 +3638,28 @@ begin
 
   end;
 
+{ FibonacciSphere:=TpvFibonacciSphere.Create(fCountVisualSpherePoints,1.0);
+  try
+   FibonacciSphere.Generate(true,false);
+   fData.fCountTriangleIndices:=FibonacciSphere.Indices.Count;
+   fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
+                                      fVulkanComputeCommandBuffer,
+                                      fVulkanComputeFence,
+                                      fData.fCountTriangleIndices,
+                                      fData.fVisualBaseMeshTriangleIndexBuffer,
+                                      0,
+                                      SizeOf(TVkUInt32));
+   fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
+                                      fVulkanComputeCommandBuffer,
+                                      fVulkanComputeFence,
+                                      FibonacciSphere.Indices.ItemArray[0],
+                                      fData.fVisualBaseMeshTriangleIndexBuffer,
+                                      SizeOf(TVkUInt32),
+                                      FibonacciSphere.Indices.Count*SizeOf(TVkUInt32));
+  finally
+   FreeAndNil(FibonacciSphere);
+  end;// }
+
   fData.fCountTriangleIndices:=0;
   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
@@ -3640,10 +3669,78 @@ begin
                                        fData.fCountTriangleIndices,
                                        SizeOf(TVkUInt32));
 
+  SetLength(fData.fVisualVertices,fCountVisualSpherePoints);
+  SetLength(fData.fVisualIndices,fData.fCountTriangleIndices);
+
+  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fData.fVisualBaseMeshVertexBuffer,
+                                       0,
+                                       fData.fVisualVertices[0],
+                                       fCountVisualSpherePoints*SizeOf(TpvVector4));
+
+  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fData.fVisualBaseMeshTriangleIndexBuffer,
+                                       SizeOf(TVkUInt32),
+                                       fData.fVisualIndices[0],
+                                       fData.fCountTriangleIndices*SizeOf(TVkUInt32));
+
   fData.fInitialized:=true;
 
  end;
 
+end;
+
+procedure TpvScene3DPlanet.ExportToOBJ(const aStream:TStream);
+const NewLine:TpvUTF8String={$ifdef Windows}#13#10{$else}#10{$endif};
+ procedure WriteString(const aString:TpvUTF8String);
+ begin
+  aStream.WriteBuffer(aString[1],Length(aString));
+ end;
+var Index:TpvSizeInt;
+    s:TpvUTF8String;
+begin
+
+ WriteString('# This OBJ file was generated by PasVulkan.Geometry.FibonacciSphere'+NewLine);
+ WriteString('o FibonacciSphere'+NewLine);
+ for Index:=0 to fCountVisualSpherePoints-1 do begin
+  s:='v '+ConvertDoubleToString(fData.fVisualVertices[Index].x)+' '+
+          ConvertDoubleToString(fData.fVisualVertices[Index].y)+' '+
+          ConvertDoubleToString(fData.fVisualVertices[Index].z)+NewLine;
+  WriteString(s);
+ end;
+ for Index:=0 to fCountVisualSpherePoints-1 do begin
+  s:='vn '+ConvertDoubleToString(fData.fVisualVertices[Index].x)+' '+
+           ConvertDoubleToString(fData.fVisualVertices[Index].y)+' '+
+           ConvertDoubleToString(fData.fVisualVertices[Index].z)+NewLine;
+  WriteString(s);
+ end;
+ for Index:=0 to fCountVisualSpherePoints-1 do begin
+  s:='vt 0.0 0.0'+NewLine;
+  WriteString(s);
+ end;
+
+ for Index:=0 to (fData.fCountTriangleIndices div 3)-1 do begin
+  s:='f '+IntToStr(fData.fVisualIndices[(Index*3)+0]+1)+'/'+IntToStr(fData.fVisualIndices[(Index*3)+0]+1)+'/'+IntToStr(fData.fVisualIndices[(Index*3)+0]+1)+' '+
+          IntToStr(fData.fVisualIndices[(Index*3)+1]+1)+'/'+IntToStr(fData.fVisualIndices[(Index*3)+1]+1)+'/'+IntToStr(fData.fVisualIndices[(Index*3)+1]+1)+' '+
+          IntToStr(fData.fVisualIndices[(Index*3)+2]+1)+'/'+IntToStr(fData.fVisualIndices[(Index*3)+2]+1)+'/'+IntToStr(fData.fVisualIndices[(Index*3)+2]+1)+NewLine;
+  WriteString(s);
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.ExportToOBJ(const aFileName:TpvUTF8String);
+var Stream:TFileStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  ExportToOBJ(Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
 end;
 
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);

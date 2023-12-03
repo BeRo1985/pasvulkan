@@ -459,7 +459,7 @@ begin
   // Generate indices (the not so easy part) 
   begin 
 
-   fIndices.Resize(fCountPoints*6);
+   fIndices.Resize(fCountPoints*36);
    fIndices.ClearNoFree;
 
    for Index:=0 to fCountPoints-1 do begin
@@ -634,7 +634,7 @@ begin
   WriteString(s);
  end;
 
- for Index:=0 to fIndices.Count div 3-1 do begin
+ for Index:=0 to (fIndices.Count div 3)-1 do begin
   s:='f '+IntToStr(fIndices[(Index*3)+0]+1)+'/'+IntToStr(fIndices[(Index*3)+0]+1)+'/'+IntToStr(fIndices[(Index*3)+0]+1)+' '+
           IntToStr(fIndices[(Index*3)+1]+1)+'/'+IntToStr(fIndices[(Index*3)+1]+1)+'/'+IntToStr(fIndices[(Index*3)+1]+1)+' '+
           IntToStr(fIndices[(Index*3)+2]+1)+'/'+IntToStr(fIndices[(Index*3)+2]+1)+'/'+IntToStr(fIndices[(Index*3)+2]+1)+NewLine;

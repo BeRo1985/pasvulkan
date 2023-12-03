@@ -63,10 +63,10 @@ void main(){
     for(uint otherIndex = 0; otherIndex < 12u; otherIndex++){
       uint r = otherIndex - (((otherIndex * 0x56u) >> 9u) * 6u); // otherIndex % 6u;
       uint c = uint(int(5 - abs(5 - (int(r) << 1)))) + ((0x38u >> r) & 1u); // ((r * 0x56u) >> 8u); // (r / 3u);
-      uint k = (uint(round(pow(GoldenRatio, float(z + c) - 2.0) * OneOverSqrt5)) * 
-                (1 - int(uint(((0xfc0u >> otherIndex) & 1u) << 1u))) // ((otherIndex < 6u) ? 1 : -1)
-               ) + index;
-      if(k < pushConstants.countPoints){
+      int k = (int(round(pow(GoldenRatio, (z + float(c)) - 2.0) * OneOverSqrt5)) * 
+                int(1 - int(uint(((0xfc0u >> otherIndex) & 1u) << 1u))) // ((otherIndex < 6u) ? 1 : -1)
+               ) + int(index);
+      if((k >= 0) && (k < pushConstants.countPoints)){
         if(squaredDistance(fibonacciSpherePoints.vectors[k].xyz, fibonacciSpherePoints.vectors[index].xyz) <= (PImul20overSqrt5 / float(pushConstants.countPoints))){
           nearestSamples[countNearestSamples] = k;
           countNearestSamples++;
