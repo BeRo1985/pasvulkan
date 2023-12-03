@@ -129,6 +129,8 @@ type TpvScene3DPlanets=class;
               fPhysicsBaseMeshTriangleIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices
               fPhysicsBaseMeshQuadIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of quad indices and the rest are the quad indices
               fPhysicsMeshVertexBuffer:TpvVulkanBuffer; // TFibonacciSphereVertex wise
+              fCountTriangleIndices:TVkUInt32;
+              fCountQuadIndices:TVkUInt32;
               fModelMatrix:TpvMatrix4x4;
               fReady:TPasMPBool32;
               fInitialized:TPasMPBool32;
@@ -3705,20 +3707,42 @@ begin
 
  if not fData.fInitialized then begin
 
-  BeginUpdate;
-  try
+  if assigned(fVulkanDevice) then begin
 
-   fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
+   BeginUpdate;
+   try
 
-   fVisualBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
-   fVisualBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+    fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
 
-   fPhysicsBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
-   fPhysicsBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+    fVisualBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+    fVisualBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-  finally
-   EndUpdate;
+    fPhysicsBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+    fPhysicsBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+
+   finally
+    EndUpdate;
+   end;
+
   end;
+
+  fData.fCountTriangleIndices:=0;
+  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fData.fPhysicsBaseMeshTriangleIndexBuffer,
+                                       0,
+                                       fData.fCountTriangleIndices,
+                                       SizeOf(TVkUInt32));
+
+  fData.fCountQuadIndices:=0;
+  fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fData.fPhysicsBaseMeshQuadIndexBuffer,
+                                       0,
+                                       fData.fCountQuadIndices,
+                                       SizeOf(TVkUInt32));
 
   fData.fInitialized:=true;
 
@@ -3732,21 +3756,25 @@ begin
  if (fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration) or
     (fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration) then begin
 
-  BeginUpdate;
-  try
+  if assigned(fVulkanDevice) then begin
 
-   if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
-    fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
-    fTangentSpaceGeneration.Execute(fVulkanComputeCommandBuffer);
+   BeginUpdate;
+   try
+
+    if fData.fTangentSpaceGeneration<>fData.fHeightMapGeneration then begin
+     fData.fTangentSpaceGeneration:=fData.fHeightMapGeneration;
+     fTangentSpaceGeneration.Execute(fVulkanComputeCommandBuffer);
+    end;
+
+    if fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration then begin
+     fData.fPhysicsMeshGeneration:=fData.fHeightMapGeneration;
+     fPhysicsMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+    end;
+
+   finally
+    EndUpdate;
    end;
 
-   if fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration then begin
-    fData.fPhysicsMeshGeneration:=fData.fHeightMapGeneration;
-    fPhysicsMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
-   end;
-
-  finally
-   EndUpdate;
   end;
 
  end;
@@ -3757,43 +3785,47 @@ procedure TpvScene3DPlanet.FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
 var InFlightFrameData:TData;
 begin
 
- if aInFlightFrameIndex>=0 then begin
-  InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
- end else begin
-  InFlightFrameData:=nil;
- end;
+ if assigned(fVulkanDevice) then begin
 
- if ((fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
-     (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE))) or
-    (fData.fVisualMeshGeneration<>fData.fHeightMapGeneration) or
-    (assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration)) then begin
-
-  BeginUpdate;
-  try
-
-   if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
-    fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
-    fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
-   end;
-
-   if assigned(InFlightFrameData) then begin
-
-    InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
-
-    if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
-     InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
-     fData.TransferTo(fVulkanComputeCommandBuffer,InFlightFrameData);
-    end;
-
-    InFlightFrameData.ReleaseOnComputeQueue(fVulkanComputeCommandBuffer);
-
-   end;
-
-  finally
-   EndUpdate;
+  if aInFlightFrameIndex>=0 then begin
+   InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+  end else begin
+   InFlightFrameData:=nil;
   end;
 
-  fInFlightFrameReady[aInFlightFrameIndex]:=true;
+  if ((fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+      (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE))) or
+     (fData.fVisualMeshGeneration<>fData.fHeightMapGeneration) or
+     (assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration)) then begin
+
+   BeginUpdate;
+   try
+
+    if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
+     fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
+     fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+    end;
+
+    if assigned(InFlightFrameData) then begin
+
+     InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
+
+     if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
+      InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
+      fData.TransferTo(fVulkanComputeCommandBuffer,InFlightFrameData);
+     end;
+
+     InFlightFrameData.ReleaseOnComputeQueue(fVulkanComputeCommandBuffer);
+
+    end;
+
+   finally
+    EndUpdate;
+   end;
+
+   fInFlightFrameReady[aInFlightFrameIndex]:=true;
+
+  end;
 
  end;
 
