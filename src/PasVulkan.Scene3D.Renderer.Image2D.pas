@@ -82,7 +82,7 @@ type { TpvScene3DRendererImage2D }
        fFormat:TVkFormat;
       public
 
-       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE));
+       constructor Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);const aImageLayout:TVkImageLayout=TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL);const aSharingMode:TVkSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices=nil);
 
        destructor Destroy; override;
 
@@ -104,7 +104,7 @@ implementation
 
 { TpvScene3DRendererImage2D }
 
-constructor TpvScene3DRendererImage2D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode);
+constructor TpvScene3DRendererImage2D.Create(const aDevice:TpvVulkanDevice;const aWidth,aHeight:TpvInt32;const aFormat:TVkFormat;const aStorage:Boolean;const aSampleBits:TVkSampleCountFlagBits;const aImageLayout:TVkImageLayout;const aSharingMode:TVkSharingMode;const aQueueFamilyIndices:TpvVulkanQueueFamilyIndices);
 var MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -116,6 +116,7 @@ var MemoryRequirements:TVkMemoryRequirements;
     Fence:TpvVulkanFence;
     ImageViewType:TVkImageViewType;
     ImageAspectMask:TVkImageAspectFlags;
+    p:pointer;
 begin
  inherited Create;
 
@@ -140,6 +141,12 @@ begin
 
  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
 
+ if length(aQueueFamilyIndices)>0 then begin
+  p:=@aQueueFamilyIndices[0];
+ end else begin
+  p:=nil;
+ end;
+
  fVulkanImage:=TpvVulkanImage.Create(aDevice,
                                      0, //TVkImageCreateFlags(VK_IMAGE_CREATE_3D_ARRAY_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
@@ -156,8 +163,8 @@ begin
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT),
                                      aSharingMode,
-                                     0,
-                                     nil,
+                                     length(aQueueFamilyIndices),
+                                     p,
                                      VK_IMAGE_LAYOUT_UNDEFINED
                                     );
 

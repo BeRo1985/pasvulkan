@@ -423,6 +423,7 @@ type TpvScene3DPlanets=class;
        fCommandBufferLock:TPasMPInt32;
        fComputeQueueLock:TPasMPInt32;
        fSharingMode:TVkSharingMode;
+       fQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
       public
@@ -546,7 +547,8 @@ begin
                                                     true,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                    fPlanet.fSharingMode);
+                                                    fPlanet.fSharingMode,
+                                                    fPlanet.fQueueFamilyIndices);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
 
@@ -557,7 +559,8 @@ begin
                                                     true,
                                                     VK_SAMPLE_COUNT_1_BIT,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                    fPlanet.fSharingMode);
+                                                    fPlanet.fSharingMode,
+                                                    fPlanet.fQueueFamilyIndices);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
 
@@ -568,7 +571,8 @@ begin
                                                               true,
                                                               VK_SAMPLE_COUNT_1_BIT,
                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                              fPlanet.fSharingMode);
+                                                              fPlanet.fSharingMode,
+                                                              fPlanet.fQueueFamilyIndices);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.ImageView');
 
@@ -582,7 +586,7 @@ begin
                                                         fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                         fPlanet.fSharingMode,
-                                                        [],
+                                                        fPlanet.fQueueFamilyIndices,
                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                         0,
                                                         0,
@@ -599,7 +603,7 @@ begin
                                                                ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                fPlanet.fSharingMode,
-                                                               [],
+                                                               fPlanet.fQueueFamilyIndices,
                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                0,
                                                                0,
@@ -618,7 +622,7 @@ begin
                                                           ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                           fPlanet.fSharingMode,
-                                                          [],
+                                                          fPlanet.fQueueFamilyIndices,
                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                           0,
                                                           0,
@@ -635,7 +639,7 @@ begin
                                                    fPlanet.fCountVisualSpherePoints*SizeOf(TFibonacciSphereVertex),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                    fPlanet.fSharingMode,
-                                                   [],
+                                                   fPlanet.fQueueFamilyIndices,
                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                    0,
                                                    0,
@@ -657,7 +661,7 @@ begin
                                                         fPlanet.fCountVisualSpherePoints*SizeOf(TpvVector4),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                         fPlanet.fSharingMode,
-                                                        [],
+                                                        fPlanet.fQueueFamilyIndices,
                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                         0,
                                                         0,
@@ -675,7 +679,7 @@ begin
                                                                ((fPlanet.fCountVisualSpherePoints*12*3)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                fPlanet.fSharingMode,
-                                                               [],
+                                                               fPlanet.fQueueFamilyIndices,
                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                                0,
@@ -693,7 +697,7 @@ begin
                                                            ((fPlanet.fCountVisualSpherePoints*12*4)+1)*SizeOf(TpvUInt32), // just for the worst case 
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                            fPlanet.fSharingMode,
-                                                           [],
+                                                           fPlanet.fQueueFamilyIndices,
                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                            0,
                                                            0,
@@ -711,7 +715,7 @@ begin
                                                     fPlanet.fCountVisualSpherePoints*SizeOf(TFibonacciSphereVertex),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     fPlanet.fSharingMode,
-                                                    [],
+                                                    fPlanet.fQueueFamilyIndices,
                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
                                                     0,
@@ -3312,10 +3316,13 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
+  if (fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
+     fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
    fSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
+   fQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,fVulkanDevice.ComputeQueueFamilyIndex];
   end else begin
    fSharingMode:=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE);
+   fQueueFamilyIndices:=nil;
   end;
   
   fVulkanComputeQueue:=fVulkanDevice.ComputeQueue;
@@ -3481,7 +3488,9 @@ begin
  FreeAndNil(fVulkanComputeCommandBuffer);
 
  FreeAndNil(fVulkanComputeCommandPool);
- 
+
+ fQueueFamilyIndices:=nil;
+
  inherited Destroy;
 
 end;
