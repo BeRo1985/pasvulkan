@@ -219,9 +219,9 @@ begin
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
  fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                          fInstance,
-                                                          fInstance.Renderer.Scene3D,
-                                                          TpvScene3DPlanet.TRenderPass.TMode.ShadowMap);
+                                                           fInstance,
+                                                           fInstance.Renderer.Scene3D,
+                                                           TpvScene3DPlanet.TRenderPass.TMode.ShadowMap);
 
 end;
 

@@ -96,7 +96,7 @@ type TpvScene3DPlanets=class;
               FibonacciSphereQuads
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -2919,7 +2919,7 @@ begin
    end;
    TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereQuads:begin
-    Kind:='externals_';
+    Kind:='external_';
    end;
    else begin
     Kind:='';
@@ -2938,6 +2938,16 @@ begin
   end;
 
   fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fVertexShaderModule');
+
+  case TpvScene3DPlanet.SourcePrimitiveMode of
+   TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
+   TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+    Kind:='triangles_';
+   end;
+   else begin
+    Kind:='';
+   end;
+  end;
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_tesc.spv');
@@ -3261,7 +3271,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
-const Offsets:array[0..0] of TVkUInt32=(0);
+const Offsets:array[0..0] of TVkUInt32=(SizeOf(TVkUInt32));
 var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
