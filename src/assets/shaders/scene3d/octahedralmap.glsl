@@ -5,7 +5,7 @@
 
 ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {
   ivec2 wrapped = ((texel % texSize) + texSize) % texSize;
-  return ((((texel.x / texSize.x) + (texel.y / texSize.y)) & 1) != 0) ? (texSize - (wrapped + ivec2(1))) : wrapped;
+  return ((((abs(texel.x / texSize.x) + int(texel.x < 0)) ^ (abs(texel.y / texSize.y) + int(texel.y < 0))) & 1) != 0) ? (texSize - (wrapped + ivec2(1))) : wrapped;
 }
 
 vec4 textureOctahedralMap(const in sampler2D tex, vec3 direction) {
