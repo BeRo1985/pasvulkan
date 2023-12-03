@@ -516,9 +516,9 @@ begin
 
      end;
 
-     if (Index=0) and (CountAdjacentVertices>0) then begin
+{    if (Index=0) and (CountAdjacentVertices>0) then begin
       dec(CountAdjacentVertices); // Special case for the pole
-     end;
+     end;}
 
     end;
 

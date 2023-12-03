@@ -89,9 +89,9 @@ void main(){
         countAdjacentVertices++;
       }
     }
-    if((index == 0u) && (countAdjacentVertices > 0u)){
+  /*if((index == 0u) && (countAdjacentVertices > 0u)){
       countAdjacentVertices--; // Special case for the pole
-    }
+    }*/
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Generate triangles from the adjacent neighbours                                                         //
