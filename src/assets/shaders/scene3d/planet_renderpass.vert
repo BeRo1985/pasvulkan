@@ -53,7 +53,11 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 #ifndef EXTERNAL_VERTICES
 uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
 uint countSideQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
-uint countTotalVertices = countSideQuads * (6u * 4u);
+#ifdef TRIANGLES
+uint countTotalVertices = countSideQuads * (6u * 6u); // 2 triangles per quad, 3 vertices per triangle, 6 sides
+#else
+uint countTotalVertices = countSideQuads * (6u * 4u); // 4 vertices per quad, 6 sides
+#endif
 
 const ivec2 offsets[4] = ivec2[](
   ivec2(0, 0),  
@@ -121,16 +125,17 @@ void main(){
   uint vertexIndex = uint(gl_VertexIndex);
   if(vertexIndex < countTotalVertices){   
 #ifdef TRIANGLES
-   uint quadIndex = vertexIndex / 6u,
-        quadVertexIndex = uvec3[2]( uvec3(0u, 1u, 2u), uvec3(0u, 2u, 3u))[(vertexIndex % 6u) / 3u][vertexIndex % 3u],
-        sideIndex = (quadIndex / countSideQuads) % 6u,
-        sideQuadIndex = quadIndex % countSideQuads;
+   uint triangleIndex = vertexIndex / 3u,
+        triangleVertexIndex = vertexIndex - (triangleIndex * 3u),
+        quadIndex = triangleIndex >> 1u,
+        quadVertexIndex = uvec3[2]( uvec3(0u, 1u, 2u), uvec3(0u, 2u, 3u))[triangleIndex & 1u][triangleVertexIndex];
 #else
     uint quadIndex = vertexIndex >> 2u,
-         quadVertexIndex = vertexIndex & 3u,  
-         sideIndex = (quadIndex / countSideQuads) % 6u,
-         sideQuadIndex = quadIndex % countSideQuads;
+         quadVertexIndex = vertexIndex & 3u;
 #endif
+    uint sideIndex = quadIndex / countSideQuads,
+         sideQuadIndex = quadIndex - (sideIndex * countSideQuads);
+    sideIndex %= 6u;
     vec2 uv = vec2(uvec2(sideQuadIndex % countQuadPointsInOneDirection,
                         sideQuadIndex / countQuadPointsInOneDirection) + 
                    offsets[3u - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);

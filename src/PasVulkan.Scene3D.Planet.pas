@@ -2869,6 +2869,7 @@ end;
 constructor TpvScene3DPlanet.TRenderPass.Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aMode:TpvScene3DPlanet.TRenderPass.TMode);
 var InFlightFrameIndex:TpvSizeInt;
     Stream:TStream;
+    Kind:TpvUTF8String;
 begin
 
  inherited Create;
@@ -2885,10 +2886,12 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
+  Kind:='triangles_';
+
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_vert.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_vert.spv');
   end else begin 
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_vert.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'vert.spv');
   end;
   try
    fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -2899,9 +2902,9 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fVertexShaderModule');
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_tesc.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_tesc.spv');
   end else begin 
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_tesc.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'tesc.spv');
   end;
   try
    fTessellationControlShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -2912,9 +2915,9 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationControlShaderModule');
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_tese.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_tese.spv');
   end else begin 
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_tese.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'tese.spv');
   end;
   try
    fTessellationEvaluationShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -2939,7 +2942,7 @@ begin
    
     fGeometryShaderModule:=nil; // No geometry shader in these case
    
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpasd_rsm_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_rsm_frag.spv');
     try
      fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally
@@ -3188,7 +3191,7 @@ begin
  fPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
  fPipeline.DepthStencilState.StencilTestEnable:=false;
 
- fPipeline.TessellationState.PatchControlPoints:=4;
+ fPipeline.TessellationState.PatchControlPoints:=3;
 
  fPipeline.Initialize;
 
@@ -3270,7 +3273,7 @@ begin
                                      SizeOf(TPushConstants),
                                      @fPushConstants);
 
-     aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
+     aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*6,1,0,0);
 
     end;
 

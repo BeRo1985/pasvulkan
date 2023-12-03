@@ -332,13 +332,9 @@ compileshaderarguments=(
 
   "-V planet_renderpass.geom -o ${tempPath}/planet_renderpass_geom.spv"
   "-V planet_renderpass.geom -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_geom.spv"
-  "-V planet_renderpass.geom -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_geom.spv"
-  "-V planet_renderpass.geom -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_triangles_velocity_geom.spv"
 
   "-V planet_renderpass.frag -o ${tempPath}/planet_renderpass_frag.spv"
   "-V planet_renderpass.frag -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_frag.spv"
-  "-V planet_renderpass.frag -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_frag.spv"
-  "-V planet_renderpass.frag -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_triangles_velocity_frag.spv"
 
 )
 
