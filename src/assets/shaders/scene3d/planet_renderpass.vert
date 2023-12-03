@@ -99,10 +99,17 @@ const mat3 tangentTransformMatrix = mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0
 void main(){                 
   uint vertexIndex = uint(gl_VertexIndex);
   if(vertexIndex < countTotalVertices){   
+#ifdef TRIANGLES
+   uint quadIndex = vertexIndex / 6u,
+        quadVertexIndex = uvec3[2]( uvec3(0u, 1u, 2u), uvec3(0u, 2u, 3u))[(vertexIndex % 6u) / 3u][vertexIndex % 3u],
+        sideIndex = (quadIndex / countSideQuads) % 6u,
+        sideQuadIndex = quadIndex % countSideQuads;
+#else
     uint quadIndex = vertexIndex >> 2u,
          quadVertexIndex = vertexIndex & 3u,  
          sideIndex = (quadIndex / countSideQuads) % 6u,
          sideQuadIndex = quadIndex % countSideQuads;
+#endif
     vec2 uv = vec2(uvec2(sideQuadIndex % countQuadPointsInOneDirection,
                         sideQuadIndex / countQuadPointsInOneDirection) + 
                    offsets[3u - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);

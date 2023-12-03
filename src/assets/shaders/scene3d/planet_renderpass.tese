@@ -7,7 +7,11 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 
+#ifdef TRIANGLES
+layout(triangles, equal_spacing, ccw) in;
+#else
 layout(quads, equal_spacing, ccw) in;
+#endif
 
 layout(location = 0) in InBlock {
   vec3 position;
@@ -100,6 +104,18 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif
 
+#ifdef TRIANGLES
+ 
+  // Barycentric coordinates
+
+  //vec3 position = (inBlocks[0].position * gl_TessCoord.x) + (inBlocks[1].position * gl_TessCoord.y) + (inBlocks[2].position * gl_TessCoord.z);
+
+  vec3 normal = normalize((inBlocks[0].normal * gl_TessCoord.x) + (inBlocks[1].normal * gl_TessCoord.y) + (inBlocks[2].normal * gl_TessCoord.z));
+
+#else
+
+  // Bilinear interpolation
+
   /*
   vec3 position = mix(mix(inBlocks[0].position, inBlocks[1].position, gl_TessCoord.x),
                       mix(inBlocks[3].position, inBlocks[2].position, gl_TessCoord.x), 
@@ -108,6 +124,7 @@ void main(){
   vec3 normal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
                               mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
                               gl_TessCoord.y));
+#endif
  
   //position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).x * pushConstants.heightMapScale;
  
