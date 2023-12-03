@@ -119,7 +119,7 @@ void main(){
 #endif
     outBlock.position = position;    
     outBlock.normal = normal;
-    outBlock.planetCenterToCamera = (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz - inverseViewMatrix[3].xyz; 
+    outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
   }else{
     outBlock.position = outBlock.normal = vec3(0.0);
   }  
