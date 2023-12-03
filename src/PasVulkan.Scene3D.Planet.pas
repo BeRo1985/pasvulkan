@@ -3162,6 +3162,16 @@ begin
 
  fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
+ case TpvScene3DPlanet.SourcePrimitiveMode of
+  TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles,
+  TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereQuads:begin
+   fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvVector4),VK_VERTEX_INPUT_RATE_VERTEX);
+   fPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
+  end;
+  else begin
+  end;
+ end;
+
  fPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
  fPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
 
@@ -3251,6 +3261,7 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+const Offsets:array[0..0] of TVkUInt32=(0);
 var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
@@ -3327,8 +3338,14 @@ begin
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsBaseMeshTriangleIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsBaseMeshVertexBuffer.Handle,@Offsets);
+       aCommandBuffer.CmdDrawIndexed(Planet.fData.fCountTriangleIndices,1,0,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereQuads:begin
+       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsBaseMeshQuadIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsBaseMeshVertexBuffer.Handle,@Offsets);
+       aCommandBuffer.CmdDrawIndexed(Planet.fData.fCountQuadIndices,1,0,0,0);
       end;
      end;
 
