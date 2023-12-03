@@ -18,10 +18,6 @@ layout(set = 0, binding = 1, std430) buffer FibonacciSphereTriangleIndices {
   uint indices[]; // 1-based, because 0 is the count of indices, to save a second buffer just for the count
 } fibonacciSphereTriangleIndices;
 
-layout(set = 0, binding = 2, std430) buffer FibonacciSphereQuadIndices {
-  uint indices[]; // 1-based, because 0 is the count of indices, to save a second buffer just for the count
-} fibonacciSphereQuadIndices;
-
 layout(push_constant) uniform PushConstants {
   uint countPoints;
 } pushConstants;
@@ -33,30 +29,11 @@ float squaredDistance(const in vec3 a, const in vec3 b){
   return dot(t, t);
 } 
 
-bool hasSharedEdge(const in uvec3 t1, const in uvec3 t2){
-  return (int(any(equal(t1.xxx, t2))) + int(any(equal(t1.yyy, t2))) + int(any(equal(t1.zzz, t2)))) == 2;
-}
-
-uvec4 mergeTrianglesIntoQuad(const in uvec3 t1, const in uvec3 t2){
-  uvec2 uniqueIndices = uvec2(
-    all(notEqual(t1.xxx, t2)) ? t1.x : (all(notEqual(t1.yyy, t2)) ? t1.y : t1.z),
-    all(notEqual(t2.xxx, t1)) ? t2.x : (all(notEqual(t2.yyy, t1)) ? t2.y : t2.z)        
-  ); 
-  uvec2 commonIndices = uvec2(
-    any(equal(t1.xxx, t2)) ? t1.x : (any(equal(t1.yyy, t2)) ? t1.y : t1.z),
-    any(equal(t2.xxx, t1)) ? t2.x : (any(equal(t2.yyy, t1)) ? t2.y : t2.z)        
-  );
-  uvec4 quadIndices = uvec4(uniqueIndices.x, commonIndices.x, commonIndices.y, uniqueIndices.y);
-  return (dot(cross(
-                fibonacciSpherePoints.vectors[quadIndices.y].xyz - fibonacciSpherePoints.vectors[quadIndices.x].xyz,
-                fibonacciSpherePoints.vectors[quadIndices.z].xyz - fibonacciSpherePoints.vectors[quadIndices.x].xyz
-              ), 
-              fibonacciSpherePoints.vectors[quadIndices.w].xyz - fibonacciSpherePoints.vectors[quadIndices.x].xyz) > 0.0
-         ) ? quadIndices.xwzy : quadIndices;
-}
-
 void main(){
+
   uint index = uint(gl_GlobalInvocationID.x);
+
+  // Check if the index is valid and if so, generate the triangles for the current point
   if(index < pushConstants.countPoints){
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,10 +66,11 @@ void main(){
       uint k = (uint(round(pow(GoldenRatio, float(z + c) - 2.0) * OneOverSqrt5)) * 
                 (1 - int(uint(((0xfc0u >> otherIndex) & 1u) << 1u))) // ((otherIndex < 6u) ? 1 : -1)
                ) + index;
-      vec3 t = fibonacciSpherePoints.vectors[k].xyz - fibonacciSpherePoints.vectors[index].xyz;
-      if((k < pushConstants.countPoints) && (dot(t, t) <= (PImul20overSqrt5 / float(pushConstants.countPoints)))){
-        nearestSamples[countNearestSamples] = k;
-        countNearestSamples++;
+      if(k < pushConstants.countPoints){
+        if(squaredDistance(fibonacciSpherePoints.vectors[k].xyz, fibonacciSpherePoints.vectors[index].xyz) <= (PImul20overSqrt5 / float(pushConstants.countPoints))){
+          nearestSamples[countNearestSamples] = k;
+          countNearestSamples++;
+        }
       }
     }
 
@@ -144,14 +122,15 @@ void main(){
             triangleIndices.yz = triangleIndices.zy; // swap to ensure the winding order is counter-clockwise 
           }
 
-          adjacentTriangles[countAdjacentTriangles++] = triangleIndices;
+          adjacentTriangles[countAdjacentTriangles] = triangleIndices;
+          countAdjacentTriangles++;
 
         }
 
       }
 
       // Add the triangles to the output buffer
-      if(countAdjacentTriangles > 0){
+      if(countAdjacentTriangles > 0u){
         uint offset = atomicAdd(fibonacciSphereTriangleIndices.indices[0], countAdjacentTriangles * 3u) + 1u;
         for(uint otherIndex = 0u; otherIndex < countAdjacentTriangles; otherIndex++){
           uvec3 triangleIndices = adjacentTriangles[otherIndex];
@@ -159,188 +138,6 @@ void main(){
           fibonacciSphereTriangleIndices.indices[offset + 1u] = triangleIndices.y;
           fibonacciSphereTriangleIndices.indices[offset + 2u] = triangleIndices.z;
           offset += 3u;
-        }
-      }
-
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Generate quads from the adjacent triangles                                                              //
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    uvec4 adjacentQuads[12u];
-    uint countAdjacentQuads = 0u;
-    {
-
-#if 0
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // The with adjacent vertices approach                                                                    //
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      // Only generate quads if there are at least 3 adjacent vertices and 4 vertices in total, otherwise it wouldn't work
-      if(countAdjacentVertices >= 3u){
-  
-        // Add the current vertex to the list of adjacent vertices as a new allVertices array
-        uint allVertices[13u];
-        uint countAllVertices = 0u;
-        allVertices[countAllVertices++] = index;
-        for(uint otherIndex = 0u; otherIndex < countAdjacentVertices; otherIndex++){
-          allVertices[countAllVertices++] = adjacentVertices[otherIndex];
-        }
-
-        // Sort vertices by index
-        for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-          for(uint otherOtherIndex = otherIndex + 1u; otherOtherIndex < countAllVertices; otherOtherIndex++){
-            if(allVertices[otherIndex] > allVertices[otherOtherIndex]){
-              uint temp = allVertices[otherIndex];
-              allVertices[otherIndex] = allVertices[otherOtherIndex];
-              allVertices[otherOtherIndex] = temp;
-            }
-          }
-        }
-
-        // Remove duplicate vertices in-place
-        uint readIndex = 0u, writeIndex = 0u;
-        while(readIndex < countAllVertices){
-          allVertices[writeIndex++] = allVertices[readIndex++];
-          while((readIndex < countAllVertices) && (allVertices[readIndex] == allVertices[readIndex - 1u])){
-            readIndex++;
-          }
-        }
-        countAllVertices = writeIndex;
-  
-        // Check again if there are at least 3 adjacent vertices and 4 vertices in total, otherwise it wouldn't work
-        if(countAllVertices >= 4u){
-
-          // Now, we can calculate the centroid of the vertices
-          vec3 allVerticesCentroid = vec3(0.0);
-          for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-            allVerticesCentroid += fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz;
-          }
-          allVerticesCentroid /= float(countAllVertices);
-
-          // Find the plane normal of the vertices as reference direction for the winding order sorting
-          vec3 adjacentVerticesPlaneNormal = vec3(0.0);
-          for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-            adjacentVerticesPlaneNormal += cross(fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz - allVerticesCentroid,
-                                                fibonacciSpherePoints.vectors[allVertices[((otherIndex + 1u) < countAllVertices) ? otherIndex + 1u : 0u]].xyz - allVerticesCentroid);
-          }
-          adjacentVerticesPlaneNormal = normalize(adjacentVerticesPlaneNormal);
-
-          // Sort vertices, so that are in counter-clockwise order
-          for(uint otherIndex = 0u; otherIndex < countAllVertices; otherIndex++){
-            for(uint otherOtherIndex = otherIndex + 1u; otherOtherIndex < countAllVertices; otherOtherIndex++){
-              vec3 v0 = fibonacciSpherePoints.vectors[allVertices[otherIndex]].xyz - allVerticesCentroid;
-              vec3 v1 = fibonacciSpherePoints.vectors[allVertices[otherOtherIndex]].xyz - allVerticesCentroid;
-              if(dot(cross(v0, v1), adjacentVerticesPlaneNormal) < 0.0){
-                uint temp = allVertices[otherIndex];
-                allVertices[otherIndex] = allVertices[otherOtherIndex];
-                allVertices[otherOtherIndex] = temp;
-              }
-            }
-          }
-
-          // Generate and add quad indices from the adjacent vertices
-          for(uint otherIndex = 2u; (otherIndex + 1u) < countAllVertices; otherIndex++){
-                    
-            uvec4 quadIndices = uvec4(
-              allVertices[0],
-              allVertices[otherIndex - 1u],
-              allVertices[otherIndex],
-              allVertices[otherIndex + 1u]
-            );
-
-            vec3 v0 = fibonacciSpherePoints.vectors[quadIndices.x].xyz;
-            vec3 v1 = fibonacciSpherePoints.vectors[quadIndices.y].xyz;
-            vec3 v2 = fibonacciSpherePoints.vectors[quadIndices.z].xyz;
-            vec3 v3 = fibonacciSpherePoints.vectors[quadIndices.w].xyz;
-            
-            // Only add quads with vertices in counter-clockwise order
-            if(dot(cross(v1 - v0, v2 - v0), v3 - v0) < 0.0){
-              quadIndices.yzw = quadIndices.zyw; // swap to ensure the winding order is counter-clockwise 
-            }
-
-            adjacentQuads[countAdjacentQuads++] = quadIndices;
-
-          }
-
-        }
-
-      }
-
-#else
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // The with adjacent triangles approach                                                                   //
-      ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-      uint processedBitmap = 0u;
-  
-      // Loop through the triangles to find pairs that share an edge      
-      for(uint triangleIndexA = 0; triangleIndexA < countAdjacentTriangles; triangleIndexA++){
-
-        // Check if triangle A is not already processed
-        if((processedBitmap & (1u << triangleIndexA)) == 0u){
-
-          // Loop through the remaining triangles to find a pair that shares an edge 
-          for(uint triangleIndexB = triangleIndexA + 1; triangleIndexB < countAdjacentTriangles; triangleIndexB++){
-          
-            // Check if triangle B is not already processed and shares an edge with triangle A
-            if(((processedBitmap & (1u << triangleIndexB)) == 0u) && hasSharedEdge(adjacentTriangles[triangleIndexA], adjacentTriangles[triangleIndexB])){
-          
-              // Found adjacent triangles, merge them into a quad and store the indices
-              adjacentQuads[countAdjacentQuads++] = mergeTrianglesIntoQuad(adjacentTriangles[triangleIndexA], adjacentTriangles[triangleIndexB]);
-
-              // Mark triangles as processed
-              processedBitmap |= (1u << triangleIndexA) | (1u << triangleIndexB);
-              
-              // Exit inner loop once a pair is found
-              break; 
-            
-            }
-          
-          }
-
-        }
-
-      }
-
-      // Merge the remaining triangles with any already processed triangles to quads (can cause overdraw but better than holes) 
-      for(uint triangleIndexA = 0; triangleIndexA < countAdjacentTriangles; triangleIndexA++){
-
-        /// Check if triangle is not already processed
-        if((processedBitmap & (1u << triangleIndexA)) == 0u){
-
-         // Find any other triangle
-          for(uint triangleIndexB = 0; triangleIndexB < countAdjacentTriangles; triangleIndexB++){
-          
-            // Check if triangle B is not triangle A and shares an edge with triangle A
-            if((triangleIndexA != triangleIndexB) && hasSharedEdge(adjacentTriangles[triangleIndexA], adjacentTriangles[triangleIndexB])){
-          
-              // Found adjacent triangles, merge them into a quad and store the indices
-              adjacentQuads[countAdjacentQuads++] = mergeTrianglesIntoQuad(adjacentTriangles[triangleIndexA], adjacentTriangles[triangleIndexB]);
-              
-              // Exit inner loop once a pair is found
-              break; 
-            
-            }
-          
-          }
-          
-        }
-
-      }
-#endif
-
-      // Add the quads to the output buffer
-      if(countAdjacentQuads > 0){
-        uint offset = atomicAdd(fibonacciSphereQuadIndices.indices[0], countAdjacentQuads << 2u) + 1u; // 1-based, because 0 is the count of indices, to save a second buffer just for the count
-        for(uint otherIndex = 0u; otherIndex < countAdjacentQuads; otherIndex++){
-          uvec4 quadIndices = adjacentQuads[otherIndex];
-          fibonacciSphereQuadIndices.indices[offset + 0u] = quadIndices.x;
-          fibonacciSphereQuadIndices.indices[offset + 1u] = quadIndices.y;
-          fibonacciSphereQuadIndices.indices[offset + 2u] = quadIndices.z;
-          fibonacciSphereQuadIndices.indices[offset + 3u] = quadIndices.w;
-          offset += 4u;
         }
       }
 
