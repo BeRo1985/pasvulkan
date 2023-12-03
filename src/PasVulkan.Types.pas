@@ -199,6 +199,8 @@ type PPpvInt8=^PpvInt8;
      PpvSizeInt=^TpvSizeInt;
      TpvSizeInt=TpvPtrInt;
 
+     TpvSizeIntDynamicArray=array of TpvSizeInt;
+
      PPpvNativeUInt=^PpvNativeUInt;
      PpvNativeUInt=^TpvNativeUInt;
      TpvNativeUInt=TpvPtrUInt;

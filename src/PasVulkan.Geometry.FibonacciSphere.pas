@@ -63,7 +63,7 @@ unit PasVulkan.Geometry.FibonacciSphere;
 
 interface
 
-uses Classes,SysUtils,Math,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
+uses Classes,SysUtils,Math,PasMP,PasDblStrUtils,PasVulkan.Types,PasVulkan.Math,PasVulkan.Collections,PasVulkan.Utils;
 
 type { TpvFibonacciSphere }
      TpvFibonacciSphere=class
@@ -130,10 +130,19 @@ type { TpvFibonacciSphere }
        fTextureProjectionMapping:TTextureProjectionMapping;
        fVertices:TVertices;
        fIndices:TIndices;
+       fUseGoldenRatio:Boolean;
+       fFixTextureCoordinateSeams:Boolean;
+       fPoints:TVectors;
+       fPhis:TpvDoubleDynamicArray;
+       fWrappedIndices:TpvSizeIntDynamicArray;
+       fCountIndices:TPasMPInt32;
+       fWrappedIndicesLock:TPasMPInt32;
+       procedure GenerateVerticesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+       procedure GenerateIndicesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
        constructor Create(const aCountPoints:TpvSizeInt;const aRadius:TpvDouble=1.0;const aTextureProjectionMapping:TTextureProjectionMapping=TTextureProjectionMapping.Equirectangular);
        destructor Destroy; override;
-       procedure Generate(const aUseGoldenRatio:Boolean=true;const aFixTextureCoordinateSeams:Boolean=true);
+       procedure Generate(const aUseGoldenRatio:Boolean=true;const aFixTextureCoordinateSeams:Boolean=true;const aPasMPInstance:TPasMP=nil);
        procedure ExportToOBJ(const aStream:TStream); overload;
        procedure ExportToOBJ(const aFileName:TpvUTF8String); overload;
       published 
@@ -280,178 +289,341 @@ begin
  fTextureProjectionMapping:=aTextureProjectionMapping;
  fVertices:=TVertices.Create;
  fIndices:=TIndices.Create;
+ fPoints:=nil;
+ fPhis:=nil;
+ fWrappedIndices:=nil;
+ fWrappedIndicesLock:=0;
 end;
 
 destructor TpvFibonacciSphere.Destroy;
 begin
  FreeAndNil(fVertices);
  FreeAndNil(fIndices);
+ fPoints:=nil;
+ fPhis:=nil;
+ fWrappedIndices:=nil;
  inherited Destroy;
 end;
 
-procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean;const aFixTextureCoordinateSeams:Boolean);
-var Index,OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
-    TriangleIndex:TpvSizeInt;
-    Phi,Theta,Z,SinTheta,PhiSinus,PhiCosinus,CosTheta:TpvDouble;
+procedure TpvFibonacciSphere.GenerateVerticesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    Phi,Theta,Z,SinTheta,PhiSinus,PhiCosinus:TpvDouble;
     Vertex:PVertex;
     Vector,Normal,Tangent,Bitangent:TpvFibonacciSphere.TVector;
-    NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
-    Points:TVectors;
-    Phis:array of TpvDouble;
-    WrappedIndices:array of TpvSizeInt;
     TemporaryVector:TpvVector3;
+begin
+
+ for Index:=aFromIndex to aToIndex do begin
+
+  // Advance Phi
+  if fUseGoldenRatio then begin
+   Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
+  end else begin
+   Phi:=Modulo(PI-(GoldenAngle*Index),TwoPI)-PI;
+  end;
+
+  // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
+  // coordinates later)
+  if Phi<=-PI then begin
+   Phi:=Phi+TwoPI;
+  end else if Phi>=PI then begin
+   Phi:=Phi-TwoPI;
+  end;
+
+  // Calculate the actual fibonacci sphere point sample vector
+  Z:=1.0-(((Index shl 1) or 1)/fCountPoints); // Z:=1.0-(((Index+0.5)*2.0)/fCountPoints);
+  SinTheta:=sqrt(1.0-sqr(Z));
+  SinCos(Phi,PhiSinus,PhiCosinus);
+  Vector:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta).Normalize;
+
+  // Store the vector in an temporary point array later for the generation of the triangle indices
+  fPoints[Index]:=Vector;
+  fPhis[Index]:=Phi;
+
+  // Generate the tangent space vector
+  Normal:=Vector;
+  Tangent:=TpvFibonacciSphere.TVector.InlineableCreate(-Normal.z,0.0,Normal.x).Normalize;
+  Bitangent:=Normal.Cross(Tangent).Normalize;
+
+  // Add it as a mesh vertex
+  Vertex:=@fVertices.ItemArray[Index];
+
+  Vertex^.Position:=TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z)*fRadius;
+
+  Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
+
+  Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
+
+  Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
+
+  // Calculate the texture coordinates, where we've already the Phi value, so avoid recalculate it
+  // by Phi:=ArcTan2(Vector.z,Vector.x) here
+  case fTextureProjectionMapping of
+
+   TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
+    // Equirectangular projection mapping
+    Vertex^.TexCoord:=TpvVector2.InlineableCreate(
+                       (Phi/TwoPI)+0.5,
+                       (ArcSin(Vector.y)/PI)+0.5 // or 1.0-(ArcCos(Vector.y)/PI) or something as this like
+                      );
+   end;
+
+   TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
+    // Lambert cylindrical equal-area projection mapping
+    Vertex^.TexCoord:=TpvVector2.InlineableCreate(
+                       (Phi/TwoPI)+0.5,
+                       (Vector.y*0.5)+0.5
+                      );
+   end;
+
+   TpvFibonacciSphere.TTextureProjectionMapping.Octahedral:begin
+    // Octahedral projection mapping
+    TemporaryVector:=Vertex^.Normal;
+    Vertex^.TexCoord:=TemporaryVector.xy/(abs(TemporaryVector.x)+
+                                          abs(TemporaryVector.y)+
+                                          abs(TemporaryVector.z));
+    if TemporaryVector.z<0.0 then begin
+     Vertex^.TexCoord:=(TpvVector2.InlineableCreate(1.0,1.0)-Vertex^.TexCoord.yx.Abs)*
+                        TpvVector2.InlineableCreate(SignNonZero(Vertex^.TexCoord.x),SignNonZero(Vertex^.TexCoord.y));
+    end;
+    Vertex^.TexCoord:=(Vertex^.TexCoord*0.5)+TpvVector2.InlineableCreate(0.5,0.5);
+   end;
+
+   TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
+    // Web Mercator projection
+    Vertex^.TexCoord:=TpvVector2.Create(
+                       (Phi/TwoPI)+0.5,
+                       (Ln(
+                         Tan(
+                          (
+                           ArcTan2(
+                            Vector.y,
+                            sqrt(sqr(Vector.x)+sqr(Vector.z))
+                           )*0.5
+                          )+
+                          (PI*0.25)
+                         )
+                        )+PI
+                       )/TwoPI
+                      );
+   end;
+
+   TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
+    // The GL_SPHERE_MAP projection from old OpenGL times
+    Vertex^.TexCoord:=(
+                       TpvVector2.InlineableCreate(Vector.x,Vector.z)/
+                       (TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0)
+                      )+TpvVector2.InlineableCreate(0.5,0.5);
+   end;
+
+   TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
+    // Hierarchical Equal Area isoLatitude Pixelization of a sphere
+    Vertex^.TexCoord:=DirectionToHEALPix(TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z));
+   end;
+
+   TpvFibonacciSphere.TTextureProjectionMapping.CassiniSoldner:begin
+    // Cassini Soldner projection mapping
+    Theta:=ArcSin(SinTheta);
+    Vertex^.TexCoord:=TpvVector2.InlineableCreate(
+                       (ArcSin((Cos(Phi)*Sin(Theta)))/PI)+0.5,
+                       ((ArcTan2(Sin(Phi),Cos(Phi)*Cos(Theta)))/TwoPI)+0.5
+                      );
+   end;
+
+   else begin
+    // No projection mapping (should never happen)
+    Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
+   end;
+
+  end;
+
+  // Store the vertex index
+  Vertex^.Index:=Index;
+
+ end;
+
+end;
+
+procedure TpvFibonacciSphere.GenerateIndicesParallelForJob(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+    OtherIndex,CountNearestSamples,CountAdjacentVertices,r,c,k,PreviousK,NextK,
+    TriangleIndex:TpvSizeInt;
+    IndicesIndex:TpvInt32;
+    Z,CosTheta:TpvDouble;
+    Vertex:PVertex;
+    NearestSamples,AdjacentVertices:array[0..11] of TpvSizeInt;
     v0,v1,v2:TpvFibonacciSphere.PVector;
     WrapX,WrapY:boolean;
     TriangleIndices:array[0..2] of TpvSizeInt;
 begin
+
+ for Index:=aFromIndex to aToIndex do begin
+
+  // Get the nearest sample points
+  begin
+
+   CosTheta:=1.0-(((Index shl 1) or 1)/fCountPoints);
+
+   z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
+
+   CountNearestSamples:=0;
+
+   if Index=708 then begin
+    z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
+   end;
+
+   for OtherIndex:=0 to 11 do begin
+    r:=OtherIndex-(((OtherIndex*$56) shr 9)*6); // OtherIndex mod 6
+    c:=(5-abs(5-(r shl 1)))+
+       (($38 shr r) and 1); // ((r*$56) shr 8); // (r div 3);
+    k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*
+        (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
+       )+Index;
+    if (k>=0) and (k<fCountPoints) and ((fPoints[k]-fPoints[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
+     NearestSamples[CountNearestSamples]:=k;
+     inc(CountNearestSamples);
+    end;
+   end;
+
+  end;
+
+  // Get the adjacent vertices
+  begin
+
+   CountAdjacentVertices:=0;
+
+   for OtherIndex:=0 to CountNearestSamples-1 do begin
+
+    k:=NearestSamples[OtherIndex];
+
+    if OtherIndex>0 then begin
+     PreviousK:=NearestSamples[OtherIndex-1];
+    end else begin
+     PreviousK:=NearestSamples[CountNearestSamples-1];
+    end;
+
+    if (OtherIndex+1)<CountNearestSamples then begin
+     NextK:=NearestSamples[OtherIndex+1];
+    end else begin
+     NextK:=NearestSamples[0];
+    end;
+
+    if fPoints[PreviousK].SquaredDistance(fPoints[NextK])>fPoints[PreviousK].SquaredDistance(fPoints[k]) then begin
+     AdjacentVertices[CountAdjacentVertices]:=k;
+     inc(CountAdjacentVertices);
+    end;
+
+   end;
+
+{  if (Index=0) and (CountAdjacentVertices>0) then begin
+    dec(CountAdjacentVertices); // Special case for the pole
+   end;}
+
+  end;
+
+  // Generate and add triangle indices from the adjacent neighbours
+  begin
+
+   for OtherIndex:=0 to CountAdjacentVertices-1 do begin
+
+    TriangleIndices[0]:=Index;
+
+    TriangleIndices[1]:=AdjacentVertices[OtherIndex];
+
+    if (OtherIndex+1)<CountAdjacentVertices then begin
+     TriangleIndices[2]:=AdjacentVertices[OtherIndex+1];
+    end else begin
+     TriangleIndices[2]:=AdjacentVertices[0];
+    end;
+
+    // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
+    if (TriangleIndices[1]>TriangleIndices[0]) and (TriangleIndices[2]>TriangleIndices[0]) then begin
+
+     v0:=@fPoints[TriangleIndices[0]];
+     v1:=@fPoints[TriangleIndices[1]];
+     v2:=@fPoints[TriangleIndices[2]];
+
+     if fFixTextureCoordinateSeams then begin
+      // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
+      // If so, the vertices of that triangle will be duplicated and its texture coordinates adjusted for
+      // a repeating texture sampler.
+      WrapX:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.x-fVertices.ItemArray[TriangleIndices[0]].TexCoord.x)>0.5) or
+             (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.x-fVertices.ItemArray[TriangleIndices[1]].TexCoord.x)>0.5) or
+             (abs(fVertices.ItemArray[TriangleIndices[0]].TexCoord.x-fVertices.ItemArray[TriangleIndices[2]].TexCoord.x)>0.5);
+      WrapY:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.y-fVertices.ItemArray[TriangleIndices[0]].TexCoord.y)>0.5) or
+             (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.y-fVertices.ItemArray[TriangleIndices[1]].TexCoord.y)>0.5) or
+             (abs(fVertices.ItemArray[TriangleIndices[0]].TexCoord.y-fVertices.ItemArray[TriangleIndices[2]].TexCoord.y)>0.5);
+      if WrapX or WrapY then begin
+       for TriangleIndex:=0 to 2 do begin
+        if (WrapX and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.x>0.5)) or
+           (WrapY and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.y>0.5)) then begin
+         TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fWrappedIndicesLock);
+         try
+          if fWrappedIndices[TriangleIndices[TriangleIndex]]<0 then begin
+           fWrappedIndices[TriangleIndices[TriangleIndex]]:=fVertices.AddNewIndex;
+           Vertex:=@fVertices.ItemArray[fWrappedIndices[TriangleIndices[TriangleIndex]]];
+           Vertex^:=fVertices.ItemArray[TriangleIndices[TriangleIndex]];
+           if WrapX and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.x>0.5) then begin
+            Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
+           end;
+           if WrapY and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.y>0.5) then begin
+            Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
+           end;
+          end;
+          TriangleIndices[TriangleIndex]:=fWrappedIndices[TriangleIndices[TriangleIndex]];
+         finally
+          TPasMPMultipleReaderSingleWriterSpinLock.ReleaseWrite(fWrappedIndicesLock);
+         end;
+        end;
+       end;
+      end;
+     end;
+
+     // Only add triangles with vertices in counter-clockwise order
+     if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin
+      TpvSwap<TpvSizeInt>.Swap(TriangleIndices[1],TriangleIndices[2]);
+     end;
+
+     IndicesIndex:=TPasMPInterlocked.Add(fCountIndices,3);
+     fIndices.ItemArray[IndicesIndex+0]:=TriangleIndices[0];
+     fIndices.ItemArray[IndicesIndex+1]:=TriangleIndices[1];
+     fIndices.ItemArray[IndicesIndex+2]:=TriangleIndices[2];
+
+    end;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean;const aFixTextureCoordinateSeams:Boolean;const aPasMPInstance:TPasMP=nil);
+begin
  
- Points:=nil;
- Phis:=nil;
- WrappedIndices:=nil;
+ fPoints:=nil;
+ fPhis:=nil;
+ fWrappedIndices:=nil;
  try
 
-  SetLength(Points,fCountPoints);
-  SetLength(Phis,fCountPoints);
-  SetLength(WrappedIndices,fCountPoints);
+  SetLength(fPoints,fCountPoints);
+  SetLength(fPhis,fCountPoints);
+  SetLength(fWrappedIndices,fCountPoints);
 
-  FillChar(WrappedIndices[0],fCountPoints*SizeOf(TpvSizeInt),#$ff); // fill with -1 values
+  FillChar(fWrappedIndices[0],fCountPoints*SizeOf(TpvSizeInt),#$ff); // fill with -1 values
 
   // Generate vertices (the comparatively yet easy part)
   begin
 
    fVertices.Resize(fCountPoints);
-   fVertices.ClearNoFree;
 
-   // Start initial Phi value
-   Phi:=0.0;
+   fUseGoldenRatio:=aUseGoldenRatio;
 
-   for Index:=0 to fCountPoints-1 do begin
-
-    // Advance Phi
-    if aUseGoldenRatio then begin
-     Phi:=frac(Index*GoldenRatioMinusOne)*TwoPI;
-    end else begin
-     Phi:=Phi-GoldenAngle; // subtract to match the golden ratio based method in its Phi output values
-    end;
-
-    // Wrap Phi into the -pi .. +pi range (as it is also needed by the calculation of the texture
-    // coordinates later)
-    if Phi<=-PI then begin
-     Phi:=Phi+TwoPI;
-    end else if Phi>=PI then begin
-     Phi:=Phi-TwoPI;
-    end;
-
-    // Calculate the actual fibonacci sphere point sample vector
-    Z:=1.0-(((Index shl 1) or 1)/fCountPoints); // Z:=1.0-(((Index+0.5)*2.0)/fCountPoints);
-    SinTheta:=sqrt(1.0-sqr(Z));
-    SinCos(Phi,PhiSinus,PhiCosinus);
-    Vector:=TpvFibonacciSphere.TVector.InlineableCreate(PhiCosinus*SinTheta,z,PhiSinus*SinTheta).Normalize;
-
-    // Store the vector in an temporary point array later for the generation of the triangle indices
-    Points[Index]:=Vector;
-    Phis[Index]:=Phi;
-
-    // Generate the tangent space vector
-    Normal:=Vector;
-    Tangent:=TpvFibonacciSphere.TVector.InlineableCreate(-Normal.z,0.0,Normal.x).Normalize;
-    Bitangent:=Normal.Cross(Tangent).Normalize;
-
-    // Add it as a mesh vertex
-    Vertex:=fVertices.AddNew;
-
-    Vertex^.Position:=TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z)*fRadius;
-    
-    Vertex^.Normal:=TpvVector3.InlineableCreate(Normal.x,Normal.y,Normal.z);
-    
-    Vertex^.Tangent:=TpvVector3.InlineableCreate(Tangent.x,Tangent.y,Tangent.z);
-    
-    Vertex^.Bitangent:=TpvVector3.InlineableCreate(Bitangent.x,Bitangent.y,Bitangent.z);
-
-    // Calculate the texture coordinates, where we've already the Phi value, so avoid recalculate it
-    // by Phi:=ArcTan2(Vector.z,Vector.x) here
-    case fTextureProjectionMapping of
-
-     TpvFibonacciSphere.TTextureProjectionMapping.Equirectangular:begin
-      // Equirectangular projection mapping
-      Vertex^.TexCoord:=TpvVector2.InlineableCreate(
-                         (Phi/TwoPI)+0.5,
-                         (ArcSin(Vector.y)/PI)+0.5 // or 1.0-(ArcCos(Vector.y)/PI) or something as this like
-                        );
-     end;
-
-     TpvFibonacciSphere.TTextureProjectionMapping.CylindricalEqualArea:begin
-      // Lambert cylindrical equal-area projection mapping
-      Vertex^.TexCoord:=TpvVector2.InlineableCreate(
-                         (Phi/TwoPI)+0.5,
-                         (Vector.y*0.5)+0.5
-                        );
-     end;
-
-     TpvFibonacciSphere.TTextureProjectionMapping.Octahedral:begin
-      // Octahedral projection mapping
-      TemporaryVector:=Vertex^.Normal;
-      Vertex^.TexCoord:=TemporaryVector.xy/(abs(TemporaryVector.x)+
-                                            abs(TemporaryVector.y)+
-                                            abs(TemporaryVector.z));
-      if TemporaryVector.z<0.0 then begin
-       Vertex^.TexCoord:=(TpvVector2.InlineableCreate(1.0,1.0)-Vertex^.TexCoord.yx.Abs)*
-                          TpvVector2.InlineableCreate(SignNonZero(Vertex^.TexCoord.x),SignNonZero(Vertex^.TexCoord.y));
-      end;
-      Vertex^.TexCoord:=(Vertex^.TexCoord*0.5)+TpvVector2.InlineableCreate(0.5,0.5);
-     end;
-
-     TpvFibonacciSphere.TTextureProjectionMapping.WebMercator:begin
-      // Web Mercator projection
-      Vertex^.TexCoord:=TpvVector2.Create(
-                         (Phi/TwoPI)+0.5,
-                         (Ln(
-                           Tan(
-                            (
-                             ArcTan2(
-                              Vector.y,
-                              sqrt(sqr(Vector.x)+sqr(Vector.z))
-                             )*0.5
-                            )+
-                            (PI*0.25)
-                           )
-                          )+PI
-                         )/TwoPI
-                        );
-     end;
-
-     TpvFibonacciSphere.TTextureProjectionMapping.Spherical:begin
-      // The GL_SPHERE_MAP projection from old OpenGL times
-      Vertex^.TexCoord:=(
-                         TpvVector2.InlineableCreate(Vector.x,Vector.z)/
-                         (TpvVector3.InlineableCreate(Vector.x,Vector.y+1.0,Vector.z).Length*2.0)
-                        )+TpvVector2.InlineableCreate(0.5,0.5);
-     end;
-
-     TpvFibonacciSphere.TTextureProjectionMapping.HEALPix:begin
-      // Hierarchical Equal Area isoLatitude Pixelization of a sphere
-      Vertex^.TexCoord:=DirectionToHEALPix(TpvVector3.InlineableCreate(Vector.x,Vector.y,Vector.z));
-     end;
-
-     TpvFibonacciSphere.TTextureProjectionMapping.CassiniSoldner:begin
-      // Cassini Soldner projection mapping
-      Theta:=ArcSin(SinTheta);
-      Vertex^.TexCoord:=TpvVector2.InlineableCreate(
-                         (ArcSin((Cos(Phi)*Sin(Theta)))/PI)+0.5,
-                         ((ArcTan2(Sin(Phi),Cos(Phi)*Cos(Theta)))/TwoPI)+0.5
-                        );
-     end;
-
-     else begin
-      // No projection mapping (should never happen)
-      Vertex^.TexCoord:=TpvVector2.InlineableCreate(0.0,0.0);
-     end;
-
-    end;
-
-    // Store the vertex index
-    Vertex^.Index:=Index;
-
+   if assigned(aPasMPInstance) then begin
+    aPasMPInstance.Invoke(aPasMPInstance.ParallelFor(nil,0,fCountPoints-1,GenerateVerticesParallelForJob,1,PasMPDefaultDepth,nil));
+   end else begin
+    GenerateVerticesParallelForJob(nil,0,nil,0,fCountPoints-1);
    end;
 
   end;
@@ -460,137 +632,20 @@ begin
   begin 
 
    fIndices.Resize(fCountPoints*36);
-   fIndices.ClearNoFree;
 
-   for Index:=0 to fCountPoints-1 do begin
+   fFixTextureCoordinateSeams:=aFixTextureCoordinateSeams;
 
-    // Get the nearest sample points
-    begin
+   fCountIndices:=0;
 
-     CosTheta:=1.0-(((Index shl 1) or 1)/fCountPoints);
+   fWrappedIndicesLock:=0;
 
-     z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
-
-     CountNearestSamples:=0;
-
-     for OtherIndex:=0 to 11 do begin
-      r:=OtherIndex-(((OtherIndex*$56) shr 9)*6); // OtherIndex mod 6
-      c:=(5-abs(5-(r shl 1)))+
-         (($38 shr r) and 1); // ((r*$56) shr 8); // (r div 3);
-      k:=(Round(Pow(GoldenRatio,(z+c)-2)*OneOverSqrt5)*
-          (1-((($fc0 shr OtherIndex) and 1) shl 1)) // IfThen(OtherIndex<6,1,-1)
-         )+Index;
-      if (k>=0) and (k<fCountPoints) and ((Points[k]-Points[Index]).SquaredLength<=(PImul20overSqrt5/fCountPoints)) then begin
-       NearestSamples[CountNearestSamples]:=k;
-       inc(CountNearestSamples);
-      end;
-     end;
-
-    end;
-
-    // Get the adjacent vertices
-    begin
-
-     CountAdjacentVertices:=0;
-
-     for OtherIndex:=0 to CountNearestSamples-1 do begin
-
-      k:=NearestSamples[OtherIndex];
-
-      if OtherIndex>0 then begin
-       PreviousK:=NearestSamples[OtherIndex-1];
-      end else begin
-       PreviousK:=NearestSamples[CountNearestSamples-1];
-      end;
-
-      if (OtherIndex+1)<CountNearestSamples then begin
-       NextK:=NearestSamples[OtherIndex+1];
-      end else begin
-       NextK:=NearestSamples[0];
-      end;
-
-      if Points[PreviousK].SquaredDistance(Points[NextK])>Points[PreviousK].SquaredDistance(Points[k]) then begin
-       AdjacentVertices[CountAdjacentVertices]:=k;
-       inc(CountAdjacentVertices);
-      end;
-
-     end;
-
-{    if (Index=0) and (CountAdjacentVertices>0) then begin
-      dec(CountAdjacentVertices); // Special case for the pole
-     end;}
-
-    end;
-
-    // Generate and add triangle indices from the adjacent neighbours
-    begin
-
-     for OtherIndex:=0 to CountAdjacentVertices-1 do begin
-
-      TriangleIndices[0]:=Index;
-
-      TriangleIndices[1]:=AdjacentVertices[OtherIndex];
-
-      if (OtherIndex+1)<CountAdjacentVertices then begin
-       TriangleIndices[2]:=AdjacentVertices[OtherIndex+1];
-      end else begin
-       TriangleIndices[2]:=AdjacentVertices[0];
-      end;
-
-      // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-      if (TriangleIndices[1]>TriangleIndices[0]) and (TriangleIndices[2]>TriangleIndices[0]) then begin
-
-       v0:=@Points[TriangleIndices[0]];
-       v1:=@Points[TriangleIndices[1]];
-       v2:=@Points[TriangleIndices[2]];
-
-       if aFixTextureCoordinateSeams then begin
-        // Check for if the texture x coordinates have a large jump (indicating a wrap around the seam).
-        // If so, the vertices of that triangle will be duplicated and its texture coordinates adjusted for
-        // a repeating texture sampler.
-        WrapX:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.x-fVertices.ItemArray[TriangleIndices[0]].TexCoord.x)>0.5) or
-               (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.x-fVertices.ItemArray[TriangleIndices[1]].TexCoord.x)>0.5) or
-               (abs(fVertices.ItemArray[TriangleIndices[0]].TexCoord.x-fVertices.ItemArray[TriangleIndices[2]].TexCoord.x)>0.5);
-        WrapY:=(abs(fVertices.ItemArray[TriangleIndices[1]].TexCoord.y-fVertices.ItemArray[TriangleIndices[0]].TexCoord.y)>0.5) or
-               (abs(fVertices.ItemArray[TriangleIndices[2]].TexCoord.y-fVertices.ItemArray[TriangleIndices[1]].TexCoord.y)>0.5) or
-               (abs(fVertices.ItemArray[TriangleIndices[0]].TexCoord.y-fVertices.ItemArray[TriangleIndices[2]].TexCoord.y)>0.5);
-        if WrapX or WrapY then begin
-         for TriangleIndex:=0 to 2 do begin
-          if (WrapX and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.x>0.5)) or
-             (WrapY and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.y>0.5)) then begin
-           if WrappedIndices[TriangleIndices[TriangleIndex]]<0 then begin
-            WrappedIndices[TriangleIndices[TriangleIndex]]:=fVertices.AddNewIndex;
-            Vertex:=@fVertices.ItemArray[WrappedIndices[TriangleIndices[TriangleIndex]]];
-            Vertex^:=fVertices.ItemArray[TriangleIndices[TriangleIndex]];
-            if WrapX and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.x>0.5) then begin
-             Vertex^.TexCoord.x:=Vertex^.TexCoord.x-1.0;
-            end;
-            if WrapY and (fVertices.ItemArray[TriangleIndices[TriangleIndex]].TexCoord.y>0.5) then begin
-             Vertex^.TexCoord.y:=Vertex^.TexCoord.y-1.0;
-            end;
-           end;
-           TriangleIndices[TriangleIndex]:=WrappedIndices[TriangleIndices[TriangleIndex]];
-          end;
-         end;
-        end;
-       end;
-
-       // Only add triangles with vertices in counter-clockwise order
-       if ((v1^-v0^).Cross(v2^-v0^)).Dot(v0^)<0.0 then begin
-        TpvSwap<TpvSizeInt>.Swap(TriangleIndices[1],TriangleIndices[2]);
-       end;
-
-       fIndices.Add(TriangleIndices[0]);
-       fIndices.Add(TriangleIndices[1]);
-       fIndices.Add(TriangleIndices[2]);
-
-      end;
-
-     end;
-
-    end;
-
+   if assigned(aPasMPInstance) then begin
+    aPasMPInstance.Invoke(aPasMPInstance.ParallelFor(nil,0,fCountPoints-1,GenerateIndicesParallelForJob(),1,PasMPDefaultDepth,nil));
+   end else begin
+    GenerateIndicesParallelForJob(nil,0,nil,0,fCountPoints-1);
    end;
+
+   fIndices.Resize(fCountIndices);
 
   end;
 
@@ -598,9 +653,9 @@ begin
   fIndices.Finish;
 
  finally
-  Points:=nil;
-  Phis:=nil;
-  WrappedIndices:=nil;
+  fPoints:=nil;
+  fPhis:=nil;
+  fWrappedIndices:=nil;
  end; 
 
 end;

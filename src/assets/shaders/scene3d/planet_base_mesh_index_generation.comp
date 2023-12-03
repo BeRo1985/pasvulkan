@@ -18,6 +18,10 @@ layout(set = 0, binding = 1, std430) buffer FibonacciSphereTriangleIndices {
   uint indices[]; // 1-based, because 0 is the count of indices, to save a second buffer just for the count
 } fibonacciSphereTriangleIndices;
 
+layout(set = 0, binding = 2, std430) buffer FibonacciSphereDebug {
+  uint data[]; 
+} fibonacciSphereDebug;
+
 layout(push_constant) uniform PushConstants {
   uint countPoints;
 } pushConstants;
@@ -28,6 +32,10 @@ float squaredDistance(const in vec3 a, const in vec3 b){
   vec3 t = a - b;
   return dot(t, t);
 } 
+
+float roundEx(const in float x){
+  return int(x + 0.5);
+}
 
 void main(){
 
@@ -52,7 +60,7 @@ void main(){
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     float cosTheta = 1.0 - (float(uint((index << 1u) | 1u)) / float(pushConstants.countPoints));
-    float z = max(0.0, round(0.5 * log(float(pushConstants.countPoints) * PImulSqrt5 * (1.0 - (cosTheta * cosTheta))) * OneOverLogGoldenRatio));
+    float z = max(0.0, roundEx(0.5 * log(float(pushConstants.countPoints) * PImulSqrt5 * (1.0 - (cosTheta * cosTheta))) * OneOverLogGoldenRatio));
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Get the nearest sample points                                                                           //
@@ -63,7 +71,7 @@ void main(){
     for(uint otherIndex = 0; otherIndex < 12u; otherIndex++){
       uint r = otherIndex - (((otherIndex * 0x56u) >> 9u) * 6u); // otherIndex % 6u;
       uint c = uint(int(5 - abs(5 - (int(r) << 1)))) + ((0x38u >> r) & 1u); // ((r * 0x56u) >> 8u); // (r / 3u);
-      int k = (int(round(pow(GoldenRatio, (z + float(c)) - 2.0) * OneOverSqrt5)) * 
+      int k = (int(roundEx(pow(GoldenRatio, (z + float(c)) - 2.0) * OneOverSqrt5)) * 
                 int(1 - int(uint(((0xfc0u >> otherIndex) & 1u) << 1u))) // ((otherIndex < 6u) ? 1 : -1)
                ) + int(index);
       if((k >= 0) && (k < pushConstants.countPoints)){
@@ -72,6 +80,10 @@ void main(){
           countNearestSamples++;
         }
       }
+    }
+    fibonacciSphereDebug.data[index * 13] = countNearestSamples;
+    for(uint otherIndex = 0u; otherIndex < countNearestSamples; otherIndex++){
+      fibonacciSphereDebug.data[(index * 13) + otherIndex + 1u] = nearestSamples[otherIndex];
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +101,11 @@ void main(){
         countAdjacentVertices++;
       }
     }
+    fibonacciSphereDebug.data[(pushConstants.countPoints + index) * 13] = countNearestSamples;
+    for(uint otherIndex = 0u; otherIndex < countAdjacentVertices; otherIndex++){
+      fibonacciSphereDebug.data[((pushConstants.countPoints + index) * 13) + otherIndex + 1u] = adjacentVertices[otherIndex];
+    }
+
   /*if((index == 0u) && (countAdjacentVertices > 0u)){
       countAdjacentVertices--; // Special case for the pole
     }*/
@@ -111,7 +128,8 @@ void main(){
         );
 
         // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-        if(all(greaterThan(triangleIndices.yz, triangleIndices.xx))){
+        //if(all(greaterThan(triangleIndices.yz, triangleIndices.xx)))
+        if((triangleIndices.y > triangleIndices.x) && (triangleIndices.z > triangleIndices.x)){
           
           vec3 v0 = fibonacciSpherePoints.vectors[triangleIndices.x].xyz;
           vec3 v1 = fibonacciSpherePoints.vectors[triangleIndices.y].xyz;
