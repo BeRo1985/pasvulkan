@@ -11,6 +11,7 @@ layout(vertices = 4) out;
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 normal;
+  vec3 planetCenterToCamera;
 } inBlocks[];
 
 layout(location = 0) out OutBlock {
@@ -104,12 +105,16 @@ void main(){
 #endif
     if(visible){
       vec3 quadNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal + inBlocks[3].normal),
-           planetCenterToCamera = inverseViewMatrix[3].xyz, // - vec3(0.0, -pushConstants.topRadius, 0.0),
+           planetCenterToCamera = (inBlocks[0].planetCenterToCamera + 
+                                   inBlocks[1].planetCenterToCamera + 
+                                   inBlocks[2].planetCenterToCamera + 
+                                   inBlocks[3].planetCenterToCamera) * 0.25,
            planetCenterToCameraDirection = normalize(planetCenterToCamera);
-      float thresholdAngle = mix(10.0, // at ground 
+/*    float thresholdAngle = mix(10.0, // at ground 
                                  120.0, // in space
                                  pow(clamp((length(planetCenterToCamera) - pushConstants.bottomRadius) / (pushConstants.topRadius - pushConstants.bottomRadius), 0.0, 1.0), 4.0));
-      if(dot(quadNormal, planetCenterToCameraDirection) < cos(radians(thresholdAngle) * 0.5)){
+      if(dot(quadNormal, planetCenterToCameraDirection) < cos(radians(thresholdAngle) * 0.5)){*/
+      if(dot(quadNormal, planetCenterToCameraDirection) < 0.0){
         visible = false;
       }    
     }

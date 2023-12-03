@@ -9,6 +9,7 @@
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec3 planetCenterToCamera;
 } outBlock;
 
 layout(push_constant) uniform PushConstants {
@@ -30,6 +31,20 @@ layout(push_constant) uniform PushConstants {
   vec2 jitter;
 
 } pushConstants;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 0, binding = 0, std140) uniform uboViews {
+  View views[256];
+} uView;
+
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix; 
 
 uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
 uint countSideQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
@@ -104,6 +119,7 @@ void main(){
 #endif
     outBlock.position = position;    
     outBlock.normal = normal;
+    outBlock.planetCenterToCamera = (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz - inverseViewMatrix[3].xyz; 
   }else{
     outBlock.position = outBlock.normal = vec3(0.0);
   }  
