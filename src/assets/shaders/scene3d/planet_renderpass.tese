@@ -100,16 +100,19 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif
 
+  /*
   vec3 position = mix(mix(inBlocks[0].position, inBlocks[1].position, gl_TessCoord.x),
                       mix(inBlocks[3].position, inBlocks[2].position, gl_TessCoord.x), 
-                      gl_TessCoord.y);
+                      gl_TessCoord.y);*/
   
   vec3 normal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
                               mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
                               gl_TessCoord.y));
  
-  position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).x * pushConstants.heightMapScale;
+  //position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).x * pushConstants.heightMapScale;
  
+  vec3 position = (pushConstants.modelMatrix * vec4(normal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], normal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+
   vec4 tangentBitangent = textureCatmullRomOctahedralMap(uTextures[2], normal);
 
   mat3 tbn = mat3(
