@@ -468,10 +468,6 @@ begin
 
    CountNearestSamples:=0;
 
-   if Index=708 then begin
-    z:=Max(0.0,round(0.5*Ln(fCountPoints*PImulSqrt5*(1.0-sqr(CosTheta)))*OneOverLogGoldenRatio));
-   end;
-
    for OtherIndex:=0 to 11 do begin
     r:=OtherIndex-(((OtherIndex*$56) shr 9)*6); // OtherIndex mod 6
     c:=(5-abs(5-(r shl 1)))+
@@ -508,7 +504,7 @@ begin
      NextK:=NearestSamples[0];
     end;
 
-    if fPoints[PreviousK].SquaredDistance(fPoints[NextK])>fPoints[PreviousK].SquaredDistance(fPoints[k]) then begin
+    if fPoints[PreviousK].SquaredDistance(fPoints[NextK])>fPoints[k].SquaredDistance(fPoints[Index]) then begin
      AdjacentVertices[CountAdjacentVertices]:=k;
      inc(CountAdjacentVertices);
     end;

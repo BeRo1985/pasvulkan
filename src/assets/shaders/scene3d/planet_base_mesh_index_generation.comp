@@ -4,6 +4,7 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_ARB_gpu_shader_fp64 : enable
 #extension GL_GOOGLE_include_directive : enable
 
 /* clang-format off */
@@ -29,27 +30,34 @@ float squaredDistance(const in vec3 a, const in vec3 b){
   return dot(t, t);
 } 
 
+// This custom rounding function is necessary, because the built-in round() function has a different rounding behaviour on 
+// different implementations. The documentation says that The fraction 0.5 will round in a direction chosen by the
+// implementation, presumably the direction that is fastest. But we do need a consistent rounding behaviour, so this custom
+// rounding function is used instead.  
 float roundEx(const in float x){
-  return int(x + 0.5);
+  return (x >= 0.0) ? floor(x + 0.5) : ceil(x - 0.5);
 }
 
 void main(){
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Constants                                                                                               //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  const float GoldenRatio = 1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)   
+  const float OneOverSqrt5 = 0.447213595499957939; // 1.0 / sqrt(5.0) 
+  const float PImulSqrt5 = 7.024814731040726393; // PI * sqrt(5.0)
+  const float PImul20 = 62.831853071795864769; // PI * 20.0
+  const float PImul20overSqrt5 = 28.099258924162905573; // (PI * 20.0) / sqrt(5.0)
+  const float OneOverLogGoldenRatio = 2.0780869212350275376; // 1.0 / ln((1.0 + sqrt(5.0)) / 2.0) (1.0 / log of golden ratio)
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Get the index of the current point
   uint index = uint(gl_GlobalInvocationID.x);
 
   // Check if the index is valid and if so, generate the triangles for the current point
   if(index < pushConstants.countPoints){
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Constants                                                                                               //
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    const float GoldenRatio = 1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)   
-    const float OneOverSqrt5 = 0.447213595499957939; // 1.0 / sqrt(5.0) 
-    const float PImulSqrt5 = 7.024814731040726393; // PI * sqrt(5.0)
-    const float PImul20 = 62.831853071795864769; // PI * 20.0
-    const float PImul20overSqrt5 = 28.099258924162905573; // (PI * 20.0) / sqrt(5.0)
-    const float OneOverLogGoldenRatio = 2.0780869212350275376; // 1.0 / ln((1.0 + sqrt(5.0)) / 2.0) (1.0 / log of golden ratio)
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Get the z coordinate for the further calculations                                                       //
@@ -62,16 +70,18 @@ void main(){
     // Get the nearest sample points                                                                           //
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    vec3 nearestPoint = fibonacciSpherePoints.vectors[index].xyz;
+
     uint countNearestSamples = 0u;
     uint nearestSamples[12u];
+    const uint cArray[6u] = uint[6u](0u, 2u, 4u, 5u, 3u, 1u);
+    float squaredDistanceThreshold = (PImul20overSqrt5 / float(pushConstants.countPoints)) * 2.0;
     for(uint otherIndex = 0; otherIndex < 12u; otherIndex++){
-      uint r = otherIndex - (((otherIndex * 0x56u) >> 9u) * 6u); // otherIndex % 6u;
-      uint c = uint(int(5 - abs(5 - (int(r) << 1)))) + ((0x38u >> r) & 1u); // ((r * 0x56u) >> 8u); // (r / 3u);
-      int k = (int(roundEx(pow(GoldenRatio, (z + float(c)) - 2.0) * OneOverSqrt5)) * 
-                int(1 - int(uint(((0xfc0u >> otherIndex) & 1u) << 1u))) // ((otherIndex < 6u) ? 1 : -1)
-               ) + int(index);
+ //   uint r = otherIndex - (((otherIndex * 0x56u) >> 9u) * 6u); // otherIndex % 6u;
+ //   uint c = uint(int(5 - abs(5 - (int(r) << 1)))) + ((0x38u >> r) & 1u); // ((r * 0x56u) >> 8u); // (r / 3u);      
+      int k = (int(roundEx(pow(GoldenRatio, (z + float(cArray[otherIndex % 6u])) - 2.0) * OneOverSqrt5)) * ((otherIndex < 6u) ? 1 : -1)) + int(index);
       if((k >= 0) && (k < pushConstants.countPoints)){
-        if(squaredDistance(fibonacciSpherePoints.vectors[k].xyz, fibonacciSpherePoints.vectors[index].xyz) <= (PImul20overSqrt5 / float(pushConstants.countPoints))){
+        if(squaredDistance(fibonacciSpherePoints.vectors[k].xyz, nearestPoint) <= squaredDistanceThreshold){
           nearestSamples[countNearestSamples] = k;
           countNearestSamples++;
         }
@@ -84,20 +94,17 @@ void main(){
 
     uint countAdjacentVertices = 0u;
     uint adjacentVertices[12u];
+    vec3 nearestV = fibonacciSpherePoints.vectors[nearestSamples[0u]].xyz;
     for(uint otherIndex = 0u; otherIndex < countNearestSamples; otherIndex++){
-      uint k = nearestSamples[otherIndex];
+      uint currentK = nearestSamples[otherIndex];
       uint previousK = (otherIndex > 0u) ? nearestSamples[otherIndex - 1u] : nearestSamples[countNearestSamples - 1u];
       uint nextK = ((otherIndex + 1u) < countNearestSamples) ? nearestSamples[otherIndex + 1u] : nearestSamples[0u];
-      if(squaredDistance(fibonacciSpherePoints.vectors[previousK].xyz, fibonacciSpherePoints.vectors[nextK].xyz) > squaredDistance(fibonacciSpherePoints.vectors[previousK].xyz, fibonacciSpherePoints.vectors[k].xyz)){
-        adjacentVertices[countAdjacentVertices] = k;
+      if(squaredDistance(fibonacciSpherePoints.vectors[previousK].xyz, fibonacciSpherePoints.vectors[nextK].xyz) > squaredDistance(fibonacciSpherePoints.vectors[currentK].xyz, nearestPoint)){
+        adjacentVertices[countAdjacentVertices] = currentK;
         countAdjacentVertices++;
       }
     }
     
-  /*if((index == 0u) && (countAdjacentVertices > 0u)){
-      countAdjacentVertices--; // Special case for the pole
-    }*/
-
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Generate triangles from the adjacent neighbours                                                         //
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,8 +123,7 @@ void main(){
         );
 
         // Avoid duplicate triangles, so only add triangles with vertices in ascending positive order
-        //if(all(greaterThan(triangleIndices.yz, triangleIndices.xx)))
-        if((triangleIndices.y > triangleIndices.x) && (triangleIndices.z > triangleIndices.x)){
+        if(all(greaterThan(triangleIndices.yz, triangleIndices.xx))){
           
           vec3 v0 = fibonacciSpherePoints.vectors[triangleIndices.x].xyz;
           vec3 v1 = fibonacciSpherePoints.vectors[triangleIndices.y].xyz;

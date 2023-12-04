@@ -3626,15 +3626,15 @@ begin
 
     fVisualBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    if fCountVisualSpherePoints<=512 then begin
+    //if fCountVisualSpherePoints<=512 then begin
      fVisualBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
-    end;
+    //end;
 
     fPhysicsBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    if fCountPhysicsSpherePoints<=512 then begin
+    //if fCountPhysicsSpherePoints<=512 then begin
      fPhysicsBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
-    end;
+    //end;
 
    finally
     EndUpdate;
@@ -3642,10 +3642,11 @@ begin
 
   end;
 
+{
   if fCountVisualSpherePoints>512 then begin
    FibonacciSphere:=TpvFibonacciSphere.Create(fCountVisualSpherePoints,1.0);
    try
-    FibonacciSphere.Generate(true,false,aPasMPInstance);
+    FibonacciSphere.Generate(true,false,nil);//aPasMPInstance);
     ui32:=FibonacciSphere.Indices.Count;
     fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
@@ -3669,7 +3670,7 @@ begin
   if fCountPhysicsSpherePoints>512 then begin
    FibonacciSphere:=TpvFibonacciSphere.Create(fCountPhysicsSpherePoints,1.0);
    try
-    FibonacciSphere.Generate(true,false,aPasMPInstance);
+    FibonacciSphere.Generate(true,false,nil);//aPasMPInstance);
     ui32:=FibonacciSphere.Indices.Count;
     fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
@@ -3688,7 +3689,7 @@ begin
    finally
     FreeAndNil(FibonacciSphere);
    end;
-  end;
+  end;// }
 
   fData.fCountTriangleIndices:=0;
   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,

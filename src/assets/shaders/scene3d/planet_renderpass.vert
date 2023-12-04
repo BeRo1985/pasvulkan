@@ -78,23 +78,40 @@ const mat3 sideMatrices[6] = mat3[6](
 const float HalfPI = 1.5707963267948966, // 1.570796326794896619231,
             PI = 3.141592653589793, // 3.141592653589793238463,
             PI2 = 6.283185307179586; // 6.283185307179586476925   
-            
+
+#if 1
+
+vec3 unitCubeToUnitSphere(const in vec3 unitCube){
+  // http://mathproofs.blogspot.com/2005/07/mapping-cube-to-sphere.html
+  vec3 unitCubeSquared = unitCube * unitCube, unitCubeSquaredDiv2 = unitCubeSquared * 0.5, unitCubeSquaredDiv3 = unitCubeSquared / 3.0;
+  return normalize(unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - unitCubeSquaredDiv2.zxy) + (unitCubeSquared.yzx * unitCubeSquaredDiv3.zxy)));
+}
+
+vec3 unitSphereToUnitCubeCase(const in vec3 unitVector){
+  // http://petrocket.blogspot.com/2010/04/sphere-to-cube-mapping.html
+  vec2 a = (unitVector.xy * unitVector.xy) * 2.0, b = vec2(a.x - a.y, a.y - a.x);
+  return sign(unitVector) * vec3(sqrt((b - sqrt(fma(a.x, -12.0, (b.y - 3.0) * (b.y - 3.0)))) + 3.0) * 0.70710676908493042, 1.0);
+}
+
+vec3 unitSphereToUnitCube(const in vec3 unitSphere){
+  // http://petrocket.blogspot.com/2010/04/sphere-to-cube-mapping.html
+  vec3 f = abs(unitSphere);
+  return all(greaterThanEqual(f.yy, f.xz)) ? 
+           unitSphereToUnitCubeCase(unitSphere.xzy).xzy : 
+           ((f.x >= f.z) ? 
+             unitSphereToUnitCubeCase(unitSphere.yzx).zxy : 
+             unitSphereToUnitCubeCase(unitSphere));
+}
+
+#endif
+
 vec3 getNormal(mat3 m, vec2 uv){
   vec3 unitCube = m * vec3((uv - vec2(0.5)) * 2.0, 1.0),
 #if 1
-       // Spherified Cube
-       // http://mathproofs.blogspot.com/2005/07/mapping-cube-to-sphere.html
-       // http://petrocket.blogspot.com/2010/04/sphere-to-cube-mapping.html
-       unitCubeSquared = unitCube * unitCube,
-       unitCubeSquaredDiv2 = unitCubeSquared * 0.5,
-       unitCubeSquaredDiv3 = unitCubeSquared / 3.0,
-       mappedSphere = unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - 
-                                       unitCubeSquaredDiv2.zxy) + 
-                                      (unitCubeSquared.yzx * 
-                                       unitCubeSquaredDiv3.zxy)),
-       normal = normalize(mappedSphere);
+       // Spherified cube
+       normal = unitCubeToUnitSphere(unitCube);
 #else
-       // Normalized Cube
+       // Normalized cube
        normal = normalize(unitCube);
 #endif
   return normal; 
