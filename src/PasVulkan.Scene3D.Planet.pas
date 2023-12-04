@@ -492,33 +492,7 @@ uses PasVulkan.Scene3D,
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
 
-procedure CreateIcosahedronSphere(var aVertices:TVector3Array;var aIndices:TIndexArray;const aSubdivisions:TpvSizeInt=2);
-const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
-      IcosahedronLength=1.902113032590307; // sqrt(sqr(1)+sqr(GoldenRatio))
-      IcosahedronNorm=0.5257311121191336; // 1.0 / IcosahedronLength
-      IcosahedronNormGoldenRatio=0.85065080835204; // GoldenRatio / IcosahedronLength
-      IcosaheronVertices:array[0..11] of TpvVector3=
-       (
-        (x:0.0;y:IcosahedronNorm;z:IcosahedronNormGoldenRatio),
-        (x:0.0;y:-IcosahedronNorm;z:IcosahedronNormGoldenRatio),
-        (x:IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
-        (x:-IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
-        (x:IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
-        (x:-IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
-        (x:0.0;y:-IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
-        (x:0.0;y:IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
-        (x:-IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
-        (x:IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
-        (x:-IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm),
-        (x:IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm)
-       );
-      IcosahedronIndices:array[0..(20*3)-1] of TpvUInt32=
-       (
-        0,5,1,0,3,5,0,2,3,0,4,2,0,1,4,
-        1,5,8,5,3,10,3,2,7,2,4,11,4,1,9,
-        7,11,6,11,9,6,9,8,6,8,10,6,10,7,6,
-        2,11,7,4,9,11,1,8,9,5,10,8,3,7,10
-       );
+procedure Subdivide(var aVertices:TVector3Array;var aIndices:TIndexArray;const aSubdivisions:TpvSizeInt=2);
 type TVectorHashMap=TpvHashMap<TpvVector3,TpvSizeInt>;
 var SubdivisionIndex,IndexIndex,VertexIndex:TpvSizeInt;
     NewIndices:TIndexArray;
@@ -526,10 +500,6 @@ var SubdivisionIndex,IndexIndex,VertexIndex:TpvSizeInt;
     i0,i1,i2,ia,ib,ic:TpvUInt32;
     VectorHashMap:TVectorHashMap;
 begin
-
- aVertices.Assign(IcosaheronVertices);
-
- aIndices.Assign(IcosahedronIndices);
 
  NewIndices.Initialize;
  try
@@ -601,6 +571,61 @@ begin
  finally
   NewIndices.Finalize;
  end;
+
+end;
+
+procedure NormalizeVertices(var aVertices:TVector3Array);
+var VertexIndex:TpvSizeInt;
+begin
+ for VertexIndex:=0 to aVertices.Count-1 do begin
+  aVertices.Items[VertexIndex]:=aVertices.Items[VertexIndex].Normalize;
+ end;
+end;
+
+procedure CreateIcosahedronSphere(var aVertices:TVector3Array;var aIndices:TIndexArray;const aCountMinimumVertices:TpvSizeInt=4096);
+const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
+      IcosahedronLength=1.902113032590307; // sqrt(sqr(1)+sqr(GoldenRatio))
+      IcosahedronNorm=0.5257311121191336; // 1.0 / IcosahedronLength
+      IcosahedronNormGoldenRatio=0.85065080835204; // GoldenRatio / IcosahedronLength
+      IcosaheronVertices:array[0..11] of TpvVector3=
+       (
+        (x:0.0;y:IcosahedronNorm;z:IcosahedronNormGoldenRatio),
+        (x:0.0;y:-IcosahedronNorm;z:IcosahedronNormGoldenRatio),
+        (x:IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
+        (x:-IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
+        (x:IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
+        (x:-IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
+        (x:0.0;y:-IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
+        (x:0.0;y:IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
+        (x:-IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
+        (x:IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
+        (x:-IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm),
+        (x:IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm)
+       );
+      IcosahedronIndices:array[0..(20*3)-1] of TpvUInt32=
+       (
+        0,5,1,0,3,5,0,2,3,0,4,2,0,1,4,
+        1,5,8,5,3,10,3,2,7,2,4,11,4,1,9,
+        7,11,6,11,9,6,9,8,6,8,10,6,10,7,6,
+        2,11,7,4,9,11,1,8,9,5,10,8,3,7,10
+       );
+var SubdivisionLevel,Count:TpvSizeInt;
+begin
+
+ Count:=12;
+ SubdivisionLevel:=0;
+ while Count<aCountMinimumVertices do begin
+  Count:=12+((10*((2 shl SubdivisionLevel)+1))*((2 shl SubdivisionLevel)-1));
+  inc(SubdivisionLevel);
+ end;
+
+ aVertices.Assign(IcosaheronVertices);
+
+ aIndices.Assign(IcosahedronIndices);
+
+ Subdivide(aVertices,aIndices,SubdivisionLevel);
+
+ NormalizeVertices(aVertices);
 
 end;
 
