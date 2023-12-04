@@ -40,24 +40,22 @@ float roundEx(const in float x){
 
 void main(){
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Constants                                                                                               //
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  const float GoldenRatio = 1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)   
-  const float OneOverSqrt5 = 0.447213595499957939; // 1.0 / sqrt(5.0) 
-  const float PImulSqrt5 = 7.024814731040726393; // PI * sqrt(5.0)
-  const float PImul20 = 62.831853071795864769; // PI * 20.0
-  const float PImul20overSqrt5 = 28.099258924162905573; // (PI * 20.0) / sqrt(5.0)
-  const float OneOverLogGoldenRatio = 2.0780869212350275376; // 1.0 / ln((1.0 + sqrt(5.0)) / 2.0) (1.0 / log of golden ratio)
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   // Get the index of the current point
   uint index = uint(gl_GlobalInvocationID.x);
 
   // Check if the index is valid and if so, generate the triangles for the current point
   if(index < pushConstants.countPoints){
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Constants                                                                                               //
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const float GoldenRatio = 1.61803398874989485; // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)   
+    const float OneOverSqrt5 = 0.447213595499957939; // 1.0 / sqrt(5.0) 
+    const float PImulSqrt5 = 7.024814731040726393; // PI * sqrt(5.0)
+    const float PImul20 = 62.831853071795864769; // PI * 20.0
+    const float PImul20overSqrt5 = 28.099258924162905573; // (PI * 20.0) / sqrt(5.0)
+    const float OneOverLogGoldenRatio = 2.0780869212350275376; // 1.0 / ln((1.0 + sqrt(5.0)) / 2.0) (1.0 / log of golden ratio)
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Get the z coordinate for the further calculations                                                       //
@@ -81,7 +79,8 @@ void main(){
  //   uint c = uint(int(5 - abs(5 - (int(r) << 1)))) + ((0x38u >> r) & 1u); // ((r * 0x56u) >> 8u); // (r / 3u);      
       int k = (int(roundEx(pow(GoldenRatio, (z + float(cArray[otherIndex % 6u])) - 2.0) * OneOverSqrt5)) * ((otherIndex < 6u) ? 1 : -1)) + int(index);
       if((k >= 0) && (k < pushConstants.countPoints)){
-        if(squaredDistance(fibonacciSpherePoints.vectors[k].xyz, nearestPoint) <= squaredDistanceThreshold){
+        if((pushConstants.countPoints > 512) || // At more than 512 points, floats gets slowly more and more too imprecise, so accept all points for now, until a solution is found. The pascal version uses doubles, so it is not affected by this.  
+           (squaredDistance(fibonacciSpherePoints.vectors[k].xyz, nearestPoint) <= squaredDistanceThreshold)){
           nearestSamples[countNearestSamples] = k;
           countNearestSamples++;
         }

@@ -96,7 +96,7 @@ type TpvScene3DPlanets=class;
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -488,6 +488,121 @@ uses PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Geometry.FibonacciSphere,
      PasVulkan.VirtualFileSystem;
+
+type TVector3Array=TpvDynamicArray<TpvVector3>;
+     TIndexArray=TpvDynamicArray<TpvUInt32>;
+
+procedure CreateIcosahedronSphere(var aVertices:TVector3Array;var aIndices:TIndexArray;const aSubdivisions:TpvSizeInt=2);
+const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
+      IcosahedronLength=1.902113032590307; // sqrt(sqr(1)+sqr(GoldenRatio))
+      IcosahedronNorm=0.5257311121191336; // 1.0 / IcosahedronLength
+      IcosahedronNormGoldenRatio=0.85065080835204; // GoldenRatio / IcosahedronLength
+      IcosaheronVertices:array[0..11] of TpvVector3=
+       (
+        (x:0.0;y:IcosahedronNorm;z:IcosahedronNormGoldenRatio),
+        (x:0.0;y:-IcosahedronNorm;z:IcosahedronNormGoldenRatio),
+        (x:IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
+        (x:-IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
+        (x:IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
+        (x:-IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
+        (x:0.0;y:-IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
+        (x:0.0;y:IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
+        (x:-IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
+        (x:IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
+        (x:-IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm),
+        (x:IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm)
+       );
+      IcosahedronIndices:array[0..(20*3)-1] of TpvUInt32=
+       (
+        0,5,1,0,3,5,0,2,3,0,4,2,0,1,4,
+        1,5,8,5,3,10,3,2,7,2,4,11,4,1,9,
+        7,11,6,11,9,6,9,8,6,8,10,6,10,7,6,
+        2,11,7,4,9,11,1,8,9,5,10,8,3,7,10
+       );
+type TVectorHashMap=TpvHashMap<TpvVector3,TpvSizeInt>;
+var SubdivisionIndex,IndexIndex,VertexIndex:TpvSizeInt;
+    NewIndices:TIndexArray;
+    v0,v1,v2,va,vb,vc:TpvVector3;
+    i0,i1,i2,ia,ib,ic:TpvUInt32;
+    VectorHashMap:TVectorHashMap;
+begin
+
+ aVertices.Assign(IcosaheronVertices);
+
+ aIndices.Assign(IcosahedronIndices);
+
+ NewIndices.Initialize;
+ try
+
+  VectorHashMap:=TVectorHashMap.Create(-1);
+  try
+
+   for VertexIndex:=0 to aVertices.Count-1 do begin
+    VectorHashMap.Add(aVertices.Items[VertexIndex],VertexIndex);
+   end;
+
+   for SubdivisionIndex:=1 to aSubdivisions do begin
+
+    NewIndices.Count:=0;
+
+    IndexIndex:=0;
+    while (IndexIndex+2)<aIndices.Count do begin
+
+     i0:=aIndices.Items[IndexIndex+0];
+     i1:=aIndices.Items[IndexIndex+1];
+     i2:=aIndices.Items[IndexIndex+2];
+
+     v0:=aVertices.Items[i0];
+     v1:=aVertices.Items[i1];
+     v2:=aVertices.Items[i2];
+
+     va:=Mix(v0,v1,0.5);
+     vb:=Mix(v1,v2,0.5);
+     vc:=Mix(v2,v0,0.5);
+
+     VertexIndex:=VectorHashMap[va];
+     if VertexIndex<0 then begin
+      VertexIndex:=aVertices.Add(va);
+      VectorHashMap.Add(va,VertexIndex);
+     end;
+     ia:=VertexIndex;
+
+     VertexIndex:=VectorHashMap[vb];
+     if VertexIndex<0 then begin
+      VertexIndex:=aVertices.Add(vb);
+      VectorHashMap.Add(vb,VertexIndex);
+     end;
+     ib:=VertexIndex;
+
+     VertexIndex:=VectorHashMap[vc];
+     if VertexIndex<0 then begin
+      VertexIndex:=aVertices.Add(vc);
+      VectorHashMap.Add(vc,VertexIndex);
+     end;
+     ic:=VertexIndex;
+
+     NewIndices.Add([i0,ia,ic]);
+     NewIndices.Add([i1,ib,ia]);
+     NewIndices.Add([i2,ic,ib]);
+     NewIndices.Add([ia,ib,ic]);
+
+     inc(IndexIndex,3);
+
+    end;
+
+    aIndices.Assign(NewIndices);
+
+   end;
+
+  finally
+   FreeAndNil(VectorHashMap);
+  end;
+
+ finally
+  NewIndices.Finalize;
+ end;
+
+end;
 
 { TpvScene3DPlanet.TData }
 

@@ -106,6 +106,10 @@ vec3 unitSphereToUnitCube(const in vec3 unitSphere){
 #endif
 
 vec3 getNormal(mat3 m, vec2 uv){
+  const float warpTheta = 0.868734829276; // radians
+  const float tanWarpTheta = 1.1822866855467427; // tan(warpTheta);
+  //uv = tan(uv * warpTheta)/ tanWarpTheta;
+  uv = atan(uv * tanWarpTheta) / warpTheta;
   vec3 unitCube = m * vec3((uv - vec2(0.5)) * 2.0, 1.0),
 #if 1
        // Spherified cube
