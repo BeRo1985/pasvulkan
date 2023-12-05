@@ -51,6 +51,26 @@ uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix; 
 
 #ifndef EXTERNAL_VERTICES
+
+const uvec2 offsets[4] = uvec2[](
+  ivec2(0, 0),  
+  ivec2(0, 1),  
+  ivec2(1, 1),  
+  ivec2(1, 0)
+);  
+
+#ifdef OCTAHEDRAL
+
+uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
+uint countQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
+#ifdef TRIANGLES
+uint countTotalVertices = countQuads * 6u; // 2 triangles per quad, 3 vertices per triangle
+#else
+uint countTotalVertices = countQuads * 4u; // 4 vertices per quad
+#endif
+
+#else
+
 uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
 uint countSideQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
 #ifdef TRIANGLES
@@ -58,13 +78,6 @@ uint countTotalVertices = countSideQuads * (6u * 6u); // 2 triangles per quad, 3
 #else
 uint countTotalVertices = countSideQuads * (6u * 4u); // 4 vertices per quad, 6 sides
 #endif
-
-const ivec2 offsets[4] = ivec2[](
-  ivec2(0, 0),  
-  ivec2(0, 1),  
-  ivec2(1, 1),  
-  ivec2(1, 0)
-);  
 
 const mat3 sideMatrices[6] = mat3[6](
   mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0.0), vec3(-1.0, 0.0, 0.0)), // pos x
@@ -78,8 +91,6 @@ const mat3 sideMatrices[6] = mat3[6](
 const float HalfPI = 1.5707963267948966, // 1.570796326794896619231,
             PI = 3.141592653589793, // 3.141592653589793238463,
             PI2 = 6.283185307179586; // 6.283185307179586476925   
-
-#if 1
 
 vec3 unitCubeToUnitSphere(const in vec3 unitCube){
   // http://mathproofs.blogspot.com/2005/07/mapping-cube-to-sphere.html
@@ -103,8 +114,6 @@ vec3 unitSphereToUnitCube(const in vec3 unitSphere){
              unitSphereToUnitCubeCase(unitSphere));
 }
 
-#endif
-
 vec3 getNormal(mat3 m, vec2 uv){
 #if 0
   const float warpTheta = 0.868734829276; // radians
@@ -122,6 +131,8 @@ vec3 getNormal(mat3 m, vec2 uv){
 #endif
   return normal; 
 }
+#endif
+
 #endif
 
 #if 0
@@ -156,15 +167,30 @@ void main(){
     uint quadIndex = vertexIndex >> 2u,
          quadVertexIndex = vertexIndex & 3u;
 #endif
-    uint sideIndex = quadIndex / countSideQuads,
+#ifdef OCTAHEDRAL
+    vec2 uv = fma(
+                vec2(
+                  uvec2(
+                    quadIndex % countQuadPointsInOneDirection, 
+                    quadIndex / countQuadPointsInOneDirection
+                  ) + offsets[3u - quadVertexIndex]
+                ) / vec2(countQuadPointsInOneDirection), 
+                vec2(2.0), 
+                vec2(-1.0)
+              );
+    vec3 normal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
+    normal = normalize((normal.z < 0.0) ? vec3((1.0 - abs(normal.yx)) * vec2((normal.x >= 0.0) ? 1.0 : -1.0, (normal.y >= 0.0) ? 1.0 : -1.0), normal.z) : normal);
+#else
+   uint sideIndex = quadIndex / countSideQuads,
          sideQuadIndex = quadIndex - (sideIndex * countSideQuads);
     sideIndex %= 6u;
     vec2 uv = vec2(uvec2(sideQuadIndex % countQuadPointsInOneDirection,
-                        sideQuadIndex / countQuadPointsInOneDirection) + 
+                         sideQuadIndex / countQuadPointsInOneDirection) + 
                    offsets[3u - quadVertexIndex]) / vec2(countQuadPointsInOneDirection);
     mat3 normalMatrix = sideMatrices[sideIndex];       
-    vec3 normal = getNormal(normalMatrix, uv),
-         position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
+    vec3 normal = getNormal(normalMatrix, uv);
+#endif
+    vec3 position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
 #if 0
     vec3 tangent = getNormal(normalMatrix * tangentTransformMatrix, uv),
          bitangent = getNormal(normalMatrix * bitangentTransformMatrix, uv);

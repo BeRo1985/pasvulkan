@@ -317,6 +317,10 @@ compileshaderarguments=(
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"
   "-V planet_renderpass.vert -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_vert.spv"
   "-V planet_renderpass.vert -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DOCTAHEDRAL -o ${tempPath}/planet_renderpass_octahedral_vert.spv"
+  "-V planet_renderpass.vert -DOCTAHEDRAL -DVELOCITY -o ${tempPath}/planet_renderpass_octahedral_velocity_vert.spv"
+  "-V planet_renderpass.vert -DOCTAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_octahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DOCTAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_octahedral_triangles_velocity_vert.spv"
   "-V planet_renderpass.vert -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_external_vert.spv"
   "-V planet_renderpass.vert -DEXTERNAL_VERTICES -DVELOCITY -o ${tempPath}/planet_renderpass_external_velocity_vert.spv"
 
