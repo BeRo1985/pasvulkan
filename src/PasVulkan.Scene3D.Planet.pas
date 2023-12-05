@@ -3392,7 +3392,7 @@ begin
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-       fPushConstants.CountQuadPointsInOneDirection:=Min(Max(Floor(Level),16),1024);
+       fPushConstants.CountQuadPointsInOneDirection:=16;//Min(Max(Floor(Level),16),1024);
       end;
       else begin
        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(Floor(Level),2),1024);
