@@ -93,7 +93,8 @@ type TpvScene3DPlanets=class;
              (
               NormalizedCubeTriangles,
               NormalizedCubeQuads,
-              FibonacciSphereTriangles
+              FibonacciSphereTriangles,
+              IcosphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
        const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
@@ -437,7 +438,7 @@ type TpvScene3DPlanets=class;
       public
        constructor Create(const aScene3D:TObject;
                           const aHeightMapResolution:TpvInt32=2048;
-                          const aCountVisualSpherePoints:TpvSizeInt=65536;
+                          const aCountVisualSpherePoints:TpvSizeInt=256;
                           const aCountPhysicsSpherePoints:TpvSizeInt=65536;
                           const aBottomRadius:TpvFloat=6371000.0;
                           const aTopRadius:TpvFloat=6471000.0;
@@ -3301,6 +3302,14 @@ const Offsets:array[0..0] of TVkUInt32=(0);
 var PlanetIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
+    ViewMatrix,InverseViewMatrix,ProjectionMatrix:PpvMatrix4x4;
+    ViewProjectionMatrix:TpvMatrix4x4;
+    InverseViewProjectionMatrix:TpvMatrix4x4;
+    Sphere:TpvSphere;
+    Center,Right,Up:TpvVector3;
+    TessellationFactor,Level:TpvScalar;
+    LeftAnchor,RightAnchor,DownAnchor,UpAnchor,MinXY,MaxXY:TpvVector2;
+    Rect:TpvRect;
 begin
 
  TpvScene3D(fScene3D).Planets.Lock.Acquire;
@@ -3340,17 +3349,45 @@ begin
                                           0,
                                           nil);
 
+     ViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ViewMatrix;
+     InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
+     ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
+
+     Sphere.Center:=(fPushConstants.ModelMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
+     Sphere.Radius:=Planet.fBottomRadius;
+
+     Center:=ViewMatrix^.MulHomogen(Sphere.Center);
+     Right:=InverseViewMatrix.Right.xyz*Sphere.Radius;
+     Up:=InverseViewMatrix.Up.xyz*Sphere.Radius;
+
+     LeftAnchor:=ProjectionMatrix^.MulHomogen(Center-Right).xy;
+     RightAnchor:=ProjectionMatrix^.MulHomogen(Center+Right).xy;
+     DownAnchor:=ProjectionMatrix^.MulHomogen(Center-Up).xy;
+     UpAnchor:=ProjectionMatrix^.MulHomogen(Center+Up).xy;
+
+     MinXY:=((TpvVector2.InlineableCreate(Min(LeftAnchor.x,Min(RightAnchor.x,Min(DownAnchor.x,UpAnchor.x))),Min(LeftAnchor.y,Min(RightAnchor.y,Min(DownAnchor.y,UpAnchor.y))))*0.5)+TpvVector2.InlineableCreate(0.5))*TpvVector2.InlineableCreate(fWidth,fHeight);
+
+     MaxXY:=((TpvVector2.InlineableCreate(Max(LeftAnchor.x,Max(RightAnchor.x,Max(DownAnchor.x,UpAnchor.x))),Max(LeftAnchor.y,Max(RightAnchor.y,Max(DownAnchor.y,UpAnchor.y))))*0.5)+TpvVector2.InlineableCreate(0.5))*TpvVector2.InlineableCreate(fWidth,fHeight);
+
+     Rect:=TpvRect.CreateAbsolute(MinXY,MaxXY);
+
+     TessellationFactor:=1.0/16.0;
+
+     Level:=Min(Max(Rect.Size.Length/256.0,1.0),64.0);
+
+//     writeln(Rect.Width:1:6,' ',Rect.Height:1:6,' ',Level:1:6);
+
      fPushConstants.ModelMatrix:=Planet.fData.fModelMatrix;
      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
      fPushConstants.CountViews:=aCountViews;
-     fPushConstants.CountQuadPointsInOneDirection:=8;
+     fPushConstants.CountQuadPointsInOneDirection:=Min(Max(Floor(Level),2),1024);
      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;
      fPushConstants.HeightMapScale:=Planet.fHeightMapScale;
      fPushConstants.ResolutionX:=fWidth;
      fPushConstants.ResolutionY:=fHeight;
-     fPushConstants.TessellationFactor:=1.0/16.0;
+     fPushConstants.TessellationFactor:=TessellationFactor;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
      end else begin
@@ -3766,15 +3803,15 @@ begin
 
     fVisualBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    //if fCountVisualSpherePoints<=512 then begin
+    if fCountVisualSpherePoints<=512 then begin
      fVisualBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
-    //end;
+    end;
 
     fPhysicsBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    //if fCountPhysicsSpherePoints<=512 then begin
+    if fCountPhysicsSpherePoints<=512 then begin
      fPhysicsBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
-    //end;
+    end;
 
    finally
     EndUpdate;
@@ -3782,11 +3819,10 @@ begin
 
   end;
 
-{
   if fCountVisualSpherePoints>512 then begin
    FibonacciSphere:=TpvFibonacciSphere.Create(fCountVisualSpherePoints,1.0);
    try
-    FibonacciSphere.Generate(true,false,nil);//aPasMPInstance);
+    FibonacciSphere.Generate(true,false,aPasMPInstance);
     ui32:=FibonacciSphere.Indices.Count;
     fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
@@ -3810,7 +3846,7 @@ begin
   if fCountPhysicsSpherePoints>512 then begin
    FibonacciSphere:=TpvFibonacciSphere.Create(fCountPhysicsSpherePoints,1.0);
    try
-    FibonacciSphere.Generate(true,false,nil);//aPasMPInstance);
+    FibonacciSphere.Generate(true,false,aPasMPInstance);
     ui32:=FibonacciSphere.Indices.Count;
     fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,
@@ -3829,7 +3865,7 @@ begin
    finally
     FreeAndNil(FibonacciSphere);
    end;
-  end;// }
+  end;
 
   fData.fCountTriangleIndices:=0;
   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
