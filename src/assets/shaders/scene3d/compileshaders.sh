@@ -311,7 +311,7 @@ compileshaderarguments=(
   "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
 
-  "-V planet_tangentspace_generation.comp -o ${tempPath}/planet_tangentspace_generation_comp.spv"
+  "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
 
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"

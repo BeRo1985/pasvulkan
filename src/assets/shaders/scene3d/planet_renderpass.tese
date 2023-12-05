@@ -110,7 +110,7 @@ void main(){
 
   //vec3 position = (inBlocks[0].position * gl_TessCoord.x) + (inBlocks[1].position * gl_TessCoord.y) + (inBlocks[2].position * gl_TessCoord.z);
 
-  vec3 normal = normalize((inBlocks[0].normal * gl_TessCoord.x) + (inBlocks[1].normal * gl_TessCoord.y) + (inBlocks[2].normal * gl_TessCoord.z));
+  vec3 inputNormal = normalize((inBlocks[0].normal * gl_TessCoord.x) + (inBlocks[1].normal * gl_TessCoord.y) + (inBlocks[2].normal * gl_TessCoord.z));
 
 #else
 
@@ -121,36 +121,28 @@ void main(){
                       mix(inBlocks[3].position, inBlocks[2].position, gl_TessCoord.x), 
                       gl_TessCoord.y);*/
   
-  vec3 normal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
-                              mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
-                              gl_TessCoord.y));
+  vec3 inputNormal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
+                                   mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
+                               gl_TessCoord.y));
 #endif
  
-  //position += normal * textureCatmullRomOctahedralMap(uTextures[0], normal).x * pushConstants.heightMapScale;
+  //position += inputNormal * textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale;
  
-  vec3 position = (pushConstants.modelMatrix * vec4(normal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], normal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(inputNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
-  vec4 tangentBitangent = textureCatmullRomOctahedralMap(uTextures[2], normal);
+  vec3 normal = textureCatmullRomOctahedralMap(uTextures[1], inputNormal).xyz;
+  vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
+  vec3 bitangent = normalize(cross(normal, tangent));
 
-  mat3 tbn = mat3(
-    octDecode(tangentBitangent.xy),
-    octDecode(tangentBitangent.zw),
-    octDecode(textureCatmullRomOctahedralMap(uTextures[1], normal).xy)
-  );
-
-  tbn[0] = normalize(tbn[0] - dot(tbn[0], tbn[2]) * tbn[2]);
-  tbn[1] = normalize(tbn[1] - dot(tbn[1], tbn[0]) * tbn[0]);
-  tbn[1] = normalize(tbn[1] - dot(tbn[1], tbn[2]) * tbn[2]);
-  
   vec3 worldSpacePosition = position;
 
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
-  outBlock.tangent = tbn[0]; 
-  outBlock.bitangent = tbn[1];
-  outBlock.normal = tbn[2]; 
+  outBlock.tangent = tangent;
+  outBlock.bitangent = bitangent;
+  outBlock.normal = normal;
   outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  

@@ -11,8 +11,7 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32f) readonly uniform image2D uImageHeightMap;
-layout(set = 0, binding = 1, rg16_snorm) writeonly uniform image2D uImageNormalMap;
-layout(set = 0, binding = 2, rgba16_snorm) writeonly uniform image2D uImageTangentBitangentMap;
+layout(set = 0, binding = 1, rgba16_snorm) writeonly uniform image2D uImageNormalMap;
 
 /* clang-format on */
 
@@ -23,7 +22,6 @@ layout(push_constant) uniform PushConstants {
 
 #include "octahedralmap.glsl"
 #include "octahedral.glsl"
-#include "tangentspacebasis.glsl"
 
 ivec2 texSize;
 
@@ -87,7 +85,6 @@ void main(){
     float stepSize = max(invTexSize.x, invTexSize.y);
 #endif
 
-
     vec2 t = fma(octEncode(normalize(sphereNormal)), vec2(0.5), vec2(0.5));
     vec2 t00 = fma(octEncode(normalize(sphereNormal + (sphereTangent * (-stepSize)))), vec2(0.5), vec2(0.5));
     vec2 t01 = fma(octEncode(normalize(sphereNormal + (sphereTangent * stepSize))), vec2(0.5), vec2(0.5));
@@ -122,76 +119,7 @@ void main(){
     vec3 normal = normalize(cross(tangent, bitangent));
 #endif
 
-    
-#if 0
-    tangent = normalize(cross(normalize(bitangent - (dot(bitangent, normal) * normal)), normal));
-    bitangent = normalize(cross(normal, tangent));
-#endif
-
-#if 0
-    getTangentSpaceBasisFromNormal(normal, tangent, bitangent); 
-#endif
-
-#if 1
-#if 0
-    // The tangent and bitangent vectors are derived from the surface normal using spherical coordinates.
-    //
-    // The surface normal is assumed to be normalized and represented as 'normal', where its components are (x, y, z).
-    // The spherical coordinates (theta, phi) are derived from the normal.
-    // Theta is the angle from the z-axis, calculated using asin(normal.y).
-    // Phi is the angle from the x-axis in the xy-plane, calculated using atan(normal.z, normal.x).
-    // To get the tangent (T), we calculate the partial derivative of P with respect to phi (?P/?phi),
-    // which, after simplification (ignoring the radius r), gives us T = (-sin(phi), 0, cos(phi)).
-    // For the bitangent (B), we calculate the partial derivative of P with respect to theta (?P/?theta),
-    // which simplifies to B = (cos(theta)cos(phi), -sin(theta), cos(theta)sin(phi)).
-    //
-    // Or more in detail:
-    //
-    // The tangent (T) and bitangent (B) are calculated using the derivatives of spherical coordinates.
-    //
-    // For a point P on a sphere, expressed in spherical coordinates (r, theta, phi), where:
-    // Px = r * cos(theta) * cos(phi)
-    // Py = r * sin(theta)
-    // Pz = r * cos(theta) * sin(phi)
-    //
-    // The tangent T is obtained by differentiating P with respect to phi:
-    // T = ?P/?phi = vec3(-r * cos(theta) * sin(phi), 0, r * cos(theta) * cos(phi))
-    // After normalizing and ignoring the radius r (since it cancels out), we have:
-    // T = vec3(-sin(phi), 0, cos(phi))
-    //
-    // Similarly, the bitangent B is obtained by differentiating P with respect to theta:
-    // B = ?P/?theta = vec3(-r * sin(theta) * cos(phi), r * cos(theta), -r * sin(theta) * sin(phi))
-    // Again, normalizing and ignoring r gives us:
-    // B = vec3(-sin(theta) * cos(phi), cos(theta), -sin(theta) * sin(phi))
-    //
-    vec4 sinCosThetaPhi = sin(vec4(vec2(atan(normal.z, normal.x), asin(normal.y)).xxyy + vec2(0.0, 1.5707963267948966).xyxy));
-    tangent = normalize(vec3(sinCosThetaPhi.x * sinCosThetaPhi.w, 0.0, -sinCosThetaPhi.y * sinCosThetaPhi.w));
-    bitangent = normalize(vec3(sinCosThetaPhi.y * sinCosThetaPhi.z, -sinCosThetaPhi.w, sinCosThetaPhi.x * sinCosThetaPhi.z));
-  //tangent = normalize(cross(normalize(bitangent - (dot(bitangent, normal) * normal)), normal));
-  //bitangent = normalize(cross(normal, tangent));
-#else
-    // This alternative method calculates the tangent and bitangent vectors without using trigonometry,
-    // which is a common technique in real-time graphics to avoid costly computations.
-    // The cross product is used to generate vectors that are perpendicular to each other and the original normal.
-    // First, the tangent vector is found by crossing the 'up' vector of the world (0, 1, 0) with the normal.
-    // This gives a vector that is perpendicular to both the 'up' vector and the normal, lying in the plane of the surface.
-    // This operation assumes that the normal is not parallel to the 'up' vector; if it is, the cross product will be zero,
-    // and another non-parallel vector should be chosen as the 'up' vector.
-    // After finding the tangent, the bitangent is calculated as the cross product of the normal and the tangent.
-    // This produces a vector that is perpendicular to both the normal and the tangent, completing the orthogonal triad.
-    // The resulting tangent and bitangent are then normalized to ensure they are unit vectors.
-    // This method ensures that the tangent, bitangent, and normal are all orthogonal to each other,
-    // which is necessary for correct per-pixel lighting and texture mapping in shading languages.
-    // Note that this method assumes a right-handed coordinate system.
-    // If a left-handed system is used, the order of the cross product should be reversed to maintain the handedness.
-    tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
-    bitangent = normalize(cross(normal, tangent));
-#endif
-#endif
-
-    imageStore(uImageNormalMap, texel, vec3(octEncode(normal), 0.0).xyzz);
-
-    imageStore(uImageTangentBitangentMap, texel, vec4(octEncode(tangent), octEncode(bitangent)));
+    imageStore(uImageNormalMap, texel, normal.xyzz);
 
   }
 
