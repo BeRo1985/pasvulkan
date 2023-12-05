@@ -207,8 +207,8 @@ void main(){
                     );
 
     vec3 unitCubeSquared = unitCube * unitCube, 
-                          unitCubeSquaredDiv2 = unitCubeSquared * 0.5, 
-                          unitCubeSquaredDiv3 = unitCubeSquared / 3.0,
+                           unitCubeSquaredDiv2 = unitCubeSquared * 0.5, 
+                           unitCubeSquaredDiv3 = unitCubeSquared / 3.0,
 
     normal = normalize(unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - unitCubeSquaredDiv2.zxy) + (unitCubeSquared.yzx * unitCubeSquaredDiv3.zxy)));
 
