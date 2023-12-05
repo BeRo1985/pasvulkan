@@ -98,7 +98,7 @@ type TpvScene3DPlanets=class;
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -3380,9 +3380,17 @@ begin
 
      Rect:=TpvRect.CreateAbsolute(MinXY,MaxXY);
 
-     TessellationFactor:=1.0/16.0;
-
-     Level:=Min(Max(Rect.Size.Length/256.0,1.0),64.0);
+     case fMode of
+      TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+      TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+       TessellationFactor:=1.0/64.0;
+       Level:=1.0;
+      end;
+      else begin
+       TessellationFactor:=1.0/16.0;
+       Level:=Rect.Size.Length/256.0;
+      end;
+     end;
 
 //     writeln(Rect.Width:1:6,' ',Rect.Height:1:6,' ',Level:1:6);
 
@@ -3845,7 +3853,7 @@ begin
   if fCountVisualSpherePoints>512 then begin
    FibonacciSphere:=TpvFibonacciSphere.Create(fCountVisualSpherePoints,1.0);
    try
-    FibonacciSphere.Generate(true,false,aPasMPInstance);
+    FibonacciSphere.Generate(true,true,aPasMPInstance);
     ui32:=FibonacciSphere.Indices.Count;
     fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
                                        fVulkanComputeCommandBuffer,

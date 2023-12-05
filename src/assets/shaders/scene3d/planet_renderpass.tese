@@ -151,7 +151,7 @@ void main(){
   outBlock.tangent = tbn[0]; 
   outBlock.bitangent = tbn[1];
   outBlock.normal = tbn[2]; 
-  outBlock.edge = vec3(0.0);
+  outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
