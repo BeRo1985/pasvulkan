@@ -98,7 +98,7 @@ type TpvScene3DPlanets=class;
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -3388,7 +3388,10 @@ begin
       end;
       else begin
        TessellationFactor:=1.0/16.0;
-       Level:=Rect.Size.Length/256.0;
+       Level:=Round(Rect.Size.Length/RoundDownToPowerOfTwo(Max(fWidth,fHeight) shr 1));
+       if (trunc(Level) and 1)<>0 then begin
+        Level:=Level+1.0;
+       end;
       end;
      end;
 
@@ -3400,12 +3403,13 @@ begin
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-       fPushConstants.CountQuadPointsInOneDirection:=Min(Max(Floor(Level),16),1024);
+       fPushConstants.CountQuadPointsInOneDirection:=Min(Max(RoundDownToPowerOfTwo(Floor(Pow(Min(Max(Level,1),64),2.0))),32),256);
       end;
       else begin
-       fPushConstants.CountQuadPointsInOneDirection:=Min(Max(Floor(Level),2),1024);
+       fPushConstants.CountQuadPointsInOneDirection:=Min(Max(RoundDownToPowerOfTwo(Floor(Pow(Min(Max(Level,1),64),2.0))),32),256);
       end;
      end;
+     //writeln(fPushConstants.CountQuadPointsInOneDirection);
      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;

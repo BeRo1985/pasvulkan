@@ -38,7 +38,7 @@ float edgeFactor(){
 
 void main(){
 
-  outFragColor = vec4(fma(inBlock.normal, vec3(0.5), vec3(0.5)) * edgeFactor() * max(0.0, dot(inBlock.normal, vec3(0.0, 1.0, 0.0))), 1.0);
+  outFragColor = vec4(fma(inBlock.normal, vec3(0.5), vec3(0.5)) * edgeFactor() * fma(clamp(dot(inBlock.normal, vec3(0.0, 1.0, 0.0)), -1.0, 1.0), 0.5, 0.5), 1.0);
 
 #ifdef VELOCITY
   outVelocity = (inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);
