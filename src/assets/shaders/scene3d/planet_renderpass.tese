@@ -110,7 +110,7 @@ void main(){
 
   //vec3 position = (inBlocks[0].position * gl_TessCoord.x) + (inBlocks[1].position * gl_TessCoord.y) + (inBlocks[2].position * gl_TessCoord.z);
 
-  vec3 inputNormal = normalize((inBlocks[0].normal * gl_TessCoord.x) + (inBlocks[1].normal * gl_TessCoord.y) + (inBlocks[2].normal * gl_TessCoord.z));
+  vec3 sphereNormal = normalize((inBlocks[0].normal * gl_TessCoord.x) + (inBlocks[1].normal * gl_TessCoord.y) + (inBlocks[2].normal * gl_TessCoord.z));
 
 #else
 
@@ -121,16 +121,16 @@ void main(){
                       mix(inBlocks[3].position, inBlocks[2].position, gl_TessCoord.x), 
                       gl_TessCoord.y);*/
   
-  vec3 inputNormal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
+  vec3 sphereNormal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
                                    mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
                                gl_TessCoord.y));
 #endif
  
-  //position += inputNormal * textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale;
+  //position += sphereNormal * textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale;
  
-  vec3 position = (pushConstants.modelMatrix * vec4(inputNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
-  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], inputNormal).xyz;
+  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], sphereNormal).xyz;
   vec3 outputTangent = normalize(cross((abs(outputNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), outputNormal));
   vec3 outputBitangent = normalize(cross(outputNormal, outputTangent));
 

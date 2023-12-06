@@ -128,11 +128,11 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 void main(){          
 
-  vec3 normal;
+  vec3 sphereNormal;
 
 #ifdef EXTERNAL_VERTICES
   
-  normal = normalize(inVector);
+  sphereNormal = normalize(inVector);
 
 #else       
  
@@ -168,8 +168,8 @@ void main(){
 
     vec2 uv = fma(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
 
-    normal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
-    normal = normalize((normal.z < 0.0) ? vec3((1.0 - abs(normal.yx)) * vec2((normal.x >= 0.0) ? 1.0 : -1.0, (normal.y >= 0.0) ? 1.0 : -1.0), normal.z) : normal);
+    sphereNormal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
+    sphereNormal = normalize((sphereNormal.z < 0.0) ? vec3((1.0 - abs(sphereNormal.yx)) * vec2((sphereNormal.x >= 0.0) ? 1.0 : -1.0, (sphereNormal.y >= 0.0) ? 1.0 : -1.0), sphereNormal.z) : sphereNormal);
 
 #elif defined(ICOSAHEDRAL)
   
@@ -215,7 +215,7 @@ void main(){
 
     vec2 uv = vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection);
 
-    vec3 normal = normalize(mix(faceVertex0, mix(faceVertex1, faceVertex2, uv.x), uv.y));
+    sphereNormal = normalize(mix(faceVertex0, mix(faceVertex1, faceVertex2, uv.x), uv.y));
 
 #else
 
@@ -246,15 +246,15 @@ void main(){
 
     vec3 unitCubeSquared = unitCube * unitCube, 
                            unitCubeSquaredDiv2 = unitCubeSquared * 0.5, 
-                           unitCubeSquaredDiv3 = unitCubeSquared / 3.0,
+                           unitCubeSquaredDiv3 = unitCubeSquared / 3.0;
 
-    normal = normalize(unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - unitCubeSquaredDiv2.zxy) + (unitCubeSquared.yzx * unitCubeSquaredDiv3.zxy)));
+    sphereNormal = normalize(unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - unitCubeSquaredDiv2.zxy) + (unitCubeSquared.yzx * unitCubeSquaredDiv3.zxy)));
 
 #endif
  
   }else{
 
-    normal = vec3(0.0);
+    sphereNormal = vec3(0.0);
 
   }  
 
@@ -274,11 +274,9 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
-  vec3 inputNormal = normal;
+  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
-  vec3 position = (pushConstants.modelMatrix * vec4(inputNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
-
-  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], inputNormal).xyz;
+  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], sphereNormal).xyz;
   vec3 outputTangent = normalize(cross((abs(outputNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), outputNormal));
   vec3 outputBitangent = normalize(cross(outputNormal, outputTangent));
 
@@ -308,9 +306,9 @@ void main(){
 
   // With tessellation
 
-  vec3 position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * pushConstants.bottomRadius, 1.0)).xyz;
   outBlock.position = position;    
-  outBlock.normal = normal;
+  outBlock.normal = sphereNormal;
   outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
 
 #endif
