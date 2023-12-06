@@ -98,7 +98,7 @@ type TpvScene3DPlanets=class;
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
              Direct:Boolean=false;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign

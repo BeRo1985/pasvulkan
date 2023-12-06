@@ -165,11 +165,11 @@ void main(){
     quadXY.y = quadIndex / countQuadPointsInOneDirection;
     quadXY.x = quadIndex - (quadXY.y * countQuadPointsInOneDirection); 
 
-    vec2 uv = vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection);
+    vec2 uv = fma(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
 
-    ivec2 wrapUV = ivec2(bvec2(greaterThanEqual(uv, vec2(1.0))));
+/*  ivec2 wrapUV = ivec2(bvec2(greaterThanEqual(uv, vec2(1.0))));
     
-    uv = fma(fract(((wrapUV.x ^ wrapUV.y) != 0) ? vec2(1.0) - fract(uv) : fract(uv)), vec2(2.0), vec2(-1.0));
+    uv = fma(fract(((wrapUV.x ^ wrapUV.y) != 0) ? vec2(1.0) - fract(uv) : fract(uv)), vec2(2.0), vec2(-1.0));*/
 
     sphereNormal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
     sphereNormal = normalize((sphereNormal.z < 0.0) ? vec3((1.0 - abs(sphereNormal.yx)) * vec2((sphereNormal.x >= 0.0) ? 1.0 : -1.0, (sphereNormal.y >= 0.0) ? 1.0 : -1.0), sphereNormal.z) : sphereNormal);

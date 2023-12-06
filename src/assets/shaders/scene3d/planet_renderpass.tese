@@ -122,7 +122,7 @@ void main(){
                       gl_TessCoord.y);*/
   
   vec3 sphereNormal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 
-                                   mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
+                                    mix(inBlocks[3].normal, inBlocks[2].normal, gl_TessCoord.x),
                                gl_TessCoord.y));
 #endif
  
