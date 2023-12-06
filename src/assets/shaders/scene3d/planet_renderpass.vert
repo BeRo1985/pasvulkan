@@ -139,7 +139,7 @@ void main(){
     //     | \t0|
     //     |t1\ |
     //     |   \|
-    // 1,0 v3--v2 1,1
+    // 0,1 v3--v2 1,1
     //
     // The indices are encoded as bitwise values here, so that the vertex indices can be calculated by bitshifting. 
 
@@ -329,7 +329,7 @@ void main(){
   outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
 #endif
 
-	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
+  gl_Position = viewProjectionMatrix * vec4(position, 1.0);
 
 
 #else
