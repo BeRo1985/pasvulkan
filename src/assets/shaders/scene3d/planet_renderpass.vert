@@ -155,7 +155,11 @@ void main(){
 
 #endif
 
+#ifdef DIRECT
+    uint quadVertexUVIndex = (180u >> (quadVertexIndex << 1u)) & 3u; // 180 = 0b10110100 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates)
+#else
     uint quadVertexUVIndex = (30u >> (quadVertexIndex << 1u)) & 3u; // 30 = 0b00011110 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates)
+#endif
 
     uvec2 quadVertexUV = uvec2(quadVertexUVIndex & 1u, quadVertexUVIndex >> 1u);
 
