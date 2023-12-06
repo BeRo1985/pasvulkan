@@ -6,6 +6,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_control_flow_attributes : enable
 
 #ifdef EXTERNAL_VERTICES
   layout(location = 0) in vec3 inVector;
@@ -195,15 +196,53 @@ void main(){
     float sideQuadY = sideQuadIndex / countQuadPointsInOneDirection,
           sideQuadX = sideQuadIndex - (sideQuadY * countQuadPointsInOneDirection); 
 
-    vec3 unitCube = sideMatrices[sideIndex % 6u] * 
-                    vec3(
-                      fma(
-                        vec2(uvec2(sideQuadX, sideQuadY) + quadVertexUV) / vec2(countQuadPointsInOneDirection), 
-                        vec2(2.0), 
-                        vec2(-1.0)
-                      ), 
-                      1.0
-                    );
+    vec2 uv = fma(vec2(uvec2(sideQuadX, sideQuadY) + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
+
+#define CUBE_TO_SPHERE_METHOD_NORMALIZATON 0
+#define CUBE_TO_SPHERE_METHOD_PHIL_NOWELL 1
+#define CUBE_TO_SPHERE_METHOD_HARRY_VAN_LANGEN 2
+#define CUBE_TO_SPHERE_METHOD_MATT_ZUCKER_AND_YOSUKE_HIGASHI 3
+#define CUBE_TO_SPHERE_METHOD_COBE 4
+#define CUBE_TO_SPHERE_METHOD_ARVO 5
+
+#define CUBE_TO_SPHERE_METHOD CUBE_TO_SPHERE_METHOD_COBE
+#if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_MATT_ZUCKER_AND_YOSUKE_HIGASHI
+
+    // http://www.jcgt.org/published/0007/02/01/ - Matt Zucker and Yosuke Higashi - Cube-to-sphere Projections for Procedural Texturing and Beyond
+  
+    {
+      const float warpTheta = 0.868734829276; // radians
+      const float tanWarpTheta = 1.1822866855467427; // tan(warpTheta);
+      uv = tan(uv * warpTheta) / tanWarpTheta;
+    }
+
+#elif CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_COBE
+
+    // https://en.wikipedia.org/wiki/Quadrilateralized_spherical_cube - COBE quadrilateralized spherical cube
+
+    {
+      vec2 x = uv, y = x.yx, x2 = x * x, y2 = y * y,
+           bsum = (((-0.0941180085824 + (0.0409125981187 * y2)) - (0.0623272690881 * x2))*x2) + ((0.0275922480902 + (0.0342217026979 * y2)) * y2);
+      uv = ((0.723951234952 + (0.276048765048 * x2)) + ((1.0 - x2) * bsum)) * x;
+    }
+    
+#elif CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_ARVO
+
+    // http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.3412&rep=rep1&type=pdf - Arvo's exact equal area method 
+
+    {
+      float tan_a_term = tan(uv.x * 0.523598775598), cos_a_term = cos(uv.x * 1.0471975512);
+      uv = vec2((1.41421356237 * tan_a_term) / sqrt(1.0 - (tan_a_term * tan_a_term)), uv.y / sqrt(fma(1.0 - (uv.y * uv.y), cos_a_term, 1.0)));
+    }
+
+#endif
+
+    vec3 unitCube = sideMatrices[sideIndex % 6u] * vec3(uv, 1.0); 
+                      
+#if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_PHIL_NOWELL
+
+    // https://mathproofs.blogspot.com/2005/07/mapping-cube-to-sphere.html?lr=1 - Phil Nowell - Mapping a Cube to a Sphere 
+    // It has a more uniform distribution than just normalizing the unit cube
 
     vec3 unitCubeSquared = unitCube * unitCube, 
                            unitCubeSquaredDiv2 = unitCubeSquared * 0.5, 
@@ -211,8 +250,37 @@ void main(){
 
     sphereNormal = normalize(unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - unitCubeSquaredDiv2.zxy) + (unitCubeSquared.yzx * unitCubeSquaredDiv3.zxy)));
 
+#elif CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_HARRY_VAN_LANGEN
+
+    // https://hvlanalysis.blogspot.com/2023/05/mapping-cube-to-sphere.html - Harry van Langen - Mapping a Cube to a Sphere
+    // It has a much more uniform distribution than the approach by Phil Nowell, but it is more expensive.
+
+    sphereNormal = abs(unitCube);
+
+    float p = float(countQuadPointsInOneDirection) * 10.0;
+
+    const int countIterations = 2;
+
+    [[unroll]]
+    for(int iteration = 0; iteration < countIterations; iteration++){
+
+      vec3 temp = sqrt(pow(sphereNormal, vec3(p)) + vec3(dot(sphereNormal.yz, sphereNormal.yz), dot(sphereNormal.xz, sphereNormal.xz), dot(sphereNormal.xy, sphereNormal.xy)));
+      sphereNormal = temp * tan(sphereNormal * atan(vec3(1.0) / temp));
+
+    } 
+
+    sphereNormal = normalize(sphereNormal * sign(unitCube));
+
+#else
+
+    // Just normalize the unit cube for the other methods
+
+    sphereNormal = normalize(unitCube);
+
 #endif
- 
+
+#endif
+
   }else{
 
     sphereNormal = vec3(0.0);
