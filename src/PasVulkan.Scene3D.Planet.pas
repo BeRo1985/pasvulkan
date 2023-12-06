@@ -98,8 +98,8 @@ type TpvScene3DPlanets=class;
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles;
-             Direct:Boolean=true;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles;
+             Direct:Boolean=false;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -3402,10 +3402,10 @@ begin
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-       fPushConstants.CountQuadPointsInOneDirection:=256;//Min(Max(RoundDownToPowerOfTwo(Floor(Pow(Min(Max(Level,1),64),2.0))),32),256);
+       fPushConstants.CountQuadPointsInOneDirection:=128;//Min(Max(RoundDownToPowerOfTwo(Floor(Pow(Min(Max(Level,1),64),2.0))),32),256);
       end;
       else begin
-       fPushConstants.CountQuadPointsInOneDirection:=256;//Min(Max(RoundDownToPowerOfTwo(Floor(Pow(Min(Max(Level,1),64),2.0))),32),256);
+       fPushConstants.CountQuadPointsInOneDirection:=128;//Min(Max(RoundDownToPowerOfTwo(Floor(Pow(Min(Max(Level,1),64),2.0))),32),256);
       end;
      end;
      //writeln(fPushConstants.CountQuadPointsInOneDirection);

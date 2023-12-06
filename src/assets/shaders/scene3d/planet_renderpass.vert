@@ -155,8 +155,7 @@ void main(){
 
 #endif
 
-    quadVertexIndex = (180u >> (quadVertexIndex << 1u)) & 3u; // 180 = 0b10110100 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates = also vertex index)
-    ///30 = 0b00011110 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates = also vertex index)
+    quadVertexIndex = (30u >> (quadVertexIndex << 1u)) & 3u; // 30 = 0b00011110 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates = also vertex index)
 
     uvec2 quadVertexUV = uvec2(quadVertexIndex & 1u, quadVertexIndex >> 1u);
 
