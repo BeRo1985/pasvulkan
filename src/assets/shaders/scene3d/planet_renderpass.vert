@@ -206,6 +206,7 @@ void main(){
 #define CUBE_TO_SPHERE_METHOD_ARVO 5
 
 #define CUBE_TO_SPHERE_METHOD CUBE_TO_SPHERE_METHOD_COBE
+
 #if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_MATT_ZUCKER_AND_YOSUKE_HIGASHI
 
     // http://www.jcgt.org/published/0007/02/01/ - Matt Zucker and Yosuke Higashi - Cube-to-sphere Projections for Procedural Texturing and Beyond
