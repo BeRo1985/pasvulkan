@@ -10,7 +10,7 @@
 #ifdef TRIANGLES
 layout(triangles, equal_spacing, ccw) in;
 #else
-layout(quads, equal_spacing, ccw) in;
+layout(quads, equal_spacing, ccw) in; 
 #endif
 
 layout(location = 0) in InBlock {
@@ -118,7 +118,7 @@ void main(){
 
   /*
   vec3 position = mix(mix(inBlocks[0].position, inBlocks[1].position, gl_TessCoord.x),
-                      mix(inBlocks[3].position, inBlocks[2].position, gl_TessCoord.x), 
+                      mix(inBlocks[2].position, inBlocks[3].position, gl_TessCoord.x), 
                       gl_TessCoord.y);*/
   
   vec3 sphereNormal = normalize(mix(mix(inBlocks[0].normal, inBlocks[1].normal, gl_TessCoord.x), 

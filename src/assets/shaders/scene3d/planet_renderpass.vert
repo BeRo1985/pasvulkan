@@ -102,16 +102,6 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
       uint countTotalVertices = countQuads * 4u; // 4 vertices per quad
     #endif
 
-  #elif defined(ICOSAHEDRAL)
-
-    uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
-    uint countFaceQuads = countQuadPointsInOneDirection * countQuadPointsInOneDirection;
-    #ifdef TRIANGLES
-      uint countTotalVertices = countFaceQuads * 3u * 20u; // 2 triangles per face, 20 faces
-    #else
-      #error "Icosahedral spheres do support only triangles in this implementation."
-    #endif
-
   #else
 
     uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
@@ -140,13 +130,24 @@ void main(){
   
   if(vertexIndex < countTotalVertices){ 
 
+    // A quad is made of two triangles, where the first triangle is the lower left triangle and the second
+    // triangle is the upper right triangle. So the vertex indices and the triangles of a quad are:
+    //
+    // 0,0 v0--v1 1,0
+    //     |\   |
+    //     | \t0|
+    //     |t1\ |
+    //     |   \|
+    // 1,0 v3--v2 1,1
+    //
+    // The indices are encoded as bitwise values here, so that the vertex indices can be calculated by bitshifting. 
+
 #ifdef TRIANGLES
 
-    uint triangleIndex = vertexIndex / 3u,   
-         triangleVertexIndex = vertexIndex - (triangleIndex * 3u),
+    // 0xe24 = 3,2,0,2,1,0 (two bit wise encoded triangle indices, reversed for bitshifting for 0,1,2, 0,2,3 output order)
 
-         quadIndex = triangleIndex >> 1u,
-         quadVertexIndex = uvec3[2]( uvec3(0u, 1u, 2u), uvec3(0u, 2u, 3u))[triangleIndex & 1u][triangleVertexIndex];
+    uint quadIndex = vertexIndex / 6u,   
+         quadVertexIndex = (0xe24u >> ((vertexIndex - (quadIndex * 6u)) << 1u)) & 3u; 
 
 #else
 
@@ -155,12 +156,15 @@ void main(){
 
 #endif
 
-#ifdef DIRECT
-    uint quadVertexUVIndex = (180u >> (quadVertexIndex << 1u)) & 3u; // 180 = 0b10110100 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates)
-#else
-    uint quadVertexUVIndex = (30u >> (quadVertexIndex << 1u)) & 3u; // 30 = 0b00011110 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates)
+    // 0xb4 = 180 = 0b10110100 (bitwise encoded x y coordinates, where x is the first bit and y is the second bit in every two-bit pair)  
+   
+#ifndef DIRECT    
+    // Reverse the order of the vertices for the tessellation shader, even tough the evaluation shader uses actually already counter clockwise winding order.
+    // TODO: Find out the reason for this.
+    quadVertexIndex = 3u - quadVertexIndex; 
 #endif
 
+    uint quadVertexUVIndex = (0xb4u >> (quadVertexIndex << 1u)) & 3u;     
     uvec2 quadVertexUV = uvec2(quadVertexUVIndex & 1u, quadVertexUVIndex >> 1u);
 
 #if defined(OCTAHEDRAL)
@@ -171,58 +175,8 @@ void main(){
 
     vec2 uv = fma(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
 
-/*  ivec2 wrapUV = ivec2(bvec2(greaterThanEqual(uv, vec2(1.0))));
-    
-    uv = fma(fract(((wrapUV.x ^ wrapUV.y) != 0) ? vec2(1.0) - fract(uv) : fract(uv)), vec2(2.0), vec2(-1.0));*/
-
     sphereNormal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
     sphereNormal = normalize((sphereNormal.z < 0.0) ? vec3((1.0 - abs(sphereNormal.yx)) * vec2((sphereNormal.x >= 0.0) ? 1.0 : -1.0, (sphereNormal.y >= 0.0) ? 1.0 : -1.0), sphereNormal.z) : sphereNormal);
-
-#elif defined(ICOSAHEDRAL)
-  
-    float GoldenRatio = 1.61803398874989485, // (1.0+sqrt(5.0))/2.0 (golden ratio)
-          IcosahedronLength = 1.902113032590307, // sqrt(sqr(1)+sqr(GoldenRatio))
-          IcosahedronNorm = 0.5257311121191336, // 1.0 / IcosahedronLength
-          IcosahedronNormGoldenRatio = 0.85065080835204; // GoldenRatio / IcosahedronLength
-
-    const vec3 faceVertices[12] = vec3[12](
-      vec3(0.0, IcosahedronNorm, IcosahedronNormGoldenRatio),
-      vec3(0.0, -IcosahedronNorm, IcosahedronNormGoldenRatio),
-      vec3(IcosahedronNorm, IcosahedronNormGoldenRatio, 0.0),
-      vec3(-IcosahedronNorm, IcosahedronNormGoldenRatio, 0.0),
-      vec3(IcosahedronNormGoldenRatio, 0.0, IcosahedronNorm),
-      vec3(-IcosahedronNormGoldenRatio, 0.0, IcosahedronNorm),
-      vec3(0.0, -IcosahedronNorm, -IcosahedronNormGoldenRatio),
-      vec3(0.0, IcosahedronNorm, -IcosahedronNormGoldenRatio),
-      vec3(-IcosahedronNorm, -IcosahedronNormGoldenRatio, 0.0),
-      vec3(IcosahedronNorm, -IcosahedronNormGoldenRatio, 0.0),
-      vec3(-IcosahedronNormGoldenRatio, 0.0, -IcosahedronNorm),
-      vec3(IcosahedronNormGoldenRatio, 0.0, -IcosahedronNorm)
-    );
-
-    const uvec3 faceIndices[20] = uvec3[20](
-      uvec3(0u, 5u, 1u), uvec3(0u, 3u, 5u), uvec3(0u, 2u, 3u), uvec3(0u, 4u, 2u), uvec3(0u, 1u, 4u),
-      uvec3(1u, 5u, 8u), uvec3(5u, 3u, 10u), uvec3(3u, 2u, 7u), uvec3(2u, 4u, 11u), uvec3(4u, 1u, 9u),
-      uvec3(7u, 11u, 6u), uvec3(11u, 9u, 6u), uvec3(9u, 8u, 6u), uvec3(8u, 10u, 6u), uvec3(10u, 7u, 6u),
-      uvec3(2u, 11u, 7u), uvec3(4u, 9u, 11u), uvec3(1u, 8u, 9u), uvec3(5u, 10u, 8u), uvec3(3u, 7u, 10u)
-    );
-
-    uint triangleIndex = vertexIndex / 3u,   
-         triangleVertexIndex = vertexIndex - (triangleIndex * 3u);
-
-    uvec3 faceVertexIndices = faceIndices[triangleIndex];
-    
-    vec3 faceVertex0 = faceVertices[faceVertexIndices.x],
-         faceVertex1 = faceVertices[faceVertexIndices.y],
-         faceVertex2 = faceVertices[faceVertexIndices.z];
-
-    uvec2 quadXY;
-    quadXY.y = quadIndex / countQuadPointsInOneDirection;
-    quadXY.x = quadIndex - (quadXY.y * countQuadPointsInOneDirection); 
-
-    vec2 uv = vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection);
-
-    sphereNormal = normalize(mix(faceVertex0, mix(faceVertex1, faceVertex2, uv.x), uv.y));
 
 #else
 
