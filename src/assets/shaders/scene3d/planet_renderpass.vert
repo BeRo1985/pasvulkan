@@ -155,9 +155,9 @@ void main(){
 
 #endif
 
-    quadVertexIndex = (30u >> (quadVertexIndex << 1u)) & 3u; // 30 = 0b00011110 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates = also vertex index)
+    uint quadVertexUVIndex = (30u >> (quadVertexIndex << 1u)) & 3u; // 30 = 0b00011110 (0,0 - 0,1 - 1,1 - 1,0 bitwise encoded x y coordinates)
 
-    uvec2 quadVertexUV = uvec2(quadVertexIndex & 1u, quadVertexIndex >> 1u);
+    uvec2 quadVertexUV = uvec2(quadVertexUVIndex & 1u, quadVertexUVIndex >> 1u);
 
 #if defined(OCTAHEDRAL)
 
