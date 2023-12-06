@@ -24,8 +24,7 @@ layout(set = 0, binding = 1, std430) buffer FibonacciSphereVertices {
 } fibonacciSphereVertices;
 
 layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
-layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rg16_snorm octahedral
-layout(set = 0, binding = 4) uniform sampler2D uTextureTangentBitangentMap; // rgba16_snorm octahedral wise 
+layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rgba16_snorm
 
 layout(push_constant) uniform PushConstants {
   mat4 modelMatrix;
@@ -50,18 +49,18 @@ void main(){
 
     float height = textureCatmullRomOctahedralMap(uTextureHeightMap, vector).x;
     
-    vec2 rawNormal = textureOctahedralMap(uTextureNormalMap, vector).xy;
-
-    vec4 rawTangentBitangent = textureOctahedralMap(uTextureTangentBitangentMap, vector);
+    vec3 normal = textureCatmullRomOctahedralMap(uTextureNormalMap, vector).xyz;
+    vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
+    vec3 bitangent = normalize(cross(normal, tangent));
 
     fibonacciSphereVertices.vertices[index] = FibonacciSphereVertex( 
       vec4(
         (pushConstants.modelMatrix * vec4(vector * fma(height, pushConstants.heightMapScale, pushConstants.planetGroundRadius), 1.0)).xyz, // (heightMapValue * heightMapScale) + planetGroundRadius
-        (dot(octDecode(rawTangentBitangent.zw), cross(octDecode(rawNormal), octDecode(rawTangentBitangent.xy))) < 0.0) ? -1.0 : 1.0
+        (dot(bitangent, cross(normal, tangent)) < 0.0) ? -1.0 : 1.0
       ), 
       vec4(
-        rawNormal, 
-        rawTangentBitangent.xy
+        octEncode(normal),
+        octEncode(tangent)
       )
     ); 
 

@@ -5,16 +5,43 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 #ifdef EXTERNAL_VERTICES
   layout(location = 0) in vec3 inVector;
 #endif
+
+#ifdef DIRECT
+
+// Without tessellation
+
+layout(location = 0) out OutBlock {
+  vec3 position;
+  vec3 tangent;
+  vec3 bitangent;
+  vec3 normal;
+  vec3 edge; 
+  vec3 worldSpacePosition;
+  vec3 viewSpacePosition;
+  vec3 cameraRelativePosition;
+  vec2 jitter;
+#ifdef VELOCITY
+  vec4 previousClipSpace;
+  vec4 currentClipSpace;
+#endif  
+} outBlock;
+
+#else
+
+// With tessellation
 
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
   vec3 planetCenterToCamera;
 } outBlock;
+
+#endif
 
 layout(push_constant) uniform PushConstants {
   
@@ -47,8 +74,21 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
+#ifdef DIRECT
+layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+#include "tangentspacebasis.glsl" 
+
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
+mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
+mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
+#else
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix; 
+#endif
 
 #ifndef EXTERNAL_VERTICES
 
@@ -88,16 +128,14 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 void main(){          
 
+  vec3 normal;
+
 #ifdef EXTERNAL_VERTICES
   
-  vec3 normal = normalize(inVector),
-       position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
-  outBlock.position = position;    
-  outBlock.normal = normal;
-  outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
+  normal = normalize(inVector);
 
 #else       
-  
+ 
   uint vertexIndex = uint(gl_VertexIndex);
   
   if(vertexIndex < countTotalVertices){ 
@@ -130,7 +168,7 @@ void main(){
 
     vec2 uv = fma(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
 
-    vec3 normal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
+    normal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
     normal = normalize((normal.z < 0.0) ? vec3((1.0 - abs(normal.yx)) * vec2((normal.x >= 0.0) ? 1.0 : -1.0, (normal.y >= 0.0) ? 1.0 : -1.0), normal.z) : normal);
 
 #elif defined(ICOSAHEDRAL)
@@ -213,17 +251,68 @@ void main(){
     normal = normalize(unitCube * sqrt(((1.0 - unitCubeSquaredDiv2.yzx) - unitCubeSquaredDiv2.zxy) + (unitCubeSquared.yzx * unitCubeSquaredDiv3.zxy)));
 
 #endif
-  
-    vec3 position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
-    outBlock.position = position;    
-    outBlock.normal = normal;
-    outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
-  
+ 
   }else{
 
-    outBlock.position = outBlock.normal = outBlock.planetCenterToCamera = vec3(0.0);
+    normal = vec3(0.0);
 
   }  
 
 #endif
+
+#ifdef DIRECT
+ 
+  // Without tessellation, so directly output the vertex data to the fragment shader
+
+  mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+
+#if 1
+  // The actual standard approach
+  vec3 cameraPosition = inverseViewMatrix[3].xyz;
+#else
+  // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
+  vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
+#endif   
+
+  vec3 inputNormal = normal;
+
+  vec3 position = (pushConstants.modelMatrix * vec4(inputNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+
+  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], inputNormal).xyz;
+  vec3 outputTangent = normalize(cross((abs(outputNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), outputNormal));
+  vec3 outputBitangent = normalize(cross(outputNormal, outputTangent));
+
+  vec3 worldSpacePosition = position;
+
+  vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
+  viewSpacePosition.xyz /= viewSpacePosition.w;
+
+  outBlock.position = position;         
+  outBlock.tangent = outputTangent;
+  outBlock.bitangent = outputBitangent;
+  outBlock.normal = outputNormal;
+  outBlock.edge = vec3(1.0);
+  outBlock.worldSpacePosition = worldSpacePosition;
+  outBlock.viewSpacePosition = viewSpacePosition.xyz;  
+  outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
+  outBlock.jitter = pushConstants.jitter;
+#ifdef VELOCITY
+  outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
+  outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+#endif
+
+	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
+
+
+#else
+
+  // With tessellation
+
+  vec3 position = (pushConstants.modelMatrix * vec4(normal * pushConstants.bottomRadius, 1.0)).xyz;
+  outBlock.position = position;    
+  outBlock.normal = normal;
+  outBlock.planetCenterToCamera = inverseViewMatrix[3].xyz - (pushConstants.modelMatrix * vec2(0.0, 1.0).xxxy).xyz; 
+
+#endif
+
 }

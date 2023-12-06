@@ -130,9 +130,9 @@ void main(){
  
   vec3 position = (pushConstants.modelMatrix * vec4(inputNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], inputNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
-  vec3 normal = textureCatmullRomOctahedralMap(uTextures[1], inputNormal).xyz;
-  vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
-  vec3 bitangent = normalize(cross(normal, tangent));
+  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], inputNormal).xyz;
+  vec3 outputTangent = normalize(cross((abs(outputNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), outputNormal));
+  vec3 outputBitangent = normalize(cross(outputNormal, outputTangent));
 
   vec3 worldSpacePosition = position;
 
@@ -140,9 +140,9 @@ void main(){
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
-  outBlock.tangent = tangent;
-  outBlock.bitangent = bitangent;
-  outBlock.normal = normal;
+  outBlock.tangent = outputTangent;
+  outBlock.bitangent = outputBitangent;
+  outBlock.normal = outputNormal;
   outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
