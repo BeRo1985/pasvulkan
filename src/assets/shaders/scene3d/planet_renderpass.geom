@@ -12,6 +12,7 @@ layout(max_vertices = 3) out;
 
 layout(location = 0) in InBlock { 
   vec3 position;
+  vec3 sphereNormal;
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
@@ -28,6 +29,7 @@ layout(location = 0) in InBlock {
 
 layout(location = 0) out OutBlock { 
   vec3 position;
+  vec3 sphereNormal;
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
@@ -58,6 +60,7 @@ void main(){
   for (int i = 0; i < 3; i++) { 
     gl_Position = gl_in[i].gl_Position; 
     outBlock.position = inBlocks[i].position;
+    outBlock.sphereNormal = inBlocks[i].sphereNormal;
     outBlock.tangent = inBlocks[i].tangent;
     outBlock.bitangent = inBlocks[i].bitangent;
     outBlock.normal = inBlocks[i].normal;

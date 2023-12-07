@@ -138,7 +138,9 @@ type TpvScene3DPlanets=class;
               fNormalMapGeneration:TpvUInt64;
               fVisualMeshGeneration:TpvUInt64;
               fPhysicsMeshGeneration:TpvUInt64;           
-              fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;   
+              fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
+              fSelectedRegion:TpvVector4;
+              fSelectedRegionProperty:TpvVector4Property;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -148,6 +150,7 @@ type TpvScene3DPlanets=class;
               procedure ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData);
+              procedure Assign(const aData:TData);
              published
               property Planet:TpvScene3DPlanet read fPlanet;
               property InFlightFrameIndex:TpvInt32 read fInFlightFrameIndex;
@@ -164,6 +167,7 @@ type TpvScene3DPlanets=class;
              public
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
               property Ready:TPasMPBool32 read fReady write fReady;
+              property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { THeightMapRandomInitialization }
@@ -175,6 +179,9 @@ type TpvScene3DPlanets=class;
                     Amplitude:TpvFloat;
                     Lacunarity:TpvFloat;
                     Gain:TpvFloat;
+                    Factor:TpvFloat;
+                    MinHeight:TpvFloat;
+                    MaxHeight:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -353,6 +360,7 @@ type TpvScene3DPlanets=class;
                     HeightMapScale:TpvFloat;
                     TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
+                    Selected:TpvVector4;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -859,6 +867,10 @@ begin
 
  end;
 
+ fSelectedRegion:=TpvVector4.Null;
+
+ fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
+
 end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
@@ -873,6 +885,7 @@ begin
  FreeAndNil(fPhysicsBaseMeshVertexBuffer);
  FreeAndNil(fPhysicsBaseMeshTriangleIndexBuffer);
  FreeAndNil(fPhysicsMeshVertexBuffer);
+ FreeAndNil(fSelectedRegionProperty);
  inherited Destroy;
 end;
 
@@ -1497,6 +1510,11 @@ begin
 
 end;
 
+procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
+begin
+ fSelectedRegion:=aData.fSelectedRegion;
+end;
+
 { TpvScene3DPlanet.THeightMapRandomInitialization }
 
 constructor TpvScene3DPlanet.THeightMapRandomInitialization.Create(const aPlanet:TpvScene3DPlanet);
@@ -1568,6 +1586,9 @@ begin
   fPushConstants.Amplitude:=1.0;
   fPushConstants.Lacunarity:=2.0;
   fPushConstants.Gain:=0.5;
+  fPushConstants.Factor:=0.5;
+  fPushConstants.MinHeight:=0.0;
+  fPushConstants.MaxHeight:=1.0;
 
  end;
 
@@ -3387,7 +3408,7 @@ begin
       end;
       else begin
        TessellationFactor:=1.0/16.0;
-       Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/16.0)),0),7);
+       Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/4.0)),0),7);
       end;
      end;
 
@@ -3409,7 +3430,7 @@ begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,16),256);
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,2),256);
        end;
       end;
      end;
@@ -3428,6 +3449,7 @@ begin
      end else begin
       fPushConstants.Jitter:=TpvVector2.Null;
      end;
+     fPushConstants.Selected:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fSelectedRegion;
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
@@ -3982,6 +4004,8 @@ begin
     if assigned(InFlightFrameData) then begin
 
      InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
+
+     InFlightFrameData.Assign(fData);
 
      if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
       InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;

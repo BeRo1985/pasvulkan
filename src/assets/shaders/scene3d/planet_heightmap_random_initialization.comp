@@ -18,6 +18,9 @@ layout(push_constant) uniform PushConstants {
   float amplitude;
   float lacunarity;
   float gain;
+  float factor;
+  float minHeight;
+  float maxHeight;
 } pushConstants;
 
 /* clang-format on */
@@ -101,8 +104,8 @@ void main(){
       pushConstants.lacunarity,
       pushConstants.gain
     );
-
-    imageStore(uImageHeightMap, texel, vec4(height));
+    
+    imageStore(uImageHeightMap, texel, vec4(clamp(height * pushConstants.factor, pushConstants.minHeight, pushConstants.maxHeight)));
 
   }
 

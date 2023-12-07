@@ -41,6 +41,8 @@ layout(push_constant) uniform PushConstants {
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   vec2 jitter;
 
+  vec4 selected; // xy = octahedral map coordinates, z = radius, w = unused
+
 } pushConstants;
 
 vec2 resolution = vec2(pushConstants.resolutionX, pushConstants.resolutionY);

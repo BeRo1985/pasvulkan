@@ -20,6 +20,7 @@ layout(location = 0) in InBlock {
 
 layout(location = 0) out OutBlock {
   vec3 position;
+  vec3 sphereNormal;
   vec3 tangent;
   vec3 bitangent;
   vec3 normal;
@@ -63,6 +64,8 @@ layout(push_constant) uniform PushConstants {
   float heightMapScale;
   float tessellationFactor;
   vec2 jitter;
+
+  vec4 selected; // xy = octahedral map coordinates, z = radius, w = unused
 
 } pushConstants;
 
@@ -139,7 +142,8 @@ void main(){
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
-  outBlock.position = position;         
+  outBlock.position = position;   
+  outBlock.sphereNormal = sphereNormal;      
   outBlock.tangent = outputTangent;
   outBlock.bitangent = outputBitangent;
   outBlock.normal = outputNormal;
