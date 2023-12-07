@@ -163,8 +163,8 @@ void getCubeSphereNormals(const in int face, in vec4 uv0011, out vec3 vectors[4]
   const vec3 baseBormal = normals[face];
   [[unroll]] for(uint quadVertexIndex = 0u; quadVertexIndex < 4u; quadVertexIndex++){
     vectors[quadVertexIndex] = baseBormal;
-    vectors[quadVertexIndex][angleIndices.x] = angles[uvec4(0, 2, 2, 0)[quadVertexIndex]];
-    vectors[quadVertexIndex][angleIndices.y] = angles[uvec4(1, 1, 3, 3)[quadVertexIndex]];
+    vectors[quadVertexIndex][angleIndices.x] = angles[uvec4(0u, 2u, 2u, 0u)[quadVertexIndex]];
+    vectors[quadVertexIndex][angleIndices.y] = angles[uvec4(1u, 1u, 3u, 3u)[quadVertexIndex]];
     vectors[quadVertexIndex] = normalize(vectors[quadVertexIndex]);
   }
 }
@@ -339,24 +339,24 @@ void main(){
 #if 1
 
     vec3 vectors[4];
-    getCubeSphereNormals(int(sideIndex), vec4(uvec2(sideQuadX, sideQuadY).xyxy + uvec4(0, 0, 1, 1)) / vec4(countQuadPointsInOneDirection), vectors);
+    getCubeSphereNormals(int(sideIndex), vec4(uvec2(sideQuadX, sideQuadY).xyxy + uvec4(0u, 0u, 1u, 1u)) / vec4(countQuadPointsInOneDirection), vectors);
 
 #else
 
     uvec2 sideQuadXY = uvec2(sideQuadX, sideQuadY);
 
     vec3 vectors[4] = vec3[4](
-      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0, 0)) / vec2(countQuadPointsInOneDirection)),
-      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1, 0)) / vec2(countQuadPointsInOneDirection)),
-      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1, 1)) / vec2(countQuadPointsInOneDirection)),
-      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0, 1)) / vec2(countQuadPointsInOneDirection))
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0u, 0u)) / vec2(countQuadPointsInOneDirection)),
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1u, 0u)) / vec2(countQuadPointsInOneDirection)),
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1u, 1u)) / vec2(countQuadPointsInOneDirection)),
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0u, 1u)) / vec2(countQuadPointsInOneDirection))
     );
 
 #endif
     
     // Find the two triangles by the shortest diagonal and adjust quadVertexUVIndex accordingly.
     if(distance(vectors[1], vectors[3]) < distance(vectors[0], vectors[2])){
-      quadVertexUVIndex = uvec4(1, 3, 0, 2)[quadVertexUVIndex];
+      quadVertexUVIndex = uvec4(1u, 3u, 0u, 2u)[quadVertexUVIndex];
     }
 
     sphereNormal = vectors[uvec4(0u, 1u, 3u, 2u)[quadVertexUVIndex]];

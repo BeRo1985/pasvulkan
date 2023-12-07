@@ -3386,7 +3386,7 @@ begin
        Level:=-1;
       end;
       else begin
-       TessellationFactor:=1.0/160000000.0;
+       TessellationFactor:=1.0/16.0;
        Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/16.0)),0),7);
       end;
      end;
@@ -3402,14 +3402,14 @@ begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=32;//Min(Max(16 shl Level,16),1024);
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,16),256);
        end;
       end;
       else begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=32;//Min(Max(16 shl Level,16),1024);
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,16),256);
        end;
       end;
      end;
