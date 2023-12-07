@@ -117,6 +117,97 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 #endif
 
+#define CUBE_TO_SPHERE_METHOD_NORMALIZATON 0
+#define CUBE_TO_SPHERE_METHOD_PHIL_NOWELL 1
+#define CUBE_TO_SPHERE_METHOD_HARRY_VAN_LANGEN 2
+#define CUBE_TO_SPHERE_METHOD_MATT_ZUCKER_AND_YOSUKE_HIGASHI 3
+#define CUBE_TO_SPHERE_METHOD_COBE 4
+#define CUBE_TO_SPHERE_METHOD_ARVO 5
+#define CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON 6
+
+#define CUBE_TO_SPHERE_METHOD CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
+
+#if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
+vec3 getCubeSphereNormal(const in int face, in vec2 uv){
+  const float deltaAngle = 1.5707963267948966; // radians(90.0);
+  const float startAngle = 0.7853981633974483; // radians(45.0);
+ #if 1 
+  // Optimized implementation
+  const vec3 normals[6] = vec3[6](
+    vec3(1.0, 0.0, 0.0), // +X
+    vec3(-1.0, 0.0, 0.0), // -X
+    vec3(0.0, 1.0, 0.0), // +Y
+    vec3(0.0, -1.0, 0.0), // -Y
+    vec3(0.0, 0.0, 1.0), // +Z
+    vec3(0.0, 0.0, -1.0) // -Z
+  );
+  const ivec2 angleMap[6] = ivec2[6]( // x = angle A axis, y = angle B axis
+    ivec2(2, 1), // +X
+    ivec2(2, 1), // -X
+    ivec2(0, 2), // +Y
+    ivec2(0, 2), // -Y
+    ivec2(0, 1), // +Z
+    ivec2(0, 1)  // -Z
+  );
+  const vec4 signMap[6] = vec4[6]( // x = start angle A sign, y = start angle B sign, z = delta angle A sign, w = delta angle B sign
+    vec4(1.0, 1.0, -1.0, -1.0), // +X
+    vec4(1.0, -1.0, -1.0, 1.0), // -X
+    vec4(1.0, 1.0, -1.0, -1.0), // +Y
+    vec4(1.0, -1.0, -1.0, 1.0), // -Y
+    vec4(1.0, -1.0, -1.0, 1.0), // +Z
+    vec4(-1.0, -1.0, 1.0, 1.0)  // -Z
+  );
+  vec2 angles = fma(vec2(1.0 - uv.x, uv.y) * deltaAngle, vec2(signMap[face].zw), vec2(signMap[face].xy) * startAngle);
+  vec3 normal = normals[face];
+  ivec2 angleIndices = angleMap[face];
+  normal[angleIndices.x] = tan(angles.x);
+  normal[angleIndices.y] = tan(angles.y);
+  return normalize(normal);
+#else
+  // Reference implementation
+  uv.x = 1.0 - uv.x; 
+  switch(face){
+    case 0:{
+      // +X
+      float yangle = (deltaAngle * float(uv.y)) - startAngle;
+      float zangle = (deltaAngle * float(uv.x)) - startAngle;
+      return normalize(vec3(1.0, tan(yangle), tan(zangle)));
+    }
+    case 1:{
+      // -X
+      float yangle = (deltaAngle * float(uv.y)) - startAngle;
+      float zangle = startAngle - (deltaAngle * float(uv.x));
+      return normalize(vec3(-1.0, tan(yangle), tan(zangle)));
+    }
+    case 2:{
+      // +Y
+      float xangle = startAngle - (deltaAngle * float(uv.x));
+      float zangle = startAngle - (deltaAngle * float(uv.y));
+      return normalize(vec3(tan(xangle), 1.0, tan(zangle)));
+    }
+    case 3:{
+      // -Y
+      float xangle = startAngle - (deltaAngle * float(uv.x));
+      float zangle = (deltaAngle * float(uv.y)) - startAngle;
+      return normalize(vec3(tan(xangle), -1.0, tan(zangle)));
+    }
+    case 4:{ 
+      // +Z 
+      float xangle = startAngle - (deltaAngle * float(uv.x));
+      float yangle = (deltaAngle * float(uv.y)) - startAngle;
+      return normalize(vec3(tan(xangle), tan(yangle), 1.0));
+    }
+    default:{
+      // -Z
+      float xangle = (deltaAngle * float(uv.x)) - startAngle;
+      float yangle = (deltaAngle * float(uv.y)) - startAngle;
+      return normalize(vec3(tan(xangle), tan(yangle), -1.0));
+    }
+  }
+#endif  
+}
+#endif
+
 void main(){          
 
   vec3 sphereNormal;
@@ -181,6 +272,8 @@ void main(){
 
 #else
 
+#if CUBE_TO_SPHERE_METHOD != CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
+
     const mat3 sideMatrices[6] = mat3[6](
       mat3(vec3(0.0, 0.0, -1.0), vec3(0.0, -1.0, 0.0), vec3(-1.0, 0.0, 0.0)), // pos x
       mat3(vec3(0.0, 0.0, 1.0), vec3(0.0, -1.0, 0.0), vec3(1.0, 0.0, 0.0)),   // neg x
@@ -190,22 +283,36 @@ void main(){
       mat3(vec3(-1.0, 0.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0))   // neg z
     );  
 
+#endif    
+
     uint sideIndex = quadIndex / countSideQuads,
-        sideQuadIndex = quadIndex - (sideIndex * countSideQuads);
+         sideQuadIndex = quadIndex - (sideIndex * countSideQuads);
+    sideIndex %= 6u;
 
     float sideQuadY = sideQuadIndex / countQuadPointsInOneDirection,
           sideQuadX = sideQuadIndex - (sideQuadY * countQuadPointsInOneDirection); 
 
+#if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
+    
+    uvec2 sideQuadXY = uvec2(sideQuadX, sideQuadY);
+
+    vec3 vertices[4] = vec3[4](
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0, 0)) / vec2(countQuadPointsInOneDirection)),
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1, 0)) / vec2(countQuadPointsInOneDirection)),
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1, 1)) / vec2(countQuadPointsInOneDirection)),
+      getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0, 1)) / vec2(countQuadPointsInOneDirection))
+    );
+    
+    // Find the two triangles by the shortest diagonal and adjust quadVertexUVIndex accordingly.
+    if(distance(vertices[1], vertices[3]) < distance(vertices[0], vertices[2])){
+      quadVertexUVIndex = uvec4(1, 3, 0, 2)[quadVertexUVIndex];
+    }
+
+    sphereNormal = vertices[uvec4(0u, 1u, 3u, 2u)[quadVertexUVIndex]];
+
+#else
+
     vec2 uv = fma(vec2(uvec2(sideQuadX, sideQuadY) + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
-
-#define CUBE_TO_SPHERE_METHOD_NORMALIZATON 0
-#define CUBE_TO_SPHERE_METHOD_PHIL_NOWELL 1
-#define CUBE_TO_SPHERE_METHOD_HARRY_VAN_LANGEN 2
-#define CUBE_TO_SPHERE_METHOD_MATT_ZUCKER_AND_YOSUKE_HIGASHI 3
-#define CUBE_TO_SPHERE_METHOD_COBE 4
-#define CUBE_TO_SPHERE_METHOD_ARVO 5
-
-#define CUBE_TO_SPHERE_METHOD CUBE_TO_SPHERE_METHOD_COBE
 
 #if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_MATT_ZUCKER_AND_YOSUKE_HIGASHI
 
@@ -238,7 +345,9 @@ void main(){
 
 #endif
 
-    vec3 unitCube = sideMatrices[sideIndex % 6u] * vec3(uv, 1.0); 
+#if CUBE_TO_SPHERE_METHOD != CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
+    vec3 unitCube = sideMatrices[sideIndex] * vec3(uv, 1.0); 
+#endif
                       
 #if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_PHIL_NOWELL
 
@@ -277,6 +386,8 @@ void main(){
     // Just normalize the unit cube for the other methods
 
     sphereNormal = normalize(unitCube);
+
+#endif
 
 #endif
 
