@@ -128,6 +128,47 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 #define CUBE_TO_SPHERE_METHOD CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
 
 #if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
+#if 1
+// Even more optimized implementation, which calculates the normals for all four vertices of a quad at once. 
+void getCubeSphereNormals(const in int face, in vec4 uv0011, out vec3 vectors[4]){
+  const float deltaAngle = 1.5707963267948966; // radians(90.0);
+  const float startAngle = 0.7853981633974483; // radians(45.0);
+  // Optimized implementation
+  const vec3 normals[6] = vec3[6](
+    vec3(1.0, 0.0, 0.0), // +X
+    vec3(-1.0, 0.0, 0.0), // -X
+    vec3(0.0, 1.0, 0.0), // +Y
+    vec3(0.0, -1.0, 0.0), // -Y
+    vec3(0.0, 0.0, 1.0), // +Z
+    vec3(0.0, 0.0, -1.0) // -Z
+  );
+  const ivec2 angleMap[6] = ivec2[6]( // x = angle A axis, y = angle B axis
+    ivec2(2, 1), // +X
+    ivec2(2, 1), // -X
+    ivec2(0, 2), // +Y
+    ivec2(0, 2), // -Y
+    ivec2(0, 1), // +Z
+    ivec2(0, 1)  // -Z
+  );
+  const vec4 signMap[6] = vec4[6]( // x = start angle A sign, y = start angle B sign, z = delta angle A sign, w = delta angle B sign
+    vec4(1.0, 1.0, -1.0, -1.0), // +X
+    vec4(1.0, -1.0, -1.0, 1.0), // -X
+    vec4(1.0, 1.0, -1.0, -1.0), // +Y
+    vec4(1.0, -1.0, -1.0, 1.0), // -Y
+    vec4(1.0, -1.0, -1.0, 1.0), // +Z
+    vec4(-1.0, -1.0, 1.0, 1.0)  // -Z
+  );   
+  const vec4 angles = tan(fma(fma(uv0011, vec2(-1.0, 1.0).xyxy, vec2(1.0, 0.0).xyxy) * deltaAngle, signMap[face].zwzw, signMap[face].xyxy * startAngle));
+  const ivec2 angleIndices = angleMap[face];
+  const vec3 baseBormal = normals[face];
+  [[unroll]] for(uint quadVertexIndex = 0u; quadVertexIndex < 4u; quadVertexIndex++){
+    vectors[quadVertexIndex] = baseBormal;
+    vectors[quadVertexIndex][angleIndices.x] = angles[uvec4(0, 2, 2, 0)[quadVertexIndex]];
+    vectors[quadVertexIndex][angleIndices.y] = angles[uvec4(1, 1, 3, 3)[quadVertexIndex]];
+    vectors[quadVertexIndex] = normalize(vectors[quadVertexIndex]);
+  }
+}
+#else
 vec3 getCubeSphereNormal(const in int face, in vec2 uv){
   const float deltaAngle = 1.5707963267948966; // radians(90.0);
   const float startAngle = 0.7853981633974483; // radians(45.0);
@@ -206,6 +247,7 @@ vec3 getCubeSphereNormal(const in int face, in vec2 uv){
   }
 #endif  
 }
+#endif
 #endif
 
 void main(){          
@@ -293,22 +335,31 @@ void main(){
           sideQuadX = sideQuadIndex - (sideQuadY * countQuadPointsInOneDirection); 
 
 #if CUBE_TO_SPHERE_METHOD == CUBE_TO_SPHERE_METHOD_STEPHEN_CAMERON
-    
+        
+#if 1
+
+    vec3 vectors[4];
+    getCubeSphereNormals(int(sideIndex), vec4(uvec2(sideQuadX, sideQuadY).xyxy + uvec4(0, 0, 1, 1)) / vec4(countQuadPointsInOneDirection), vectors);
+
+#else
+
     uvec2 sideQuadXY = uvec2(sideQuadX, sideQuadY);
 
-    vec3 vertices[4] = vec3[4](
+    vec3 vectors[4] = vec3[4](
       getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0, 0)) / vec2(countQuadPointsInOneDirection)),
       getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1, 0)) / vec2(countQuadPointsInOneDirection)),
       getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(1, 1)) / vec2(countQuadPointsInOneDirection)),
       getCubeSphereNormal(int(sideIndex), vec2(sideQuadXY + uvec2(0, 1)) / vec2(countQuadPointsInOneDirection))
     );
+
+#endif
     
     // Find the two triangles by the shortest diagonal and adjust quadVertexUVIndex accordingly.
-    if(distance(vertices[1], vertices[3]) < distance(vertices[0], vertices[2])){
+    if(distance(vectors[1], vectors[3]) < distance(vectors[0], vectors[2])){
       quadVertexUVIndex = uvec4(1, 3, 0, 2)[quadVertexUVIndex];
     }
 
-    sphereNormal = vertices[uvec4(0u, 1u, 3u, 2u)[quadVertexUVIndex]];
+    sphereNormal = vectors[uvec4(0u, 1u, 3u, 2u)[quadVertexUVIndex]];
 
 #else
 
