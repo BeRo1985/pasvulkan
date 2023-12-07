@@ -157,11 +157,11 @@ vec3 getCubeSphereNormal(const in int face, in vec2 uv){
     vec4(1.0, -1.0, -1.0, 1.0), // +Z
     vec4(-1.0, -1.0, 1.0, 1.0)  // -Z
   );
-  vec2 angles = fma(vec2(1.0 - uv.x, uv.y) * deltaAngle, vec2(signMap[face].zw), vec2(signMap[face].xy) * startAngle);
+  vec2 angles = tan(fma(vec2(1.0 - uv.x, uv.y) * deltaAngle, vec2(signMap[face].zw), vec2(signMap[face].xy) * startAngle));
   vec3 normal = normals[face];
   ivec2 angleIndices = angleMap[face];
-  normal[angleIndices.x] = tan(angles.x);
-  normal[angleIndices.y] = tan(angles.y);
+  normal[angleIndices.x] = angles.x;
+  normal[angleIndices.y] = angles.y;
   return normalize(normal);
 #else
   // Reference implementation
