@@ -141,6 +141,9 @@ type TpvScene3DPlanets=class;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
+              fModifyHeightMapActive:Boolean;
+              fModifyHeightMapBorderRadius:TpvScalar;
+              fModifyHeightMapFactor:TpvScalar;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -168,6 +171,9 @@ type TpvScene3DPlanets=class;
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
+              property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
+              property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
+              property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { THeightMapRandomInitialization }
@@ -870,6 +876,12 @@ begin
  fSelectedRegion:=TpvVector4.Null;
 
  fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
+
+ fModifyHeightMapActive:=false;
+
+ fModifyHeightMapBorderRadius:=0.0;
+
+ fModifyHeightMapFactor:=0.0;
 
 end;
 
@@ -1679,6 +1691,8 @@ begin
                                    0,nil,
                                    1,@ImageMemoryBarrier);                                                                                                                                                                                                 
 
+ inc(fPlanet.fData.fHeightMapGeneration);
+
 end;
 
 { TpvScene3DPlanet.THeightMapModification }
@@ -1809,6 +1823,13 @@ begin
                                       0,
                                       nil);
 
+ fPushConstants.InnerRadiusValueMinMax:=TpvVector4.InlineableCreate(Max(0.0,fPlanet.fData.fSelectedRegion.w-fPlanet.fData.fModifyHeightMapBorderRadius),
+                                                                    fPlanet.fData.fModifyHeightMapFactor,
+                                                                    0.0,
+                                                                    1.0);
+
+ fPushConstants.PositionRadius:=fPlanet.fData.fSelectedRegion;
+
  aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                  0,
@@ -1837,7 +1858,9 @@ begin
                                    0,
                                    0,nil,
                                    0,nil,
-                                   1,@ImageMemoryBarrier); 
+                                   1,@ImageMemoryBarrier);
+
+ inc(fPlanet.fData.fHeightMapGeneration);
 
 end;
 
@@ -3949,12 +3972,17 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
 
  if (fData.fNormalMapGeneration<>fData.fHeightMapGeneration) or
-    (fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration) then begin
+    (fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration) or
+    fData.fModifyHeightMapActive then begin
 
   if assigned(fVulkanDevice) then begin
 
    BeginUpdate;
    try
+
+    if fData.fModifyHeightMapActive then begin
+     fHeightMapModification.Execute(fVulkanComputeCommandBuffer);
+    end;
 
     if fData.fNormalMapGeneration<>fData.fHeightMapGeneration then begin
      fData.fNormalMapGeneration:=fData.fHeightMapGeneration;

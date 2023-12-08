@@ -539,3 +539,91 @@ void main(){
 #endif
 
 }
+
+    {
+    		
+#if 1
+
+    sphereNormal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
+    sphereNormal = normalize((sphereNormal.z < 0.0) ? vec3((1.0 - abs(sphereNormal.yx)) * vec2((sphereNormal.x < 0.0) ? -1.0 : 1.0, (sphereNormal.y < 0.0) ? -1.0 : 1.0), sphereNormal.z) : sphereNormal);
+    
+#elif 0
+
+    vec2 uvAbs = abs(uv);
+    float d = 1.0 - (uvAbs.x + uvAbs.y), r = 1.0 - abs(d);
+    sphereNormal = normalize(vec3((sin((vec2(((r == 0.0) ? 0.0 : ((uvAbs.y - uvAbs.x) / r)) + 1.0) + vec2(1.0, 0.0)) * 1.5707963267948966) *
+                                   vec2(uv.x < 0.0 ? -1.0 : 1.0, uv.y < 0.0 ? -1.0 : 1.0)) * r * sqrt(2.0 - (r * r)), 
+                                  (1.0 - (r * r)) * (d < 0.0 ? -1.0 : 1.0)));
+
+#else
+
+      float a = uv.y + uv.x;
+      float b = uv.y - uv.x;
+      
+      float r, phi, z;
+      
+      if(uv.y >= 0.0){
+        if(uv.x >= 0.0){	
+          // quadrant 1
+          if(a <= 1.0){
+            // north
+            r = a;
+            z = 1.0;
+            phi = uv.y / r;
+          }else{
+            // south
+            r = 2.0 - a;
+            z = -1.0;
+            phi = (1.0 - uv.x) / r;
+          }
+        }else{			
+          // quadrant 2
+          if(b <= 1.0){
+            // north
+            r = b;
+            z = 1.0;
+            phi = 1.0 - (uv.x / r);
+          }
+          else
+          {
+            r = 2.0 - b;
+            z = -1.0;
+            phi = 1.0 + (1.0 - uv.y) / r;
+          }
+        }
+      }else{
+        if(uv.x < 0.0){
+          // quadrant 3
+          if(a >= -1.0){
+            // north
+            r = -a;
+            z = 1.0;
+            phi = 2.0 - uv.y / r;
+          }else{
+        		// south          
+            r = 2.0 + a;
+            z = -1.0;
+            phi = 2.0 + (1.0 + uv.x) / r;
+          }
+        }else{
+          // quadrant 4
+          if(b>=-1.0){
+            // north
+            r = -b;
+            z = 1.0;
+            phi = 3.0 + (uv.x / r);
+          }else{
+            // south
+            r = 2.0 + b;
+            z = -1.0;
+            phi = 3.0 + (1.0 + uv.y) / r;
+          }
+        }
+      }
+      
+      sphereNormal = normalize(vec3(sin(vec2(((r == 0.0) ? 0.0 : phi) * 1.5707963267948966) + vec2(1.5707963267948966, 0.0)) * r * sqrt(2.0 - (r * r)), z * (1.0 - (r * r))));
+
+#endif
+
+    }
+
