@@ -1,6 +1,19 @@
 #ifndef TANGENTSPACEBASIS_GLSL
 #define TANGENTSPACEBASIS_GLSL
 
+vec3 getPerpendicularVector(in vec3 v){
+#if 1
+  uvec3 uyxzxzy = uvec3(ivec3(abs(v.xxy) - abs(v.yzz))) >> 31u;
+  uvec3 xmymzm = uvec2(uyxzxzy.x & uyxzxzy.y, 0u).xyy;
+  xmymzm.y = (1u ^ xmymzm.x) & uyxzxzy.z;
+  xmymzm.z = 1u ^ (xmymzm.x & xmymzm.y);
+  return (v.yzx * vec3(xmymzm.zxy)) - (v.zxy * vec3(xmymzm.yzx));
+#else
+  vec3 absV = abs(v);
+  return (all(lessThan(absV.xx, absV.yz))) ? vec3(0.0, v.z, -v.y) : ((all(lessThan(absV.yy, absV.xz))) ? vec3(-v.z, 0.0, v.x) : vec3(v.y, -v.x, 0.0));
+#endif
+}
+
 #define TBN_METHOD 1
 void getTangentSpaceBasisFromNormal(in vec3 n, out vec3 t, out vec3 b){
 #if TBN_METHOD == 0
