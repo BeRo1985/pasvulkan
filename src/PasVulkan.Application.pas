@@ -1362,6 +1362,7 @@ type EpvApplication=class(Exception)
        fAndroidTrapBackButton:boolean;
        fUseAudio:boolean;
        fBlocking:boolean;
+       fUpdateUsesGPU:boolean;
        fWaitOnPreviousFrames:boolean;
        fWaitOnPreviousFrame:boolean;
        fTerminationWithAltF4:boolean;
@@ -1962,6 +1963,8 @@ type EpvApplication=class(Exception)
        property UseAudio:boolean read fUseAudio write fUseAudio;
 
        property Blocking:boolean read fBlocking write fBlocking;
+
+       property UpdateUsesGPU:boolean read fUpdateUsesGPU write fUpdateUsesGPU;
 
        property WaitOnPreviousFrames:boolean read fWaitOnPreviousFrames write fWaitOnPreviousFrames;
 
@@ -7150,6 +7153,7 @@ begin
  fAndroidTrapBackButton:=true;
  fUseAudio:=false;
  fBlocking:=true;
+ fUpdateUsesGPU:=false;
  fWaitOnPreviousFrames:=false;
  fWaitOnPreviousFrame:=false;
  fTerminationWithAltF4:=true;
@@ -7635,13 +7639,15 @@ begin
 {$ifend}
  try
   if assigned(fVulkanDevice) then begin
-   if assigned(fUpdateThread) then begin
-    if fUpdateThread.fInvoked then begin
-     fUpdateThread.WaitForDone;
-    end;
-   end else begin
-    while fInUpdateJobFunction do begin
-     TPasMP.Yield;
+   if fUpdateUsesGPU then begin
+    if assigned(fUpdateThread) then begin
+     if fUpdateThread.fInvoked then begin
+      fUpdateThread.WaitForDone;
+     end;
+    end else begin
+     while fInUpdateJobFunction do begin
+      TPasMP.Yield;
+     end;
     end;
    end;
    fVulkanDevice.WaitIdle;
@@ -9518,13 +9524,15 @@ begin
       TAcquireVulkanBackBufferState.RecreateSwapChain,
       TAcquireVulkanBackBufferState.RecreateSurface:begin
 
-       if assigned(fUpdateThread) then begin
-        if fUpdateThread.fInvoked then begin
-         fUpdateThread.WaitForDone;
-        end;
-       end else begin
-        while fInUpdateJobFunction do begin
-         TPasMP.Yield;
+       if fUpdateUsesGPU then begin
+        if assigned(fUpdateThread) then begin
+         if fUpdateThread.fInvoked then begin
+          fUpdateThread.WaitForDone;
+         end;
+        end else begin
+         while fInUpdateJobFunction do begin
+          TPasMP.Yield;
+         end;
         end;
        end;
 
@@ -11418,7 +11426,7 @@ begin
 
    Check(fUpdateDeltaTime);
 
-   if assigned(fUpdateThread) then begin
+   if fUpdateUsesGPU and assigned(fUpdateThread) then begin
     fUpdateThread.Invoke;
     fUpdateThread.WaitForDone;
    end else begin
@@ -11492,7 +11500,7 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        if assigned(fUpdateThread) then begin
+        if fUpdateUsesGPU and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
          fUpdateThread.WaitForDone;
         end else begin
@@ -11517,13 +11525,15 @@ begin
        finally
         if assigned(fVulkanDevice) then begin
          try
-          if assigned(fUpdateThread) then begin
-           if fUpdateThread.fInvoked then begin
-            fUpdateThread.WaitForDone;
-           end;
-          end else begin
-           while fInUpdateJobFunction do begin
-            TPasMP.Yield;
+          if fUpdateUsesGPU then begin
+           if assigned(fUpdateThread) then begin
+            if fUpdateThread.fInvoked then begin
+             fUpdateThread.WaitForDone;
+            end;
+           end else begin
+            while fInUpdateJobFunction do begin
+             TPasMP.Yield;
+            end;
            end;
           end;
          finally
@@ -11590,7 +11600,7 @@ begin
 
         BeginFrame(fUpdateDeltaTime);
 
-        if assigned(fUpdateThread) then begin
+        if fUpdateUsesGPU and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
          DrawJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
          fUpdateThread.WaitForDone;
@@ -11618,7 +11628,7 @@ begin
 
         Check(fUpdateDeltaTime);
 
-        if assigned(fUpdateThread) then begin
+        if fUpdateUsesGPU and assigned(fUpdateThread) then begin
          fUpdateThread.Invoke;
          fUpdateThread.WaitForDone;
         end else begin

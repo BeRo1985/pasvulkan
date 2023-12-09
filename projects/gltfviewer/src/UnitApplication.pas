@@ -337,6 +337,7 @@ begin
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
+ UpdateUsesGPU:=true;
  SwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 //Blocking:=false;
 //DesiredCountSwapChainImages:=2;

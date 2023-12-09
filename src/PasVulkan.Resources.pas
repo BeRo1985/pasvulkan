@@ -129,7 +129,9 @@ type EpvResource=class(Exception);
        fAssetName:TpvUTF8String;
        fName:TpvUTF8String;
        fTemporary:boolean;
+      public
        constructor CreateTemporary; reintroduce; virtual;
+      protected
        procedure SetUUID(const pUUID:TpvUUID);
        procedure SetFileName(const pFileName:TpvUTF8String);
        procedure SetAssetName(const pAssetName:TpvUTF8String);
