@@ -313,6 +313,8 @@ compileshaderarguments=(
 
   "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
 
+  "-V planet_ray_intersection.comp -o ${tempPath}/planet_ray_intersection_comp.spv"
+
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"
   "-V planet_renderpass.vert -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_vert.spv"
