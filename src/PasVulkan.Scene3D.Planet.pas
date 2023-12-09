@@ -500,6 +500,7 @@ type TpvScene3DPlanets=class;
        procedure EndUpdate;
        procedure FlushUpdate;
        procedure Initialize(const aPasMPInstance:TPasMP=nil);
+       function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -4216,6 +4217,49 @@ begin
   fData.fInitialized:=true;
 
  end;
+
+end;
+
+function TpvScene3DPlanet.RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
+var Sphere:TpvSphere;
+    HitNormalTime:TpvVector4;
+begin
+
+ result:=false;
+
+ Sphere:=TpvSphere.Create(fData.fModelMatrix.MulHomogen(TpvVector3.Null),fTopRadius);
+
+ // Pre-ray-intersection-check on the CPU, before we do the actual ray intersection on the GPU for to save unnecessary GPU interactions.aRayOrigin
+ if Sphere.RayIntersection(aRayOrigin,aRayDirection,aHitTime) then begin
+
+  if assigned(fVulkanDevice) then begin
+
+   BeginUpdate;
+   try
+
+    fRayIntersection.Execute(fVulkanComputeCommandBuffer,aRayOrigin,aRayDirection);
+
+   finally
+    EndUpdate;
+   end;
+
+   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                        fVulkanComputeCommandBuffer,
+                                        fVulkanComputeFence,
+                                        fData.fRayIntersectionResultBuffer,
+                                        0,
+                                        HitNormalTime,
+                                        SizeOf(TpvVector4));
+
+   if HitNormalTime.w>=0.0 then begin
+    aHitNormal:=HitNormalTime.xyz;
+    aHitTime:=HitNormalTime.w;
+    result:=true;
+   end;                                         
+
+  end;
+
+ end; 
 
 end;
 
