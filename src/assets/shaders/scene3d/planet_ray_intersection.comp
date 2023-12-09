@@ -126,8 +126,8 @@ void main(){
 
   // Check if ray hit the planet with its top radius.
   if(intersectRaySphere(vec4(pushConstants.planetCenter.xyz, pushConstants.rayDirectionPlanetTopRadius.w), 
+                        pushConstants.rayOriginPlanetBottomRadius.xyz,
                         rayDirection,
-                        pushConstants.rayDirectionPlanetTopRadius.xyz,
                         hitRayTime)){
    
     // Ray may have hit the planet, but we need to check if it hit the height map.
