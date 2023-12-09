@@ -159,7 +159,7 @@ void main(){
 
         float sphereSampleDistance = length(samplePosition - spherePosition);
         if(abs(sphereSampleDistance) < threshold){
-          hitNormalTime = vec4(sphereNormal, currentTime);
+          hitNormalTime = vec4(sphereNormal, distance(rayOrigin, spherePosition));
           break;
         }
 
