@@ -120,6 +120,56 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 #endif
 
+mat3 tessellateTriangle(const in uvec2 uv, const in uint resolution, const in vec3 p0, const in vec3 p1, const in vec3 p2, out vec3 o0, out vec3 o1, out vec3 o2){
+
+  // Convert the uv coordinates of resolution * resolution to a single 1D index.
+  const uint index = (uv.y * resolution) + uv.x;
+
+  // Setup some variables for the barycentric coordinates
+  const float y = floor(sqrt(float(index))), 
+              x = (float(index) - (y * y)) * 0.5, 
+              inverseResolution = 1.0 / float(resolution);
+
+  // Check if it is a inverted triangle case.
+  const bool inversed = fract(x) > 0.4;
+  
+  // Calculate the barycentric coordinates of the triangle, which is made of three points.
+  const vec2 bc0 = (vec2(x, float(resolution) - y) * inverseResolution) + (inversed ? vec2(0.5 * inverseResolution, 0.0) : vec2(0.0));
+  const vec2 bc1 = (bc0.xy + vec2(inverseResolution, -inverseResolution)) - (inversed ? vec2(inverseResolution, 0.0) : vec2(0.0));
+  const vec2 bc2 = bc0.xy - (inversed ? vec2(inverseResolution, 0.0) : vec2(0.0, inverseResolution));
+  
+  // Put the barycentric coordinates into a 3x3 matrix for easier access, including the third w coordinate, which is just 1.0 - (u + v).
+  mat3 result = mat3(
+    vec3(bc0.xy, 1.0 - (bc0.x + bc0.y)), 
+    vec3(bc1.xy, 1.0 - (bc1.x + bc1.y)), 
+    vec3(bc2.xy, 1.0 - (bc2.x + bc2.y))
+  );
+
+  // Maybe not really necessary, but just for safety reasons, clamp the barycentric coordinates to the triangle for to avoid possible out-of-bound coordinates.
+  [[unroll]] for(uint barycentricIndex = 0u; barycentricIndex < 3u; barycentricIndex++){
+    vec3 uvw = result[barycentricIndex];
+    vec3 p = (p0 * uvw.x) + (p1 * uvw.y) + (p2 * uvw.z);
+    if(uvw.x < 0.0){
+      float t = clamp(dot(p - p1, p2 - p1) / dot(p2 - p1, p2 - p1), 0.0, 1.0);
+      result[barycentricIndex] = vec3(0.0, 1.0 - t, t);
+    }else if(uvw.y < 0.0){
+      float t = clamp(dot(p - p2, p0 - p2) / dot(p0 - p2, p0 - p2), 0.0, 1.0);
+      result[barycentricIndex] = vec3(t, 0.0, 1.0 - t);
+    }else if(uvw.z < 0.0){
+      float t = clamp(dot(p - p0, p1 - p0) / dot(p1 - p0, p1 - p0), 0.0, 1.0);
+      result[barycentricIndex] = vec3(1.0 - t, t, 0.0);
+    }
+  }
+
+  // Calculate the output points by multiplying the barycentric coordinates with the input points.
+  o0 = (p0 * result[0].x) + (p1 * result[0].y) + (p2 * result[0].z);
+  o1 = (p0 * result[1].x) + (p1 * result[1].y) + (p2 * result[1].z);
+  o2 = (p0 * result[2].x) + (p1 * result[2].y) + (p2 * result[2].z);
+
+  // Return the barycentric coordinates for other possible calculations like texture coordinate interpolation and the like.
+  return result;
+}
+
 #define CUBE_TO_SPHERE_METHOD_NORMALIZATON 0
 #define CUBE_TO_SPHERE_METHOD_PHIL_NOWELL 1
 #define CUBE_TO_SPHERE_METHOD_HARRY_VAN_LANGEN 2
