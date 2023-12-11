@@ -407,8 +407,8 @@ void main(){
 
     uint triangleIndex = vertexIndex / 3u,   
          triangleVertexIndex = vertexIndex - (triangleIndex * 3u),         
-         triangleSubdivisionIndex = triangleIndex / squaredResolution,
-         faceIndex = triangleIndex - (triangleSubdivisionIndex * squaredResolution);
+         faceIndex = triangleIndex / squaredResolution,
+         triangleSubdivisionIndex = triangleIndex - (faceIndex * squaredResolution);
          
     uvec3 faceVertexIndices = faceIndices[faceIndex];
     
@@ -421,6 +421,13 @@ void main(){
     vec3 outputVertices[3];
 
     tessellateTriangle(triangleSubdivisionIndex, resolution, inputVertices, outputVertices);
+
+    // Ensure that it is CCW
+  /*if(dot(cross(outputVertices[1] - outputVertices[0], outputVertices[2] - outputVertices[0]), outputVertices[0]) >= 0.0){
+      vec3 t = outputVertices[1];
+      outputVertices[1] = outputVertices[2];
+      outputVertices[2] = t;
+    } */
 
     sphereNormal = normalize(outputVertices[triangleVertexIndex]);
 

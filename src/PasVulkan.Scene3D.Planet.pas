@@ -95,10 +95,11 @@ type TpvScene3DPlanets=class;
               NormalizedCubeQuads,
               OctasphereTriangles,
               OctasphereQuads,
+              Icosphere,
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere;
              Direct:Boolean=false;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
@@ -3204,6 +3205,9 @@ begin
    TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
     Kind:='octahedral_';
    end;
+   TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
+    Kind:='icosahedral_triangles_';
+   end;
    TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
     Kind:='external_';
    end;
@@ -3232,6 +3236,7 @@ begin
   case TpvScene3DPlanet.SourcePrimitiveMode of
    TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
+   TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere,
    TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
     Kind:='triangles_';
    end;
@@ -3577,6 +3582,7 @@ begin
   case TpvScene3DPlanet.SourcePrimitiveMode of
    TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
+   TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere,
    TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
     fPipeline.TessellationState.PatchControlPoints:=3;
    end;
@@ -3689,6 +3695,13 @@ begin
      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
      fPushConstants.CountViews:=aCountViews;
      case TpvScene3DPlanet.SourcePrimitiveMode of
+      TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
+       if Level<0 then begin
+        fPushConstants.CountQuadPointsInOneDirection:=32;
+       end else begin
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,16),256);
+       end;
+      end;
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
        if Level<0 then begin
@@ -3743,6 +3756,9 @@ begin
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
+      end;
+      TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
+       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*3*20,1,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualBaseMeshTriangleIndexBuffer.Handle,SizeOf(TVkUInt32),VK_INDEX_TYPE_UINT32);
