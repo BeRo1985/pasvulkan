@@ -323,6 +323,8 @@ compileshaderarguments=(
   "-V planet_renderpass.vert -DOCTAHEDRAL -DVELOCITY -o ${tempPath}/planet_renderpass_octahedral_velocity_vert.spv"
   "-V planet_renderpass.vert -DOCTAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_octahedral_triangles_vert.spv"
   "-V planet_renderpass.vert -DOCTAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_octahedral_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DICOSAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_icosahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DICOSAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_icosahedral_triangles_velocity_vert.spv"
   "-V planet_renderpass.vert -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_external_vert.spv"
   "-V planet_renderpass.vert -DEXTERNAL_VERTICES -DVELOCITY -o ${tempPath}/planet_renderpass_external_velocity_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -o ${tempPath}/planet_renderpass_direct_vert.spv"
@@ -333,6 +335,8 @@ compileshaderarguments=(
   "-V planet_renderpass.vert -DDIRECT -DOCTAHEDRAL -DVELOCITY -o ${tempPath}/planet_renderpass_direct_octahedral_velocity_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -DOCTAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_direct_octahedral_triangles_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -DOCTAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_direct_octahedral_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DDIRECT -DICOSAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_direct_icosahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DDIRECT -DICOSAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_direct_icosahedral_triangles_velocity_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_direct_external_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -DEXTERNAL_VERTICES -DVELOCITY -o ${tempPath}/planet_renderpass_direct_external_velocity_vert.spv"
 

@@ -106,6 +106,16 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
       uint countTotalVertices = countQuads * 4u; // 4 vertices per quad
     #endif
 
+  #elif defined(ICOSAHEDRAL)
+
+    uint resolution = pushConstants.countQuadPointsInOneDirection;
+    uint squaredResolution = pushConstants.countQuadPointsInOneDirection * pushConstants.countQuadPointsInOneDirection;
+    #ifdef TRIANGLES
+      uint countTotalVertices = squaredResolution * 3u * 20u; // 3 vertices per triangle, 20 triangles per icosahedron
+    #else
+      #error "Icosahedral tessellation without triangles is not supported."
+    #endif
+
   #else
 
     uint countQuadPointsInOneDirection = pushConstants.countQuadPointsInOneDirection;
@@ -120,10 +130,8 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 #endif
 
-mat3 tessellateTriangle(const in uvec2 uv, const in uint resolution, const in vec3 p0, const in vec3 p1, const in vec3 p2, out vec3 o0, out vec3 o1, out vec3 o2){
-
-  // Convert the uv coordinates of resolution * resolution to a single 1D index.
-  const uint index = (uv.y * resolution) + uv.x;
+#if defined(ICOSAHEDRAL)
+mat3 tessellateTriangle(const in uint index, const in uint resolution, const in vec3 inputVertices[3], out vec3 outputVertices[3]){
 
   // Setup some variables for the barycentric coordinates
   const float y = floor(sqrt(float(index))), 
@@ -148,27 +156,28 @@ mat3 tessellateTriangle(const in uvec2 uv, const in uint resolution, const in ve
   // Maybe not really necessary, but just for safety reasons, clamp the barycentric coordinates to the triangle for to avoid possible out-of-bound coordinates.
   [[unroll]] for(uint barycentricIndex = 0u; barycentricIndex < 3u; barycentricIndex++){
     vec3 uvw = result[barycentricIndex];
-    vec3 p = (p0 * uvw.x) + (p1 * uvw.y) + (p2 * uvw.z);
+    vec3 p = (inputVertices[0] * uvw.x) + (inputVertices[1] * uvw.y) + (inputVertices[2] * uvw.z);
     if(uvw.x < 0.0){
-      float t = clamp(dot(p - p1, p2 - p1) / dot(p2 - p1, p2 - p1), 0.0, 1.0);
+      float t = clamp(dot(p - inputVertices[1], inputVertices[2] - inputVertices[1]) / dot(inputVertices[2] - inputVertices[1], inputVertices[2] - inputVertices[1]), 0.0, 1.0);
       result[barycentricIndex] = vec3(0.0, 1.0 - t, t);
     }else if(uvw.y < 0.0){
-      float t = clamp(dot(p - p2, p0 - p2) / dot(p0 - p2, p0 - p2), 0.0, 1.0);
+      float t = clamp(dot(p - inputVertices[2], inputVertices[0] - inputVertices[2]) / dot(inputVertices[0] - inputVertices[2], inputVertices[0] - inputVertices[2]), 0.0, 1.0);
       result[barycentricIndex] = vec3(t, 0.0, 1.0 - t);
     }else if(uvw.z < 0.0){
-      float t = clamp(dot(p - p0, p1 - p0) / dot(p1 - p0, p1 - p0), 0.0, 1.0);
+      float t = clamp(dot(p - inputVertices[0], inputVertices[1] - inputVertices[0]) / dot(inputVertices[1] - inputVertices[0], inputVertices[1] - inputVertices[0]), 0.0, 1.0);
       result[barycentricIndex] = vec3(1.0 - t, t, 0.0);
     }
   }
 
-  // Calculate the output points by multiplying the barycentric coordinates with the input points.
-  o0 = (p0 * result[0].x) + (p1 * result[0].y) + (p2 * result[0].z);
-  o1 = (p0 * result[1].x) + (p1 * result[1].y) + (p2 * result[1].z);
-  o2 = (p0 * result[2].x) + (p1 * result[2].y) + (p2 * result[2].z);
+  // Calculate the output vertices by multiplying the barycentric coordinates with the input vertices.
+  outputVertices[0] = (inputVertices[0] * result[0].x) + (inputVertices[1] * result[0].y) + (inputVertices[2] * result[0].z);
+  outputVertices[1] = (inputVertices[0] * result[1].x) + (inputVertices[1] * result[1].y) + (inputVertices[2] * result[1].z);
+  outputVertices[2] = (inputVertices[0] * result[2].x) + (inputVertices[1] * result[2].y) + (inputVertices[2] * result[2].z);
 
   // Return the barycentric coordinates for other possible calculations like texture coordinate interpolation and the like.
   return result;
 }
+#endif
 
 #define CUBE_TO_SPHERE_METHOD_NORMALIZATON 0
 #define CUBE_TO_SPHERE_METHOD_PHIL_NOWELL 1
@@ -317,6 +326,7 @@ void main(){
   
   if(vertexIndex < countTotalVertices){ 
 
+#if !defined(ICOSAHEDRAL)
     // A quad is made of two triangles, where the first triangle is the lower left triangle and the second
     // triangle is the upper right triangle. So the vertex indices and the triangles of a quad are:
     //
@@ -353,6 +363,7 @@ void main(){
 
     uint quadVertexUVIndex = (0xb4u >> (quadVertexIndex << 1u)) & 3u;     
     uvec2 quadVertexUV = uvec2(quadVertexUVIndex & 1u, quadVertexUVIndex >> 1u);
+#endif
 
 #if defined(OCTAHEDRAL)
 
@@ -364,6 +375,54 @@ void main(){
 
     sphereNormal = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
     sphereNormal = normalize((sphereNormal.z < 0.0) ? vec3((1.0 - abs(sphereNormal.yx)) * vec2((sphereNormal.x < 0.0) ? -1.0 : 1.0, (sphereNormal.y < 0.0) ? -1.0 : 1.0), sphereNormal.z) : sphereNormal);
+
+#elif defined(ICOSAHEDRAL)
+  
+    const float GoldenRatio = 1.61803398874989485, // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)
+                IcosahedronLength = 1.902113032590307, // sqrt(sqr(1) + sqr(GoldenRatio))
+                IcosahedronNorm = 0.5257311121191336, // 1.0 / IcosahedronLength
+                IcosahedronNormGoldenRatio = 0.85065080835204; // GoldenRatio / IcosahedronLength
+
+    const vec3 faceVertices[12] = vec3[12](
+      vec3(0.0, IcosahedronNorm, IcosahedronNormGoldenRatio),
+      vec3(0.0, -IcosahedronNorm, IcosahedronNormGoldenRatio),
+      vec3(IcosahedronNorm, IcosahedronNormGoldenRatio, 0.0),
+      vec3(-IcosahedronNorm, IcosahedronNormGoldenRatio, 0.0),
+      vec3(IcosahedronNormGoldenRatio, 0.0, IcosahedronNorm),
+      vec3(-IcosahedronNormGoldenRatio, 0.0, IcosahedronNorm),
+      vec3(0.0, -IcosahedronNorm, -IcosahedronNormGoldenRatio),
+      vec3(0.0, IcosahedronNorm, -IcosahedronNormGoldenRatio),
+      vec3(-IcosahedronNorm, -IcosahedronNormGoldenRatio, 0.0),
+      vec3(IcosahedronNorm, -IcosahedronNormGoldenRatio, 0.0),
+      vec3(-IcosahedronNormGoldenRatio, 0.0, -IcosahedronNorm),
+      vec3(IcosahedronNormGoldenRatio, 0.0, -IcosahedronNorm)
+    );
+
+    const uvec3 faceIndices[20] = uvec3[20](
+      uvec3(0u, 5u, 1u), uvec3(0u, 3u, 5u), uvec3(0u, 2u, 3u), uvec3(0u, 4u, 2u), uvec3(0u, 1u, 4u),
+      uvec3(1u, 5u, 8u), uvec3(5u, 3u, 10u), uvec3(3u, 2u, 7u), uvec3(2u, 4u, 11u), uvec3(4u, 1u, 9u),
+      uvec3(7u, 11u, 6u), uvec3(11u, 9u, 6u), uvec3(9u, 8u, 6u), uvec3(8u, 10u, 6u), uvec3(10u, 7u, 6u),
+      uvec3(2u, 11u, 7u), uvec3(4u, 9u, 11u), uvec3(1u, 8u, 9u), uvec3(5u, 10u, 8u), uvec3(3u, 7u, 10u)
+    );
+
+    uint triangleIndex = vertexIndex / 3u,   
+         triangleVertexIndex = vertexIndex - (triangleIndex * 3u),         
+         triangleSubdivisionIndex = triangleIndex / squaredResolution,
+         faceIndex = triangleIndex - (triangleSubdivisionIndex * squaredResolution);
+         
+    uvec3 faceVertexIndices = faceIndices[faceIndex];
+    
+    vec3 inputVertices[3] = vec3[3]( 
+      faceVertices[faceVertexIndices.x], 
+      faceVertices[faceVertexIndices.y], 
+      faceVertices[faceVertexIndices.z]
+    );
+
+    vec3 outputVertices[3];
+
+    tessellateTriangle(triangleSubdivisionIndex, resolution, inputVertices, outputVertices);
+
+    sphereNormal = normalize(outputVertices[triangleVertexIndex]);
 
 #else
 
