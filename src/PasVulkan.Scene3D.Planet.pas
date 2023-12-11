@@ -3680,7 +3680,14 @@ begin
      case fMode of
       TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
       TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
-       TessellationFactor:=1.0/64.0;
+       case TpvScene3DPlanet.SourcePrimitiveMode of
+        TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
+         TessellationFactor:=1.0/256.0;
+        end;
+        else begin
+         TessellationFactor:=1.0/64.0;
+        end;
+       end;
        Level:=-1;
       end;
       else begin
@@ -3704,9 +3711,9 @@ begin
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
        if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=8;
+        fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(1 shl Level,2),256);
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(1 shl Level,32),256);
        end;
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,

@@ -422,7 +422,11 @@ void main(){
 
     tessellateTriangle(triangleSubdivisionIndex, resolution, inputVertices, outputVertices);
 
+#ifdef DIRECT
+    sphereNormal = normalize(outputVertices[2u - triangleVertexIndex]);
+#else
     sphereNormal = normalize(outputVertices[triangleVertexIndex]);
+#endif
 
 #else
 
