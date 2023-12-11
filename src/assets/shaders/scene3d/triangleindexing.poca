@@ -1,18 +1,21 @@
 
-let rows = 8, count = 0;
+let rows = 16, count = 0;
 
 print("     ");
 for(let columnIndex = 0; columnIndex < rows; columnIndex++){
   if(columnIndex < 10){
-     print(" ");
-  }
-  print(columnIndex, " ");
+    print(" ");
+ }
+ if(columnIndex < 100){
+  print(" ");
+}
+print(columnIndex, " ");
 }
 print("\n");
 
 print("  +-");
 for(let columnIndex = 0; columnIndex < rows; columnIndex++){
-  print("---");
+  print("----");
 }
 print("\n");
  
@@ -24,6 +27,9 @@ for(let rowIndex = 0; rowIndex < rows; rowIndex++){
   print(rowIndex, "|  ");
   for(let columnIndex = 0; columnIndex <= columns; columnIndex++){
     if(count < 10){
+      print(" ");
+    }
+    if(count < 100){
       print(" ");
     }
     print(count, " ");
@@ -38,7 +44,7 @@ let count2 = (rows * (rows + 1)) / 2;
 
 print("count2: ", count2, "\n");
 
-let linearIndex = 32;
+let linearIndex = 118;
 let rowIndex = Math.floor(Math.sqrt((linearIndex * 2.0) + 0.25) - 0.5);
 let columnIndex = linearIndex - ((rowIndex * (rowIndex + 1)) / 2);
 
