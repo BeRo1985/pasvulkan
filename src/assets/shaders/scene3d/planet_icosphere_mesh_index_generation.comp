@@ -24,9 +24,11 @@ layout(push_constant) uniform PushConstants {
 void main(){
 
   uint linearIndex = uint(gl_GlobalInvocationID.x);
+  
   uint faceIndex = uint(gl_GlobalInvocationID.y);
 
   const uint resolution = pushConstants.resolution;
+
   const uint count = (((resolution + 1) * (resolution + 2)) / 2);
 
   if(linearIndex < count){
