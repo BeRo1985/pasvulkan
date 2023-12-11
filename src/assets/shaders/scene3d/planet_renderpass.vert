@@ -422,13 +422,6 @@ void main(){
 
     tessellateTriangle(triangleSubdivisionIndex, resolution, inputVertices, outputVertices);
 
-    // Ensure that it is CCW
-  /*if(dot(cross(outputVertices[1] - outputVertices[0], outputVertices[2] - outputVertices[0]), outputVertices[0]) >= 0.0){
-      vec3 t = outputVertices[1];
-      outputVertices[1] = outputVertices[2];
-      outputVertices[2] = t;
-    } */
-
     sphereNormal = normalize(outputVertices[triangleVertexIndex]);
 
 #else

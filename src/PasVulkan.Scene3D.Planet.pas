@@ -3684,7 +3684,7 @@ begin
        Level:=-1;
       end;
       else begin
-       TessellationFactor:=1.0/16.0;
+       TessellationFactor:=1.0/16000000000.0;
        Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/4.0)),0),7);
       end;
      end;
@@ -3699,7 +3699,7 @@ begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,16),256);
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(1 shl Level,16),64);
        end;
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
