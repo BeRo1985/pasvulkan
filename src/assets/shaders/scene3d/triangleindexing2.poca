@@ -1,16 +1,18 @@
 
 let resolution = 10;
 
+// Reference code
+
 let triangles = new Array((resolution + 1) * (resolution + 1) * 3);
 
-let rowColumns = new Array((resolution + 1) * (resolution + 1));
+let rowColumns = new Array();
 
 let k = 0, c = 0;
 
 // loop through rows of vertices on bottom side, only + 1 because we're excluding the single one on the right side
 for(let i = 0, icount = resolution + 1; i < icount; i++){
 
-  print(k, ": ");
+  print(i, " ", k, ": ");
 
   // loop through vertices on this row
   for(let j = 0, jcount = (resolution + 1) - i; j < jcount; j++){
@@ -33,6 +35,8 @@ for(let i = 0, icount = resolution + 1; i < icount; i++){
       k += 3;
     }
 
+    rowColumns.push({ row: i, column: j });
+
     c++;
   }
 
@@ -44,3 +48,30 @@ for(let i = 0, icount = resolution + 1; i < icount; i++){
 
 print("k: ", k, " must be ", ((resolution + 1) * (resolution + 1) * 3), " - c: ", c, " must be ", ((((resolution + 2) * (resolution + 2)) + (resolution + 2)) / 2) - 1, "\n");
 
+//print(String.dump(rowColumns),"\n");
+
+// O(1) code for as shader
+
+let triangles2 = new Array((resolution + 1) * (resolution + 1) * 3);
+
+let index = 0;
+
+let count = (((resolution + 1) * (resolution + 2)) / 2);
+let row = resolution - Math.floor(Math.sqrt(((count - (index + 1)) * 2.0) + 0.25) - 0.5);
+let column = ((resolution + 1) - row) - ((count - index) - (((((resolution - row) * ((resolution - row) + 1)) / 2))));
+let columns = (resolution + 1) - row;
+
+print("\n");
+
+print("\n");
+
+if(rowColumns[index].row != row || rowColumns[index].column != column){
+  print("ERROR\n");
+}else{
+  print("   OK\n");
+}
+print("rowColumns[index]: row: ", rowColumns[index].row, " column: ", rowColumns[index].column, "\n");
+print("                   row: ", row, " column: ", column, "\n");
+print("count: ", count, "\n");
+print("columns: ", columns, "\n");
+print("\n");

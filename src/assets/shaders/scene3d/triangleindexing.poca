@@ -1,6 +1,8 @@
 
 let rows = 16, count = 0;
 
+let rowColumns = new Array();
+
 print("     ");
 for(let columnIndex = 0; columnIndex < rows; columnIndex++){
   if(columnIndex < 10){
@@ -33,6 +35,7 @@ for(let rowIndex = 0; rowIndex < rows; rowIndex++){
       print(" ");
     }
     print(count, " ");
+    rowColumns.push({ row: rowIndex, column: columnIndex });
     count++;
   }
   print("\n");
@@ -50,3 +53,18 @@ let columnIndex = linearIndex - ((rowIndex * (rowIndex + 1)) / 2);
 
 print("linearIndex: ", linearIndex, " rowIndex: ", rowIndex, " columnIndex: ", columnIndex, "\n");
 
+// Verify with rowColumns array
+let errors = false;
+for(let linearIndex = 0; linearIndex < count2; linearIndex++){
+  let rowIndex = Math.floor(Math.sqrt((linearIndex * 2.0) + 0.25) - 0.5);
+  let columnIndex = linearIndex - ((rowIndex * (rowIndex + 1)) / 2);
+  let rowColumn = rowColumns[linearIndex];
+  if(rowColumn.row != rowIndex || rowColumn.column != columnIndex){
+    print("rowColumn.row != rowIndex || rowColumn.column != columnIndex\n");
+    errors = true;
+    break;
+  }
+}
+if(!errors){
+  print("No errors\n");
+}
