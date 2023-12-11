@@ -1,5 +1,5 @@
 
-let resolution = 10;
+let resolution = 256;
 
 // Reference code
 
@@ -50,7 +50,7 @@ for(let i = 0, icount = resolution + 1; i < icount; i++){
   print("\n");
 }
 
-print("k: ", k, " must be ", ((resolution + 1) * (resolution + 1) * 3), " - c: ", c, " must be ", ((((resolution + 2) * (resolution + 2)) + (resolution + 2)) / 2) - 1, "\n");
+print("k: ", k, " must be ", ((resolution + 1) * (resolution + 1) * 3), " - c: ", c, " must be ", (((resolution + 3) * (resolution + 2)) >> 1) - 1, "\n");
 
 //print(String.dump(rowColumns),"\n");
 
@@ -63,9 +63,9 @@ let errors = false;
 for(let linearIndex = 0; linearIndex < count; linearIndex++){
 
   let rowIndex = resolution - Math.floor(Math.sqrt(((count - (linearIndex + 1)) * 2.0) + 0.25) - 0.5);
-  let columnIndex = ((resolution + 1) - rowIndex) - ((count - linearIndex) - (((((resolution - rowIndex) * ((resolution - rowIndex) + 1)) / 2))));
+  let columnIndex = ((resolution + 1) - rowIndex) - ((count - linearIndex) - (((((resolution - rowIndex) * ((resolution - rowIndex) + 1)) >> 1))));
 
-  let c = (rowIndex / 2) * (2 * (resolution + 2) - (rowIndex - 1));
+  let c = (rowIndex * ((2 * (resolution + 2)) - (rowIndex - 1))) >> 1;
 
   let rowColumn = rowColumns[linearIndex];
 
@@ -94,5 +94,5 @@ if(!errors){
   print("No errors!\n");
 }
 
-// c = (row == 0) ? 0 : ((row / 2) * (2 * (resolution + 2) - (row - 1)));
-// c = (row / 2) * (2 * (resolution + 2) - (row - 1));
+// let c = (row == 0) ? 0 : ((row / 2) * (2 * (resolution + 2) - (row - 1)));
+// let c = (rowIndex / 2) * (2 * (resolution + 2) - (rowIndex - 1));
