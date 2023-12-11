@@ -3684,7 +3684,14 @@ begin
        Level:=-1;
       end;
       else begin
-       TessellationFactor:=1.0/16000000000.0;
+       case TpvScene3DPlanet.SourcePrimitiveMode of
+        TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
+         TessellationFactor:=1.0/64.0;
+        end;
+        else begin
+         TessellationFactor:=1.0/16.0;
+        end;
+       end;
        Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/4.0)),0),7);
       end;
      end;
@@ -3697,9 +3704,9 @@ begin
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
        if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=32;
+        fPushConstants.CountQuadPointsInOneDirection:=8;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(1 shl Level,16),64);
+        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(1 shl Level,2),256);
        end;
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
