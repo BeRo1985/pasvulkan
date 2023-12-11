@@ -59,7 +59,7 @@ for(let linearIndex = 0; linearIndex < count2; linearIndex++){
   let rowIndex = Math.floor(Math.sqrt((linearIndex * 2.0) + 0.25) - 0.5);
   let columnIndex = linearIndex - ((rowIndex * (rowIndex + 1)) / 2);
   let rowColumn = rowColumns[linearIndex];
-  if(rowColumn.row != rowIndex || rowColumn.column != columnIndex){
+  if((rowColumn.row != rowIndex) || (rowColumn.column != columnIndex)){
     print("rowColumn.row != rowIndex || rowColumn.column != columnIndex\n");
     errors = true;
     break;

@@ -58,13 +58,15 @@ print("count: ", count, "\n");
 let errors = false;
 for(let linearIndex = 0; linearIndex < count; linearIndex++){
 
-  let row = resolution - Math.floor(Math.sqrt(((count - (linearIndex + 1)) * 2.0) + 0.25) - 0.5);
-  let column = ((resolution + 1) - row) - ((count - linearIndex) - (((((resolution - row) * ((resolution - row) + 1)) / 2))));
+  let rowIndex = resolution - Math.floor(Math.sqrt(((count - (linearIndex + 1)) * 2.0) + 0.25) - 0.5);
+  let columnIndex = ((resolution + 1) - rowIndex) - ((count - linearIndex) - (((((resolution - rowIndex) * ((resolution - rowIndex) + 1)) / 2))));
 
-  if(rowColumns[linearIndex].row != row || rowColumns[linearIndex].column != column){
+  let rowColumn = rowColumns[linearIndex];
+  
+  if((rowColumn.row != rowIndex) || (rowColumn.column != columnIndex)){
     print("ERROR!\n");
     print("rowColumns[index]: row: ", rowColumns[linearIndex].row, " column: ", rowColumns[linearIndex].column, "\n");
-    print("                   row: ", row, " column: ", column, "\n");
+    print("                   row: ", rowIndex, " column: ", columnIndex, "\n");
     print("count: ", count, "\n");
     print("columns: ", columns, "\n");
     print("\n");
