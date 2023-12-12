@@ -13,7 +13,7 @@ class UVW {
   }
 
   function lerp(uvw, t){
-    t = Math.min(Math.max(t, 0.0), 1.0);
+    t = Math.clamp(t, 0.0, 1.0);
     let invT = 1.0 - t;
     return new UVW(
       (this.u * invT) + (uvw.u * t), 
