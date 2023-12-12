@@ -4,15 +4,15 @@
 
 class UVW {
 
-  let u = 0.0, w = 0.0, v = 0.0;
+  var u = 0.0, w = 0.0, v = 0.0;
 
-  constructor(u, v, w){
+  constructor(const u, const v, const w){
     this.u = u;
     this.v = v;
     this.w = w;
   }
 
-  function lerp(uvw, t){
+  function lerp(const uvw, reg t){
     t = Math.clamp(t, 0.0, 1.0);
     let invT = 1.0 - t;
     return new UVW(
@@ -22,18 +22,18 @@ class UVW {
     );
   }
 
-  function __eq(a, b){
+  function __eq(const a, const b){
     if((a instanceof UVW) && (b instanceof UVW)){
-      let t = 1e-6;
+      const t = 1e-6;
       return (Math.abs(a.u - b.u) < t) && (Math.abs(a.v - b.v) < t) && (Math.abs(a.w - b.w) < t);
     }else{
       throw "Not a UVW!"
     }
   }
 
-  function __neq(a, b){
+  function __neq(const a, const b){
     if((a instanceof UVW) && (b instanceof UVW)){
-      let t = 1e-6;
+      const t = 1e-6;
       return (Math.abs(a.u - b.u) >= t) || (Math.abs(a.v - b.v) >= t) || (Math.abs(a.w - b.w) >= t);
     }else{
       throw "Not a UVW!"
