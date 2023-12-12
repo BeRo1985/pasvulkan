@@ -21,6 +21,8 @@ layout(push_constant) uniform PushConstants {
   float factor;
   float minHeight;
   float maxHeight;
+  float bottomRadius;
+  float topRadius;
 } pushConstants;
 
 /* clang-format on */
@@ -104,8 +106,21 @@ void main(){
       pushConstants.lacunarity,
       pushConstants.gain
     );
+
+    height = clamp(height * pushConstants.factor, pushConstants.minHeight, pushConstants.maxHeight);
+    {
+
+      vec3 n = vec3(0.0, 1.0, 0.0);
+      float r0 = 0.1;
+      float r1 = 0.2;
+      float d = smoothstep(r1, r0, length(p - n));
+      if(d > 0.0){
+        float targetHeight = mix(pushConstants.bottomRadius, pushConstants.topRadius, 0.9);
+        height = mix(height, (targetHeight - (dot(p, n) * pushConstants.bottomRadius)) / (pushConstants.topRadius - pushConstants.bottomRadius), d);
+      }
+    }
     
-    imageStore(uImageHeightMap, texel, vec4(clamp(height * pushConstants.factor, pushConstants.minHeight, pushConstants.maxHeight)));
+    imageStore(uImageHeightMap, texel, vec4(clamp(height, pushConstants.minHeight, pushConstants.maxHeight)));
 
   }
 

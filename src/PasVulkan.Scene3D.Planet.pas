@@ -191,6 +191,8 @@ type TpvScene3DPlanets=class;
                     Factor:TpvFloat;
                     MinHeight:TpvFloat;
                     MaxHeight:TpvFloat;
+                    BottomRadius:TpvFloat;
+                    TopRadius:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1657,6 +1659,8 @@ begin
   fPushConstants.Factor:=0.5;
   fPushConstants.MinHeight:=0.0;
   fPushConstants.MaxHeight:=1.0;
+  fPushConstants.BottomRadius:=fPlanet.BottomRadius;
+  fPushConstants.TopRadius:=fPlanet.TopRadius;
 
  end;
 
