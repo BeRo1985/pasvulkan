@@ -1,0 +1,55 @@
+
+let resolution = 10;
+
+// Reference code
+
+let referenceCount = ((resolution + 3) * (resolution + 2)) >> 1;
+print("referenceCount: ", referenceCount, "\n");
+
+let rowColumns = new Array();
+
+let k = 0;
+for(let rowIndex = 0, rows = resolution + 1; rowIndex < rows; rowIndex++){
+  print(rowIndex, ": ");
+  for(let columnIndex = 0, columns = (resolution + 2) - rowIndex; columnIndex < columns; columnIndex++){
+    rowColumns.push({ row: rowIndex, column: columnIndex });
+    print(columnIndex, " ");
+    k++;
+  }
+  print("\n");
+}
+
+rowColumns.push({ row: resolution + 1, column: 0 });
+k++;
+
+print("k: ", k, "\n");
+
+// O(1) draft code for as shader
+
+let errors = false;
+
+let vertexResolution = resolution + 1;
+
+let count = ((vertexResolution + 1) * (vertexResolution + 2)) >> 1;
+
+for(let linearIndex = 0, linearCount = referenceCount; linearIndex < linearCount; linearIndex++){
+
+  let rowIndex = vertexResolution - Math.floor(Math.sqrt(((count - (linearIndex + 1)) * 2.0) + 0.25) - 0.5);
+  let columnIndex = ((vertexResolution + 1) - rowIndex) - ((count - linearIndex) - (((((vertexResolution - rowIndex) * ((vertexResolution - rowIndex) + 1)) >> 1))));
+
+  let rowColumn = rowColumns[linearIndex];
+
+  if((rowColumn.row != rowIndex) || (rowColumn.column != columnIndex)){
+    print("ERROR!\n");
+    print("rowColumns[index]: row: ", rowColumns[linearIndex].row, " column: ", rowColumns[linearIndex].column, "\n");
+    print("                   row: ", rowIndex, " column: ", columnIndex, "\n");
+    print("count: ", count, "\n");
+    print("\n");
+    errors = true;
+    break;
+  }
+  
+}  
+if(!errors){
+  print("No errors!\n");
+}
