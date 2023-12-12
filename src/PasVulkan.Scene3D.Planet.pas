@@ -489,9 +489,8 @@ type TpvScene3DPlanets=class;
                           const aHeightMapResolution:TpvInt32=2048;
                           const aCountVisualSpherePoints:TpvSizeInt=256;
                           const aCountPhysicsSpherePoints:TpvSizeInt=65536;
-                          const aBottomRadius:TpvFloat=6371000.0;
-                          const aTopRadius:TpvFloat=6471000.0;
-                          const aHeightMapScale:TpvFloat=1000.0); reintroduce;
+                          const aBottomRadius:TpvFloat=70.0;
+                          const aTopRadius:TpvFloat=100.0); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -3804,8 +3803,7 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aCountVisualSpherePoints:TpvSizeInt;
                                     const aCountPhysicsSpherePoints:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
-                                    const aTopRadius:TpvFloat;
-                                    const aHeightMapScale:TpvFloat);
+                                    const aTopRadius:TpvFloat);
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -3825,7 +3823,7 @@ begin
 
  fTopRadius:=aTopRadius;
 
- fHeightMapScale:=aHeightMapScale;
+ fHeightMapScale:=fTopRadius-fBottomRadius;
 
  if assigned(fVulkanDevice) then begin
 
