@@ -7998,7 +7998,7 @@ var Index:TpvInt32;
 {$if defined(PasVulkanUseSDL2)}
     SDL_SysWMinfo:TSDL_SysWMinfo;
 {$ifend}
-    CountExtensions:TSDLInt32;
+    CountExtensions:TpvInt32;
     Extensions:TExtensions;
     DebugExtensionName:TpvUTF8String;
 begin
