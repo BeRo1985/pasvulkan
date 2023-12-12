@@ -1,4 +1,24 @@
 
+
+// For vertices
+
+class uvw {
+
+  let u = 0.0, w = 0.0, v = 0.0;
+
+  constructor(u, v, w){
+    this.u = u;
+    this.v = v;
+    this.w = w;
+  }
+
+  function lerp(uvw, t){
+    let invT = 1.0 - t;
+    return new uvw((this.u * invT) + (uvw.u * t), (this.v * invT) + (uvw.v * t), (this.w * invT) + (uvw.w * t));
+  }
+
+}
+
 let resolution = 10;
 
 // Reference code
@@ -8,9 +28,12 @@ print("referenceCount: ", referenceCount, "\n");
 
 let rowColumns = new Array();
 
+let uvwWeights = new Array();
+
 let k = 0;
 for(let rowIndex = 0, rows = resolution + 1; rowIndex < rows; rowIndex++){
   print(rowIndex, ": ");
+  let baseUVW = { u: 0.0, v: 0.0, w: 0.0 };
   for(let columnIndex = 0, columns = (resolution + 2) - rowIndex; columnIndex < columns; columnIndex++){
     rowColumns.push({ row: rowIndex, column: columnIndex });
     print(columnIndex, " ");
