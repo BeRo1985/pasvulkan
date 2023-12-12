@@ -2,7 +2,7 @@
 
 // For vertices
 
-class uvw {
+class UVW {
 
   let u = 0.0, w = 0.0, v = 0.0;
 
@@ -13,8 +13,31 @@ class uvw {
   }
 
   function lerp(uvw, t){
+    t = Math.min(Math.max(t, 0.0), 1.0);
     let invT = 1.0 - t;
-    return new uvw((this.u * invT) + (uvw.u * t), (this.v * invT) + (uvw.v * t), (this.w * invT) + (uvw.w * t));
+    return new UVW(
+      (this.u * invT) + (uvw.u * t), 
+      (this.v * invT) + (uvw.v * t), 
+      (this.w * invT) + (uvw.w * t)
+    );
+  }
+
+  function __eq(a, b){
+    if((a instanceof UVW) && (b instanceof UVW)){
+      let t = 1e-6;
+      return (Math.abs(a.u - b.u) < t) && (Math.abs(a.v - b.v) < t) && (Math.abs(a.w - b.w) < t);
+    }else{
+      throw "Not a UVW!"
+    }
+  }
+
+  function __neq(a, b){
+    if((a instanceof UVW) && (b instanceof UVW)){
+      let t = 1e-6;
+      return (Math.abs(a.u - b.u) >= t) || (Math.abs(a.v - b.v) >= t) || (Math.abs(a.w - b.w) >= t);
+    }else{
+      throw "Not a UVW!"
+    }
   }
 
 }
@@ -33,8 +56,12 @@ let uvwWeights = new Array();
 let k = 0;
 for(let rowIndex = 0, rows = resolution + 1; rowIndex < rows; rowIndex++){
   print(rowIndex, ": ");
-  let baseUVW = { u: 0.0, v: 0.0, w: 0.0 };
+  let rowTime = rowIndex / rows;
+  let baseUVW = (new UVW(1.0, 0.0, 0.0)).lerp(new UVW(0.0, 0.0, 1.0), rowTime);
+  let topUVW = (new UVW(0.0, 1.0, 0.0)).lerp(new UVW(0.0, 0.0, 1.0), rowTime);
   for(let columnIndex = 0, columns = (resolution + 2) - rowIndex; columnIndex < columns; columnIndex++){
+    let columnTime = columnIndex / ((resolution + 1) - rowIndex);
+    uvwWeights.push(baseUVW.lerp(topUVW, columnTime));
     rowColumns.push({ row: rowIndex, column: columnIndex });
     print(columnIndex, " ");
     k++;
@@ -42,6 +69,7 @@ for(let rowIndex = 0, rows = resolution + 1; rowIndex < rows; rowIndex++){
   print("\n");
 }
 
+uvwWeights.push(new UVW(0.0, 0.0, 1.0));
 rowColumns.push({ row: resolution + 1, column: 0 });
 k++;
 
@@ -61,6 +89,23 @@ for(let linearIndex = 0, linearCount = referenceCount; linearIndex < linearCount
   let columnIndex = ((vertexResolution + 1) - rowIndex) - ((count - linearIndex) - (((((vertexResolution - rowIndex) * ((vertexResolution - rowIndex) + 1)) >> 1))));
 
   let rowColumn = rowColumns[linearIndex];
+
+  let referenceUVW = uvwWeights[linearIndex];
+
+  let rowTime = rowIndex / (resolution + 1);
+  let columnTime = columnIndex / ((resolution + 1) - rowIndex);
+  let baseUVW = (new UVW(1.0, 0.0, 0.0)).lerp(new UVW(0.0, 0.0, 1.0), rowTime);
+  let topUVW = (new UVW(0.0, 1.0, 0.0)).lerp(new UVW(0.0, 0.0, 1.0), rowTime);
+  let uvw = baseUVW.lerp(topUVW, columnTime);
+
+  if(referenceUVW != uvw){
+    print("ERROR!\n");
+    print("row: ", rowIndex, " column: ", columnIndex, "\n");
+    print("uvw: ", uvw.u, " ", uvw.v, " ", uvw.w, "\n");
+    print("referenceUVW: ", referenceUVW.u, " ", referenceUVW.v, " ", referenceUVW.w, "\n");
+    errors = true;
+    break; 
+  }
 
   if((rowColumn.row != rowIndex) || (rowColumn.column != columnIndex)){
     print("ERROR!\n");
