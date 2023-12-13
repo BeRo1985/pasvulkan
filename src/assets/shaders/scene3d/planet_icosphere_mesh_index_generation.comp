@@ -51,7 +51,7 @@ void main(){
     const uint countIndicesToAdd = (columnIndex > 0u) ? 6u : 3u;
 
     // get base index to write to
-    const uint indicesBaseIndex = atomicAdd(icosphereTriangleIndices.indices[faceIndex], countIndicesToAdd) + 20u;
+    const uint indicesBaseIndex = atomicAdd(icosphereTriangleIndices.indices[faceIndex], countIndicesToAdd) + ((((resolution + 1u) * (resolution + 1u)) * 3u) * faceIndex) + 20u;
 
     icosphereTriangleIndices.indices[indicesBaseIndex + 0u] = baseIndexOffset + c; // current vertex
     icosphereTriangleIndices.indices[indicesBaseIndex + 1u] = baseIndexOffset + c + 1u; // the next vertex on this row

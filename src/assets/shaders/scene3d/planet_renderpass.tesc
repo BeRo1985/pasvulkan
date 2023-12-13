@@ -87,43 +87,23 @@ float AdaptiveTessellation(vec3 p0, vec3 p1){
 void main(){	 
   bool visible = true;
 #ifndef SHADOW_MAP
+  {
 #ifdef TRIANGLES
-  vec3 aabbMin = min(min(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position),
-       aabbMax = max(max(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position),
-       aabbCenter = mix(aabbMin, aabbMax, 0.5);
+    vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal);
 #else
-  vec3 aabbMin = min(min(min(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position), inBlocks[3].position),
-       aabbMax = max(max(max(inBlocks[0].position, inBlocks[1].position), inBlocks[2].position), inBlocks[3].position),
-       aabbCenter = mix(aabbMin, aabbMax, 0.5);
-#endif       
-  vec4 sphere = vec4(aabbCenter, length(aabbMax - aabbCenter));
-  if(distance(sphere.xyz, inverseViewMatrix[3].xyz) < 65536.0){
-#if 0
-    for(int i = 0; i < 6; i++){
-      if((dot(vec4(sphere.xyz, 1.0), frustumPlanes[i]) + sphere.w) < 0.0){
-        visible = false;
-        break;
-      }
-    }
+    vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal + inBlocks[3].normal);
 #endif
-    if(visible){
-#ifdef TRIANGLES
-      vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal);
-#else
-      vec3 faceNormal = normalize(inBlocks[0].normal + inBlocks[1].normal + inBlocks[2].normal + inBlocks[3].normal);
-#endif
-      vec3 planetCenterToCamera = (inBlocks[0].planetCenterToCamera + 
-                                   inBlocks[1].planetCenterToCamera + 
-                                   inBlocks[2].planetCenterToCamera + 
-                                   inBlocks[3].planetCenterToCamera) * 0.25;
-      vec3 planetCenterToCameraDirection = normalize(planetCenterToCamera);
-      if(dot(faceNormal, planetCenterToCameraDirection) < 0.0){
-        visible = false;
-      }    
-    }
-  }else{   
-    visible = false;
-  }             
+    vec3 planetCenterToCamera = (inBlocks[0].planetCenterToCamera + 
+                                 inBlocks[1].planetCenterToCamera + 
+                                 inBlocks[2].planetCenterToCamera + 
+                                 inBlocks[3].planetCenterToCamera) * 0.25;
+    vec3 planetCenterToCameraDirection = normalize(planetCenterToCamera);
+    if(dot(faceNormal, planetCenterToCameraDirection) < 0.0){
+      // Because the planet is a sphere, the face is visible if the angle between the face normal and the vector from the planet center to the 
+      // camera is less than 90 degrees, and invisible otherwise.
+      visible = false;
+    }    
+  }
 #endif
   if(visible){
 #ifdef TRIANGLES

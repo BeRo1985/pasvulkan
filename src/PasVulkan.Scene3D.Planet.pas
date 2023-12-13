@@ -99,7 +99,7 @@ type TpvScene3DPlanets=class;
               FibonacciSphereTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
              Direct:Boolean=false;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
@@ -3688,7 +3688,7 @@ begin
          TessellationFactor:=1.0/256.0;
         end;
         else begin
-         TessellationFactor:=1.0/64.0;
+         TessellationFactor:=1.0/16.0;
         end;
        end;
        Level:=-1;
@@ -3696,7 +3696,11 @@ begin
       else begin
        case TpvScene3DPlanet.SourcePrimitiveMode of
         TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
-         TessellationFactor:=1.0/64.0;
+         TessellationFactor:=1.0/16.0;
+        end;
+        TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
+        TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
+         TessellationFactor:=1.0/16.0;
         end;
         else begin
          TessellationFactor:=1.0/16.0;
@@ -3716,7 +3720,7 @@ begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(1 shl Level,32),256);
+        fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(1 shl Level,32),256);
        end;
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
@@ -3724,14 +3728,14 @@ begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,16),256);
+        fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(1 shl Level,16),256);
        end;
       end;
       else begin
        if Level<0 then begin
         fPushConstants.CountQuadPointsInOneDirection:=32;
        end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=Min(Max(16 shl Level,2),256);
+        fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
        end;
       end;
      end;

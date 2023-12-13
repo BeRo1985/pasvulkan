@@ -8,9 +8,9 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #ifdef TRIANGLES
-layout(triangles, equal_spacing, ccw) in;
+layout(triangles, fractional_even_spacing, ccw) in;
 #else
-layout(quads, equal_spacing, ccw) in; 
+layout(quads, fractional_even_spacing, ccw) in; 
 #endif
 
 layout(location = 0) in InBlock {

@@ -105,6 +105,10 @@ compileshaderarguments=(
   "-V downsample_depth.comp -DREDUCTION -DREVERSEDZ -o ${tempPath}/downsample_depth_reversedz_reduction_comp.spv"
   "-V downsample_depth.comp -DREDUCTION -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_depth_multiview_reversedz_reduction_comp.spv"
   
+  "-V downsample_heightmap.comp -o ${tempPath}/downsample_heightmap_comp.spv"
+
+  "-V downsample_normalmap.comp -o ${tempPath}/downsample_normalmap_comp.spv"
+    
   "-V dof_autofocus.comp -o ${tempPath}/dof_autofocus_comp.spv"
   "-V dof_bokeh.comp -o ${tempPath}/dof_bokeh_comp.spv"
   "-V dof_prepare.frag -o ${tempPath}/dof_prepare_frag.spv"
