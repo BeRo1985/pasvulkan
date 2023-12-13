@@ -2307,7 +2307,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),8*8*2);
   fDescriptorPool.Initialize;
 
-  fCountMipMapLevelSets:=Min(((fPlanet.fData.fHeightMapImage.MipMapLevels+1)+3) shr 2,8);
+  fCountMipMapLevelSets:=Min(((fPlanet.fData.fHeightMapImage.MipMapLevels-1)+3) shr 2,8);
 
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
 
@@ -2414,7 +2414,11 @@ begin
 
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
 
-   fPushConstants.CountMipMapLevels:=Min(4,fPlanet.fData.fHeightMapImage.MipMapLevels-(MipMapLevelSetIndex shl 2));
+   fPushConstants.CountMipMapLevels:=Min(4,fPlanet.fData.fHeightMapImage.MipMapLevels-((MipMapLevelSetIndex shl 2) or 1));
+
+   if fPushConstants.CountMipMapLevels<=0 then begin
+    break;
+   end;
 
    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                         fPipelineLayout.Handle,
@@ -2512,7 +2516,7 @@ begin
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),8*8*2);
   fDescriptorPool.Initialize;
 
-  fCountMipMapLevelSets:=Min(((fPlanet.fData.fNormalMapImage.MipMapLevels+1)+3) shr 2,8);
+  fCountMipMapLevelSets:=Min(((fPlanet.fData.fNormalMapImage.MipMapLevels-1)+3) shr 2,8);
 
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
 
@@ -2619,7 +2623,11 @@ begin
 
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
 
-   fPushConstants.CountMipMapLevels:=Min(4,fPlanet.fData.fNormalMapImage.MipMapLevels-(MipMapLevelSetIndex shl 2));
+   fPushConstants.CountMipMapLevels:=Min(4,fPlanet.fData.fNormalMapImage.MipMapLevels-((MipMapLevelSetIndex shl 2) or 1));
+
+   if fPushConstants.CountMipMapLevels<=0 then begin
+    break;
+   end;
 
    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                         fPipelineLayout.Handle,

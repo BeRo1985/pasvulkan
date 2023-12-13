@@ -398,7 +398,7 @@ begin
                                                      0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'DepthMipMapComputePass.fReductionPipeline');
 
- fCountMipMapLevelSets:=Min(((fInstance.DepthMipmappedArray2DImages[0].MipMapLevels+1)+3) shr 2,8);
+ fCountMipMapLevelSets:=Min(((fInstance.DepthMipmappedArray2DImages[0].MipMapLevels-1)+3) shr 2,8);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
@@ -605,6 +605,10 @@ begin
    MipMapLevelIndex:=(MipMapLevelSetIndex shl 2) or 1;
 
    CountMipMaps:=Min(4,fInstance.DepthMipmappedArray2DImages[aInFlightFrameIndex].MipMapLevels-MipMapLevelIndex);
+
+   if CountMipMaps<=0 then begin
+    break;
+   end;
 
    aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                         fReductionPipelineLayout.Handle,
