@@ -113,8 +113,8 @@ for(let linearIndex = 0, linearCount = referenceCount; linearIndex < linearCount
     // {} otherwise as a object/hash literal, since in POCA everything is an expression, so there are no statements in the traditional sense.
     // And VSCode does not support POCA syntax highlighting natively yet. Otherwise we could just use block{} instead of if(true){} here. 
     // Indeed, POCA is very similar to JavaScript/ECMAScript, but it's not the same, POCA has more features on the one side but it omits 
-    // some features on the other side, and it has some differences in syntax and semantics. POCA is just a better ECMAScript, but it's not
-    // ECMAScript. POCA is simply a vision variant of what ECMAScript should actually be.
+    // some features on the other side, and it has some differences in syntax and semantics. POCA is just in many aspects a better ECMAScript, 
+    // but it's not ECMAScript. POCA is simply a vision variant of what ECMAScript should actually be.
 
     let baseUVW = (new UVW(1.0, 0.0, 0.0)).lerp(new UVW(0.0, 0.0, 1.0), rowTime);
     let topUVW = (new UVW(0.0, 1.0, 0.0)).lerp(new UVW(0.0, 0.0, 1.0), rowTime);
