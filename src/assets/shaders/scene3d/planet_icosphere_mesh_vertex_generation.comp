@@ -54,7 +54,8 @@ void main(){
 
   uint faceIndex = uint(gl_GlobalInvocationID.y);
 
-  // Vertices have to be one more than the indices resolution, because the indices need to be able to reference also a one more vertex at the end of each row
+  // Vertices have to be one more than the indices resolution, because the indices need to be able to reference also a one more vertex 
+  // at the end of each row and column. (Pascal's triangle)
   const uint resolution = pushConstants.resolution + 1; 
 
   const uint count = ((resolution + 1u) * (resolution + 2u)) >> 1u;
@@ -67,17 +68,13 @@ void main(){
     const float rowTime = rowIndex / float(resolution);
     const float columnTime = columnIndex / float(resolution - rowIndex);
   
-    // const vec3 uvw = mix(mix(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), rowTime), mix(vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 1.0), rowTime), columnTime);
-    
-    const vec3 uvw = vec3((1.0 - rowTime) * (1.0 - columnTime), (1.0 - rowTime) * columnTime, rowTime); // Directly calculate the barycentric coordinates instead of using mix()
-  
     const uvec3 faceVertexIndices = faceIndices[faceIndex];
 
     icosphereTriangleVertices.vectors[(count * faceIndex) + index] = vec4(
       normalize(
-        (faceVertices[faceVertexIndices.x] * uvw.x) + 
-        (faceVertices[faceVertexIndices.y] * uvw.y) + 
-        (faceVertices[faceVertexIndices.z] * uvw.z)
+        (faceVertices[faceVertexIndices.x] * ((1.0 - rowTime) * (1.0 - columnTime))) + 
+        (faceVertices[faceVertexIndices.y] * ((1.0 - rowTime) * columnTime)) + 
+        (faceVertices[faceVertexIndices.z] * rowTime)
       ), 
       0.0
     ); 
