@@ -1,0 +1,82 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_ARB_gpu_shader_fp64 : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer icosphereTriangleVertices {
+  vec4 vertices[]; 
+} icosphereTriangleVertices;
+
+layout(push_constant) uniform PushConstants {
+  uint resolution;
+} pushConstants;
+
+/* clang-format on */
+
+const float GoldenRatio = 1.61803398874989485, // (1.0 + sqrt(5.0)) / 2.0 (golden ratio)
+            IcosahedronLength = 1.902113032590307, // sqrt(sqr(1) + sqr(GoldenRatio))
+            IcosahedronNorm = 0.5257311121191336, // 1.0 / IcosahedronLength
+            IcosahedronNormGoldenRatio = 0.85065080835204; // GoldenRatio / IcosahedronLength
+
+const vec3 faceVertices[12] = vec3[12](
+  vec3(0.0, IcosahedronNorm, IcosahedronNormGoldenRatio),
+  vec3(0.0, -IcosahedronNorm, IcosahedronNormGoldenRatio),
+  vec3(IcosahedronNorm, IcosahedronNormGoldenRatio, 0.0),
+  vec3(-IcosahedronNorm, IcosahedronNormGoldenRatio, 0.0),
+  vec3(IcosahedronNormGoldenRatio, 0.0, IcosahedronNorm),
+  vec3(-IcosahedronNormGoldenRatio, 0.0, IcosahedronNorm),
+  vec3(0.0, -IcosahedronNorm, -IcosahedronNormGoldenRatio),
+  vec3(0.0, IcosahedronNorm, -IcosahedronNormGoldenRatio),
+  vec3(-IcosahedronNorm, -IcosahedronNormGoldenRatio, 0.0),
+  vec3(IcosahedronNorm, -IcosahedronNormGoldenRatio, 0.0),
+  vec3(-IcosahedronNormGoldenRatio, 0.0, -IcosahedronNorm),
+  vec3(IcosahedronNormGoldenRatio, 0.0, -IcosahedronNorm)
+);
+
+const uvec3 faceIndices[20] = uvec3[20](
+  uvec3(0u, 5u, 1u), uvec3(0u, 3u, 5u), uvec3(0u, 2u, 3u), uvec3(0u, 4u, 2u), uvec3(0u, 1u, 4u),
+  uvec3(1u, 5u, 8u), uvec3(5u, 3u, 10u), uvec3(3u, 2u, 7u), uvec3(2u, 4u, 11u), uvec3(4u, 1u, 9u),
+  uvec3(7u, 11u, 6u), uvec3(11u, 9u, 6u), uvec3(9u, 8u, 6u), uvec3(8u, 10u, 6u), uvec3(10u, 7u, 6u),
+  uvec3(2u, 11u, 7u), uvec3(4u, 9u, 11u), uvec3(1u, 8u, 9u), uvec3(5u, 10u, 8u), uvec3(3u, 7u, 10u)
+);
+
+void main(){
+
+  uint linearIndex = uint(gl_GlobalInvocationID.x);
+
+  uint faceIndex = uint(gl_GlobalInvocationID.y);
+
+  // Vertices have to be one more than the indices resolution, because the indices need to be able to reference also a one more vertex at the end of each row
+  const uint resolution = pushConstants.resolution + 1; 
+
+  const uint count = (((resolution + 1) * (resolution + 2)) / 2);
+
+  if(linearIndex < count){
+
+    const uint countTrianglesPerFace = ((resolution + 3u) * (resolution + 2u)) >> 1u;
+
+    const uint baseIndexOffset = countTrianglesPerFace * faceIndex * 3u;
+
+    const uint rowIndex = uint(int(resolution - int(floor(sqrt((float(count - (linearIndex + 1u)) * 2.0) + 0.25) - 0.5))));
+    const uint columnIndex = ((resolution + 1u) - rowIndex) - ((count - linearIndex) - (((((resolution - rowIndex) * ((resolution - rowIndex) + 1u)) >> 1u))));
+
+    const float rowTime = rowIndex / float(resolution);
+    const float columnTime = columnIndex / float(resolution - rowIndex);
+  
+    const vec3 uvw = mix(mix(vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), rowTime), mix(vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, 1.0), rowTime), columnTime);
+  
+    const uvec3 faceVertexIndices = faceIndices[faceIndex];
+
+    icosphereTriangleVertices.vertices[baseIndexOffset + linearIndex] = vec4(normalize((faceVertices[faceVertexIndices.x] * uvw.x) + (faceVertices[faceVertexIndices.y] * uvw.y) + (faceVertices[faceVertexIndices.z] * uvw.z)), 0.0); 
+
+  }
+
+}

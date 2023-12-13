@@ -11,9 +11,9 @@
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, std430) buffer FibonacciSphereTriangleIndices {
-  uint indices[]; // 1-based, because 0 is the count of indices, to save a second buffer just for the count
-} fibonacciSphereTriangleIndices;
+layout(set = 0, binding = 0, std430) buffer IcosphereTriangleIndices {
+  uint indices[]; // 20-based, because 0 to 19 are the count of per face indices, to save a second buffer just for the count
+} icosphereTriangleIndices;
 
 layout(push_constant) uniform PushConstants {
   uint resolution;
@@ -33,7 +33,7 @@ void main(){
 
   if(linearIndex < count){
 
-    const uint countTrianglesPerFace = (((resolution + 3u) * (resolution + 2u)) >> 1u) - 1u;
+    const uint countTrianglesPerFace = ((resolution + 3u) * (resolution + 2u)) >> 1u;
 
     const uint baseIndexOffset = countTrianglesPerFace * faceIndex * 3u;
 
@@ -51,17 +51,17 @@ void main(){
     const uint countIndicesToAdd = (columnIndex > 0u) ? 6u : 3u;
 
     // get base index to write to
-    const uint indicesBaseIndex = atomicAdd(fibonacciSphereTriangleIndices.indices[0], countIndicesToAdd);
+    const uint indicesBaseIndex = atomicAdd(icosphereTriangleIndices.indices[faceIndex], countIndicesToAdd) + 20u;
 
-    fibonacciSphereTriangleIndices.indices[indicesBaseIndex + 0u] = baseIndexOffset + c; // current vertex
-    fibonacciSphereTriangleIndices.indices[indicesBaseIndex + 1u] = baseIndexOffset + c + 1u; // the next vertex on this row
-    fibonacciSphereTriangleIndices.indices[indicesBaseIndex + 2u] = baseIndexOffset + next; // the next vertex on the next row
+    icosphereTriangleIndices.indices[indicesBaseIndex + 0u] = baseIndexOffset + c; // current vertex
+    icosphereTriangleIndices.indices[indicesBaseIndex + 1u] = baseIndexOffset + c + 1u; // the next vertex on this row
+    icosphereTriangleIndices.indices[indicesBaseIndex + 2u] = baseIndexOffset + next; // the next vertex on the next row
 
     // add down pointing triangles, when we're not on the last row
     if(columnIndex > 0u){
-      fibonacciSphereTriangleIndices.indices[indicesBaseIndex + 3u] = baseIndexOffset + c;
-      fibonacciSphereTriangleIndices.indices[indicesBaseIndex + 4u] = baseIndexOffset + next;
-      fibonacciSphereTriangleIndices.indices[indicesBaseIndex + 5u] = (baseIndexOffset + next) - 1u;
+      icosphereTriangleIndices.indices[indicesBaseIndex + 3u] = baseIndexOffset + c;
+      icosphereTriangleIndices.indices[indicesBaseIndex + 4u] = baseIndexOffset + next;
+      icosphereTriangleIndices.indices[indicesBaseIndex + 5u] = (baseIndexOffset + next) - 1u;
     }
 
   }
