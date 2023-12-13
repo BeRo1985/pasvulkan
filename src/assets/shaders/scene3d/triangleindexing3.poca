@@ -131,7 +131,7 @@ for(let linearIndex = 0, linearCount = referenceCount; linearIndex < linearCount
 
   }
 
-  // Direct calculation without bilinear interpolation  
+  // Direct UVW calculation without bilinear interpolation  
   if(true){
 
     let directUVW = new UVW((1.0 - rowTime) * (1.0 - columnTime),  (1.0 - rowTime) * columnTime, rowTime);
