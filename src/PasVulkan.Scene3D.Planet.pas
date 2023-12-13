@@ -4868,14 +4868,14 @@ begin
      fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
     end;
 
-    if fData.fNormalMapMipMapGeneration<>fData.fHeightMapGeneration then begin
-     fData.fNormalMapMipMapGeneration:=fData.fHeightMapGeneration;
-     fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
-    end;
-
     if fData.fNormalMapGeneration<>fData.fHeightMapGeneration then begin
      fData.fNormalMapGeneration:=fData.fHeightMapGeneration;
      fNormalMapGeneration.Execute(fVulkanComputeCommandBuffer);
+    end;
+
+    if fData.fNormalMapMipMapGeneration<>fData.fHeightMapGeneration then begin
+     fData.fNormalMapMipMapGeneration:=fData.fHeightMapGeneration;
+     fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
     end;
 
     if fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration then begin
