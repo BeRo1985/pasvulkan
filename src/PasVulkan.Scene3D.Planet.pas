@@ -1497,14 +1497,14 @@ begin
    for MipMapIndex:=0 to fHeightMapImage.MipMapLevels-1 do begin
     ImageCopy:=@ImageCopies[MipMapIndex];
     ImageCopy^.srcSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageCopy^.srcSubresource.mipLevel:=0;
+    ImageCopy^.srcSubresource.mipLevel:=MipMapIndex;
     ImageCopy^.srcSubresource.baseArrayLayer:=0;
     ImageCopy^.srcSubresource.layerCount:=1;
     ImageCopy^.srcOffset.x:=0;
     ImageCopy^.srcOffset.y:=0;
     ImageCopy^.srcOffset.z:=0;
     ImageCopy^.dstSubresource.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-    ImageCopy^.dstSubresource.mipLevel:=0;
+    ImageCopy^.dstSubresource.mipLevel:=MipMapIndex;
     ImageCopy^.dstSubresource.baseArrayLayer:=0;
     ImageCopy^.dstSubresource.layerCount:=1;
     ImageCopy^.dstOffset.x:=0;
