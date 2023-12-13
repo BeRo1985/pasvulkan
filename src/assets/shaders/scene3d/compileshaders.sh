@@ -308,6 +308,9 @@ compileshaderarguments=(
   "-V planet_base_mesh_vertex_generation.comp -o ${tempPath}/planet_base_mesh_vertex_generation_comp.spv"
   "-V planet_mesh_vertex_generation.comp -o ${tempPath}/planet_mesh_vertex_generation_comp.spv"
 
+  "-V planet_icosphere_mesh_index_generation.comp -o ${tempPath}/planet_icosphere_mesh_index_generation_comp.spv"
+  "-V planet_icosphere_mesh_vertex_generation.comp -o ${tempPath}/planet_icosphere_mesh_vertex_generation_comp.spv"
+
   "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
 

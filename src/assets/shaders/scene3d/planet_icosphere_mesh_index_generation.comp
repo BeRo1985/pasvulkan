@@ -33,9 +33,9 @@ void main(){
 
   if(linearIndex < count){
 
-    const uint countTrianglesPerFace = ((resolution + 3u) * (resolution + 2u)) >> 1u;
+    const uint countTriangleIndicesPerFace = ((resolution + 3u) * (resolution + 2u)) >> 1u;
 
-    const uint baseIndexOffset = countTrianglesPerFace * faceIndex * 3u;
+    const uint baseIndexOffset = countTriangleIndicesPerFace * faceIndex;
 
     const uint rowIndex = uint(int(resolution - int(floor(sqrt((float(count - (linearIndex + 1u)) * 2.0) + 0.25) - 0.5))));
     const uint columnIndex = ((resolution + 1u) - rowIndex) - ((count - linearIndex) - (((((resolution - rowIndex) * ((resolution - rowIndex) + 1u)) >> 1u))));
