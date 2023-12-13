@@ -159,7 +159,7 @@ begin
                                      aWidth,
                                      aHeight,
                                      1,
-                                     MipMapLevels,
+                                     fMipMapLevels,
                                      aLayers,
                                      aSampleBits,
                                      VK_IMAGE_TILING_OPTIMAL,
