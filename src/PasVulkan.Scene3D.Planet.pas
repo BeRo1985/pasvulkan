@@ -2438,6 +2438,26 @@ begin
                               Max(1,(fPlanet.fHeightMapResolution+((1 shl (3+(MipMapLevelSetIndex shl 2)))-1)) shr (3+(MipMapLevelSetIndex shl 2))),
                               1);
 
+   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    VK_IMAGE_LAYOUT_GENERAL,
+                                                    VK_IMAGE_LAYOUT_GENERAL,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fHeightMapImage.VulkanImage.Handle,
+                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                    Min((MipMapLevelSetIndex shl 2)+1,fPlanet.fData.fHeightMapImage.MipMapLevels-1),
+                                                                                    PushConstants.CountMipMapLevels,
+                                                                                    0,
+                                                                                    1));
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);  
+                                     
   end;
 
  end;
@@ -2646,6 +2666,26 @@ begin
    aCommandBuffer.CmdDispatch(Max(1,(fPlanet.fHeightMapResolution+((1 shl (3+(MipMapLevelSetIndex shl 2)))-1)) shr (3+(MipMapLevelSetIndex shl 2))),
                               Max(1,(fPlanet.fHeightMapResolution+((1 shl (3+(MipMapLevelSetIndex shl 2)))-1)) shr (3+(MipMapLevelSetIndex shl 2))),
                               1);
+
+   ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT),
+                                                    VK_IMAGE_LAYOUT_GENERAL,
+                                                    VK_IMAGE_LAYOUT_GENERAL,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    VK_QUEUE_FAMILY_IGNORED,
+                                                    fPlanet.fData.fNormalMapImage.VulkanImage.Handle,
+                                                    TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                    Min(((MipMapLevelSetIndex shl 2)+1),fPlanet.fData.fNormalMapImage.MipMapLevels-1),
+                                                                                    PushConstants.CountMipMapLevels,
+                                                                                    0,
+                                                                                    1));
+
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     0,nil,
+                                     0,nil,
+                                     1,@ImageMemoryBarrier);
 
   end;
 
