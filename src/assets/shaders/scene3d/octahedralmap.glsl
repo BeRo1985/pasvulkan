@@ -29,6 +29,45 @@ vec4 textureOctahedralMap(const in sampler2D tex, vec3 direction) {
   }
 }
 
+#ifdef FRAGMENT_SHADER
+vec4 textureMipMapOctahedralMap(const in sampler2D tex, vec3 direction) {
+  direction = normalize(direction); // just for to make sure that it is normalized 
+  vec2 uv = direction.xy / (abs(direction.x) + abs(direction.y) + abs(direction.z));
+  uv = fma((direction.z < 0.0) ? ((1.0 - abs(uv.yx)) * vec2((uv.x >= 0.0) ? 1.0 : -1.0, (uv.y >= 0.0) ? 1.0 : -1.0)) : uv, vec2(0.5), vec2(0.5));
+  float mipMapLevel = textureQueryLod(tex, uv).x;
+  ivec2 texSize = textureSize(tex, 0).xy;
+  vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
+    // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
+    uv = fma(uv, texSize, vec2(-0.5));
+    int maxMipMapLevel = int(floor(log2(max(float(texSize.x), float(texSize.y)))));
+    ivec2 baseCoord = ivec2(floor(uv));
+    vec2 fractionalPart = uv - vec2(baseCoord);   
+    int mipMapLevelInt = int(mipMapLevel);
+    float mipMapLevelFraction = mipMapLevel - float(mipMapLevelInt);
+    int nextMipMapLevelInt = min(mipMapLevelInt + 1, maxMipMapLevel);
+    if((mipMapLevelFraction == 0.0) || (nextMipMapLevelInt == mipMapLevelInt)){
+      return mix(mix(texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 0), texSize), mipMapLevelInt), 
+                     texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 0), texSize), mipMapLevelInt), fractionalPart.x), 
+                 mix(texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 1), texSize), mipMapLevelInt), 
+                     texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 1), texSize), mipMapLevelInt), fractionalPart.x), fractionalPart.y);
+    }else{
+      return mix(mix(mix(texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 0), texSize), mipMapLevelInt), 
+                         texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 0), texSize), mipMapLevelInt), fractionalPart.x), 
+                     mix(texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 1), texSize), mipMapLevelInt), 
+                         texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 1), texSize), mipMapLevelInt), fractionalPart.x), fractionalPart.y), 
+                 mix(mix(texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 0), texSize), nextMipMapLevelInt), 
+                         texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 0), texSize), nextMipMapLevelInt), fractionalPart.x), 
+                     mix(texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(0, 1), texSize), nextMipMapLevelInt), 
+                         texelFetch(tex, wrapOctahedralTexelCoordinates(baseCoord + ivec2(1, 1), texSize), nextMipMapLevelInt), fractionalPart.x), fractionalPart.y), mipMapLevelFraction);
+    }
+  }else{
+    // Non-edge texels can be sampled directly with textureLod
+    return textureLod(tex, uv, mipMapLevel);
+  }
+}
+#endif
+
 vec4 textureCatmullRomOctahedralMap(const in sampler2D tex, vec3 direction) {
   direction = normalize(direction); // just for to make sure that it is normalized 
   vec2 uv = direction.xy / (abs(direction.x) + abs(direction.y) + abs(direction.z));
