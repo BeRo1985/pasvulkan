@@ -19,9 +19,6 @@
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
-  vec3 tangent;
-  vec3 bitangent;
-  vec3 normal;
   vec3 edge; 
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -584,10 +581,6 @@ void main(){
 
   vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
-  vec3 outputNormal = textureCatmullRomOctahedralMap(uTextures[1], sphereNormal).xyz;
-  vec3 outputTangent = normalize(cross((abs(outputNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), outputNormal));
-  vec3 outputBitangent = normalize(cross(outputNormal, outputTangent));
-
   vec3 worldSpacePosition = position;
 
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
@@ -595,9 +588,6 @@ void main(){
 
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
-  outBlock.tangent = outputTangent;
-  outBlock.bitangent = outputBitangent;
-  outBlock.normal = outputNormal;
   outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  

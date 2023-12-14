@@ -10,9 +10,6 @@
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;
-  vec3 tangent;
-  vec3 bitangent;
-  vec3 normal;
   vec3 edge; 
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
