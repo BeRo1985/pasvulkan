@@ -12,8 +12,13 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32f) uniform image2D uImageHeightMap;
 
+layout(set = 0, binding = 1) buffer BufferDirtyMap{
+  uint data[]; // bitwise dirty map
+} bufferDirtyMap;
+
 layout(push_constant) uniform PushConstants {
   vec4 vector;
+  uvec4 dirtySizeShift; // x = dirty size, y = shift
   float innerRadius;
   float outerRadius;
   float minHeight;
@@ -45,6 +50,10 @@ void main(){
     float d = smoothstep(pushConstants.outerRadius, pushConstants.innerRadius, length(p - n));
     
     if(d > 0.0){
+
+      uvec2 dirtyMapXY = uvec2(texel) >> pushConstants.dirtySizeShift.y;
+      uint dirtyMapIndex = (dirtyMapXY.y * pushConstants.dirtySizeShift.x) + dirtyMapXY.x;
+      atomicOr(bufferDirtyMap.data[dirtyMapIndex >> 5u], 1u << (dirtyMapIndex & 31u));
 
       imageStore(
         uImageHeightMap, 
