@@ -26,7 +26,7 @@ layout(push_constant) uniform PushConstants {
 ivec2 texSize;
 
 float getBilinearHeight(vec2 v){
-  v *= texSize;
+  v = fma(v, vec2(texSize), vec2(-0.5));
   ivec2 i = ivec2(floor(v));
   vec2 f = v - vec2(i);
   return mix(mix(imageLoad(uImageHeightMap, wrapOctahedralTexelCoordinates(i + ivec2(0, 0), texSize)).x, 
@@ -60,10 +60,10 @@ void main(){
 
     float scaleFactor = pushConstants.heightMapScale / pushConstants.planetGroundRadius;
 
-    vec3 p00 = vec3(fma(vec2(ivec2(texel + ivec2(-1, 0))) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy00).x, scaleFactor, 1.0));
-    vec3 p01 = vec3(fma(vec2(ivec2(texel + ivec2(1, 0))) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy01).x, scaleFactor, 1.0));
-    vec3 p10 = vec3(fma(vec2(ivec2(texel + ivec2(0, -1))) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy10).x, scaleFactor, 1.0));
-    vec3 p11 = vec3(fma(vec2(ivec2(texel + ivec2(0, 1))) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy11).x, scaleFactor, 1.0));
+    vec3 p00 = vec3(fma((vec2(ivec2(texel + ivec2(-1, 0))) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy00).x, scaleFactor, 1.0));
+    vec3 p01 = vec3(fma((vec2(ivec2(texel + ivec2(1, 0))) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy01).x, scaleFactor, 1.0));
+    vec3 p10 = vec3(fma((vec2(ivec2(texel + ivec2(0, -1))) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy10).x, scaleFactor, 1.0));
+    vec3 p11 = vec3(fma((vec2(ivec2(texel + ivec2(0, 1))) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0)), fma(imageLoad(uImageHeightMap, xy11).x, scaleFactor, 1.0));
 
     vec3 tangent = normalize(p01 - p00);
     vec3 bitangent = normalize(p11 - p10);
@@ -107,11 +107,11 @@ void main(){
 
     float scaleFactor = pushConstants.heightMapScale / pushConstants.planetGroundRadius;
 
-    vec3 p = octDecode(fma(vec2(xy00) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy).x, scaleFactor, 1.0);
-    vec3 p00 = octDecode(fma(vec2(xy00) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy00).x, scaleFactor, 1.0);
-    vec3 p01 = octDecode(fma(vec2(xy01) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy01).x, scaleFactor, 1.0);
-    vec3 p10 = octDecode(fma(vec2(xy10) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy10).x, scaleFactor, 1.0);
-    vec3 p11 = octDecode(fma(vec2(xy11) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy11).x, scaleFactor, 1.0);
+    vec3 p = octDecode(fma((vec2(xy00) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy).x, scaleFactor, 1.0);
+    vec3 p00 = octDecode(fma((vec2(xy00) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy00).x, scaleFactor, 1.0);
+    vec3 p01 = octDecode(fma((vec2(xy01) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy01).x, scaleFactor, 1.0);
+    vec3 p10 = octDecode(fma((vec2(xy10) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy10).x, scaleFactor, 1.0);
+    vec3 p11 = octDecode(fma((vec2(xy11) + vec2(0.5)) * invTexSize, vec2(2.0), vec2(-1.0))) * fma(imageLoad(uImageHeightMap, xy11).x, scaleFactor, 1.0);
 #endif
 
     vec3 tangent = (distance(p00, p01) > 0.0) ? normalize(p01 - p00) : ((distance(p10, p11) > 0.0) ? normalize(cross(normalize(p11 - p10), sphereNormal)) : normalize(p - p00));
