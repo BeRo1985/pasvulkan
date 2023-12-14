@@ -5,6 +5,7 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in InBlock {
   vec3 position;
@@ -30,7 +31,7 @@ layout(location = 1) out vec2 outVelocity;
 
 // Per planet descriptor set
 
-//layout(set = 1, binding = 0) uniform sampler2D u
+layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 layout(push_constant) uniform PushConstants {
 
@@ -54,6 +55,10 @@ layout(push_constant) uniform PushConstants {
 
 } pushConstants;
 
+#include "octahedral.glsl"
+#include "octahedralmap.glsl"
+#include "tangentspacebasis.glsl" 
+
 float edgeFactor(){
    vec3 a = smoothstep(vec3(0.0), (abs(dFdx(inBlock.edge)) + abs(dFdy(inBlock.edge))) * 1.414, inBlock.edge);
    return min(min(a.x, a.y), a.z);
@@ -61,7 +66,11 @@ float edgeFactor(){
 
 void main(){
 
-  vec4 c = vec4(vec3(1.0) * edgeFactor() * fma(clamp(dot(inBlock.normal, vec3(0.0, 1.0, 0.0)), -1.0, 1.0), 0.5, 0.5), 1.0);
+  vec3 normal = textureCatmullRomOctahedralMap(uTextures[1], inBlock.sphereNormal).xyz;
+  vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
+  vec3 bitangent = normalize(cross(normal, tangent));
+
+  vec4 c = vec4(vec3(1.0) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), -1.0, 1.0), 0.5, 0.5), 1.0);
 
   if(pushConstants.selected.w > 1e-6){
     float d = length(normalize(inBlock.sphereNormal.xyz) - normalize(pushConstants.selected.xyz)) - pushConstants.selected.w;
