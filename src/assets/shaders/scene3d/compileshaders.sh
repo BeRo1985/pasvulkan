@@ -316,6 +316,9 @@ compileshaderarguments=(
   "-V planet_icosphere_mesh_vertex_generation.comp -o ${tempPath}/planet_icosphere_mesh_vertex_generation_comp.spv"
 
   "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
+
+  "-V planet_heightmap_flatten.comp -o ${tempPath}/planet_heightmap_flatten_comp.spv"
+  
   "-V planet_heightmap_modification.comp -o ${tempPath}/planet_heightmap_modification_comp.spv"
 
   "-V planet_normalmap_generation.comp -o ${tempPath}/planet_normalmap_generation_comp.spv"
