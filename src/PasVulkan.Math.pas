@@ -498,6 +498,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromEuler(const aAngles:TpvVector3); overload;
        constructor CreateFromNormalizedSphericalCoordinates(const aNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
        constructor CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3);
+       constructor CreateFromLookRotation(const aForward,aUp:TpvVector3);
        constructor CreateFromCols(const aC0,aC1,aC2:TpvVector3);
        constructor CreateFromXY(const aX,aY:TpvVector3);
        class operator Implicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -5103,11 +5104,64 @@ begin
 end;
 
 constructor TpvQuaternion.CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3);
+var FromDirection,ToDirection:TpvVector3;
+    DotProduct:TpvScalar;
 begin
- Vector.xyz:=aFromDirection.Normalize.Cross(aToDirection.Normalize);
- Vector.w:=sqrt((sqr(aFromDirection.x)+sqr(aFromDirection.y)+sqr(aFromDirection.z))*
-                (sqr(aToDirection.x)+sqr(aToDirection.y)+sqr(aToDirection.z)))+
-                ((aFromDirection.x*aToDirection.x)+(aFromDirection.y*aToDirection.y)+(aFromDirection.z*aToDirection.z));
+ FromDirection:=aFromDirection.Normalize;
+ ToDirection:=aToDirection.Normalize;
+ DotProduct:=FromDirection.Dot(ToDirection);
+ if System.Abs(DotProduct)>=1.0 then begin
+  if DotProduct>0.0 then begin
+   self:=TpvQuaternion.Identity;
+  end else begin
+   self:=TpvQuaternion.CreateFromAngleAxis(PI,FromDirection.Perpendicular);
+  end;
+ end else begin
+  Vector.xyz:=FromDirection.Cross(ToDirection);
+  Vector.w:=DotProduct+sqrt(FromDirection.SquaredLength*ToDirection.SquaredLength);
+  Vector:=Vector.Normalize;
+ end;
+end;
+
+constructor TpvQuaternion.CreateFromLookRotation(const aForward,aUp:TpvVector3);
+var m0,m1,m2:TpvVector3;
+    t,s:TpvScalar;
+begin
+ m2:=aForward.Normalize;
+ m0:=((aUp.Normalize).Cross(aForward)).Normalize;
+ m1:=(m2.Cross(m0)).Normalize;
+ t:=m0.x+(m1.y+m2.z);
+ if t>2.9999999 then begin
+  self.x:=0.0;
+  self.y:=0.0;
+  self.z:=0.0;
+  self.w:=1.0;
+ end else if t>0.0000001 then begin
+  s:=sqrt(1.0+t)*2.0;
+  self.x:=(m1.z-m2.y)/s;
+  self.y:=(m2.x-m0.z)/s;
+  self.z:=(m0.y-m1.x)/s;
+  self.w:=s*0.25;
+ end else if (m0.x>m1.y) and (m0.x>m2.z) then begin
+  s:=sqrt(1.0+(m0.x-(m1.y+m2.z)))*2.0;
+  self.x:=s*0.25;
+  self.y:=(m1.x+m0.y)/s;
+  self.z:=(m2.x+m0.z)/s;
+  self.w:=(m1.z-m2.y)/s;
+ end else if m1.y>m2.z then begin
+  s:=sqrt(1.0+(m1.y-(m0.x+m2.z)))*2.0;
+  self.x:=(m1.x+m0.y)/s;
+  self.y:=s*0.25;
+  self.z:=(m2.y+m1.z)/s;
+  self.w:=(m2.x-m0.z)/s;
+ end else begin
+  s:=sqrt(1.0+(m2.z-(m0.x+m1.y)))*2.0;
+  self.x:=(m2.x+m0.z)/s;
+  self.y:=(m2.y+m1.z)/s;
+  self.z:=s*0.25;
+  self.w:=(m0.y-m1.x)/s;
+ end;
+ self:=self.Normalize;
 end;
 
 constructor TpvQuaternion.CreateFromCols(const aC0,aC1,aC2:TpvVector3);

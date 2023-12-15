@@ -118,14 +118,16 @@ type TpvScene3DPlanets=class;
                      AcquiredOnComputeQueue=3,
                      ReleasedOnComputeQueue=4
                     );
-                   POwnershipHolderState=^TOwnershipHolderState; 
+                   POwnershipHolderState=^TOwnershipHolderState;
+                   TDirtyMap=array of TpvUInt32;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
-              fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)   
+              fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)
+              fDirtyMap:TpvScene3DPlanet.TData.TDirtyMap;
               fDirtyMapBuffer:TpvVulkanBuffer;
               fVisualBaseMeshVertexBuffer:TpvVulkanBuffer; // vec4 wise, where only xyz is used, w is unused in the moment
               fVisualBaseMeshTriangleIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices
@@ -142,8 +144,9 @@ type TpvScene3DPlanets=class;
               fNormalMapGeneration:TpvUInt64;
               fHeightMapMipMapGeneration:TpvUInt64;
               fNormalMapMipMapGeneration:TpvUInt64;
+              fDirtyMapGeneration:TpvUInt64;
               fVisualMeshGeneration:TpvUInt64;
-              fPhysicsMeshGeneration:TpvUInt64;           
+              fPhysicsMeshGeneration:TpvUInt64;
               fOwnershipHolderState:TpvScene3DPlanet.TData.TOwnershipHolderState;
               fSelectedRegion:TpvVector4;
               fSelectedRegionProperty:TpvVector4Property;
@@ -157,6 +160,7 @@ type TpvScene3DPlanets=class;
               procedure ReleaseOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure AcquireOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
               procedure ReleaseOnComputeQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure CheckDirtyMap;
               procedure TransferTo(const aCommandBuffer:TpvVulkanCommandBuffer;
                                    const aInFlightFrameData:TData);
               procedure Assign(const aData:TData);
@@ -834,6 +838,8 @@ begin
 
  fPhysicsMeshGeneration:=High(TpvUInt64);
 
+ fDirtyMapGeneration:=High(TpvUInt64);
+
  fModelMatrix:=TpvMatrix4x4.Identity;
 
  fHeightMapImage:=nil;
@@ -841,6 +847,8 @@ begin
  fNormalMapImage:=nil;
 
  fTangentBitangentMapImage:=nil;
+
+ fDirtyMap:=nil;
 
  fDirtyMapBuffer:=nil;
 
@@ -899,9 +907,14 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.ImageView');
 
   if fInFlightFrameIndex<0 then begin
-  
+
+   SetLength(fDirtyMap,((fPlanet.fDirtyMapSize*fPlanet.fDirtyMapSize)+31) shr 5);
+   if length(fDirtyMap)>0 then begin
+    FillChar(fDirtyMap[0],length(fDirtyMap)*SizeOf(TpvUInt32),#0);
+   end;
+
    fDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                           (((fPlanet.fDirtyMapSize*fPlanet.fDirtyMapSize)+31) shr 5)*SizeOf(TpvUInt32),
+                                           length(fDirtyMap)*SizeOf(TpvUInt32),
                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                            VK_SHARING_MODE_EXCLUSIVE,
                                            [],
@@ -916,7 +929,13 @@ begin
                                            [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
                                           );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fDirtyMapBuffer');
-              
+   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
+                                            fPlanet.fVulkanComputeCommandBuffer,
+                                            fPlanet.fVulkanComputeFence,
+                                            fDirtyMapBuffer,
+                                            0,
+                                            fDirtyMapBuffer.Size);
+
   end;
 
   begin
@@ -1075,20 +1094,37 @@ end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
 begin
+
  fHeightMap:=nil;
+
  FreeAndNil(fHeightMapImage);
+
  FreeAndNil(fNormalMapImage);
+
  FreeAndNil(fTangentBitangentMapImage);
+
+ fDirtyMap:=nil;
+
  FreeAndNil(fDirtyMapBuffer);
+
  FreeAndNil(fVisualBaseMeshVertexBuffer);
+
  FreeAndNil(fVisualBaseMeshTriangleIndexBuffer);
+
  FreeAndNil(fVisualMeshVertexBuffer);
+
  FreeAndNil(fPhysicsBaseMeshVertexBuffer);
+
  FreeAndNil(fPhysicsBaseMeshTriangleIndexBuffer);
+
  FreeAndNil(fPhysicsMeshVertexBuffer);
+
  FreeAndNil(fRayIntersectionResultBuffer);
+
  FreeAndNil(fSelectedRegionProperty);
+
  inherited Destroy;
+
 end;
 
 procedure TpvScene3DPlanet.TData.AcquireOnUniversalQueue(const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -1448,6 +1484,38 @@ begin
   end;
 
   fOwnershipHolderState:=TpvScene3DPlanet.TData.TOwnershipHolderState.ReleasedOnComputeQueue;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TData.CheckDirtyMap;
+var Index:TpvSizeInt;
+begin
+
+ if assigned(fPlanet.fVulkanDevice) and assigned(fDirtyMapBuffer) then begin
+
+  fPlanet.fVulkanDevice.MemoryStaging.Download(fPlanet.fVulkanComputeQueue,
+                                               fPlanet.fVulkanComputeCommandBuffer,
+                                               fPlanet.fVulkanComputeFence,
+                                               fDirtyMapBuffer,
+                                               0,
+                                               fDirtyMap[0],
+                                               fDirtyMapBuffer.Size);
+
+  fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
+                                           fPlanet.fVulkanComputeCommandBuffer,
+                                           fPlanet.fVulkanComputeFence,
+                                           fDirtyMapBuffer,
+                                           0,
+                                           fDirtyMapBuffer.Size);
+
+  // Dump dirty map 
+  for Index:=0 to length(fDirtyMap)-1 do begin
+   if fDirtyMap[Index]<>0 then begin
+    writeln('DirtyMap['+IntToStr(Index)+']='+IntToHex(fDirtyMap[Index],8));
+   end;
+  end;
 
  end;
 
@@ -5280,7 +5348,10 @@ end;
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 begin
 
- if (fData.fNormalMapGeneration<>fData.fHeightMapGeneration) or
+ if (fData.fHeightMapMipMapGeneration<>fData.fHeightMapGeneration) or
+    (fData.fNormalMapGeneration<>fData.fHeightMapGeneration) or
+    (fData.fNormalMapMipMapGeneration<>fData.fHeightMapGeneration) or
+    (fData.fDirtyMapGeneration<>fData.fHeightMapGeneration) or
     (fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration) or
     fData.fModifyHeightMapActive then begin
 
@@ -5306,6 +5377,11 @@ begin
     if fData.fNormalMapMipMapGeneration<>fData.fHeightMapGeneration then begin
      fData.fNormalMapMipMapGeneration:=fData.fHeightMapGeneration;
      fNormalMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
+    end;
+
+    if fData.fDirtyMapGeneration<>fData.fHeightMapGeneration then begin
+     fData.fDirtyMapGeneration:=fData.fHeightMapGeneration;
+     fData.CheckDirtyMap;
     end;
 
     if fData.fPhysicsMeshGeneration<>fData.fHeightMapGeneration then begin
