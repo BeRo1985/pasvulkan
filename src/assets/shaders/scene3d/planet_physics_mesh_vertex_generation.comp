@@ -71,7 +71,8 @@ void main(){
     vec3 vector = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
     vector = normalize((vector.z < 0.0) ? vec3((1.0 - abs(vector.yx)) * vec2((vector.x < 0.0) ? -1.0 : 1.0, (vector.y < 0.0) ? -1.0 : 1.0), vector.z) : vector);
 
-    int lod = int(log2(float(textureSize(uTextureHeightMap, 0).x) / float(totalResolution)));
+    uint texSize = textureSize(uTextureHeightMap, 0).x;
+    int lod = (texSize > totalResolution) ? int(log2(float(texSize) / float(totalResolution))) : 0;
 
     float height = textureCatmullRomOctahedralMap(uTextureHeightMap, vector, lod).x;
     
