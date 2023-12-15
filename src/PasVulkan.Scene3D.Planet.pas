@@ -128,6 +128,7 @@ type TpvScene3DPlanets=class;
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
               fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)
               fDirtyMap:TpvScene3DPlanet.TData.TDirtyMap;
+              fExpandedDirtyMap:TpvScene3DPlanet.TData.TDirtyMap;
               fDirtyMapBuffer:TpvVulkanBuffer;
               fVisualBaseMeshVertexBuffer:TpvVulkanBuffer; // vec4 wise, where only xyz is used, w is unused in the moment
               fVisualBaseMeshTriangleIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices
@@ -850,6 +851,8 @@ begin
 
  fDirtyMap:=nil;
 
+ fExpandedDirtyMap:=nil;
+
  fDirtyMapBuffer:=nil;
 
  fVisualBaseMeshVertexBuffer:=nil;
@@ -911,6 +914,11 @@ begin
    SetLength(fDirtyMap,((fPlanet.fDirtyMapSize*fPlanet.fDirtyMapSize)+31) shr 5);
    if length(fDirtyMap)>0 then begin
     FillChar(fDirtyMap[0],length(fDirtyMap)*SizeOf(TpvUInt32),#0);
+   end;
+
+   SetLength(fExpandedDirtyMap,fPlanet.fDirtyMapSize*fPlanet.fDirtyMapSize);
+   if length(fExpandedDirtyMap)>0 then begin
+    FillChar(fExpandedDirtyMap[0],length(fExpandedDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
 
    fDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
@@ -1104,6 +1112,8 @@ begin
  FreeAndNil(fTangentBitangentMapImage);
 
  fDirtyMap:=nil;
+
+ fExpandedDirtyMap:=nil;
 
  FreeAndNil(fDirtyMapBuffer);
 
@@ -1490,10 +1500,10 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TData.CheckDirtyMap;
-var Index:TpvSizeInt;
+var Index,OtherIndex,Mask,x,y,ox,oy,ix,iy:TpvInt32;
 begin
 
- if assigned(fPlanet.fVulkanDevice) and assigned(fDirtyMapBuffer) then begin
+ if assigned(fPlanet.fVulkanDevice) and assigned(fDirtyMapBuffer) and (length(fDirtyMap)>0) then begin
 
   fPlanet.fVulkanDevice.MemoryStaging.Download(fPlanet.fVulkanComputeQueue,
                                                fPlanet.fVulkanComputeCommandBuffer,
@@ -1510,12 +1520,46 @@ begin
                                            0,
                                            fDirtyMapBuffer.Size);
 
-  // Dump dirty map 
-  for Index:=0 to length(fDirtyMap)-1 do begin
-   if fDirtyMap[Index]<>0 then begin
-    writeln('DirtyMap['+IntToStr(Index)+']='+IntToHex(fDirtyMap[Index],8));
+  // Expand dirty map, so that also adjacent tiles are marked as dirty, since tile edges are shared.
+  // Indeed, it can be done more efficiently, but it's not worth the effort, because it's only done at
+  // changing the height map, which is not done very often and maximal once per frame ir time step. 
+  // The most important thing is that the mesh for the physics engine is updated correctly, because 
+  // it's used for collision detection and so on. An expanded dirty map is used here, because it
+  // would otherwise be self-overlapping and thus not work correctly, when it would update the dirty
+  // map in-place. In other words, it would mark too much tiles as dirty then, which would result in
+  // unnecessary work for updating the physics mesh and so on.
+  Mask:=fPlanet.fDirtyMapSize-1; // Size is always power of two here, so we can convert it to a mask easily  
+  FillChar(fExpandedDirtyMap[0],length(fExpandedDirtyMap)*SizeOf(TpvUInt32),#0); // Clear expanded dirty map
+  for y:=0 to fPlanet.fDirtyMapSize-1 do begin
+   for x:=0 to fPlanet.fDirtyMapSize-1 do begin
+    Index:=(y*fPlanet.fDirtyMapSize)+x;
+    if (fDirtyMap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0 then begin
+     for oy:=-1 to 1 do begin
+      for ox:=-1 to 1 do begin
+       ix:=x+ox;
+       iy:=y+oy;
+       if (((abs(ix)+(TpvInt32(TpvUInt32(ix) shr 31) and 1)) and 1) xor ((abs(iy)+(TpvInt32(TpvUInt32(iy) shr 31) and 1)) and 1))<>0 then begin
+        // Octahedral wrap, here the coordinates must be mirrored in a checkerboard pattern at overflows
+        ix:=fPlanet.fDirtyMapSize-(((ix+fPlanet.fDirtyMapSize) and Mask)+1);
+        iy:=fPlanet.fDirtyMapSize-(((iy+fPlanet.fDirtyMapSize) and Mask)+1);
+       end else begin 
+        ix:=(ix+fPlanet.fDirtyMapSize) and Mask; 
+        iy:=(iy+fPlanet.fDirtyMapSize) and Mask; 
+       end;                 
+       OtherIndex:=(iy*fPlanet.fDirtyMapSize)+ix;
+       fExpandedDirtyMap[OtherIndex shr 5]:=fExpandedDirtyMap[OtherIndex shr 5] or (TpvUInt32(1) shl (OtherIndex and 31));
+      end;
+     end;     
+    end; 
    end;
   end;
+
+ {// Dump dirty map 
+  for Index:=0 to length(fExpandedDirtyMap)-1 do begin
+   if fExpandedDirtyMap[Index]<>0 then begin
+    writeln('DirtyMap['+IntToStr(Index)+']='+IntToHex(fExpandedDirtyMap[Index],8));
+   end;
+  end;//}
 
  end;
 

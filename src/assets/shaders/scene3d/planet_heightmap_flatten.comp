@@ -51,10 +51,26 @@ void main(){
     
     if(d > 0.0){
 
-      uvec2 dirtyMapXY = uvec2(texel) >> pushConstants.dirtySizeShift.y;
-      uint dirtyMapIndex = (dirtyMapXY.y * pushConstants.dirtySizeShift.x) + dirtyMapXY.x;
-      atomicOr(bufferDirtyMap.data[dirtyMapIndex >> 5u], 1u << (dirtyMapIndex & 31u));
-
+      // When we are on the dirty map tile corner, we need to update the adjacent tiles as well, otherwise we can only update the current tile.
+/*    uint dirtyMapMask = pushConstants.dirtySizeShift.x - 1u; // Size is always a power of two, so we can convert it to a mask easily.
+      uvec2 dirtyMapFractionalXY = uvec2(texel) & uvec2(dirtyMapMask);
+      if(any(equal(dirtyMapFractionalXY, uvec2(0))) || any(equal(dirtyMapFractionalXY, uvec2(dirtyMapMask)))){
+        const ivec2 minXY = ivec2((dirtyMapFractionalXY.x == 0u) ? -1 : 0, (dirtyMapFractionalXY.y == 0u) ? -1 : 0);
+        const ivec2 maxXY = ivec2((dirtyMapFractionalXY.x == dirtyMapMask) ? 1 : 0, (dirtyMapFractionalXY.y == dirtyMapMask) ? 1 : 0);
+        for(int y = minXY.y; y <= maxXY.y; y++){
+          for(int x = minXY.x; x <= maxXY.x; x++){
+            uvec2 dirtyMapXY = uvec2(wrapOctahedralTexelCoordinates(ivec2(texel) + ivec2(x, y), ivec2(texSize))) >> pushConstants.dirtySizeShift.y;
+            uint dirtyMapIndex = (dirtyMapXY.y * pushConstants.dirtySizeShift.x) + dirtyMapXY.x;
+            atomicOr(bufferDirtyMap.data[dirtyMapIndex >> 5u], 1u << (dirtyMapIndex & 31u));
+          }
+        }
+        // Commented out code, because the CPU expands the dirty map in the moment anyway.
+      }else*/{
+        uvec2 dirtyMapXY = uvec2(texel) >> pushConstants.dirtySizeShift.y;
+        uint dirtyMapIndex = (dirtyMapXY.y * pushConstants.dirtySizeShift.x) + dirtyMapXY.x;
+        atomicOr(bufferDirtyMap.data[dirtyMapIndex >> 5u], 1u << (dirtyMapIndex & 31u));
+      } 
+   
       imageStore(
         uImageHeightMap, 
         texel, 
