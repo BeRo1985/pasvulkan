@@ -231,8 +231,8 @@ type TpvScene3DPlanets=class;
               type TPushConstants=packed record
                     PositionRadius:TpvVector4; // xyz = position, w = radius
                     InnerRadiusValueMinMax:TpvVector4; // x = inner radius, y = value, z = min, w = max
-                    DirtyMapSize:TpvUInt32;
-                    DirtyMapShift:TpvUInt32;
+                    TileMapResolution:TpvUInt32;
+                    TileMapShift:TpvUInt32;
                     Reserved0:TpvUInt32;
                     Reserved1:TpvUInt32;
                    end;
@@ -260,8 +260,8 @@ type TpvScene3DPlanets=class;
              public
               type TPushConstants=packed record
                     Vector:TpvVector4; // xyz = vector, w=unused
-                    DirtyMapSize:TpvUInt32;
-                    DirtyMapShift:TpvUInt32;
+                    TileMapResolution:TpvUInt32;
+                    TileMapShift:TpvUInt32;
                     Reserved0:TpvUInt32;
                     Reserved1:TpvUInt32;
                     InnerRadius:TpvFloat;
@@ -2192,8 +2192,8 @@ begin
   fPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fPushConstants.InnerRadiusValueMinMax:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   
-  fPushConstants.DirtyMapSize:=fPlanet.fTileMapResolution;
-  fPushConstants.DirtyMapShift:=fPlanet.fTileMapShift;
+  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+  fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
 
  end;
 
@@ -2397,8 +2397,8 @@ begin
 
   fPushConstants.Vector:=TpvVector4.Create(0.0,1.0,0.0,0.0);
 
-  fPushConstants.DirtyMapSize:=fPlanet.fTileMapResolution;
-  fPushConstants.DirtyMapShift:=fPlanet.fTileMapShift;
+  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+  fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
 
  end;
 
