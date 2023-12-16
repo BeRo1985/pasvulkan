@@ -21,7 +21,7 @@ layout(set = 0, binding = 0, std430) buffer TriangleVertices {
 } triangleVertices;
 
 layout(set = 0, binding = 1, std430) buffer QueuedTiles {
-  uint data[]; 
+  uint data[]; // 1-based index of queued tiles, 0 is count of queued tiles
 } queuedTiles;
 
 layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
@@ -34,7 +34,6 @@ layout(push_constant) uniform PushConstants {
   float topRadius;
   uint tileMapResolution;
   uint tileResolution;
-  uint countQueuedTiles;
 } pushConstants;
 
 #include "octahedralmap.glsl"
@@ -44,11 +43,11 @@ void main(){
 
   const uint queuedTitleIndex = uint(gl_GlobalInvocationID.y);
   
-  if(queuedTitleIndex < pushConstants.countQueuedTiles){
+  const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
-    const uint tileMapIndex = queuedTiles.data[queuedTitleIndex];
-  
-    const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
+  if((queuedTitleIndex < tileMapSize) && (queuedTitleIndex < queuedTiles.data[0u])){
+
+    const uint tileMapIndex = queuedTiles.data[queuedTitleIndex + 1u];
 
     if(tileMapIndex < tileMapSize){
 
