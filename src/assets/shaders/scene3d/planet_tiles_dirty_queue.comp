@@ -28,7 +28,7 @@ layout(push_constant) uniform PushConstants {
 void main() {
   const uvec2 tileMapXY = uvec2(gl_GlobalInvocationID.xy);
   if(all(equal(tileMapXY, uvec2(0u, 0u)))){
-    queuedTiles.data[0] = pushConstants.tileResolution * pushConstants.tileResolution;
+    queuedTiles.data[0] = ((pushConstants.tileResolution * pushConstants.tileResolution) + 255u) >> 8u; // 256 tiles per dispatch local group
 //  queuedTiles.data[1] = 0u; // already zeroed through VkCmdFillBuffer, otherwise it can also occur a race-condition since this shader is executed in parallel. For the other two values, it's not a problem since they are only written to once and aren't used here in this shader elsewhere.
     queuedTiles.data[2] = 1u;
   }
