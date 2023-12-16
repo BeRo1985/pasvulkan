@@ -10,6 +10,7 @@
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;
+  vec3 normal;
   vec3 edge; 
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -65,7 +66,7 @@ float edgeFactor(){
 
 void main(){
 
-  vec3 normal = textureCatmullRomOctahedralMap(uTextures[1], inBlock.sphereNormal).xyz;
+  vec3 normal = transpose(inverse(mat3(pushConstants.modelMatrix))) * textureCatmullRomOctahedralMap(uTextures[1], inBlock.sphereNormal).xyz;
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 

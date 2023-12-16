@@ -10,6 +10,7 @@
 
 #ifdef EXTERNAL_VERTICES
   layout(location = 0) in vec3 inVector;
+  layout(location = 1) in vec3 inNormal;
 #endif
 
 #ifdef DIRECT
@@ -19,6 +20,7 @@
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
+  vec3 normal;
   vec3 edge; 
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -598,6 +600,11 @@ void main(){
 
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
+#ifdef EXTERNAL_VERTICES
+  outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * inNormal);
+#else
+  outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * sphereNormal);
+#endif
   outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  

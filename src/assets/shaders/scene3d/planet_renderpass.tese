@@ -21,6 +21,7 @@ layout(location = 0) in InBlock {
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
+  vec3 normal;
   vec3 edge;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -135,8 +136,11 @@ void main(){
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
+  vec3 normal = textureCatmullRomOctahedralMap(uTextures[1], sphereNormal).xyz;
+
   outBlock.position = position;   
   outBlock.sphereNormal = sphereNormal;      
+  outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
   outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  

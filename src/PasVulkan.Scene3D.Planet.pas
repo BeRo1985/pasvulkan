@@ -100,8 +100,8 @@ type TpvScene3DPlanets=class;
               MeshTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles;
-             Direct:Boolean=true;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
+             Direct:Boolean=false;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -5691,6 +5691,7 @@ begin
   TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles:begin
    fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvVector4)*2,VK_VERTEX_INPUT_RATE_VERTEX);
    fPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
+   fPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TpvVector4));
   end;
   else begin
   end;
@@ -6589,6 +6590,7 @@ begin
 
   if ((fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
       (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE))) or
+     true or
 //   (fData.fVisualMeshGeneration<>fData.fHeightMapGeneration) or
      (assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration)) then begin
 
