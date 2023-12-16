@@ -131,6 +131,7 @@ type TpvScene3DPlanets=class;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileDirtyMapBuffer:TpvVulkanBuffer;
               fTileExpandedDirtyMapBuffer:TpvVulkanBuffer;
+              fTileDirtyQueueBuffer:TpvVulkanBuffer;
               fVisualBaseMeshVertexBuffer:TpvVulkanBuffer; // vec4 wise, where only xyz is used, w is unused in the moment
               fVisualBaseMeshTriangleIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices
               fVisualMeshVertexBuffer:TpvVulkanBuffer; // TFibonacciSphereVertex wise
@@ -171,6 +172,7 @@ type TpvScene3DPlanets=class;
               property TangentBitangentMapImage:TpvScene3DRendererImage2D read fTangentBitangentMapImage; 
               property TileDirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
               property TileExpandedDirtyMapBuffer:TpvVulkanBuffer read fTileExpandedDirtyMapBuffer;
+              property TileDirtyQueueBuffer:TpvVulkanBuffer read fTileDirtyQueueBuffer;
               property VisualBaseMeshVertexBuffer:TpvVulkanBuffer read fVisualBaseMeshVertexBuffer;
               property VisualBaseMeshTriangleIndexBuffer:TpvVulkanBuffer read fVisualBaseMeshTriangleIndexBuffer;
               property VisualMeshVertexBuffer:TpvVulkanBuffer read fVisualMeshVertexBuffer;
@@ -307,7 +309,33 @@ type TpvScene3DPlanets=class;
               fDescriptorSet:TpvVulkanDescriptorSet;
               fPipelineLayout:TpvVulkanPipelineLayout;
               fPushConstants:TPushConstants;
-              fCountMipMapLevelSets:TpvSizeInt;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TTileDirtyQueueGeneration }
+            TTileDirtyQueueGeneration=class
+             public
+              type TPushConstants=packed record
+                    TileMapResolution:TpvUInt32;
+                    VisualTileResolution:TpvUInt32;
+                    PhysicsTileResolution:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
@@ -874,6 +902,8 @@ begin
 
  fTileExpandedDirtyMapBuffer:=nil;
 
+ fTileDirtyQueueBuffer:=nil;
+
  fVisualBaseMeshVertexBuffer:=nil;
 
  fVisualBaseMeshTriangleIndexBuffer:=nil;
@@ -941,7 +971,7 @@ begin
    end;
 
    fTileDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                               length(fTileDirtyMap)*SizeOf(TpvUInt32),
+                                               (((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                VK_SHARING_MODE_EXCLUSIVE,
                                                [],
@@ -964,7 +994,7 @@ begin
                                             fTileDirtyMapBuffer.Size);
 
    fTileExpandedDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                       length(fTileDirtyMap)*SizeOf(TpvUInt32),
+                                                       (((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                        VK_SHARING_MODE_EXCLUSIVE,
                                                        [],
@@ -985,6 +1015,30 @@ begin
                                             fTileExpandedDirtyMapBuffer,
                                             0,
                                             fTileExpandedDirtyMapBuffer.Size);
+
+   fTileDirtyQueueBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                 ((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6)*SizeOf(TpvUInt32),
+                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
+                                                 VK_SHARING_MODE_EXCLUSIVE,
+                                                 [],
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 0,
+                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileDirtyQueueBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileDirtyQueueBuffer');
+   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
+                                            fPlanet.fVulkanComputeCommandBuffer,
+                                            fPlanet.fVulkanComputeFence,
+                                            fTileDirtyQueueBuffer,
+                                            0,
+                                            fTileDirtyQueueBuffer.Size);
+
 
   end;
 
@@ -1160,6 +1214,8 @@ begin
  FreeAndNil(fTileDirtyMapBuffer);
 
  FreeAndNil(fTileExpandedDirtyMapBuffer);
+
+ FreeAndNil(fTileDirtyQueueBuffer);
 
  FreeAndNil(fVisualBaseMeshVertexBuffer);
 
@@ -2775,6 +2831,255 @@ begin
                                    0,nil,
                                    1,@BufferMemoryBarriers[0],
                                    0,nil);
+
+end;
+
+{ TpvScene3DPlanet.TTileDirtyQueueGeneration }
+
+{           TTileDirtyQueueGeneration=class
+             public
+              type TPushConstants=packed record
+                    TileMapResolution:TpvUInt32;
+                    TileResolution:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSet:TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;}
+
+constructor TpvScene3DPlanet.TTileDirtyQueueGeneration.Create(const aPlanet:TpvScene3DPlanet);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_tiles_dirty_queue_generation_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TTileDirtyQueueGeneration.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  1);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),2);
+  fDescriptorPool.Initialize;
+
+  fDescriptorSet:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+  fDescriptorSet.WriteToDescriptorSet(0,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                      [],
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileExpandedDirtyMapBuffer.Handle,
+                                                                      0,
+                                                                      VK_WHOLE_SIZE)],
+                                      [],
+                                      false);
+  fDescriptorSet.WriteToDescriptorSet(1,
+                                      0,
+                                      1,
+                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                      [],
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                                      0,
+                                                                      VK_WHOLE_SIZE)],
+                                      [],
+                                      false);
+  fDescriptorSet.Flush;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+  fPushConstants.VisualTileResolution:=fPlanet.fVisualTileResolution;
+  fPushConstants.PhysicsTileResolution:=fPlanet.fPhysicsTileResolution;
+
+ end;
+
+end; 
+
+destructor TpvScene3DPlanet.TTileDirtyQueueGeneration.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSet);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TTileDirtyQueueGeneration.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
+begin
+
+ BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fTileExpandedDirtyMapBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
+
+ BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   0,
+                                   0,nil,
+                                   2,@BufferMemoryBarriers[0],
+                                   0,nil);
+
+ aCommandBuffer.CmdFillBuffer(fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                              0,
+                              VK_WHOLE_SIZE,
+                              0);
+
+ BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarriers[0],
+                                   0,nil);
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      fPipelineLayout.Handle,
+                                      0,
+                                      1,
+                                      @fDescriptorSet.Handle,
+                                      0,
+                                      nil);
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);     
+
+ aCommandBuffer.CmdDispatch((fPlanet.fTileMapResolution+15) shr 4,
+                            (fPlanet.fTileMapResolution+15) shr 4,
+                            1); 
+
+ BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fTileExpandedDirtyMapBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
+
+ BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);       
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                   0,
+                                   0,nil,
+                                   2,@BufferMemoryBarriers[0],
+                                   0,nil);
+
+ aCommandBuffer.CmdFillBuffer(fPlanet.fData.fTileExpandedDirtyMapBuffer.Handle,
+                              0,
+                              VK_WHOLE_SIZE,
+                              0); 
+
+ BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        VK_QUEUE_FAMILY_IGNORED,
+                                                        fPlanet.fData.fTileExpandedDirtyMapBuffer.Handle,
+                                                        0,
+                                                        VK_WHOLE_SIZE);
+
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                   0,
+                                   0,nil,
+                                   1,@BufferMemoryBarriers[0],
+                                   0,nil); 
 
 end;
 
