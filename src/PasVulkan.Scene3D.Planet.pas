@@ -120,6 +120,14 @@ type TpvScene3DPlanets=class;
                     );
                    POwnershipHolderState=^TOwnershipHolderState;
                    TTileDirtyMap=array of TpvUInt32;
+                   TMeshVertex=record
+                    PositionAbsoluteHeight:TpvVector4;
+                    NormalRelativeHeight:TpvVector4;
+                   end;
+                   PMeshVertex=^TMeshVertex;
+                   TMeshVertices=TpvDynamicArrayList<TMeshVertex>;
+                   TMeshIndex=TpvUInt32;
+                   PMeshIndex=^TMeshIndex;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
