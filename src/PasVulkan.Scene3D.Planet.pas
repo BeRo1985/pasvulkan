@@ -629,6 +629,7 @@ type TpvScene3DPlanets=class;
        fHeightMapModification:THeightMapModification;
        fHeightMapFlatten:THeightMapFlatten;
        fTileDirtyExpansion:TTileDirtyExpansion;
+       fTileDirtyQueueGeneration:TTileDirtyQueueGeneration;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
        fNormalMapMipMapGeneration:TNormalMapMipMapGeneration;
@@ -5541,6 +5542,8 @@ begin
 
  fTileDirtyExpansion:=TTileDirtyExpansion.Create(self);
 
+ fTileDirtyQueueGeneration:=TTileDirtyQueueGeneration.Create(self);
+
  fNormalMapGeneration:=TNormalMapGeneration.Create(self);
 
  fHeightMapMipMapGeneration:=THeightMapMipMapGeneration.Create(self);
@@ -5639,6 +5642,8 @@ begin
  FreeAndNil(fNormalMapGeneration);
 
  FreeAndNil(fTileDirtyExpansion);
+
+ FreeAndNil(fTileDirtyQueueGeneration);
 
  FreeAndNil(fHeightMapFlatten); 
 
@@ -6000,6 +6005,8 @@ begin
      fData.fHeightMapProcessedGeneration:=fData.fHeightMapGeneration;
 
      fTileDirtyExpansion.Execute(fVulkanComputeCommandBuffer);
+
+     fTileDirtyQueueGeneration.Execute(fVulkanComputeCommandBuffer);
 
      fHeightMapMipMapGeneration.Execute(fVulkanComputeCommandBuffer);
 

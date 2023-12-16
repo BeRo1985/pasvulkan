@@ -15,7 +15,7 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) buffer TileMapExpandedDirtyBuffer {
   uint data[]; // bitwise dirty map
 } tileMapExpandedDirtyBuffer;
-0
+
 layout(set = 0, binding = 1, std430) buffer QueuedTiles {
   uint data[]; // 6-based, because two VkDispatchIndirectCommand structs are stored in the same buffer at the beginning, with three 32-bit unsigned integers each
 } queuedTiles;
@@ -28,7 +28,7 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
   const uvec2 tileMapXY = uvec2(gl_GlobalInvocationID.xy);
-  if(all(equal(tileMapXY, uvec2(0u, 0u)))){
+  if(all(equal(tileMapXY, uvec2(0u)))){
     // 256 tile positions per dispatch local group
     // [1] anxd [4] aren't written to, due to race-conditions otherwise, these are cleared with vkCmdFillBuffer before dispatch
     // Each vkCmdDispatchIndirect struct contains three 32-bit uints, here are two of them, one for visual and one for physics.
