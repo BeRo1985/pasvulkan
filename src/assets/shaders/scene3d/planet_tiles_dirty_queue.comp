@@ -17,19 +17,25 @@ layout(set = 0, binding = 0) buffer TileMapExpandedDirtyBuffer {
 } tileMapExpandedDirtyBuffer;
 
 layout(set = 0, binding = 1, std430) buffer QueuedTiles {
-  uint data[]; // 1-based index of queued tiles, 0 is count of queued tiles
+  uint data[]; // 3-based, 0 is squared tile resolution, 1 is count of queued tiles, and 2 is just one (for VkDispatchIndirectCommand, which is a struct of 3 32-bit uints) 
 } queuedTiles;
 
 layout(push_constant) uniform PushConstants {
   uint tileMapResolution;
+  uint tileResolution;
 } pushConstants;
 
 void main() {
   const uvec2 tileMapXY = uvec2(gl_GlobalInvocationID.xy);
+  if(all(equal(tileMapXY, uvec2(0u, 0u)))){
+    queuedTiles.data[0] = pushConstants.tileResolution * pushConstants.tileResolution;
+//  queuedTiles.data[1] = 0u; // already zeroed through VkCmdFillBuffer, otherwise it can also occur a race-condition since this shader is executed in parallel. For the other two values, it's not a problem since they are only written to once and aren't used here in this shader elsewhere.
+    queuedTiles.data[2] = 1u;
+  }
   if(all(lessThan(tileMapXY, uvec2(pushConstants.tileMapResolution)))){
     const uint index = (tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x;
     if((tileMapExpandedDirtyBuffer.data[index >> 5] & (1u << (index & 31u))) != 0u){
-      queuedTiles.data[atomicAdd(queuedTiles.data[0], 1u) + 1] = index;
+      queuedTiles.data[atomicAdd(queuedTiles.data[1], 1u) + 3u] = index;
     }
   }
 }

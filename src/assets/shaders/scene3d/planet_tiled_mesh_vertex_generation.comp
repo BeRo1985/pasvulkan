@@ -21,7 +21,7 @@ layout(set = 0, binding = 0, std430) buffer TriangleVertices {
 } triangleVertices;
 
 layout(set = 0, binding = 1, std430) buffer QueuedTiles {
-  uint data[]; // 1-based index of queued tiles, 0 is count of queued tiles
+  uint data[]; // 3-based, 0 is squared tile resolution, 1 is count of queued tiles, and 2 is just one (for VkDispatchIndirectCommand, which is a struct of 3 32-bit uints) 
 } queuedTiles;
 
 layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
@@ -45,7 +45,7 @@ void main(){
   
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
-  if((queuedTitleIndex < tileMapSize) && (queuedTitleIndex < queuedTiles.data[0u])){
+  if((queuedTitleIndex < tileMapSize) && (queuedTitleIndex < queuedTiles.data[1u])){
 
     const uint tileMapIndex = queuedTiles.data[queuedTitleIndex + 1u];
 
