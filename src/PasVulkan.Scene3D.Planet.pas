@@ -293,7 +293,7 @@ type TpvScene3DPlanets=class;
             TTileDirtyExpansion=class
              public
               type TPushConstants=packed record
-                    TileMapResolution:TpvInt32;
+                    TileMapResolution:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private

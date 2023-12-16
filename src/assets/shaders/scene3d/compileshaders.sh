@@ -329,7 +329,7 @@ compileshaderarguments=(
 
   "-V planet_tiles_dirty_expansion.comp -o ${tempPath}/planet_tiles_dirty_expansion_comp.spv"
 
-  "-V planet_tiles_dirty_queue.comp -o ${tempPath}/planet_tiles_dirty_queue_comp.spv"
+  "-V planet_tiles_dirty_queue_generation.comp -o ${tempPath}/planet_tiles_dirty_queue_generation_comp.spv"
 
   "-V planet_ray_intersection.comp -o ${tempPath}/planet_ray_intersection_comp.spv"
 
