@@ -327,7 +327,7 @@ compileshaderarguments=(
 
   "-V planet_tiled_mesh_vertex_generation.comp -o ${tempPath}/planet_tiled_mesh_vertex_generation_comp.spv"
 
-  "-V planet_tiles_dirty_expand.comp -o ${tempPath}/planet_tiles_dirty_expand_comp.spv"
+  "-V planet_tiles_dirty_expansion.comp -o ${tempPath}/planet_tiles_dirty_expansion_comp.spv"
 
   "-V planet_tiles_dirty_queue.comp -o ${tempPath}/planet_tiles_dirty_queue_comp.spv"
 
