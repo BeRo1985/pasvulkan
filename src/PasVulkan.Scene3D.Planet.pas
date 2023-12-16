@@ -2125,6 +2125,8 @@ var ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier; 
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapRandomInitialization',[0.25,0.5,0.5,1.0]);
+
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -2202,6 +2204,8 @@ begin
                                    1,@ImageMemoryBarrier);                                                                                                                                                                                                 
 
  inc(fPlanet.fData.fHeightMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -2324,6 +2328,8 @@ var ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapModification',[0.5,0.5,0.5,1.0]);
+
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -2408,6 +2414,8 @@ begin
                                    1,@ImageMemoryBarrier);
 
  inc(fPlanet.fData.fHeightMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -2529,6 +2537,8 @@ var ImageMemoryBarrier:TVkImageMemoryBarrier;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapFlatten',[0.5,0.25,0.5,1.0]);
+
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -2611,6 +2621,8 @@ begin
                                    1,@ImageMemoryBarrier);
 
  inc(fPlanet.fData.fHeightMapGeneration);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
@@ -2727,6 +2739,8 @@ procedure TpvScene3DPlanet.TTileDirtyExpansion.Execute(const aCommandBuffer:TpvV
 var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet TileDirtyExpansion',[0.5,0.5,0.25,1.0]);
+
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         VK_QUEUE_FAMILY_IGNORED,
@@ -2833,35 +2847,11 @@ begin
                                    1,@BufferMemoryBarriers[0],
                                    0,nil);
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
 end;
 
 { TpvScene3DPlanet.TTileDirtyQueueGeneration }
-
-{           TTileDirtyQueueGeneration=class
-             public
-              type TPushConstants=packed record
-                    TileMapResolution:TpvUInt32;
-                    TileResolution:TpvUInt32;
-                   end;
-                   PPushConstants=^TPushConstants;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fVulkanDevice:TpvVulkanDevice;
-              fComputeShaderModule:TpvVulkanShaderModule;
-              fComputeShaderStage:TpvVulkanPipelineShaderStage;
-              fPipeline:TpvVulkanComputePipeline;
-              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSet:TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPushConstants:TPushConstants;
-             public
-              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
-              destructor Destroy; override;
-              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
-             public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
-            end;}
 
 constructor TpvScene3DPlanet.TTileDirtyQueueGeneration.Create(const aPlanet:TpvScene3DPlanet);
 var Stream:TStream;
@@ -2976,6 +2966,8 @@ procedure TpvScene3DPlanet.TTileDirtyQueueGeneration.Execute(const aCommandBuffe
 var BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier;
     BufferCopy:TVkBufferCopy;
 begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet TileDirtyQueueGeneration',[0.25,0.5,0.25,1.0]);
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -3099,6 +3091,8 @@ begin
                                    2,@BufferMemoryBarriers[0],
                                    0,nil); 
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
 end;
 
 { TpvScene3DPlanet.TNormalMapGeneration }
@@ -3215,6 +3209,8 @@ procedure TpvScene3DPlanet.TNormalMapGeneration.Execute(const aCommandBuffer:Tpv
 var ImageMemoryBarriers:array[0..1] of TVkImageMemoryBarrier;
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet NormalMapGeneration',[0.5,0.75,0.25,1.0]);
+
  ImageMemoryBarriers[0]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -3300,6 +3296,8 @@ begin
                                    0,nil,
                                    0,nil,
                                    2,@ImageMemoryBarriers[0]);
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;  
 
@@ -3436,6 +3434,8 @@ var MipMapLevelSetIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet HeightMapMipMapGeneration',[0.25,0.75,0.5,1.0]);
+
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -3528,7 +3528,9 @@ begin
                                    0,
                                    0,nil,
                                    0,nil,
-                                   1,@ImageMemoryBarrier);                                                                                  
+                                   1,@ImageMemoryBarrier);        
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);                                                                          
 
 end;
 
@@ -3665,6 +3667,8 @@ var MipMapLevelSetIndex:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet NormalMapMipMapGeneration',[0.75,0.25,0.5,1.0]);
+ 
  ImageMemoryBarrier:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                   TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -3758,6 +3762,8 @@ begin
                                    0,nil,
                                    0,nil,
                                    1,@ImageMemoryBarrier); 
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
