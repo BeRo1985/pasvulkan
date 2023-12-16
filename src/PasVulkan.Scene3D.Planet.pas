@@ -97,11 +97,11 @@ type TpvScene3DPlanets=class;
               OctasphereTriangles,
               OctasphereQuads,
               Icosphere,
-              FibonacciSphereTriangles
+              MeshTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
-             Direct:Boolean=false;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles;
+             Direct:Boolean=true;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
              NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
@@ -5393,7 +5393,7 @@ begin
    TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
     Kind:='icosahedral_triangles_';
    end;
-   TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+   TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles:begin
     Kind:='external_';
    end;
    else begin
@@ -5422,7 +5422,7 @@ begin
    TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere,
-   TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+   TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles:begin
     Kind:='triangles_';
    end;
    else begin
@@ -5688,8 +5688,8 @@ begin
  fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
  case TpvScene3DPlanet.SourcePrimitiveMode of
-  TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
-   fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvVector4),VK_VERTEX_INPUT_RATE_VERTEX);
+  TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles:begin
+   fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvVector4)*2,VK_VERTEX_INPUT_RATE_VERTEX);
    fPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
   end;
   else begin
@@ -5768,7 +5768,7 @@ begin
    TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere,
-   TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+   TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles:begin
     fPipeline.TessellationState.PatchControlPoints:=3;
    end;
    else begin
@@ -5963,10 +5963,20 @@ begin
       TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*3*20,1,0,0);
       end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.FibonacciSphereTriangles:begin
+      TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles:begin
        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);
-       aCommandBuffer.CmdDrawIndexed(Planet.fTileMapResolution*Planet.fTileMapResolution*Planet.fVisualTileResolution*Planet.fVisualTileResolution*6,1,0,0,0);
+       aCommandBuffer.CmdDrawIndexed(Planet.fTileMapResolution*
+                                     Planet.fTileMapResolution*
+                                     Planet.fVisualTileResolution*
+                                     Planet.fVisualTileResolution*
+                                     6,
+                                     1,0,0,0);
+{      aCommandBuffer.CmdDraw(Planet.fTileMapResolution*
+                              Planet.fTileMapResolution*
+                              (Planet.fVisualTileResolution+1)*
+                              (Planet.fVisualTileResolution+1),
+                              1,0,0);}
       end;
      end;
 
@@ -6005,9 +6015,9 @@ begin
 
  fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
 
- fVisualTileResolution:=Max(16,RoundUpToPowerOfTwo(Min(aVisualResolution,fHeightMapResolution)) div fTileMapResolution);
+ fVisualTileResolution:=Max(2,RoundUpToPowerOfTwo(Min(aVisualResolution,fHeightMapResolution)) div fTileMapResolution);
 
- fPhysicsTileResolution:=Max(16,RoundUpToPowerOfTwo(Min(aPhysicsResolution,fHeightMapResolution)) div fTileMapResolution);
+ fPhysicsTileResolution:=Max(2,RoundUpToPowerOfTwo(Min(aPhysicsResolution,fHeightMapResolution)) div fTileMapResolution);
 
  fVisualResolution:=fTileMapResolution*fVisualTileResolution;
 
