@@ -41,15 +41,19 @@ layout(push_constant) uniform PushConstants {
 
 void main(){
 
-  const uint queuedTitleIndex = uint(gl_GlobalInvocationID.y);
+  const uint queuedTileIndex = uint(gl_GlobalInvocationID.y);
   
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
-  if((queuedTitleIndex < tileMapSize) && (queuedTitleIndex < queuedTiles.data[1u])){
+  if((queuedTileIndex < tileMapSize) && (queuedTileIndex < queuedTiles.data[1u])){
 
-    const uint tileMapIndex = queuedTiles.data[queuedTitleIndex + 6u];
+    const uint tileMapIndex = queuedTiles.data[queuedTileIndex + 6u];
 
     if(tileMapIndex < tileMapSize){
+
+      uvec2 tileMapXY;
+      tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
+      tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
       const uint tileVertexResolution = pushConstants.tileResolution + 1u;
 
@@ -58,10 +62,6 @@ void main(){
       const uint tileVertexIndex = uint(gl_GlobalInvocationID.x);
       
       if(tileVertexIndex < tileVertexSize){
-
-        uvec2 tileMapXY;
-        tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
-        tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
         uvec2 tileVertexXY;
         tileVertexXY.y = tileVertexIndex / tileVertexResolution;
