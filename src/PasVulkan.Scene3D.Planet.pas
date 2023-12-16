@@ -5673,7 +5673,7 @@ begin
   fPipeline.AddStage(fTessellationEvaluationShaderStage);
  end;
  if assigned(fGeometryShaderStage) then begin
-  fPipeline.AddStage(fGeometryShaderStage);
+//fPipeline.AddStage(fGeometryShaderStage);
  end;
  if assigned(fFragmentShaderStage) then begin
   fPipeline.AddStage(fFragmentShaderStage);
