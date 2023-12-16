@@ -639,8 +639,8 @@ type TpvScene3DPlanets=class;
        fTileMapShift:TpvInt32;
        fVisualTileResolution:TpvInt32;
        fPhysicsTileResolution:TpvInt32;
-       fCountVisualSpherePoints:TpvSizeInt;
-       fCountPhysicsSpherePoints:TpvSizeInt;
+       fVisualResolution:TpvSizeInt;
+       fPhysicsResolution:TpvSizeInt;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
@@ -677,9 +677,9 @@ type TpvScene3DPlanets=class;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
       public
        constructor Create(const aScene3D:TObject;
-                          const aHeightMapResolution:TpvInt32=2048;
-                          const aCountVisualSpherePoints:TpvSizeInt=256;
-                          const aCountPhysicsSpherePoints:TpvSizeInt=65536;
+                          const aHeightMapResolution:TpvInt32=4096;
+                          const aVisualResolution:TpvSizeInt=4096;
+                          const aPhysicsResolution:TpvSizeInt=1024;
                           const aBottomRadius:TpvFloat=70.0;
                           const aTopRadius:TpvFloat=100.0); reintroduce;
        destructor Destroy; override;
@@ -702,8 +702,8 @@ type TpvScene3DPlanets=class;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
-       property CountVisualSpherePoints:TpvSizeInt read fCountVisualSpherePoints;
-       property CountPhysicsSpherePoints:TpvSizeInt read fCountPhysicsSpherePoints;
+       property VisualResolution:TpvSizeInt read fVisualResolution;
+       property PhysicsResolution:TpvSizeInt read fPhysicsResolution;
        property BottomRadius:TpvFloat read fBottomRadius;
        property TopRadius:TpvFloat read fTopRadius;
        property Ready:TPasMPBool32 read fReady;
@@ -5648,8 +5648,8 @@ end;
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aHeightMapResolution:TpvInt32;
-                                    const aCountVisualSpherePoints:TpvSizeInt;
-                                    const aCountPhysicsSpherePoints:TpvSizeInt;
+                                    const aVisualResolution:TpvSizeInt;
+                                    const aPhysicsResolution:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
                                     const aTopRadius:TpvFloat);
 var InFlightFrameIndex:TpvSizeInt;
@@ -5667,13 +5667,13 @@ begin
 
  fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
 
- fVisualTileResolution:=Max(16,RoundUpToPowerOfTwo(Min(aCountVisualSpherePoints,fHeightMapResolution)) div fTileMapResolution);
+ fVisualTileResolution:=Max(16,RoundUpToPowerOfTwo(Min(aVisualResolution,fHeightMapResolution)) div fTileMapResolution);
 
- fPhysicsTileResolution:=Max(16,RoundUpToPowerOfTwo(Min(aCountPhysicsSpherePoints,fHeightMapResolution)) div fTileMapResolution);
+ fPhysicsTileResolution:=Max(16,RoundUpToPowerOfTwo(Min(aPhysicsResolution,fHeightMapResolution)) div fTileMapResolution);
 
- fCountVisualSpherePoints:=Min(Max(aCountVisualSpherePoints,32),16777216);
+ fVisualResolution:=fTileMapResolution*fVisualTileResolution;
 
- fCountPhysicsSpherePoints:=Min(Max(aCountPhysicsSpherePoints,32),16777216);
+ fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
  fBottomRadius:=aBottomRadius;
 
@@ -6060,13 +6060,13 @@ begin
 
 {   fVisualBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    if fCountVisualSpherePoints<=512 then begin
+    if fVisualResolution<=512 then begin
      fVisualBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
     end;
 
     fPhysicsBaseMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    if fCountPhysicsSpherePoints<=512 then begin
+    if fPhysicsResolution<=512 then begin
      fPhysicsBaseMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
     end;}
 
