@@ -1,0 +1,35 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_ARB_gpu_shader_fp64 : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_control_flow_attributes : enable
+
+/* clang-format off */
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer TileMapExpandedDirtyBuffer {
+  uint data[]; // bitwise dirty map
+} tileMapExpandedDirtyBuffer;
+
+layout(set = 0, binding = 1, std430) buffer QueuedTiles {
+  uint data[]; // 1-based index of queued tiles, 0 is count of queued tiles
+} queuedTiles;
+
+layout(push_constant) uniform PushConstants {
+  uint tileMapResolution;
+} pushConstants;
+
+void main() {
+  const uvec2 tileMapXY = uvec2(gl_GlobalInvocationID.xy);
+  if(all(lessThan(tileMapXY, uvec2(pushConstants.tileMapResolution)))){
+    const uint index = (tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x;
+    if((tileMapExpandedDirtyBuffer.data[index >> 5] & (1u << (index & 31u))) != 0u){
+      queuedTiles.data[atomicAdd(queuedTiles.data[0], 1u) + 1] = index;
+    }
+  }
+}
