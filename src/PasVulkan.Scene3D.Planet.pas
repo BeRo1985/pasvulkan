@@ -203,8 +203,8 @@ type TpvScene3DPlanets=class;
                     MaxHeight:TpvFloat;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
-                    BufferDirtyMapSize:TpvUInt32;
-                    BufferDirtyMapShift:TpvUInt32;
+                    TileMapResolution:TpvUInt32;
+                    TileMapShift:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -559,8 +559,10 @@ type TpvScene3DPlanets=class;
        fVulkanUniversalAcquireSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanUniversalReleaseSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fHeightMapResolution:TpvInt32;
-       fTileMapSize:TpvInt32;
+       fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
+       fVisualTileResolution:TpvInt32;
+       fPhysicsTileResolution:TpvInt32;
        fCountVisualSpherePoints:TpvSizeInt;
        fCountPhysicsSpherePoints:TpvSizeInt;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
@@ -911,12 +913,12 @@ begin
 
   if fInFlightFrameIndex<0 then begin
 
-   SetLength(fTileDirtyMap,((fPlanet.fTileMapSize*fPlanet.fTileMapSize)+31) shr 5);
+   SetLength(fTileDirtyMap,((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+31) shr 5);
    if length(fTileDirtyMap)>0 then begin
     FillChar(fTileDirtyMap[0],length(fTileDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
 
-   SetLength(fTileExpandedDirtyMap,fPlanet.fTileMapSize*fPlanet.fTileMapSize);
+   SetLength(fTileExpandedDirtyMap,fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
    if length(fTileExpandedDirtyMap)>0 then begin
     FillChar(fTileExpandedDirtyMap[0],length(fTileExpandedDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
@@ -1528,11 +1530,11 @@ begin
   // would otherwise be self-overlapping and thus not work correctly, when it would update the dirty
   // map in-place. In other words, it would mark too much tiles as dirty then, which would result in
   // unnecessary work for updating the physics mesh and so on.
-  Mask:=fPlanet.fTileMapSize-1; // Size is always power of two here, so we can convert it to a mask easily
+  Mask:=fPlanet.fTileMapResolution-1; // Resolution is always power of two here, so we can convert it to a mask easily
   FillChar(fTileExpandedDirtyMap[0],length(fTileExpandedDirtyMap)*SizeOf(TpvUInt32),#0); // Clear expanded dirty map
-  for y:=0 to fPlanet.fTileMapSize-1 do begin
-   for x:=0 to fPlanet.fTileMapSize-1 do begin
-    Index:=(y*fPlanet.fTileMapSize)+x;
+  for y:=0 to fPlanet.fTileMapResolution-1 do begin
+   for x:=0 to fPlanet.fTileMapResolution-1 do begin
+    Index:=(y*fPlanet.fTileMapResolution)+x;
     if (fTileDirtyMap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0 then begin
      for oy:=-1 to 1 do begin
       for ox:=-1 to 1 do begin
@@ -1540,13 +1542,13 @@ begin
        iy:=y+oy;
        if (((abs(ix)+(TpvInt32(TpvUInt32(ix) shr 31) and 1)) and 1) xor ((abs(iy)+(TpvInt32(TpvUInt32(iy) shr 31) and 1)) and 1))<>0 then begin
         // Octahedral wrap, here the coordinates must be mirrored in a checkerboard pattern at overflows
-        ix:=fPlanet.fTileMapSize-(((ix+fPlanet.fTileMapSize) and Mask)+1);
-        iy:=fPlanet.fTileMapSize-(((iy+fPlanet.fTileMapSize) and Mask)+1);
+        ix:=fPlanet.fTileMapResolution-(((ix+fPlanet.fTileMapResolution) and Mask)+1);
+        iy:=fPlanet.fTileMapResolution-(((iy+fPlanet.fTileMapResolution) and Mask)+1);
        end else begin 
-        ix:=(ix+fPlanet.fTileMapSize) and Mask;
-        iy:=(iy+fPlanet.fTileMapSize) and Mask;
+        ix:=(ix+fPlanet.fTileMapResolution) and Mask;
+        iy:=(iy+fPlanet.fTileMapResolution) and Mask;
        end;                 
-       OtherIndex:=(iy*fPlanet.fTileMapSize)+ix;
+       OtherIndex:=(iy*fPlanet.fTileMapResolution)+ix;
        fTileExpandedDirtyMap[OtherIndex shr 5]:=fTileExpandedDirtyMap[OtherIndex shr 5] or (TpvUInt32(1) shl (OtherIndex and 31));
       end;
      end;     
@@ -1991,8 +1993,8 @@ begin
   fPushConstants.MaxHeight:=1.0;
   fPushConstants.BottomRadius:=fPlanet.BottomRadius;
   fPushConstants.TopRadius:=fPlanet.TopRadius;
-  fPushConstants.BufferDirtyMapSize:=fPlanet.fTileMapSize;
-  fPushConstants.BufferDirtyMapShift:=fPlanet.fTileMapShift;
+  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+  fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
 
  end;
 
@@ -2190,7 +2192,7 @@ begin
   fPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fPushConstants.InnerRadiusValueMinMax:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   
-  fPushConstants.DirtyMapSize:=fPlanet.fTileMapSize;
+  fPushConstants.DirtyMapSize:=fPlanet.fTileMapResolution;
   fPushConstants.DirtyMapShift:=fPlanet.fTileMapShift;
 
  end;
@@ -2395,7 +2397,7 @@ begin
 
   fPushConstants.Vector:=TpvVector4.Create(0.0,1.0,0.0,0.0);
 
-  fPushConstants.DirtyMapSize:=fPlanet.fTileMapSize;
+  fPushConstants.DirtyMapSize:=fPlanet.fTileMapResolution;
   fPushConstants.DirtyMapShift:=fPlanet.fTileMapShift;
 
  end;
@@ -4867,9 +4869,9 @@ begin
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
- fTileMapSize:=Min(Max(fHeightMapResolution shr 6,32),fHeightMapResolution);
+ fTileMapResolution:=Min(Max(fHeightMapResolution shr 6,32),fHeightMapResolution);
 
- fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapSize);
+ fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
 
  fCountVisualSpherePoints:=Min(Max(aCountVisualSpherePoints,32),16777216);
 
