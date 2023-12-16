@@ -29,7 +29,7 @@ layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
 layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rgba16_snorm
 
 layout(push_constant) uniform PushConstants {
-  mat4 modelMatrix;
+  //mat4 modelMatrix;
   float bottomRadius;
   float topRadius;
   uint tileMapResolution;
@@ -88,7 +88,8 @@ void main(){
         float absoluteHeight = mix(pushConstants.bottomRadius, pushConstants.topRadius, height);
 
         triangleVertices.vertices[index] = TriangleVertex( 
-          vec4((pushConstants.modelMatrix * vec4(vector * absoluteHeight, 1.0)).xyz, absoluteHeight), 
+          vec4(vec4(vector, 1.0) * absoluteHeight), 
+//        vec4((pushConstants.modelMatrix * vec4(vector * absoluteHeight, 1.0)).xyz, absoluteHeight), 
           vec4(normal, height)
         );    
 
