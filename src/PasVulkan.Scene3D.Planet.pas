@@ -119,7 +119,7 @@ type TpvScene3DPlanets=class;
                      ReleasedOnComputeQueue=4
                     );
                    POwnershipHolderState=^TOwnershipHolderState;
-                   TDirtyMap=array of TpvUInt32;
+                   TTileDirtyMap=array of TpvUInt32;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
@@ -127,9 +127,9 @@ type TpvScene3DPlanets=class;
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
               fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)
-              fDirtyMap:TpvScene3DPlanet.TData.TDirtyMap;
-              fExpandedDirtyMap:TpvScene3DPlanet.TData.TDirtyMap;
-              fDirtyMapBuffer:TpvVulkanBuffer;
+              fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
+              fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
+              fTileDirtyMapBuffer:TpvVulkanBuffer;
               fVisualBaseMeshVertexBuffer:TpvVulkanBuffer; // vec4 wise, where only xyz is used, w is unused in the moment
               fVisualBaseMeshTriangleIndexBuffer:TpvVulkanBuffer; // uint32 wise, where the first item is the count of triangle indices and the rest are the triangle indices
               fVisualMeshVertexBuffer:TpvVulkanBuffer; // TFibonacciSphereVertex wise
@@ -172,7 +172,7 @@ type TpvScene3DPlanets=class;
               property HeightMapImage:TpvScene3DRendererMipmapImage2D read fHeightMapImage;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
               property TangentBitangentMapImage:TpvScene3DRendererImage2D read fTangentBitangentMapImage; 
-              property DirtyMapBuffer:TpvVulkanBuffer read fDirtyMapBuffer;
+              property DirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
               property VisualBaseMeshVertexBuffer:TpvVulkanBuffer read fVisualBaseMeshVertexBuffer;
               property VisualBaseMeshTriangleIndexBuffer:TpvVulkanBuffer read fVisualBaseMeshTriangleIndexBuffer;
               property VisualMeshVertexBuffer:TpvVulkanBuffer read fVisualMeshVertexBuffer;
@@ -559,8 +559,8 @@ type TpvScene3DPlanets=class;
        fVulkanUniversalAcquireSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanUniversalReleaseSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fHeightMapResolution:TpvInt32;
-       fDirtyMapSize:TpvInt32;
-       fDirtyMapShift:TpvInt32;
+       fTileMapSize:TpvInt32;
+       fTileMapShift:TpvInt32;
        fCountVisualSpherePoints:TpvSizeInt;
        fCountPhysicsSpherePoints:TpvSizeInt;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
@@ -849,11 +849,11 @@ begin
 
  fTangentBitangentMapImage:=nil;
 
- fDirtyMap:=nil;
+ fTileDirtyMap:=nil;
 
- fExpandedDirtyMap:=nil;
+ fTileExpandedDirtyMap:=nil;
 
- fDirtyMapBuffer:=nil;
+ fTileDirtyMapBuffer:=nil;
 
  fVisualBaseMeshVertexBuffer:=nil;
 
@@ -911,38 +911,38 @@ begin
 
   if fInFlightFrameIndex<0 then begin
 
-   SetLength(fDirtyMap,((fPlanet.fDirtyMapSize*fPlanet.fDirtyMapSize)+31) shr 5);
-   if length(fDirtyMap)>0 then begin
-    FillChar(fDirtyMap[0],length(fDirtyMap)*SizeOf(TpvUInt32),#0);
+   SetLength(fTileDirtyMap,((fPlanet.fTileMapSize*fPlanet.fTileMapSize)+31) shr 5);
+   if length(fTileDirtyMap)>0 then begin
+    FillChar(fTileDirtyMap[0],length(fTileDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
 
-   SetLength(fExpandedDirtyMap,fPlanet.fDirtyMapSize*fPlanet.fDirtyMapSize);
-   if length(fExpandedDirtyMap)>0 then begin
-    FillChar(fExpandedDirtyMap[0],length(fExpandedDirtyMap)*SizeOf(TpvUInt32),#0);
+   SetLength(fTileExpandedDirtyMap,fPlanet.fTileMapSize*fPlanet.fTileMapSize);
+   if length(fTileExpandedDirtyMap)>0 then begin
+    FillChar(fTileExpandedDirtyMap[0],length(fTileExpandedDirtyMap)*SizeOf(TpvUInt32),#0);
    end;
 
-   fDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                           length(fDirtyMap)*SizeOf(TpvUInt32),
-                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                           VK_SHARING_MODE_EXCLUSIVE,
-                                           [],
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           0,
-                                           [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
-                                          );
-   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fDirtyMapBuffer');
+   fTileDirtyMapBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                               length(fTileDirtyMap)*SizeOf(TpvUInt32),
+                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                               VK_SHARING_MODE_EXCLUSIVE,
+                                               [],
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               0,
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                              );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileDirtyMapBuffer');
    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
                                             fPlanet.fVulkanComputeCommandBuffer,
                                             fPlanet.fVulkanComputeFence,
-                                            fDirtyMapBuffer,
+                                            fTileDirtyMapBuffer,
                                             0,
-                                            fDirtyMapBuffer.Size);
+                                            fTileDirtyMapBuffer.Size);
 
   end;
 
@@ -1111,11 +1111,11 @@ begin
 
  FreeAndNil(fTangentBitangentMapImage);
 
- fDirtyMap:=nil;
+ fTileDirtyMap:=nil;
 
- fExpandedDirtyMap:=nil;
+ fTileExpandedDirtyMap:=nil;
 
- FreeAndNil(fDirtyMapBuffer);
+ FreeAndNil(fTileDirtyMapBuffer);
 
  FreeAndNil(fVisualBaseMeshVertexBuffer);
 
@@ -1503,22 +1503,22 @@ procedure TpvScene3DPlanet.TData.CheckDirtyMap;
 var Index,OtherIndex,Mask,x,y,ox,oy,ix,iy:TpvInt32;
 begin
 
- if assigned(fPlanet.fVulkanDevice) and assigned(fDirtyMapBuffer) and (length(fDirtyMap)>0) then begin
+ if assigned(fPlanet.fVulkanDevice) and assigned(fTileDirtyMapBuffer) and (length(fTileDirtyMap)>0) then begin
 
   fPlanet.fVulkanDevice.MemoryStaging.Download(fPlanet.fVulkanComputeQueue,
                                                fPlanet.fVulkanComputeCommandBuffer,
                                                fPlanet.fVulkanComputeFence,
-                                               fDirtyMapBuffer,
+                                               fTileDirtyMapBuffer,
                                                0,
-                                               fDirtyMap[0],
-                                               fDirtyMapBuffer.Size);
+                                               fTileDirtyMap[0],
+                                               fTileDirtyMapBuffer.Size);
 
   fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
                                            fPlanet.fVulkanComputeCommandBuffer,
                                            fPlanet.fVulkanComputeFence,
-                                           fDirtyMapBuffer,
+                                           fTileDirtyMapBuffer,
                                            0,
-                                           fDirtyMapBuffer.Size);
+                                           fTileDirtyMapBuffer.Size);
 
   // Expand dirty map, so that also adjacent tiles are marked as dirty, since tile edges are shared.
   // Indeed, it can be done more efficiently, but it's not worth the effort, because it's only done at
@@ -1528,26 +1528,26 @@ begin
   // would otherwise be self-overlapping and thus not work correctly, when it would update the dirty
   // map in-place. In other words, it would mark too much tiles as dirty then, which would result in
   // unnecessary work for updating the physics mesh and so on.
-  Mask:=fPlanet.fDirtyMapSize-1; // Size is always power of two here, so we can convert it to a mask easily  
-  FillChar(fExpandedDirtyMap[0],length(fExpandedDirtyMap)*SizeOf(TpvUInt32),#0); // Clear expanded dirty map
-  for y:=0 to fPlanet.fDirtyMapSize-1 do begin
-   for x:=0 to fPlanet.fDirtyMapSize-1 do begin
-    Index:=(y*fPlanet.fDirtyMapSize)+x;
-    if (fDirtyMap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0 then begin
+  Mask:=fPlanet.fTileMapSize-1; // Size is always power of two here, so we can convert it to a mask easily
+  FillChar(fTileExpandedDirtyMap[0],length(fTileExpandedDirtyMap)*SizeOf(TpvUInt32),#0); // Clear expanded dirty map
+  for y:=0 to fPlanet.fTileMapSize-1 do begin
+   for x:=0 to fPlanet.fTileMapSize-1 do begin
+    Index:=(y*fPlanet.fTileMapSize)+x;
+    if (fTileDirtyMap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0 then begin
      for oy:=-1 to 1 do begin
       for ox:=-1 to 1 do begin
        ix:=x+ox;
        iy:=y+oy;
        if (((abs(ix)+(TpvInt32(TpvUInt32(ix) shr 31) and 1)) and 1) xor ((abs(iy)+(TpvInt32(TpvUInt32(iy) shr 31) and 1)) and 1))<>0 then begin
         // Octahedral wrap, here the coordinates must be mirrored in a checkerboard pattern at overflows
-        ix:=fPlanet.fDirtyMapSize-(((ix+fPlanet.fDirtyMapSize) and Mask)+1);
-        iy:=fPlanet.fDirtyMapSize-(((iy+fPlanet.fDirtyMapSize) and Mask)+1);
+        ix:=fPlanet.fTileMapSize-(((ix+fPlanet.fTileMapSize) and Mask)+1);
+        iy:=fPlanet.fTileMapSize-(((iy+fPlanet.fTileMapSize) and Mask)+1);
        end else begin 
-        ix:=(ix+fPlanet.fDirtyMapSize) and Mask; 
-        iy:=(iy+fPlanet.fDirtyMapSize) and Mask; 
+        ix:=(ix+fPlanet.fTileMapSize) and Mask;
+        iy:=(iy+fPlanet.fTileMapSize) and Mask;
        end;                 
-       OtherIndex:=(iy*fPlanet.fDirtyMapSize)+ix;
-       fExpandedDirtyMap[OtherIndex shr 5]:=fExpandedDirtyMap[OtherIndex shr 5] or (TpvUInt32(1) shl (OtherIndex and 31));
+       OtherIndex:=(iy*fPlanet.fTileMapSize)+ix;
+       fTileExpandedDirtyMap[OtherIndex shr 5]:=fTileExpandedDirtyMap[OtherIndex shr 5] or (TpvUInt32(1) shl (OtherIndex and 31));
       end;
      end;     
     end; 
@@ -1555,9 +1555,9 @@ begin
   end;
 
  {// Dump dirty map 
-  for Index:=0 to length(fExpandedDirtyMap)-1 do begin
-   if fExpandedDirtyMap[Index]<>0 then begin
-    writeln('DirtyMap['+IntToStr(Index)+']='+IntToHex(fExpandedDirtyMap[Index],8));
+  for Index:=0 to length(fTileExpandedDirtyMap)-1 do begin
+   if fTileExpandedDirtyMap[Index]<>0 then begin
+    writeln('DirtyMap['+IntToStr(Index)+']='+IntToHex(fTileExpandedDirtyMap[Index],8));
    end;
   end;//}
 
@@ -1966,7 +1966,7 @@ begin
                                       1,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                       [],
-                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fDirtyMapBuffer.Handle,
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                                       0,
                                                                       VK_WHOLE_SIZE)],
                                       [],
@@ -1991,8 +1991,8 @@ begin
   fPushConstants.MaxHeight:=1.0;
   fPushConstants.BottomRadius:=fPlanet.BottomRadius;
   fPushConstants.TopRadius:=fPlanet.TopRadius;
-  fPushConstants.BufferDirtyMapSize:=fPlanet.fDirtyMapSize; 
-  fPushConstants.BufferDirtyMapShift:=fPlanet.fDirtyMapShift;
+  fPushConstants.BufferDirtyMapSize:=fPlanet.fTileMapSize;
+  fPushConstants.BufferDirtyMapShift:=fPlanet.fTileMapShift;
 
  end;
 
@@ -2041,7 +2041,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fDirtyMapBuffer.Handle,
+                                                    fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);
 
@@ -2089,7 +2089,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fDirtyMapBuffer.Handle,
+                                                    fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);
 
@@ -2172,7 +2172,7 @@ begin
                                       1,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                       [],
-                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fDirtyMapBuffer.Handle,
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                                       0,
                                                                       VK_WHOLE_SIZE)],
                                       [],
@@ -2190,8 +2190,8 @@ begin
   fPushConstants.PositionRadius:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   fPushConstants.InnerRadiusValueMinMax:=TpvVector4.Create(0.0,0.0,0.0,0.0);
   
-  fPushConstants.DirtyMapSize:=fPlanet.fDirtyMapSize;
-  fPushConstants.DirtyMapShift:=fPlanet.fDirtyMapShift;
+  fPushConstants.DirtyMapSize:=fPlanet.fTileMapSize;
+  fPushConstants.DirtyMapShift:=fPlanet.fTileMapShift;
 
  end;
 
@@ -2240,7 +2240,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fDirtyMapBuffer.Handle,
+                                                    fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);                                                                                 
 
@@ -2295,7 +2295,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fDirtyMapBuffer.Handle,
+                                                    fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);                                                                                 
 
@@ -2378,7 +2378,7 @@ begin
                                       1,
                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                       [],
-                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fDirtyMapBuffer.Handle,
+                                      [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                                       0,
                                                                       VK_WHOLE_SIZE)],
                                       [],
@@ -2395,8 +2395,8 @@ begin
 
   fPushConstants.Vector:=TpvVector4.Create(0.0,1.0,0.0,0.0);
 
-  fPushConstants.DirtyMapSize:=fPlanet.fDirtyMapSize;
-  fPushConstants.DirtyMapShift:=fPlanet.fDirtyMapShift;
+  fPushConstants.DirtyMapSize:=fPlanet.fTileMapSize;
+  fPushConstants.DirtyMapShift:=fPlanet.fTileMapShift;
 
  end;
 
@@ -2445,7 +2445,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fDirtyMapBuffer.Handle,
+                                                    fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);    
 
@@ -2498,7 +2498,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fPlanet.fData.fDirtyMapBuffer.Handle,
+                                                    fPlanet.fData.fTileDirtyMapBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);                                                                                 
 
@@ -4867,9 +4867,9 @@ begin
 
  fHeightMapResolution:=RoundUpToPowerOfTwo(Min(Max(aHeightMapResolution,128),8192));
 
- fDirtyMapSize:=Min(Max(fHeightMapResolution shr 6,32),fHeightMapResolution);
+ fTileMapSize:=Min(Max(fHeightMapResolution shr 6,32),fHeightMapResolution);
 
- fDirtyMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fDirtyMapSize);
+ fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapSize);
 
  fCountVisualSpherePoints:=Min(Max(aCountVisualSpherePoints,32),16777216);
 

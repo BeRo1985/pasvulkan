@@ -12,9 +12,9 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, r32f) writeonly uniform image2D uImageHeightMap;
 
-layout(set = 0, binding = 1) buffer BufferDirtyMap{
+layout(set = 0, binding = 1) buffer BufferTileDirtyMap{
   uint data[]; // bitwise dirty map
-} bufferDirtyMap;
+} bufferTileDirtyMap;
 
 layout(push_constant) uniform PushConstants {
   int octaves;
@@ -27,8 +27,8 @@ layout(push_constant) uniform PushConstants {
   float maxHeight;
   float bottomRadius;
   float topRadius;
-  uint bufferDirtyMapSize;
-  uint bufferDirtyMapShift; 
+  uint bufferTileDirtyMapSize;
+  uint bufferTileDirtyMapShift; 
 } pushConstants;
 
 /* clang-format on */
@@ -98,9 +98,9 @@ void main(){
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
 
-    uvec2 dirtyMapXY = uvec2(texel) >> pushConstants.bufferDirtyMapShift;
-    uint dirtyMapIndex = (dirtyMapXY.y * pushConstants.bufferDirtyMapSize) + dirtyMapXY.x;
-    atomicOr(bufferDirtyMap.data[dirtyMapIndex >> 5u], 1u << (dirtyMapIndex & 31u));
+    uvec2 tileDirtyMapXY = uvec2(texel) >> pushConstants.bufferTileDirtyMapShift;
+    uint tileDirtyMapIndex = (tileDirtyMapXY.y * pushConstants.bufferTileDirtyMapSize) + tileDirtyMapXY.x;
+    atomicOr(bufferTileDirtyMap.data[tileDirtyMapIndex >> 5u], 1u << (tileDirtyMapIndex & 31u));
 
     ivec2 xy = wrapOctahedralTexelCoordinates(texel, texSize);
     
