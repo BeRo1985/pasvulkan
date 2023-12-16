@@ -2097,7 +2097,7 @@ begin
                                              nil,
                                              0);
 
-  fPushConstants.Octaves:=8;
+  fPushConstants.Octaves:=4;
   fPushConstants.Scale:=4.0;
   fPushConstants.Amplitude:=1.0;
   fPushConstants.Lacunarity:=2.0;
