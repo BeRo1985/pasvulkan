@@ -55,17 +55,15 @@ void main(){
       tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
       tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
-      const uint tileVertexResolution = pushConstants.tileResolution + 1u;
-
-      const uint tileVertexSize = tileVertexResolution * tileVertexResolution;
+      const uint tileVertexSize = pushConstants.tileResolution * pushConstants.tileResolution;
 
       const uint tileVertexIndex = uint(gl_GlobalInvocationID.x);
       
       if(tileVertexIndex < tileVertexSize){
 
         uvec2 tileVertexXY;
-        tileVertexXY.y = tileVertexIndex / tileVertexResolution;
-        tileVertexXY.x = tileVertexIndex - (tileVertexXY.y * tileVertexResolution);
+        tileVertexXY.y = tileVertexIndex / pushConstants.tileResolution;
+        tileVertexXY.x = tileVertexIndex - (tileVertexXY.y * pushConstants.tileResolution);
 
         uvec2 quadXY = (tileMapXY * pushConstants.tileResolution) + tileVertexXY;
         

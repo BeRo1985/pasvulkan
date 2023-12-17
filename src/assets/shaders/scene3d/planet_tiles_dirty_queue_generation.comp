@@ -32,9 +32,9 @@ void main() {
     // 256 tile positions per dispatch local group
     // [1] anxd [4] aren't written to, due to race-conditions otherwise, these are cleared with vkCmdFillBuffer before dispatch
     // Each vkCmdDispatchIndirect struct contains three 32-bit uints, here are two of them, one for visual and one for physics.
-    queuedTiles.data[0] = (((pushConstants.visualTileResolution + 1) * (pushConstants.visualTileResolution + 1)) + 255u) >> 8u; 
+    queuedTiles.data[0] = ((pushConstants.visualTileResolution * pushConstants.visualTileResolution) + 255u) >> 8u; 
     queuedTiles.data[2] = 1u;
-    queuedTiles.data[3] = (((pushConstants.physicsTileResolution + 1) * (pushConstants.physicsTileResolution + 1)) + 255u) >> 8u;
+    queuedTiles.data[3] = ((pushConstants.physicsTileResolution * pushConstants.physicsTileResolution) + 255u) >> 8u;
     queuedTiles.data[5] = 1u;
   }
   if(all(lessThan(tileMapXY, uvec2(pushConstants.tileMapResolution)))){

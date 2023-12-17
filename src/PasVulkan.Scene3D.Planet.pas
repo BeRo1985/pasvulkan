@@ -1112,7 +1112,7 @@ begin
   {if fInFlightFrameIndex<0 then}begin
 
     fVisualMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                    fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*(fPlanet.fVisualTileResolution+1)*(fPlanet.fVisualTileResolution+1)*2*SizeOf(TpvVector4),
+                                                    (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*2*SizeOf(TpvVector4),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     BufferSharingMode,
                                                     BufferQueueFamilyIndices,
@@ -1153,7 +1153,7 @@ begin
 
    // Don't need to be accessible from the CPU, because it's only used for the initial vertex data without height map modifications
    fPhysicsMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                    fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*(fPlanet.fPhysicsTileResolution+1)*(fPlanet.fPhysicsTileResolution+1)*2*SizeOf(TpvVector4),
+                                                    fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*2*SizeOf(TpvVector4),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     BufferSharingMode,
                                                     BufferQueueFamilyIndices,
@@ -4259,11 +4259,11 @@ begin
   if fPlanet.fData.fCountDirtyTiles>0 then begin
 
    if fPhysics then begin
-    aCommandBuffer.CmdDispatch((((fPlanet.fPhysicsTileResolution+1)*(fPlanet.fPhysicsTileResolution+1))+255) shr 8,
+    aCommandBuffer.CmdDispatch(((fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution)+255) shr 8,
                                fPlanet.fData.fCountDirtyTiles,
                                1);
    end else begin
-    aCommandBuffer.CmdDispatch((((fPlanet.fVisualTileResolution+1)*(fPlanet.fVisualTileResolution+1))+255) shr 8,
+    aCommandBuffer.CmdDispatch(((fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)+255) shr 8,
                                fPlanet.fData.fCountDirtyTiles,
                                1);
    end;
@@ -5983,8 +5983,8 @@ begin
                                      1,0,0,0);
 {      aCommandBuffer.CmdDraw(Planet.fTileMapResolution*
                               Planet.fTileMapResolution*
-                              (Planet.fVisualTileResolution+1)*
-                              (Planet.fVisualTileResolution+1),
+                              Planet.fVisualTileResolution*
+                              Planet.fVisualTileResolution,
                               1,0,0);}
       end;
      end;
