@@ -35,10 +35,12 @@ void main(){
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
 
+    vec3 sphereNormal = octDecode(fma(vec2(texel) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
+
     float d = smoothstep(
       0.0,
       -pushConstants.innerRadiusValueMinMax.x,
-      length(octDecode(fma(vec2(texel) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0))) - pushConstants.positionRadius.xyz) - pushConstants.positionRadius.w
+      length(sphereNormal - pushConstants.positionRadius.xyz) - pushConstants.positionRadius.w
     );
 
     if(d > 0.0){
@@ -58,10 +60,11 @@ void main(){
         }
         // Commented out code, because the CPU expands the dirty map in the moment anyway.
       }else*/{
-        uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapResolutionShift.y;
+        uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(sphereNormal) * vec2(texSize)) >> pushConstants.tileMapResolutionShift.y;
         uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 
+
     
       imageStore(
         uImageHeightMap, 

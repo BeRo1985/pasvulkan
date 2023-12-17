@@ -98,14 +98,16 @@ void main(){
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
 
-    uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapShift;
-    uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x;
-    atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
-
     ivec2 xy = wrapOctahedralTexelCoordinates(texel, texSize);
     
     vec3 p = octDecode(fma(vec2(xy) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
-    
+
+    {
+      uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(p) * vec2(texSize)) >> pushConstants.tileMapShift;
+      uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x;
+      atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));     
+    }
+   
     float height = fbm3(
       fma(p, vec3(0.5), vec3(0.5)), 
       pushConstants.octaves,
