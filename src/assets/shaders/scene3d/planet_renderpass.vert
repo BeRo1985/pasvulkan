@@ -389,7 +389,7 @@ void main(){
       vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
       uv = (absUVSum >= 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
       vec4 pitchYawSinCos = sin(vec2(vec2(absUVSum, abs(uv.x) / max(1e-17, abs(uv.x) + abs(uv.y))) * halfPI).xxyy + vec2(0.0, halfPI).xyxy); 
-      sphereNormal = normalize(-vec3(pitchYawSinCos.xx * pitchYawSinCos.zw * s.xy, pitchYawSinCos.y).xzy);
+      sphereNormal = normalize(vec3(pitchYawSinCos.xx * pitchYawSinCos.zw * s.xy, pitchYawSinCos.y).yzx);
     }
 #else
     vec2 uv = fma(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
