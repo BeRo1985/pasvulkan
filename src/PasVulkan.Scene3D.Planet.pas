@@ -100,7 +100,7 @@ type TpvScene3DPlanets=class;
               MeshTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
              Direct:Boolean=false;
        type TFibonacciSphereVertex=packed record
              PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
@@ -5681,7 +5681,7 @@ begin
   fPipeline.AddStage(fTessellationEvaluationShaderStage);
  end;
  if assigned(fGeometryShaderStage) then begin
-//fPipeline.AddStage(fGeometryShaderStage);
+  fPipeline.AddStage(fGeometryShaderStage);
  end;
  if assigned(fFragmentShaderStage) then begin
   fPipeline.AddStage(fFragmentShaderStage);
