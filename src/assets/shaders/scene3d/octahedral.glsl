@@ -61,11 +61,7 @@ vec2 octEqualAreaSignedEncode(vec3 vector){
   const float oneOverHalfPi = 0.6366197723675814;
   vector = normalize(vector); // just for to make sure that it is normalized
   vec3 absVector = abs(vector);
-#if 1
-  vec2 phiTheta = vec2(atan(absVector.x, max(absVector.y, 1e-17)), atan(length(absVector.xy), absVector.z)) * oneOverHalfPi;
-#else
-  vec2 phiTheta = vec2(acos(normalize(absVector.xy).y), acos(absVector.z)) * oneOverHalfPi;
-#endif
+  vec2 phiTheta = vec2(atan(absVector.x, max(absVector.y, 1e-17)), acos(absVector.z)) * oneOverHalfPi;
   vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
   vec2 uv = s.xy * vec2(phiTheta.x, 1.0 - phiTheta.x) * phiTheta.y;
   return (vector.z < 0.0) ? fma(abs(uv.yx), -s, s) : uv;
