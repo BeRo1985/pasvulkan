@@ -36,8 +36,8 @@ layout(push_constant) uniform PushConstants {
 
 /* clang-format on */
 
-#include "octahedralmap.glsl"
 #include "octahedral.glsl"
+#include "octahedralmap.glsl"
 
 void main(){
   

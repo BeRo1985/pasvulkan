@@ -36,8 +36,8 @@ layout(push_constant) uniform PushConstants {
   uint tileResolution;
 } pushConstants;
 
-#include "octahedralmap.glsl"
 #include "octahedral.glsl"
+#include "octahedralmap.glsl"
 
 void main(){
 

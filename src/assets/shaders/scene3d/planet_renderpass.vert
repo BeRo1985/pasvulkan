@@ -77,10 +77,11 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
+#include "octahedral.glsl"
+
 #ifdef DIRECT
 layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
-#include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
@@ -381,6 +382,10 @@ void main(){
     }*/
 
 #if 1
+    
+    sphereNormal = octPlanetUnsignedDecode(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection));
+
+#elif 0
     vec2 uv = fma(vec2(quadXY + quadVertexUV) / vec2(countQuadPointsInOneDirection), vec2(2.0), vec2(-1.0));
     {
       const float halfPI = 1.5707963267948966;
@@ -603,7 +608,7 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
-  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
   vec3 worldSpacePosition = position;
 

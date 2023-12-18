@@ -24,8 +24,8 @@ layout(push_constant) uniform PushConstants {
 
 /* clang-format on */
 
-#include "octahedralmap.glsl"
 #include "octahedral.glsl"
+#include "octahedralmap.glsl"
 
 void main(){
   
@@ -35,7 +35,7 @@ void main(){
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
 
-    vec3 sphereNormal = octDecode(fma(vec2(texel) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
+    vec3 sphereNormal = octPlanetSignedDecode(fma(vec2(texel) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
 
     float d = smoothstep(
       0.0,
@@ -60,11 +60,7 @@ void main(){
         }
         // Commented out code, because the CPU expands the dirty map in the moment anyway.
       }else*/{
-#if 0
-        uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(p) * vec2(texSize))  >> pushConstants.tileMapResolutionShift.y;
-#else
         uvec2 tileMapXY = uvec2(texel)  >> pushConstants.tileMapResolutionShift.y;
-#endif
         uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 

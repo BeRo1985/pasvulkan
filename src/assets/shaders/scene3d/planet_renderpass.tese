@@ -127,16 +127,16 @@ void main(){
                                gl_TessCoord.y));
 #endif
  
-  //position += sphereNormal * textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale;
+  //position += sphereNormal * textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale;
  
-  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
 
   vec3 worldSpacePosition = position;
 
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
-  vec3 normal = textureCatmullRomOctahedralMap(uTextures[1], sphereNormal).xyz;
+  vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
 
   outBlock.position = position;   
   outBlock.sphereNormal = sphereNormal;      
