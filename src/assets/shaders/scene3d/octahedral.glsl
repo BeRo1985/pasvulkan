@@ -58,9 +58,15 @@ vec3 octNonEqualAreaUnsignedDecode(vec2 uv) {
 }
 
 vec2 octEqualAreaSignedEncode(vec3 vector){
-#if 1
-  const float oneOverHalfPi = 0.6366197723675814;
   vector = normalize(vector); // just for to make sure that it is normalized
+#if 1
+  float r = sqrt(1.0 - abs(vector.z));
+  vec2 uv;
+  uv.y = r * atan(abs(vector.y), max(1e-17, abs(vector.x))) * 0.636619772367581343075535053490057448;
+  uv.x = r - uv.y;
+  return ((vector.z < 0.0) ? (vec2(1.0) - uv.yx) : uv.xy) * vec2((vector.x < 0.0) ? -1.0 : 1.0, (vector.y < 0.0) ? -1.0 : 1.0);
+#elif 0
+  const float oneOverHalfPi = 0.6366197723675814;
   vec3 absVector = abs(vector);
   vec2 phiTheta = vec2(atan(absVector.x, max(absVector.y, 1e-17)) * oneOverHalfPi, sqrt(1.0 - absVector.z));
   vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
@@ -68,7 +74,6 @@ vec2 octEqualAreaSignedEncode(vec3 vector){
   return (vector.z < 0.0) ? fma(abs(uv.yx), -s, s) : uv;
 #else 
   const float oneOverHalfPi = 0.6366197723675814;
-  vector = normalize(vector); // just for to make sure that it is normalized
   vec3 absVector = abs(vector);
   vec2 phiTheta = vec2(atan(absVector.x, max(absVector.y, 1e-17)), acos(absVector.z)) * oneOverHalfPi;
   vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
@@ -83,6 +88,12 @@ vec2 octEqualAreaUnsignedEncode(vec3 vector){
 
 vec3 octEqualAreaSignedDecode(vec2 uv){
 #if 1
+  vec2 absUV = abs(uv);
+  float d = 1.0 - (absUV.x + absUV.y), r = 1.0 - abs(d);
+  float phi = (r != 0.0) ? (((absUV.y - absUV.x) / max(1e-17, r)) + 1.0) * 0.785398163397448309615660845819875721 : 0.0;
+  vec2 phiCosSin = sin(vec2(phi) + vec2(1.5707963267948966, 0.0));
+  return normalize(vec3(abs(phiCosSin.xy * (r * sqrt(2.0 - (r * r)))) * vec2((uv.x < 0.0) ? -1.0 : 1.0, (uv.y < 0.0) ? -1.0 : 1.0), (1.0 - (r * r)) * ((d < 0.0) ? -1.0 : 1.0)));  
+#elif 0 
   const float halfPI = 1.5707963267948966;
   vec2 absUV = abs(uv);
   float absUVSum = absUV.x + absUV.y;
