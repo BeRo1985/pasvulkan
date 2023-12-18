@@ -1171,7 +1171,7 @@ begin
                                                     0,
                                                     0,
                                                     0,
-                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                    []//[TpvVulkanBufferFlag.PersistentMappedIfPossibe]
                                                    );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsMeshVertexBuffer');
 
@@ -6672,7 +6672,7 @@ begin
 
     end else begin
 
-     if (TpvVulkanBufferFlag.PersistentMapped in fData.fPhysicsMeshVertexBuffer.Flags) and
+{    if (TpvVulkanBufferFlag.PersistentMapped in fData.fPhysicsMeshVertexBuffer.Flags) and
         ((fData.fPhysicsMeshVertexBuffer.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
 
       Source:=fData.fPhysicsMeshVertexBuffer.Memory.MapMemory;
@@ -6692,7 +6692,7 @@ begin
        raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
       end;
 
-     end else begin
+     end else}begin
 
       fVulkanMemoryStagingQueue.Clear;
       try
