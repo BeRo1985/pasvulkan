@@ -52,7 +52,11 @@ void main(){
     if(d > 0.0){
 
       {
+#if 0
         uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(n) * vec2(texSize)) >> pushConstants.tileMapResolutionShift.y;
+#else
+        uvec2 tileMapXY = uvec2(texel)  >> pushConstants.tileMapResolutionShift.y;
+#endif
         uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 

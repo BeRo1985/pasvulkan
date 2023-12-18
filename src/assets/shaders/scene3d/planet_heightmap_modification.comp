@@ -60,7 +60,11 @@ void main(){
         }
         // Commented out code, because the CPU expands the dirty map in the moment anyway.
       }else*/{
-        uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(sphereNormal) * vec2(texSize)) >> pushConstants.tileMapResolutionShift.y;
+#if 0
+        uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(p) * vec2(texSize))  >> pushConstants.tileMapResolutionShift.y;
+#else
+        uvec2 tileMapXY = uvec2(texel)  >> pushConstants.tileMapResolutionShift.y;
+#endif
         uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 

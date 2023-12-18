@@ -103,7 +103,11 @@ void main(){
     vec3 p = octDecode(fma(vec2(xy) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
 
     {
+#if 0
       uvec2 tileMapXY = uvec2(sphereNormalToOctahedral(p) * vec2(texSize)) >> pushConstants.tileMapShift;
+#else
+      uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapShift;
+#endif
       uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x;
       atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));     
     }
