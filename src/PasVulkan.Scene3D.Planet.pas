@@ -111,6 +111,9 @@ type TpvScene3DPlanets=class;
             TMeshIndex=TpvUInt32;
             PMeshIndex=^TMeshIndex;
             TMeshIndices=TpvDynamicArrayList<TMeshIndex>;
+            TTileDirtyQueueItem=TpvUInt32;
+            PTileDirtyQueueItem=^TTileDirtyQueueItem;
+            TTileDirtyQueueItems=TpvDynamicArrayList<TTileDirtyQueueItem>;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -157,6 +160,7 @@ type TpvScene3DPlanets=class;
               fModifyHeightMapFactor:TpvScalar;
               fMeshVertices:TMeshVertices;
               fMeshIndices:TMeshIndices;
+              fTileDirtyQueueItems:TTileDirtyQueueItems;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -185,6 +189,7 @@ type TpvScene3DPlanets=class;
               property RayIntersectionResultBuffer:TpvVulkanBuffer read fRayIntersectionResultBuffer;
               property MeshVertices:TMeshVertices read fMeshVertices;
               property MeshIndices:TMeshIndices read fMeshIndices;
+              property TileDirtyQueueItems:TTileDirtyQueueItems read fTileDirtyQueueItems;
              public
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
               property Ready:TPasMPBool32 read fReady write fReady;
@@ -1215,8 +1220,21 @@ begin
  if aInFlightFrameIndex<0 then begin
 
   fMeshVertices:=TMeshVertices.Create;
+  fMeshVertices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution);
 
   fMeshIndices:=TMeshIndices.Create;
+  fMeshIndices.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*6);
+
+  fTileDirtyQueueItems:=TTileDirtyQueueItems.Create;
+  fTileDirtyQueueItems.Resize((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6);
+
+ end else begin
+
+  fMeshVertices:=nil;
+
+  fMeshIndices:=nil;
+
+  fTileDirtyQueueItems:=nil;
 
  end;
 
@@ -1246,6 +1264,8 @@ begin
  FreeAndNil(fMeshVertices);
 
  FreeAndNil(fMeshIndices);
+
+ FreeAndNil(fTileDirtyQueueItems);
 
  fTileDirtyMap:=nil;
 
@@ -6453,8 +6473,6 @@ begin
 
    begin
 
-    fData.fMeshIndices.Resize(fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6);
-
     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                          fVulkanComputeCommandBuffer,
                                          fVulkanComputeFence,
@@ -6462,6 +6480,7 @@ begin
                                          0,
                                          fData.fMeshIndices.ItemArray[0],
                                          fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));
+
 
    end;
 
@@ -6603,6 +6622,26 @@ begin
 
    finally
     EndUpdate;
+   end;
+
+   if not fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
+    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                         fVulkanComputeCommandBuffer,
+                                         fVulkanComputeFence,
+                                         fData.fTileDirtyQueueBuffer,
+                                         SizeOf(TVkUInt32),
+                                         fData.fCountDirtyTiles,
+                                         SizeOf(TVkUInt32));
+   end;
+
+   if fData.fCountDirtyTiles>0 then begin
+    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                         fVulkanComputeCommandBuffer,
+                                         fVulkanComputeFence,
+                                         fData.fTileDirtyQueueBuffer,
+                                         SizeOf(TVkUInt32)*6,
+                                         fData.fTileDirtyQueueItems.ItemArray[0],
+                                         fData.fCountDirtyTiles*SizeOf(TVkUInt32));
    end;
 
   end;
