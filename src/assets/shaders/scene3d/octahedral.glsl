@@ -58,6 +58,15 @@ vec3 octNonEqualAreaUnsignedDecode(vec2 uv) {
 }
 
 vec2 octEqualAreaSignedEncode(vec3 vector){
+#if 1
+  const float oneOverHalfPi = 0.6366197723675814;
+  vector = normalize(vector); // just for to make sure that it is normalized
+  vec3 absVector = abs(vector);
+  vec2 phiTheta = vec2(atan(absVector.x, max(absVector.y, 1e-17)) * oneOverHalfPi, sqrt(1.0 - absVector.z));
+  vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
+  vec2 uv = s.xy * vec2(phiTheta.x, 1.0 - phiTheta.x) * phiTheta.y;
+  return (vector.z < 0.0) ? fma(abs(uv.yx), -s, s) : uv;
+#else 
   const float oneOverHalfPi = 0.6366197723675814;
   vector = normalize(vector); // just for to make sure that it is normalized
   vec3 absVector = abs(vector);
@@ -65,6 +74,7 @@ vec2 octEqualAreaSignedEncode(vec3 vector){
   vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
   vec2 uv = s.xy * vec2(phiTheta.x, 1.0 - phiTheta.x) * phiTheta.y;
   return (vector.z < 0.0) ? fma(abs(uv.yx), -s, s) : uv;
+#endif
 }
 
 vec2 octEqualAreaUnsignedEncode(vec3 vector){
@@ -72,6 +82,16 @@ vec2 octEqualAreaUnsignedEncode(vec3 vector){
 }
 
 vec3 octEqualAreaSignedDecode(vec2 uv){
+#if 1
+  const float halfPI = 1.5707963267948966;
+  vec2 absUV = abs(uv);
+  float absUVSum = absUV.x + absUV.y;
+  vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
+  uv = (absUVSum > 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
+  float d = 1.0 - absUVSum, r = 1.0 - abs(d);   
+  vec4 phiThetaSinCos = vec4(sin(vec2((abs(uv.x) / max(1e-17, abs(uv.x) + abs(uv.y))) * halfPI) + vec2(0.0, halfPI)), r * sqrt(2.0 - (r * r)), 1.0 - (r * r)); 
+  return normalize(vec3(phiThetaSinCos.xy * phiThetaSinCos.zz * s.xy, (d < 0.0) ? -phiThetaSinCos.w : phiThetaSinCos.w));
+ #else
   const float halfPI = 1.5707963267948966;
   vec2 absUV = abs(uv);
   float absUVSum = absUV.x + absUV.y;
@@ -79,6 +99,7 @@ vec3 octEqualAreaSignedDecode(vec2 uv){
   uv = (absUVSum > 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
   vec4 phiThetaSinCos = sin(vec2(vec2(abs(uv.x) / max(1e-17, abs(uv.x) + abs(uv.y)), absUVSum) * halfPI).xxyy + vec2(0.0, halfPI).xyxy); 
   return normalize(vec3(phiThetaSinCos.xy * phiThetaSinCos.zz * s.xy, phiThetaSinCos.w));
+#endif
 }
 
 vec3 octEqualAreaUnsignedDecode(vec2 uv){
