@@ -100,13 +100,17 @@ type TpvScene3DPlanets=class;
               MeshTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.MeshTriangles;
-             Direct:Boolean=true;
-       type TFibonacciSphereVertex=packed record
-             PositionBitangentSign:TpvVector4; // xyz = position, w = bitangent sign
-             NormalTangent:TpvVector4; // xy = normal, zw = tangent (both octahedral)
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
+             Direct:Boolean=false;
+       type TMeshVertex=record
+             PositionAbsoluteHeight:TpvVector4;
+             NormalRelativeHeight:TpvVector4;
             end;
-            PFibonacciSphereVertex=^TFibonacciSphereVertex;
+            PMeshVertex=^TMeshVertex;
+            TMeshVertices=TpvDynamicArrayList<TMeshVertex>;
+            TMeshIndex=TpvUInt32;
+            PMeshIndex=^TMeshIndex;
+            TMeshIndices=TpvDynamicArrayList<TMeshIndex>;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -120,14 +124,6 @@ type TpvScene3DPlanets=class;
                     );
                    POwnershipHolderState=^TOwnershipHolderState;
                    TTileDirtyMap=array of TpvUInt32;
-                   TMeshVertex=record
-                    PositionAbsoluteHeight:TpvVector4;
-                    NormalRelativeHeight:TpvVector4;
-                   end;
-                   PMeshVertex=^TMeshVertex;
-                   TMeshVertices=TpvDynamicArrayList<TMeshVertex>;
-                   TMeshIndex=TpvUInt32;
-                   PMeshIndex=^TMeshIndex;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
@@ -159,6 +155,8 @@ type TpvScene3DPlanets=class;
               fModifyHeightMapActive:Boolean;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
+              fMeshVertices:TMeshVertices;
+              fMeshIndices:TMeshIndices;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -185,6 +183,8 @@ type TpvScene3DPlanets=class;
               property PhysicsMeshVertexBuffer:TpvVulkanBuffer read fPhysicsMeshVertexBuffer;
               property PhysicsMeshIndexBuffer:TpvVulkanBuffer read fPhysicsMeshIndexBuffer;
               property RayIntersectionResultBuffer:TpvVulkanBuffer read fRayIntersectionResultBuffer;
+              property MeshVertices:TMeshVertices read fMeshVertices;
+              property MeshIndices:TMeshIndices read fMeshIndices;
              public
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
               property Ready:TPasMPBool32 read fReady write fReady;
@@ -1212,6 +1212,14 @@ begin
 
  end;
 
+ if aInFlightFrameIndex<0 then begin
+
+  fMeshVertices:=TMeshVertices.Create;
+
+  fMeshIndices:=TMeshIndices.Create;
+
+ end;
+
  fSelectedRegion:=TpvVector4.Null;
 
  fSelectedRegionProperty:=TpvVector4Property.Create(@fSelectedRegion);
@@ -1234,6 +1242,10 @@ begin
  FreeAndNil(fNormalMapImage);
 
  FreeAndNil(fTangentBitangentMapImage);
+
+ FreeAndNil(fMeshVertices);
+
+ FreeAndNil(fMeshIndices);
 
  fTileDirtyMap:=nil;
 
@@ -6438,6 +6450,21 @@ begin
    finally
     EndUpdate;
    end;
+
+   begin
+
+    fData.fMeshIndices.Resize(fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6);
+
+    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                         fVulkanComputeCommandBuffer,
+                                         fVulkanComputeFence,
+                                         fData.fPhysicsMeshIndexBuffer,
+                                         0,
+                                         fData.fMeshIndices.ItemArray[0],
+                                         fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));
+
+   end;
+
 
   end;
 
