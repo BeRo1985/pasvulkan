@@ -1,7 +1,29 @@
 #ifndef OCTAHEDRAL_GLSL
 #define OCTAHEDRAL_GLSL
 
+#define OCT_PLANET_BASE_AXIS_X 0
+#define OCT_PLANET_BASE_AXIS_Y 1
+#define OCT_PLANET_BASE_AXIS_Z 2
+
+#define OCT_PLANET_BASE_AXIS OCT_PLANET_BASE_AXIS_Z
+
 #define OCT_EQUAL_AREA_FOR_PLANET
+
+#ifdef OCT_EQUAL_AREA_AS_DEFAULT
+  #define octEncode octEqualAreaSignedEncode
+  #define octDecode octEqualAreaSignedDecode
+  #define octSignedEncode octEqualAreaSignedEncode
+  #define octSignedDecode octEqualAreaSignedDecode
+  #define octUnsignedEncode octEqualAreaUnsignedEncode
+  #define octUnsignedDecode octEqualAreaUnsignedDecode
+#else
+  #define octEncode octNonEqualAreaSignedEncode
+  #define octDecode octNonEqualAreaSignedDecode
+  #define octSignedEncode octNonEqualAreaSignedEncode
+  #define octSignedDecode octNonEqualAreaSignedDecode
+  #define octUnsignedEncode octNonEqualAreaUnsignedEncode
+  #define octUnsignedDecode octNonEqualAreaUnsignedDecode
+#endif
 
 vec2 octNonEqualAreaSignedEncode(vec3 vector) {
   vector = normalize(vector); // just for to make sure that it is normalized
@@ -67,36 +89,67 @@ vec3 octEqualAreaUnsignedDecode(vec2 uv){
   return octEqualAreaSignedDecode(fma(uv, vec2(2.0), vec2(-1.0)));
 }
 
-#ifdef OCT_EQUAL_AREA_AS_DEFAULT
-  #define octEncode octEqualAreaSignedEncode
-  #define octDecode octEqualAreaSignedDecode
-  #define octSignedEncode octEqualAreaSignedEncode
-  #define octSignedDecode octEqualAreaSignedDecode
-  #define octUnsignedEncode octEqualAreaUnsignedEncode
-  #define octUnsignedDecode octEqualAreaUnsignedDecode
-#else
-  #define octEncode octNonEqualAreaSignedEncode
-  #define octDecode octNonEqualAreaSignedDecode
-  #define octSignedEncode octNonEqualAreaSignedEncode
-  #define octSignedDecode octNonEqualAreaSignedDecode
-  #define octUnsignedEncode octNonEqualAreaUnsignedEncode
-  #define octUnsignedDecode octNonEqualAreaUnsignedDecode
-#endif
+#if (OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_X) || (OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_Y)
 
+vec2 octPlanetSignedEncode(vec3 vector){
+#if OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_X
+  vector = vector.zxy;
+#elif OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_Y
+  vector = vector.yzx; 
+#elif OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_Z
+  // Nothing to do in this case
+#endif
 #ifdef OCT_EQUAL_AREA_FOR_PLANET
-  #define octPlanetEncode octEqualAreaSignedEncode
-  #define octPlanetDecode octEqualAreaSignedDecode
-  #define octPlanetSignedEncode octEqualAreaSignedEncode
-  #define octPlanetSignedDecode octEqualAreaSignedDecode
-  #define octPlanetUnsignedEncode octEqualAreaUnsignedEncode
-  #define octPlanetUnsignedDecode octEqualAreaUnsignedDecode
+  return octEqualAreaSignedEncode(vector);
 #else
-  #define octPlanetEncode octNonEqualAreaSignedEncode
-  #define octPlanetDecode octNonEqualAreaSignedDecode
-  #define octPlanetSignedEncode octNonEqualAreaSignedEncode
-  #define octPlanetSignedDecode octNonEqualAreaSignedDecode
-  #define octPlanetUnsignedEncode octNonEqualAreaUnsignedEncode
-  #define octPlanetUnsignedDecode octNonEqualAreaUnsignedDecode
+  return octNonEqualAreaSigneEncode(vector);
+#endif
+}
+
+vec2 octPlanetUnsignedEncode(vec3 vector){
+  return fma(octPlanetSignedEncode(vector), vec2(0.5), vec2(0.5));
+}
+
+vec3 octPlanetSignedDecode(vec2 uv){
+#ifdef OCT_EQUAL_AREA_FOR_PLANET
+  vec3 vector = octEqualAreaSignedDecode(uv);
+#else
+  vec3 vector = octNonEqualAreaSignedDecode(uv);
+#endif
+#if OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_X
+  return vector.yzx;
+#elif OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_Y
+  return vector.zxy;
+#elif OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_Z
+  return vector;
+#endif
+}
+
+vec3 octPlanetUnsignedDecode(vec2 uv){
+  return octPlanetSignedDecode(fma(uv, vec2(2.0), vec2(-1.0)));
+}
+
+#define octPlanetDecode octPlanetSignedDecode
+#define octPlanetEncode octPlanetSignedEncode
+
+#elif OCT_PLANET_BASE_AXIS == OCT_PLANET_BASE_AXIS_Z
+
+  #ifdef OCT_EQUAL_AREA_FOR_PLANET
+    #define octPlanetDecode octEqualAreaSignedDecode    
+    #define octPlanetEncode octEqualAreaSignedEncode
+    #define octPlanetUnsignedDecode octEqualAreaUnsignedDecode
+    #define octPlanetUnsignedEncode octEqualAreaUnsignedEncode
+    #define octPlanetSignedDecode octEqualAreaSignedDecode
+    #define octPlanetSignedEncode octEqualAreaSignedEncode
+  #else
+    #define octPlanetDecode octNonEqualAreaSignedDecode
+    #define octPlanetEncode octNonEqualAreaSignedEncode
+    #define octPlanetUnsignedDecode octNonEqualAreaUnsignedDecode
+    #define octPlanetUnsignedEncode octNonEqualAreaUnsignedEncode
+    #define octPlanetSignedDecode octNonEqualAreaSignedDecode
+    #define octPlanetSignedEncode octNonEqualAreaSignedEncode
+  #endif
+
 #endif
 
 #endif
