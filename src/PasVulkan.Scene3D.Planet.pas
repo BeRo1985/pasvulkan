@@ -6570,6 +6570,7 @@ end;
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
+    Source:Pointer;
 begin
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
@@ -6651,20 +6652,58 @@ begin
                                          fData.fTileDirtyQueueItems.ItemArray[0],
                                          fData.fCountDirtyTiles*SizeOf(TVkUInt32));
 
-    fVulkanMemoryStagingQueue.Clear;
-    try
-     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
-      TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
-      fVulkanMemoryStagingQueue.EnqueueDownload(fData.fPhysicsMeshVertexBuffer,
-                                                TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex),
-                                                fData.fMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
-                                                fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+    if fData.fCountDirtyTiles=(fTileMapResolution*fTileMapResolution) then begin
+
+     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                          fVulkanComputeCommandBuffer,
+                                          fVulkanComputeFence,
+                                          fData.fPhysicsMeshVertexBuffer,
+                                          0,
+                                          fData.fMeshVertices.ItemArray[0],
+                                          fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+
+    end else begin
+
+     if (TpvVulkanBufferFlag.PersistentMapped in fData.fPhysicsMeshVertexBuffer.Flags) and
+        ((fData.fPhysicsMeshVertexBuffer.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
+
+      Source:=fData.fPhysicsMeshVertexBuffer.Memory.MapMemory;
+      if assigned(Source) then begin
+       try
+        fData.fPhysicsMeshVertexBuffer.Flush(Source,0,fData.fPhysicsMeshVertexBuffer.Size);
+        for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
+         TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
+         Move(Pointer(TpvPtrUInt(TpvPtrUInt(Source)+TpvPtrUInt(TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex))))^,
+              fData.fMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+              fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+        end;
+       finally
+        fData.fPhysicsMeshVertexBuffer.Memory.UnmapMemory;
+       end;
+      end else begin
+       raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
+      end;
+
+     end else begin
+
+      fVulkanMemoryStagingQueue.Clear;
+      try
+       for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
+        TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
+        fVulkanMemoryStagingQueue.EnqueueDownload(fData.fPhysicsMeshVertexBuffer,
+                                                  TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex),
+                                                  fData.fMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+                                                  fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+       end;
+      finally
+       fVulkanDevice.MemoryStaging.ProcessQueue(fVulkanComputeQueue,
+                                                fVulkanComputeCommandBuffer,
+                                                fVulkanComputeFence,
+                                                fVulkanMemoryStagingQueue);
+      end;
+
      end;
-    finally
-     fVulkanDevice.MemoryStaging.ProcessQueue(fVulkanComputeQueue,
-                                              fVulkanComputeCommandBuffer,
-                                              fVulkanComputeFence,
-                                              fVulkanMemoryStagingQueue);
+
     end;
 
    end;
