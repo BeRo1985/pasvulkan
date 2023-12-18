@@ -14235,7 +14235,7 @@ begin
   aQueue.fLock.Acquire;
   try
 
-   // Check if we can merge some items in the queue,w hen we can merge some items, we can reduce the number of command buffer calls, but
+   // Check if we can merge some items in the queue, when we can merge some items, we can reduce the number of command buffer calls, but
    // for this these some items must be smaller than the size of the staging buffer, so we can merge them into the staging buffer and
    // then copy them to the destination buffer in the same command buffer call. 
    Mergable:=false;

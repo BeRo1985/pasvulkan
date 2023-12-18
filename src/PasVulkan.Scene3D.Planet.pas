@@ -664,6 +664,7 @@ type TpvScene3DPlanets=class;
       private
        fScene3D:TObject;
        fVulkanDevice:TpvVulkanDevice;
+       fVulkanMemoryStagingQueue:TpvVulkanDeviceMemoryStagingQueue;
        fVulkanComputeQueue:TpvVulkanQueue;
        fVulkanComputeFence:TpvVulkanFence;
        fVulkanComputeCommandPool:TpvVulkanCommandPool;
@@ -6089,6 +6090,8 @@ begin
    fInFlightFrameQueueFamilyIndices:=nil;
   end;
 
+  fVulkanMemoryStagingQueue:=TpvVulkanDeviceMemoryStagingQueue.Create;
+
   fVulkanComputeQueue:=fVulkanDevice.ComputeQueue;
 
   fVulkanComputeCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
@@ -6231,6 +6234,8 @@ begin
  FreeAndNil(fDescriptorPool);
 
  FreeAndNil(fRayIntersection);
+
+ FreeAndNil(fVulkanMemoryStagingQueue);
 
 {FreeAndNil(fPhysicsMeshVertexGeneration);
 
@@ -6563,6 +6568,8 @@ begin
 end;
 
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
+var QueueTileIndex:TpvSizeInt;
+    TileIndex:TpvUInt32;
 begin
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
@@ -6635,6 +6642,7 @@ begin
    end;
 
    if fData.fCountDirtyTiles>0 then begin
+
     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                          fVulkanComputeCommandBuffer,
                                          fVulkanComputeFence,
@@ -6642,6 +6650,23 @@ begin
                                          SizeOf(TVkUInt32)*6,
                                          fData.fTileDirtyQueueItems.ItemArray[0],
                                          fData.fCountDirtyTiles*SizeOf(TVkUInt32));
+
+    fVulkanMemoryStagingQueue.Clear;
+    try
+     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
+      TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
+      fVulkanMemoryStagingQueue.EnqueueDownload(fData.fPhysicsMeshVertexBuffer,
+                                                TileIndex*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex),
+                                                fData.fMeshVertices.ItemArray[TileIndex*fPhysicsTileResolution*fPhysicsTileResolution],
+                                                fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+     end;
+    finally
+     fVulkanDevice.MemoryStaging.ProcessQueue(fVulkanComputeQueue,
+                                              fVulkanComputeCommandBuffer,
+                                              fVulkanComputeFence,
+                                              fVulkanMemoryStagingQueue);
+    end;
+
    end;
 
   end;
