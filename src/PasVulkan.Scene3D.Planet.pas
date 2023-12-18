@@ -70,6 +70,7 @@ uses Classes,
      PasDblStrUtils,
      PasVulkan.Types,
      PasVulkan.Math,
+     PasVulkan.Utils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Resources,
@@ -6565,6 +6566,11 @@ begin
 
 end;
 
+function TpvTypedSortCompareUInt32(const a,b:TpvUInt32):TpvInt32;
+begin
+ result:=Sign(TpvInt32(a)-TpvInt32(b));
+end;
+
 procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
@@ -6649,6 +6655,10 @@ begin
                                          SizeOf(TVkUInt32)*6,
                                          fData.fTileDirtyQueueItems.ItemArray[0],
                                          fData.fCountDirtyTiles*SizeOf(TVkUInt32));
+
+    if fData.fCountDirtyTiles>0 then begin
+     TpvTypedSort<TpvUInt32>.IntroSort(@fData.fTileDirtyQueueItems.ItemArray[0],0,fData.fCountDirtyTiles-1,TpvTypedSortCompareUInt32);
+    end;
 
     if fData.fCountDirtyTiles=(fTileMapResolution*fTileMapResolution) then begin
 
