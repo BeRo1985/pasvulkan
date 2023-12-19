@@ -115,6 +115,9 @@ type TpvScene3DPlanets=class;
             TTileDirtyQueueItem=TpvUInt32;
             PTileDirtyQueueItem=^TTileDirtyQueueItem;
             TTileDirtyQueueItems=TpvDynamicArrayList<TTileDirtyQueueItem>;
+            TTileGeneration=TpvUInt64;
+            PTileGeneration=^TTileGeneration;
+            TTileGenerations=array of TTileGeneration;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -162,6 +165,7 @@ type TpvScene3DPlanets=class;
               fMeshVertices:TMeshVertices;
               fMeshIndices:TMeshIndices;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
+              fTileGenerations:TTileGenerations;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -192,7 +196,8 @@ type TpvScene3DPlanets=class;
               property MeshIndices:TMeshIndices read fMeshIndices;
               property TileDirtyQueueItems:TTileDirtyQueueItems read fTileDirtyQueueItems;
              public
-              property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix; 
+              property TileGenerations:TTileGenerations read fTileGenerations;
+              property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
               property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
@@ -1228,6 +1233,10 @@ begin
   fTileDirtyQueueItems:=TTileDirtyQueueItems.Create;
   fTileDirtyQueueItems.Resize((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution)+6);
 
+  fTileGenerations:=nil;
+  SetLength(fTileGenerations,fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
+  FillChar(fTileGenerations[0],Length(fTileGenerations)*SizeOf(TpvUInt64),#$ff);
+
  end else begin
 
   fMeshVertices:=nil;
@@ -1235,6 +1244,8 @@ begin
   fMeshIndices:=nil;
 
   fTileDirtyQueueItems:=nil;
+
+  fTileGenerations:=nil;
 
  end;
 
@@ -1264,6 +1275,8 @@ begin
  FreeAndNil(fMeshVertices);
 
  FreeAndNil(fMeshIndices);
+
+ fTileGenerations:=nil;
 
  FreeAndNil(fTileDirtyQueueItems);
 
@@ -6658,6 +6671,11 @@ begin
 
     if fData.fCountDirtyTiles>0 then begin
      TpvTypedSort<TpvUInt32>.IntroSort(@fData.fTileDirtyQueueItems.ItemArray[0],0,fData.fCountDirtyTiles-1,TpvTypedSortCompareUInt32);
+    end;
+
+    for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
+     TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
+     fData.fTileGenerations[TileIndex]:=fData.fHeightMapGeneration;
     end;
 
     if fData.fCountDirtyTiles=(fTileMapResolution*fTileMapResolution) then begin
