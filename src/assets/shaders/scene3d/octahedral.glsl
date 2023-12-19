@@ -71,7 +71,7 @@ vec2 octEqualAreaSignedEncode(vec3 vector){
   uv.x -= uv.y;
   return ((vector.z < 0.0) ? (vec2(1.0) - uv.yx) : uv.xy) * fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
 #elif OCT_EQUAL_AREA_VARIANT == 1
-  // The latitude is equal area in this variant like the longitude. More robust version of variant 0 at signularities
+  // The latitude is equal area in this variant like the longitude. Maybe more robust version of variant 0 at signularities
   vec3 absVector = abs(vector);
   vec2 phiTheta = vec2(atan(absVector.x, max(1e-17, absVector.y)) * oneOverHalfPi, sqrt(1.0 - absVector.z));
   vec2 s = fma(vec2(lessThan(vector.xy, vec2(0.0))), vec2(-2.0), vec2(1.0)); // vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
@@ -101,7 +101,7 @@ vec3 octEqualAreaSignedDecode(vec2 uv){
   vec2 phiCosSin = sin(vec2((r != 0.0) ? (((absUV.y - absUV.x) / max(1e-17, r)) + 1.0) * PIover4 : 0.0) + vec2(halfPI, 0.0));
   return normalize(vec3(abs(phiCosSin * (r * sqrt(2.0 - (r * r)))), 1.0 - (r * r)) * fma(step(vec3(0.0), vec3(uv, d)), vec3(2.0), vec3(-1.0)));  
 #elif OCT_EQUAL_AREA_VARIANT == 1
-  // The latitude is equal area in this variant like the longitude. More robust version of variant 0 at signularities
+  // The latitude is equal area in this variant like the longitude. Maybe more robust version of variant 0 at signularities
   float absUVSum = absUV.x + absUV.y;
   vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
   uv = (absUVSum > 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
