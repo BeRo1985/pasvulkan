@@ -31,14 +31,8 @@
 
 vec2 octNonEqualAreaSignedEncode(vec3 vector) {
   vector = normalize(vector); // just for to make sure that it is normalized
-#if 1
   vec2 result = vector.xy / (abs(vector.x) + abs(vector.y) + abs(vector.z));
-  return (vector.z < 0.0) ? ((1.0 - abs(result.yx)) * vec2((result.x >= 0.0) ? 1.0 : -1.0, (result.y >= 0.0) ? 1.0 : -1.0)) : result;
-#else
-  vector /= abs(vector.x) + abs(vector.y) + abs(vector.z);
-  vec2 t = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
-  return (vector.z < 0.0) ? fma(abs(vector.yx), -t, t) : vector.xy;
-#endif
+  return (vector.z < 0.0) ? ((1.0 - abs(result.yx)) * fma(step(vec2(0.0), result.xy), vec2(2.0), vec2(-1.0))) : result;
 }
 
 vec2 octNonEqualAreaUnsignedEncode(vec3 vector) {
@@ -46,15 +40,8 @@ vec2 octNonEqualAreaUnsignedEncode(vec3 vector) {
 }
 
 vec3 octNonEqualAreaSignedDecode(vec2 uv) {
-#if 1
   vec3 v = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
-  return normalize((v.z < 0.0) ? vec3((1.0 - abs(v.yx)) * vec2((v.x >= 0.0) ? 1.0 : -1.0, (v.y >= 0.0) ? 1.0 : -1.0), v.z) : v);
-#else
-  vec2 absUV = abs(uv);
-  float l = absUV.x + absUV.y;
-  uv = (l > 1.0) ? ((vec2(1.0) - absUV.yx) * fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0))) : uv;
-  return normalize(vec3(uv.xy, 1.0 - l));
-#endif
+  return normalize((v.z < 0.0) ? vec3((1.0 - abs(v.yx)) * fma(step(vec2(0.0), v.xy), vec2(2.0), vec2(-1.0)), v.z) : v);
 }
 
 vec3 octNonEqualAreaUnsignedDecode(vec2 uv) {
