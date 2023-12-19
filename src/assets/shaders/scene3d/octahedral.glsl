@@ -72,13 +72,13 @@ vec2 octEqualAreaSignedEncode(vec3 vector){
 #elif OCT_EQUAL_AREA_VARIANT == 1
   vec3 absVector = abs(vector);
   vec2 phiTheta = vec2(atan(absVector.x, max(1e-17, absVector.y)) * oneOverHalfPi, sqrt(1.0 - absVector.z));
-  vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
+  vec2 s = fma(vec2(lessThan(vector.xy, vec2(0.0))), vec2(-2.0), vec2(1.0)); // vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
   vec2 uv = s.xy * vec2(phiTheta.x, 1.0 - phiTheta.x) * phiTheta.y;
   return (vector.z < 0.0) ? fma(abs(uv.yx), -s, s) : uv;
 #else 
   vec3 absVector = abs(vector);
   vec2 phiTheta = vec2(atan(absVector.x, max(1e-17, absVector.y)), acos(absVector.z)) * oneOverHalfPi;
-  vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
+  vec2 s = fma(vec2(lessThan(vector.xy, vec2(0.0))), vec2(-2.0), vec2(1.0)); // vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
   vec2 uv = s.xy * vec2(phiTheta.x, 1.0 - phiTheta.x) * phiTheta.y;
   return (vector.z < 0.0) ? fma(abs(uv.yx), -s, s) : uv;
 #endif
