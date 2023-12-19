@@ -77,7 +77,9 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
+#if defined(OCTAHEDRAL)
 #include "octahedral.glsl"
+#endif
 
 #ifdef DIRECT
 layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
