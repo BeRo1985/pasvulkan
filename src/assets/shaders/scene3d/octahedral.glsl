@@ -9,6 +9,10 @@
 
 #define OCT_EQUAL_AREA_FOR_PLANET
 
+#ifndef OCT_EQUAL_AREA_VARIANT
+  #define OCT_EQUAL_AREA_VARIANT 0
+#endif
+
 #ifdef OCT_EQUAL_AREA_AS_DEFAULT
   #define octEncode octEqualAreaSignedEncode
   #define octDecode octEqualAreaSignedDecode
@@ -60,12 +64,12 @@ vec3 octNonEqualAreaUnsignedDecode(vec2 uv) {
 vec2 octEqualAreaSignedEncode(vec3 vector){
   vector = normalize(vector); // just for to make sure that it is normalized
   const float oneOverHalfPi = 0.6366197723675814;
-#if 1
+#if OCT_EQUAL_AREA_VARIANT == 0
   vec2 uv = vec2(sqrt(1.0 - abs(vector.z)));
   uv.y *= atan(abs(vector.y), max(1e-17, abs(vector.x))) * oneOverHalfPi;
   uv.x -= uv.y;
   return ((vector.z < 0.0) ? (vec2(1.0) - uv.yx) : uv.xy) * vec2((vector.x < 0.0) ? -1.0 : 1.0, (vector.y < 0.0) ? -1.0 : 1.0);
-#elif 0
+#elif OCT_EQUAL_AREA_VARIANT == 1
   vec3 absVector = abs(vector);
   vec2 phiTheta = vec2(atan(absVector.x, max(1e-17, absVector.y)) * oneOverHalfPi, sqrt(1.0 - absVector.z));
   vec2 s = fma(step(vec2(0.0), vector.xy), vec2(2.0), vec2(-1.0));
@@ -87,21 +91,21 @@ vec2 octEqualAreaUnsignedEncode(vec3 vector){
 vec3 octEqualAreaSignedDecode(vec2 uv){
   const float halfPI = 1.5707963267948966;
   vec2 absUV = abs(uv);
-#if 1
+#if OCT_EQUAL_AREA_VARIANT == 0
   const float PIover4 = 0.7853981633974483;
   float d = 1.0 - (absUV.x + absUV.y), r = 1.0 - abs(d);
   vec2 phiCosSin = sin(vec2((r != 0.0) ? (((absUV.y - absUV.x) / max(1e-17, r)) + 1.0) * PIover4 : 0.0) + vec2(halfPI, 0.0));
   return normalize(vec3(abs(phiCosSin * (r * sqrt(2.0 - (r * r)))) * vec2((uv.x < 0.0) ? -1.0 : 1.0, (uv.y < 0.0) ? -1.0 : 1.0), (1.0 - (r * r)) * ((d < 0.0) ? -1.0 : 1.0)));  
-#elif 0 
+#elif OCT_EQUAL_AREA_VARIANT == 1
   float absUVSum = absUV.x + absUV.y;
-  vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
+  vec2 s = fma(vec2(lessThan(uv, vec2(0.0))), vec2(-2.0), vec2(1.0)); // vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
   uv = (absUVSum > 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
   float d = 1.0 - absUVSum, r = 1.0 - abs(d);   
   vec4 phiThetaSinCos = vec4(sin(vec2((abs(uv.x) / max(1e-17, abs(uv.x) + abs(uv.y))) * halfPI) + vec2(0.0, halfPI)), r * sqrt(2.0 - (r * r)), 1.0 - (r * r)); 
   return normalize(vec3(phiThetaSinCos.xy * phiThetaSinCos.zz * s.xy, (d < 0.0) ? -phiThetaSinCos.w : phiThetaSinCos.w));
  #else
   float absUVSum = absUV.x + absUV.y;
-  vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
+  vec2 s = fma(vec2(lessThan(uv, vec2(0.0))), vec2(-2.0), vec2(1.0)); // vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
   uv = (absUVSum > 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
   vec4 phiThetaSinCos = sin(vec2(vec2(abs(uv.x) / max(1e-17, abs(uv.x) + abs(uv.y)), absUVSum) * halfPI).xxyy + vec2(0.0, halfPI).xyxy); 
   return normalize(vec3(phiThetaSinCos.xy * phiThetaSinCos.zz * s.xy, phiThetaSinCos.w));
