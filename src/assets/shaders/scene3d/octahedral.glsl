@@ -88,7 +88,8 @@ vec3 octEqualAreaSignedDecode(vec2 uv){
   const float halfPI = 1.5707963267948966;
   vec2 absUV = abs(uv);
 #if 1
-  const float PIover4 = 0.7853981633974483, d = 1.0 - (absUV.x + absUV.y), r = 1.0 - abs(d);
+  const float PIover4 = 0.7853981633974483;
+  float d = 1.0 - (absUV.x + absUV.y), r = 1.0 - abs(d);
   vec2 phiCosSin = sin(vec2((r != 0.0) ? (((absUV.y - absUV.x) / max(1e-17, r)) + 1.0) * PIover4 : 0.0) + vec2(halfPI, 0.0));
   return normalize(vec3(abs(phiCosSin * (r * sqrt(2.0 - (r * r)))) * vec2((uv.x < 0.0) ? -1.0 : 1.0, (uv.y < 0.0) ? -1.0 : 1.0), (1.0 - (r * r)) * ((d < 0.0) ? -1.0 : 1.0)));  
 #elif 0 
