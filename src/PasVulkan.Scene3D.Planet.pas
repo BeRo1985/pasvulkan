@@ -6594,6 +6594,8 @@ var QueueTileIndex:TpvSizeInt;
     Source:Pointer;
 begin
 
+ fData.fCountDirtyTiles:=0;
+
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     fData.fModifyHeightMapActive then begin
 
