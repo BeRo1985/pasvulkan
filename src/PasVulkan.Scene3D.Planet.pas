@@ -6690,7 +6690,7 @@ begin
                                           fData.fPhysicsMeshVertexBuffer,
                                           0,
                                           fData.fMeshVertices.ItemArray[0],
-                                          fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
+                                          fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*SizeOf(TMeshVertex));
 
     end else begin
 
