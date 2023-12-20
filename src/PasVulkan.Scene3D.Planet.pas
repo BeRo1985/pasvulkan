@@ -195,6 +195,7 @@ type TpvScene3DPlanets=class;
               property MeshVertices:TMeshVertices read fMeshVertices;
               property MeshIndices:TMeshIndices read fMeshIndices;
               property TileDirtyQueueItems:TTileDirtyQueueItems read fTileDirtyQueueItems;
+              property CountDirtyTiles:TpvUInt32 read fCountDirtyTiles;
              public
               property TileGenerations:TTileGenerations read fTileGenerations;
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
