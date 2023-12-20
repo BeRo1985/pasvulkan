@@ -169,7 +169,9 @@ type TpvScene=class;
        procedure WaitForLoaded; virtual;
        function IsLoaded:boolean; virtual;
        procedure Store; virtual;
+       procedure BeginUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
+       procedure EndUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Interpolate(const aAlpha:TpvDouble); virtual;
        procedure FrameUpdate; virtual;
        procedure Render; virtual;
@@ -197,7 +199,9 @@ type TpvScene=class;
        procedure WaitForLoaded; virtual;
        function IsLoaded:boolean; virtual;
        procedure Store; virtual;
+       procedure BeginUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Update(const aDeltaTime:TpvDouble); virtual;
+       procedure EndUpdate(const aDeltaTime:TpvDouble); virtual;
        procedure Interpolate(const aAlpha:TpvDouble); virtual;
        procedure FrameUpdate; virtual;
        procedure Render; virtual;
@@ -494,6 +498,20 @@ begin
  end;
 end;
 
+procedure TpvSceneNode.BeginUpdate(const aDeltaTime:TpvDouble);
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.BeginUpdate(aDeltaTime);
+   end;
+  end;
+ end;
+end;
+
 procedure TpvSceneNode.Update(const aDeltaTime:TpvDouble);
 var ChildNodeIndex:TpvSizeInt;
     ChildNode:TpvSceneNode;
@@ -503,6 +521,20 @@ begin
    ChildNode:=fChildren[ChildNodeIndex];
    if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
     ChildNode.Update(aDeltaTime);
+   end;
+  end;
+ end;
+end;
+
+procedure TpvSceneNode.EndUpdate(const aDeltaTime:TpvDouble);
+var ChildNodeIndex:TpvSizeInt;
+    ChildNode:TpvSceneNode;
+begin
+ if fState=TpvSceneNodeState.Loaded then begin
+  for ChildNodeIndex:=0 to fChildren.Count-1 do begin
+   ChildNode:=fChildren[ChildNodeIndex];
+   if assigned(ChildNode) and (ChildNode.fState=TpvSceneNodeState.Loaded) then begin
+    ChildNode.EndUpdate(aDeltaTime);
    end;
   end;
  end;
@@ -610,9 +642,19 @@ begin
  fRootNode.Store;
 end;
 
+procedure TpvScene.BeginUpdate(const aDeltaTime:TpvDouble);
+begin
+ fRootNode.BeginUpdate(aDeltaTime);
+end;
+
 procedure TpvScene.Update(const aDeltaTime:TpvDouble);
 begin
  fRootNode.Update(aDeltaTime);
+end;
+
+procedure TpvScene.EndUpdate(const aDeltaTime:TpvDouble);
+begin
+ fRootNode.EndUpdate(aDeltaTime);
 end;
 
 procedure TpvScene.Interpolate(const aAlpha:TpvDouble);
