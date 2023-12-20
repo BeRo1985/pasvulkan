@@ -73,7 +73,7 @@ compileshaderarguments=(
   "-V downsample_culldepthpyramid.comp -DFIRSTPASS -o ${tempPath}/downsample_culldepthpyramid_firstpass_comp.spv"
   "-V downsample_culldepthpyramid.comp -DFIRSTPASS -DMULTIVIEW -o ${tempPath}/downsample_culldepthpyramid_multiview_firstpass_comp.spv"
   "-V downsample_culldepthpyramid.comp -DFIRSTPASS -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_reversedz_firstpass_comp.spv"
-  "-V downsample_culldepthpyramid.comp -DFIRSTPASS -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_firstview_reversedz_multipass_comp.spv"
+  "-V downsample_culldepthpyramid.comp -DFIRSTPASS -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_multiview_reversedz_firstpass_comp.spv"
   "-V downsample_culldepthpyramid.comp -DREDUCTION -o ${tempPath}/downsample_culldepthpyramid_reduction_comp.spv"
   "-V downsample_culldepthpyramid.comp -DREDUCTION -DMULTIVIEW -o ${tempPath}/downsample_culldepthpyramid_multiview_reduction_comp.spv"
   "-V downsample_culldepthpyramid.comp -DREDUCTION -DREVERSEDZ -o ${tempPath}/downsample_culldepthpyramid_reversedz_reduction_comp.spv"
