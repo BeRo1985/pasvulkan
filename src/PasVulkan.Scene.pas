@@ -231,7 +231,9 @@ type TpvScene=class;
        constructor Create(const aParent:TpvSceneNode;const aData:TObject=nil); override;
        destructor Destroy; override;
        procedure Store; override;
+       procedure BeginUpdate(const aDeltaTime:TpvDouble); override;
        procedure Update(const aDeltaTime:TpvDouble); override;
+       procedure EndUpdate(const aDeltaTime:TpvDouble); override;
        procedure Interpolate(const aAlpha:TpvDouble); override;
       public
        property Transform:TpvMatrix4x4 read fTransform write SetTransform;
@@ -763,9 +765,19 @@ begin
  fLastCachedWorldTransform:=fCachedWorldTransform;
 end;
 
+procedure TpvSceneNode3D.BeginUpdate(const aDeltaTime:TpvDouble);
+begin
+ inherited BeginUpdate(aDeltaTime);
+end;
+
 procedure TpvSceneNode3D.Update(const aDeltaTime:TpvDouble);
 begin
  inherited Update(aDeltaTime);
+end;
+
+procedure TpvSceneNode3D.EndUpdate(const aDeltaTime:TpvDouble);
+begin
+ inherited EndUpdate(aDeltaTime);
 end;
 
 procedure TpvSceneNode3D.Interpolate(const aAlpha:TpvDouble);
