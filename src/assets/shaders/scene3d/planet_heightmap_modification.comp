@@ -65,7 +65,7 @@ void main(){
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 
 
-      height = imageLoad(uImageHeightMap, texel).x + (d * pushConstants.innerRadiusValueMinMax.y);
+      float height = imageLoad(uImageHeightMap, texel).x + (d * pushConstants.innerRadiusValueMinMax.y);
           
       imageStore(
         uImageHeightMap, 

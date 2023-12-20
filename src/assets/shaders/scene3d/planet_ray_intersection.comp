@@ -135,13 +135,16 @@ void main(){
     vec3 rayOrigin = pushConstants.rayOriginPlanetBottomRadius.xyz + (rayDirection * hitRayTime);
 
     // Check if ray origin is above the planet's bottom radius, otherwise it can't hit the height map. 
-    if(length(rayOrigin - pushConstants.planetCenter.xyz) >= pushConstants.rayOriginPlanetBottomRadius.w){
-      
-      float maxTime = length((pushConstants.planetCenter.xyz * pushConstants.rayOriginPlanetBottomRadius.w) - rayOrigin);
+    /*if(length(rayOrigin - pushConstants.planetCenter.xyz) >= pushConstants.rayOriginPlanetBottomRadius.w)*/{
+
+      float maxTime = max(
+        length((pushConstants.planetCenter.xyz - (rayDirection * pushConstants.rayOriginPlanetBottomRadius.w)) - rayOrigin),
+        length((pushConstants.planetCenter.xyz - (rayDirection * pushConstants.rayDirectionPlanetTopRadius.w)) - rayOrigin)
+      );
 
       float currentTime = 0.0;
 
-      const int maxSteps = 2048; // should be enough for now
+      const int maxSteps = 4096; // should be enough for now
 
       float timeStep = maxTime * (1.0 / float(maxSteps));
 
@@ -153,7 +156,7 @@ void main(){
 
         vec3 sphereNormal = normalize(samplePosition - pushConstants.planetCenter.xyz);
 
-        float height = textureCatmullRomOctahedralMap(uImageHeightMap, sphereNormal).x;
+        float height = textureCatmullRomPlanetOctahedralMap(uImageHeightMap, sphereNormal).x;
 
         vec3 spherePosition = fma(sphereNormal, vec3(mix(pushConstants.rayOriginPlanetBottomRadius.w, pushConstants.rayDirectionPlanetTopRadius.w, height)), pushConstants.planetCenter.xyz);
 
@@ -163,7 +166,7 @@ void main(){
           break;
         }
 
-        currentTime += clamp(abs(sphereSampleDistance) * 0.25, timeStep * 1e-2, timeStep) * (sphereSampleDistance > 0.0 ? 1.0 : -1.0);
+        currentTime += clamp(abs(sphereSampleDistance) * 1e-1, timeStep * 1e-2, timeStep) * (sphereSampleDistance > 0.0 ? 1.0 : -1.0);
 
       }    
 
