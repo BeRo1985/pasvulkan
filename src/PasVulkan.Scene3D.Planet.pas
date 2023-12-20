@@ -754,6 +754,7 @@ type TpvScene3DPlanets=class;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
+       property TileMapResolution:TpvInt32 read fTileMapResolution;
        property VisualResolution:TpvSizeInt read fVisualResolution;
        property PhysicsResolution:TpvSizeInt read fPhysicsResolution;
        property BottomRadius:TpvFloat read fBottomRadius;
