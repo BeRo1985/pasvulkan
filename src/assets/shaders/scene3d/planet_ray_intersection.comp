@@ -132,10 +132,12 @@ void main(){
    
     // Ray may have hit the planet, but we need to check if it hit the height map.
 
-    vec3 rayOrigin = pushConstants.rayOriginPlanetBottomRadius.xyz + (rayDirection * hitRayTime);
-
     // Check if ray origin is above the planet's bottom radius, otherwise it can't hit the height map. 
-    /*if(length(rayOrigin - pushConstants.planetCenter.xyz) >= pushConstants.rayOriginPlanetBottomRadius.w)*/{
+    if(length(pushConstants.rayOriginPlanetBottomRadius.xyz - pushConstants.planetCenter.xyz) >= pushConstants.rayOriginPlanetBottomRadius.w){
+
+      bool inside = length(pushConstants.rayOriginPlanetBottomRadius.xyz - pushConstants.planetCenter.xyz) <= pushConstants.rayDirectionPlanetTopRadius.w;
+
+      vec3 rayOrigin = pushConstants.rayOriginPlanetBottomRadius.xyz + (inside ? vec3(0.0) : (rayDirection * hitRayTime));
 
       float maxTime = max(
         length((pushConstants.planetCenter.xyz - (rayDirection * pushConstants.rayOriginPlanetBottomRadius.w)) - rayOrigin),
@@ -146,7 +148,7 @@ void main(){
 
       const int maxSteps = 4096; // should be enough for now
 
-      float timeStep = maxTime * (1.0 / float(maxSteps));
+      float timeStep = maxTime * (4.0 / float(maxSteps));
 
       float threshold = (pushConstants.rayDirectionPlanetTopRadius.w - pushConstants.rayOriginPlanetBottomRadius.w) * 1e-4;
 
