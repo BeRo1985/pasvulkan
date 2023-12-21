@@ -13695,6 +13695,9 @@ begin
    TpvUInt32(TpvVulkanVendorID.AMD),
    TpvUInt32(TpvVulkanVendorID.NVIDIA),
    TpvUInt32(TpvVulkanVendorID.Intel):begin
+{$ifdef CPU32}
+    fSize:=16 shl 20; // fixed 16MB for 32-bit based targets
+{$else}
     // For desktop/notebook GPUs, like NVIDIA, AMD and Intel GPUs
     if fDevice.fMemoryManager.fMaximumMemoryMappableNonDeviceLocalHeapSize>=(32 shl 20) then begin
      fSize:=Min(Max(TpvUInt64(fDevice.fMemoryManager.fMaximumMemoryMappableNonDeviceLocalHeapSize shr 5),TpvUInt64(32 shl 20)),TpvUInt64(256 shl 20));
@@ -13711,6 +13714,7 @@ begin
     end else begin
      fSize:=16 shl 20; // 16MB
     end;
+{$endif}
    end;
    else begin
     // And for other (mobile) GPUs, like for example Mali, Adreno and PowerVR
