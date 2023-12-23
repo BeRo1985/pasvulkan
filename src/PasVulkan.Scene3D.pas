@@ -2529,6 +2529,7 @@ type EpvScene3D=class(Exception);
                      property UserData:pointer read fUserData write fUserData;
                      property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
                      property RenderInstances:TRenderInstances read fRenderInstances;
+                     property BoundingBox:TpvAABB read fBoundingBox;
                     public
                      property Automations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAutomation;
                     published
