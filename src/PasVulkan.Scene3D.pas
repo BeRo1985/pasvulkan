@@ -12312,7 +12312,7 @@ var First:boolean;
     end;
    end;
    if Visible then begin
-    BoundingBox:=Node.fMesh.fBoundingBox.Transform(Matrix);
+    BoundingBox:=Node.fMesh.fBoundingBox.HomogenTransform(Matrix);
     if First then begin
      First:=false;
      fBoundingBox:=BoundingBox;
@@ -17238,7 +17238,7 @@ var CullFace,Blend:TPasGLTFInt32;
    if OK then begin
     aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=DynamicBoundingBox;
    end else begin
-    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
+    aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Mesh.fBoundingBox.HomogenTransform(aInstanceNode^.WorkMatrix*fModelMatrix);
    end;
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
   end;
@@ -17278,12 +17278,12 @@ var CullFace,Blend:TPasGLTFInt32;
     UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
 
     // Update the bounding box by combining it with the transformed by-the-joint-affected-vertices bounding box using the joint matrix.
-    BoundingBox:=BoundingBox.Combine(UsedJoint^.AABB.Transform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
+    BoundingBox:=BoundingBox.Combine(UsedJoint^.AABB.HomogenTransform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
 
    end;
 
    // Transform the final bounding box using the node and model matrices and store it in the instance node.
-   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.Transform(aInstanceNode^.WorkMatrix*fModelMatrix);
+   aInstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=BoundingBox.HomogenTransform(aInstanceNode^.WorkMatrix*fModelMatrix);
 
    // Indicate that the bounding box has been calculated for the instance node.
    aInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
@@ -17537,7 +17537,7 @@ begin
       if assigned(Node.fSkin) then begin
        ProcessSkinNode(Node,InstanceNode);
       end else begin
-       InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.Transform(InstanceNode^.WorkMatrix*fModelMatrix);
+       InstanceNode^.BoundingBoxes[aInFlightFrameIndex]:=Node.fMesh.fBoundingBox.HomogenTransform(InstanceNode^.WorkMatrix*fModelMatrix);
        InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]:=true;
       end;
      end else begin
@@ -17584,7 +17584,7 @@ begin
 
   end;
 
-  fBoundingBox:=fGroup.fBoundingBox.Transform(fModelMatrix);
+  fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fModelMatrix);
   if assigned(Scene) and (aInFlightFrameIndex>=0) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
