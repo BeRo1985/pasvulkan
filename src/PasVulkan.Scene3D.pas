@@ -2053,8 +2053,8 @@ type EpvScene3D=class(Exception);
                             WorkMatrix:TpvMatrix4x4;
                             Light:TpvScene3D.TLight;
                             WorkMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
-                            BoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
-                            BoundingBoxFilled:array[0..MaxInFlightFrames-1] of boolean;
+                            BoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
+                            BoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             CacheVerticesGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                             CacheVerticesGeneration:TpvUInt64;
@@ -12317,7 +12317,7 @@ var First:boolean;
      First:=false;
      fBoundingBox:=BoundingBox;
     end else begin
-     fBoundingBox:=fBoundingBox.Combine(BoundingBox);
+     fBoundingBox.DirectCombine(BoundingBox);
     end;
    end;
   end;
@@ -17278,7 +17278,7 @@ var CullFace,Blend:TPasGLTFInt32;
     UsedJoint:=@aNode.fUsedJoints.Items[JointIndex];
 
     // Update the bounding box by combining it with the transformed by-the-joint-affected-vertices bounding box using the joint matrix.
-    BoundingBox:=BoundingBox.Combine(UsedJoint^.AABB.HomogenTransform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
+    BoundingBox.DirectCombine(UsedJoint^.AABB.HomogenTransform((fNodeMatrices[UsedJoint^.Joint]*InverseMatrix)*UsedJoint^.Weight));
 
    end;
 
@@ -17518,7 +17518,7 @@ begin
     end;
    end;
 
-   if aInFlightFrameIndex>=0 then begin
+   if aInFlightFrameIndex>=(-1) then begin
 
     for Index:=0 to fGroup.fNodes.Count-1 do begin
      InstanceNode:=@fNodes[Node.Index];
@@ -17547,6 +17547,10 @@ begin
     end;
 
     ProcessBoundingSceneBoxNodes(Scene);
+
+   end;
+
+   if aInFlightFrameIndex>=0 then begin
 
     for Index:=0 to Scene.fAllNodes.Count-1 do begin
      Node:=Scene.fAllNodes[Index];
@@ -17585,11 +17589,11 @@ begin
   end;
 
   fBoundingBox:=fGroup.fBoundingBox.HomogenTransform(fModelMatrix);
-  if assigned(Scene) and (aInFlightFrameIndex>=0) then begin
+  if assigned(Scene) and (aInFlightFrameIndex>=-1) then begin
    for Index:=0 to Scene.fNodes.Count-1 do begin
     InstanceNode:=@fNodes[Scene.fNodes[Index].fIndex];
     if InstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-     fBoundingBox:=fBoundingBox.Combine(InstanceNode^.BoundingBoxes[aInFlightFrameIndex]);
+     fBoundingBox.DirectCombine(InstanceNode^.BoundingBoxes[aInFlightFrameIndex]);
     end;
    end;
   end;
@@ -20311,7 +20315,7 @@ begin
     First:=false;
     fBoundingBox:=GroupInstance.fBoundingBox;
    end else begin
-    fBoundingBox:=fBoundingBox.Combine(GroupInstance.fBoundingBox);
+    fBoundingBox.DirectCombine(GroupInstance.fBoundingBox);
    end;
   end;
  end;
