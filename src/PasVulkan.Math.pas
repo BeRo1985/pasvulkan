@@ -15285,10 +15285,7 @@ function TpvAABB.HomogenTransform(const Transform:TpvMatrix4x4):TpvAABB;
 var Index:TpvInt32;
     v,Center,Extents:TpvVector3;
 begin
- if IsZero(Transform.RawComponents[3,0]) and
-    IsZero(Transform.RawComponents[3,1]) and
-    IsZero(Transform.RawComponents[3,2]) and
-    SameValue(Transform.RawComponents[3,3],1.0) then begin
+ if (Transform.RawComponents[3,0]=0.0) and (Transform.RawComponents[3,1]=0.0) and (Transform.RawComponents[3,2]=0.0) and (Transform.RawComponents[3,3]=1.0) then begin
   Center:=(Transform*TpvVector4.InlineableCreate((Min+Max)*0.5,1.0)).xyz;
   Extents:=Transform.MulAbsBasis((Max-Min)*0.5);
   result.Min:=Center-Extents;
