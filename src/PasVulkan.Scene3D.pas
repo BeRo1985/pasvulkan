@@ -17608,7 +17608,7 @@ begin
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
-      RenderInstance.fBoundingBox:=fBoundingBox.Transform(RenderInstance.fModelMatrix);
+      RenderInstance.fBoundingBox:=fBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
       if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
          ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
           ((RenderInstance.fPotentiallyVisibleSetNodeIndex<>TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) and not
