@@ -12397,8 +12397,7 @@ function TpvMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvV
 var Temporary:TpvVector4;
 begin
  Temporary:=self*TpvVector4.InlineableCreate(a,1.0);
- Temporary:=Temporary/Temporary.w;
- result:=Temporary.xyz;
+ result:=Temporary.xyz/Temporary.w;
 end;
 
 function TpvMatrix4x4.MulHomogen({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4):TpvVector4;

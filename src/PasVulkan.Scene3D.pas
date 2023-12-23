@@ -17216,7 +17216,7 @@ var CullFace,Blend:TPasGLTFInt32;
      end;
      ModelNodeMatrix:=ModelNodeMatrixEx;
      if Vertex^.CountJointBlocks>0 then begin
-      Matrix:=TpvMatrix4x4.Identity;
+      Matrix:=TpvMatrix4x4.Null;
       for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
        JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
        for JointIndex:=0 to 3 do begin
@@ -17912,7 +17912,7 @@ begin
         Normal:=Normal.Normalize;
         ModelNodeMatrix:=ModelNodeMatrixEx;
         if Vertex^.CountJointBlocks>0 then begin
-         Matrix:=TpvMatrix4x4.Identity;
+         Matrix:=TpvMatrix4x4.Null;
          for JointBlockIndex:=Vertex^.JointBlockBaseIndex to (Vertex^.JointBlockBaseIndex+Vertex^.CountJointBlocks)-1 do begin
           JointBlock:=@fGroup.fJointBlocks.ItemArray[JointBlockIndex];
           for JointIndex:=0 to 3 do begin
