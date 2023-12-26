@@ -103,9 +103,9 @@ void main(){
         uint texSize = textureSize(uTextureHeightMap, 0).x;
         int lod = (texSize > totalResolution) ? int(log2(float(texSize) / float(totalResolution))) : 0;
 
-        float height = textureCatmullRomOctahedralMap(uTextureHeightMap, vector, lod).x;
+        float height = textureCatmullRomPlanetOctahedralMap(uTextureHeightMap, vector, lod).x;
         
-        vec3 normal = textureCatmullRomOctahedralMap(uTextureNormalMap, vector, lod).xyz;
+        vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextureNormalMap, vector, lod).xyz;
 
         uint index = (tileMapIndex * tileVertexSize) + tileVertexIndex;
 
