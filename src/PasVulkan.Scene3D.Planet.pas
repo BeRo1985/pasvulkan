@@ -6830,13 +6830,14 @@ begin
 
   if aInFlightFrameIndex>=0 then begin
    InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
+   InFlightFrameData.Assign(fData);
   end else begin
    InFlightFrameData:=nil;
   end;
 
   if ((fVulkanDevice.UniversalQueueFamilyIndex<>fVulkanDevice.ComputeQueueFamilyIndex) and
       (fInFlightFrameSharingMode=TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE))) or
-     true or
+//   true or
 //   (fData.fVisualMeshGeneration<>fData.fHeightMapGeneration) or
      (assigned(InFlightFrameData) and (InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration)) then begin
 
@@ -6851,8 +6852,6 @@ begin
     if assigned(InFlightFrameData) then begin
 
      InFlightFrameData.AcquireOnComputeQueue(fVulkanComputeCommandBuffer);
-
-     InFlightFrameData.Assign(fData);
 
      if InFlightFrameData.fHeightMapGeneration<>fData.fHeightMapGeneration then begin
       InFlightFrameData.fHeightMapGeneration:=fData.fHeightMapGeneration;
