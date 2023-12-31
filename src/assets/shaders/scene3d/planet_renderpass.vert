@@ -610,7 +610,11 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
+#ifdef EXTERNAL_VERTICES
+  vec3 position = (pushConstants.modelMatrix * vec4(inVector, 1.0)).xyz;
+#else
   vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+#endif  
 
   vec3 worldSpacePosition = position;
 

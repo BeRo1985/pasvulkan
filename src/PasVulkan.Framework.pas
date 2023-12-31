@@ -1320,6 +1320,7 @@ type EpvVulkanException=class(Exception);
                                         const aWaitSemaphore:TpvVulkanSemaphore=nil;
                                         const aSignalSemaphore:TpvVulkanSemaphore=nil); overload; static;
        procedure Flush(const aMappedMemory:Pointer;const aDataOffset,aDataSize:TVkDeviceSize;const aForceFlush:boolean=false);
+       procedure Invalidate(const aMappedMemory:Pointer;const aDataOffset,aDataSize:TVkDeviceSize;const aForceInvalidate:boolean=false);
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                             const aTransferFence:TpvVulkanFence;
@@ -3645,6 +3646,9 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
       BooleanToVkBool32:array[boolean] of TVkBool32=(VK_FALSE,VK_TRUE);
 
 procedure VulkanCheckResult(const ResultCode:TVkResult);
+
+function VulkanIsCoherent(const aFlags:TVkMemoryPropertyFlags):Boolean;
+function VulkanIsNonCoherent(const aFlags:TVkMemoryPropertyFlags):Boolean;
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TpvUInt32):TVkFormat;
 function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TpvUInt32;const aNormalized:boolean):TVkFormat;
@@ -7257,6 +7261,16 @@ begin
 {$ifend}
   raise EpvVulkanResultException.Create(ResultCode);
  end;
+end;
+
+function VulkanIsCoherent(const aFlags:TVkMemoryPropertyFlags):Boolean;
+begin
+ result:=(aFlags and (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))=(TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+end;
+
+function VulkanIsNonCoherent(const aFlags:TVkMemoryPropertyFlags):Boolean;
+begin
+ result:=(aFlags and (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 end;
 
 function VulkanAccessFlagsToPipelineStages(const aPhysicalDevice:TpvVulkanPhysicalDevice;const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
@@ -12146,7 +12160,7 @@ begin
      end;
 
      // Flush and invalidate mapped memory, if needed
-     if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+     if VulkanIsNonCoherent(fMemoryPropertyFlags) then begin
       InvalidateMappedMemory;
       FlushMappedMemory;
      end;
@@ -13085,7 +13099,7 @@ begin
    try
     if assigned(p) then begin
      FillChar(p^,aDataSize,#0);
-     if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
+     if aForceFlush or VulkanIsNonCoherent(fMemoryPropertyFlags) then begin
       DataSize:=aDataSize;
       NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
       if NonCoherentAtomSize>0 then begin
@@ -13093,14 +13107,14 @@ begin
         if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
          inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
          if (aDataOffset+aDataSize)>=Memory.Size then begin
-          DataSize:=Memory.Size-(aDataOffset+aDataSize);
+          DataSize:=Memory.Size-aDataOffset;
          end;
         end;
        end else begin
         if (DataSize mod NonCoherentAtomSize)=0 then begin
          inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
          if (aDataOffset+aDataSize)>=Memory.Size then begin
-          DataSize:=Memory.Size-(aDataOffset+aDataSize);
+          DataSize:=Memory.Size-aDataOffset;
          end;
         end;
        end;
@@ -13234,7 +13248,7 @@ end;
 procedure TpvVulkanBuffer.Flush(const aMappedMemory:Pointer;const aDataOffset,aDataSize:TVkDeviceSize;const aForceFlush:boolean=false);
 var DataSize,NonCoherentAtomSize:TVkDeviceSize;
 begin
- if aForceFlush or ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0) then begin
+ if aForceFlush or VulkanIsNonCoherent(fMemoryPropertyFlags) then begin
   DataSize:=aDataSize;
   NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
   if NonCoherentAtomSize>0 then begin
@@ -13242,19 +13256,46 @@ begin
     if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
      inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
      if (aDataOffset+aDataSize)>=Memory.Size then begin
-      DataSize:=Memory.Size-(aDataOffset+aDataSize);
+      DataSize:=Memory.Size-aDataOffset;
      end;
     end;
    end else begin
     if (DataSize mod NonCoherentAtomSize)=0 then begin
      inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
      if (aDataOffset+aDataSize)>=Memory.Size then begin
-      DataSize:=Memory.Size-(aDataOffset+aDataSize);
+      DataSize:=Memory.Size-aDataOffset;
      end;
     end;
    end;
   end;
   Memory.FlushMappedMemoryRange(aMappedMemory,DataSize);
+ end;
+end;
+
+procedure TpvVulkanBuffer.Invalidate(const aMappedMemory:Pointer;const aDataOffset,aDataSize:TVkDeviceSize;const aForceInvalidate:boolean=false);
+var DataSize,NonCoherentAtomSize:TVkDeviceSize;
+begin
+ if aForceInvalidate or VulkanIsNonCoherent(fMemoryPropertyFlags) then begin
+  DataSize:=aDataSize;
+  NonCoherentAtomSize:=fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+  if NonCoherentAtomSize>0 then begin
+   if (NonCoherentAtomSize and (NonCoherentAtomSize-1))=0 then begin
+    if (DataSize and (NonCoherentAtomSize-1))<>0 then begin
+     inc(DataSize,NonCoherentAtomSize-(DataSize and (NonCoherentAtomSize-1)));
+     if (aDataOffset+aDataSize)>=Memory.Size then begin
+      DataSize:=Memory.Size-aDataOffset;
+     end;
+    end;
+   end else begin
+    if (DataSize mod NonCoherentAtomSize)=0 then begin
+     inc(DataSize,NonCoherentAtomSize-(DataSize mod NonCoherentAtomSize));
+     if (aDataOffset+aDataSize)>=Memory.Size then begin
+      DataSize:=Memory.Size-aDataOffset;
+     end;
+    end;
+   end;
+  end;
+  Memory.InvalidateMappedMemoryRange(aMappedMemory,DataSize);
  end;
 end;
 
@@ -13410,6 +13451,7 @@ begin
    p:=StagingBuffer.Memory.MapMemory;
    try
     if assigned(p) then begin
+     StagingBuffer.Invalidate(p,aDataOffset,aDataSize);
      Move(p^,aData,aDataSize);
     end else begin
      raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
@@ -13428,10 +13470,8 @@ begin
    p:=Memory.MapMemory(aDataOffset,aDataSize);
    try
     if assigned(p) then begin
+     Invalidate(p,aDataOffset,aDataSize);
      Move(p^,aData,aDataSize);
-{    if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-      Memory.FlushMappedMemoryRange(p,aDataSize);
-     end;}
     end else begin
      raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
     end;
@@ -13455,10 +13495,8 @@ begin
   p:=Memory.MapMemory(aDataOffset,aDataSize);
   try
    if assigned(p) then begin
+    Invalidate(p,aDataOffset,aDataSize);
     Move(p^,aData,aDataSize);
-{   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-     Memory.FlushMappedMemoryRange(p,aDataSize);
-    end;}
    end else begin
     raise EpvVulkanException.Create('Vulkan buffer memory block map failed');
    end;
@@ -13624,7 +13662,7 @@ begin
   Source:=aSourceBuffer.Memory.MapMemory;
   if assigned(Source) then begin
    try
-    aSourceBuffer.Flush(Source,aSourceOffset,aSize);
+    aSourceBuffer.Invalidate(Source,aSourceOffset,aSize);
     Move(Pointer(TpvPtrUInt(TpvPtrUInt(Source)+TpvPtrUInt(aSourceOffset)))^,aDestinationData,aSize);
    finally
     aSourceBuffer.Memory.UnmapMemory;
@@ -13805,7 +13843,7 @@ begin
 
     if Remain>0 then begin
 
-     if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+     if VulkanIsCoherent(fBuffer.fMemoryPropertyFlags) then begin
 
       Destination:=fBuffer.Memory.MapMemory;
       if assigned(Destination) then begin
@@ -13953,7 +13991,7 @@ begin
 
      Source:=@aSourceData;
 
-     if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+     if VulkanIsCoherent(fBuffer.fMemoryPropertyFlags) then begin
 
       Destination:=fBuffer.Memory.MapMemory;
       if assigned(Destination) then begin
@@ -14073,7 +14111,7 @@ begin
   Source:=aSourceBuffer.Memory.MapMemory;
   if assigned(Source) then begin
    try
-    aSourceBuffer.Flush(Source,aSourceOffset,aSize);
+    aSourceBuffer.Invalidate(Source,aSourceOffset,aSize);
     Move(Pointer(TpvPtrUInt(TpvPtrUInt(Source)+TpvPtrUInt(aSourceOffset)))^,aDestinationData,aSize);
    finally
     aSourceBuffer.Memory.UnmapMemory;
@@ -14097,7 +14135,7 @@ begin
 
      Destination:=@aDestinationData;
 
-     if (fBuffer.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))<>0 then begin
+     if VulkanIsCoherent(fBuffer.fMemoryPropertyFlags) then begin
 
       Source:=fBuffer.Memory.MapMemory;
       if assigned(Source) then begin
@@ -14376,10 +14414,12 @@ begin
          end;
          aTransferCommandBuffer.EndRecording;
          if OffsetSize>0 then begin
+          fBuffer.Invalidate(BufferMemory,0,OffsetSize,false); // Invalidate the staging buffer memory, if necessary, when VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is not set
           fBuffer.Flush(BufferMemory,0,OffsetSize,false); // Flush the staging buffer memory, if necessary, when VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is not set
-         end; 
+         end;
          aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true); // Execute the command buffer and wait until it is finished
          if OffsetSize>0 then begin
+          fBuffer.Invalidate(BufferMemory,0,OffsetSize,false); // Invalidate the staging buffer memory, if necessary, when VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is not set
           fBuffer.Flush(BufferMemory,0,OffsetSize,false); // Flush the staging buffer memory, if necessary, when VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is not set
          end; 
 

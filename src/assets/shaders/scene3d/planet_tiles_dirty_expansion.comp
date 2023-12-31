@@ -51,21 +51,22 @@ void main() {
     [[unroll]] for(int y = -1; y <= 1; y++){
       [[unroll]] for(int x = -1; x <= 1; x++){
         ivec2 tileMapOtherXY = ivec2(tileMapXY) + ivec2(x, y);      
-        if((((abs(tileMapOtherXY.x) + (int(tileMapOtherXY.x >> 31) & 1)) & 1) ^ ((abs(tileMapOtherXY.y) + (int(tileMapOtherXY.y >> 31) & 1)) & 1)) != 0){
+        ivec2 tileMapOtherWrapXY = tileMapOtherXY / ivec2(pushConstants.tileMapResolution);
+        if((((abs(tileMapOtherWrapXY.x) + (int(tileMapOtherXY.x < 0) & 1)) & 1) ^ ((abs(tileMapOtherWrapXY.y) + (int(tileMapOtherXY.y < 0) & 1)) & 1)) != 0){
           // Octahedral wrap, here the coordinates must be mirrored in a checkerboard pattern at overflows
           tileMapOtherXY.xy = ivec2(pushConstants.tileMapResolution) - (((tileMapOtherXY.xy + ivec2(pushConstants.tileMapResolution)) & ivec2(mask)) + ivec2(1));
         } else {
           tileMapOtherXY.xy = (tileMapOtherXY.xy + ivec2(pushConstants.tileMapResolution)) & ivec2(mask);
         }      
         uint otherIndex = (uint(tileMapOtherXY.y) * pushConstants.tileMapResolution) + uint(tileMapOtherXY.x);
-        if((tileMapDirtyBuffer.data[otherIndex >> 5] & (1u << (otherIndex & 31u))) != 0u){
+        if((tileMapDirtyBuffer.data[otherIndex >> 5u] & (1u << (otherIndex & 31u))) != 0u){
           value |= bitMask;
         }
       }
     }
 
     // Store into expanded dirty map
-    atomicOr(tileMapExpandedDirtyBuffer.data[index >> 5], value);
+    atomicOr(tileMapExpandedDirtyBuffer.data[index >> 5u], value);
 
   }
 

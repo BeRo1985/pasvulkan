@@ -2708,8 +2708,10 @@ begin
   Pan:=131071;
  end;
  MixVolume:=SARLongint(Volume*AudioEngine.MusicVolume,16);
- VolLeft:=SARLongint((131072-Pan)*MixVolume,17);
- VolRight:=SARLongint(Pan*MixVolume,17);
+ VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+ VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+{VolLeft:=SARLongint((131072-Pan)*MixVolume,17);
+ VolRight:=SARLongint(Pan*MixVolume,17);}
  if VolLeft<0 then begin
   VolLeft:=0;
  end else if VolLeft>=4096 then begin
@@ -2963,8 +2965,10 @@ begin
    Pan:=131071;
   end;
   MixVolume:=SARLongint(Volume*MixVolume,16);
-  VolLeft:=SARLongint((131072-Pan)*MixVolume,17);
-  VolRight:=SARLongint(Pan*MixVolume,17);
+  VolLeft:=SARLongint(AudioEngine.PanningLUT[SARLongint(131072-Pan,1)]*MixVolume,15);
+  VolRight:=SARLongint(AudioEngine.PanningLUT[SARLongint(Pan,1)]*MixVolume,15);
+{ VolLeft:=SARLongint((131072-Pan)*MixVolume,17);
+  VolRight:=SARLongint(Pan*MixVolume,17);}
   if VolLeft<0 then begin
    VolLeft:=0;
   end else if VolLeft>=4096 then begin
@@ -4385,6 +4389,11 @@ begin
 end;
 
 constructor TpvAudio.Create(ASampleRate,AChannels,ABits,ABufferSamples:TpvInt32);
+const SqrtThree=1.7320508075688772;
+      InvSqrtThree=0.5773502691896258;
+      Minus3dB=0.7071067811865475244008443621048490392848359376884740365883398689;
+      OneOverMinus3dB=1.0/Minus3dB;
+      OneOverSqrMinus3dB=1.0/sqr(Minus3dB);
 var i,TableLengthSize:TpvInt32;
     X,TableLength:{$ifdef cpuarm}TpvFloat{$else}TpvDouble{$endif};
 begin

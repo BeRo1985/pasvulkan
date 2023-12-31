@@ -60,7 +60,7 @@ void main(){
         }
         // Commented out code, because the CPU expands the dirty map in the moment anyway.
       }else*/{
-        uvec2 tileMapXY = uvec2(texel)  >> pushConstants.tileMapResolutionShift.y;
+        uvec2 tileMapXY = uvec2(texel) >> pushConstants.tileMapResolutionShift.y;
         uint tileMapIndex = (tileMapXY.y * pushConstants.tileMapResolutionShift.x) + tileMapXY.x;
         atomicOr(tileMapDirtyBuffer.data[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
       } 
