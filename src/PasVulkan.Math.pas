@@ -3802,7 +3802,8 @@ begin
 end;
 
 function TpvVector3.Slerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
-var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
+var //DotProduct,Theta,Sinus,Cosinus:TpvScalar;
+    SelfLength,ToVectorLength:TpvScalar;
 begin
  if aTime<=0.0 then begin
   result:=self;
@@ -3811,7 +3812,17 @@ begin
  end else if self=aToVector then begin
   result:=aToVector;
  end else begin
-  DotProduct:=self.Dot(aToVector);
+  SelfLength:=self.Length;
+  ToVectorLength:=aToVector.Length;
+  if Math.Min(System.Abs(SelfLength),System.Abs(ToVectorLength))<1e-7 then begin
+   result:=(self*(1.0-aTime))+(aToVector*aTime);
+  end else begin
+   result:=TpvVector3.InlineableCreate(TpvQuaternion.Identity.Slerp(TpvQuaternion.CreateFromToRotation(self,
+                                                                                                       aToVector),
+                                                                    aTime)*self.Normalize)*
+           ((SelfLength*(1.0-aTime))+(ToVectorLength*aTime));
+  end;
+{ DotProduct:=self.Dot(aToVector);
   if DotProduct<-1.0 then begin
    DotProduct:=-1.0;
   end else if DotProduct>1.0 then begin
@@ -3821,7 +3832,7 @@ begin
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=(self*Cosinus)+((aToVector-(self*DotProduct)).Normalize*Sinus);
+  result:=(self*Cosinus)+((aToVector-(self*DotProduct)).Normalize*Sinus);}
  end;
 end;
 
