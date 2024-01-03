@@ -3,6 +3,7 @@
 //#define SHADERDEBUG
 
 #extension GL_EXT_multiview : enable
+#extension GL_GOOGLE_include_directive : enable
 
 #if defined(SHADERDEBUG)
 #extension GL_EXT_debug_printf : enable
@@ -35,17 +36,7 @@ layout(push_constant) uniform PushConstants {
 #define MODE_AGX_REC2020_GOLDEN 15
 #define MODE_AGX_REC2020_PUNCHY 16
 
-const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
-	vec3(1.6605,-0.1246, -0.0182),
-	vec3(-0.5876, 1.1329, -0.1006),
-	vec3(-0.0728, -0.0083, 1.1187)
-);
-
-const mat3 LINEAR_SRGB_TO_LINEAR_REC2020 = mat3(
-	vec3(0.6274, 0.0691, 0.0164),
-	vec3(0.3293, 0.9195, 0.0880),
-	vec3(0.0433, 0.0113, 0.8956)
-);
+#include "rec2020.glsl"
 
 vec3 linear(const in vec3 color) { 
   return color; 
@@ -240,12 +231,12 @@ vec3 AgXRec709EOTF(vec3 color) {
 }
 
 vec3 AgXRec2020(vec3 color) {
-  const mat3 m = AgXRec2020InsetMatrix * LINEAR_SRGB_TO_LINEAR_REC2020; // <= the GLSL compiler will hopefully optimize this to a single matrix
+  const mat3 m = AgXRec2020InsetMatrix * LinearSRGBToLinearRec2020Matrix; // <= the GLSL compiler will hopefully optimize this to a single matrix
   return AgXCore(m * max(vec3(0.0), color));
 }
 
 vec3 AgXRec2020EOTF(vec3 color) {
-  return max(vec3(0.0), LINEAR_REC2020_TO_LINEAR_SRGB * pow(max(vec3(0.0), AgXRec2020OutsetMatrix * color), vec3(2.2)));
+  return max(vec3(0.0), LinearRec2020ToLinearSRGBMatrix * pow(max(vec3(0.0), AgXRec2020OutsetMatrix * color), vec3(2.2)));
 }
 
 vec3 agxGolden(vec3 color) {
