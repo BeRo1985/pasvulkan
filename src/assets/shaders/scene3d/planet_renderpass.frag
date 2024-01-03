@@ -70,7 +70,7 @@ void main(){
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
-  vec4 c = vec4(vec3(1.0) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), -1.0, 1.0), 0.5, 0.5), 1.0);
+  vec4 c = vec4(vec3(0.3275) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), -1.0, 1.0), 0.5, 0.5), 1.0);
 
   if(pushConstants.selected.w > 1e-6){
     float d = length(normalize(inBlock.sphereNormal.xyz) - normalize(pushConstants.selected.xyz)) - pushConstants.selected.w;
