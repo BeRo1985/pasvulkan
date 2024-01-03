@@ -206,8 +206,9 @@ vec3 agx(vec3 val) {
 }
 
 vec3 agxEotf(vec3 val) {
-  val = max(vec3(0.0), AgXOutsetMatrix * val);
-  return LINEAR_REC2020_TO_LINEAR_SRGB * mix(pow((val + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), val / vec3(12.92), lessThan(val, vec3(4.045e-2))); // sRGB => linear
+  return max(vec3(0.0), LINEAR_REC2020_TO_LINEAR_SRGB * pow(max(vec3(0.0), AgXOutsetMatrix * val), vec3(2.2)));
+//val = max(vec3(0.0), AgXOutsetMatrix * val);
+//return LINEAR_REC2020_TO_LINEAR_SRGB * mix(pow((val + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), val / vec3(12.92), lessThan(val, vec3(4.045e-2))); // sRGB => linear
 }
 
 vec3 agxGolden(vec3 val) {
