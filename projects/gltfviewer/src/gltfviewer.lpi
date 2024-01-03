@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\AnimateAllTheThings.glb&quot; --antialiasing-mode msaasmaa --force-no-vsync"/>
+        <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\planetgame1\naxiah\GLTFSample\GLTFSample\Unbenannt.glb&quot; --antialiasing-mode msaasmaa"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\AnimateAllTheThings.glb&quot; --antialiasing-mode msaasmaa --force-no-vsync"/>
+            <CommandLineParams Value="&quot;\home\bero\Projects\GitHub\pasvulkan\projects\planetgame1\naxiah\GLTFSample\GLTFSample\Unbenannt.glb&quot; --antialiasing-mode msaasmaa"/>
           </local>
         </Mode0>
       </Modes>

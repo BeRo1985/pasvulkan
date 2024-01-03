@@ -28,9 +28,12 @@ layout(push_constant) uniform PushConstants {
 #define MODE_UCHIMURA 8
 #define MODE_LOTTES 9
 #define MODE_AMD 10
-#define MODE_AGX 11
-#define MODE_AGX_GOLDEN 12
-#define MODE_AGX_PUNCHY 13
+#define MODE_AGX_REC709 11
+#define MODE_AGX_REC709_GOLDEN 12
+#define MODE_AGX_REC709_PUNCHY 13
+#define MODE_AGX_REC2020 14
+#define MODE_AGX_REC2020_GOLDEN 15
+#define MODE_AGX_REC2020_PUNCHY 16
 
 const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
 	vec3(1.6605,-0.1246, -0.0182),
@@ -181,50 +184,84 @@ vec3 AMDTonemapper(vec3 color) {
   return color;
 }
 
-// Mean error^2: 3.6705141e-06
-vec3 agxDefaultContrastApprox(vec3 x) {
+//////////////////////////////////////////////////////////////////////////
+// AgX Rec.2020 + Rec. 709 EOTF and OETF                                //
+//////////////////////////////////////////////////////////////////////////
+
+vec3 AgXDefaultContrastApproximation(vec3 x) {
+  // Sigmoid curve approximation
+#if 1
+  // 7th Order Polynomial Approximation. Squared mean error: 1.85907662e-06
   vec3 x2 = x * x, x4 = x2 * x2, x6 = x4 * x2;
   return (-17.86 * x6 * x) + (78.01 * x6) + (-126.7 * x4 * x) + (92.06 * x4) + (-28.72 * x2 * x) + (4.361 * x2) + (-0.1718 * x) + vec3(0.002857);
+#else
+  // 6th Order Polynomial Approximation. Squared mean error: 3.6705141e-06
+  vec3 x2 = x * x, x4 = x2 * x2;
+  return (15.5 * x4 * x2) + (-40.14 * x4 * x) + (31.96 * x4) - (6.868 * x2 * x) + (0.4298 * x2) + (0.1191 * x) - vec3(0.00232);
+#endif
 }
 
-const mat3 AgXInsetMatrix = mat3(
+const mat3 AgXRec709InsetMatrix = mat3(
+  0.842479062253094, 0.0423282422610123, 0.0423756549057051,
+  0.0784335999999992, 0.878468636469772, 0.0784336,
+  0.0792237451477643, 0.0791661274605434, 0.879142973793104
+);
+
+const mat3 AgXRec709OutsetMatrix = mat3(
+  1.19687900512017, -0.0528968517574562, -0.0529716355144438,
+  -0.0980208811401368, 1.15190312990417, -0.0980434501171241,
+  -0.0990297440797205, -0.0989611768448433, 1.15107367264116
+);
+
+const mat3 AgXRec2020InsetMatrix = mat3(
   vec3(0.856627153315983, 0.137318972929847, 0.11189821299995),
   vec3(0.0951212405381588, 0.761241990602591, 0.0767994186031903),
   vec3( 0.0482516061458583, 0.101439036467562, 0.811302368396859)
 );
 
-const mat3 AgXOutsetMatrix = mat3(
+const mat3 AgXRec2020OutsetMatrix = mat3(
   vec3(1.1271005818144368, -0.1413297634984383, -0.14132976349843826),
   vec3(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
   vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405)
 );
 
-vec3 agx(vec3 val) {
-  const mat3 m = AgXInsetMatrix * LINEAR_SRGB_TO_LINEAR_REC2020; // the GLSL compiler will optimize this to a single matrix, hopefully
-  const float min_ev = -12.47393, max_ev = 4.026069;
-  return agxDefaultContrastApprox((clamp(log2(max(vec3(1e-10), m * max(vec3(0.0), val))), min_ev, max_ev) - min_ev) / (max_ev - min_ev));
+vec3 AgXCore(vec3 color) {
+  const float AgXMinEV = -12.47393;
+  const float AgXMaxEV = 4.026069;
+  return AgXDefaultContrastApproximation((clamp(log2(max(vec3(1e-10), color)), AgXMinEV, AgXMaxEV) - AgXMinEV) / (AgXMaxEV - AgXMinEV));
 }
 
-vec3 agxEotf(vec3 val) {
-  return max(vec3(0.0), LINEAR_REC2020_TO_LINEAR_SRGB * pow(max(vec3(0.0), AgXOutsetMatrix * val), vec3(2.2)));
-//val = max(vec3(0.0), AgXOutsetMatrix * val);
-//return LINEAR_REC2020_TO_LINEAR_SRGB * mix(pow((val + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), val / vec3(12.92), lessThan(val, vec3(4.045e-2))); // sRGB => linear
+vec3 AgXRec709(vec3 color) {
+  return AgXCore(AgXRec709InsetMatrix * max(vec3(0.0), color));
 }
 
-vec3 agxGolden(vec3 val) {
+vec3 AgXRec709EOTF(vec3 color) {
+  return max(vec3(0.0), pow(max(vec3(0.0), AgXRec709OutsetMatrix * color), vec3(2.2)));
+}
+
+vec3 AgXRec2020(vec3 color) {
+  const mat3 m = AgXRec2020InsetMatrix * LINEAR_SRGB_TO_LINEAR_REC2020; // <= the GLSL compiler will hopefully optimize this to a single matrix
+  return AgXCore(m * max(vec3(0.0), color));
+}
+
+vec3 AgXRec2020EOTF(vec3 color) {
+  return max(vec3(0.0), LINEAR_REC2020_TO_LINEAR_SRGB * pow(max(vec3(0.0), AgXRec2020OutsetMatrix * color), vec3(2.2)));
+}
+
+vec3 agxGolden(vec3 color) {
   const vec3 lw = vec3(0.2126, 0.7152, 0.0722);
-  float luma = dot(val, lw);
+  float luma = dot(color, lw);
   vec3 offset = vec3(0.0), slope = vec3(1.0, 0.9, 0.5), power = vec3(0.8);
   float sat = 0.8;
-  return fma(pow(fma(val, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
+  return fma(pow(fma(color, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
 }
 
-vec3 agxPunchy(vec3 val) {
+vec3 agxPunchy(vec3 color) {
   const vec3 lw = vec3(0.2126, 0.7152, 0.0722);
-  float luma = dot(val, lw);
+  float luma = dot(color, lw);
   vec3 offset = vec3(0.0), slope = vec3(1.0), power = vec3(1.35);
   float sat = 1.4;
-  return fma(pow(fma(val, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
+  return fma(pow(fma(color, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
 }
 
 vec3 doToneMapping(vec3 color){
@@ -271,16 +308,28 @@ vec3 doToneMapping(vec3 color){
       color = clamp(AMDTonemapper(color.xyz), vec3(0.0), vec3(1.0));
       break;
     }
-    case MODE_AGX:{
-      color = clamp(agxEotf(agx(color.xyz)), vec3(0.0), vec3(1.0));  
+    case MODE_AGX_REC709:{
+      color = clamp(AgXRec709EOTF(AgXRec709(color.xyz)), vec3(0.0), vec3(1.0));  
       break;
     }
-    case MODE_AGX_GOLDEN:{
-      color = clamp(agxEotf(agxGolden(agx(color.xyz))), vec3(0.0), vec3(1.0));  
+    case MODE_AGX_REC709_GOLDEN:{
+      color = clamp(AgXRec709EOTF(agxGolden(AgXRec709(color.xyz))), vec3(0.0), vec3(1.0));  
       break;
     }
-    case MODE_AGX_PUNCHY:{
-      color = clamp(agxEotf(agxPunchy(agx(color.xyz))), vec3(0.0), vec3(1.0));  
+    case MODE_AGX_REC709_PUNCHY:{
+      color = clamp(AgXRec709EOTF(agxPunchy(AgXRec709(color.xyz))), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_AGX_REC2020:{
+      color = clamp(AgXRec2020EOTF(AgXRec2020(color.xyz)), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_AGX_REC2020_GOLDEN:{
+      color = clamp(AgXRec2020EOTF(agxGolden(AgXRec2020(color.xyz))), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_AGX_REC2020_PUNCHY:{
+      color = clamp(AgXRec2020EOTF(agxPunchy(AgXRec2020(color.xyz))), vec3(0.0), vec3(1.0));  
       break;
     }
     default:{
