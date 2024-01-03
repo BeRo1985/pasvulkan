@@ -139,6 +139,7 @@ type TpvScene3DRenderer=class;
        fDepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode;
        fLensMode:TpvScene3DRendererLensMode;
        fGlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode;
+       fToneMappingMode:TpvScene3DRendererToneMappingMode;
        fMinLogLuminance:TpvFloat;
        fMaxLogLuminance:TpvFloat;
        fMaxMSAA:TpvInt32;
@@ -216,6 +217,7 @@ type TpvScene3DRenderer=class;
        property DepthOfFieldMode:TpvScene3DRendererDepthOfFieldMode read fDepthOfFieldMode write fDepthOfFieldMode;
        property LensMode:TpvScene3DRendererLensMode read fLensMode write fLensMode;
        property GlobalIlluminationMode:TpvScene3DRendererGlobalIlluminationMode read fGlobalIlluminationMode write fGlobalIlluminationMode;
+       property ToneMappingMode:TpvScene3DRendererToneMappingMode read fToneMappingMode write fToneMappingMode;
        property MinLogLuminance:TpvFloat read fMinLogLuminance write fMinLogLuminance;
        property MaxLogLuminance:TpvFloat read fMaxLogLuminance write fMaxLogLuminance;
        property MaxMSAA:TpvInt32 read fMaxMSAA write fMaxMSAA;
@@ -392,6 +394,8 @@ begin
  fLensMode:=TpvScene3DRendererLensMode.Auto;
 
  fGlobalIlluminationMode:=TpvScene3DRendererGlobalIlluminationMode.Auto;
+
+ fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
 
  fMinLogLuminance:=-8.0;
 
@@ -928,6 +932,10 @@ begin
   else begin
    fMeshFragGlobalIlluminationTypeName:='';
   end;
+ end;
+
+ if fToneMappingMode=TpvScene3DRendererToneMappingMode.Auto then begin
+  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Uchimura;
  end;
 
 end;

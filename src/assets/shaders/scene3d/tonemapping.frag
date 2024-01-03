@@ -14,36 +14,65 @@ layout(location = 0) out vec4 outColor;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uSubpassInput;
 
-#define HDRToneMappingOperator 8
+layout(push_constant) uniform PushConstants {
+  int mode;
+} pushConstants;
 
-#if HDRToneMappingOperator == 1
-vec3 linear(const in vec3 color) { return color; }
-#elif HDRToneMappingOperator == 2
+#define MODE_LINEAR 1
+#define MODE_REINHARD 2
+#define MODE_HEJL 3
+#define MODE_HEJL2015 4
+#define MODE_ACESFILM 5
+#define MODE_ACESFILM2 6
+#define MODE_UNCHARTED2 7
+#define MODE_UCHIMURA 8
+#define MODE_LOTTES 9
+#define MODE_AMD 10
+#define MODE_AGX 11
+#define MODE_AGX_GOLDEN 12
+#define MODE_AGX_PUNCHY 13
+
+const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
+	vec3(1.6605,-0.1246, -0.0182),
+	vec3(-0.5876, 1.1329, -0.1006),
+	vec3(-0.0728, -0.0083, 1.1187)
+);
+
+const mat3 LINEAR_SRGB_TO_LINEAR_REC2020 = mat3(
+	vec3(0.6274, 0.0691, 0.0164),
+	vec3(0.3293, 0.9195, 0.0880),
+	vec3(0.0433, 0.0113, 0.8956)
+);
+
+vec3 linear(const in vec3 color) { 
+  return color; 
+}
+
 vec3 reinhard(in vec3 color) {
   color *= 1.5;
   return color / (vec3(1.0) + color);
 }
-#elif HDRToneMappingOperator == 3
+
 vec3 hejl(const in vec3 color) {
   vec3 x = max(vec3(0.0), color - vec3(0.004));
   return pow((x * ((6.2 * x) + vec3(0.5))) / max(x * ((6.2 * x) + vec3(1.7)) + vec3(0.06), vec3(1e-8)), vec3(2.2));
 }
-#elif HDRToneMappingOperator == 4
+
 vec3 hejl2015(vec3 c, float w) {
   vec4 h = vec4(c, w), a = (1.425 * h) + vec4(0.05), f = (((h * a) + vec4(0.004)) / ((h * (a + vec4(0.55)) + vec4(0.0491)))) - vec4(0.0821);
   return f.xyz / f.w;
 }
-#elif HDRToneMappingOperator == 5
+
 vec3 ACESFilm(const in vec3 x) {
   const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
   return clamp((x * ((a * x) + vec3(b))) / (x * ((c * x) + vec3(d)) + vec3(e)), vec3(0.0), vec3(1.0));
 }
-#elif HDRToneMappingOperator == 6
-vec3 ACESFilm(const in vec3 x) {
+
+vec3 ACESFilm2(const in vec3 x) {
   const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
   return pow(clamp((x * ((a * x) + vec3(b))) / (x * ((c * x) + vec3(d)) + vec3(e)), vec3(0.0), vec3(1.0)), vec3(2.2));
 }
-#elif HDRToneMappingOperator == 7
+
 vec3 uncharted2(in vec3 color) {
   float A = 0.15;
   float B = 0.50;
@@ -56,7 +85,7 @@ vec3 uncharted2(in vec3 color) {
   color *= 5.0;
   return (((color * ((A * color) + vec3(C * B)) + vec3(D * E)) / (color * ((A * color) + vec3(B)) + vec3(D * F))) - vec3(E / F)) * IW;
 }
-#elif HDRToneMappingOperator == 8
+
 vec3 uchimura(in vec3 x, in float P, in float a, in float m, in float l, in float c, in float b) {
   float l0 = ((P - m) * l) / a;
   float L0 = m - m / a;
@@ -86,7 +115,7 @@ vec3 uchimura(in vec3 x) {
 
   return uchimura(x, P, a, m, l, c, 0.0);
 }
-#elif HDRToneMappingOperator == 9
+
 vec3 lottes(in vec3 x) {
   const vec3 a = vec3(1.6);
   const vec3 d = vec3(0.977);
@@ -99,7 +128,6 @@ vec3 lottes(in vec3 x) {
 
   return pow(x, a) / (pow(x, a * d) * b + c);
 }
-#elif HDRToneMappingOperator == 10
 
 // Source: https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron/blob/master/src/VK/shaders/tonemappers.glsl
 
@@ -152,34 +180,113 @@ vec3 AMDTonemapper(vec3 color) {
   color = peak * ratio;
   return color;
 }
-#endif
 
-vec3 doToneMapping(vec3 color) {
-#if HDRToneMappingOperator == 1
-  color = clamp(linear(color.xyz), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 2
-  color = clamp(reinhard(color.xyz), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 3
-  color = clamp(hejl(color.xyz), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 4
-  color = clamp(hejl2015(color.xyz, 4.0), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 5
-  color = clamp(ACESFilm(color.xyz), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 6
-  float m = max(max(color.x, color.y), color.z);
-  // color = clamp(pow(ACESFilm(vec3(color)) * (m / color.xyz), vec3(1.0 / 2.2)), vec3(0.0), vec3(1.0));
-  color = clamp(pow(ACESFilm(vec3(m)) * (color.xyz / m), vec3(1.0 / 2.2)), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 7
-  color = clamp(uncharted2(color.xyz), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 8
-  color = clamp(uchimura(color.xyz), vec3(0.0), vec3(1.0));
-#elif HDRToneMappingOperator == 9
-  color = clamp(lottes(color.xyz), vec3(0.0), vec3(1.0));  
-#elif HDRToneMappingOperator == 9
-  color = clamp(AMDTonemapper(color.xyz), vec3(0.0), vec3(1.0));
-#else
-  color = clamp(color.xyz, vec3(0.0), vec3(1.0));
-#endif
+// Mean error^2: 3.6705141e-06
+vec3 agxDefaultContrastApprox(vec3 x) {
+  vec3 x2 = x * x, x4 = x2 * x2, x6 = x4 * x2;
+  return (-17.86 * x6 * x) + (78.01 * x6) + (-126.7 * x4 * x) + (92.06 * x4) + (-28.72 * x2 * x) + (4.361 * x2) + (-0.1718 * x) + vec3(0.002857);
+}
+
+const mat3 AgXInsetMatrix = mat3(
+  vec3(0.856627153315983, 0.137318972929847, 0.11189821299995),
+  vec3(0.0951212405381588, 0.761241990602591, 0.0767994186031903),
+  vec3( 0.0482516061458583, 0.101439036467562, 0.811302368396859)
+);
+
+const mat3 AgXOutsetMatrix = mat3(
+  vec3(1.1271005818144368, -0.1413297634984383, -0.14132976349843826),
+  vec3(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
+  vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405)
+);
+
+vec3 agx(vec3 val) {
+  const mat3 m = AgXInsetMatrix * LINEAR_SRGB_TO_LINEAR_REC2020; // the GLSL compiler will optimize this to a single matrix, hopefully
+  const float min_ev = -12.47393, max_ev = 4.026069;
+  return agxDefaultContrastApprox((clamp(log2(max(vec3(1e-10), m * max(vec3(0.0), val))), min_ev, max_ev) - min_ev) / (max_ev - min_ev));
+}
+
+vec3 agxEotf(vec3 val) {
+  val = max(vec3(0.0), AgXOutsetMatrix * val);
+  return LINEAR_REC2020_TO_LINEAR_SRGB * mix(pow((val + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)), val / vec3(12.92), lessThan(val, vec3(4.045e-2))); // sRGB => linear
+}
+
+vec3 agxGolden(vec3 val) {
+  const vec3 lw = vec3(0.2126, 0.7152, 0.0722);
+  float luma = dot(val, lw);
+  vec3 offset = vec3(0.0), slope = vec3(1.0, 0.9, 0.5), power = vec3(0.8);
+  float sat = 0.8;
+  return fma(pow(fma(val, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
+}
+
+vec3 agxPunchy(vec3 val) {
+  const vec3 lw = vec3(0.2126, 0.7152, 0.0722);
+  float luma = dot(val, lw);
+  vec3 offset = vec3(0.0), slope = vec3(1.0), power = vec3(1.35);
+  float sat = 1.4;
+  return fma(pow(fma(val, slope, offset), power) - vec3(luma), vec3(sat), vec3(luma));
+}
+
+vec3 doToneMapping(vec3 color){
+  switch(pushConstants.mode){
+    case MODE_LINEAR:{
+      color = clamp(linear(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_REINHARD:{
+      color = clamp(reinhard(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_HEJL:{
+      color = clamp(hejl(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_HEJL2015:{
+      color = clamp(hejl2015(color.xyz, 4.0), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_ACESFILM:{
+      color = clamp(ACESFilm(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_ACESFILM2:{
+      float m = max(max(color.x, color.y), color.z);
+    //color = clamp(pow(ACESFilm2(vec3(color)) * (m / color.xyz), vec3(1.0 / 2.2)), vec3(0.0), vec3(1.0));
+      color = clamp(pow(ACESFilm2(vec3(m)) * (color.xyz / m), vec3(1.0 / 2.2)), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_UNCHARTED2:{
+      color = clamp(uncharted2(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_UCHIMURA:{
+      color = clamp(uchimura(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_LOTTES:{
+      color = clamp(lottes(color.xyz), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_AMD:{
+      color = clamp(AMDTonemapper(color.xyz), vec3(0.0), vec3(1.0));
+      break;
+    }
+    case MODE_AGX:{
+      color = clamp(agxEotf(agx(color.xyz)), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_AGX_GOLDEN:{
+      color = clamp(agxEotf(agxGolden(agx(color.xyz))), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    case MODE_AGX_PUNCHY:{
+      color = clamp(agxEotf(agxPunchy(agx(color.xyz))), vec3(0.0), vec3(1.0));  
+      break;
+    }
+    default:{
+      color = clamp(color.xyz, vec3(0.0), vec3(1.0));
+      break;
+    }
+  }
   return color;
 }
 

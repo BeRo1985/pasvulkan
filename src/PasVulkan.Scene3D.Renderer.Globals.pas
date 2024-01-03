@@ -181,6 +181,25 @@ type TpvScene3DRendererAntialiasingMode=
 
      PpvScene3DRendererGlobalIlluminatonMode=^TpvScene3DRendererGlobalIlluminationMode;
 
+     TpvScene3DRendererToneMappingMode=
+      (
+       Auto=0,
+       Linear=1,
+       Reinhard=2,
+       Hejl=3,
+       Hejl2015=4,
+       ACESFilm=5,
+       ACESFilm2=6,
+       Uncharted2=7,
+       Uchimura=8,
+       Lottes=9,
+       AMD=10,
+       AGX=11,
+       AGXGolden=12,
+       AGXPunchy=13
+      );
+      PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
+      
 var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 
 implementation
