@@ -19,7 +19,7 @@ layout (set = 0, binding = 1, std430) buffer HistogramLuminance {
 };
 
 layout (push_constant) uniform PushConstants {
-  vec2 minMaxLuminance;
+  vec4 minMaxLuminanceFactorExponent;
 } pushConstants;
 
 #if 1
@@ -74,7 +74,7 @@ void main() {
      debugPrintfEXT("Lmax: %f\n", Lmax);
    }
  #endif
-  c.xyz = max(convertYxy2RGB(convertRGB2Yxy(max(c.xyz, vec3(0.0))) * vec2(clamp(1.0 / max(1e-4, Lmax), pushConstants.minMaxLuminance.x, pushConstants.minMaxLuminance.y), 1.0).xyy), vec3(0.0));
+  c.xyz = max(convertYxy2RGB(convertRGB2Yxy(max(c.xyz, vec3(0.0))) * vec2(clamp(pow(1.0 / max(1e-4, Lmax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z, pushConstants.minMaxLuminanceFactorExponent.x, pushConstants.minMaxLuminanceFactorExponent.y), 1.0).xyy), vec3(0.0));
   outColor = vec4(max(vec3(0.0), c.xyz), c.w);
 #else
   outColor = vec4(1.0);

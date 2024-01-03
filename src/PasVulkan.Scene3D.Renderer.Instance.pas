@@ -553,9 +553,12 @@ type { TpvScene3DRendererInstance }
       private
        fLuminanceHistogramVulkanBuffers:TLuminanceVulkanBuffers;
        fLuminanceVulkanBuffers:TLuminanceVulkanBuffers;
-      public
+      private
        fMinimumLuminance:TpvScalar;
        fMaximumLuminance:TpvScalar;
+       fLuminanceFactor:TpvScalar;
+       fLuminanceExponent:TpvScalar;
+      public
        fLuminancePushConstants:TLuminancePushConstants;
        fLuminanceEvents:array[0..MaxInFlightFrames-1] of TpvVulkanEvent;
        fLuminanceEventReady:array[0..MaxInFlightFrames-1] of boolean;
@@ -748,6 +751,8 @@ type { TpvScene3DRendererInstance }
        property LuminanceVulkanBuffers:TLuminanceVulkanBuffers read fLuminanceVulkanBuffers;
        property MinimumLuminance:TpvScalar read fMinimumLuminance write fMinimumLuminance;
        property MaximumLuminance:TpvScalar read fMaximumLuminance write fMaximumLuminance;
+       property LuminanceFactor:TpvScalar read fLuminanceFactor write fLuminanceFactor;
+       property LuminanceExponent:TpvScalar read fLuminanceExponent write fLuminanceExponent;
       public
        property TAAHistoryColorImages:TArray2DImages read fTAAHistoryColorImages;
        property TAAHistoryDepthImages:TArray2DImages read fTAAHistoryDepthImages;
@@ -1601,6 +1606,8 @@ begin
 
  fMinimumLuminance:=0.0;
  fMaximumLuminance:=16777216.0;
+ fLuminanceFactor:=1.0;
+ fLuminanceExponent:=1.0;
 
  fFrameGraph:=TpvFrameGraph.Create(Renderer.VulkanDevice,Renderer.CountInFlightFrames);
 

@@ -80,7 +80,7 @@ type { TpvScene3DRendererPassesLuminanceAdaptationRenderPass }
      TpvScene3DRendererPassesLuminanceAdaptationRenderPass=class(TpvFrameGraph.TRenderPass)
       public
        type TPushConstants=record
-             MinMaxLuminance:TpvVector2;
+             MinMaxLuminanceFactorExponent:TpvVector4;
             end;
       private
        fInstance:TpvScene3DRendererInstance;
@@ -387,8 +387,10 @@ procedure TpvScene3DRendererPassesLuminanceAdaptationRenderPass.Execute(const aC
 var PushConstants:TpvScene3DRendererPassesLuminanceAdaptationRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.MinMaxLuminance.x:=fInstance.MinimumLuminance;
- PushConstants.MinMaxLuminance.y:=fInstance.MaximumLuminance;
+ PushConstants.MinMaxLuminanceFactorExponent.x:=fInstance.MinimumLuminance;
+ PushConstants.MinMaxLuminanceFactorExponent.y:=fInstance.MaximumLuminance;
+ PushConstants.MinMaxLuminanceFactorExponent.z:=fInstance.LuminanceFactor;
+ PushConstants.MinMaxLuminanceFactorExponent.w:=fInstance.LuminanceExponent;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
