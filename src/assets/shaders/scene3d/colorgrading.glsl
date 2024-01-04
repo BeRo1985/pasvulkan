@@ -74,7 +74,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
   color = max(vec3(0.0), color * exp(colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.x * 0.6931471805599453));
 
   // Night adaptation
-  {
+  if(colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.y != 0.0){
     const vec3 L = vec3(7.696847, 18.424824, 2.068096), M = vec3(2.431137, 18.697937, 3.012463),
                S = vec3(0.289117, 1.401833, 13.792292), R = vec3(0.466386, 15.564362, 10.059963);
     const mat3 LMS_to_RGB = inverse(transpose(mat3(L, M, S)));
@@ -100,7 +100,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
   color = LinearSRGBToLinearRec2020Matrix * color;
 
   // White balance in linear Rec. 2020 color space
-  {
+  if(any(notEqual(colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.zw, vec2(0.0)))){
     float k = colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.z,
           t = colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.w,
           x = 0.31271 - (k * ((k < 0.0) ? 0.0214 : 0.066)),
