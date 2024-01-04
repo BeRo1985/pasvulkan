@@ -7,7 +7,7 @@
 // Order of operations:
 // - Exposure (outside color grading function)
 // - Post-correction-exposure
-// - Night adaptation (not implemented yet)
+// - Night adaptation
 // - White balance
 // - Channel mixer
 // - Shadows/mid-tones/highlights
@@ -73,8 +73,28 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
   // Exposure
   color = max(vec3(0.0), color * exp(colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.x * 0.6931471805599453));
 
-  // Night adaptation (not implemented yet)
-  // TODO: implement night adaptation
+  // Night adaptation
+  {
+    const vec3 L = vec3(7.696847, 18.424824, 2.068096), M = vec3(2.431137, 18.697937, 3.012463),
+               S = vec3(0.289117, 1.401833, 13.792292), R = vec3(0.466386, 15.564362, 10.059963);
+    const mat3 LMS_to_RGB = inverse(transpose(mat3(L, M, S)));
+    const vec3 m = vec3(0.63721, 0.39242, 1.6064), k = vec3(0.2, 0.2, 0.3);
+    const mat3 opponent_to_LMS = mat3(-0.5, 0.5, 0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 1.0);
+    const float K_ = 45.0, S_ = 10.0, k3 = 0.6, rw = 0.139, p = 0.6189;
+    const mat3 weightedRodResponse = (K_ / S_) * 
+                                     mat3(-(k3 + rw), p * k3,  p * S_,
+                                     1.0 + (k3 * rw), (1.0 - p) * k3, (1.0 - p) * S_,
+                                     0.0, 1.0, 0.0) *
+                                     mat3(k.x, 0.0, 0.0, 0.0, k.y, 0.0, 0.0, 0.0, k.z) *
+                                     inverse(mat3(m.x, 0.0, 0.0, 0.0, m.y, 0.0, 0.0, 0.0, m.z));
+    const float logExposure = 380.0f;
+    color *= logExposure;
+    vec4 q = vec4(dot(color, L), dot(color, M), dot(color, S), dot(color, R));
+    vec3 g = inversesqrt(vec3(1.0) + max(vec3(0.0), (vec3(0.33) / m) * (q.rgb + (k * q.w))));
+    vec3 deltaOpponent = weightedRodResponse * g * q.w * colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.y;
+    vec3 qHat = q.rgb + (opponent_to_LMS * deltaOpponent);
+    color = (LMS_to_RGB * qHat) / logExposure;
+  }
 
   // From linear sRGB to linear Rec. 2020 color space
   color = LinearSRGBToLinearRec2020Matrix * color;
