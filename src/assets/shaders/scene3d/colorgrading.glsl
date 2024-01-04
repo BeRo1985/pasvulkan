@@ -5,43 +5,18 @@
 #include "rec2020.glsl"
 
 // Order of operations:
-// - Exposure
-// - White Balance
-// - Contrast
-// - Brightness
-// - Color Filter
-// - Saturation
-// - Tone Mapping
-// - Gamma
-//
-// - Exposure
-// - Night adaptation
+// - Exposure (other previous shader)
+// - Night adaptation (not implemented yet)
 // - White balance
 // - Channel mixer
 // - Shadows/mid-tones/highlights
 // - Slope/offset/power (CDL)
 // - Contrast
+// - Hue
 // - Vibrance
 // - Saturation
 // - Curves
-// - Tone mapping
-// - Luminance scaling
-// - Gamut mapping
-//
-// Here are the default color grading options:
-// - Exposure: 0.0
-// - Night adaptation: 0.0
-// - White balance: temperature 0, and tint 0
-// - Channel mixer: red {1,0,0}, green {0,1,0}, blue {0,0,1}
-// - Shadows/mid-tones/highlights: shadows {1,1,1,0}, mid-tones {1,1,1,0}, highlights {1,1,1,0}, ranges {0,0.333,0.550,1}
-// - Slope/offset/power: slope 1.0, offset 0.0, and power 1.0
-// - Contrast: 1.0
-// - Vibrance: 1.0
-// - Saturation: 1.0
-// - Curves: gamma {1,1,1}, midPoint {1,1,1}, and scale {1,1,1}
-// - Tone mapping: ACESLegacyToneMapper
-// - Luminance scaling: false
-// - Gamut mapping: false
+// - Tone mapping (other next shader)
 
 struct ColorGradingSettings {
 
@@ -64,8 +39,8 @@ struct ColorGradingSettings {
   vec4 offset;
   vec4 power;
 
-  // Contrast, vibrance, saturation
-  vec4 contrastVibranceSaturation; // x: contrast, y: vibrance, z: saturation, w: unused
+  // Contrast, vibrance, saturation, hue
+  vec4 contrastVibranceSaturationHue; // x: contrast, y: vibrance, z: saturation, w: hue
 
   // Curves
   vec4 curvesGamma; // x: red, y: green, z: blue, w: unused
@@ -88,33 +63,16 @@ ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettings(
   vec4(1.0, 1.0, 1.0, 0.0), // slope
   vec4(0.0, 0.0, 0.0, 0.0), // offset
   vec4(1.0, 1.0, 1.0, 0.0), // power
-  vec4(1.0, 1.0, 1.0, 0.0), // contrastVibranceSaturation
+  vec4(1.0, 1.0, 1.0, 0.0), // contrastVibranceSaturationHue
   vec4(1.0, 1.0, 1.0, 0.0), // curvesGamma
   vec4(1.0, 1.0, 1.0, 0.0), // curvesMidPoint
   vec4(1.0, 1.0, 1.0, 0.0) // curvesScale
   ivec4(0, 0, 0, 0) // luminanceScalingGamutMapping
 );
 
-const vec3 LinearRGBLuminanceWeighting = vec3(0.2126729, 0.7151522, 0.0721750); // Rec. 709 / Linear RGB
-
-vec3 applyColorHueRotation(vec3 c, float hueRotationAngle){ 
-  vec3 hueRotationValues = vec3(0.57735, sin(vec2(radians(hueRotationAngle)) + vec2(0.0, 1.57079632679)));
-  return mix(hueRotationValues.xxx * dot(hueRotationValues.xxx, c), c, hueRotationValues.z) + (cross(hueRotationValues.xxx, c) * hueRotationValues.y);
-}
-
-vec3 applyColorSaturation(vec3 c, float saturation){
-  return max(vec3(0.0), mix(vec3(dot(c, LinearRGBLuminanceWeighting)), c, saturation));
-}
-
-vec3 applyColorContrast(vec3 c, float contrast){
-  return max(vec3(0.0), mix(vec3(0.5), c, contrast));
-}
-
-vec3 applyColorGamma(vec3 c, float gamma){
-  return max(vec3(0.0), pow(c, vec3(1.0 / gamma)));
-}
-
 vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSettings){
+
+  // const vec3 LinearRGBLuminanceWeighting = vec3(0.2126729, 0.7151522, 0.0721750); // Rec. 709 / Linear RGB
   
   // White balance in linear space
   {
@@ -164,22 +122,28 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     color = mix(pow(color, colorGradingSettings.power.xyz), color, vec3(lessThanEqual(color, vec3(0.0))));
 
     // Contrast
-    color = mix(vec3(0.4135884), color, colorGradingSettings.contrastVibranceSaturation.x);
+    color = mix(vec3(0.4135884), color, colorGradingSettings.contrastVibranceSaturationHue.x);
 
     // Log Space to Linear
     color = max(vec3(0.0), fma(exp(2.302585092994046 * fma(color, vec3(4.095658192749866), vec3(-1.5810715060963874))), vec3(0.17999998560000113), vec3(-0.008639279308857654)));
 
   }
 
+  // Hue
+  if(colorGradingSettings.contrastVibranceSaturationHue.w != 0.0){
+    vec3 hueRotationValues = vec3(0.57735, sin(vec2(radians(colorGradingSettings.contrastVibranceSaturationHue.w)) + vec2(0.0, 1.57079632679)));
+    color = mix(hueRotationValues.xxx * dot(hueRotationValues.xxx, color), color, hueRotationValues.z) + (cross(hueRotationValues.xxx, color) * hueRotationValues.y);
+  }
+
   // Vibrance
   {
-    float s = (colorGradingSettings.contrastVibranceSaturation.y - 1.0) / (1.0 + exp(-3.0 * (color.x - max(color.y, color.z)))) + 1.0;
+    float s = (colorGradingSettings.contrastVibranceSaturationHue.y - 1.0) / (1.0 + exp(-3.0 * (color.x - max(color.y, color.z)))) + 1.0;
     vec3 l = LinearRec2020LuminanceWeights * (1.0 - s);
     color = vec3(dot(color, l + vec2(s, 0.0).xyy), dot(color, l + vec2(s, 0.0).yxy), dot(color, l + vec2(s, 0.0).yyx));    
   }
 
   // Saturation
-  color = max(vec3(0.0), mix(vec3(dot(color, LinearRec2020LuminanceWeights)), color, colorGradingSettings.contrastVibranceSaturation.z));
+  color = max(vec3(0.0), mix(vec3(dot(color, LinearRec2020LuminanceWeights)), color, colorGradingSettings.contrastVibranceSaturationHue.z));
   
   // Curves - "Practical HDR and Wide Color Techniques in Gran Turismo SPORT", Uchimura 2018
   {
