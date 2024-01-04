@@ -5,7 +5,8 @@
 #include "rec2020.glsl"
 
 // Order of operations:
-// - Exposure (other previous shader)
+// - Exposure (outside color grading function)
+// - Post-correction-exposure
 // - Night adaptation (not implemented yet)
 // - White balance
 // - Channel mixer
@@ -16,7 +17,7 @@
 // - Vibrance
 // - Saturation
 // - Curves
-// - Tone mapping (other next shader)
+// - Tone mapping (outside color grading function)
 
 struct ColorGradingSettings {
 
@@ -35,17 +36,17 @@ struct ColorGradingSettings {
   vec4 tonalRanges;
 
   // ASC CDL
-  vec4 slope;
-  vec4 offset;
-  vec4 power;
+  vec4 slope; // x: red, y: green, z: blue, w: all channel value
+  vec4 offset; // x: red, y: green, z: blue, w: all channel value
+  vec4 power; // x: red, y: green, z: blue, w: all channel value
 
   // Contrast, vibrance, saturation, hue
   vec4 contrastVibranceSaturationHue; // x: contrast, y: vibrance, z: saturation, w: hue
 
   // Curves
-  vec4 curvesGamma; // x: red, y: green, z: blue, w: unused
-  vec4 curvesMidPoint; // x: red, y: green, z: blue, w: unused
-  vec4 curvesScale; // x: red, y: green, z: blue, w: unused
+  vec4 curvesGamma; // x: red, y: green, z: blue, w: all channel value
+  vec4 curvesMidPoint; // x: red, y: green, z: blue, w: all channel value
+  vec4 curvesScale; // x: red, y: green, z: blue, w: all channel value
   
 };
 
@@ -58,21 +59,25 @@ const ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettin
   vec4(1.0, 1.0, 1.0, 0.0),    // midtones
   vec4(1.0, 1.0, 1.0, 0.0),    // highlights
   vec4(0.0, 0.333, 0.55, 1.0), // tonalRanges, defaults from DaVinci Resolve 
-  vec4(1.0, 1.0, 1.0, 0.0),    // slope
+  vec4(1.0, 1.0, 1.0, 1.0),    // slope
   vec4(0.0, 0.0, 0.0, 0.0),    // offset
-  vec4(1.0, 1.0, 1.0, 0.0),    // power
+  vec4(1.0, 1.0, 1.0, 1.0),    // power
   vec4(1.0, 1.0, 1.0, 0.0),    // contrastVibranceSaturationHue
-  vec4(1.0, 1.0, 1.0, 0.0),    // curvesGamma
-  vec4(1.0, 1.0, 1.0, 0.0),    // curvesMidPoint
-  vec4(1.0, 1.0, 1.0, 0.0)     // curvesScale
+  vec4(1.0, 1.0, 1.0, 1.0),    // curvesGamma
+  vec4(1.0, 1.0, 1.0, 1.0),    // curvesMidPoint
+  vec4(1.0, 1.0, 1.0, 1.0)     // curvesScale
 );
 
 vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSettings){
 
-  // const vec3 LinearRGBLuminanceWeighting = vec3(0.2126729, 0.7151522, 0.0721750); // Rec. 709 / Linear RGB
-  
+  // Exposure
+  color = max(vec3(0.0), color * exp(colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.x * 0.6931471805599453));
+
+  // Night adaptation (not implemented yet)
+  // TODO: implement night adaptation
+
   // From linear sRGB to linear Rec. 2020 color space
-  color = LinearSRGBToLinearRec2020Matrix * max(vec3(0.0), color);
+  color = LinearSRGBToLinearRec2020Matrix * color;
 
   // White balance in linear Rec. 2020 color space
   {
@@ -117,8 +122,8 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     color = fma(log(fma(color, vec3(5.555556), vec3(0.047996))) * 0.43429448190325176, vec3(0.244161), vec3(0.386036));
 
     // ASC CDL
-    color = fma(color, colorGradingSettings.slope.xyz, colorGradingSettings.offset.xyz);
-    color = mix(pow(color, colorGradingSettings.power.xyz), color, vec3(lessThanEqual(color, vec3(0.0))));
+    color = fma(color, colorGradingSettings.slope.xyz * colorGradingSettings.slope.w, colorGradingSettings.offset.xyz + colorGradingSettings.offset.www);
+    color = mix(pow(color, colorGradingSettings.power.xyz * colorGradingSettings.power.w), color, vec3(lessThanEqual(color, vec3(0.0))));
 
     // Contrast
     color = mix(vec3(0.4135884), color, colorGradingSettings.contrastVibranceSaturationHue.x);
@@ -146,13 +151,15 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
   
   // Curves - "Practical HDR and Wide Color Techniques in Gran Turismo SPORT", Uchimura 2018
   {
-    vec3 d = vec3(1.0) / pow(colorGradingSettings.curvesMidPoint.xyz, colorGradingSettings.curvesGamma.xyz - vec3(1.0));
-    vec3 dark = pow(color, colorGradingSettings.curvesGamma.xyz) * d;
-    vec3 light = fma(color - colorGradingSettings.curvesMidPoint.xyz, colorGradingSettings.curvesScale.xyz, colorGradingSettings.curvesMidPoint.xyz);
-    color = mix(light, dark, vec3(lessThanEqual(color, colorGradingSettings.curvesMidPoint.xyz)));
+    vec3 midPoint = colorGradingSettings.curvesMidPoint.xyz * colorGradingSettings.curvesMidPoint.w,
+         scale = colorGradingSettings.curvesScale.xyz * colorGradingSettings.curvesScale.w,
+         gamma = colorGradingSettings.curvesGamma.xyz * colorGradingSettings.curvesGamma.w;  
+    color = mix(fma(color - midPoint, scale, midPoint), 
+                pow(color, gamma) * (vec3(1.0) / pow(midPoint, gamma - vec3(1.0))), 
+                vec3(lessThanEqual(color, midPoint)));
   }
 
-  // Back from linear Rec. 2020 color space to linear sRGB, for the following tone mapping shader pass
+  // Back from linear Rec. 2020 color space to linear sRGB, for the following tone mapping pass outside of this function 
   color = LinearRec2020ToLinearSRGBMatrix * max(vec3(0.0), color);
 
   return color;
