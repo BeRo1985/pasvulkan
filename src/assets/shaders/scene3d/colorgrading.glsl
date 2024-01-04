@@ -12,7 +12,8 @@
 // - Hue
 // - Channel mixer
 // - Shadows/mid-tones/highlights
-// - Slope/offset/power (CDL)
+// - Slope/offset/power (ASC CDL / SOP)
+// - Lift/gamma/gain/offset (LGGO)
 // - Contrast
 // - Vibrance
 // - Saturation
@@ -26,7 +27,7 @@ struct ColorGradingSettings {
   
   // Channel mixer
   vec4 channelMixerRed; // x: red, y: green, z: blue, w: unused
-  vec4 channelMixerGreen; // x: red, y: green, z: blue, w: unused
+  vec4 channelMixerGreen; // x: red, y: green, z: blue, w unused
   vec4 channelMixerBlue; // x: red, y: green, z: blue, w: unused
 
   // Shadows/mid-tones/highlights 
@@ -35,10 +36,12 @@ struct ColorGradingSettings {
   vec4 highlights;
   vec4 tonalRanges;
 
-  // ASC CDL
-  vec4 slope; // x: red, y: green, z: blue, w: all channel value
+  // ASC CDL (slope/offset/power)
+  vec4 asccdlSlope; // x: red, y: green, z: blue, w: all channel value
+  vec4 asccdlOffset; // x: red, y: green, z: blue, w: all channel value
+  vec4 asccdlPower; // x: red, y: green, z: blue, w: all channel value
+
   vec4 offset; // x: red, y: green, z: blue, w: all channel value
-  vec4 power; // x: red, y: green, z: blue, w: all channel value
 
   // Contrast, vibrance, saturation, hue
   vec4 contrastVibranceSaturationHue; // x: contrast, y: vibrance, z: saturation, w: hue
@@ -59,9 +62,10 @@ const ColorGradingSettings defaultColorGradingSettings = ColorGradingSettings(
   vec4(1.0, 1.0, 1.0, 0.0),    // midtones
   vec4(1.0, 1.0, 1.0, 0.0),    // highlights
   vec4(0.0, 0.333, 0.55, 1.0), // tonalRanges, defaults from DaVinci Resolve 
-  vec4(1.0, 1.0, 1.0, 1.0),    // slope
+  vec4(1.0, 1.0, 1.0, 1.0),    // asccdlSlope
+  vec4(0.0, 0.0, 0.0, 0.0),    // asccdlOffset
+  vec4(1.0, 1.0, 1.0, 1.0),    // asccdlPower
   vec4(0.0, 0.0, 0.0, 0.0),    // offset
-  vec4(1.0, 1.0, 1.0, 1.0),    // power
   vec4(1.0, 1.0, 1.0, 0.0),    // contrastVibranceSaturationHue
   vec4(1.0, 1.0, 1.0, 1.0),    // curvesGamma
   vec4(1.0, 1.0, 1.0, 1.0),    // curvesMidPoint
@@ -148,8 +152,27 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     color = fma(log(fma(color, vec3(5.555556), vec3(0.047996))) * 0.43429448190325176, vec3(0.244161), vec3(0.386036));
 
     // ASC CDL
-    color = fma(color, colorGradingSettings.slope.xyz * colorGradingSettings.slope.w, colorGradingSettings.offset.xyz + colorGradingSettings.offset.www);
-    color = mix(pow(color, colorGradingSettings.power.xyz * colorGradingSettings.power.w), color, vec3(lessThanEqual(color, vec3(0.0))));
+    color = fma(color, max(vec3(0.0), colorGradingSettings.asccdlSlope.xyz * colorGradingSettings.asccdlSlope.w), colorGradingSettings.asccdlOffset.xyz + colorGradingSettings.asccdlOffset.www);
+    color = mix(pow(color, max(vec3(0.0), colorGradingSettings.asccdlPower.xyz * colorGradingSettings.asccdlPower.www)), color, vec3(lessThanEqual(color, vec3(0.0))));
+
+    // Here just as reference "Lift, gamma, gain" but ASC CDL is standardized, LGG is not, where every software has its own implementation and 
+    // different formula, which are incompatible with each other, which is not good for interoperability.
+    // color = max(vec3(0.0), (((color - vec3(1.0)) * (colorGradingSettings.lggoLift.xyz * colorGradingSettings.lggoLift.www)) + vec3(1.0)) * (colorGradingSettings.lggoGain.xyz * colorGradingSettings.lggoGain.w));
+    // color = pow(color, max(vec3(0.0), vec3(1.0) / colorGradingSettings.lggoGamma.xyz));
+
+    // Offset (outside ASC CDL, since it is not part of the ASC CDL standard, but DaVinci Resolve has it in its Lift/Gamma/Gain/Offset, so 
+    // it is here, since it doesn't hurt to have it here, when the default values are zero. LGG is otherwise more or less mappable to SOP.)
+    // The conversion from "Lift/Gain/Gamma" to "Slope/Offset/Power" can be peformed by following equations:
+    //
+    //   slope = lift * gain;
+    //   offset = (1.0 - lift) * gain;
+    //   power = (gamma == 0.0) ? 3.402823466e+38 : (1.0 / gamma);
+    //
+    // When the "Lift/Gain/Gamma" variant from Blender and DarkTable is used. Both are using the same formula, although their LGG=>SOP
+    // conversion is wrong, where slope and offset are swapped at their implementation, which is not correct in direct comparison to
+    // the output from between ((((color - 1.0) * lift) + 1.0) * gain) ^ (1.0 / gamma) from Blender and DarkTable and their SOP
+    // implementation after the conversion from LGG to SOP. The correct conversion is the one above. 
+    color += colorGradingSettings.offset.xyz + colorGradingSettings.offset.www;
 
     // Contrast
     color = mix(vec3(0.4135884), color, colorGradingSettings.contrastVibranceSaturationHue.x);

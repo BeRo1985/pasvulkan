@@ -84,9 +84,11 @@ type TpvScene3DRendererInstanceColorGradingSettings=packed record
       Highlights:TpvVector4;
       TonalRanges:TpvVector4;
       
-      Slope:TpvVector4;
+      ASCCDLSlope:TpvVector4;
+      ASCCDLOffset:TpvVector4;
+      ASCCDLPower:TpvVector4;
+
       Offset:TpvVector4;
-      Power:TpvVector4;
       
       Contrast:TpvFloat;
       Vibrance:TpvFloat;
@@ -119,9 +121,11 @@ const DefaultColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettings
        Highlights:(x:1.0;y:1.0;z:1.0;w:0.0);
        TonalRanges:(x:0.0;y:0.333;z:0.55;w:1.0);
        
-       Slope:(x:1.0;y:1.0;z:1.0;w:1.0);
+       ASCCDLSlope:(x:1.0;y:1.0;z:1.0;w:1.0);
+       ASCCDLOffset:(x:0.0;y:0.0;z:0.0;w:0.0);
+       ASCCDLPower:(x:1.0;y:1.0;z:1.0;w:1.0);
+
        Offset:(x:0.0;y:0.0;z:0.0;w:0.0);
-       Power:(x:1.0;y:1.0;z:1.0;w:1.0);
        
        Contrast:1.0;
        Vibrance:1.0;

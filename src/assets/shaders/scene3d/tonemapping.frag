@@ -224,7 +224,7 @@ const mat3 AgXRec2020OutsetMatrix = mat3(
 vec3 AgXCore(vec3 color) {
   const float AgXMinEV = -12.47393;
   const float AgXMaxEV = 4.026069;
-  return AgXDefaultContrastApproximation((clamp(log2(max(vec3(1e-10), color)), AgXMinEV, AgXMaxEV) - AgXMinEV) / (AgXMaxEV - AgXMinEV));
+  return AgXDefaultContrastApproximation(clamp((log2(max(vec3(1e-10), color)) - vec3(AgXMinEV)) / vec3(AgXMaxEV - AgXMinEV), 0.0, 1.0));
 }
 
 vec3 AgXRec709(vec3 color) {
