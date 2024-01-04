@@ -38,6 +38,7 @@ uses SysUtils,
      PasVulkan.TimerQuery,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer,
+     PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyCubeMap;
 
@@ -202,6 +203,7 @@ begin
  fRenderer.MaxShadowMSAA:=UnitApplication.Application.MaxShadowMSAA;
  fRenderer.ShadowMapSize:=UnitApplication.Application.ShadowMapSize;
  fRenderer.GlobalIlluminationCaching:=false;
+ fRenderer.ToneMappingMode:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy;
  fRenderer.Prepare;
 
  fRenderer.AcquirePersistentResources;
@@ -211,6 +213,8 @@ begin
  fRendererInstance.PixelAmountFactor:=1.0;
 
  fRendererInstance.UseDebugBlit:=false;
+
+ fRendererInstance.LuminanceFactor:=4.0;
 
  fRendererInstance.Prepare;
 
