@@ -117,6 +117,12 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
                   0.1347940470862, 0.0740843621972, 1.0123903105818)) * color;
   } 
 
+  // Hue
+  if(colorGradingSettings.contrastVibranceSaturationHue.w != 0.0){
+    vec3 hueRotationValues = vec3(0.57735, sin(vec2(radians(colorGradingSettings.contrastVibranceSaturationHue.w)) + vec2(0.0, 1.57079632679)));
+    color = mix(hueRotationValues.xxx * dot(hueRotationValues.xxx, color), color, hueRotationValues.z) + (cross(hueRotationValues.xxx, color) * hueRotationValues.y);
+  }
+
   // Channel mixer
   color = vec3(
     dot(color, colorGradingSettings.channelMixerRed.xyz),
@@ -151,12 +157,6 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     // Log Space to Linear
     color = max(vec3(0.0), fma(exp(2.302585092994046 * fma(color, vec3(4.095658192749866), vec3(-1.5810715060963874))), vec3(0.17999998560000113), vec3(-0.008639279308857654)));
 
-  }
-
-  // Hue
-  if(colorGradingSettings.contrastVibranceSaturationHue.w != 0.0){
-    vec3 hueRotationValues = vec3(0.57735, sin(vec2(radians(colorGradingSettings.contrastVibranceSaturationHue.w)) + vec2(0.0, 1.57079632679)));
-    color = mix(hueRotationValues.xxx * dot(hueRotationValues.xxx, color), color, hueRotationValues.z) + (cross(hueRotationValues.xxx, color) * hueRotationValues.y);
   }
 
   // Vibrance
