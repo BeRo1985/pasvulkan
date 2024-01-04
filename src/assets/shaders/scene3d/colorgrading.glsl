@@ -74,7 +74,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
 
   // const vec3 LinearRGBLuminanceWeighting = vec3(0.2126729, 0.7151522, 0.0721750); // Rec. 709 / Linear RGB
   
-  // White balance in linear space
+  // White balance in linear sRGB space
   {
     float x = 0.31271 - ((colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.z * (1.0 / 6.0)) *  
                          ((colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.z < 0.0) ? 0.1 : 0.05));
