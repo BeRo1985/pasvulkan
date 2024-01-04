@@ -87,7 +87,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
                                      0.0, 1.0, 0.0) *
                                      mat3(k.x, 0.0, 0.0, 0.0, k.y, 0.0, 0.0, 0.0, k.z) *
                                      inverse(mat3(m.x, 0.0, 0.0, 0.0, m.y, 0.0, 0.0, 0.0, m.z));
-    const float logExposure = 380.0f;
+    const float logExposure = 380.0;
     color *= logExposure;
     vec4 q = vec4(dot(color, L), dot(color, M), dot(color, S), dot(color, R));
     vec3 g = inversesqrt(vec3(1.0) + max(vec3(0.0), (vec3(0.33) / m) * (q.rgb + (k * q.w))));
