@@ -68,37 +68,41 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math;
 
-type TpvScene3DRendererInstanceColorGradingSettings=packed record
-      
-      Exposure:TpvFloat;
-      NightAdaptiation:TpvFloat;
-      WhiteBalanceTemperature:TpvFloat;
-      WhiteBalanceTint:TpvFloat;
+type { TpvScene3DRendererInstanceColorGradingSettings }
+     TpvScene3DRendererInstanceColorGradingSettings=packed record
+      public
 
-      ChannelMixerRed:TpvVector4;
-      ChannelMixerGreen:TpvVector4;
-      ChannelMixerBlue:TpvVector4;
-      
-      Shadows:TpvVector4;
-      Midtones:TpvVector4;
-      Highlights:TpvVector4;
-      TonalRanges:TpvVector4;
-      
-      ASCCDLSlope:TpvVector4;
-      ASCCDLOffset:TpvVector4;
-      ASCCDLPower:TpvVector4;
+       Exposure:TpvFloat;
+       NightAdaptiation:TpvFloat;
+       WhiteBalanceTemperature:TpvFloat;
+       WhiteBalanceTint:TpvFloat;
 
-      Offset:TpvVector4;
-      
-      Contrast:TpvFloat;
-      Vibrance:TpvFloat;
-      Saturation:TpvFloat;
-      Hue:TpvFloat;
-      
-      CurvesGamma:TpvVector4;
-      CurvesMidPoint:TpvVector4;
-      CurvesScale:TpvVector4;
+       ChannelMixerRed:TpvVector4;
+       ChannelMixerGreen:TpvVector4;
+       ChannelMixerBlue:TpvVector4;
 
+       Shadows:TpvVector4;
+       Midtones:TpvVector4;
+       Highlights:TpvVector4;
+       TonalRanges:TpvVector4;
+
+       ASCCDLSlope:TpvVector4;
+       ASCCDLOffset:TpvVector4;
+       ASCCDLPower:TpvVector4;
+
+       Offset:TpvVector4;
+
+       Contrast:TpvFloat;
+       Vibrance:TpvFloat;
+       Saturation:TpvFloat;
+       Hue:TpvFloat;
+
+       CurvesGamma:TpvVector4;
+       CurvesMidPoint:TpvVector4;
+       CurvesScale:TpvVector4;
+
+      public
+       procedure SetLiftGammaGain(const aLift,aGamma,aGain:TpvVector3);
      end;
      PpvScene3DRendererInstanceColorGradingSettings=^TpvScene3DRendererInstanceColorGradingSettings;
 
@@ -139,5 +143,28 @@ const DefaultColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettings
       );     
 
 implementation
+
+{ TpvScene3DRendererInstanceColorGradingSettings }
+
+procedure TpvScene3DRendererInstanceColorGradingSettings.SetLiftGammaGain(const aLift,aGamma,aGain:TpvVector3);
+begin
+ ASCCDLSlope:=TpvVector4.InlineableCreate(aLift*aGain,1.0);
+ ASCCDLOffset:=TpvVector4.InlineableCreate((TpvVector3.InlineableCreate(1.0,1.0,1.0)-aLift)*aGain,0.0);
+ if aGamma.x=0.0 then begin
+  ASCCDLPower.x:=3.402823466e+38;
+ end else begin
+  ASCCDLPower.x:=1.0/aGamma.x;
+ end;
+ if aGamma.y=0.0 then begin
+  ASCCDLPower.y:=3.402823466e+38;
+ end else begin
+  ASCCDLPower.y:=1.0/aGamma.y;
+ end;
+ if aGamma.z=0.0 then begin
+  ASCCDLPower.z:=3.402823466e+38;
+ end else begin
+  ASCCDLPower.z:=1.0/aGamma.z;
+ end;
+end;
 
 end.
