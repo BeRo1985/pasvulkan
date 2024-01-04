@@ -19,6 +19,13 @@ layout(push_constant) uniform PushConstants {
   int mode;
 } pushConstants;
 
+#include "rec2020.glsl"
+#include "colorgrading.glsl"
+
+layout(set = 0, binding = 1) uniform ColorGradingSettingsBuffer {
+  ColorGradingSettings colorGradingSettings;
+} colorGradingSettingsBuffer;
+
 #define MODE_LINEAR 1
 #define MODE_REINHARD 2
 #define MODE_HEJL 3
@@ -35,9 +42,6 @@ layout(push_constant) uniform PushConstants {
 #define MODE_AGX_REC2020 14
 #define MODE_AGX_REC2020_GOLDEN 15
 #define MODE_AGX_REC2020_PUNCHY 16
-
-#include "rec2020.glsl"
-#include "colorgrading.glsl"
 
 vec3 linear(const in vec3 color) { 
   return color; 
@@ -335,7 +339,7 @@ vec3 doToneMapping(vec3 color){
 void main() {
 #if 1
   vec4 c = subpassLoad(uSubpassInput);
-  outColor = vec4(max(vec3(0.0), doToneMapping(max(vec3(0.0), applyColorGrading(c.xyz, defaultColorColorGradingSettings)))), c.w);
+  outColor = vec4(max(vec3(0.0), doToneMapping(max(vec3(0.0), applyColorGrading(c.xyz, colorGradingSettingsBuffer.colorGradingSettings)))), c.w);
 #else
   outColor = vec4(1.0);
 #endif

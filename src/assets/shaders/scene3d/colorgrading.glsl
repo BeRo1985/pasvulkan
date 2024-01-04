@@ -21,8 +21,8 @@
 
 struct ColorGradingSettings {
 
-  // Exposure, night adaptation, white balance
-  vec4 exposureNightAndWhiteBalanceTemperatureTint; // x: exposure, y: night adaptation, z: white balance temperature, w: white balance tint
+  // Exposure, night adaptation, white balance temperature, white balance tint
+  vec4 exposureNightAdaptationWhiteBalanceTemperatureTint; // x: exposure, y: night adaptation, z: white balance temperature, w: white balance tint
   
   // Channel mixer
   vec4 channelMixerRed; // x: red, y: green, z: blue, w: unused
@@ -50,8 +50,8 @@ struct ColorGradingSettings {
   
 };
 
-const ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettings(
-  vec4(0.0, 0.0, 0.0, 0.0),    // exposureNightAndWhiteBalanceTemperatureTint
+const ColorGradingSettings defaultColorGradingSettings = ColorGradingSettings(
+  vec4(0.0, 0.0, 0.0, 0.0),    // exposureNightAdaptationWhiteBalanceTemperatureTint
   vec4(1.0, 0.0, 0.0, 0.0),    // channelMixerRed
   vec4(0.0, 1.0, 0.0, 0.0),    // channelMixerGreen
   vec4(0.0, 0.0, 1.0, 0.0),    // channelMixerBlue
@@ -71,7 +71,7 @@ const ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettin
 vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSettings){
 
   // Exposure
-  color = max(vec3(0.0), color * exp(colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.x * 0.6931471805599453));
+  color = max(vec3(0.0), color * exp(colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.x * 0.6931471805599453));
 
   // Night adaptation
   {
@@ -91,7 +91,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     color *= logExposure;
     vec4 q = vec4(dot(color, L), dot(color, M), dot(color, S), dot(color, R));
     vec3 g = inversesqrt(vec3(1.0) + max(vec3(0.0), (vec3(0.33) / m) * (q.rgb + (k * q.w))));
-    vec3 deltaOpponent = weightedRodResponse * g * q.w * colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.y;
+    vec3 deltaOpponent = weightedRodResponse * g * q.w * colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.y;
     vec3 qHat = q.rgb + (opponent_to_LMS * deltaOpponent);
     color = (LMS_to_RGB * qHat) / logExposure;
   }
@@ -101,8 +101,8 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
 
   // White balance in linear Rec. 2020 color space
   {
-    float k = colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.z,
-          t = colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.w,
+    float k = colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.z,
+          t = colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.w,
           x = 0.31271 - (k * ((k < 0.0) ? 0.0214 : 0.066)),
           y = fma(t, 0.066, ((2.87 * x) - (3.0 * x * x)) - 0.27509507);
     vec3 XYZ = (vec3(x, 1.0, (1.0 - (x + y))) * vec2(1.0 / max(y, 1e-5), 1.0).xyx),

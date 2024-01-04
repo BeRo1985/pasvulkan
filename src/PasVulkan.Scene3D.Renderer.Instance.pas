@@ -90,7 +90,8 @@ uses Classes,
      PasVulkan.Scene3D.Renderer.MipmappedArray3DImage,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyBuffer,
      PasVulkan.Scene3D.Renderer.OrderIndependentTransparencyImage,
-     PasVulkan.Scene3D.Renderer.ImageBasedLighting.ReflectionProbeCubeMaps;
+     PasVulkan.Scene3D.Renderer.ImageBasedLighting.ReflectionProbeCubeMaps,
+     PasVulkan.Scene3D.Renderer.Instance.ColorGrading;
 
 type { TpvScene3DRendererInstance }
      TpvScene3DRendererInstance=class(TpvScene3DRendererBaseObject)
@@ -418,6 +419,7 @@ type { TpvScene3DRendererInstance }
             TGlobalIlluminationCascadedVoxelConeTracingDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TViews=array[0..MaxInFlightFrames-1] of TpvScene3D.TViews;
             TPerInFlightFrameVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+            TColorGradingSettingUniformBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
       private
        fScene3D:TpvScene3D;
        fID:TpvUInt32;
@@ -607,6 +609,10 @@ type { TpvScene3DRendererInstance }
        fPointerToPerInFlightFrameGPUCulledArray:TpvScene3D.PPerInFlightFrameGPUCulledArray;
        fDrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets;
       private
+       fColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettingsArray;
+       fPointerToColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray; 
+       fColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers;
+      private
        function AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;
        function GetPixelAmountFactor:TpvDouble;
        procedure SetPixelAmountFactor(const aPixelAmountFactor:TpvDouble);
@@ -779,6 +785,9 @@ type { TpvScene3DRendererInstance }
        property PerInFlightFrameGPUCulledArray:TpvScene3D.TPerInFlightFrameGPUCulledArray read fPerInFlightFrameGPUCulledArray;
        property PerInFlightFrameGPUCountObjectIndicesArray:TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray read fPerInFlightFrameGPUCountObjectIndicesArray;
        property DrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets read fDrawChoreographyBatchRangeFrameBuckets write fDrawChoreographyBatchRangeFrameBuckets;
+      public 
+       property ColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray read fPointerToColorGradingSettings; 
+       property ColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers read fColorGradingSettingUniformBuffers;
       published
        property Scene3D:TpvScene3D read fScene3D;
        property ID:TpvUInt32 read fID;
@@ -1625,6 +1634,12 @@ begin
 
  fFrameGraph.DefaultResourceInstanceType:=TpvFrameGraph.TResourceInstanceType.SingleInstance;
 
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fColorGradingSettings[InFlightFrameIndex]:=DefaultColorGradingSettings;
+ end;
+
+ fPointerToColorGradingSettings:=@fColorGradingSettings;
+
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
@@ -1809,6 +1824,23 @@ begin
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  fColorGradingSettingUniformBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
+                                                                                 SizeOf(TpvScene3DRendererInstanceColorGradingSettings),
+                                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                 [],
+                                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+ end;
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
    for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
     for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to high(TpvScene3D.TPrimitiveTopology) do begin
@@ -1851,6 +1883,10 @@ begin
  end;
 
  FreeAndNil(fCascadedShadowMapBuilder);
+
+ for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+  FreeAndNil(fColorGradingSettingUniformBuffers[InFlightFrameIndex]);
+ end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fVulkanRenderSemaphores[InFlightFrameIndex]);
@@ -5815,6 +5851,14 @@ begin
    end;
   end;
  end;
+
+ Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
+                                            fScene3D.VulkanStagingCommandBuffer,
+                                            fScene3D.VulkanStagingFence,
+                                            fColorGradingSettings[aInFlightFrameIndex],
+                                            fColorGradingSettingUniformBuffers[aInFlightFrameIndex],
+                                            0,
+                                            SizeOf(TpvScene3DRendererInstanceColorGradingSettings));
 
  Renderer.VulkanDevice.MemoryStaging.Upload(fScene3D.VulkanStagingQueue,
                                             fScene3D.VulkanStagingCommandBuffer,
