@@ -935,7 +935,7 @@ begin
  end;
 
  if fToneMappingMode=TpvScene3DRendererToneMappingMode.Auto then begin
-  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Uchimura;
+  fToneMappingMode:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy;
  end;
 
 end;
