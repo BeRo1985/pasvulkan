@@ -9,11 +9,11 @@
 // - Post-correction-exposure
 // - Night adaptation
 // - White balance
+// - Hue
 // - Channel mixer
 // - Shadows/mid-tones/highlights
 // - Slope/offset/power (CDL)
 // - Contrast
-// - Hue
 // - Vibrance
 // - Saturation
 // - Curves
