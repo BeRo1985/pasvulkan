@@ -46,28 +46,25 @@ struct ColorGradingSettings {
   vec4 curvesGamma; // x: red, y: green, z: blue, w: unused
   vec4 curvesMidPoint; // x: red, y: green, z: blue, w: unused
   vec4 curvesScale; // x: red, y: green, z: blue, w: unused
-
-  // Luminance scaling, gamut mapping
-  ivec4 luminanceScalingGamutMapping; // x: luminance scaling, y: gamut mapping, z: unused, w: unused
+  
 };
 
-ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettings(
-  vec4(0.0, 0.0, 0.0, 0.0), // exposureNightAndWhiteBalanceTemperatureTint
-  vec4(1.0, 0.0, 0.0, 0.0), // channelMixerRed
-  vec4(0.0, 1.0, 0.0, 0.0), // channelMixerGreen
-  vec4(0.0, 0.0, 1.0, 0.0), // channelMixerBlue
-  vec4(1.0, 1.0, 1.0, 0.0), // shadows
-  vec4(1.0, 1.0, 1.0, 0.0), // midtones
-  vec4(1.0, 1.0, 1.0, 0.0), // highlights
+const ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettings(
+  vec4(0.0, 0.0, 0.0, 0.0),    // exposureNightAndWhiteBalanceTemperatureTint
+  vec4(1.0, 0.0, 0.0, 0.0),    // channelMixerRed
+  vec4(0.0, 1.0, 0.0, 0.0),    // channelMixerGreen
+  vec4(0.0, 0.0, 1.0, 0.0),    // channelMixerBlue
+  vec4(1.0, 1.0, 1.0, 0.0),    // shadows
+  vec4(1.0, 1.0, 1.0, 0.0),    // midtones
+  vec4(1.0, 1.0, 1.0, 0.0),    // highlights
   vec4(0.0, 0.333, 0.55, 1.0), // tonalRanges, defaults from DaVinci Resolve 
-  vec4(1.0, 1.0, 1.0, 0.0), // slope
-  vec4(0.0, 0.0, 0.0, 0.0), // offset
-  vec4(1.0, 1.0, 1.0, 0.0), // power
-  vec4(1.0, 1.0, 1.0, 0.0), // contrastVibranceSaturationHue
-  vec4(1.0, 1.0, 1.0, 0.0), // curvesGamma
-  vec4(1.0, 1.0, 1.0, 0.0), // curvesMidPoint
-  vec4(1.0, 1.0, 1.0, 0.0), // curvesScale
-  ivec4(0, 0, 0, 0) // luminanceScalingGamutMapping
+  vec4(1.0, 1.0, 1.0, 0.0),    // slope
+  vec4(0.0, 0.0, 0.0, 0.0),    // offset
+  vec4(1.0, 1.0, 1.0, 0.0),    // power
+  vec4(1.0, 1.0, 1.0, 0.0),    // contrastVibranceSaturationHue
+  vec4(1.0, 1.0, 1.0, 0.0),    // curvesGamma
+  vec4(1.0, 1.0, 1.0, 0.0),    // curvesMidPoint
+  vec4(1.0, 1.0, 1.0, 0.0)     // curvesScale
 );
 
 vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSettings){
@@ -155,7 +152,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     color = mix(light, dark, vec3(lessThanEqual(color, colorGradingSettings.curvesMidPoint.xyz)));
   }
 
-  // From linear Rec. 2020 color space to linear sRGB
+  // Back from linear Rec. 2020 color space to linear sRGB, for the following tone mapping shader pass
   color = LinearRec2020ToLinearSRGBMatrix * max(vec3(0.0), color);
 
   return color;
