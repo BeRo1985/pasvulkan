@@ -141,9 +141,9 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
 
   // Vibrance
   {
-    float s = (colorGradingSettings.contrastVibranceSaturationHue.y - 1.0) / (1.0 + exp(-3.0 * (color.x - max(color.y, color.z)))) + 1.0;
-    vec3 l = LinearRec2020LuminanceWeights * (1.0 - s);
-    color = vec3(dot(color, l + vec2(s, 0.0).xyy), dot(color, l + vec2(s, 0.0).yxy), dot(color, l + vec2(s, 0.0).yyx));    
+    vec2 s = vec2((colorGradingSettings.contrastVibranceSaturationHue.y - 1.0) / (1.0 + exp(-3.0 * (color.x - max(color.y, color.z)))) + 1.0, 0.0);
+    vec3 l = LinearRec2020LuminanceWeights * (1.0 - s.x);
+    color = vec3(dot(color, l + s.xyy), dot(color, l + s.yxy), dot(color, l + s.yyx));
   }
 
   // Saturation
