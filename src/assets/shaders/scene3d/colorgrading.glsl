@@ -66,7 +66,7 @@ ColorGradingSettings defaultColorColorGradingSettings = ColorGradingSettings(
   vec4(1.0, 1.0, 1.0, 0.0), // contrastVibranceSaturationHue
   vec4(1.0, 1.0, 1.0, 0.0), // curvesGamma
   vec4(1.0, 1.0, 1.0, 0.0), // curvesMidPoint
-  vec4(1.0, 1.0, 1.0, 0.0) // curvesScale
+  vec4(1.0, 1.0, 1.0, 0.0), // curvesScale
   ivec4(0, 0, 0, 0) // luminanceScalingGamutMapping
 );
 
@@ -74,24 +74,26 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
 
   // const vec3 LinearRGBLuminanceWeighting = vec3(0.2126729, 0.7151522, 0.0721750); // Rec. 709 / Linear RGB
   
-  // White balance in linear sRGB space
-  {
-    float x = 0.31271 - ((colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.z * (1.0 / 6.0)) *  
-                         ((colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.z < 0.0) ? 0.1 : 0.05));
-    float y = fma(colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.w, 0.05 / 6.0, ((2.87 * x) - (3.0 * x * x)) - 0.27509507);
-    color = max(vec3(0.0),
-                mat3(2.85847, -1.62879, -0.0248910, -0.210182, 1.15820, 0.000324281, 0.0418120, -0.118169, 1.06867) *
-              ((mat3(0.390405, 0.549941, 0.00892632, 0.0708416, 0.963172, 0.00135775, 0.0231082, 0.128021, 0.936245) * color) *
-                (vec3(0.949237, 1.03542, 1.08728) / // D65 white point
-                (mat3(0.7328, 0.4296, -0.1624, -0.7036, 1.6975, 0.0061, 0.0030, 0.0136, 0.9834) * 
-                  ((vec3(x / y, 1, 1.0 - (x + y)) * 1.0) / vec2(1.0, y).yxy)
-                )
-                )
-              ));    
-  }
-
   // From linear sRGB to linear Rec. 2020 color space
   color = LinearSRGBToLinearRec2020Matrix * max(vec3(0.0), color);
+
+  // White balance in linear Rec. 2020 color space
+  {
+    float k = colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.z,
+          t = colorGradingSettings.exposureNightAndWhiteBalanceTemperatureTint.w,
+          x = 0.31271 - (k * ((k < 0.0) ? 0.0214 : 0.066)),
+          y = fma(t, 0.066, ((2.87 * x) - (3.0 * x * x)) - 0.27509507);
+    vec3 XYZ = (vec3(x, 1.0, (1.0 - (x + y))) * vec2(1.0 / max(y, 1e-5), 1.0).xyx),
+         LMS = mat3(0.401288, -0.250268, -0.002079, 0.650173, 1.204414, 0.048952, -0.051461, 0.045854, 0.953127) * XYZ, // XYZ to CIECAT16 matrix 
+         v = vec3(0.975533, 1.016483, 1.084837) / LMS; // D65 white point
+    color = ((mat3(3.8733532291777, 0.2507926606282, 0.014079235027999992, // LMS CAT16 to Rec. 2020 matrix
+                   -2.3033185515869, 0.8670924192667999, -0.0944384071338, 
+                   -0.3471639522502, -0.0968435083328, 0.9927970866124) * 
+              mat3(vec3(v.x, 0.0, 0.0), vec3(0.0, v.y, 0.0), vec3(0.0, 0.0, v.z))) * 
+             mat3(0.21905756192659998, -0.06438950088709999, -0.0092312583396, // Rec. 2020 to LMS CAT16 matrix
+                  0.5965740909872, 0.9903051386899, 0.08574124775780001, 
+                  0.1347940470862, 0.0740843621972, 1.0123903105818)) * color;
+  } 
 
   // Channel mixer
   color = vec3(
@@ -108,7 +110,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
           m = 1.0 - (s + h);
     color = (color * s * colorGradingSettings.shadows.xyz) + 
             (color * m * colorGradingSettings.midtones.xyz) +
-            (color * h * colorGradingSettings.highlights.xyz);:
+            (color * h * colorGradingSettings.highlights.xyz);
   }
 
   { 

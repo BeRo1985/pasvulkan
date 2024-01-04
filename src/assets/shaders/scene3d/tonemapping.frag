@@ -37,6 +37,7 @@ layout(push_constant) uniform PushConstants {
 #define MODE_AGX_REC2020_PUNCHY 16
 
 #include "rec2020.glsl"
+#include "colorgrading.glsl"
 
 vec3 linear(const in vec3 color) { 
   return color; 
@@ -334,7 +335,7 @@ vec3 doToneMapping(vec3 color){
 void main() {
 #if 1
   vec4 c = subpassLoad(uSubpassInput);
-  outColor = vec4(max(vec3(0.0), doToneMapping(max(vec3(0.0), c.xyz))), c.w);
+  outColor = vec4(max(vec3(0.0), doToneMapping(max(vec3(0.0), applyColorGrading(c.xyz, defaultColorColorGradingSettings)))), c.w);
 #else
   outColor = vec4(1.0);
 #endif
