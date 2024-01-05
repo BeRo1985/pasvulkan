@@ -58,9 +58,9 @@ const ColorGradingSettings defaultColorGradingSettings = ColorGradingSettings(
   vec4(1.0, 0.0, 0.0, 0.0),    // channelMixerRed
   vec4(0.0, 1.0, 0.0, 0.0),    // channelMixerGreen
   vec4(0.0, 0.0, 1.0, 0.0),    // channelMixerBlue
-  vec4(1.0, 1.0, 1.0, 0.0),    // shadows
-  vec4(1.0, 1.0, 1.0, 0.0),    // midtones
-  vec4(1.0, 1.0, 1.0, 0.0),    // highlights
+  vec4(1.0, 1.0, 1.0, 1.0),    // shadows
+  vec4(1.0, 1.0, 1.0, 1.0),    // midtones
+  vec4(1.0, 1.0, 1.0, 1.0),    // highlights
   vec4(0.0, 0.333, 0.55, 1.0), // tonalRanges, defaults from DaVinci Resolve 
   vec4(1.0, 1.0, 1.0, 1.0),    // asccdlSlope
   vec4(0.0, 0.0, 0.0, 0.0),    // asccdlOffset
