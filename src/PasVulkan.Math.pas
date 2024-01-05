@@ -1709,8 +1709,10 @@ function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CA
 function PackTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvPackedTangentSpace;
 procedure UnpackTangentSpace(const aPackedTangentSpace:TpvPackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 
+function ConvertLinearToSRGB(const aColor:TpvFloat):TpvFloat; overload;
 function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3; overload;
 function ConvertLinearToSRGB(const aColor:TpvVector4):TpvVector4; overload;
+function ConvertSRGBToLinear(const aColor:TpvFloat):TpvFloat; overload;
 function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3; overload;
 function ConvertSRGBToLinear(const aColor:TpvVector4):TpvVector4; overload;
 
@@ -18401,6 +18403,18 @@ begin
  aBitangent:=Vector3Norm(Vector3Cross(aNormal,aTangent));
 end;//}
 
+function ConvertLinearToSRGB(const aColor:TpvFloat):TpvFloat;
+const InverseGamma=1.0/2.4;
+begin
+ if aColor<0.0031308 then begin
+  result:=aColor*12.92;
+ end else if aColor<1.0 then begin
+  result:=(Power(aColor,InverseGamma)*1.055)-0.055;
+ end else begin
+  result:=1.0;
+ end;
+end;
+
 function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3;
 const InverseGamma=1.0/2.4;
 var ChannelIndex:TpvInt32;
@@ -18430,6 +18444,18 @@ begin
   end;
  end;
  result.a:=aColor.a;
+end;
+
+function ConvertSRGBToLinear(const aColor:TpvFloat):TpvFloat;
+const Inverse12d92=1.0/12.92;
+begin
+ if aColor<0.04045 then begin
+  result:=aColor*Inverse12d92;
+ end else if aColor<1.0 then begin
+  result:=Power((aColor+0.055)/1.055,2.4);
+ end else begin
+  result:=1.0;
+ end;
 end;
 
 function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3;

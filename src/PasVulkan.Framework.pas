@@ -3423,7 +3423,8 @@ type EpvVulkanException=class(Exception);
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
                                  const aSRGB:boolean;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aDestinationFormat:TVkFormat=VK_FORMAT_R32G32B32A32_SFLOAT);
        constructor CreateFromTGA(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3566,7 +3567,7 @@ type EpvVulkanException=class(Exception);
        procedure LoadFromKTX(const aStream:TStream;const aAdditionalSRGB:boolean=false);
        procedure LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean=false);
        procedure LoadFromDDS(const aStream:TStream;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+       procedure LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aDestinationFormat:TVkFormat=VK_FORMAT_R32G32B32A32_SFLOAT);
        procedure LoadFromTGA(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
        procedure LoadFromQOI(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
        procedure LoadFromPNG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
@@ -22498,10 +22499,11 @@ constructor TpvVulkanTexture.CreateFromHDR(const aDevice:TpvVulkanDevice;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aDestinationFormat:TVkFormat);
 begin
  Create(aDevice);
- LoadFromHDR(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromHDR(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aDestinationFormat);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -25259,7 +25261,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aDestinationFormat:TVkFormat);
 const RGBE_DATA_RED=0;
       RGBE_DATA_GREEN=1;
       RGBE_DATA_BLUE=2;
@@ -25293,6 +25295,9 @@ const RGBE_DATA_RED=0;
      rgbe:array[0..3] of TpvUInt8;
      Len,Val:TpvUInt8;
      p:PVkFloat;
+     p8:PpvUInt8;
+     p16:PpvHalfFloat;
+     p32:PpvUInt32;
  begin
   result:=false;
   scanlinebuffer:=nil;
@@ -25508,6 +25513,114 @@ const RGBE_DATA_RED=0;
       inc(p,2);
      end;
     end;
+    case aDestinationFormat of
+     VK_FORMAT_R32G32B32A32_SFLOAT:begin
+      // Just passs through
+     end;
+     VK_FORMAT_R16G16B16A16_SFLOAT:begin
+      CountPixels:=ImageWidth*ImageHeight;
+      p:=ImageData;
+      p16:=ImageData;
+      while CountPixels>0 do begin
+       dec(CountPixels);
+       p16^:=TpvHalfFloat.Create(p^);
+       inc(p);
+       inc(p16);
+       p16^:=TpvHalfFloat.Create(p^);
+       inc(p);
+       inc(p16);
+       p16^:=TpvHalfFloat.Create(p^);
+       inc(p);
+       inc(p16);
+       p16^:=TpvHalfFloat.Create(0.0);
+       inc(p);
+       inc(p16);
+      end;
+      ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvHalfFloat)*4);
+     end;
+     VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
+      CountPixels:=ImageWidth*ImageHeight;
+      p:=ImageData;
+      p32:=ImageData;
+      while CountPixels>0 do begin
+       dec(CountPixels);
+       r:=p^;
+       inc(p);
+       g:=p^;
+       inc(p);
+       b:=p^;
+       inc(p,2);
+       p32^:=ConvertRGB32FToRGB9E5(r,g,b);
+       inc(p32);
+      end;
+      ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt32));
+     end;
+     VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+      CountPixels:=ImageWidth*ImageHeight;
+      p:=ImageData;
+      p32:=ImageData;
+      while CountPixels>0 do begin
+       dec(CountPixels);
+       r:=p^;
+       inc(p);
+       g:=p^;
+       inc(p);
+       b:=p^;
+       inc(p,2);
+       p32^:=ConvertRGB32FToR11FG11FB10F(r,g,b);
+       inc(p32);
+      end;
+      ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt32));
+     end;
+     VK_FORMAT_R8G8B8A8_UNORM:begin
+      CountPixels:=ImageWidth*ImageHeight;
+      p:=ImageData;
+      p8:=ImageData;
+      while CountPixels>0 do begin
+       dec(CountPixels);
+       p8^:=Min(Max(round(Min(Max(p^,0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+       p8^:=Min(Max(round(Min(Max(p^,0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+       p8^:=Min(Max(round(Min(Max(p^,0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+       p8^:=Min(Max(round(Min(Max(p^,0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+      end;
+      ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4);
+     end;
+     VK_FORMAT_R8G8B8A8_SRGB:begin
+      CountPixels:=ImageWidth*ImageHeight;
+      p:=ImageData;
+      p8:=ImageData;
+      while CountPixels>0 do begin
+       dec(CountPixels);
+       p8^:=Min(Max(round(Min(Max(ConvertLinearToSRGB(p^),0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+       p8^:=Min(Max(round(Min(Max(ConvertLinearToSRGB(p^),0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+       p8^:=Min(Max(round(Min(Max(ConvertLinearToSRGB(p^),0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+       p8^:=Min(Max(round(Min(Max(p^,0.0),1.0)*255.0),0),255);
+       inc(p);
+       inc(p8);
+      end;
+      ReAllocMem(ImageData,ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4);
+     end;
+     else begin
+      FreeMem(ImageData);
+      ImageData:=nil;
+      result:=false;
+      exit;
+     end;
+    end;
    end else begin
     FreeMem(ImageData);
     ImageData:=nil;
@@ -25523,7 +25636,7 @@ begin
  ImageHeight:=0;
  try
   if LoadHDRImage(ImageData,ImageWidth,ImageHeight) then begin
-   LoadFromMemory(VK_FORMAT_R32G32B32A32_SFLOAT,
+   LoadFromMemory(aDestinationFormat,
                   VK_SAMPLE_COUNT_1_BIT,
                   Max(1,ImageWidth),
                   Max(1,ImageHeight),
