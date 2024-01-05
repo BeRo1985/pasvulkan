@@ -120,9 +120,9 @@ const DefaultColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettings
        ChannelMixerGreen:(x:0.0;y:1.0;z:0.0;w:0.0);
        ChannelMixerBlue:(x:0.0;y:0.0;z:1.0;w:0.0);
        
-       Shadows:(x:1.0;y:1.0;z:1.0;w:0.0);
-       Midtones:(x:1.0;y:1.0;z:1.0;w:0.0);
-       Highlights:(x:1.0;y:1.0;z:1.0;w:0.0);
+       Shadows:(x:1.0;y:1.0;z:1.0;w:1.0);
+       Midtones:(x:1.0;y:1.0;z:1.0;w:1.0);
+       Highlights:(x:1.0;y:1.0;z:1.0;w:1.0);
        TonalRanges:(x:0.0;y:0.333;z:0.55;w:1.0);
        
        ASCCDLSlope:(x:1.0;y:1.0;z:1.0;w:1.0);

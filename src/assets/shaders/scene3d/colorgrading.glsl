@@ -154,9 +154,9 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
           s = 1.0 - smoothstep(colorGradingSettings.tonalRanges.x, colorGradingSettings.tonalRanges.y, y),
           h = smoothstep(colorGradingSettings.tonalRanges.z, colorGradingSettings.tonalRanges.w, y),
           m = 1.0 - (s + h);
-    color = (color * s * colorGradingSettings.shadows.xyz) + 
-            (color * m * colorGradingSettings.midtones.xyz) +
-            (color * h * colorGradingSettings.highlights.xyz);
+    color = (color * s * (colorGradingSettings.shadows.xyz * colorGradingSettings.shadows.w)) + 
+            (color * m * (colorGradingSettings.midtones.xyz * colorGradingSettings.midtones.w)) +
+            (color * h * (colorGradingSettings.highlights.xyz * colorGradingSettings.highlights.w));
   }
 
   { 
