@@ -79,6 +79,19 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
 
   // Night adaptation
   if(colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.y != 0.0){
+#if 1
+    // Implementation with precomputed values
+    const mat3x4 LMSR = mat3x4(vec4(7.696847, 2.431137, 0.289117, 0.466386), vec4(18.424824, 18.697937, 1.401833, 15.564362), vec4(2.068096, 3.012463, 13.792292, 10.059963));
+    const mat3 LMS_to_RGB = mat3(vec3(0.18838383, -0.024254944, -0.0014836978), vec3(-0.18656954, 0.07839355, -0.004056921), vec3(0.01250249, -0.013485514, 0.073612854));
+    const mat3 opponent_to_LMS = mat3(-0.5, 0.5, 0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 1.0);
+    const mat3 weightedRodResponse = mat3(vec3(-1.043769, 0.5244833, 8.741389), vec3(2.484736, 0.5244229, 8.74038), vec3(0.0, 0.8403885, 0.0));
+    vec4 q = LMSR * (color * 380.0);
+    vec3 g = inversesqrt(vec3(1.0) + max(vec3(0.0), vec3(0.517883, 0.840936, 0.205428) * (q.rgb + (vec3(0.2, 0.2, 0.3) * q.w))));
+    vec3 deltaOpponent = weightedRodResponse * g * q.w * colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.y;
+    vec3 qHat = q.rgb + (opponent_to_LMS * deltaOpponent);
+    color = (LMS_to_RGB * qHat) * 0.002631578947368421;       
+#else
+    // Reference 
     const vec3 L = vec3(7.696847, 18.424824, 2.068096), M = vec3(2.431137, 18.697937, 3.012463),
                S = vec3(0.289117, 1.401833, 13.792292), R = vec3(0.466386, 15.564362, 10.059963);
     const mat3 LMS_to_RGB = inverse(transpose(mat3(L, M, S)));
@@ -98,6 +111,7 @@ vec3 applyColorGrading(vec3 color, const in ColorGradingSettings colorGradingSet
     vec3 deltaOpponent = weightedRodResponse * g * q.w * colorGradingSettings.exposureNightAdaptationWhiteBalanceTemperatureTint.y;
     vec3 qHat = q.rgb + (opponent_to_LMS * deltaOpponent);
     color = (LMS_to_RGB * qHat) / logExposure;
+#endif    
   }
 
   // From linear sRGB to linear Rec. 2020 color space
