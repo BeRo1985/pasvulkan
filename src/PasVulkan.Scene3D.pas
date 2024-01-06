@@ -2383,6 +2383,7 @@ type EpvScene3D=class(Exception);
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
                      fActive:boolean;
+                     fOrder:TpvInt64;
                      fHeadless:boolean;
                      fPreviousActive:boolean;
                      fUseRenderInstances:boolean;
@@ -2516,10 +2517,12 @@ type EpvScene3D=class(Exception);
                                         const aZFar:PpvFloat=nil;
                                         const aAspectRatio:TpvFloat=0.0):boolean;
                      procedure SetDirty;
+                     function GetOrder:TpvInt64;
                      function CreateRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
                     published
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
+                     property Order:TpvInt64 read fOrder write fOrder;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
@@ -2538,7 +2541,11 @@ type EpvScene3D=class(Exception);
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                      property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
                    end;
-                   TInstances=TpvObjectGenericList<TInstance>;
+                   { TInstances }
+                   TInstances=class(TpvObjectGenericList<TInstance>)
+                    public
+                     procedure Sort;
+                   end;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
                    TMaterialIndexHashMap=TpvHashMap<TMaterial,TpvSizeInt>;
                    TNameIndexHashMap=TpvStringHashMap<TpvSizeInt>;
@@ -2548,6 +2555,7 @@ type EpvScene3D=class(Exception);
               fCulling:boolean;
               fDynamicAABBTreeCulling:boolean;
               fHeadless:boolean;
+              fOrder:TpvInt64;
               fObjects:TBaseObjects;
               fMaterialsToDuplicate:TpvScene3D.TGroup.TMaterialsToDuplicate;
               fMaterials:TpvScene3D.TMaterials;
@@ -2634,6 +2642,8 @@ type EpvScene3D=class(Exception);
               function BeginLoad(const aStream:TStream):boolean; override;
               function EndLoad:boolean; override;
              public
+              function Usable:boolean; inline;
+             public
               procedure Check(const aInFlightFrameIndex:TpvSizeInt);
               procedure Update(const aInFlightFrameIndex:TpvSizeInt);
               procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -2691,6 +2701,7 @@ type EpvScene3D=class(Exception);
               property Culling:boolean read fCulling write fCulling;
               property DynamicAABBTreeCulling:boolean read fDynamicAABBTreeCulling write fDynamicAABBTreeCulling;
               property Headless:boolean read fHeadless write fHeadless;
+              property Order:TpvInt64 read fOrder write fOrder;
               property Objects:TBaseObjects read fObjects;
               property Animations:TAnimations read fAnimations;
               property Cameras:TCameras read fCameras;
@@ -7900,7 +7911,7 @@ begin
    fSceneInstance.fGroupInstanceListLock.Acquire;
    try
     for GroupInstance in fSceneInstance.fGroupInstances do begin
-     if GroupInstance.fGroup.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+     if GroupInstance.fGroup.Usable then begin
       GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
      end;
     end;
@@ -8049,7 +8060,7 @@ begin
 
     for GroupInstance in fSceneInstance.fGroupInstances do begin
 
-     if (GroupInstance.fGroup.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and
+     if GroupInstance.fGroup.Usable and
         (GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]<>GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex]) then begin
 
       GroupInstance.fFrameUploadedMeshContentGenerations[aInFlightFrameIndex]:=GroupInstance.fFramePreparedMeshContentGenerations[aInFlightFrameIndex];
@@ -8238,7 +8249,7 @@ begin
    FreeAndNil(fVulkanComputeDescriptorPool);
 
    for Group in fSceneInstance.fGroups do begin
-    if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+    if Group.Usable then begin
      for GroupInstance in Group.fInstances do begin
       for GroupInstanceNodeIndex:=0 to length(GroupInstance.fNodes)-1 do begin
        GroupInstanceNode:=@GroupInstance.fNodes[GroupInstanceNodeIndex];
@@ -11403,6 +11414,8 @@ begin
 
  fHeadless:=false;
 
+ fOrder:=0;
+
  fMaximumCountInstances:=-1;
 
  fLock:=TPasMPSpinLock.Create;
@@ -11706,6 +11719,11 @@ begin
    fAdded:=false;
   end;
  end;
+end;
+
+function TpvScene3D.TGroup.Usable:boolean;
+begin
+ result:=AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done];
 end;
 
 function TpvScene3D.TGroup.GetLightID(const aName:TpvUTF8String):TpvSizeInt;
@@ -13762,9 +13780,9 @@ begin
 
  end;
 
- for Instance in fInstances do begin
+{for Instance in fInstances do begin
   Instance.Update(aInFlightFrameIndex);
- end;
+ end;}
 
 end;
 
@@ -14582,6 +14600,42 @@ begin
  Free;
 end;
 
+{ TpvScene3D.TGroup.TInstances }
+
+procedure TpvScene3D.TGroup.TInstances.Sort;
+var Index:TpvSizeInt;
+    NeedSort:boolean;
+begin
+
+ NeedSort:=false;
+ for Index:=0 to Count-2 do begin
+  if Items[Index].GetOrder>Items[Index+1].GetOrder then begin
+   NeedSort:=true;
+   break;
+  end;
+ end;
+
+ if NeedSort then begin
+
+  // Simple bubble sort variant for now
+  Index:=0;
+  while (Index+1)<Count do begin
+   if Items[Index].GetOrder>Items[Index+1].GetOrder then begin
+    Exchange(Index,Index+1);
+    if Index>0 then begin
+     dec(Index);
+    end else begin
+     inc(Index);
+    end;
+   end else begin
+    inc(Index);
+   end;
+  end;
+
+ end;
+
+end;
+
 { TpvScene3D.TGroup.TInstance.TAnimation }
 
 constructor TpvScene3D.TGroup.TInstance.TAnimation.Create;
@@ -14633,6 +14687,8 @@ begin
  fActive:=true;
 
  fHeadless:=aHeadless;
+
+ fOrder:=-1;
 
  fUseRenderInstances:=false;
 
@@ -18225,6 +18281,15 @@ begin
  fDirtyCounter:=fGroup.fSceneInstance.fCountInFlightFrames+1;
 end;
 
+function TpvScene3D.TGroup.TInstance.GetOrder:TpvInt64;
+begin
+ if fOrder<0 then begin
+  result:=fGroup.fOrder;
+ end else begin
+  result:=fOrder;
+ end;
+end;
+
 function TpvScene3D.TGroup.TInstance.CreateRenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
 begin
  result:=TpvScene3D.TGroup.TInstance.TRenderInstance.Create(self);
@@ -19811,7 +19876,7 @@ begin
         fGlobalVulkanDescriptorPool.Initialize;
 
         for Group in fGroups do begin
-         if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+         if Group.Usable then begin
           Group.Upload;
          end;
         end;
@@ -20195,7 +20260,7 @@ begin
      end;}
 
      for Group in fGroups do begin
-      if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+      if Group.Usable then begin
        Group.Unload;
       end;
      end;
@@ -20304,8 +20369,33 @@ begin
   fPlanets.Lock.Release;
  end;
 
- for Group in fGroups do begin
-  Group.Update(aInFlightFrameIndex);
+ fGroupListLock.Acquire;
+ try
+
+  for Group in fGroups do begin
+   if Group.Usable then begin
+    Group.Update(aInFlightFrameIndex);
+   end;
+  end;
+
+  fGroupInstanceListLock.Acquire;
+  try
+
+   fGroupInstances.Sort;
+
+   for Index:=0 to fGroupInstances.Count-1 do begin
+    GroupInstance:=fGroupInstances[Index];
+    if GroupInstance.fGroup.Usable then begin
+     GroupInstance.Update(aInFlightFrameIndex);
+    end;
+   end;
+
+  finally
+   fGroupInstanceListLock.Release;
+  end;
+
+ finally
+  fGroupListLock.Release;
  end;
 
  AABBTreeState:=@fAABBTreeStates[aInFlightFrameIndex];
@@ -21174,9 +21264,7 @@ begin
 
        GroupInstance:=TpvScene3D.TGroup.TInstance(TreeNode^.UserData);
 
-       if (not GroupInstance.fHeadless) and
-          (GroupInstance.Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,
-                                                  TpvResource.TAsyncLoadState.Done]) then begin
+       if (not GroupInstance.fHeadless) and GroupInstance.Group.Usable then begin
 
         if aPotentiallyVisibleSetCulling then begin
          PotentiallyVisibleSetNodeIndex:=GroupInstance.fPotentiallyVisibleSetNodeIndices[aInFlightFrameIndex];
@@ -21309,7 +21397,7 @@ begin
    end else begin
 
     for Group in fGroups do begin
-     if (Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done]) and not Group.fHeadless then begin
+     if Group.Usable and not Group.fHeadless then begin
       for GroupInstance in Group.fInstances do begin
        GroupInstance.Prepare(aInFlightFrameIndex,
                              aRendererInstance,
@@ -21442,7 +21530,7 @@ begin
  fCachedVertexRanges.Count:=0;
 
  for Group in fGroups do begin
-  if Group.AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done] then begin
+  if Group.Usable then begin
    Group.UpdateCachedVertices(aInFlightFrameIndex);
   end;
  end;
