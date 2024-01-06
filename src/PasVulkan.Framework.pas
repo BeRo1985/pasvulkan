@@ -25386,22 +25386,22 @@ const RGBE_DATA_RED=0;
     if (pos('-Y',String(line))=1) and (pos('+X',String(line))>2) then begin
      Delete(line,1,2);
      line:=ShortString(Trim(String(line)));
-     ImageWidth:=0;
+     ImageHeight:=0;
      i:=0;
      while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
       inc(i);
-      ImageWidth:=(ImageWidth*10)+(TpvUInt8(TpvVulkanRawByteChar(line[i]))-TpvUInt8(TpvVulkanRawByteChar('0')));
+      ImageHeight:=(ImageHeight*10)+(TpvUInt8(TpvVulkanRawByteChar(line[i]))-TpvUInt8(TpvVulkanRawByteChar('0')));
      end;
      Delete(line,1,i);
      line:=ShortString(Trim(String(line)));
-     if pos('-X',String(line))=1 then begin
+     if pos('+X',String(line))=1 then begin
       Delete(line,1,2);
       line:=ShortString(Trim(String(line)));
-      ImageHeight:=0;
+      ImageWidth:=0;
       i:=0;
       while ((i+1)<=length(line)) and (line[i+1] in ['0'..'9']) do begin
        inc(i);
-       ImageHeight:=(ImageHeight*10)+(TpvUInt8(TpvVulkanRawByteChar(line[i]))-TpvUInt8(TpvVulkanRawByteChar('0')));
+       ImageWidth:=(ImageWidth*10)+(TpvUInt8(TpvVulkanRawByteChar(line[i]))-TpvUInt8(TpvVulkanRawByteChar('0')));
       end;
       OK:=true;
      end;
@@ -25624,6 +25624,7 @@ const RGBE_DATA_RED=0;
    end else begin
     FreeMem(ImageData);
     ImageData:=nil;
+    result:=false;
    end;
    SetLength(scanlinebuffer,0);
   end;

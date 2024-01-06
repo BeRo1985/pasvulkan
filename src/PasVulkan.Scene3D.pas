@@ -774,6 +774,7 @@ type EpvScene3D=class(Exception);
               procedure AssignFromWhiteTexture;
               procedure AssignFromDefaultNormalMapTexture;
               procedure AssignFromDefaultParticleTexture;
+              procedure AssignFromStream(const aName:TpvUTF8String;const aStream:TStream);
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
              published
               property Kind:TKind read fKind write fKind;
@@ -2890,6 +2891,8 @@ type EpvScene3D=class(Exception);
       private
        fPlanets:TpvScene3DPlanets;
       private
+       fSkyTextureImage:TpvScene3D.TImage;
+      private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -3064,6 +3067,8 @@ type EpvScene3D=class(Exception);
        property InFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameDataTransferQueues;
       public
        property Planets:TpvScene3DPlanets read fPlanets;
+      published
+       property SkyTextureImage:TpvScene3D.TImage read fSkyTextureImage write fSkyTextureImage;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -5136,6 +5141,15 @@ begin
  fName:=#0+'DefaultParticleTexture';
  fKind:=TpvScene3D.TImage.TKind.DefaultParticleTexture;
  fResourceDataStream.Clear;
+end;
+
+procedure TpvScene3D.TImage.AssignFromStream(const aName:TpvUTF8String;const aStream:TStream);
+begin
+ fName:=aName;
+ fKind:=TpvScene3D.TImage.TKind.ResourceTexture;
+ fResourceDataStream.Clear;
+ aStream.Seek(0,soBeginning);
+ fResourceDataStream.CopyFrom(aStream,aStream.Size);
 end;
 
 procedure TpvScene3D.TImage.AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceImage:TPasGLTF.TImage);
@@ -18971,6 +18985,8 @@ begin
 
  FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
 
+ fSkyTextureImage:=nil;
+
  fDefaultSampler:=TSampler.Create(ResourceManager,self);
  fDefaultSampler.AssignFromDefault;
  fDefaultSampler.IncRef;
@@ -19341,6 +19357,8 @@ begin
  FreeAndNil(fDefaultNormalMapImage);
 
  FreeAndNil(fDefaultParticleImage);
+
+ FreeAndNil(fSkyTextureImage);
 
  while fImages.Count>0 do begin
   fImages[fImages.Count-1].Free;
