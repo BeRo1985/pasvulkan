@@ -155,12 +155,12 @@ begin
  if assigned(aTexture) then begin
   if aTexture.CountArrayLayers=6 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_comp.spv');
-   fWidth:=aTexture.Width;
-   fHeight:=aTexture.Height;
+   fWidth:=RoundDownToPowerOfTwo(aTexture.Width);
+   fHeight:=RoundDownToPowerOfTwo(aTexture.Height);
   end else begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_comp.spv');
-   fWidth:=2048;
-   fHeight:=2048;
+   fWidth:=RoundDownToPowerOfTwo(Min(Max(round(Max(aTexture.Width,aTexture.Height)/PI),512),8192));
+   fHeight:=fWidth;
   end;
  end else begin
   case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
