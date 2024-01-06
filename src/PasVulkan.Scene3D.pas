@@ -2422,6 +2422,7 @@ type EpvScene3D=class(Exception);
                      fPreparedMeshContentGeneration:TpvUInt64;
                      fFramePreparedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+                     fVisitedState:array[-1..MaxInFlightFrames-1] of TpvUInt32;
                      fModelMatrix:TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
@@ -2434,15 +2435,15 @@ type EpvScene3D=class(Exception);
                      fVulkanPerInFlightFrameFirstInstances:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
                      fVulkanPerInFlightFrameInstancesCounts:array[0..MaxInFlightFrames-1,0..MaxRendererInstances-1,0..MaxRenderPassIndices-1] of TpvSizeInt;
                     private
-                     fActiveScenes:array[0..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
-                     fActives:array[0..MaxInFlightFrames-1] of boolean;
-                     fPotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-                     fCullVisibleBitmapLocks:array[0..MaxInFlightFrames-1] of TPasMPInt32;
+                     fActiveScenes:array[-1..MaxInFlightFrames-1] of TpvScene3D.TGroup.TScene;
+                     fActives:array[-1..MaxInFlightFrames-1] of boolean;
+                     fPotentiallyVisibleSetNodeIndices:array[-1..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
+                     fCullVisibleBitmapLocks:array[-1..MaxInFlightFrames-1] of TPasMPInt32;
                      fCullVisibleBitmaps:TCullVisibleBitmaps;
                      fAABBTreeProxy:TpvSizeInt;
                      fAABBTree:TpvBVHDynamicAABBTree;
-                     fAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
-                     fAABBTreeSkipLists:array[0..MaxInFlightFrames-1] of TAABBTreeSkipList;
+                     fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
+                     fAABBTreeSkipLists:array[-1..MaxInFlightFrames-1] of TAABBTreeSkipList;
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanVertexBufferCount:TpvInt64;
                      fVulkanDrawIndexBufferOffset:TpvInt64;
@@ -2749,7 +2750,7 @@ type EpvScene3D=class(Exception);
             TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
             TVertexStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
             TInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
-            TCountInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvSizeInt;
+            TCountInFlightFrameLights=array[-1..MaxInFlightFrames-1] of TpvSizeInt;
             TCachedVertexRange=record
              Offset:TpvSizeInt;
              Count:TpvSizeInt;
@@ -2859,11 +2860,11 @@ type EpvScene3D=class(Exception);
        fGroupInstances:TGroup.TInstances;
        fLightAABBTree:TpvBVHDynamicAABBTree;
        fLightAABBTreeGeneration:TpvUInt64;
-       fLightAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
-       fLightAABBTreeStateGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
+       fLightAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
+       fLightAABBTreeStateGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fLightBuffers:TpvScene3D.TLightBuffers;
        fAABBTree:TpvBVHDynamicAABBTree;
-       fAABBTreeStates:array[0..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
+       fAABBTreeStates:array[-1..MaxInFlightFrames-1] of TpvBVHDynamicAABBTree.TState;
        fBoundingBox:TpvAABB;
        fInFlightFrameBoundingBoxes:TInFlightFrameAABBs;
        fCountInFlightFrames:TpvSizeInt;
@@ -20560,10 +20561,11 @@ begin
 end;
 
 procedure TpvScene3D.Update(const aInFlightFrameIndex:TpvSizeInt);
-var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
+type TGroupInstanceStack=TpvDynamicFastStack<TpvScene3D.TGroup.TInstance>;
+var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     MinMaterialID,MaxMaterialID:TpvInt32;
     Group:TpvScene3D.TGroup;
-    GroupInstance:TpvScene3D.TGroup.TInstance;
+    GroupInstance,OtherGroupInstance:TpvScene3D.TGroup.TInstance;
     LightAABBTreeState,AABBTreeState:TpvBVHDynamicAABBTree.PState;
     First:boolean;
     OldGeneration,NewGeneration:TpvUInt64;
@@ -20571,6 +20573,7 @@ var Index,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Texture:TpvScene3D.TTexture;
     Material:TpvScene3D.TMaterial;
     Planet:TpvScene3DPlanet;
+    GroupInstanceStack:TGroupInstanceStack;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
@@ -20601,11 +20604,42 @@ begin
 
    fGroupInstances.Sort;
 
-   for Index:=0 to fGroupInstances.Count-1 do begin
-    GroupInstance:=fGroupInstances[Index];
-    if GroupInstance.fGroup.Usable then begin
-     GroupInstance.Update(aInFlightFrameIndex);
+   GroupInstanceStack.Initialize;
+   try
+
+    for Index:=0 to fGroupInstances.Count-1 do begin
+     fGroupInstances[Index].fVisitedState[aInFlightFrameIndex]:=0;
     end;
+
+    for Index:=0 to fGroupInstances.Count-1 do begin
+     GroupInstance:=fGroupInstances[Index];
+     if GroupInstance.fGroup.Usable then begin
+      GroupInstanceStack.Push(GroupInstance);
+      while GroupInstanceStack.Pop(GroupInstance) do begin
+       case GroupInstance.fVisitedState[aInFlightFrameIndex] of
+        0:begin
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+         GroupInstanceStack.Push(GroupInstance);
+         for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
+          OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
+          if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+           GroupInstanceStack.Push(OtherGroupInstance);
+          end;
+         end;
+        end;
+        1:begin
+         GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+         GroupInstance.Update(aInFlightFrameIndex);
+        end;
+        else begin
+        end;
+       end;
+      end;
+     end;
+    end;
+
+   finally
+    GroupInstanceStack.Finalize;
    end;
 
   finally
