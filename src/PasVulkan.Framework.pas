@@ -25315,7 +25315,7 @@ const RGBE_DATA_RED=0;
    begin
     i:=0;
     while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
-     if c in [#1..#9,#11..#12,#14..#32] then begin
+     if c in [#0..#32] then begin
       break;
      end else if i<255 then begin
       inc(i);
@@ -25323,11 +25323,6 @@ const RGBE_DATA_RED=0;
      end;
     end;
     programtype[0]:=TpvVulkanRawByteChar(TpvUInt8(i));
-    while aStream.Read(c,SizeOf(AnsiChar))=SizeOf(AnsiChar) do begin
-     if c in [#0,#10,#13] then begin
-      break;
-     end;
-    end;
    end;
    if length(programtype)>0 then begin
    end;
