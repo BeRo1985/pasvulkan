@@ -34,6 +34,8 @@ vec3 getCubeMapDirection(in vec2 uv,
 }
 /* clang-format on */
 
+#include "textureutils.glsl"
+
 void main() {
   ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
   if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
@@ -41,13 +43,13 @@ void main() {
     imageStore(
       uDestinationTexture, 
       uvw, 
-      textureLod(
+      textureCatmullRom(
         uSourceTexture, 
         vec2(
           (atan(direction.z, direction.x) / 6.283185307179586476925286766559) + 0.5, 
           acos(direction.y) / 3.1415926535897932384626433832795
         ), 
-        0.0
+        0
       )
     );
   }

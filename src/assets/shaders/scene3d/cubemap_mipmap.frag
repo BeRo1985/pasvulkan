@@ -34,7 +34,7 @@ vec3 getCubeMapDirection(in vec2 uv,
 }
 
 void main(){
-  vec2 texCoord = inTexCoord + (vec2(0.5) / vec2(textureSize(uTexture, max(0, mipMapLevel)).xy));
+  vec2 texCoord = inTexCoord + (vec2(0.5) / vec2(textureSize(uTexture, 0).xy));//max(0, mipMapLevel)).xy));
   vec3 direction = getCubeMapDirection(texCoord, inFaceIndex);
   outFragColor = textureLod(uTexture, direction, 0.0);  
 }

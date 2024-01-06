@@ -213,6 +213,7 @@ compileshaderarguments=(
   "-V fullscreen.vert -o ${tempPath}/fullscreen_vert.spv"
   
   "-V cubemap.vert -o ${tempPath}/cubemap_vert.spv"
+  "-V cubemap_cubemap.comp -o ${tempPath}/cubemap_cubemap_comp.spv"
   "-V cubemap_equirectangularmap.comp -o ${tempPath}/cubemap_equirectangularmap_comp.spv"
   "-V cubemap_sky.comp -o ${tempPath}/cubemap_sky_comp.spv"
   "-V cubemap_sky.comp -DFAST -o ${tempPath}/cubemap_sky_fast_comp.spv"
