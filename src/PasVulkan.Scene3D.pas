@@ -1984,6 +1984,12 @@ type EpvScene3D=class(Exception);
                      property StaticNodes:TpvScene3D.TGroup.TNodes read fStaticNodes;
                    end;
                    TScenes=TpvObjectGenericList<TScene>;
+                   TInstance=class;
+                   { TInstances }
+                   TInstances=class(TpvObjectGenericList<TInstance>)
+                    public
+                     procedure Sort;
+                   end;
                    { TInstance }
                    TInstance=class(TBaseObject)
                     public
@@ -2382,6 +2388,9 @@ type EpvScene3D=class(Exception);
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
+                     fDependencyLock:TPasMPSpinLock;
+                     fProvidedDependencies:TInstances;
+                     fRequiredDependencies:TInstances;
                      fActive:boolean;
                      fOrder:TpvInt64;
                      fHeadless:boolean;
@@ -2490,6 +2499,12 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
+                     function HasProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                     function AddProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                     function RemoveProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                     function HasRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                     function AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                     function RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                      procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -2523,6 +2538,7 @@ type EpvScene3D=class(Exception);
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
                      property Order:TpvInt64 read fOrder write fOrder;
+                     property DependOnGroupInstances:TInstances read fRequiredDependencies;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
@@ -2540,11 +2556,6 @@ type EpvScene3D=class(Exception);
                      property OnNodeMatrixPre:TOnNodeMatrix read fOnNodeMatrixPre write fOnNodeMatrixPre;
                      property OnNodeMatrixPost:TOnNodeMatrix read fOnNodeMatrixPost write fOnNodeMatrixPost;
                      property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
-                   end;
-                   { TInstances }
-                   TInstances=class(TpvObjectGenericList<TInstance>)
-                    public
-                     procedure Sort;
                    end;
                    TMaterialsToDuplicate=TpvObjectGenericList<TpvScene3D.TMaterial>;
                    TMaterialIndexHashMap=TpvHashMap<TMaterial,TpvSizeInt>;
@@ -2840,9 +2851,9 @@ type EpvScene3D=class(Exception);
        fCountLights:TCountInFlightFrameLights;
        fIndirectLights:array[0..MaxInFlightFrames-1,0..MaxVisibleLights-1] of TpvScene3D.TLight;
        fCountIndirectLights:array[0..MaxInFlightFrames-1] of TpvSizeInt;
-       fGroupListLock:TPasMPSlimReaderWriterLock;
+       fGroupListLock:TPasMPCriticalSection;
        fGroups:TGroups;
-       fGroupInstanceListLock:TPasMPSlimReaderWriterLock;
+       fGroupInstanceListLock:TPasMPCriticalSection;
        fGroupInstances:TGroup.TInstances;
        fLightAABBTree:TpvBVHDynamicAABBTree;
        fLightAABBTreeGeneration:TpvUInt64;
@@ -14690,6 +14701,12 @@ begin
 
  fOrder:=-1;
 
+ fDependencyLock:=TPasMPSpinLock.Create;
+
+ fProvidedDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
+
+ fRequiredDependencies:=TpvScene3D.TGroup.TInstances.Create(false);
+
  fUseRenderInstances:=false;
 
  fPreviousActive:=false;
@@ -15243,6 +15260,12 @@ begin
 
  fMorphTargetVertexWeights:=nil;
 
+ FreeAndNil(fProvidedDependencies);
+
+ FreeAndNil(fRequiredDependencies);
+
+ FreeAndNil(fDependencyLock);
+
  fGroup:=nil;
 
  FreeAndNil(fLock);
@@ -15254,20 +15277,25 @@ end;
 procedure TpvScene3D.TGroup.TInstance.AfterConstruction;
 begin
  inherited AfterConstruction;
+
  if not fAdded then begin
+
   try
+
    fSceneInstance.fGroupInstanceListLock.Acquire;
    try
     fSceneInstance.fGroupInstances.Add(self);
    finally
     fSceneInstance.fGroupInstanceListLock.Release;
    end;
+
    fGroup.fInstanceListLock.Acquire;
    try
     fGroup.fInstances.Add(self);
    finally
     fGroup.fInstanceListLock.Release;
    end;
+
    begin
     fSceneInstance.fNewInstanceListLock.Acquire;
     try
@@ -15277,10 +15305,13 @@ begin
     end;
     TPasMPInterlocked.Write(fIsNewInstance,TPasMPBool32(true));
    end;
+
   finally
    fAdded:=true;
   end;
+
  end;
+
 end;
 
 procedure TpvScene3D.TGroup.TInstance.BeforeDestruction;
@@ -15290,23 +15321,30 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Remove;
+var GroupInstance:TpvScene3D.TGroup.TInstance;
 begin
+
  if fAdded then begin
+
   try
+
    UpdateInvisible;
    try
+
     fSceneInstance.fGroupInstanceListLock.Acquire;
     try
      fSceneInstance.fGroupInstances.Remove(self);
     finally
      fSceneInstance.fGroupInstanceListLock.Release;
     end;
+
     fGroup.fInstanceListLock.Acquire;
     try
      fGroup.fInstances.Remove(self);
     finally
      fGroup.fInstanceListLock.Release;
     end;
+
     if TPasMPInterlocked.CompareExchange(fIsNewInstance,TPasMPBool32(false),TPasMPBool32(true)) then begin
      fSceneInstance.fNewInstanceListLock.Acquire;
      try
@@ -15315,6 +15353,7 @@ begin
       fSceneInstance.fNewInstanceListLock.Release;
      end;
     end;
+
     if fAABBTreeProxy>=0 then begin
      try
       if assigned(fGroup) and
@@ -15326,13 +15365,62 @@ begin
       fAABBTreeProxy:=-1;
      end;
     end;
+
+    fDependencyLock.Acquire;
+    try
+
+     if assigned(fProvidedDependencies) and (fProvidedDependencies.Count>0) then begin
+      fSceneInstance.fGroupInstanceListLock.Acquire;
+      try
+       while fProvidedDependencies.Count>0 do begin
+        GroupInstance:=fProvidedDependencies.ExtractIndex(fProvidedDependencies.Count-1);
+        if fSceneInstance.fGroupInstances.IndexOf(GroupInstance)>=0 then begin
+         GroupInstance.fDependencyLock.Acquire;
+         try
+          GroupInstance.fRequiredDependencies.Remove(self);
+         finally
+          GroupInstance.fDependencyLock.Release;
+         end;
+        end;
+       end;
+      finally
+       fSceneInstance.fGroupInstanceListLock.Release;
+      end;
+     end;
+
+     if assigned(fRequiredDependencies) and (fRequiredDependencies.Count>0) then begin
+      fSceneInstance.fGroupInstanceListLock.Acquire;
+      try
+       while fRequiredDependencies.Count>0 do begin
+        GroupInstance:=fRequiredDependencies.ExtractIndex(fRequiredDependencies.Count-1);
+        if fSceneInstance.fGroupInstances.IndexOf(GroupInstance)>=0 then begin
+         GroupInstance.fDependencyLock.Acquire;
+         try
+          GroupInstance.fProvidedDependencies.Remove(self);
+         finally
+          GroupInstance.fDependencyLock.Release;
+         end;
+        end;
+       end;
+      finally
+       fSceneInstance.fGroupInstanceListLock.Release;
+      end;
+     end;
+
+    finally
+     fDependencyLock.Release;
+    end;
+
    finally
     fGroup:=nil;
    end;
+
   finally
    fAdded:=false;
   end;
+
  end;
+
 end;
 
 function TpvScene3D.TGroup.TInstance.GetAutomation(const aIndex:TPasGLTFSizeInt):TpvScene3D.TGroup.TInstance.TAnimation;
@@ -15447,6 +15535,134 @@ begin
   if assigned(fNodes[Index].Light) then begin
    FreeAndNil(fNodes[Index].Light);
   end;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.HasProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+ fDependencyLock.Acquire;
+ try
+  result:=fProvidedDependencies.IndexOf(aInstance)>=0;
+ finally
+  fDependencyLock.Release;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.AddProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+ result:=false;
+ fDependencyLock.Acquire;
+ try
+  fSceneInstance.fGroupInstanceListLock.Acquire;
+  try
+   if fSceneInstance.fGroupInstances.Contains(aInstance) and not fProvidedDependencies.Contains(aInstance) then begin
+    fProvidedDependencies.Add(aInstance);
+    aInstance.fDependencyLock.Acquire;
+    try
+     if not aInstance.fProvidedDependencies.Contains(self) then begin
+      aInstance.fProvidedDependencies.Add(self);
+     end;
+    finally
+     aInstance.fDependencyLock.Release;
+    end;
+    result:=true;
+   end;
+  finally
+   fSceneInstance.fGroupInstanceListLock.Release;
+  end;
+ finally
+  fDependencyLock.Release;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.RemoveProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+ result:=false;
+ fDependencyLock.Acquire;
+ try
+  if fProvidedDependencies.Contains(aInstance) then begin
+   fProvidedDependencies.Remove(aInstance);
+   fSceneInstance.fGroupInstanceListLock.Acquire;
+   try
+    if fSceneInstance.fGroupInstances.Contains(aInstance) then begin
+     aInstance.fDependencyLock.Acquire;
+     try
+      aInstance.fRequiredDependencies.Remove(self);
+     finally
+      aInstance.fDependencyLock.Release;
+     end;
+    end;
+   finally
+    fSceneInstance.fGroupInstanceListLock.Release;
+   end;
+   result:=true;
+  end;
+ finally
+  fDependencyLock.Release;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.HasRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+ fDependencyLock.Acquire;
+ try
+  result:=fRequiredDependencies.IndexOf(aInstance)>=0;
+ finally
+  fDependencyLock.Release;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+ result:=false;
+ fDependencyLock.Acquire;
+ try
+  fSceneInstance.fGroupInstanceListLock.Acquire;
+  try
+   if fSceneInstance.fGroupInstances.Contains(aInstance) and not fRequiredDependencies.Contains(aInstance) then begin
+    fRequiredDependencies.Add(aInstance);
+    aInstance.fDependencyLock.Acquire;
+    try
+     if not aInstance.fProvidedDependencies.Contains(self) then begin
+      aInstance.fProvidedDependencies.Add(self);
+     end;
+    finally
+     aInstance.fDependencyLock.Release;
+    end;
+    result:=true;
+   end;
+  finally
+   fSceneInstance.fGroupInstanceListLock.Release;
+  end;
+ finally
+  fDependencyLock.Release;
+ end;
+end;
+
+function TpvScene3D.TGroup.TInstance.RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+ result:=false;
+ fDependencyLock.Acquire;
+ try
+  if fRequiredDependencies.Contains(aInstance) then begin
+   fRequiredDependencies.Remove(aInstance);
+   fSceneInstance.fGroupInstanceListLock.Acquire;
+   try
+    if fSceneInstance.fGroupInstances.Contains(aInstance) then begin
+     aInstance.fDependencyLock.Acquire;
+     try
+      aInstance.fProvidedDependencies.Remove(self);
+     finally
+      aInstance.fDependencyLock.Release;
+     end;
+    end;
+   finally
+    fSceneInstance.fGroupInstanceListLock.Release;
+   end;
+   result:=true;
+  end;
+ finally
+  fDependencyLock.Release;
  end;
 end;
 
@@ -19102,11 +19318,11 @@ begin
   fCountLights[Index]:=0;
  end;
 
- fGroupListLock:=TPasMPSlimReaderWriterLock.Create;
+ fGroupListLock:=TPasMPCriticalSection.Create;
  fGroups:=TGroups.Create;
  fGroups.OwnsObjects:=false;
 
- fGroupInstanceListLock:=TPasMPSlimReaderWriterLock.Create;
+ fGroupInstanceListLock:=TPasMPCriticalSection.Create;
  fGroupInstances:=TGroup.TInstances.Create;
  fGroupInstances.OwnsObjects:=false;
 
