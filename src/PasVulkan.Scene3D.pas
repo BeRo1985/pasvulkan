@@ -2499,12 +2499,15 @@ type EpvScene3D=class(Exception);
                      procedure Upload; override;
                      procedure Unload; override;
                      procedure UpdateInvisible;
+                    public
                      function HasProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function AddProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function RemoveProvidedDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                    public
                      function HasRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                    public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
                      procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -2538,7 +2541,6 @@ type EpvScene3D=class(Exception);
                      property Group:TGroup read fGroup write fGroup;
                      property Active:boolean read fActive write fActive;
                      property Order:TpvInt64 read fOrder write fOrder;
-                     property DependOnGroupInstances:TInstances read fRequiredDependencies;
                      property UseRenderInstances:boolean read fUseRenderInstances write fUseRenderInstances;
                      property Scene:TpvSizeInt read fScene write SetScene;
                      property Cameras:TpvScene3D.TGroup.TInstance.TCameras read fCameras;
@@ -15374,7 +15376,7 @@ begin
       try
        while fProvidedDependencies.Count>0 do begin
         GroupInstance:=fProvidedDependencies.ExtractIndex(fProvidedDependencies.Count-1);
-        if fSceneInstance.fGroupInstances.IndexOf(GroupInstance)>=0 then begin
+        if fSceneInstance.fGroupInstances.Contains(GroupInstance) then begin
          GroupInstance.fDependencyLock.Acquire;
          try
           GroupInstance.fRequiredDependencies.Remove(self);
@@ -15393,7 +15395,7 @@ begin
       try
        while fRequiredDependencies.Count>0 do begin
         GroupInstance:=fRequiredDependencies.ExtractIndex(fRequiredDependencies.Count-1);
-        if fSceneInstance.fGroupInstances.IndexOf(GroupInstance)>=0 then begin
+        if fSceneInstance.fGroupInstances.Contains(GroupInstance) then begin
          GroupInstance.fDependencyLock.Acquire;
          try
           GroupInstance.fProvidedDependencies.Remove(self);
@@ -15542,7 +15544,7 @@ function TpvScene3D.TGroup.TInstance.HasProvidedDependency(const aInstance:TpvSc
 begin
  fDependencyLock.Acquire;
  try
-  result:=fProvidedDependencies.IndexOf(aInstance)>=0;
+  result:=(aInstance<>self) and fProvidedDependencies.Contains(aInstance);
  finally
   fDependencyLock.Release;
  end;
@@ -15555,7 +15557,7 @@ begin
  try
   fSceneInstance.fGroupInstanceListLock.Acquire;
   try
-   if fSceneInstance.fGroupInstances.Contains(aInstance) and not fProvidedDependencies.Contains(aInstance) then begin
+   if (aInstance<>self) and fSceneInstance.fGroupInstances.Contains(aInstance) and not fProvidedDependencies.Contains(aInstance) then begin
     fProvidedDependencies.Add(aInstance);
     aInstance.fDependencyLock.Acquire;
     try
@@ -15580,7 +15582,7 @@ begin
  result:=false;
  fDependencyLock.Acquire;
  try
-  if fProvidedDependencies.Contains(aInstance) then begin
+  if (aInstance<>self) and fProvidedDependencies.Contains(aInstance) then begin
    fProvidedDependencies.Remove(aInstance);
    fSceneInstance.fGroupInstanceListLock.Acquire;
    try
@@ -15606,7 +15608,7 @@ function TpvScene3D.TGroup.TInstance.HasRequiredDependency(const aInstance:TpvSc
 begin
  fDependencyLock.Acquire;
  try
-  result:=fRequiredDependencies.IndexOf(aInstance)>=0;
+  result:=(aInstance<>self) and fRequiredDependencies.Contains(aInstance);
  finally
   fDependencyLock.Release;
  end;
@@ -15619,7 +15621,7 @@ begin
  try
   fSceneInstance.fGroupInstanceListLock.Acquire;
   try
-   if fSceneInstance.fGroupInstances.Contains(aInstance) and not fRequiredDependencies.Contains(aInstance) then begin
+   if (aInstance<>self) and fSceneInstance.fGroupInstances.Contains(aInstance) and not fRequiredDependencies.Contains(aInstance) then begin
     fRequiredDependencies.Add(aInstance);
     aInstance.fDependencyLock.Acquire;
     try
@@ -15644,7 +15646,7 @@ begin
  result:=false;
  fDependencyLock.Acquire;
  try
-  if fRequiredDependencies.Contains(aInstance) then begin
+  if (aInstance<>self) and fRequiredDependencies.Contains(aInstance) then begin
    fRequiredDependencies.Remove(aInstance);
    fSceneInstance.fGroupInstanceListLock.Acquire;
    try
