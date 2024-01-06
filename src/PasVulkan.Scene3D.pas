@@ -20613,25 +20613,30 @@ begin
 
     for Index:=0 to fGroupInstances.Count-1 do begin
      GroupInstance:=fGroupInstances[Index];
-     if GroupInstance.fGroup.Usable then begin
-      GroupInstanceStack.Push(GroupInstance);
-      while GroupInstanceStack.Pop(GroupInstance) do begin
-       case GroupInstance.fVisitedState[aInFlightFrameIndex] of
-        0:begin
-         GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
-         GroupInstanceStack.Push(GroupInstance);
-         for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
-          OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
-          if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-           GroupInstanceStack.Push(OtherGroupInstance);
+     if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+      if GroupInstance.fRequiredDependencies.Count=0 then begin
+       GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+       GroupInstance.Update(aInFlightFrameIndex);
+      end else begin
+       GroupInstanceStack.Push(GroupInstance);
+       while GroupInstanceStack.Pop(GroupInstance) do begin
+        case GroupInstance.fVisitedState[aInFlightFrameIndex] of
+         0:begin
+          GroupInstance.fVisitedState[aInFlightFrameIndex]:=1;
+          GroupInstanceStack.Push(GroupInstance);
+          for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
+           OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
+           if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+            GroupInstanceStack.Push(OtherGroupInstance);
+           end;
           end;
          end;
-        end;
-        1:begin
-         GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
-         GroupInstance.Update(aInFlightFrameIndex);
-        end;
-        else begin
+         1:begin
+          GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
+          GroupInstance.Update(aInFlightFrameIndex);
+         end;
+         else begin
+         end;
         end;
        end;
       end;
