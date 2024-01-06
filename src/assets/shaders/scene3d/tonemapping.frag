@@ -197,6 +197,8 @@ vec3 AgXDefaultContrastApproximation(vec3 x) {
 #endif
 }
 
+// These matrices taken from Wrensch's minimal implementation of AgX, which works with Rec.709 / sRGB primaries.
+// https://iolite-engine.com/blog_posts/minimal_agx_implementation
 const mat3 AgXRec709InsetMatrix = mat3(
   0.842479062253094, 0.0423282422610123, 0.0423756549057051,
   0.0784335999999992, 0.878468636469772, 0.0784336,
@@ -209,6 +211,8 @@ const mat3 AgXRec709OutsetMatrix = mat3(
   -0.0990297440797205, -0.0989611768448433, 1.15107367264116
 );
 
+// These matrices taken from Blender's implementation of AgX, which works with Rec.2020 primaries.
+// https://github.com/EaryChow/AgX_LUT_Gen/blob/main/AgXBaseRec2020.py
 const mat3 AgXRec2020InsetMatrix = mat3(
   vec3(0.856627153315983, 0.137318972929847, 0.11189821299995),
   vec3(0.0951212405381588, 0.761241990602591, 0.0767994186031903),
@@ -221,9 +225,17 @@ const mat3 AgXRec2020OutsetMatrix = mat3(
   vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405)
 );
 
+// AgXRec2020InsetMatrixFromLinearSRGB = AgXRec2020InsetMatrix * LinearSRGBToLinearRec2020Matrix
+const mat3 AgXRec2020InsetMatrixFromLinearSRGB = mat3(
+  0.54490465, 0.1404396, 0.088826895,
+  0.37377995, 0.7541106, 0.17887735,
+  0.0813857, 0.10543349, 0.7322502
+);
+
 vec3 AgXCore(vec3 color) {
-  const float AgXMinEV = -12.47393;
-  const float AgXMaxEV = 4.026069;
+  // LOG2_MIN = -10.0, LOG2_MAX = +6.5, MIDDLE_GRAY = 0.18
+  const float AgXMinEV = -12.473931188332413; // log2(pow(2, LOG2_MIN) * MIDDLE_GRAY)
+  const float AgXMaxEV = 4.026068811667588;   // log2(pow(2, LOG2_MAX) * MIDDLE_GRAY)
   return AgXDefaultContrastApproximation(clamp((log2(max(vec3(1e-10), color)) - vec3(AgXMinEV)) / vec3(AgXMaxEV - AgXMinEV), 0.0, 1.0));
 }
 
@@ -236,8 +248,7 @@ vec3 AgXRec709EOTF(vec3 color) {
 }
 
 vec3 AgXRec2020(vec3 color) {
-  const mat3 m = AgXRec2020InsetMatrix * LinearSRGBToLinearRec2020Matrix; // <= the GLSL compiler will hopefully optimize this to a single matrix
-  return AgXCore(m * max(vec3(0.0), color));
+  return AgXCore(AgXRec2020InsetMatrixFromLinearSRGB * max(vec3(0.0), color));
 }
 
 vec3 AgXRec2020EOTF(vec3 color) {
