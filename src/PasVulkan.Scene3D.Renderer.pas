@@ -947,9 +947,16 @@ var Stream:TStream;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
     EmptySSAOCubeMapTextureData:TpvUInt8DynamicArray;
+    SkyTexture:TpvVulkanTexture;
 begin
 
- fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat);
+ if assigned(fScene3D) and assigned(fScene3D.SkyTextureImage) then begin
+  SkyTexture:=fScene3D.SkyTextureImage.Texture;
+ end else begin
+  SkyTexture:=nil;
+ end;
+
+ fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat,SkyTexture);
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyCubeMap.ImageView');
 
