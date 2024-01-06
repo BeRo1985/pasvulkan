@@ -88,7 +88,7 @@ type { TpvScene3DRendererSkyCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT));
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil);
 
        destructor Destroy; override;
 
@@ -116,7 +116,7 @@ implementation
 
 { TpvScene3DRendererSkyCubeMap }
 
-constructor TpvScene3DRendererSkyCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat);
+constructor TpvScene3DRendererSkyCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture);
 var Index,FaceIndex,MipMaps:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -152,17 +152,29 @@ begin
 
  LocalLightDirection:=TpvVector4.InlineableCreate(fLightDirection,0.0);
 
- case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
-  TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
-//  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+ if assigned(aTexture) then begin
+  if aTexture.CountArrayLayers=6 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_comp.spv');
+   fWidth:=aTexture.Width;
+   fHeight:=aTexture.Height;
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_comp.spv');
    fWidth:=2048;
    fHeight:=2048;
   end;
-  else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
-   fWidth:=512;
-   fHeight:=512;
+ end else begin
+  case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
+   TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
+//  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+    fWidth:=2048;
+    fHeight:=2048;
+   end;
+   else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+    fWidth:=512;
+    fHeight:=512;
+   end;
   end;
  end;
  try
@@ -336,6 +348,13 @@ begin
                                                1,
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                []);
+          if assigned(aTexture) then begin
+           VulkanDescriptorSetLayout.AddBinding(1,
+                                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                1,
+                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                                []);
+          end;
           VulkanDescriptorSetLayout.Initialize;
 
           VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
@@ -344,6 +363,9 @@ begin
           try
 
            VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1);
+           if assigned(aTexture) then begin
+            VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
+           end;
            VulkanDescriptorPool.Initialize;
 
            VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
@@ -358,11 +380,25 @@ begin
                                                      [],
                                                      [],
                                                      false);
+            if assigned(aTexture) then begin
+             VulkanDescriptorSet.WriteToDescriptorSet(1,
+                                                      0,
+                                                      1,
+                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                      [TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
+                                                                                     aTexture.ImageView.Handle,
+                                                                                     aTexture.ImageLayout)],
+                                                      [],
+                                                      [],
+                                                      false);
+            end;
             VulkanDescriptorSet.Flush;
 
             PipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
             try
-             PipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvVector4));
+             if not assigned(aTexture) then begin
+              PipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvVector4));
+             end;
              PipelineLayout.AddDescriptorSetLayout(VulkanDescriptorSetLayout);
              PipelineLayout.Initialize;
 
@@ -411,11 +447,13 @@ begin
                                                          0,
                                                          nil);
 
-              ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
-                                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                                    0,
-                                                    SizeOf(TpvVector4),
-                                                    @LocalLightDirection);
+              if not assigned(aTexture) then begin
+               ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
+                                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                                     0,
+                                                     SizeOf(TpvVector4),
+                                                     @LocalLightDirection);
+              end;
 
               ComputeCommandBuffer.CmdDispatch(Max(1,(fWidth+((1 shl 4)-1)) shr 4),
                                                Max(1,(fHeight+((1 shl 4)-1)) shr 4),
