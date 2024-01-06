@@ -137,6 +137,43 @@ type TpvSwap<T>=class
        property Count:TpvInt32 read fCount write SetCount;
      end;
 
+     TpvTaggedTopologicalSort=class
+      public
+       type TKey=class;
+            TKeys=array of TKey;
+            TKey=class
+             private
+              fTag:TpvPtrUInt;
+              fDependOnKeys:TKeys;
+              fCountDependOnKeys:TpvSizeInt;
+              fVisitedState:TpvUInt32;
+              fIndex:TpvSizeInt;
+             public
+              constructor Create(const aTag:TpvPtrUInt); reintroduce;
+              destructor Destroy; override;
+              procedure AddDependOnKey(const aKey:TKey);
+             published 
+              property Tag:TpvPtrUInt read fTag;
+              property Index:TpvSizeInt read fIndex;
+            end;
+      private
+       fKeys:TKeys;
+       fCountKeys:TpvSizeInt;
+       fCyclic:Boolean;
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure Clear;
+       function Add(const aTag:TpvPtrUInt):TKey;
+       procedure AddDependOnKey(const aKey,aDependOnKey:TKey);
+       function Solve(const aBackwards:Boolean=false):Boolean;
+      public
+       property Keys:TKeys read fKeys; 
+      published
+       property Cyclic:Boolean read fCyclic;
+       property CountKeys:TpvSizeInt read fCountKeys;
+     end;
+
 procedure DebugBreakPoint;
 
 function DumpExceptionCallStack(e:Exception):string;
@@ -1156,6 +1193,164 @@ begin
   end;
  end;
 end;
+
+constructor TpvTaggedTopologicalSort.TKey.Create(const aTag:TpvPtrUInt);
+begin
+ inherited Create;
+ fTag:=aTag;
+ fDependOnKeys:=nil;
+ fCountDependOnKeys:=0;
+ fVisitedState:=0;
+ fIndex:=-1;
+end;
+
+destructor TpvTaggedTopologicalSort.TKey.Destroy;
+begin
+ fDependOnKeys:=nil;
+ fCountDependOnKeys:=0;
+ inherited Destroy;
+end;
+
+procedure TpvTaggedTopologicalSort.TKey.AddDependOnKey(const aKey:TpvTaggedTopologicalSort.TKey);
+begin
+ if length(fDependOnKeys)<=fCountDependOnKeys then begin
+  SetLength(fDependOnKeys,(fCountDependOnKeys+1)*2);
+ end;
+ fDependOnKeys[fCountDependOnKeys]:=aKey;
+ inc(fCountDependOnKeys);
+end;
+
+constructor TpvTaggedTopologicalSort.Create;
+begin
+ inherited Create;
+ fKeys:=nil;
+ fCountKeys:=0;
+ fCyclic:=false;
+end;
+
+destructor TpvTaggedTopologicalSort.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TpvTaggedTopologicalSort.Clear;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to fCountKeys-1 do begin
+  FreeAndNil(fKeys[Index]);
+ end;
+ fKeys:=nil;
+ fCountKeys:=0;
+ fCyclic:=false;
+end;
+
+function TpvTaggedTopologicalSort.Add(const aTag:TpvPtrUInt):TpvTaggedTopologicalSort.TKey;
+begin
+ result:=TpvTaggedTopologicalSort.TKey.Create(aTag);
+ if length(fKeys)<=fCountKeys then begin
+  SetLength(fKeys,(fCountKeys+1)*2);
+ end;
+ fKeys[fCountKeys]:=result;
+ inc(fCountKeys);
+end;
+
+procedure TpvTaggedTopologicalSort.AddDependOnKey(const aKey,aDependOnKey:TpvTaggedTopologicalSort.TKey);
+begin
+ aKey.AddDependOnKey(aDependOnKey);
+end;
+
+function TpvTaggedTopologicalSort.Solve(const aBackwards:Boolean):Boolean;
+var Index,SubIndex,StackPointer,CountDependOnKeys,IndexCounter:TpvSizeInt;
+    Key,DependsOnKey:TpvTaggedTopologicalSort.TKey;
+    Stack:TpvTaggedTopologicalSort.TKeys;
+begin
+
+ fCyclic:=false;
+
+ for Index:=0 to fCountKeys-1 do begin
+  Key:=fKeys[Index];
+  Key.fVisitedState:=0;
+  Key.fIndex:=-1;
+ end;
+
+ Stack:=nil;
+ try
+
+  IndexCounter:=0;
+
+  for Index:=0 to fCountKeys-1 do begin
+   Key:=fKeys[Index];
+   if Key.fVisitedState=0 then begin
+    StackPointer:=0;
+    if length(Stack)<(StackPointer+1) then begin
+     SetLength(Stack,(StackPointer+1)*2);
+    end; 
+    Stack[StackPointer]:=Key;
+    inc(StackPointer);
+    while StackPointer>0 do begin
+     dec(StackPointer);
+     Key:=Stack[StackPointer];
+     if assigned(Key) then begin
+      case Key.fVisitedState of
+       0:begin
+        Key.fVisitedState:=1; // Visited and recursive relevant for cycle detection
+        CountDependOnKeys:=Key.fCountDependOnKeys;
+        if length(Stack)<(StackPointer+CountDependOnKeys+1) then begin
+         SetLength(Stack,(StackPointer+CountDependOnKeys+1)*2);
+        end;
+        Stack[StackPointer]:=Key;
+        inc(StackPointer);
+        for SubIndex:=CountDependOnKeys-1 downto 0 do begin
+         DependsOnKey:=Key.fDependOnKeys[SubIndex];
+         if assigned(DependsOnKey) then begin
+          case DependsOnKey.fVisitedState of
+           0:begin
+            Stack[StackPointer]:=DependsOnKey;
+            inc(StackPointer);
+           end;
+           1:begin
+            fCyclic:=true;
+            break;            
+           end;
+           else begin
+            // Nothing to do in this case 
+           end;
+          end;
+         end;
+        end;
+        if fCyclic then begin
+         break;
+        end;
+       end;
+       1:begin
+        Key.fVisitedState:=2; // Visited but no more recursive relevant for cycle detection
+        Key.fIndex:=IndexCounter;
+        inc(IndexCounter);
+       end; 
+       else begin
+        // Nothing to do in this case 
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+
+ finally
+  Stack:=nil;
+ end;
+
+ if aBackwards then begin
+  for Index:=0 to fCountKeys-1 do begin
+   Key:=fKeys[Index];
+   Key.fIndex:=IndexCounter-(Key.fIndex+1);
+  end;
+ end;
+
+ result:=not fCyclic;
+
+end; 
 
 function IsPathSeparator(const aChar:AnsiChar):Boolean;
 begin
