@@ -20418,7 +20418,7 @@ begin
  fBoundingBox.Min:=TpvVector3.Origin;
  fBoundingBox.Max:=TpvVector3.Origin;
  for GroupInstance in fGroupInstances do begin
-  if GroupInstance.fActive then begin
+  if GroupInstance.fGroup.Usable and GroupInstance.fActive then begin
    if First then begin
     First:=false;
     fBoundingBox:=GroupInstance.fBoundingBox;
