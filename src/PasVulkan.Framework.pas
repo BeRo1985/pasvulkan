@@ -25270,8 +25270,8 @@ const RGBE_DATA_RED=0;
  var f:TpvFloat;
  begin
   if e<>0 then begin
-   f:=ldexp(1.0,e-(128+8));
- //f:=power(2.0,e-(128+8));
+   f:=ldexp(1.0,TpvInt32(e)-TpvInt32(128+8));
+ //f:=power(2.0,TpvInt32(e)-TpvInt32(128+8));
    red:=r*f;
    green:=g*f;
    blue:=b*f;
@@ -25280,7 +25280,7 @@ const RGBE_DATA_RED=0;
    red:=0.0;
    green:=0.0;
    blue:=0.0;
-   alpha:=0.0;
+   alpha:=1.0;
   end;
  end;
  function LoadHDRImage(var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32):boolean;
@@ -25444,6 +25444,11 @@ const RGBE_DATA_RED=0;
         if length(scanlinebuffer)<>ImageWidth then begin
          SetLength(scanlinebuffer,ImageWidth);
         end;
+        for x:=0 to ImageWidth-1 do begin
+         for i:=0 to 3 do begin
+          scanlinebuffer[x,i]:=0;
+         end;
+        end;
         for i:=0 to 3 do begin
          x:=0;
          while x<ImageWidth do begin
@@ -25477,18 +25482,18 @@ const RGBE_DATA_RED=0;
            goto DoFail;
           end;
          end;
-         for x:=0 to ImageWidth-1 do begin
-          rgbe2float(scanlinebuffer[x,0],scanlinebuffer[x,1],scanlinebuffer[x,2],scanlinebuffer[x,3],r,g,b,a);
-          p^:=r;
-          inc(p);
-          p^:=g;
-          inc(p);
-          p^:=b;
-          inc(p);
-          p^:=a;
-          inc(p);
-          dec(CountPixels);
-         end;
+        end;
+        for x:=0 to ImageWidth-1 do begin
+         rgbe2float(scanlinebuffer[x,0],scanlinebuffer[x,1],scanlinebuffer[x,2],scanlinebuffer[x,3],r,g,b,a);
+         p^:=r;
+         inc(p);
+         p^:=g;
+         inc(p);
+         p^:=b;
+         inc(p);
+         p^:=a;
+         inc(p);
+         dec(CountPixels);
         end;
        end;
       end else begin
