@@ -1126,7 +1126,7 @@ type PpvScalar=^TpvScalar;
        function TriangleIntersection(const Triangle:TpvTriangle):boolean;
        function Transform(const Transform:TpvMatrix3x3):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Transform(const Transform:TpvMatrix4x4):TpvAABB; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function HomogenTransform(const Transform:TpvMatrix4x4):TpvAABB; overload;
+       function HomogenTransform(const aTransform:TpvMatrix4x4):TpvAABB; overload;
        function MatrixMul(const Transform:TpvMatrix3x3):TpvAABB; overload;
        function MatrixMul(const Transform:TpvMatrix4x4):TpvAABB; overload;
        function ScissorRect(out Scissor:TpvClipRect;const mvp:TpvMatrix4x4;const vp:TpvClipRect;zcull:boolean):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -12478,9 +12478,9 @@ begin
       (LocalMatrix.RawComponents[2,3]<>0.0) then begin
 
     result.Perspective:=PerspectiveMatrix.Inverse.Transpose*TpvVector4.Create(LocalMatrix.RawComponents[0,3],
-                                                                                         LocalMatrix.RawComponents[1,3],
-                                                                                         LocalMatrix.RawComponents[2,3],
-                                                                                         LocalMatrix.RawComponents[3,3]);
+                                                                              LocalMatrix.RawComponents[1,3],
+                                                                              LocalMatrix.RawComponents[2,3],
+                                                                              LocalMatrix.RawComponents[3,3]);
 
     LocalMatrix.RawComponents[0,3]:=0.0;
     LocalMatrix.RawComponents[1,3]:=0.0;
@@ -15294,44 +15294,18 @@ begin
  end;
 end;}
 
-function TpvAABB.HomogenTransform(const Transform:TpvMatrix4x4):TpvAABB;
-var Index:TpvInt32;
-    v,Center,Extents:TpvVector3;
+function TpvAABB.HomogenTransform(const aTransform:TpvMatrix4x4):TpvAABB;
+var Center,Extents:TpvVector3;
 begin
- if (Transform.RawComponents[3,0]=0.0) and (Transform.RawComponents[3,1]=0.0) and (Transform.RawComponents[3,2]=0.0) and (Transform.RawComponents[3,3]=1.0) then begin
-  Center:=(Transform*TpvVector4.InlineableCreate((Min+Max)*0.5,1.0)).xyz;
-  Extents:=Transform.MulAbsBasis((Max-Min)*0.5);
+ if (abs(aTransform.RawComponents[0,3])+abs(aTransform.RawComponents[1,3])+abs(aTransform.RawComponents[2,3])+(abs(aTransform.RawComponents[3,3]-1.0))<1e-6) then begin
+  // Affine => fast but more specialized code path
+  Center:=(aTransform*TpvVector4.InlineableCreate((Min+Max)*0.5,1.0)).xyz;
+  Extents:=aTransform.MulAbsBasis((Max-Min)*0.5);
   result.Min:=Center-Extents;
   result.Max:=Center+Extents;
  end else begin
-  for Index:=0 to 7 do begin
-   v:=Transform.MulHomogen(TpvVector3.InlineableCreate(MinMax[(Index shr 0) and 1].x,
-                                                       MinMax[(Index shr 1) and 1].y,
-                                                       MinMax[(Index shr 2) and 1].z));
-   if Index=0 then begin
-    result.Min:=v;
-    result.Max:=v;
-   end else begin
-    if result.Min.x>v.x then begin
-     result.Min.x:=v.x;
-    end;
-    if result.Min.y>v.y then begin
-     result.Min.y:=v.y;
-    end;
-    if result.Min.z>v.z then begin
-     result.Min.z:=v.z;
-    end;
-    if result.Max.x<v.x then begin
-     result.Max.x:=v.x;
-    end;
-    if result.Max.y<v.y then begin
-     result.Max.y:=v.y;
-    end;
-    if result.Max.z<v.z then begin
-     result.Max.z:=v.z;
-    end;
-   end;
-  end;
+  // Non-affine => slow but more flexible code path
+  result:=MatrixMul(aTransform);
  end;
 end;
 
