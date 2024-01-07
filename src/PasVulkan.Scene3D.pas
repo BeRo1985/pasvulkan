@@ -17274,7 +17274,7 @@ var CullFace,Blend:TPasGLTFInt32;
      WeightedRotationFactorSum,
      WeightsFactorSum:TpvDouble;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-     FirstWeights,SkinUsed,Dirty,Additive:boolean;
+     FirstWeights,SkinUsed,Dirty,Additive,HasAdditiveRotation:boolean;
      Light:TpvScene3D.TLight;
      InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
   procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble;const aAdditive:Boolean);
@@ -17282,6 +17282,7 @@ var CullFace,Blend:TPasGLTFInt32;
    if not IsZero(aFactor) then begin
     if aAdditive then begin
      AdditiveRotation:=AdditiveRotation.Slerp(AdditiveRotation*aRotation,aFactor);
+     HasAdditiveRotation:=true;
     end else begin
      if RotationCounter=0 then begin
       WeightedRotation:=aRotation;
@@ -17330,6 +17331,7 @@ var CullFace,Blend:TPasGLTFInt32;
    FirstWeights:=true;
    WeightedRotation:=TpvQuaternion.Identity;
    AdditiveRotation:=TpvQuaternion.Identity;
+   HasAdditiveRotation:=false;
    RotationCounter:=0;
    for Index:=0 to InstanceNode^.CountOverwrites-1 do begin
     Overwrite:=@InstanceNode^.Overwrites[Index];
@@ -17398,9 +17400,12 @@ var CullFace,Blend:TPasGLTFInt32;
    Translation:=TranslationSum.Get(Node.fTranslation);
    Scale:=ScaleSum.Get(Node.fScale);
    if WeightedRotationFactorSum>0.0 then begin
-    WeightedRotation:=WeightedRotation.Normalize*AdditiveRotation;
+    WeightedRotation:=WeightedRotation.Normalize;
    end else begin
-    WeightedRotation:=Node.fRotation*AdditiveRotation;
+    WeightedRotation:=Node.fRotation;
+   end;
+   if HasAdditiveRotation then begin
+    WeightedRotation:=WeightedRotation*AdditiveRotation;
    end;
    if WeightsFactorSum>0.0 then begin
     Factor:=1.0/WeightsFactorSum;
