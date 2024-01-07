@@ -257,49 +257,59 @@ type EpvScene3D=class(Exception);
             TRendererInstanceIDManager=TpvGenericIDManager<TpvUInt32>;
             TScalarSum=record
              public
-              x:TpvDouble;
-              FactorSum:TpvDouble;
+              WeightedX:TpvDouble;
+              WeightedFactorSum:TpvDouble;
+              AdditiveX:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aFactor:TpvDouble); inline;
+              procedure Add(const aX,aFactor:TpvDouble;const aAdditive:Boolean); inline;
               function Get(const aDefaultX:TpvDouble=0.0):TpvDouble; inline;
             end;
             TVector2Sum=record
              public
-              x:TpvDouble;
-              y:TpvDouble;
-              FactorSum:TpvDouble;
+              WeightedX:TpvDouble;
+              WeightedY:TpvDouble;
+              WeightedFactorSum:TpvDouble;
+              AdditiveX:TpvDouble;
+              AdditiveY:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aY,aFactor:TpvDouble); overload; inline;
-              procedure Add(const aVector:TpvVector2;const aFactor:TpvDouble); overload; inline;
+              procedure Add(const aX,aY,aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
+              procedure Add(const aVector:TpvVector2;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
               function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0):TpvVector2; overload; inline;
               function Get(const aDefault:TpvVector2):TpvVector2; overload; inline;
             end;
             TVector3Sum=record
              public
-              x:TpvDouble;
-              y:TpvDouble;
-              z:TpvDouble;
-              FactorSum:TpvDouble;
+              WeightedX:TpvDouble;
+              WeightedY:TpvDouble;
+              WeightedZ:TpvDouble;
+              WeightedFactorSum:TpvDouble;
+              AdditiveX:TpvDouble;
+              AdditiveY:TpvDouble;
+              AdditiveZ:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aY,aZ,aFactor:TpvDouble); overload; inline;
-              procedure Add(const aVector:TpvVector3;const aFactor:TpvDouble); overload; inline;
+              procedure Add(const aX,aY,aZ,aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
+              procedure Add(const aVector:TpvVector3;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
               function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0):TpvVector3; overload; inline;
               function Get(const aDefault:TpvVector3):TpvVector3; overload; inline;
             end;
             TVector4Sum=record
              public
-              x:TpvDouble;
-              y:TpvDouble;
-              z:TpvDouble;
-              w:TpvDouble;
-              FactorSum:TpvDouble;
+              WeightedX:TpvDouble;
+              WeightedY:TpvDouble;
+              WeightedZ:TpvDouble;
+              WeightedW:TpvDouble;
+              WeightedFactorSum:TpvDouble;
+              AdditiveX:TpvDouble;
+              AdditiveY:TpvDouble;
+              AdditiveZ:TpvDouble;
+              AdditiveW:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aY,aZ,aW,aFactor:TpvDouble); overload; inline;
-              procedure Add(const aVector:TpvVector4;const aFactor:TpvDouble); overload; inline;
+              procedure Add(const aX,aY,aZ,aW,aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
+              procedure Add(const aVector:TpvVector4;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
               function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0;const aDefaultW:TpvDouble=0.0):TpvVector4; overload; inline;
               function Get(const aDefault:TpvVector4):TpvVector4; overload; inline;
             end;
@@ -2005,6 +2015,7 @@ type EpvScene3D=class(Exception);
                             fTime:TpvDouble;
                             fLastIndices:TLastIndices;
                             fShadowTime:TpvDouble;
+                            fAdditive:LongBool;
                             fComplete:LongBool;
                             fChannelOverwrites:TChannelOverwrites;
                            public
@@ -2014,6 +2025,7 @@ type EpvScene3D=class(Exception);
                             property Factor:TpvFloat read fFactor write fFactor;
                             property Time:TpvDouble read fTime write fTime;
                             property ShadowTime:TpvDouble read fShadowTime write fShadowTime;
+                            property Additive:LongBool read fAdditive write fAdditive;
                             property Complete:LongBool read fComplete write fComplete;
                           end;
                           TAnimations=array of TpvScene3D.TGroup.TInstance.TAnimation;
@@ -2021,6 +2033,7 @@ type EpvScene3D=class(Exception);
                            public
                             type TNodeOverwriteFlag=
                                   (
+                                   Additive,
                                    Defaults,
                                    DefaultTranslation,
                                    DefaultRotation,
@@ -2091,6 +2104,7 @@ type EpvScene3D=class(Exception);
                            public
                             type TLightOverwriteFlag=
                                   (
+                                   Additive,
                                    Defaults,
                                    DefaultColor,
                                    DefaultIntensity,
@@ -2140,6 +2154,7 @@ type EpvScene3D=class(Exception);
                            public
                             type TCameraOverwriteFlag=
                                   (
+                                   Additive,
                                    Defaults,
                                    DefaultOrthographicXMag,
                                    DefaultOrthographicYMag,
@@ -2198,6 +2213,7 @@ type EpvScene3D=class(Exception);
                            public
                             type TMaterialOverwriteFlag=
                                   (
+                                   Additive,
                                    Defaults,
                                    DefaultMaterialPBRMetallicRoughnessBaseColorFactor,
                                    DefaultMaterialPBRMetallicRoughnessMetallicFactor,
@@ -2385,6 +2401,14 @@ type EpvScene3D=class(Exception);
                             Count:TpvSizeInt;
                           end;
                           PAABBTreeSkipList=^TAABBTreeSkipList;
+                          TAttachment=class
+                           private
+                            fSourceInstance:TpvScene3D.TGroup.TInstance;
+                            fDestinationInstance:TpvScene3D.TGroup.TInstance;
+                            fDestinationNode:TpvScene3D.TGroup.TNode;
+                            fTransform:TpvMatrix4x4;
+                           public
+                          end;
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
@@ -2508,6 +2532,9 @@ type EpvScene3D=class(Exception);
                      function HasRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+                    public
+                     function AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+                     function DetachFrom(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -3716,22 +3743,27 @@ end;
 
 procedure TpvScene3D.TScalarSum.Clear;
 begin
- x:=0.0;
- FactorSum:=0.0;
+ WeightedX:=0.0;
+ WeightedFactorSum:=0.0;
+ AdditiveX:=0.0;
 end;
 
-procedure TpvScene3D.TScalarSum.Add(const aX,aFactor:TpvDouble);
+procedure TpvScene3D.TScalarSum.Add(const aX,aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aX*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aX*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aX*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
 function TpvScene3D.TScalarSum.Get(const aDefaultX:TpvDouble):TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result:=aDefaultX;
+ if IsZero(WeightedFactorSum) then begin
+  result:=aDefaultX+AdditiveX;
  end else begin
-  result:=x/FactorSum;
+  result:=(WeightedX/WeightedFactorSum)+AdditiveX;
  end;
 end;
 
@@ -3739,47 +3771,59 @@ end;
 
 procedure TpvScene3D.TVector2Sum.Clear;
 begin
- x:=0.0;
- y:=0.0;
- FactorSum:=0.0;
+ WeightedX:=0.0;
+ WeightedY:=0.0;
+ WeightedFactorSum:=0.0;
+ AdditiveX:=0.0;
+ AdditiveY:=0.0;
 end;
 
-procedure TpvScene3D.TVector2Sum.Add(const aX,aY,aFactor:TpvDouble);
+procedure TpvScene3D.TVector2Sum.Add(const aX,aY,aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aX*aFactor);
- y:=y+(aY*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aX*aFactor);
+  AdditiveY:=AdditiveY+(aY*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aX*aFactor);
+  WeightedY:=WeightedY+(aY*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
-procedure TpvScene3D.TVector2Sum.Add(const aVector:TpvVector2;const aFactor:TpvDouble);
+procedure TpvScene3D.TVector2Sum.Add(const aVector:TpvVector2;const aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aVector.x*aFactor);
- y:=y+(aVector.y*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aVector.x*aFactor);
+  AdditiveY:=AdditiveY+(aVector.y*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aVector.x*aFactor);
+  WeightedY:=WeightedY+(aVector.y*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
 function TpvScene3D.TVector2Sum.Get(const aDefaultX:TpvDouble;const aDefaultY:TpvDouble):TpvVector2;
 var Factor:TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result.x:=aDefaultX;
-  result.y:=aDefaultY;
+ if IsZero(WeightedFactorSum) then begin
+  result.x:=aDefaultX+AdditiveX;
+  result.y:=aDefaultY+AdditiveY;
  end else begin
-  Factor:=1.0/FactorSum;
-  result.x:=x*Factor;
-  result.y:=y*Factor;
+  Factor:=1.0/WeightedFactorSum;
+  result.x:=(WeightedX*Factor)+AdditiveX;
+  result.y:=(WeightedY*Factor)+AdditiveY;
  end;
 end;
 
 function TpvScene3D.TVector2Sum.Get(const aDefault:TpvVector2):TpvVector2;
 var Factor:TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result:=aDefault;
+ if IsZero(WeightedFactorSum) then begin
+  result:=aDefault+TpvVector2.InlineableCreate(AdditiveX,AdditiveY);
  end else begin
-  Factor:=1.0/FactorSum;
-  result.x:=x*Factor;
-  result.y:=y*Factor;
+  Factor:=1.0/WeightedFactorSum;
+  result.x:=(WeightedX*Factor)+AdditiveX;
+  result.y:=(WeightedY*Factor)+AdditiveY;
  end;
 end;
 
@@ -3787,53 +3831,68 @@ end;
 
 procedure TpvScene3D.TVector3Sum.Clear;
 begin
- x:=0.0;
- y:=0.0;
- z:=0.0;
- FactorSum:=0.0;
+ WeightedX:=0.0;
+ WeightedY:=0.0;
+ WeightedZ:=0.0;
+ WeightedFactorSum:=0.0;
+ AdditiveX:=0.0;
+ AdditiveY:=0.0;
+ AdditiveZ:=0.0;
 end;
 
-procedure TpvScene3D.TVector3Sum.Add(const aX,aY,aZ,aFactor:TpvDouble);
+procedure TpvScene3D.TVector3Sum.Add(const aX,aY,aZ,aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aX*aFactor);
- y:=y+(aY*aFactor);
- z:=z+(aZ*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aX*aFactor);
+  AdditiveY:=AdditiveY+(aY*aFactor);
+  AdditiveZ:=AdditiveZ+(aZ*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aX*aFactor);
+  WeightedY:=WeightedY+(aY*aFactor);
+  WeightedZ:=WeightedZ+(aZ*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
-procedure TpvScene3D.TVector3Sum.Add(const aVector:TpvVector3;const aFactor:TpvDouble);
+procedure TpvScene3D.TVector3Sum.Add(const aVector:TpvVector3;const aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aVector.x*aFactor);
- y:=y+(aVector.y*aFactor);
- z:=z+(aVector.z*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aVector.x*aFactor);
+  AdditiveY:=AdditiveY+(aVector.y*aFactor);
+  AdditiveZ:=AdditiveZ+(aVector.z*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aVector.x*aFactor);
+  WeightedY:=WeightedY+(aVector.y*aFactor);
+  WeightedZ:=WeightedZ+(aVector.z*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
 function TpvScene3D.TVector3Sum.Get(const aDefaultX:TpvDouble;const aDefaultY:TpvDouble;const aDefaultZ:TpvDouble):TpvVector3;
 var Factor:TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result.x:=aDefaultX;
-  result.y:=aDefaultY;
-  result.z:=aDefaultZ;
+ if IsZero(WeightedFactorSum) then begin
+  result.x:=aDefaultX+AdditiveX;
+  result.y:=aDefaultY+AdditiveY;
+  result.z:=aDefaultZ+AdditiveZ;
  end else begin
-  Factor:=1.0/FactorSum;
-  result.x:=x*Factor;
-  result.y:=y*Factor;
-  result.z:=z*Factor;
+  Factor:=1.0/WeightedFactorSum;
+  result.x:=(WeightedX*Factor)+AdditiveX;
+  result.y:=(WeightedY*Factor)+AdditiveY;
+  result.z:=(WeightedZ*Factor)+AdditiveZ;
  end;
 end;
 
 function TpvScene3D.TVector3Sum.Get(const aDefault:TpvVector3):TpvVector3;
 var Factor:TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result:=aDefault;
+ if IsZero(WeightedFactorSum) then begin
+  result:=aDefault+TpvVector3.InlineableCreate(AdditiveX,AdditiveY,AdditiveZ);
  end else begin
-  Factor:=1.0/FactorSum;
-  result.x:=x*Factor;
-  result.y:=y*Factor;
-  result.z:=z*Factor;
+  Factor:=1.0/WeightedFactorSum;
+  result.x:=(WeightedX*Factor)+AdditiveX;
+  result.y:=(WeightedY*Factor)+AdditiveY;
+  result.z:=(WeightedZ*Factor)+AdditiveZ;
  end;
 end;
 
@@ -3841,65 +3900,83 @@ end;
 
 procedure TpvScene3D.TVector4Sum.Clear;
 begin
- x:=0.0;
- y:=0.0;
- z:=0.0;
- w:=0.0;
- FactorSum:=0.0;
+ WeightedX:=0.0;
+ WeightedY:=0.0;
+ WeightedZ:=0.0;
+ WeightedW:=0.0;
+ WeightedFactorSum:=0.0;
+ AdditiveX:=0.0;
+ AdditiveY:=0.0;
+ AdditiveZ:=0.0;
+ AdditiveW:=0.0;
 end;
 
-procedure TpvScene3D.TVector4Sum.Add(const aX,aY,aZ,aW,aFactor:TpvDouble);
+procedure TpvScene3D.TVector4Sum.Add(const aX,aY,aZ,aW,aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aX*aFactor);
- y:=y+(aY*aFactor);
- z:=z+(aZ*aFactor);
- w:=w+(aW*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aX*aFactor);
+  AdditiveY:=AdditiveY+(aY*aFactor);
+  AdditiveZ:=AdditiveZ+(aZ*aFactor);
+  AdditiveW:=AdditiveW+(aW*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aX*aFactor);
+  WeightedY:=WeightedY+(aY*aFactor);
+  WeightedZ:=WeightedZ+(aZ*aFactor);
+  WeightedW:=WeightedW+(aW*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
-procedure TpvScene3D.TVector4Sum.Add(const aVector:TpvVector4;const aFactor:TpvDouble);
+procedure TpvScene3D.TVector4Sum.Add(const aVector:TpvVector4;const aFactor:TpvDouble;const aAdditive:Boolean);
 begin
- x:=x+(aVector.x*aFactor);
- y:=y+(aVector.y*aFactor);
- z:=z+(aVector.z*aFactor);
- w:=w+(aVector.w*aFactor);
- FactorSum:=FactorSum+aFactor;
+ if aAdditive then begin
+  AdditiveX:=AdditiveX+(aVector.x*aFactor);
+  AdditiveY:=AdditiveY+(aVector.y*aFactor);
+  AdditiveZ:=AdditiveZ+(aVector.z*aFactor);
+  AdditiveW:=AdditiveW+(aVector.w*aFactor);
+ end else begin
+  WeightedX:=WeightedX+(aVector.x*aFactor);
+  WeightedY:=WeightedY+(aVector.y*aFactor);
+  WeightedZ:=WeightedZ+(aVector.z*aFactor);
+  WeightedW:=WeightedW+(aVector.w*aFactor);
+  WeightedFactorSum:=WeightedFactorSum+aFactor;
+ end;
 end;
 
 function TpvScene3D.TVector4Sum.Get(const aDefaultX:TpvDouble;const aDefaultY:TpvDouble;const aDefaultZ:TpvDouble;const aDefaultW:TpvDouble):TpvVector4;
 var Factor:TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result.x:=aDefaultX;
-  result.y:=aDefaultY;
-  result.z:=aDefaultZ;
-  result.w:=aDefaultW;
+ if IsZero(WeightedFactorSum) then begin
+  result.x:=aDefaultX+AdditiveX;
+  result.y:=aDefaultY+AdditiveY;
+  result.z:=aDefaultZ+AdditiveZ;
+  result.w:=aDefaultW+AdditiveW;
  end else begin
-  Factor:=1.0/FactorSum;
-  result.x:=x*Factor;
-  result.y:=y*Factor;
-  result.z:=z*Factor;
-  result.w:=w*Factor;
+  Factor:=1.0/WeightedFactorSum;
+  result.x:=(WeightedX*Factor)+AdditiveX;
+  result.y:=(WeightedY*Factor)+AdditiveY;
+  result.z:=(WeightedZ*Factor)+AdditiveZ;
+  result.w:=(WeightedW*Factor)+AdditiveW;
  end;
 end;
 
 function TpvScene3D.TVector4Sum.Get(const aDefault:TpvVector4):TpvVector4;
 var Factor:TpvDouble;
 begin
- if IsZero(FactorSum) then begin
-  result:=aDefault;
+ if IsZero(WeightedFactorSum) then begin
+  result:=aDefault+TpvVector4.InlineableCreate(AdditiveX,AdditiveY,AdditiveZ,AdditiveW);
  end else begin
-  Factor:=1.0/FactorSum;
-  result.x:=x*Factor;
-  result.y:=y*Factor;
-  result.z:=z*Factor;
-  result.w:=w*Factor;
+  Factor:=1.0/WeightedFactorSum;
+  result.x:=(WeightedX*Factor)+AdditiveX;
+  result.y:=(WeightedY*Factor)+AdditiveY;
+  result.z:=(WeightedZ*Factor)+AdditiveZ;
+  result.w:=(WeightedW*Factor)+AdditiveW;
  end;
 end;
 
 { TpvScene3D.TVertex }
 
-class function TpvScene3D.TVertex.Create: TVertex;
+class function TpvScene3D.TVertex.Create:TVertex;
 begin
  FillChar(result,SizeOf(TpvScene3D.TVertex),#0);
  result.Color0.x:=1.0;
@@ -13885,6 +13962,7 @@ end;
 procedure TpvScene3D.TGroup.TInstance.TLight.Update;
 var Index:TpvSizeInt;
     Factor:TpvDouble;
+    Additive:Boolean;
     Overwrite:TpvScene3D.TGroup.TInstance.TLight.PLightOverwrite;
     ColorSum:TpvScene3D.TVector3Sum;
     IntensitySum:TpvScene3D.TScalarSum;
@@ -13907,47 +13985,48 @@ begin
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
+   Additive:=TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive in Overwrite^.Flags;
    if not IsZero(Factor) then begin
     if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Defaults in Overwrite^.Flags then begin
-     ColorSum.Add(fData.fColor,Factor);
-     IntensitySum.Add(fData.fIntensity,Factor);
-     RangeSum.Add(fData.fRange,Factor);
-     SpotInnerConeAngleSum.Add(fData.fInnerConeAngle,Factor);
-     SpotOuterConeAngleSum.Add(fData.fOuterConeAngle,Factor);
+     ColorSum.Add(fData.fColor,Factor,Additive);
+     IntensitySum.Add(fData.fIntensity,Factor,Additive);
+     RangeSum.Add(fData.fRange,Factor,Additive);
+     SpotInnerConeAngleSum.Add(fData.fInnerConeAngle,Factor,Additive);
+     SpotOuterConeAngleSum.Add(fData.fOuterConeAngle,Factor,Additive);
     end else begin
      if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Color in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultColor in Overwrite^.Flags then begin
-       ColorSum.Add(fData.fColor,Factor);
+       ColorSum.Add(fData.fColor,Factor,Additive);
       end else begin
-       ColorSum.Add(Overwrite^.Color,Factor);
+       ColorSum.Add(Overwrite^.Color,Factor,Additive);
       end;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Intensity in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultIntensity in Overwrite^.Flags then begin
-       IntensitySum.Add(fData.fIntensity,Factor);
+       IntensitySum.Add(fData.fIntensity,Factor,Additive);
       end else begin
-       IntensitySum.Add(Overwrite^.Intensity,Factor);
+       IntensitySum.Add(Overwrite^.Intensity,Factor,Additive);
       end;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Range in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultRange in Overwrite^.Flags then begin
-       RangeSum.Add(fData.fRange,Factor);
+       RangeSum.Add(fData.fRange,Factor,Additive);
       end else begin
-       RangeSum.Add(Overwrite^.Range,Factor);
+       RangeSum.Add(Overwrite^.Range,Factor,Additive);
       end;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotInnerConeAngle in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotInnerConeAngle in Overwrite^.Flags then begin
-       SpotInnerConeAngleSum.Add(fData.fInnerConeAngle,Factor);
+       SpotInnerConeAngleSum.Add(fData.fInnerConeAngle,Factor,Additive);
       end else begin
-       SpotInnerConeAngleSum.Add(Overwrite^.SpotInnerConeAngle,Factor);
+       SpotInnerConeAngleSum.Add(Overwrite^.SpotInnerConeAngle,Factor,Additive);
       end;
      end;
      if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.SpotOuterConeAngle in Overwrite^.Flags then begin
       if TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.DefaultSpotOuterConeAngle in Overwrite^.Flags then begin
-       SpotOuterConeAngleSum.Add(fData.fOuterConeAngle,Factor);
+       SpotOuterConeAngleSum.Add(fData.fOuterConeAngle,Factor,Additive);
       end else begin
-       SpotOuterConeAngleSum.Add(Overwrite^.SpotOuterConeAngle,Factor);
+       SpotOuterConeAngleSum.Add(Overwrite^.SpotOuterConeAngle,Factor,Additive);
       end;
      end;
     end;
@@ -13984,6 +14063,7 @@ end;
 procedure TpvScene3D.TGroup.TInstance.TCamera.Update;
 var Index:TpvSizeInt;
     Factor:TpvDouble;
+    Additive:Boolean;
     Overwrite:TpvScene3D.TGroup.TInstance.TCamera.PCameraOverwrite;
     OrthographicXMagSum:TpvScene3D.TScalarSum;
     OrthographicYMagSum:TpvScene3D.TScalarSum;
@@ -14012,20 +14092,21 @@ begin
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
+   Additive:=TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive in Overwrite^.Flags;
    if not IsZero(Factor) then begin
     if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Defaults in Overwrite^.Flags then begin
      case fData.Type_ of
       TpvScene3D.TCameraData.TCameraType.Orthographic:begin
-       OrthographicXMagSum.Add(fData.Orthographic.XMag,Factor);
-       OrthographicYMagSum.Add(fData.Orthographic.YMag,Factor);
-       OrthographicZFarSum.Add(fData.Orthographic.ZFar,Factor);
-       OrthographicZNearSum.Add(fData.Orthographic.ZNear,Factor);
+       OrthographicXMagSum.Add(fData.Orthographic.XMag,Factor,Additive);
+       OrthographicYMagSum.Add(fData.Orthographic.YMag,Factor,Additive);
+       OrthographicZFarSum.Add(fData.Orthographic.ZFar,Factor,Additive);
+       OrthographicZNearSum.Add(fData.Orthographic.ZNear,Factor,Additive);
       end;
       TpvScene3D.TCameraData.TCameraType.Perspective:begin
-       PerspectiveAspectRatioSum.Add(fData.Perspective.AspectRatio,Factor);
-       PerspectiveYFovSum.Add(fData.Perspective.YFoV,Factor);
-       PerspectiveZFarSum.Add(fData.Perspective.ZFar,Factor);
-       PerspectiveZNearSum.Add(fData.Perspective.ZNear,Factor);
+       PerspectiveAspectRatioSum.Add(fData.Perspective.AspectRatio,Factor,Additive);
+       PerspectiveYFovSum.Add(fData.Perspective.YFoV,Factor,Additive);
+       PerspectiveZFarSum.Add(fData.Perspective.ZFar,Factor,Additive);
+       PerspectiveZNearSum.Add(fData.Perspective.ZNear,Factor,Additive);
       end;
       else begin
       end;
@@ -14035,60 +14116,60 @@ begin
       TpvScene3D.TCameraData.TCameraType.Orthographic:begin
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicXMag in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicXMag in Overwrite^.Flags then begin
-         OrthographicXMagSum.Add(fData.Orthographic.XMag,Factor);
+         OrthographicXMagSum.Add(fData.Orthographic.XMag,Factor,Additive);
         end else begin
-         OrthographicXMagSum.Add(Overwrite^.OrthographicXMag,Factor);
+         OrthographicXMagSum.Add(Overwrite^.OrthographicXMag,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicYMag in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicYMag in Overwrite^.Flags then begin
-         OrthographicYMagSum.Add(fData.Orthographic.YMag,Factor);
+         OrthographicYMagSum.Add(fData.Orthographic.YMag,Factor,Additive);
         end else begin
-         OrthographicYMagSum.Add(Overwrite^.OrthographicYMag,Factor);
+         OrthographicYMagSum.Add(Overwrite^.OrthographicYMag,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZFar in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZFar in Overwrite^.Flags then begin
-         OrthographicZFarSum.Add(fData.Orthographic.ZFar,Factor);
+         OrthographicZFarSum.Add(fData.Orthographic.ZFar,Factor,Additive);
         end else begin
-         OrthographicZFarSum.Add(Overwrite^.OrthographicZFar,Factor);
+         OrthographicZFarSum.Add(Overwrite^.OrthographicZFar,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.OrthographicZNear in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultOrthographicZNear in Overwrite^.Flags then begin
-         OrthographicZNearSum.Add(fData.Orthographic.ZNear,Factor);
+         OrthographicZNearSum.Add(fData.Orthographic.ZNear,Factor,Additive);
         end else begin
-         OrthographicZNearSum.Add(Overwrite^.OrthographicZNear,Factor);
+         OrthographicZNearSum.Add(Overwrite^.OrthographicZNear,Factor,Additive);
         end;
        end;
       end;
       TpvScene3D.TCameraData.TCameraType.Perspective:begin
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveAspectRatio in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveAspectRatio in Overwrite^.Flags then begin
-         PerspectiveAspectRatioSum.Add(fData.Perspective.AspectRatio,Factor);
+         PerspectiveAspectRatioSum.Add(fData.Perspective.AspectRatio,Factor,Additive);
         end else begin
-         PerspectiveAspectRatioSum.Add(Overwrite^.PerspectiveAspectRatio,Factor);
+         PerspectiveAspectRatioSum.Add(Overwrite^.PerspectiveAspectRatio,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveYFov in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveYFov in Overwrite^.Flags then begin
-         PerspectiveYFovSum.Add(fData.Perspective.YFoV,Factor);
+         PerspectiveYFovSum.Add(fData.Perspective.YFoV,Factor,Additive);
         end else begin
-         PerspectiveYFovSum.Add(Overwrite^.PerspectiveYFov,Factor);
+         PerspectiveYFovSum.Add(Overwrite^.PerspectiveYFov,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZFar in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZFar in Overwrite^.Flags then begin
-         PerspectiveZFarSum.Add(fData.Perspective.ZFar,Factor);
+         PerspectiveZFarSum.Add(fData.Perspective.ZFar,Factor,Additive);
         end else begin
-         PerspectiveZFarSum.Add(Overwrite^.PerspectiveZFar,Factor);
+         PerspectiveZFarSum.Add(Overwrite^.PerspectiveZFar,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.PerspectiveZNear in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.DefaultPerspectiveZNear in Overwrite^.Flags then begin
-         PerspectiveZNearSum.Add(fData.Perspective.ZNear,Factor);
+         PerspectiveZNearSum.Add(fData.Perspective.ZNear,Factor,Additive);
         end else begin
-         PerspectiveZNearSum.Add(Overwrite^.PerspectiveZNear,Factor);
+         PerspectiveZNearSum.Add(Overwrite^.PerspectiveZNear,Factor,Additive);
         end;
        end;
       end;
@@ -14140,6 +14221,7 @@ end;
 procedure TpvScene3D.TGroup.TInstance.TMaterial.Update;
 var Index,AnimatedTextureIndex:TpvSizeInt;
     Factor:TpvDouble;
+    Additive:Boolean;
     Overwrite:TpvScene3D.TGroup.TInstance.TMaterial.PMaterialOverwrite;
     MaterialPBRMetallicRoughnessBaseColorFactorSum:TpvScene3D.TVector4Sum;
     MaterialPBRMetallicRoughnessMetallicFactorSum:TpvScene3D.TScalarSum;
@@ -14218,42 +14300,43 @@ begin
   for Index:=0 to fCountOverwrites-1 do begin
    Overwrite:=@fOverwrites[Index];
    Factor:=Overwrite.Factor;
+   Additive:=TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive in Overwrite^.Flags;
    if not IsZero(Factor) then begin
     if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Defaults in Overwrite^.Flags then begin
      if Overwrite^.SubIndex<0 then begin
       // Material
-      MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
-      MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
-      MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
-      MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
-      MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
-      MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
-      MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
-      MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
-      MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
-      MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
-      MaterialIORSum.Add(fData.IOR,Factor);
-      MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
-      MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
-      MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
-      MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
-      MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
-      MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
-      MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
-      MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
-      MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
-      MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
-      MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
-      MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
-      MaterialPBRAnisotropyStrengthSum.Add(fData.Anisotropy.AnisotropyStrength,Factor);
-      MaterialPBRAnisotropyRotationSum.Add(fData.Anisotropy.AnisotropyRotation,Factor);
+      MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor,Additive);
+      MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor,Additive);
+      MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor,Additive);
+      MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor,Additive);
+      MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor,Additive);
+      MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor,Additive);
+      MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor,Additive);
+      MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor,Additive);
+      MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor,Additive);
+      MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor,Additive);
+      MaterialIORSum.Add(fData.IOR,Factor,Additive);
+      MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor,Additive);
+      MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor,Additive);
+      MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor,Additive);
+      MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor,Additive);
+      MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor,Additive);
+      MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor,Additive);
+      MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor,Additive);
+      MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor,Additive);
+      MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor,Additive);
+      MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor,Additive);
+      MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor,Additive);
+      MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor,Additive);
+      MaterialPBRAnisotropyStrengthSum.Add(fData.Anisotropy.AnisotropyStrength,Factor,Additive);
+      MaterialPBRAnisotropyRotationSum.Add(fData.Anisotropy.AnisotropyRotation,Factor,Additive);
      end else begin
       // Texture
       TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
       if assigned(TextureTransform) then begin
-       fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Offset,Factor);
-       fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Rotation,Factor);
-       fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Scale,Factor);
+       fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Offset,Factor,Additive);
+       fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Rotation,Factor,Additive);
+       fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Scale,Factor,Additive);
       end;
      end;
     end else begin
@@ -14261,177 +14344,177 @@ begin
       // Material
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessBaseColorFactor in Overwrite^.Flags then begin
-        MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor);
+        MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(fData.PBRMetallicRoughness.BaseColorFactor,Factor,Additive);
        end else begin
-        MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessBaseColorFactor,Factor);
+        MaterialPBRMetallicRoughnessBaseColorFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessBaseColorFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessMetallicFactor in Overwrite^.Flags then begin
-        MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor);
+        MaterialPBRMetallicRoughnessMetallicFactorSum.Add(fData.PBRMetallicRoughness.MetallicFactor,Factor,Additive);
        end else begin
-        MaterialPBRMetallicRoughnessMetallicFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessMetallicFactor,Factor);
+        MaterialPBRMetallicRoughnessMetallicFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessMetallicFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRMetallicRoughnessRoughnessFactor in Overwrite^.Flags then begin
-        MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor);
+        MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(fData.PBRMetallicRoughness.RoughnessFactor,Factor,Additive);
        end else begin
-        MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessRoughnessFactor,Factor);
+        MaterialPBRMetallicRoughnessRoughnessFactorSum.Add(Overwrite^.MaterialPBRMetallicRoughnessRoughnessFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialAlphaCutOff in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialAlphaCutOff in Overwrite^.Flags then begin
-        MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor);
+        MaterialAlphaCutOffSum.Add(fData.AlphaCutOff,Factor,Additive);
        end else begin
-        MaterialAlphaCutOffSum.Add(Overwrite^.MaterialAlphaCutOff,Factor);
+        MaterialAlphaCutOffSum.Add(Overwrite^.MaterialAlphaCutOff,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveFactor in Overwrite^.Flags then begin
-        MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor);
+        MaterialEmissiveFactorSum.Add(fData.EmissiveFactor.xyz,Factor,Additive);
        end else begin
-        MaterialEmissiveFactorSum.Add(Overwrite^.MaterialEmissiveFactor,Factor);
+        MaterialEmissiveFactorSum.Add(Overwrite^.MaterialEmissiveFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialNormalTextureScale in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialNormalTextureScale in Overwrite^.Flags then begin
-        MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor);
+        MaterialNormalTextureScaleSum.Add(fData.NormalTextureScale,Factor,Additive);
        end else begin
-        MaterialNormalTextureScaleSum.Add(Overwrite^.MaterialNormalTextureScale,Factor);
+        MaterialNormalTextureScaleSum.Add(Overwrite^.MaterialNormalTextureScale,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialOcclusionTextureStrength in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialOcclusionTextureStrength in Overwrite^.Flags then begin
-        MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor);
+        MaterialOcclusionTextureStrengthSum.Add(fData.OcclusionTextureStrength,Factor,Additive);
        end else begin
-        MaterialOcclusionTextureStrengthSum.Add(Overwrite^.MaterialOcclusionTextureStrength,Factor);
+        MaterialOcclusionTextureStrengthSum.Add(Overwrite^.MaterialOcclusionTextureStrength,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRClearCoatFactor in Overwrite^.Flags then begin
-        MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor);
+        MaterialPBRClearCoatFactorSum.Add(fData.PBRClearCoat.Factor,Factor,Additive);
        end else begin
-        MaterialPBRClearCoatFactorSum.Add(Overwrite^.MaterialPBRClearCoatFactor,Factor);
+        MaterialPBRClearCoatFactorSum.Add(Overwrite^.MaterialPBRClearCoatFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRClearCoatRoughnessFactor in Overwrite^.Flags then begin
-        MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor);
+        MaterialPBRClearCoatRoughnessFactorSum.Add(fData.PBRClearCoat.RoughnessFactor,Factor,Additive);
        end else begin
-        MaterialPBRClearCoatRoughnessFactorSum.Add(Overwrite^.MaterialPBRClearCoatRoughnessFactor,Factor);
+        MaterialPBRClearCoatRoughnessFactorSum.Add(Overwrite^.MaterialPBRClearCoatRoughnessFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialEmissiveStrength in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialEmissiveStrength in Overwrite^.Flags then begin
-        MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor);
+        MaterialEmissiveStrengthSum.Add(fData.EmissiveFactor[3],Factor,Additive);
        end else begin
-        MaterialEmissiveStrengthSum.Add(Overwrite^.MaterialEmissiveStrength,Factor);
+        MaterialEmissiveStrengthSum.Add(Overwrite^.MaterialEmissiveStrength,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialIOR in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialIOR in Overwrite^.Flags then begin
-        MaterialIORSum.Add(fData.IOR,Factor);
+        MaterialIORSum.Add(fData.IOR,Factor,Additive);
        end else begin
-        MaterialIORSum.Add(Overwrite^.MaterialIOR,Factor);
+        MaterialIORSum.Add(Overwrite^.MaterialIOR,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceFactor in Overwrite^.Flags then begin
-        MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor);
+        MaterialPBRIridescenceFactorSum.Add(fData.Iridescence.Factor,Factor,Additive);
        end else begin
-        MaterialPBRIridescenceFactorSum.Add(Overwrite^.MaterialPBRIridescenceFactor,Factor);
+        MaterialPBRIridescenceFactorSum.Add(Overwrite^.MaterialPBRIridescenceFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceIor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceIor in Overwrite^.Flags then begin
-        MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor);
+        MaterialPBRIridescenceIorSum.Add(fData.Iridescence.Ior,Factor,Additive);
        end else begin
-        MaterialPBRIridescenceIorSum.Add(Overwrite^.MaterialPBRIridescenceIor,Factor);
+        MaterialPBRIridescenceIorSum.Add(Overwrite^.MaterialPBRIridescenceIor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMinimum in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceMinimum in Overwrite^.Flags then begin
-        MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor);
+        MaterialPBRIridescenceMinimumSum.Add(fData.Iridescence.ThicknessMinimum,Factor,Additive);
        end else begin
-        MaterialPBRIridescenceMinimumSum.Add(Overwrite^.MaterialPBRIridescenceMinimum,Factor);
+        MaterialPBRIridescenceMinimumSum.Add(Overwrite^.MaterialPBRIridescenceMinimum,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRIridescenceMaximum in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRIridescenceMaximum in Overwrite^.Flags then begin
-        MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor);
+        MaterialPBRIridescenceMaximumSum.Add(fData.Iridescence.ThicknessMaximum,Factor,Additive);
        end else begin
-        MaterialPBRIridescenceMaximumSum.Add(Overwrite^.MaterialPBRIridescenceMaximum,Factor);
+        MaterialPBRIridescenceMaximumSum.Add(Overwrite^.MaterialPBRIridescenceMaximum,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenColorFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSheenColorFactor in Overwrite^.Flags then begin
-        MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor);
+        MaterialPBRSheenColorFactorSum.Add(fData.PBRSheen.ColorFactor,Factor,Additive);
        end else begin
-        MaterialPBRSheenColorFactorSum.Add(Overwrite^.MaterialPBRSheenColorFactor,Factor);
+        MaterialPBRSheenColorFactorSum.Add(Overwrite^.MaterialPBRSheenColorFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSheenRoughnessFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSheenRoughnessFactor in Overwrite^.Flags then begin
-        MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor);
+        MaterialPBRSheenRoughnessFactorSum.Add(fData.PBRSheen.RoughnessFactor,Factor,Additive);
        end else begin
-        MaterialPBRSheenRoughnessFactorSum.Add(Overwrite^.MaterialPBRSheenRoughnessFactor,Factor);
+        MaterialPBRSheenRoughnessFactorSum.Add(Overwrite^.MaterialPBRSheenRoughnessFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSpecularFactor in Overwrite^.Flags then begin
-        MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor);
+        MaterialPBRSpecularFactorSum.Add(fData.PBRMetallicRoughness.SpecularFactor,Factor,Additive);
        end else begin
-        MaterialPBRSpecularFactorSum.Add(Overwrite^.MaterialPBRSpecularFactor,Factor);
+        MaterialPBRSpecularFactorSum.Add(Overwrite^.MaterialPBRSpecularFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRSpecularColorFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRSpecularColorFactor in Overwrite^.Flags then begin
-        MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor);
+        MaterialPBRSpecularColorFactorSum.Add(fData.PBRMetallicRoughness.SpecularColorFactor,Factor,Additive);
        end else begin
-        MaterialPBRSpecularColorFactorSum.Add(Overwrite^.MaterialPBRSpecularColorFactor,Factor);
+        MaterialPBRSpecularColorFactorSum.Add(Overwrite^.MaterialPBRSpecularColorFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRTransmissionFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRTransmissionFactor in Overwrite^.Flags then begin
-        MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor);
+        MaterialPBRTransmissionFactorSum.Add(fData.Transmission.Factor,Factor,Additive);
        end else begin
-        MaterialPBRTransmissionFactorSum.Add(Overwrite^.MaterialPBRTransmissionFactor,Factor);
+        MaterialPBRTransmissionFactorSum.Add(Overwrite^.MaterialPBRTransmissionFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeThicknessFactor in Overwrite^.Flags then begin
-        MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor);
+        MaterialPBRVolumeThicknessFactorSum.Add(fData.Volume.ThicknessFactor,Factor,Additive);
        end else begin
-        MaterialPBRVolumeThicknessFactorSum.Add(Overwrite^.MaterialPBRVolumeThicknessFactor,Factor);
+        MaterialPBRVolumeThicknessFactorSum.Add(Overwrite^.MaterialPBRVolumeThicknessFactor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationDistance in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeAttenuationDistance in Overwrite^.Flags then begin
-        MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor);
+        MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor,Additive);
        end else begin
-        MaterialPBRVolumeAttenuationDistanceSum.Add(Overwrite^.MaterialPBRVolumeAttenuationDistance,Factor);
+        MaterialPBRVolumeAttenuationDistanceSum.Add(Overwrite^.MaterialPBRVolumeAttenuationDistance,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRVolumeAttenuationColor in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRVolumeAttenuationColor in Overwrite^.Flags then begin
-        MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor);
+        MaterialPBRVolumeAttenuationColorSum.Add(fData.Volume.AttenuationColor,Factor,Additive);
        end else begin
-        MaterialPBRVolumeAttenuationColorSum.Add(Overwrite^.MaterialPBRVolumeAttenuationColor,Factor);
+        MaterialPBRVolumeAttenuationColorSum.Add(Overwrite^.MaterialPBRVolumeAttenuationColor,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyStrength in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyStrength in Overwrite^.Flags then begin
-        MaterialPBRAnisotropyStrengthSum.Add(fData.Anisotropy.AnisotropyStrength,Factor);
+        MaterialPBRAnisotropyStrengthSum.Add(fData.Anisotropy.AnisotropyStrength,Factor,Additive);
        end else begin
-        MaterialPBRAnisotropyStrengthSum.Add(Overwrite^.MaterialPBRAnisotropyStrength,Factor);
+        MaterialPBRAnisotropyStrengthSum.Add(Overwrite^.MaterialPBRAnisotropyStrength,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyRotation in Overwrite^.Flags then begin
-        MaterialPBRAnisotropyRotationSum.Add(fData.Anisotropy.AnisotropyRotation,Factor);
+        MaterialPBRAnisotropyRotationSum.Add(fData.Anisotropy.AnisotropyRotation,Factor,Additive);
        end else begin
-        MaterialPBRAnisotropyRotationSum.Add(Overwrite^.MaterialPBRAnisotropyRotation,Factor);
+        MaterialPBRAnisotropyRotationSum.Add(Overwrite^.MaterialPBRAnisotropyRotation,Factor,Additive);
        end;
       end;
      end else begin
@@ -14440,23 +14523,23 @@ begin
       if assigned(TextureTransform) then begin
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureOffset in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureOffset in Overwrite^.Flags then begin
-         fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Offset,Factor);
+         fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Offset,Factor,Additive);
         end else begin
-         fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureOffset,Factor);
+         fTextureOffsetSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureOffset,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureRotation in Overwrite^.Flags then begin
-         fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Rotation,Factor);
+         fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Rotation,Factor,Additive);
         end else begin
-         fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureRotation,Factor);
+         fTextureRotationSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureRotation,Factor,Additive);
         end;
        end;
        if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureScale in Overwrite^.Flags then begin
         if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureScale in Overwrite^.Flags then begin
-         fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Scale,Factor);
+         fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(TextureTransform^.Scale,Factor,Additive);
         end else begin
-         fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureScale,Factor);
+         fTextureScaleSums[TpvScene3D.TTextureIndex(Overwrite^.SubIndex)].Add(Overwrite^.TextureScale,Factor,Additive);
         end;
        end;
       end;
@@ -14659,6 +14742,7 @@ begin
  fTime:=0.0;
  fLastIndices:=nil;
  fShadowTime:=0.0;
+ fAdditive:=false;
  fComplete:=false;
 end;
 
@@ -15669,6 +15753,16 @@ begin
  end;
 end;
 
+function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+begin
+
+end;
+
+function TpvScene3D.TGroup.TInstance.DetachFrom(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
+begin
+
+end;
+
 procedure TpvScene3D.TGroup.TInstance.Check(const aInFlightFrameIndex:TpvSizeInt);
 begin
  if aInFlightFrameIndex>=0 then begin
@@ -15986,7 +16080,7 @@ var CullFace,Blend:TPasGLTFInt32;
 
   InstanceAnimation:=fAnimations[aAnimationIndex+1];
 
-  if InstanceAnimation.Complete then begin
+  if InstanceAnimation.fComplete then begin
    CountInstanceChannels:=length(InstanceAnimation.fChannelOverwrites);
   end else begin
    CountInstanceChannels:=Animation.fChannels.Count;
@@ -16185,6 +16279,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
              NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
              NodeOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+             end;
              NodeOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
              NodeOverwrite:=nil;
@@ -16282,6 +16379,9 @@ var CullFace,Blend:TPasGLTFInt32;
               if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
                NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
                NodeOverwrite^.Flags:=[];
+               if InstanceAnimation.fAdditive then begin
+                Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+               end;
                NodeOverwrite^.Factor:=Max(aFactor,0.0);
               end else begin
                NodeOverwrite:=nil;
@@ -16338,6 +16438,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
              LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
              LightOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive);
+             end;
              LightOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
              LightOverwrite:=nil;
@@ -16422,6 +16525,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
              CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
              CameraOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive);
+             end;
              CameraOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
              CameraOverwrite:=nil;
@@ -16547,6 +16653,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
              MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
              MaterialOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive);
+             end;
              MaterialOverwrite^.SubIndex:=TargetSubIndex;
              MaterialOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
@@ -16730,7 +16839,7 @@ var CullFace,Blend:TPasGLTFInt32;
 
   end;
 
-  if InstanceAnimation.Complete then begin
+  if InstanceAnimation.fComplete then begin
 
    for ChannelIndex:=0 to Animation.fDefaultChannels.Count-1 do begin
 
@@ -16762,6 +16871,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Node.Overwrites)) then begin
              NodeOverwrite:=@Node.Overwrites[InstanceAnimationChannelOverwrite^];
              NodeOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(NodeOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive);
+             end;
              NodeOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
              NodeOverwrite:=nil;
@@ -16826,6 +16938,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Light.fOverwrites)) then begin
              LightOverwrite:=@Light.fOverwrites[InstanceAnimationChannelOverwrite^];
              LightOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(LightOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TLight.TLightOverwriteFlag.Additive);
+             end;
              LightOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
              LightOverwrite:=nil;
@@ -16893,6 +17008,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Camera.fOverwrites)) then begin
              CameraOverwrite:=@Camera.fOverwrites[InstanceAnimationChannelOverwrite^];
              CameraOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(CameraOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TCamera.TCameraOverwriteFlag.Additive);
+             end;
              CameraOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
              CameraOverwrite:=nil;
@@ -16991,6 +17109,9 @@ var CullFace,Blend:TPasGLTFInt32;
             if (InstanceAnimationChannelOverwrite^>=0) and (InstanceAnimationChannelOverwrite^<length(Material.fOverwrites)) then begin
              MaterialOverwrite:=@Material.fOverwrites[InstanceAnimationChannelOverwrite^];
              MaterialOverwrite^.Flags:=[];
+             if InstanceAnimation.fAdditive then begin
+              Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.Additive);
+             end;
              MaterialOverwrite^.SubIndex:=TargetSubIndex;
              MaterialOverwrite^.Factor:=Max(aFactor,0.0);
             end else begin
@@ -17147,46 +17268,50 @@ var CullFace,Blend:TPasGLTFInt32;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      Node:TpvScene3D.TGroup.TNode;
      Translation,Scale:TpvVector3;
-     Rotation:TpvQuaternion;
+     WeightedRotation,AdditiveRotation:TpvQuaternion;
      TranslationSum,ScaleSum:TVector3Sum;
      Factor,
-     RotationFactorSum,
+     WeightedRotationFactorSum,
      WeightsFactorSum:TpvDouble;
      Overwrite:TpvScene3D.TGroup.TInstance.TNode.PNodeOverwrite;
-     FirstWeights,SkinUsed,Dirty:boolean;
+     FirstWeights,SkinUsed,Dirty,Additive:boolean;
      Light:TpvScene3D.TLight;
      InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
-  procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble);
+  procedure AddRotation(const aRotation:TpvQuaternion;const aFactor:TpvDouble;const aAdditive:Boolean);
   begin
    if not IsZero(aFactor) then begin
-    if RotationCounter=0 then begin
-     Rotation:=aRotation;
+    if aAdditive then begin
+     AdditiveRotation:=AdditiveRotation.Slerp(AdditiveRotation*aRotation,aFactor);
     end else begin
-     // Informal rolling weighted average proof as javascript/ecmascript:
-     // var data = [[1, 0.5], [2, 0.25], [3, 0.125], [4, 0.0625]]; // <= [[value, weight], ... ]
-     // var weightedAverage = 0, weightSum = 0;
-     // for(var i = 0; i < data.length; i++){
-     //   weightSum += data[i][1];
-     // }
-     // for(var i = 0; i < data.length; i++){
-     //    weightedAverage += data[i][0] * data[i][1];
-     // };
-     // weightedAverage /= weightSum;
-     // var rollingAverage = 0, rollingWeightSum = 0;
-     // for(var i = 0; i < data.length; i++){
-     //   //-------------------- THIS -----------------\\ should be replaced with the actual blend operation, for example slerping
-     //   rollingAverage += (data[i][0] - rollingAverage) * (data[i][1] / (rollingWeightSum + data[i][1]));
-     //   rollingWeightSum += data[i][1];
-     // }
-     // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
-     // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
-     // Slerp: Commutative =  No, Constant velocity = Yes, Torque minimal = Yes (no artefact-jumps)
-     // Nlerp: Commutative = Yes, Constant velocity = No,  Torque minimal = Yes (no artefact-jumps)
-     // Elerp: Commutative = Yes, Constant velocity = Yes, Torque minimal = No  (can produce artefact-jumps on too distinct to blending automation rotation frames)
-     Rotation:=Rotation.Slerp(aRotation,aFactor/(RotationFactorSum+aFactor)); // Rolling weighted average
+     if RotationCounter=0 then begin
+      WeightedRotation:=aRotation;
+     end else begin
+      // Informal rolling weighted average proof as javascript/ecmascript:
+      // var data = [[1, 0.5], [2, 0.25], [3, 0.125], [4, 0.0625]]; // <= [[value, weight], ... ]
+      // var weightedAverage = 0, weightSum = 0;
+      // for(var i = 0; i < data.length; i++){
+      //   weightSum += data[i][1];
+      // }
+      // for(var i = 0; i < data.length; i++){
+      //    weightedAverage += data[i][0] * data[i][1];
+      // };
+      // weightedAverage /= weightSum;
+      // var rollingAverage = 0, rollingWeightSum = 0;
+      // for(var i = 0; i < data.length; i++){
+      //   //-------------------- THIS -----------------\\ should be replaced with the actual blend operation, for example slerping
+      //   rollingAverage += (data[i][0] - rollingAverage) * (data[i][1] / (rollingWeightSum + data[i][1]));
+      //   rollingWeightSum += data[i][1];
+      // }
+      // var output = [weightedAverage, rollingAverage, weightedAverage * weightSum, rollingAverage * weightSum];
+      // output should be [1.7333333333333334, 1.7333333333333334, 1.625, 1.625] then
+      // Slerp: Commutative =  No, Constant velocity = Yes, Torque minimal = Yes (no artefact-jumps)
+      // Nlerp: Commutative = Yes, Constant velocity = No,  Torque minimal = Yes (no artefact-jumps)
+      // Elerp: Commutative = Yes, Constant velocity = Yes, Torque minimal = No  (can produce artefact-jumps on too distinct to blending automation WeightedRotation frames)
+      WeightedRotation:=WeightedRotation.Slerp(aRotation,aFactor/(WeightedRotationFactorSum+aFactor)); // Rolling weighted average
+     end;
+     inc(RotationCounter);
+     WeightedRotationFactorSum:=WeightedRotationFactorSum+aFactor;
     end;
-    inc(RotationCounter);
-    RotationFactorSum:=RotationFactorSum+aFactor;
    end;
   end;
  begin
@@ -17200,19 +17325,21 @@ var CullFace,Blend:TPasGLTFInt32;
    SkinUsed:=true;
    TranslationSum.Clear;
    ScaleSum.Clear;
-   RotationFactorSum:=0.0;
+   WeightedRotationFactorSum:=0.0;
    WeightsFactorSum:=0.0;
    FirstWeights:=true;
-   Rotation:=TpvQuaternion.Identity;
+   WeightedRotation:=TpvQuaternion.Identity;
+   AdditiveRotation:=TpvQuaternion.Identity;
    RotationCounter:=0;
    for Index:=0 to InstanceNode^.CountOverwrites-1 do begin
     Overwrite:=@InstanceNode^.Overwrites[Index];
     Factor:=Overwrite^.Factor;
+    Additive:=TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Additive in Overwrite^.Flags;
     if not IsZero(Factor) then begin
      if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Defaults in Overwrite^.Flags then begin
-      TranslationSum.Add(Node.fTranslation,Factor);
-      ScaleSum.Add(Node.fScale,Factor);
-      AddRotation(Node.fRotation,Factor);
+      TranslationSum.Add(Node.fTranslation,Factor,Additive);
+      ScaleSum.Add(Node.fScale,Factor,Additive);
+      AddRotation(Node.fRotation,Factor,Additive);
       if Node.fWeights.Count>0 then begin
        if FirstWeights then begin
         FirstWeights:=false;
@@ -17228,23 +17355,23 @@ var CullFace,Blend:TPasGLTFInt32;
      end else begin
       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Translation in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultTranslation in Overwrite^.Flags then begin
-        TranslationSum.Add(Node.fTranslation,Factor);
+        TranslationSum.Add(Node.fTranslation,Factor,Additive);
        end else begin
-        TranslationSum.Add(Overwrite^.Translation,Factor);
+        TranslationSum.Add(Overwrite^.Translation,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Scale in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultScale in Overwrite^.Flags then begin
-        ScaleSum.Add(Node.fScale,Factor);
+        ScaleSum.Add(Node.fScale,Factor,Additive);
        end else begin
-        ScaleSum.Add(Overwrite^.Scale,Factor);
+        ScaleSum.Add(Overwrite^.Scale,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Rotation in Overwrite^.Flags then begin
        if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.DefaultRotation in Overwrite^.Flags then begin
-        AddRotation(Node.fRotation,Factor);
+        AddRotation(Node.fRotation,Factor,Additive);
        end else begin
-        AddRotation(Overwrite^.Rotation,Factor);
+        AddRotation(Overwrite^.Rotation,Factor,Additive);
        end;
       end;
       if TpvScene3D.TGroup.TInstance.TNode.TNodeOverwriteFlag.Weights in Overwrite^.Flags then begin
@@ -17270,10 +17397,10 @@ var CullFace,Blend:TPasGLTFInt32;
    end;
    Translation:=TranslationSum.Get(Node.fTranslation);
    Scale:=ScaleSum.Get(Node.fScale);
-   if RotationFactorSum>0.0 then begin
-    Rotation:=Rotation.Normalize;
+   if WeightedRotationFactorSum>0.0 then begin
+    WeightedRotation:=WeightedRotation.Normalize*AdditiveRotation;
    end else begin
-    Rotation:=Node.fRotation;
+    WeightedRotation:=Node.fRotation*AdditiveRotation;
    end;
    if WeightsFactorSum>0.0 then begin
     Factor:=1.0/WeightsFactorSum;
@@ -17288,13 +17415,13 @@ var CullFace,Blend:TPasGLTFInt32;
   end else begin
    Translation:=Node.fTranslation;
    Scale:=Node.fScale;
-   Rotation:=Node.fRotation;
+   WeightedRotation:=Node.fRotation;
    for Index:=0 to Min(length(InstanceNode^.WorkWeights),Node.fWeights.Count)-1 do begin
     InstanceNode^.WorkWeights[Index]:=Node.fWeights.Items[Index];
    end;
   end;
   Matrix:=TpvMatrix4x4.CreateScale(Scale)*
-          (TpvMatrix4x4.CreateFromQuaternion(Rotation)*
+          (TpvMatrix4x4.CreateFromQuaternion(WeightedRotation)*
            TpvMatrix4x4.CreateTranslation(Translation));
   if assigned(fOnNodeMatrixPre) then begin
    if fOnNodeMatrixPre(self,Node,InstanceNode,Matrix) then begin
