@@ -262,8 +262,8 @@ type EpvScene3D=class(Exception);
               AdditiveX:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aFactor:TpvDouble;const aAdditive:Boolean); inline;
-              function Get(const aDefaultX:TpvDouble=0.0):TpvDouble; inline;
+              procedure Add(const aX,aFactor:TpvDouble;const aAdditive:Boolean);
+              function Get(const aDefaultX:TpvDouble=0.0):TpvDouble;
             end;
             TVector2Sum=record
              public
@@ -274,10 +274,10 @@ type EpvScene3D=class(Exception);
               AdditiveY:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aY,aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
-              procedure Add(const aVector:TpvVector2;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
-              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0):TpvVector2; overload; inline;
-              function Get(const aDefault:TpvVector2):TpvVector2; overload; inline;
+              procedure Add(const aX,aY,aFactor:TpvDouble;const aAdditive:Boolean); overload;
+              procedure Add(const aVector:TpvVector2;const aFactor:TpvDouble;const aAdditive:Boolean); overload;
+              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0):TpvVector2; overload;
+              function Get(const aDefault:TpvVector2):TpvVector2; overload;
             end;
             TVector3Sum=record
              public
@@ -290,10 +290,9 @@ type EpvScene3D=class(Exception);
               AdditiveZ:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aY,aZ,aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
-              procedure Add(const aVector:TpvVector3;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
-              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0):TpvVector3; overload; inline;
-              function Get(const aDefault:TpvVector3):TpvVector3; overload; inline;
+              procedure Add(const aX,aY,aZ,aFactor:TpvDouble;const aAdditive:Boolean); overload;
+              procedure Add(const aVector:TpvVector3;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;                                 function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0):TpvVector3; overload;
+              function Get(const aDefault:TpvVector3):TpvVector3; overload;
             end;
             TVector4Sum=record
              public
@@ -308,10 +307,10 @@ type EpvScene3D=class(Exception);
               AdditiveW:TpvDouble;
              public
               procedure Clear; inline;
-              procedure Add(const aX,aY,aZ,aW,aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
-              procedure Add(const aVector:TpvVector4;const aFactor:TpvDouble;const aAdditive:Boolean); overload; inline;
-              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0;const aDefaultW:TpvDouble=0.0):TpvVector4; overload; inline;
-              function Get(const aDefault:TpvVector4):TpvVector4; overload; inline;
+              procedure Add(const aX,aY,aZ,aW,aFactor:TpvDouble;const aAdditive:Boolean); overload;
+              procedure Add(const aVector:TpvVector4;const aFactor:TpvDouble;const aAdditive:Boolean); overload;
+              function Get(const aDefaultX:TpvDouble=0.0;const aDefaultY:TpvDouble=0.0;const aDefaultZ:TpvDouble=0.0;const aDefaultW:TpvDouble=0.0):TpvVector4; overload;
+              function Get(const aDefault:TpvVector4):TpvVector4; overload;
             end;
             TInFlightFrameAABBs=array[0..MaxInFlightFrames-1] of TpvAABB;
        const MaxViews=65536 div SizeOf(TView);
