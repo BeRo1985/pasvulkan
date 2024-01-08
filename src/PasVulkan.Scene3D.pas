@@ -2529,8 +2529,8 @@ type EpvScene3D=class(Exception);
                      function AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                     public
-                     function Attach(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
-                     function Detach:Boolean;
+                     function AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+                     function DetachFrom:Boolean;
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -15793,7 +15793,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.TInstance.Attach(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
 var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
  if assigned(aInstance) and assigned(aNode) then begin
@@ -15847,7 +15847,7 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.TInstance.Detach:Boolean;
+function TpvScene3D.TGroup.TInstance.DetachFrom:Boolean;
 var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
  if assigned(fAppendageInstance) then begin
