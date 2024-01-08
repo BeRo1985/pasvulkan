@@ -2400,25 +2400,6 @@ type EpvScene3D=class(Exception);
                             Count:TpvSizeInt;
                           end;
                           PAABBTreeSkipList=^TAABBTreeSkipList;
-                          { TAppendage }
-                          TAppendage=class
-                           private
-                            fSourceInstance:TpvScene3D.TGroup.TInstance;
-                            fDestinationInstance:TpvScene3D.TGroup.TInstance;
-                            fDestinationNode:TpvScene3D.TGroup.TNode;
-                            fTransform:TpvMatrix4x4;
-                           public
-                            constructor Create(const aSourceInstance,aDestinationInstance:TpvScene3D.TGroup.TInstance;const aDestinationNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4);
-                            destructor Destroy; override;
-                           published
-                            property SourceInstance:TpvScene3D.TGroup.TInstance read fSourceInstance;
-                            property DestinationInstance:TpvScene3D.TGroup.TInstance read fDestinationInstance;
-                            property DestinationNode:TpvScene3D.TGroup.TNode read fDestinationNode;
-                           public 
-                            property Transform:TpvMatrix4x4 read fTransform write fTransform; 
-                          end;
-                          TAppendages=TpvObjectGenericList<TAppendage>;
-                          TAppendageMap=TpvHashMap<TpvScene3D.TGroup.TInstance,TpvScene3D.TGroup.TInstance.TAppendage>;
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
@@ -2426,9 +2407,10 @@ type EpvScene3D=class(Exception);
                      fProvidedDependencies:TInstances;
                      fRequiredDependencies:TInstances;
                      fAttachmentAppendageLock:TPasMPSpinLock;
-                     fAttachments:TInstances;
-                     fAppendages:TAppendages;
-                     fAppendageMap:TAppendageMap;
+                     fAttachments:TpvScene3D.TGroup.TInstances;
+                     fAppendageInstance:TpvScene3D.TGroup.TInstance;
+                     fAppendageNode:TpvScene3D.TGroup.TNode;
+                     fAppendageTransform:TpvMatrix4x4;
                      fActive:boolean;
                      fOrder:TpvInt64;
                      fHeadless:boolean;
@@ -2547,8 +2529,8 @@ type EpvScene3D=class(Exception);
                      function AddRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                      function RemoveRequiredDependency(const aInstance:TpvScene3D.TGroup.TInstance):Boolean;
                     public
-                     function AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4;const aAddDependency:Boolean=false):Boolean;
-                     function DetachFrom(const aInstance:TpvScene3D.TGroup.TInstance;const aRemoveDependency:Boolean=false):Boolean;
+                     function Attach(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+                     function Detach:Boolean;
                     public
                      procedure Check(const aInFlightFrameIndex:TpvSizeInt);
                      procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -14711,22 +14693,6 @@ begin
  Free;
 end;
 
-{ TpvScene3D.TGroup.TInstance.TAppendage }
-
-constructor TpvScene3D.TGroup.TInstance.TAppendage.Create(const aSourceInstance,aDestinationInstance:TpvScene3D.TGroup.TInstance;const aDestinationNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4);
-begin
- inherited Create;
- fSourceInstance:=aSourceInstance;
- fDestinationInstance:=aDestinationInstance;
- fDestinationNode:=aDestinationNode;
- fTransform:=aTransform;
-end;
-
-destructor TpvScene3D.TGroup.TInstance.TAppendage.Destroy;
-begin
- inherited Destroy;
-end;
-
 { TpvScene3D.TGroup.TInstances }
 
 procedure TpvScene3D.TGroup.TInstances.Sort;
@@ -14828,9 +14794,11 @@ begin
 
  fAttachments:=TpvScene3D.TGroup.TInstances.Create(false);
 
- fAppendages:=TpvScene3D.TGroup.TInstance.TAppendages.Create(false);
- 
- fAppendageMap:=TpvScene3D.TGroup.TInstance.TAppendageMap.Create(nil);
+ fAppendageInstance:=nil;
+
+ fAppendageNode:=nil;
+
+ fAppendageTransform:=TpvMatrix4x4.Identity;
 
  fUseRenderInstances:=false;
 
@@ -15385,9 +15353,9 @@ begin
 
  fMorphTargetVertexWeights:=nil;
 
- FreeAndNil(fAppendages);
- 
- FreeAndNil(fAppendageMap);
+ fAppendageInstance:=nil;
+
+ fAppendageNode:=nil;
 
  FreeAndNil(fAttachments);
 
@@ -15455,7 +15423,6 @@ end;
 
 procedure TpvScene3D.TGroup.TInstance.Remove;
 var GroupInstance:TpvScene3D.TGroup.TInstance;
-    Appendage:TpvScene3D.TGroup.TInstance.TAppendage;
 begin
 
  if fAdded then begin
@@ -15510,10 +15477,8 @@ begin
         if fSceneInstance.fGroupInstances.Contains(GroupInstance) then begin
          GroupInstance.fAttachmentAppendageLock.Acquire;
          try
-          Appendage:=GroupInstance.fAppendageMap[self];
-          if assigned(Appendage) then begin
-           GroupInstance.fAppendages.Remove(Appendage);
-           GroupInstance.fAppendageMap.Delete(self);
+          if GroupInstance.fAppendageInstance=self then begin
+           GroupInstance.fAppendageInstance:=nil;
           end;
          finally
           GroupInstance.fAttachmentAppendageLock.Release;
@@ -15828,66 +15793,81 @@ begin
  end;
 end;
 
-function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4;const aAddDependency:Boolean):Boolean;
-var Appendage:TpvScene3D.TGroup.TInstance.TAppendage;
+function TpvScene3D.TGroup.TInstance.Attach(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
+var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
  if assigned(aInstance) and assigned(aNode) then begin
-  fAttachmentAppendageLock.Acquire;
-  try
-   aInstance.fAttachmentAppendageLock.Acquire;
+  if fAppendageInstance=aInstance then begin
+   fAttachmentAppendageLock.Acquire;
    try
-    Appendage:=fAppendageMap[aInstance];
-    if assigned(Appendage) then begin
-     result:=false;
-    end else begin
-     Appendage:=TpvScene3D.TGroup.TInstance.TAppendage.Create(self,aInstance,aNode,aTransform);
-     fAppendages.Add(Appendage);
-     fAppendageMap[aInstance]:=Appendage;
+    aInstance.fAttachmentAppendageLock.Acquire;
+    try
+     fAppendageNode:=aNode;
+     fAppendageTransform:=aTransform;
+    finally
+     aInstance.fAttachmentAppendageLock.Release;
+    end;
+   finally
+    fAttachmentAppendageLock.Release;
+   end;
+  end else begin
+   fAttachmentAppendageLock.Acquire;
+   try
+    OtherInstance:=fAppendageInstance;
+    if assigned(OtherInstance) then begin
+     OtherInstance.fAttachmentAppendageLock.Acquire;
+     try
+      try
+       fAppendageInstance.fAttachments.Remove(self);
+      finally
+       fAppendageInstance:=nil;
+      end;
+     finally
+      OtherInstance.fAttachmentAppendageLock.Release;
+     end;
+    end;
+    aInstance.fAttachmentAppendageLock.Acquire;
+    try
+     fAppendageInstance:=aInstance;
+     fAppendageNode:=aNode;
+     fAppendageTransform:=aTransform;
      if not aInstance.fAttachments.Contains(self) then begin
       aInstance.fAttachments.Add(self);
      end;
-     if aAddDependency then begin
-      AddRequiredDependency(aInstance);
-     end;
      result:=true;
+    finally
+     aInstance.fAttachmentAppendageLock.Release;
     end;
    finally
-    aInstance.fAttachmentAppendageLock.Release;
+    fAttachmentAppendageLock.Release;
    end;
-  finally
-   fAttachmentAppendageLock.Release;
   end;
  end else begin
   result:=false;
  end;
 end;
 
-function TpvScene3D.TGroup.TInstance.DetachFrom(const aInstance:TpvScene3D.TGroup.TInstance;const aRemoveDependency:Boolean):Boolean;
-var Appendage:TpvScene3D.TGroup.TInstance.TAppendage;
+function TpvScene3D.TGroup.TInstance.Detach:Boolean;
+var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
- if assigned(aInstance) then begin
+ if assigned(fAppendageInstance) then begin
   fAttachmentAppendageLock.Acquire;
   try
-   aInstance.fAttachmentAppendageLock.Acquire;
+   OtherInstance:=fAppendageInstance;
+   OtherInstance.fAttachmentAppendageLock.Acquire;
    try
-    Appendage:=fAppendageMap[aInstance];
-    if assigned(Appendage) then begin
+    if assigned(fAppendageInstance) then begin
      try
-      fAppendages.Remove(Appendage);
-      fAppendageMap.Delete(aInstance);
-      aInstance.fAttachments.Remove(self);
-      if aRemoveDependency then begin
-       RemoveRequiredDependency(aInstance);
-      end;
+      fAppendageInstance.fAttachments.Remove(self);
      finally
-      FreeAndNil(Appendage);
+      fAppendageInstance:=nil;
      end;
      result:=true;
     end else begin
      result:=false;
     end;
    finally
-    aInstance.fAttachmentAppendageLock.Release;
+    OtherInstance.fAttachmentAppendageLock.Release;
    end;
   finally
    fAttachmentAppendageLock.Release;
@@ -15905,7 +15885,6 @@ begin
 end;
 
 procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeInt);
-var CullFace,Blend:TPasGLTFInt32;
  procedure ResetLights;
  var Index:TPasGLTFSizeInt;
      InstanceLight:TpvScene3D.TGroup.TInstance.TLight;
@@ -20892,12 +20871,14 @@ begin
           GroupInstanceStack.Push(GroupInstance);
           for OtherIndex:=0 to GroupInstance.fRequiredDependencies.Count-1 do begin
            OtherGroupInstance:=GroupInstance.fRequiredDependencies[OtherIndex];
-           if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
+           if (OtherGroupInstance<>GroupInstance.fAppendageInstance) and
+              OtherGroupInstance.Group.Usable and
+              (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
             GroupInstanceStack.Push(OtherGroupInstance);
            end;
           end;
-          for OtherIndex:=0 to GroupInstance.fAppendages.Count-1 do begin
-           OtherGroupInstance:=GroupInstance.fAppendages[OtherIndex].fDestinationInstance;
+          if assigned(GroupInstance.fAppendageInstance) then begin
+           OtherGroupInstance:=GroupInstance.fAppendageInstance;
            if OtherGroupInstance.Group.Usable and (OtherGroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
             GroupInstanceStack.Push(OtherGroupInstance);
            end;
