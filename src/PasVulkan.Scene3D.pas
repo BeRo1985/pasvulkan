@@ -799,6 +799,7 @@ type EpvScene3D=class(Exception);
                     MinFilter:TVkFilter;
                     MagFilter:TVkFilter;
                     MipmapMode:TVkSamplerMipmapMode;
+                    MipmapActive:Boolean;
                     AddressModeS:TVkSamplerAddressMode;
                     AddressModeT:TVkSamplerAddressMode;
                    end;
@@ -807,6 +808,7 @@ type EpvScene3D=class(Exception);
               fMinFilter:TVkFilter;
               fMagFilter:TVkFilter;
               fMipmapMode:TVkSamplerMipmapMode;
+              fMipmapActive:Boolean;
               fAddressModeS:TVkSamplerAddressMode;
               fAddressModeT:TVkSamplerAddressMode;
               fLock:TPasMPSpinLock;
@@ -827,6 +829,7 @@ type EpvScene3D=class(Exception);
               property MinFilter:TVkFilter read fMinFilter write fMinFilter;
               property MagFilter:TVkFilter read fMagFilter write fMagFilter;
               property MipmapMode:TVkSamplerMipmapMode read fMipmapMode write fMipmapMode;
+              property MipmapActive:Boolean read fMipmapActive write fMipmapActive;
               property AddressModeS:TVkSamplerAddressMode read fAddressModeS write fAddressModeS;
               property AddressModeT:TVkSamplerAddressMode read fAddressModeT write fAddressModeT;
               property Sampler:TpvVulkanSampler read fSampler;
@@ -5330,6 +5333,7 @@ begin
  result.MinFilter:=fMinFilter;
  result.MagFilter:=fMagFilter;
  result.MipmapMode:=fMipmapMode;
+ result.MipmapActive:=fMipmapActive;
  result.AddressModeS:=fAddressModeS;
  result.AddressModeT:=fAddressModeT;
 end;
@@ -5340,6 +5344,7 @@ begin
  fMinFilter:=VK_FILTER_LINEAR;
  fMagFilter:=VK_FILTER_LINEAR;
  fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+ fMipmapActive:=false;
  fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
  fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
 end;
@@ -5351,30 +5356,37 @@ begin
   TPasGLTF.TSampler.TMinFilter.None:begin
    fMinFilter:=VK_FILTER_NEAREST;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+   fMipmapActive:=false;
   end;
   TPasGLTF.TSampler.TMinFilter.Nearest:begin
    fMinFilter:=VK_FILTER_NEAREST;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+   fMipmapActive:=false;
   end;
   TPasGLTF.TSampler.TMinFilter.Linear:begin
    fMinFilter:=VK_FILTER_LINEAR;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+   fMipmapActive:=false;
   end;
   TPasGLTF.TSampler.TMinFilter.NearestMipMapNearest:begin
    fMinFilter:=VK_FILTER_NEAREST;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+   fMipmapActive:=true;
   end;
   TPasGLTF.TSampler.TMinFilter.LinearMipMapNearest:begin
    fMinFilter:=VK_FILTER_LINEAR;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
+   fMipmapActive:=true;
   end;
   TPasGLTF.TSampler.TMinFilter.NearestMipMapLinear:begin
    fMinFilter:=VK_FILTER_NEAREST;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+   fMipmapActive:=true;
   end;
   TPasGLTF.TSampler.TMinFilter.LinearMipMapLinear:begin
    fMinFilter:=VK_FILTER_LINEAR;
    fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+   fMipmapActive:=true;
   end;
   else begin
    Assert(false);
@@ -5447,12 +5459,12 @@ begin
                                           fAddressModeT,
                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                                           0.0,
-                                          fSceneInstance.fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy>1.0,
-                                          Max(1.0,fSceneInstance.fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy),
+                                          fMipmapActive and (fSceneInstance.fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy>1.0),
+                                          IfThen(fMipmapActive,Max(1.0,fSceneInstance.fVulkanDevice.PhysicalDevice.Properties.limits.maxSamplerAnisotropy),1.0),
                                           false,
                                           VK_COMPARE_OP_ALWAYS,
                                           0.0,
-                                          65535.0,
+                                          IfThen(fMipmapActive,VK_LOD_CLAMP_NONE,0.0),
                                           VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                                           false);
         if fSampler.Handle<>VK_NULL_HANDLE then begin
