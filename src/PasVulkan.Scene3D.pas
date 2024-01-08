@@ -17955,6 +17955,13 @@ var Index,PerInFlightFrameRenderInstanceIndex:TPasGLTFSizeInt;
     AABBTreeNodePotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
 begin
 
+ if assigned(fAppendageInstance) and assigned(fAppendageNode) then begin
+  fModelMatrix:=(fAppendageTransform*
+                 fAppendageInstance.fNodes[fAppendageNode.fIndex].WorkMatrix)*
+                 fAppendageInstance.fModelMatrix;
+  SetDirty;
+ end;
+
  if aInFlightFrameIndex>=0 then begin
 
   fActives[aInFlightFrameIndex]:=fActive;
