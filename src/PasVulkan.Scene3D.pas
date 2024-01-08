@@ -15489,6 +15489,18 @@ begin
        fSceneInstance.fGroupInstanceListLock.Release;
       end;
      end;
+     if assigned(fAppendageInstance) then begin
+      try
+       fAppendageInstance.fAttachmentAppendageLock.Acquire;
+       try
+        fAppendageInstance.fAttachments.Remove(self);
+       finally
+        fAppendageInstance.fAttachmentAppendageLock.Release;
+       end;
+      finally
+       fAppendageInstance:=nil;
+      end;
+     end;
     finally
      fAttachmentAppendageLock.Release;
     end;
@@ -15796,7 +15808,7 @@ end;
 function TpvScene3D.TGroup.TInstance.AttachTo(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvScene3D.TGroup.TNode;const aTransform:TpvMatrix4x4):Boolean;
 var OtherInstance:TpvScene3D.TGroup.TInstance;
 begin
- if assigned(aInstance) and assigned(aNode) then begin
+ if assigned(aInstance) and (aInstance<>self) and assigned(aNode) then begin
   if fAppendageInstance=aInstance then begin
    fAttachmentAppendageLock.Acquire;
    try
