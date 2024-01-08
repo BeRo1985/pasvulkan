@@ -20871,7 +20871,7 @@ begin
     for Index:=0 to fGroupInstances.Count-1 do begin
      GroupInstance:=fGroupInstances[Index];
      if GroupInstance.fGroup.Usable and (GroupInstance.fVisitedState[aInFlightFrameIndex]=0) then begin
-      if GroupInstance.fRequiredDependencies.Count=0 then begin
+      if (GroupInstance.fRequiredDependencies.Count=0) and not assigned(GroupInstance.fAppendageInstance) then begin
        GroupInstance.fVisitedState[aInFlightFrameIndex]:=2;
        GroupInstance.Update(aInFlightFrameIndex);
       end else begin
