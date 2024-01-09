@@ -124,11 +124,7 @@ type TpvScene3DRenderer=class;
              Coefs:array[0..8] of TpvVector4;
             end;
             PSphericalHarmonicsBufferData=^TSphericalHarmonicsBufferData;
-            TSphericalHarmonicsMetaDataBufferData=record
-             DominantLightDirection:TpvVector4;
-             DominantLightColor:TpvVector4;
-             AmbientLightColor:TpvVector4;
-            end;
+            TSphericalHarmonicsMetaDataBufferData=TpvScene3DRendererImageBasedLightingSphericalHarmonics.TSphericalHarmonicsMetaDataBufferData;
             PSphericalHarmonicsMetaDataBufferData=^TSphericalHarmonicsMetaDataBufferData;
       private
        fScene3D:TpvScene3D;
