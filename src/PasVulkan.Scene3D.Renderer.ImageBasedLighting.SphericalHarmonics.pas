@@ -75,6 +75,13 @@ uses SysUtils,
 
 type { TpvScene3DRendererImageBasedLightingSphericalHarmonics }
      TpvScene3DRendererImageBasedLightingSphericalHarmonics=class
+      public
+       type TSphericalHarmonicsMetaDataBufferData=record
+             DominantLightDirection:TpvVector4;
+             DominantLightColor:TpvVector4;
+             AmbientLightColor:TpvVector4;
+            end;
+            PSphericalHarmonicsMetaDataBufferData=^TSphericalHarmonicsMetaDataBufferData;
       private
        fAccumulationComputeShaderModule:TpvVulkanShaderModule;
        fNormalizationComputeShaderModule:TpvVulkanShaderModule;
@@ -84,6 +91,7 @@ type { TpvScene3DRendererImageBasedLightingSphericalHarmonics }
        fVulkanPipelineShaderStageExtractMetaDataCompute:TpvVulkanPipelineShaderStage;
        fSphericalHarmonicsBuffer:TpvVulkanBuffer;
        fSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
+       fSphericalHarmonicsMetaDataBufferData:TSphericalHarmonicsMetaDataBufferData;
       public
 
        constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aSphericalHarmonicsBuffer,aSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;const aWidth,aHeight:TVkInt32;const aCompleteAccumulation:boolean=true);
@@ -95,6 +103,10 @@ type { TpvScene3DRendererImageBasedLightingSphericalHarmonics }
        property SphericalHarmonicsBuffer:TpvVulkanBuffer read fSphericalHarmonicsBuffer;
 
        property SphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer read fSphericalHarmonicsMetaDataBuffer;
+
+      public
+
+       property SphericalHarmonicsMetaDataBufferData:TSphericalHarmonicsMetaDataBufferData read fSphericalHarmonicsMetaDataBufferData;
 
      end;
 
@@ -495,6 +507,14 @@ begin
     finally
      FreeAndNil(VulkanDescriptorSetLayout);
     end;
+
+    aVulkanDevice.MemoryStaging.Download(UniversalQueue,
+                                         UniversalCommandBuffer,
+                                         UniversalFence,
+                                         fSphericalHarmonicsMetaDataBuffer,
+                                         0,
+                                         fSphericalHarmonicsMetaDataBufferData,
+                                         SizeOf(TSphericalHarmonicsMetaDataBufferData));
 
    finally
     FreeAndNil(UniversalFence);
