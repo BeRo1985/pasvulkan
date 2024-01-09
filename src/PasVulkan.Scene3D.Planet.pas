@@ -5677,9 +5677,23 @@ begin
   fDescriptorSetLayout.AddBinding(0,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                   1,
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or 
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or 
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                  [],
+                                  0);
+
+  fDescriptorSetLayout.AddBinding(1,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  3,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                  [],
+                                  0);
+
+  fDescriptorSetLayout.AddBinding(2,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                  3,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -5704,6 +5718,7 @@ begin
                                                   TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                   TpvScene3D(fScene3D).CountInFlightFrames);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),1*TpvScene3D(fScene3D).CountInFlightFrames);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),6*TpvScene3D(fScene3D).CountInFlightFrames);
   fDescriptorPool.Initialize;
 
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
@@ -5714,6 +5729,26 @@ begin
                                                             TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                             [],
                                                             [TpvScene3DRendererInstance(fRendererInstance).VulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                            [],
+                                                            false);
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                            0,
+                                                            3,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                            [TpvScene3DRendererInstance(fRendererInstance).Renderer.GGXBRDF.DescriptorImageInfo,
+                                                             TpvScene3DRendererInstance(fRendererInstance).Renderer.CharlieBRDF.DescriptorImageInfo,
+                                                             TpvScene3DRendererInstance(fRendererInstance).Renderer.SheenEBRDF.DescriptorImageInfo],
+                                                            [],
+                                                            [],
+                                                            false);
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                            0,
+                                                            3,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                            [TpvScene3DRendererInstance(fRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.GGXDescriptorImageInfo,
+                                                             TpvScene3DRendererInstance(fRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
+                                                             TpvScene3DRendererInstance(fRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],
+                                                            [],
                                                             [],
                                                             false);
    fDescriptorSets[InFlightFrameIndex].Flush;
