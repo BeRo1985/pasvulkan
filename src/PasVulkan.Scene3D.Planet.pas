@@ -5695,7 +5695,8 @@ begin
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        0,
                                        SizeOf(TPushConstants));
-  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Global descriptor set
+  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Global planet descriptor set
   fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
   fPipelineLayout.Initialize;
 
@@ -5920,6 +5921,7 @@ var PlanetIndex,Level:TpvSizeInt;
     TessellationFactor:TpvScalar;
     LeftAnchor,RightAnchor,DownAnchor,UpAnchor,MinXY,MaxXY:TpvVector2;
     Rect:TpvRect;
+    DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
 
  TpvScene3D(fScene3D).Planets.Lock.Acquire;
@@ -5941,11 +5943,14 @@ begin
 
       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fPipeline.Handle);
 
+      DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+      DescriptorSets[1]:=fDescriptorSets[aInFlightFrameIndex].Handle;
+
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            fPipelineLayout.Handle,
                                            0,
-                                           1,
-                                           @fDescriptorSets[aInFlightFrameIndex].Handle,
+                                           2,
+                                           @DescriptorSets,
                                            0,
                                            nil);
 
@@ -5953,7 +5958,7 @@ begin
 
      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                           fPipelineLayout.Handle,
-                                          1,
+                                          2,
                                           1,
                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
                                           0,

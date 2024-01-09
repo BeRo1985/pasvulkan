@@ -73,7 +73,7 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 0, binding = 0, std140) uniform uboViews {
+layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
 
@@ -82,7 +82,7 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 #endif
 
 #ifdef DIRECT
-layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 

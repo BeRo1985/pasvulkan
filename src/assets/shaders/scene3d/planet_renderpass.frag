@@ -27,9 +27,15 @@ layout(location = 0) out vec4 outFragColor;
 layout(location = 1) out vec2 outVelocity;
 #endif
 
+// Global descriptor set
+
+#define PLANETS
+#include "globaldescriptorset.glsl"
+#undef PLANETS
+
 // Per planet descriptor set
 
-layout(set = 1, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
 layout(push_constant) uniform PushConstants {
 
