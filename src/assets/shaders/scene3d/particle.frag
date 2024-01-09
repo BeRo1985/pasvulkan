@@ -63,6 +63,10 @@ layout (constant_id = 0) const bool UseReversedZ = true;
 
 // Global descriptor set
 
+#include "globaldescriptorset.glsl"
+
+// Pass descriptor set
+
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;
@@ -73,10 +77,6 @@ struct View {
 layout(std140, set = 1, binding = 0) uniform uboViews {
   View views[256];
 } uView;
-
-layout(set = 0, binding = 4) uniform sampler2D u2DTextures[];
-
-///layout(set = 0, binding = 4) uniform samplerCube uCubeTextures[];
 
 #ifdef VOXELIZATION
   layout(location = 0) out vec4 outFragColor;
