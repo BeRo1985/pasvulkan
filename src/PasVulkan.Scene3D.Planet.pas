@@ -5698,6 +5698,13 @@ begin
                                   [],
                                   0);
 
+  fDescriptorSetLayout.AddBinding(3,
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                  [],
+                                  0);
+
   // TODO: Add more bindings for other stuff like material textures, etc.
 
   fDescriptorSetLayout.Initialize;
@@ -5719,6 +5726,7 @@ begin
                                                   TpvScene3D(fScene3D).CountInFlightFrames);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),1*TpvScene3D(fScene3D).CountInFlightFrames);
   fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),6*TpvScene3D(fScene3D).CountInFlightFrames);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*TpvScene3D(fScene3D).CountInFlightFrames);
   fDescriptorPool.Initialize;
 
   for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
@@ -5749,6 +5757,14 @@ begin
                                                              TpvScene3DRendererInstance(fRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.CharlieDescriptorImageInfo,
                                                              TpvScene3DRendererInstance(fRendererInstance).Renderer.ImageBasedLightingEnvMapCubeMaps.LambertianDescriptorImageInfo],
                                                             [],
+                                                            [],
+                                                            false);
+   fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                            0,
+                                                            1,
+                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                            [],
+                                                            [TpvScene3DRendererInstance(fRendererInstance).Renderer.SkySphericalHarmonicsMetaDataBuffer.DescriptorBufferInfo],
                                                             [],
                                                             false);
    fDescriptorSets[InFlightFrameIndex].Flush;
