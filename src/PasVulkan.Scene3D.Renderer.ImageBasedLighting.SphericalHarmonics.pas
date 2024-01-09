@@ -78,12 +78,15 @@ type { TpvScene3DRendererImageBasedLightingSphericalHarmonics }
       private
        fAccumulationComputeShaderModule:TpvVulkanShaderModule;
        fNormalizationComputeShaderModule:TpvVulkanShaderModule;
+       fExtractMetaDataComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageAccumulationCompute:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageNormalizationCompute:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageExtractMetaDataCompute:TpvVulkanPipelineShaderStage;
        fSphericalHarmonicsBuffer:TpvVulkanBuffer;
+       fSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aSphericalHarmonicsBuffer:TpvVulkanBuffer;const aWidth,aHeight:TVkInt32;const aCompleteAccumulation:boolean=true);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aSphericalHarmonicsBuffer,aSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;const aWidth,aHeight:TVkInt32;const aCompleteAccumulation:boolean=true);
 
        destructor Destroy; override;
 
@@ -91,13 +94,15 @@ type { TpvScene3DRendererImageBasedLightingSphericalHarmonics }
 
        property SphericalHarmonicsBuffer:TpvVulkanBuffer read fSphericalHarmonicsBuffer;
 
+       property SphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer read fSphericalHarmonicsMetaDataBuffer;
+
      end;
 
 implementation
 
 { TpvScene3DRendererImageBasedLightingSphericalHarmonics }
 
-constructor TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aSphericalHarmonicsBuffer:TpvVulkanBuffer;const aWidth,aHeight:TVkInt32;const aCompleteAccumulation:boolean=true);
+constructor TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aDescriptorImageInfo:TVkDescriptorImageInfo;const aSphericalHarmonicsBuffer,aSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;const aWidth,aHeight:TVkInt32;const aCompleteAccumulation:boolean=true);
 var Stream:TStream;
     UniversalQueue:TpvVulkanQueue;
     UniversalCommandPool:TpvVulkanCommandPool;
@@ -110,12 +115,16 @@ var Stream:TStream;
     AccumulationPipeline:TpvVulkanComputePipeline;
     NormalizationPipelineLayout:TpvVulkanPipelineLayout;
     NormalizationPipeline:TpvVulkanComputePipeline;
+    ExtractMetaDataPipelineLayout:TpvVulkanPipelineLayout;
+    ExtractMetaDataPipeline:TpvVulkanComputePipeline;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
     LODLevel:TVkUInt32;
 begin
  inherited Create;
 
  fSphericalHarmonicsBuffer:=aSphericalHarmonicsBuffer;
+
+ fSphericalHarmonicsMetaDataBuffer:=aSphericalHarmonicsMetaDataBuffer;
 
  if aCompleteAccumulation then begin
 
@@ -154,6 +163,15 @@ begin
 
  end;
 
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sphericalharmonics_extract_metadata_comp.spv');
+ try
+  fExtractMetaDataComputeShaderModule:=TpvVulkanShaderModule.Create(aVulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fVulkanPipelineShaderStageExtractMetaDataCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fExtractMetaDataComputeShaderModule,'main');
+
  UniversalQueue:=aVulkanDevice.UniversalQueue;
 
  UniversalCommandPool:=TpvVulkanCommandPool.Create(aVulkanDevice,
@@ -179,13 +197,19 @@ begin
                                           1,
                                           TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                           []);
+     VulkanDescriptorSetLayout.AddBinding(2,
+                                          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                          1,
+                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                          []);
      VulkanDescriptorSetLayout.Initialize;
 
      VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                           1);
      try
-      VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1);
+
+      VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2);
       VulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
       VulkanDescriptorPool.Initialize;
 
@@ -206,6 +230,14 @@ begin
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                [aDescriptorImageInfo],
                                                [],
+                                               [],
+                                               false);
+      VulkanDescriptorSet.WriteToDescriptorSet(2,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               [],
+                                               [aSphericalHarmonicsMetaDataBuffer.DescriptorBufferInfo],
                                                [],
                                                false);
       VulkanDescriptorSet.Flush;
@@ -253,62 +285,109 @@ begin
 
          try
 
-          UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+          ExtractMetaDataPipelineLayout:=TpvVulkanPipelineLayout.Create(aVulkanDevice);
+          ExtractMetaDataPipelineLayout.AddDescriptorSetLayout(VulkanDescriptorSetLayout);
+          ExtractMetaDataPipelineLayout.Initialize;
 
-          UniversalCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+          ExtractMetaDataPipeline:=TpvVulkanComputePipeline.Create(aVulkanDevice,
+                                                                   aVulkanPipelineCache,
+                                                                   0,
+                                                                   fVulkanPipelineShaderStageExtractMetaDataCompute,
+                                                                   ExtractMetaDataPipelineLayout,
+                                                                   nil,
+                                                                   0);
+          try
 
-          UniversalCommandBuffer.CmdFillBuffer(aSphericalHarmonicsBuffer.Handle,0,aSphericalHarmonicsBuffer.Size,0);
+           UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
-          BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                             TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                             fSphericalHarmonicsBuffer.Handle,
-                                                             0,
-                                                             VK_WHOLE_SIZE);
+           UniversalCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
-          UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+           UniversalCommandBuffer.CmdFillBuffer(aSphericalHarmonicsBuffer.Handle,0,aSphericalHarmonicsBuffer.Size,0);
+
+           BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                              TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                              VK_QUEUE_FAMILY_IGNORED,
+                                                              VK_QUEUE_FAMILY_IGNORED,
+                                                              fSphericalHarmonicsBuffer.Handle,
+                                                              0,
+                                                              VK_WHOLE_SIZE);
+
+           UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                     TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                                     0,
+                                                     nil,
+                                                     1,
+                                                     @BufferMemoryBarrier,
+                                                     0,
+                                                     nil);
+
+           UniversalCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,AccumulationPipeline.Handle);
+
+           UniversalCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                        AccumulationPipelineLayout.Handle,
+                                                        0,
+                                                        1,
+                                                        @VulkanDescriptorSet.Handle,
+                                                        0,
+                                                        nil);
+
+           if aCompleteAccumulation then begin
+
+            LODLevel:=0;
+            UniversalCommandBuffer.CmdPushConstants(AccumulationPipelineLayout.Handle,
+                                                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                     0,
-                                                    nil,
-                                                    1,
-                                                    @BufferMemoryBarrier,
-                                                    0,
-                                                    nil);
+                                                    SizeOf(TVkUInt32),
+                                                    @LODLevel);
 
-          UniversalCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,AccumulationPipeline.Handle);
+            UniversalCommandBuffer.CmdDispatch((aWidth+7) shr 3,
+                                               (aHeight+7) shr 3,
+                                               6);
 
-          UniversalCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                       AccumulationPipelineLayout.Handle,
-                                                       0,
-                                                       1,
-                                                       @VulkanDescriptorSet.Handle,
-                                                       0,
-                                                       nil);
+           end else begin
 
-          if aCompleteAccumulation then begin
+            UniversalCommandBuffer.CmdDispatch(1,
+                                               1,
+                                               1);
 
-           LODLevel:=0;
-           UniversalCommandBuffer.CmdPushConstants(AccumulationPipelineLayout.Handle,
-                                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
-                                                   0,
-                                                   SizeOf(TVkUInt32),
-                                                   @LODLevel);
+           end;
 
-           UniversalCommandBuffer.CmdDispatch((aWidth+7) shr 3,
-                                              (aHeight+7) shr 3,
-                                              6);
+           if aCompleteAccumulation then begin
 
-          end else begin
+            BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                               fSphericalHarmonicsBuffer.Handle,
+                                                               0,
+                                                               VK_WHOLE_SIZE);
 
-           UniversalCommandBuffer.CmdDispatch(1,
-                                              1,
-                                              1);
+            UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                      TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                                      0,
+                                                      nil,
+                                                      1,
+                                                      @BufferMemoryBarrier,
+                                                      0,
+                                                      nil);
 
-          end;
+            UniversalCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,NormalizationPipeline.Handle);
 
-          if aCompleteAccumulation then begin
+            UniversalCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                         NormalizationPipelineLayout.Handle,
+                                                         0,
+                                                         1,
+                                                         @VulkanDescriptorSet.Handle,
+                                                         0,
+                                                         nil);
+
+            UniversalCommandBuffer.CmdDispatch(1,
+                                               1,
+                                               1);
+
+           end;
 
            BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -319,7 +398,7 @@ begin
                                                               VK_WHOLE_SIZE);
 
            UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
                                                      TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
                                                      0,
                                                      nil,
@@ -328,43 +407,69 @@ begin
                                                      0,
                                                      nil);
 
-           UniversalCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,NormalizationPipeline.Handle);
+           begin
 
-           UniversalCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                        NormalizationPipelineLayout.Handle,
-                                                        0,
-                                                        1,
-                                                        @VulkanDescriptorSet.Handle,
-                                                        0,
-                                                        nil);
+            BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                               fSphericalHarmonicsMetaDataBuffer.Handle,
+                                                               0,
+                                                               VK_WHOLE_SIZE);
 
-           UniversalCommandBuffer.CmdDispatch(1,
-                                              1,
-                                              1);
+            UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                      TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                                      0,
+                                                      nil,
+                                                      1,
+                                                      @BufferMemoryBarrier,
+                                                      0,
+                                                      nil);
 
+            UniversalCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,ExtractMetaDataPipeline.Handle);
+
+            UniversalCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                         ExtractMetaDataPipelineLayout.Handle,
+                                                         0,
+                                                         1,
+                                                         @VulkanDescriptorSet.Handle,
+                                                         0,
+                                                         nil);
+
+            UniversalCommandBuffer.CmdDispatch(1,
+                                               1,
+                                               1);
+
+
+            BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                               TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or TVkAccessFlags(VK_ACCESS_HOST_READ_BIT),
+                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                               VK_QUEUE_FAMILY_IGNORED,
+                                                               fSphericalHarmonicsMetaDataBuffer.Handle,
+                                                               0,
+                                                               VK_WHOLE_SIZE);
+
+            UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                                      TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
+                                                      0,
+                                                      nil,
+                                                      1,
+                                                      @BufferMemoryBarrier,
+                                                      0,
+                                                      nil);
+
+           end;
+
+           UniversalCommandBuffer.EndRecording;
+
+           UniversalCommandBuffer.Execute(UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),nil,nil,UniversalFence,true);
+
+          finally
+           FreeAndNil(ExtractMetaDataPipeline);
+           FreeAndNil(ExtractMetaDataPipelineLayout);
           end;
-
-          BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                             TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                             VK_QUEUE_FAMILY_IGNORED,
-                                                             fSphericalHarmonicsBuffer.Handle,
-                                                             0,
-                                                             VK_WHOLE_SIZE);
-
-          UniversalCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT),
-                                                    TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT),
-                                                    0,
-                                                    nil,
-                                                    1,
-                                                    @BufferMemoryBarrier,
-                                                    0,
-                                                    nil);
-
-          UniversalCommandBuffer.EndRecording;
-
-          UniversalCommandBuffer.Execute(UniversalQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),nil,nil,UniversalFence,true);
 
          finally
           FreeAndNil(NormalizationPipeline);
@@ -411,6 +516,8 @@ begin
  FreeAndNil(fAccumulationComputeShaderModule);
  FreeAndNil(fVulkanPipelineShaderStageNormalizationCompute);
  FreeAndNil(fNormalizationComputeShaderModule);
+ FreeAndNil(fExtractMetaDataComputeShaderModule);
+ FreeAndNil(fVulkanPipelineShaderStageExtractMetaDataCompute);
  inherited Destroy;
 end;
 

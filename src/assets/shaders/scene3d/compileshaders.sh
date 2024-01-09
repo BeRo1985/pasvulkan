@@ -289,6 +289,8 @@ compileshaderarguments=(
   
   "-V cubemap_sphericalharmonics_normalization.comp -o ${tempPath}/cubemap_sphericalharmonics_normalization_comp.spv"
 
+  "-V cubemap_sphericalharmonics_extract_metadata.comp -o ${tempPath}/cubemap_sphericalharmonics_extract_metadata_comp.spv"
+
   "-V topdownskyocclusionmap_resolve.frag -o ${tempPath}/topdownskyocclusionmap_resolve_frag.spv"
 
   "-V topdownskyocclusionmap_blur.frag -o ${tempPath}/topdownskyocclusionmap_blur_frag.spv"

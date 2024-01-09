@@ -124,6 +124,12 @@ type TpvScene3DRenderer=class;
              Coefs:array[0..8] of TpvVector4;
             end;
             PSphericalHarmonicsBufferData=^TSphericalHarmonicsBufferData;
+            TSphericalHarmonicsMetaDataBufferData=record
+             DominantLightDirection:TpvVector4;
+             DominantLightColor:TpvVector4;
+             AmbientLightColor:TpvVector4;
+            end;
+            PSphericalHarmonicsMetaDataBufferData=^TSphericalHarmonicsMetaDataBufferData;
       private
        fScene3D:TpvScene3D;
        fVulkanDevice:TpvVulkanDevice;
@@ -168,6 +174,7 @@ type TpvScene3DRenderer=class;
       private
        fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
        fSkySphericalHarmonicsBuffer:TpvVulkanBuffer;
+       fSkySphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
        fSkySphericalHarmonics:TpvScene3DRendererImageBasedLightingSphericalHarmonics;
        fGGXBRDF:TpvScene3DRendererGGXBRDF;
        fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
@@ -246,6 +253,7 @@ type TpvScene3DRenderer=class;
       published
        property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
        property SkySphericalHarmonicsBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsBuffer;
+       property SkySphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsMetaDataBuffer;
        property GGXBRDF:TpvScene3DRendererGGXBRDF read fGGXBRDF;
        property CharlieBRDF:TpvScene3DRendererCharlieBRDF read fCharlieBRDF;
        property SheenEBRDF:TpvScene3DRendererSheenEBRDF read fSheenEBRDF;
@@ -977,7 +985,24 @@ begin
                                                      );
  fVulkanDevice.DebugUtils.SetObjectName(fSkySphericalHarmonicsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer');
 
- fSkySphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fSkySphericalHarmonicsBuffer,fSkyCubeMap.Width,fSkyCubeMap.Height,true);
+ fSkySphericalHarmonicsMetaDataBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                              SizeOf(TSphericalHarmonicsMetaDataBufferData),
+                                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                              [],
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                              0,
+                                                              0,
+                                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              0,
+                                                              []
+                                                             );
+ fVulkanDevice.DebugUtils.SetObjectName(fSkySphericalHarmonicsMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsMetaDataBuffer');
+
+ fSkySphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fSkySphericalHarmonicsBuffer,fSkySphericalHarmonicsMetaDataBuffer,fSkyCubeMap.Width,fSkyCubeMap.Height,true);
 
  fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
  fVulkanDevice.DebugUtils.SetObjectName(fGGXBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fGGXBRDF.Image');
@@ -1488,6 +1513,8 @@ begin
  FreeAndNil(fSkySphericalHarmonics);
 
  FreeAndNil(fSkySphericalHarmonicsBuffer);
+
+ FreeAndNil(fSkySphericalHarmonicsMetaDataBuffer);
 
  FreeAndNil(fSkyCubeMap);
 
