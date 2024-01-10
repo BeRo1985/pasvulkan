@@ -125,8 +125,8 @@ type TpvScene3DPlanets=class;
             PMaterial=^TMaterial;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
-             Direct:Boolean=false;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
+             Direct:Boolean=true;
        type TMeshVertex=record
              PositionAbsoluteHeight:TpvVector4;
              NormalRelativeHeight:TpvVector4;
@@ -6168,8 +6168,8 @@ begin
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*3*20,1,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
-       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);
+       aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);
        aCommandBuffer.CmdDrawIndexed(Planet.fTileMapResolution*
                                      Planet.fTileMapResolution*
                                      Planet.fVisualTileResolution*

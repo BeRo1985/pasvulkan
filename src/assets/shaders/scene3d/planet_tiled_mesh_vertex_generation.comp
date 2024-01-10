@@ -69,7 +69,7 @@ void main(){
         
         uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResolution;
 
-        float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
+        float height = texelFetch(uTextureHeightMap, ivec2(quadXY) << pushConstants.lod, 0).x;
 
         triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = TriangleVertex( 
           vec4(vec4(octPlanetUnsignedDecode(vec2(quadXY) / vec2(totalResolution)), 1.0) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height)), 
