@@ -167,9 +167,9 @@ vec4 textureCatmullRomOctahedralMap(const in sampler2D tex, vec3 direction, cons
 // ---
 
 vec4 texturePlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
-  vec2 uv = octPlanetUnsignedEncode(direction); 
   ivec2 texSize = textureSize(tex, 0).xy;
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) * invTexSize);
   if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
    // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
    uv = fma(uv, texSize, vec2(-0.5));
@@ -186,9 +186,9 @@ vec4 texturePlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
 }
 
 vec4 texturePlanetOctahedralMap(const in sampler2D tex, vec3 direction, const in int lod) {
-  vec2 uv = octPlanetUnsignedEncode(direction); 
   ivec2 texSize = textureSize(tex, lod).xy;
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) * invTexSize);
   if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
    // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
    uv = fma(uv, texSize, vec2(-0.5));
@@ -206,12 +206,13 @@ vec4 texturePlanetOctahedralMap(const in sampler2D tex, vec3 direction, const in
 
 #ifdef FRAGMENT_SHADER
 vec4 textureMipMapPlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
-  vec2 uv = octPlanetUnsignedEncode(direction); 
-  vec2 uvInt = uv * vec2(textureSize(tex, 0).xy);
+  ivec2 texSize = textureSize(tex, 0).xy; 
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) / vec2(texSize)); 
+  vec2 uvInt = uv * vec2(texSize);
   vec2 uvdx = dFdx(uv);
   vec2 uvdy = dFdy(uv);  
   float mipMapLevel = max(0.0, log2(max(dot(uvdx, uvdx), dot(uvdy, uvdy))) * 0.5); //textureQueryLod(tex, uv).x;
-  ivec2 texSize = textureSize(tex, int(mipMapLevel)).xy;
+  texSize = textureSize(tex, int(mipMapLevel)).xy;
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
   if(any(lessThanEqual(uv, invTexSize)) || any(greaterThanEqual(uv, vec2(1.0) - invTexSize))){
     // Handle edges with manual bilinear interpolation using texelFetch for correct octahedral texel edge mirroring 
@@ -245,9 +246,9 @@ vec4 textureMipMapPlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
 #endif
 
 vec4 textureCatmullRomPlanetOctahedralMap(const in sampler2D tex, vec3 direction) {
-  vec2 uv = octPlanetUnsignedEncode(direction); 
-  ivec2 texSize = textureSize(tex, 0).xy;
+  ivec2 texSize = textureSize(tex, 0).xy; 
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) * invTexSize); 
   if(any(lessThanEqual(uv, invTexSize * 2.0)) || any(greaterThanEqual(uv, vec2(1.0) - (invTexSize * 2.0)))){
    // Handle edges with manual catmull rom interpolation using texelFetch for correct octahedral texel edge mirroring 
    uv = fma(uv, texSize, vec2(-0.5));
@@ -278,9 +279,9 @@ vec4 textureCatmullRomPlanetOctahedralMap(const in sampler2D tex, vec3 direction
 }
 
 vec4 textureCatmullRomPlanetOctahedralMap(const in sampler2D tex, vec3 direction, const in int lod) {
-  vec2 uv = octPlanetUnsignedEncode(direction); 
-  ivec2 texSize = textureSize(tex, lod).xy;
+  ivec2 texSize = textureSize(tex, lod).xy; 
   vec2 invTexSize = vec2(1.0) / vec2(texSize);
+  vec2 uv = octPlanetUnsignedEncode(direction) + (vec2(0.5) * invTexSize); 
   if(any(lessThanEqual(uv, invTexSize * 2.0)) || any(greaterThanEqual(uv, vec2(1.0) - (invTexSize * 2.0)))){
    // Handle edges with manual catmull rom interpolation using texelFetch for correct octahedral texel edge mirroring 
    uv = fma(uv, texSize, vec2(-0.5));

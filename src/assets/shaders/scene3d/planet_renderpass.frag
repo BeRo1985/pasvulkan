@@ -145,7 +145,8 @@ void main(){
 
   envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
 
-  vec3 normal = transpose(inverse(mat3(pushConstants.modelMatrix))) * textureMipMapPlanetOctahedralMap(uTextures[1], inBlock.sphereNormal).xyz;
+  vec3 normal = transpose(inverse(mat3(pushConstants.modelMatrix))) * texturePlanetOctahedralMap(uTextures[1], inBlock.sphereNormal).xyz;
+//vec3 normal = transpose(inverse(mat3(pushConstants.modelMatrix))) * textureMipMapPlanetOctahedralMap(uTextures[1], inBlock.sphereNormal).xyz;
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 

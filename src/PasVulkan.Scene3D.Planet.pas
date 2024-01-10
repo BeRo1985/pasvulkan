@@ -497,7 +497,8 @@ type TpvScene3DPlanets=class;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;                    
                     TileMapResolution:TpvUInt32;
-                    TileResolution:TpvUInt32;                   
+                    TileResolution:TpvUInt32;
+                    LOD:TpvInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -4260,8 +4261,10 @@ begin
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   if fPhysics then begin
    fPushConstants.TileResolution:=fPlanet.fPhysicsTileResolution;
+   fPushConstants.LOD:=Max(0,IntLog2(fPlanet.fHeightMapResolution)-IntLog2(fPlanet.fPhysicsResolution));
   end else begin
    fPushConstants.TileResolution:=fPlanet.fVisualTileResolution;
+   fPushConstants.LOD:=Max(0,IntLog2(fPlanet.fHeightMapResolution)-IntLog2(fPlanet.fVisualResolution));
   end;
 
  end;

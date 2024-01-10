@@ -34,10 +34,10 @@ layout(push_constant) uniform PushConstants {
   float topRadius;
   uint tileMapResolution;
   uint tileResolution;
+  int lod;
 } pushConstants;
 
 #include "octahedral.glsl"
-#include "octahedralmap.glsl"
 
 void main(){
 
@@ -69,52 +69,11 @@ void main(){
         
         uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResolution;
 
-        //quadXY = uvec2(wrapOctahedralTexelCoordinates(ivec2(quadXY), ivec2(totalResolution)));
-        
-/*      vec2 uv = (vec2(quadXY) + vec2(0.5)) / vec2(totalResolution);
+        float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
 
-        // Octahedral wrap
-        if((((int(abs(uv.x)) + int(uv.x < 0.0)) ^ (int(abs(uv.y)) + int(uv.y < 0.0))) & 1) != 0){
-          uv = vec2(1.0) - fract(uv);
-        }else{
-          uv = fract(uv);
-        }
-
-        uv = fma(uv, vec2(2.0), vec2(-1.0));*/
-
-        vec2 uv = fma(vec2(quadXY) / vec2(totalResolution), vec2(2.0), vec2(-1.0));
-
-#if 0
-        vec3 vector;
-        {
-          const float halfPI = 1.5707963267948966;
-          vec2 absUV = abs(uv);
-          float absUVSum = absUV.x + absUV.y;
-          vec2 s = fma(step(vec2(0.0), uv), vec2(2.0), vec2(-1.0));
-          uv = (absUVSum > 1.0) ? ((vec2(1.0) - abs(uv.yx)) * s) : uv;
-          vec4 pitchYawSinCos = sin(vec2(vec2(absUVSum, abs(uv.x) / max(1e-17, abs(uv.x) + abs(uv.y))) * halfPI).xxyy + vec2(0.0, halfPI).xyxy); 
-          vector = normalize(vec3(pitchYawSinCos.xx * pitchYawSinCos.zw * s.xy, pitchYawSinCos.y).yzx);
-        }
-#else        
-        vec3 vector = vec3(uv.xy, 1.0 - (abs(uv.x) + abs(uv.y)));
-        vector = normalize((vector.z < 0.0) ? vec3((1.0 - abs(vector.yx)) * vec2((vector.x < 0.0) ? -1.0 : 1.0, (vector.y < 0.0) ? -1.0 : 1.0), vector.z) : vector);
-#endif
-
-        uint texSize = textureSize(uTextureHeightMap, 0).x;
-        int lod = (texSize > totalResolution) ? int(log2(float(texSize) / float(totalResolution))) : 0;
-
-        float height = textureCatmullRomPlanetOctahedralMap(uTextureHeightMap, vector, lod).x;
-        
-        vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextureNormalMap, vector, lod).xyz;
-
-        uint index = (tileMapIndex * tileVertexSize) + tileVertexIndex;
-
-        float absoluteHeight = mix(pushConstants.bottomRadius, pushConstants.topRadius, height);
-
-        triangleVertices.vertices[index] = TriangleVertex( 
-          vec4(vec4(vector, 1.0) * absoluteHeight), 
-//        vec4((pushConstants.modelMatrix * vec4(vector * absoluteHeight, 1.0)).xyz, absoluteHeight), 
-          vec4(normal, height)
+        triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = TriangleVertex( 
+          vec4(vec4(octPlanetUnsignedDecode(vec2(quadXY) / vec2(totalResolution)), 1.0) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height)), 
+          vec4(normalize(texelFetch(uTextureNormalMap, ivec2(quadXY), pushConstants.lod).xyz), height)
         );    
 
       }
