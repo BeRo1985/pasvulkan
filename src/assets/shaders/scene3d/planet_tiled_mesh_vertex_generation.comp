@@ -6,6 +6,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_ARB_gpu_shader_fp64 : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 /* clang-format off */
 
@@ -24,9 +25,9 @@ layout(set = 0, binding = 1, std430) buffer QueuedTiles {
   uint data[]; // 6-based, because two VkDispatchIndirectCommand structs are stored in the same buffer at the beginning, with three 32-bit unsigned integers each
 } queuedTiles;
 
-layout(set = 0, binding = 2) uniform sampler2D uTextureHeightMap; // r32f
+layout(set = 0, binding = 2) uniform texture2D uTextureHeightMap; // r32f
 
-layout(set = 0, binding = 3) uniform sampler2D uTextureNormalMap; // rgba16_snorm
+layout(set = 0, binding = 3) uniform texture2D uTextureNormalMap; // rgba16_snorm
 
 layout(push_constant) uniform PushConstants {
   //mat4 modelMatrix;
