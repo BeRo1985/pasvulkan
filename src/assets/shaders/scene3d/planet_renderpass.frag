@@ -84,7 +84,6 @@ float envMapMaxLevelGGX;
 vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
 
 float ambientOcclusion = 1.0;
-float cavity = 1.0;
 vec3 iridescenceF0 = vec3(0.04);
 vec3 iridescenceFresnel = vec3(0.0);
 float iridescenceFactor = 0.0;
@@ -99,7 +98,7 @@ float getSpecularOcclusion(const in float NdotV, const in float ao, const in flo
 } 
 
 vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
-  float ao = cavity * ambientOcclusion;
+  float ao = ambientOcclusion;
   float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
   vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
@@ -124,7 +123,7 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
   }
 #endif
   vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  float ao = cavity * ambientOcclusion,                                                                                                   //
+  float ao = ambientOcclusion,                                                                                                   //
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
   vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
@@ -152,34 +151,45 @@ void main(){
 
   vec3 viewDirection = normalize(inBlock.viewSpacePosition);
 
-  vec4 diffuseColorAlpha = vec4(1.0);
-  vec3 F0 = vec3(0.04);
-  float perceptualRoughness = 1.0;
-  float specularWeight = 0.0;
-  float litIntensity = 1.0;
-  float iblWeight = 1.0;
+  const float specularWeight = 1.0;
+
+  vec4 baseColor = vec4(1.0);//textureFetch(0, vec4(1.0), true);
+
+  vec4 occlusionRoughnessMetallic = vec4(1.0, 1.0, 0.0, 0.0);//textureFetch(0, vec4(1.0), true);
+
+  ambientOcclusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
+
+  vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
+
+  vec4 diffuseColorAlpha = vec4(max(vec3(0.0), baseColor.xyz * (1.0 - metallicRoughness.x)), baseColor.w);
+
+  vec3 F0 = mix(vec3(0.04), baseColor.xyz, metallicRoughness.x);
+
+  float perceptualRoughness = metallicRoughness.y;
 
   vec3 workNormal = normal; 
 
+  float kernelRoughness;
   {
-    float kernelRoughness;
-    {
-      const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
-      vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
-      kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
-      perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
-    }  
-  }
+    const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
+    vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
+    kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
+    perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
+  }  
+
+  float litIntensity = 1.0;
 
   vec3 diffuseOutput = vec3(0.0);
   vec3 specularOutput = vec3(0.0);
 
+  float iblWeight = 1.0;
+
   diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
   specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
        
-  vec4 c = vec2(0.0, 1.0).xxxy;//vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
-  c.xyz += diffuseOutput + specularOutput;
-
+  //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
+  vec4 c = vec4( baseColor.xyz * (diffuseOutput + specularOutput), 1.0);
+  
   if(pushConstants.selected.w > 1e-6){
     float d = length(normalize(inBlock.sphereNormal.xyz) - normalize(pushConstants.selected.xyz)) - pushConstants.selected.w;
     float t = fwidth(d) * 1.41421356237;

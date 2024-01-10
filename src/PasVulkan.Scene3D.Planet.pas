@@ -102,6 +102,29 @@ type TpvScene3DPlanets=class;
               PhysicsMeshTriangles
              );
             PSourcePrimitiveMode=^TSourcePrimitiveMode;
+            TPlanetData=packed record
+
+             ModelMatrix:TpvMatrix4x4;
+
+             BottomRadius:TpvFloat;
+             TopRadius:TpvFloat;
+             HeightMapScale:TpvFloat;
+             CountQuadPointsInOneDirection:TpvUInt32;
+
+             Selected:TpvVector4;
+
+             Textures:array[0..15,0..3] of TpvUInt32;
+
+            end;
+            PPlanetData=^TPlanetData;
+            TMaterial=record
+             AlbedoTexture:TpvUInt32;
+             NormalHeightTexture:TpvUInt32;
+             OcclusionRoughnessMetallicTexture:TpvUInt32;
+            end;
+            PMaterial=^TMaterial;
+            TMaterials=array[0..15] of TMaterial;
+            PMaterials=^TMaterials;
        const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
              Direct:Boolean=false;
        type TMeshVertex=record
@@ -727,6 +750,9 @@ type TpvScene3DPlanets=class;
        fGlobalBufferQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fInFlightFrameSharingMode:TVkSharingMode;
        fInFlightFrameQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
+       fPlanetData:TPlanetData;
+       fMaterials:TMaterials;
+       fPointerToMaterials:PMaterials;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
       public
