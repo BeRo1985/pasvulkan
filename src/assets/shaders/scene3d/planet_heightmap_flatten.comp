@@ -43,7 +43,7 @@ void main(){
   
     ivec2 xy = wrapOctahedralTexelCoordinates(texel, texSize);
     
-    vec3 p = octPlanetSignedDecode(fma(vec2(xy) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
+    vec3 p = octPlanetUnsignedDecode(vec2(xy) / vec2(texSize));
 
     vec3 n = normalize(pushConstants.vector.xyz);
     

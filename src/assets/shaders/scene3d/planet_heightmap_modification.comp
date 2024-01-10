@@ -35,7 +35,7 @@ void main(){
 
   if(all(greaterThanEqual(texel, ivec2(0))) && all(lessThan(texel, texSize))){
 
-    vec3 sphereNormal = octPlanetSignedDecode(fma(vec2(texel) + vec2(0.5), vec2(2.0) / vec2(texSize), vec2(-1.0)));
+    vec3 sphereNormal = octPlanetUnsignedDecode(vec2(texel) / vec2(texSize));
 
     float d = smoothstep(
       0.0,
