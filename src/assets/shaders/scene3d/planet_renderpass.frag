@@ -6,6 +6,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#ifdef WIREFRAME
+  #extension GL_EXT_fragment_shader_barycentric : enable
+#endif
 
 layout(location = 0) in InBlock {
   vec3 position;
@@ -88,10 +91,17 @@ vec3 iridescenceF0 = vec3(0.04);
 vec3 iridescenceFresnel = vec3(0.0);
 float iridescenceFactor = 0.0;
 
+#ifdef WIREFRAME
 float edgeFactor(){
-   vec3 a = smoothstep(vec3(0.0), (abs(dFdx(inBlock.edge)) + abs(dFdy(inBlock.edge))) * 1.414, inBlock.edge);
+   vec3 edge = mix(vec3(-1.0), vec3(1.0), gl_BaryCoordEXT);
+   vec3 a = smoothstep(vec3(0.0), (abs(dFdx(edge)) + abs(dFdy(edge))) * 1.414, edge);
    return min(min(a.x, a.y), a.z);
-}          
+}    
+#else
+float edgeFactor(){
+  return 0.0;
+}      
+#endif
 
 float getSpecularOcclusion(const in float NdotV, const in float ao, const in float roughness){
   return clamp((pow(NdotV + ao, /*roughness * roughness*/exp2((-16.0 * roughness) - 1.0)) - 1.0) + ao, 0.0, 1.0); 
@@ -198,6 +208,10 @@ void main(){
     float t = fwidth(d) * 1.41421356237;
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(1.0, 0.0, 0.0), 0.5), smoothstep(t, -t, d) * 0.5);
   }
+
+#ifdef WIREFRAME
+  c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
+#endif  
 
   outFragColor = c;
 

@@ -396,6 +396,8 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+       fFragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR;
+       fFragmentShaderBarycentricPropertiesKHR:TVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR;
        fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
        fRayTracingPipelinePropertiesKHR:TVkPhysicalDeviceRayTracingPipelinePropertiesKHR;
        fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
@@ -470,6 +472,8 @@ type EpvVulkanException=class(Exception);
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT;
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR;
        property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
+       property FragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR read fFragmentShaderBarycentricFeaturesKHR;
+       property FragmentShaderBarycentricPropertiesKHR:TVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR read fFragmentShaderBarycentricPropertiesKHR;
        property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR;
        property RayTracingPipelinePropertiesKHR:TVkPhysicalDeviceRayTracingPipelinePropertiesKHR read fRayTracingPipelinePropertiesKHR;
        property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR;
@@ -680,6 +684,7 @@ type EpvVulkanException=class(Exception);
        fFragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT;
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
+       fFragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR;
        fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
        fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
        fRayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR;
@@ -761,6 +766,7 @@ type EpvVulkanException=class(Exception);
        property FragmentShaderInterlockFeaturesEXT:TVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT read fFragmentShaderInterlockFeaturesEXT write fFragmentShaderInterlockFeaturesEXT;
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR write fBufferDeviceAddressFeaturesKHR;
        property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT write fHostQueryResetFeaturesEXT;
+       property FragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR read fFragmentShaderBarycentricFeaturesKHR;
        property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR write fRayTracingPipelineFeaturesKHR;
        property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR write fRayQueryFeaturesKHR;
        property RayTracingMaintenance1FeaturesKHR:TVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR read fRayTracingMaintenance1FeaturesKHR write fRayTracingMaintenance1FeaturesKHR;
@@ -8310,6 +8316,15 @@ begin
  end;
 
  begin
+  FillChar(fFragmentShaderBarycentricFeaturesKHR,SizeOf(TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR),#0);
+  fFragmentShaderBarycentricFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+  if AvailableExtensionNames.IndexOf(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)>0 then begin
+   fFragmentShaderBarycentricFeaturesKHR.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fFragmentShaderBarycentricFeaturesKHR;
+  end;
+ end;
+
+ begin
   FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
   fRayTracingPipelineFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
   if AvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>0 then begin
@@ -8462,6 +8477,13 @@ begin
  if fAvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0 then begin
   fRayTracingPipelinePropertiesKHR.pNext:=fProperties2KHR.pNext;
   fProperties2KHR.pNext:=@fRayTracingPipelinePropertiesKHR;
+ end;
+
+ FillChar(fFragmentShaderBarycentricPropertiesKHR,SizeOf(TVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR),#0);
+ fFragmentShaderBarycentricPropertiesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR;
+ if fAvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0 then begin
+  fFragmentShaderBarycentricPropertiesKHR.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fFragmentShaderBarycentricPropertiesKHR;
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
@@ -10257,6 +10279,15 @@ begin
     fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock:=PhysicalDevice.fFragmentShaderInterlockFeaturesEXT.fragmentShaderShadingRateInterlock;
     fFragmentShaderInterlockFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fFragmentShaderInterlockFeaturesEXT;
+   end;
+
+   FillChar(fFragmentShaderBarycentricFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
+   fFragmentShaderBarycentricFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+   if (fEnabledExtensionNames.IndexOf(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)>0) and
+      (PhysicalDevice.fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE) then begin
+    fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric:=PhysicalDevice.fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric;
+    fFragmentShaderBarycentricFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fFragmentShaderBarycentricFeaturesKHR;
    end;
 
    FillChar(fRayTracingPipelineFeaturesKHR,SizeOf(TVkPhysicalDeviceRayTracingPipelineFeaturesKHR),#0);
