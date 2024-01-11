@@ -22,7 +22,6 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
-  vec3 edge;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -141,7 +140,6 @@ void main(){
   outBlock.position = position;   
   outBlock.sphereNormal = sphereNormal;      
   outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
-  outBlock.edge = vec3(1.0);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;

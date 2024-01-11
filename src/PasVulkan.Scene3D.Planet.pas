@@ -125,8 +125,8 @@ type TpvScene3DPlanets=class;
             PMaterial=^TMaterial;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
-             Direct:Boolean=true;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
+             Direct:Boolean=false;
        type TMeshVertex=record
              PositionAbsoluteHeight:TpvVector4;
              NormalRelativeHeight:TpvVector4;
@@ -666,12 +666,10 @@ type TpvScene3DPlanets=class;
               fVertexShaderModule:TpvVulkanShaderModule;
               fTessellationControlShaderModule:TpvVulkanShaderModule;
               fTessellationEvaluationShaderModule:TpvVulkanShaderModule;
-              fGeometryShaderModule:TpvVulkanShaderModule;
               fFragmentShaderModule:TpvVulkanShaderModule;
               fVertexShaderStage:TpvVulkanPipelineShaderStage;
               fTessellationControlShaderStage:TpvVulkanPipelineShaderStage;
               fTessellationEvaluationShaderStage:TpvVulkanPipelineShaderStage;
-              fGeometryShaderStage:TpvVulkanPipelineShaderStage;
               fFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
@@ -5616,15 +5614,11 @@ begin
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
    TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass:begin     
    
-    fGeometryShaderModule:=nil; // No geometry shader in these cases
-    
     fFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
 
    end; 
    
    TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
-   
-    fGeometryShaderModule:=nil; // No geometry shader in these case
    
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_rsm_frag.spv');
     try
@@ -5637,29 +5631,18 @@ begin
 
    else begin
 
-    if Direct then begin
-
-     fGeometryShaderModule:=nil;
-
-    end else begin
-
+    if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_geom.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity_frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_geom.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_frag.spv');
      end;
-     try
-      fGeometryShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
-     finally
-      FreeAndNil(Stream);
+    end else begin
+     if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_frag.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_frag.spv');
      end;
-
-    end;
-
-    if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_frag.spv');
-    end else begin 
-     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_frag.spv');
     end;
     try
      fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -5686,12 +5669,6 @@ begin
    fTessellationEvaluationShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,fTessellationEvaluationShaderModule,'main');
   end else begin
    fTessellationEvaluationShaderStage:=nil;
-  end;
-
-  if assigned(fGeometryShaderModule) then begin
-   fGeometryShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_GEOMETRY_BIT,fGeometryShaderModule,'main');
-  end else begin
-   fGeometryShaderStage:=nil;
   end;
 
   if assigned(fFragmentShaderModule) then begin
@@ -5821,8 +5798,6 @@ begin
 
  FreeAndNil(fFragmentShaderStage);
 
- FreeAndNil(fGeometryShaderStage);
-
  FreeAndNil(fTessellationEvaluationShaderStage);
 
  FreeAndNil(fTessellationControlShaderStage);
@@ -5830,8 +5805,6 @@ begin
  FreeAndNil(fVertexShaderStage);
 
  FreeAndNil(fFragmentShaderModule);
-
- FreeAndNil(fGeometryShaderModule);
 
  FreeAndNil(fTessellationEvaluationShaderModule);
 
@@ -5868,9 +5841,6 @@ begin
  end;
  if assigned(fTessellationEvaluationShaderStage) then begin
   fPipeline.AddStage(fTessellationEvaluationShaderStage);
- end;
- if assigned(fGeometryShaderStage) then begin
-//fPipeline.AddStage(fGeometryShaderStage);
  end;
  if assigned(fFragmentShaderStage) then begin
   fPipeline.AddStage(fFragmentShaderStage);

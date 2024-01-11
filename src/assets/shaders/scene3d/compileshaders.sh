@@ -372,9 +372,6 @@ compileshaderarguments=(
   "-V planet_renderpass.tese -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_tese.spv"
   "-V planet_renderpass.tese -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_triangles_velocity_tese.spv"
 
-  "-V planet_renderpass.geom -o ${tempPath}/planet_renderpass_geom.spv"
-  "-V planet_renderpass.geom -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_geom.spv"
-
   "-V planet_renderpass.frag -o ${tempPath}/planet_renderpass_frag.spv"
   "-V planet_renderpass.frag -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_frag.spv"
   "-V planet_renderpass.frag -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_frag.spv"

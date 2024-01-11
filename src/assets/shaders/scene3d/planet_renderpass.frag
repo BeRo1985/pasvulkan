@@ -93,14 +93,14 @@ float iridescenceFactor = 0.0;
 
 #ifdef WIREFRAME
 float edgeFactor(){
-   vec3 edge = mix(vec3(-1.0), vec3(1.0), gl_BaryCoordEXT);
-   vec3 a = smoothstep(vec3(0.0), (abs(dFdx(edge)) + abs(dFdy(edge))) * 1.414, edge);
-   return min(min(a.x, a.y), a.z);
-}    
-#else
-float edgeFactor(){
-  return 0.0;
-}      
+  const float sqrt0d5Mul0d5 = 0.3535533905932738; // sqrt(0.5) * 0.5 - Half of the length of the diagonal of a square with a side length of 1.0
+  const vec3 edge = gl_BaryCoordEXT, 
+             edgeDX = dFdxFine(edge), 
+             edgeDY = dFdyFine(edge), 
+             edgeDXY = sqrt((edgeDX * edgeDX) + (edgeDY * edgeDY)),
+             edgeRemapped = smoothstep(vec3(0.0), edgeDXY * sqrt0d5Mul0d5, fma(edgeDXY, vec3(-sqrt0d5Mul0d5), edge));
+  return 1.0 - min(min(edgeRemapped.x, edgeRemapped.y), edgeRemapped.z);
+}   
 #endif
 
 float getSpecularOcclusion(const in float NdotV, const in float ao, const in float roughness){
