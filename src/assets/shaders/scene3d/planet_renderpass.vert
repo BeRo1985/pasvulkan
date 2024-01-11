@@ -54,8 +54,8 @@ layout(push_constant) uniform PushConstants {
   
   float bottomRadius;
   float topRadius;
-  float resolutionX;  
-  float resolutionY;  
+  uint resolutionXY;  
+  uint flags;  
   
   float heightMapScale;
   float tessellationFactor;

@@ -14,7 +14,6 @@ layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;
   vec3 normal;
-  vec3 edge; 
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -63,8 +62,8 @@ layout(push_constant) uniform PushConstants {
   
   float bottomRadius;
   float topRadius;
-  float resolutionX;  
-  float resolutionY;  
+  uint resolutionXY;  
+  uint flags;  
   
   float heightMapScale;
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
@@ -210,7 +209,9 @@ void main(){
   }
 
 #ifdef WIREFRAME
-  c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
+  if((pushConstants.flags & 0x1u) != 0){
+    c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
+  }
 #endif  
 
   outFragColor = c;

@@ -648,8 +648,8 @@ type TpvScene3DPlanets=class;
                     CountAllViews:TpvUInt32;
                     BottomRadius:TpvFloat;
                     TopRadius:TpvFloat;
-                    ResolutionX:TpvFloat;
-                    ResolutionY:TpvFloat;
+                    ResolutionXY:TpvUInt32;
+                    Flags:TpvUInt32;
                     HeightMapScale:TpvFloat;
                     TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
@@ -6102,8 +6102,8 @@ begin
      fPushConstants.BottomRadius:=Planet.fBottomRadius;
      fPushConstants.TopRadius:=Planet.fTopRadius;
      fPushConstants.HeightMapScale:=Planet.fHeightMapScale;
-     fPushConstants.ResolutionX:=fWidth;
-     fPushConstants.ResolutionY:=fHeight;
+     fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+     fPushConstants.Flags:=0;
      fPushConstants.TessellationFactor:=TessellationFactor;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;

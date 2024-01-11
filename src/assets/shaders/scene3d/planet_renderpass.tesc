@@ -34,8 +34,8 @@ layout(push_constant) uniform PushConstants {
   
   float bottomRadius;
   float topRadius;
-  float resolutionX;  
-  float resolutionY;  
+  uint resolutionXY;  
+  uint flags;  
   
   float heightMapScale;
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
@@ -45,7 +45,7 @@ layout(push_constant) uniform PushConstants {
 
 } pushConstants;
 
-vec2 resolution = vec2(pushConstants.resolutionX, pushConstants.resolutionY);
+vec2 resolution = vec2(float(uint(pushConstants.resolutionXY & 0xffffu)), float(uint(pushConstants.resolutionXY >> 16u)));
 
 struct View {
   mat4 viewMatrix;
