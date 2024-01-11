@@ -186,6 +186,7 @@ type TpvScene3DPlanets=class;
               fModifyHeightMapActive:Boolean;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
+              fWireframeActive:Boolean;
               fMeshVertices:TMeshVertices;
               fMeshIndices:TMeshIndices;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
@@ -228,6 +229,7 @@ type TpvScene3DPlanets=class;
               property ModifyHeightMapActive:Boolean read fModifyHeightMapActive write fModifyHeightMapActive;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
+              property WireframeActive:Boolean read fWireframeActive write fWireframeActive;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { THeightMapRandomInitialization }
@@ -1289,6 +1291,8 @@ begin
 
  fModifyHeightMapFactor:=0.0;
 
+ fWireframeActive:=false;
+
 end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
@@ -2095,6 +2099,7 @@ end;
 procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
+ fWireframeActive:=aData.fWireframeActive;
 end;
 
 { TpvScene3DPlanet.THeightMapRandomInitialization }
@@ -6104,6 +6109,9 @@ begin
      fPushConstants.HeightMapScale:=Planet.fHeightMapScale;
      fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
      fPushConstants.Flags:=0;
+     if Planet.fInFlightFrameDataList[aInFlightFrameIndex].fWireframeActive then begin
+      fPushConstants.Flags:=fPushConstants.Flags or (1 shl 0);
+     end;
      fPushConstants.TessellationFactor:=TessellationFactor;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
