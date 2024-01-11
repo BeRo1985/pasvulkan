@@ -1687,6 +1687,13 @@ function AngleClamp(a:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function AngleDiff(a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function AngleLerp(a,b,x:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
+function UnitTimeClamp(a:TpvDouble):TpvDouble;
+function UnitTimeDiff(a,b:TpvDouble;const aBackwards:boolean):TpvDouble;
+function UnitTimeLerp(a,b,x:TpvDouble;const aBackwards:boolean):TpvDouble; overload;
+function UnitTimeLerp(a,b,x:TpvDouble):TpvDouble; overload;
+
+function NonUnitTimeLerp(a,b,x:TpvDouble):TpvDouble;
+
 function InertiaTensorTransform(const Inertia,Transform:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 function InertiaTensorParallelAxisTheorem(const Center:TpvVector3;const Mass:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
 
@@ -17879,6 +17886,73 @@ begin
  end;
  result:=a+((b-a)*x);}
  result:=a+(AngleDiff(a,b)*x);
+end;
+
+function UnitTimeClamp(a:TpvDouble):TpvDouble;
+begin
+ a:=ModuloPos(a,1.0);
+ while a<0.0 do begin
+  a:=a+1.0;
+ end;
+ while a>1.0 do begin
+  a:=a-1.0;
+ end;
+ result:=a;
+end;
+
+function UnitTimeDiff(a,b:TpvDouble;const aBackwards:boolean):TpvDouble;
+begin
+ a:=ModuloPos(a,1.0);
+ b:=ModuloPos(b,1.0);
+ if aBackwards then begin
+  if a<b then begin
+   a:=a+1.0;
+  end;
+ end else begin
+  if b<a then begin
+   b:=b+1.0;
+  end;
+ end;
+ result:=b-a;
+end;
+
+function UnitTimeLerp(a,b,x:TpvDouble;const aBackwards:boolean):TpvDouble;
+begin
+ a:=frac(frac(a)+1.0);
+ b:=frac(frac(b)+1.0);
+ if aBackwards then begin
+  if a<b then begin
+   a:=a+1.0;
+  end;
+ end else begin
+  if b<a then begin
+   b:=b+1.0;
+  end;
+ end;
+ if x<=0.0 then begin
+  result:=a;
+ end else if x>=1.0 then begin
+  result:=b;
+ end else begin
+  result:=(a*(1.0-x))+(b*x);
+ end;
+ result:=frac(result);
+end;
+
+function UnitTimeLerp(a,b,x:TpvDouble):TpvDouble;
+begin
+ result:=UnitTimeLerp(a,b,x,b<a);
+end;
+
+function NonUnitTimeLerp(a,b,x:TpvDouble):TpvDouble;
+begin
+ if x<=0.0 then begin
+  result:=a;
+ end else if x>=1.0 then begin
+  result:=b;
+ end else begin
+  result:=(a*(1.0-x))+(b*x);
+ end;
 end;
 
 function InertiaTensorTransform(const Inertia,Transform:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
