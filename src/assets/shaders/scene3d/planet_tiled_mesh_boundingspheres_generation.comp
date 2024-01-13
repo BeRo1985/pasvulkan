@@ -16,11 +16,9 @@ layout(set = 0, binding = 0, std430) buffer BoundingSpheres {
 } boundingSpheres;
 
 layout(push_constant) uniform PushConstants {
-  //mat4 modelMatrix;
   float bottomRadius;
   float topRadius;
   uint tileMapResolution;
-  uint tileResolution;
 } pushConstants;
 
 #include "octahedral.glsl"
@@ -37,8 +35,6 @@ void main(){
     tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
     tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
-    const uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResolution;
-
     // Gather the worst-case extreme points of the tile with conservative coordinates, by sampling 27 points on the
     // tile including the corners, the center on the corners, and the center of the tile. Probably more than necessary,
     // but better safe than too few for a conservative bounding sphere.
@@ -47,7 +43,7 @@ void main(){
     [[unroll]] for(uint h = 0u; h <= 2u; h++){
       [[unroll]] for(uint y = 0u; y <= 2u; y++){
         [[unroll]] for(uint x = 0u; x <= 2u; x++){
-          vec3 position = octPlanetUnsignedDecode(vec2((tileMapXY + (vec2(uvec2(x, y)) * 0.5)) * pushConstants.tileResolution) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, float(h) * 0.5);
+          vec3 position = octPlanetUnsignedDecode(vec2(tileMapXY + (vec2(uvec2(x, y)) * 0.5)) / vec2(pushConstants.tileMapResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, float(h) * 0.5);
           aabbMin = min(aabbMin, position);
           aabbMax = max(aabbMax, position);
         }
