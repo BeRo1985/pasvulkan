@@ -8,14 +8,14 @@ struct Material {
   uint occlusionRoughnessMetallic;
   uint reserved; // for alignment
 }; 
-#define GetMaterialAlbedoTexture(m) (m).albedo
-#define GetMaterialNormalHeightTexture(m) (m).normalHeight
-#define GetMaterialOcclusionRoughnessMetallicTexture(m) (m).occlusionRoughnessMetallic
+#define GetMaterialAlbedoTextureIndex(m) (m).albedo
+#define GetMaterialNormalHeightTextureIndex(m) (m).normalHeight
+#define GetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).occlusionRoughnessMetallic
 #else
 #define Material uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = reserved
-#define GetMaterialAlbedoTexture(m) (m).x
-#define GetMaterialNormalHeightTexture(m) (m).y
-#define GetMaterialOcclusionRoughnessMetallicTexture(m) (m).z
+#define GetMaterialAlbedoTextureIndex(m) (m).x
+#define GetMaterialNormalHeightTextureIndex(m) (m).y
+#define GetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).z
 #endif
 
 layout(set = 2, binding = 1, std430) readonly buffer PlanetData {

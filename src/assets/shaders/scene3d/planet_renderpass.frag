@@ -6,6 +6,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 #ifdef WIREFRAME
   #extension GL_EXT_fragment_shader_barycentric : enable
 #endif
@@ -130,6 +131,50 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
           1.0);
 }
 
+vec3 multiplanarP;
+
+float multiplanarK;
+
+#define TRIPLANAR
+#ifdef TRIPLANAR
+
+// Triplanar
+
+vec3 multiplanarM;
+
+vec4 multiplanarTexture(const in sampler2D tex){
+  return (texture(tex, multiplanarP.yz) * multiplanarM.x) + (texture(tex, multiplanarP.zx) * multiplanarM.y) + (texture(tex, multiplanarP.xy) * multiplanarM.z);
+}
+#else
+
+// Biplanar
+
+vec3 multiplanarDX;
+vec3 multiplanarDY;
+ivec3 multiplanarMA;
+ivec3 multiplanarMI;
+ivec3 multiplanarME;
+vec2 multiplanarM;
+
+vec4 multiplanarTexture(const in sampler2D tex){
+ return (textureGrad(
+            tex, 
+            vec2(multiplanarP[multiplanarMA.y], multiplanarP[multiplanarMA.z]),
+            vec2(multiplanarDX[multiplanarMA.y], multiplanarDX[multiplanarMA.z]),
+            vec2(multiplanarDY[multiplanarMA.y], multiplanarDY[multiplanarMA.z])
+          ) * multiplanarM.x
+        ) +
+        (textureGrad(
+           tex, 
+           vec2(multiplanarP[multiplanarME.y], multiplanarP[multiplanarME.z]),
+           vec2(multiplanarDX[multiplanarME.y], multiplanarDX[multiplanarME.z]),
+           vec2(multiplanarDY[multiplanarME.y], multiplanarDY[multiplanarME.z])
+          ) * multiplanarM.y
+        );
+}
+
+#endif
+
 void main(){
 
   envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
@@ -142,12 +187,46 @@ void main(){
 
   vec3 viewDirection = normalize(inBlock.viewSpacePosition);
 
+  multiplanarP = inBlock.worldSpacePosition;
+
+  multiplanarK = 6.0;
+
+#ifdef TRIPLANAR
+
+  multiplanarM = pow(abs(normal), vec3(multiplanarK));
+  multiplanarM /= (multiplanarM.x + multiplanarM.y + multiplanarM.z);
+
+#else
+
+  multiplanarDX = dFdx(multiplanarP);
+  multiplanarDY = dFdy(multiplanarP);
+
+  vec3 absNormal = abs(normal);
+
+  multiplanarMA = ((absNormal.x > absNormal.y) && (absNormal.x > absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y > absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));    
+  multiplanarMI = ((absNormal.x < absNormal.y) && (absNormal.x < absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y < absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));
+  multiplanarME = ivec3(3) - (multiplanarMI + multiplanarMA);
+  multiplanarM = pow(clamp((vec2(absNormal[multiplanarMA.x], absNormal[multiplanarME.x]) - vec2(0.5773)) / vec2(1.0 - 0.5773), vec2(0.0), vec2(1.0)), vec2(multiplanarK * (1.0 / 8.0)));
+  multiplanarM /= (multiplanarM.x + multiplanarM.y);
+
+#endif
+
   const float specularWeight = 1.0;
 
-  vec4 baseColor = vec4(1.0);//textureFetch(0, vec4(1.0), true);
+  vec2 texUV = vec2(0.0); 
 
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 1.0, 0.0, 0.0);//textureFetch(0, vec4(1.0), true);
+  Material material = planetData.materials[0];
 
+  // Textures are stored in pairs, first as linear, then as sRGB.  
+
+  vec4 baseColor = multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(material) << 1) | 1]);
+
+  vec4 normalHeight = multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(material) << 1) | 0]);
+
+  vec3 workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
+
+  vec4 occlusionRoughnessMetallic = multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(material) << 1) | 0]);
+ 
   ambientOcclusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
 
   vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
@@ -157,8 +236,6 @@ void main(){
   vec3 F0 = mix(vec3(0.04), baseColor.xyz, metallicRoughness.x);
 
   float perceptualRoughness = metallicRoughness.y;
-
-  vec3 workNormal = normal; 
 
   float kernelRoughness;
   {
