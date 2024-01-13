@@ -21375,9 +21375,10 @@ begin
 end;
 
 procedure TpvScene3D.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-var Index,ItemID,RenderPassIndex:TpvSizeInt;
+var Index,ItemID,RenderPassIndex,PlanetIndex:TpvSizeInt;
     Size:TVkDeviceSize;
     Group:TpvScene3D.TGroup;
+    Planet:TpvScene3DPlanet;
     MaterialIDDirtyMap:PMaterialIDDirtyMap;
     DirtyBits,MinMaterialID,MaxMaterialID:TpvUInt32;
     MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeUInt;
@@ -21386,6 +21387,18 @@ var Index,ItemID,RenderPassIndex:TpvSizeInt;
 begin
 
  if assigned(fVulkanDevice) then begin
+
+  fPlanets.Lock.Acquire;
+  try
+   for PlanetIndex:=0 to fPlanets.Count-1 do begin
+    Planet:=fPlanets[PlanetIndex];
+    if Planet.Ready then begin
+     Planet.UploadFrame(aInFlightFrameIndex);
+    end;
+   end;
+  finally
+   fPlanets.Lock.Release;
+  end;
 
   for Group in fGroups do begin
    Group.UploadFrame(aInFlightFrameIndex);
