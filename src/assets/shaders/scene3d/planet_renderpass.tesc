@@ -26,28 +26,6 @@ layout(location = 0) out OutBlock {
 
 #include "planet_renderpass.glsl"
 
-layout(push_constant) uniform PushConstants {
-
-  mat4 modelMatrix;
-  
-  uint viewBaseIndex;
-  uint countViews;
-  uint countQuadPointsInOneDirection; 
-  uint countAllViews;
-  
-  float bottomRadius;
-  float topRadius;
-  uint resolutionXY;  
-  uint flags;  
-  
-  float heightMapScale;
-  float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
-  vec2 jitter;
-
-  vec4 selected; // xy = octahedral map coordinates, z = radius, w = unused
-
-} pushConstants;
-
 vec2 resolution = vec2(float(uint(pushConstants.resolutionXY & 0xffffu)), float(uint(pushConstants.resolutionXY >> 16u)));
 
 struct View {

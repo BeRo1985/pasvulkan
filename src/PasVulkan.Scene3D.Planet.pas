@@ -679,19 +679,13 @@ type TpvScene3DPlanets=class;
                     );
                    PMode=^TMode; 
                    TPushConstants=packed record
-                    ModelMatrix:TpvMatrix4x4;                   
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountQuadPointsInOneDirection:TpvUInt32;
                     CountAllViews:TpvUInt32;
-                    BottomRadius:TpvFloat;
-                    TopRadius:TpvFloat;
                     ResolutionXY:TpvUInt32;
-                    Flags:TpvUInt32;
-                    HeightMapScale:TpvFloat;
                     TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
-                    Selected:TpvVector4;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -6241,7 +6235,7 @@ begin
      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
      ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
 
-     Sphere.Center:=(fPushConstants.ModelMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
+     Sphere.Center:=(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
      Sphere.Radius:=Planet.fBottomRadius;
 
      Center:=ViewMatrix^.MulHomogen(Sphere.Center);
@@ -6291,7 +6285,6 @@ begin
 
 //     writeln(Rect.Width:1:6,' ',Rect.Height:1:6,' ',Level:1:6);
 
-     fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
      fPushConstants.CountViews:=aCountViews;
      case TpvScene3DPlanet.SourcePrimitiveMode of
@@ -6322,21 +6315,13 @@ begin
       //writeln(fPushConstants.CountQuadPointsInOneDirection,' ',Level);
      end;
      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
-     fPushConstants.BottomRadius:=Planet.fBottomRadius;
-     fPushConstants.TopRadius:=Planet.fTopRadius;
-     fPushConstants.HeightMapScale:=Planet.fHeightMapScale;
      fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
-     fPushConstants.Flags:=0;
-     if Planet.fInFlightFrameDataList[aInFlightFrameIndex].fWireframeActive then begin
-      fPushConstants.Flags:=fPushConstants.Flags or (1 shl 0);
-     end;
      fPushConstants.TessellationFactor:=TessellationFactor;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
      end else begin
       fPushConstants.Jitter:=TpvVector2.Null;
      end;
-     fPushConstants.Selected:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fSelectedRegion;
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 

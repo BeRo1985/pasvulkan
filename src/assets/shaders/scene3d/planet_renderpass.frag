@@ -53,28 +53,6 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 
 #include "planet_renderpass.glsl"
 
-layout(push_constant) uniform PushConstants {
-
-  mat4 modelMatrix;
-  
-  uint viewBaseIndex;
-  uint countViews;
-  uint countQuadPointsInOneDirection; 
-  uint countAllViews;
-  
-  float bottomRadius;
-  float topRadius;
-  uint resolutionXY;  
-  uint flags;  
-  
-  float heightMapScale;
-  float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
-  vec2 jitter;
-
-  vec4 selected; // xyz = octahedral map coordinates, w = radius
-
-} pushConstants;
-
 #define FRAGMENT_SHADER
 
 #include "octahedral.glsl"

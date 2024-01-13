@@ -43,28 +43,6 @@ layout(location = 0) out OutBlock {
 
 #endif
 
-layout(push_constant) uniform PushConstants {
-  
-  mat4 modelMatrix;
-  
-  uint viewBaseIndex;
-  uint countViews;
-  uint countQuadPointsInOneDirection; 
-  uint countAllViews;
-  
-  float bottomRadius;
-  float topRadius;
-  uint resolutionXY;  
-  uint flags;  
-  
-  float heightMapScale;
-  float tessellationFactor;
-  vec2 jitter;
-
-  vec4 selected; // xy = octahedral map coordinates, z = radius, w = unused
-
-} pushConstants;
-
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;

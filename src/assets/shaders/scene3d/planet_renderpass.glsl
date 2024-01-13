@@ -34,4 +34,17 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
 
 } planetData;
 
+layout(push_constant) uniform PushConstants {
+
+  uint viewBaseIndex;
+  uint countViews;
+  uint countQuadPointsInOneDirection; 
+  uint countAllViews;
+  
+  uint resolutionXY;  
+  float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
+  vec2 jitter;
+
+} pushConstants;
+
 #endif
