@@ -187,7 +187,7 @@ void main(){
 
   vec3 viewDirection = normalize(inBlock.viewSpacePosition);
 
-  multiplanarP = inBlock.worldSpacePosition;
+  multiplanarP = inBlock.worldSpacePosition * 0.01;
 
   multiplanarK = 6.0;
 
