@@ -109,7 +109,7 @@ type TpvScene3DPlanets=class;
              BottomRadius:TpvFloat;
              TopRadius:TpvFloat;
              HeightMapScale:TpvFloat;
-             CountQuadPointsInOneDirection:TpvUInt32;
+             Resolutions:TpvUInt32;
 
              Selected:TpvVector4;
 
@@ -7221,7 +7221,7 @@ begin
    fPlanetData.BottomRadius:=fBottomRadius;
    fPlanetData.TopRadius:=fTopRadius;
    fPlanetData.HeightMapScale:=fHeightMapScale;
-   fPlanetData.CountQuadPointsInOneDirection:=64;
+   fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin

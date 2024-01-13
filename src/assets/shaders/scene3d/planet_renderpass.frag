@@ -41,7 +41,7 @@ layout(set = 1, binding = 1) uniform sampler2D uImageBasedLightingBRDFTextures[]
 
 layout(set = 1, binding = 2) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
 
-layout(set = 1, binding = 3) readonly buffer ImageBasedSphericalHarmonicsMetaData {
+layout(set = 1, binding = 3, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
   vec4 dominantLightDirection;
   vec4 dominantLightColor;
   vec4 ambientLightColor;
@@ -50,6 +50,41 @@ layout(set = 1, binding = 3) readonly buffer ImageBasedSphericalHarmonicsMetaDat
 // Per planet descriptor set
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
+
+#if 0
+struct Material {
+  uint albedo;
+  uint normalHeight;
+  uint occlusionRoughnessMetallic;
+  uint reserved; // for alignment
+}; 
+#define GetMaterialAlbedoTexture(m) (m).albedo
+#define GetMaterialNormalHeightTexture(m) (m).normalHeight
+#define GetMaterialOcclusionRoughnessMetallicTexture(m) (m).occlusionRoughnessMetallic
+#else
+#define Material uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = reserved
+#define GetMaterialAlbedoTexture(m) (m).x
+#define GetMaterialNormalHeightTexture(m) (m).y
+#define GetMaterialOcclusionRoughnessMetallicTexture(m) (m).z
+#endif
+
+layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
+
+  mat4 modelMatrix;
+
+/*
+  float bottomRadius;
+  float topRadius;
+  float heightMapScale;
+  uint resolutions; // higher 16-bit = tile map resolution, lower 16-bit = tile resolution
+*/
+  uvec4 bottomRadiusTopRadiusHeightMapScaleResolutions; // x = bottomRadius, y = topRadius, z = heightMapScale, w = resolutions
+
+  vec4 selected; // xyz = octahedral map coordinates, w = radius   
+
+  Material materials[16];
+
+} planetData;
 
 layout(push_constant) uniform PushConstants {
 
