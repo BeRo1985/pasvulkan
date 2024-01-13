@@ -335,6 +335,8 @@ compileshaderarguments=(
 
   "-V planet_tiles_dirty_queue_generation.comp -o ${tempPath}/planet_tiles_dirty_queue_generation_comp.spv"
 
+  "-V planet_tiled_mesh_boundingspheres_generation.comp -o ${tempPath}/planet_tiled_mesh_boundingspheres_generation_comp.spv"
+
   "-V planet_ray_intersection.comp -o ${tempPath}/planet_ray_intersection_comp.spv"
 
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
