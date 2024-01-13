@@ -6995,7 +6995,9 @@ begin
 end;
 
 procedure TpvScene3DPlanet.UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-var InFlightFrameData:TData;
+var MaterialIndex:TpvSizeInt;
+    InFlightFrameData:TData;
+    Material:TpvScene3DPlanet.PMaterial;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -7010,6 +7012,14 @@ begin
    fPlanetData.HeightMapScale:=fHeightMapScale;
    fPlanetData.CountQuadPointsInOneDirection:=64;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
+
+   for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin
+    Material:=@fMaterials[MaterialIndex];
+    fPlanetData.Textures[MaterialIndex,0]:=Material^.AlbedoTexture;
+    fPlanetData.Textures[MaterialIndex,1]:=Material^.NormalHeightTexture;
+    fPlanetData.Textures[MaterialIndex,2]:=Material^.OcclusionRoughnessMetallicTexture;
+    fPlanetData.Textures[MaterialIndex,3]:=0;
+   end;
 
    fVulkanDevice.MemoryStaging.Upload(fVulkanUniversalQueue,
                                       fVulkanUniversalCommandBuffer,
