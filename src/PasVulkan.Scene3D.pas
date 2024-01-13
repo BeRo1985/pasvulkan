@@ -824,6 +824,7 @@ type EpvScene3D=class(Exception);
               procedure Unload; override;
               function GetHashData:THashData;
               procedure AssignFromDefault;
+              procedure AssignFromDefaultMipMap;
               procedure AssignFromGLTF(const aSourceDocument:TPasGLTF.TDocument;const aSourceSampler:TPasGLTF.TSampler);
              published
               property MinFilter:TVkFilter read fMinFilter write fMinFilter;
@@ -2809,6 +2810,7 @@ type EpvScene3D=class(Exception);
        fHardwareRaytracingSupport:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
+       fDefaultMipMapSampler:TSampler;
        fWhiteImage:TImage;
        fWhiteTexture:TTexture;
        fDefaultNormalMapImage:TImage;
@@ -3101,6 +3103,7 @@ type EpvScene3D=class(Exception);
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
       public
        property DefaultSampler:TSampler read fDefaultSampler;
+       property DefaultMipMapSampler:TSampler read fDefaultMipMapSampler;
        property WhiteImage:TImage read fWhiteImage;
        property WhiteTexture:TTexture read fWhiteTexture;
        property DefaultParticleImage:TImage read fDefaultParticleImage;
@@ -5347,6 +5350,17 @@ begin
  fMagFilter:=VK_FILTER_LINEAR;
  fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
  fMipmapActive:=false;
+ fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+ fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
+end;
+
+procedure TpvScene3D.TSampler.AssignFromDefaultMipMap;
+begin
+ fName:='';
+ fMinFilter:=VK_FILTER_LINEAR;
+ fMagFilter:=VK_FILTER_LINEAR;
+ fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+ fMipmapActive:=true;
  fAddressModeS:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
  fAddressModeT:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
 end;
@@ -19553,6 +19567,10 @@ begin
  fDefaultSampler.AssignFromDefault;
  fDefaultSampler.IncRef;
 
+ fDefaultMipMapSampler:=TSampler.Create(ResourceManager,self);
+ fDefaultMipMapSampler.AssignFromDefaultMipMap;
+ fDefaultMipMapSampler.IncRef;
+
  fWhiteImage:=TpvScene3D.TImage.Create(ResourceManager,self);
  fWhiteImage.AssignFromWhiteTexture;
  fWhiteImage.IncRef;
@@ -19903,6 +19921,8 @@ begin
  FreeAndNil(fTextureIDManager);
  FreeAndNil(fTextureListLock);
 
+ FreeAndNil(fDefaultMipMapSampler);
+
  FreeAndNil(fDefaultSampler);
 
  while fSamplers.Count>0 do begin
@@ -20143,6 +20163,8 @@ begin
        if assigned(fVulkanDevice) then begin
 
         fDefaultSampler.Upload;
+
+        fDefaultMipMapSampler.Upload;
 
         fWhiteTexture.Upload;
 
@@ -20789,6 +20811,8 @@ begin
      end;
 
      fDefaultSampler.Unload;
+
+     fDefaultMipMapSampler.Unload;
 
      FreeAndNil(fVulkanStagingFence);
 
