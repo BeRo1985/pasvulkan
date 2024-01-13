@@ -106,10 +106,17 @@ type TpvScene3DPlanets=class;
 
              ModelMatrix:TpvMatrix4x4;
 
+             NormalMatrix:TpvMatrix4x4;
+
              BottomRadius:TpvFloat;
              TopRadius:TpvFloat;
              HeightMapScale:TpvFloat;
+             Reserved0:TpvFloat;
+
+             Flags:TpvUInt32;
              Resolutions:TpvUInt32;
+             Reserved1:TpvUInt32;
+             Reserved2:TpvUInt32;
 
              Selected:TpvVector4;
 
@@ -7218,9 +7225,14 @@ begin
   if assigned(InFlightFrameData) then begin
 
    fPlanetData.ModelMatrix:=InFlightFrameData.fModelMatrix;
+   fPlanetData.NormalMatrix:=TpvMatrix4x4.Create(InFlightFrameData.fModelMatrix.ToMatrix3x3.Inverse.Transpose);
    fPlanetData.BottomRadius:=fBottomRadius;
    fPlanetData.TopRadius:=fTopRadius;
    fPlanetData.HeightMapScale:=fHeightMapScale;
+   fPlanetData.Flags:=0;
+   if InFlightFrameData.WireframeActive then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 0);
+   end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
 

@@ -83,6 +83,8 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+#include "planet_renderpass.glsl"
+
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
@@ -128,7 +130,7 @@ void main(){
  
   //position += sphereNormal * textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale;
  
-  vec3 position = (pushConstants.modelMatrix * vec4(sphereNormal * (pushConstants.bottomRadius + (textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * pushConstants.heightMapScale)), 1.0)).xyz;
+  vec3 position = (planetData.modelMatrix * vec4(sphereNormal * (planetData.bottomRadiusTopRadiusHeightMapScale.x + (textureCatmullRomPlanetOctahedralMap(uTextures[0], sphereNormal).x * planetData.bottomRadiusTopRadiusHeightMapScale.z)), 1.0)).xyz;
 
   vec3 worldSpacePosition = position;
 
@@ -139,7 +141,7 @@ void main(){
 
   outBlock.position = position;   
   outBlock.sphereNormal = sphereNormal;      
-  outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
+  outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;

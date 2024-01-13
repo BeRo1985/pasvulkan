@@ -5,6 +5,7 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 #ifdef TRIANGLES
 layout(vertices = 3) out;
@@ -22,6 +23,8 @@ layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
 } outBlocks[];
+
+#include "planet_renderpass.glsl"
 
 layout(push_constant) uniform PushConstants {
 

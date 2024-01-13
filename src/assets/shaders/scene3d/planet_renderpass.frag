@@ -51,40 +51,7 @@ layout(set = 1, binding = 3, std430) readonly buffer ImageBasedSphericalHarmonic
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
-#if 0
-struct Material {
-  uint albedo;
-  uint normalHeight;
-  uint occlusionRoughnessMetallic;
-  uint reserved; // for alignment
-}; 
-#define GetMaterialAlbedoTexture(m) (m).albedo
-#define GetMaterialNormalHeightTexture(m) (m).normalHeight
-#define GetMaterialOcclusionRoughnessMetallicTexture(m) (m).occlusionRoughnessMetallic
-#else
-#define Material uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = reserved
-#define GetMaterialAlbedoTexture(m) (m).x
-#define GetMaterialNormalHeightTexture(m) (m).y
-#define GetMaterialOcclusionRoughnessMetallicTexture(m) (m).z
-#endif
-
-layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
-
-  mat4 modelMatrix;
-
-/*
-  float bottomRadius;
-  float topRadius;
-  float heightMapScale;
-  uint resolutions; // higher 16-bit = tile map resolution, lower 16-bit = tile resolution
-*/
-  uvec4 bottomRadiusTopRadiusHeightMapScaleResolutions; // x = bottomRadius, y = topRadius, z = heightMapScale, w = resolutions
-
-  vec4 selected; // xyz = octahedral map coordinates, w = radius   
-
-  Material materials[16];
-
-} planetData;
+#include "planet_renderpass.glsl"
 
 layout(push_constant) uniform PushConstants {
 
@@ -191,8 +158,7 @@ void main(){
 
   vec3 sphereNormal = normalize(inBlock.sphereNormal.xyz); // re-normalize, because of vertex interpolation
 
-//vec3 normal = transpose(inverse(mat3(pushConstants.modelMatrix))) * texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
-  vec3 normal = transpose(inverse(mat3(pushConstants.modelMatrix))) * textureMipMapPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
+  vec3 normal = normalize((planetData.normalMatrix * vec4(textureMipMapPlanetOctahedralMap(uTextures[1], sphereNormal).xyz, 0.0)).xyz);
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
@@ -237,14 +203,14 @@ void main(){
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 c = vec4( baseColor.xyz * (diffuseOutput + specularOutput), 1.0);
   
-  if(pushConstants.selected.w > 1e-6){
-    float d = length(sphereNormal - normalize(pushConstants.selected.xyz)) - pushConstants.selected.w;
+  if(planetData.selected.w > 1e-6){
+    float d = length(sphereNormal - normalize(planetData.selected.xyz)) - planetData.selected.w;
     float t = fwidth(d) * 1.41421356237;
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(1.0, 0.0, 0.0), 0.5), smoothstep(t, -t, d) * 0.5);
   }
 
 #ifdef WIREFRAME
-  if((pushConstants.flags & 0x1u) != 0){
+  if((planetData.flagsResolutions.x & 0x1u) != 0){
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
   }
 #endif  
