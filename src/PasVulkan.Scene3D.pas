@@ -5195,6 +5195,7 @@ begin
  result:=false;
  if assigned(aStream) then begin
   try
+   fKind:=TpvScene3D.TImage.TKind.ResourceTexture;
    aStream.Seek(0,soBeginning);
    fResourceDataStream.CopyFrom(aStream,aStream.Size);
    LoadData;
