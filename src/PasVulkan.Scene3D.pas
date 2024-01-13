@@ -3100,6 +3100,7 @@ type EpvScene3D=class(Exception);
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
       public
+       property DefaultSampler:TSampler read fDefaultSampler;
        property WhiteImage:TImage read fWhiteImage;
        property WhiteTexture:TTexture read fWhiteTexture;
        property DefaultParticleImage:TImage read fDefaultParticleImage;
