@@ -39,14 +39,19 @@ void main(){
 
     const uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResolution;
 
-    // Gather the worst-case extreme points of the tile with conservative coordinates   
+    // Gather the worst-case extreme points of the tile with conservative coordinates, by sampling 27 points on the
+    // tile including the corners, the center on the corners, and the center of the tile. Probably more than necessary,
+    // but better safe than too few for a conservative bounding sphere.
     vec3 aabbMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
     vec3 aabbMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
-    [[unroll]] for(uint i = 0u; i < 8u; i++){
-      uvec3 xyh = (uvec3(i) >> uvec3(0u, 1u, 2u)) & uvec3(1u);
-      vec3 position = octPlanetUnsignedDecode(vec2((tileMapXY + xyh.xy) * pushConstants.tileResolution) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, float(xyh.z));
-      aabbMin = min(aabbMin, position);
-      aabbMax = max(aabbMax, position);
+    [[unroll]] for(uint h = 0u; h <= 2u; h++){
+      [[unroll]] for(uint y = 0u; y <= 2u; y++){
+        [[unroll]] for(uint x = 0u; x <= 2u; x++){
+          vec3 position = octPlanetUnsignedDecode(vec2((tileMapXY + (vec2(uvec2(x, y)) * 0.5)) * pushConstants.tileResolution) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, float(h) * 0.5);
+          aabbMin = min(aabbMin, position);
+          aabbMax = max(aabbMax, position);
+        }
+      }
     }    
 
     // Get the conservative worst-case bounding sphere of the tile from the bounding box
