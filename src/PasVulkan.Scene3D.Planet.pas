@@ -814,6 +814,8 @@ type TpvScene3DPlanets=class;
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+       procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
+       procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
       published
        property Scene3D:TObject read fScene3D;
        property HeightMapResolution:TpvInt32 read fHeightMapResolution;
@@ -7317,6 +7319,45 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3DPlanet.ExportPhysicsMeshToOBJ(const aStream:TStream);
+ procedure WriteLine(const aString:TpvUTF8String);
+ const NewLine:array[0..1] of AnsiChar=#13#10;
+ begin
+  if length(aString)>0 then begin
+   aStream.WriteBuffer(aString[1],length(aString)*SizeOf(AnsiChar));
+  end;
+  aStream.WriteBuffer(NewLine[0],SizeOf(NewLine));
+ end;
+var Index:TpvSizeInt;
+    Vertex:TpvScene3DPlanet.PMeshVertex;
+begin
+ WriteLine('# Exported physics mesh from TpvScene3DPlanet');
+ WriteLine('o Planet');
+ for Index:=0 to fData.fMeshVertices.Count-1 do begin
+  Vertex:=@fData.fMeshVertices.ItemArray[Index];  
+  WriteLine('v '+ConvertDoubleToString(Vertex^.PositionAbsoluteHeight.x)+' '+ConvertDoubleToString(Vertex^.PositionAbsoluteHeight.y)+' '+ConvertDoubleToString(Vertex^.PositionAbsoluteHeight.z));
+  WriteLine('vn '+ConvertDoubleToString(Vertex^.NormalRelativeHeight.x)+' '+ConvertDoubleToString(Vertex^.NormalRelativeHeight.y)+' '+ConvertDoubleToString(Vertex^.NormalRelativeHeight.z));
+ end;
+ Index:=0;
+ while (Index+2)<fData.fMeshIndices.Count do begin
+  WriteLine('f '+IntToStr(fData.fMeshIndices.ItemArray[Index+0]+1)+'//'+IntToStr(fData.fMeshIndices.ItemArray[Index+0]+1)+' '+
+                 IntToStr(fData.fMeshIndices.ItemArray[Index+1]+1)+'//'+IntToStr(fData.fMeshIndices.ItemArray[Index+1]+1)+' '+
+                 IntToStr(fData.fMeshIndices.ItemArray[Index+2]+1)+'//'+IntToStr(fData.fMeshIndices.ItemArray[Index+2]+1));
+  inc(Index,3);
+ end;
+end;
+
+procedure TpvScene3DPlanet.ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  ExportPhysicsMeshToOBJ(FileStream);
+ finally
+  FreeAndNil(FileStream);
+ end;
 end;
 
 { TpvScene3DPlanets }
