@@ -285,7 +285,11 @@ void main(){
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
+  mat3 tangentSpaceBasis = mat3(tangent, bitangent, normal);
+
   vec3 viewDirection = normalize(-inBlock.cameraRelativePosition);
+
+  vec3 tangentSpacePosition = tangentSpaceBasis * viewDirection;
 
   multiplanarP = inBlock.worldSpacePosition;
 
@@ -311,21 +315,19 @@ void main(){
 
 #endif
 
+  Material material = planetData.materials[0];
+
+  float materialScale = GetMaterialScale(material);
+
   const float specularWeight = 1.0;
 
   vec2 texUV = vec2(0.0); 
-
-  Material material = planetData.materials[0];
-
-  // Textures are stored in pairs, first as linear, then as sRGB.  
-
-  float materialScale = GetMaterialScale(material);
 
   vec4 baseColor = multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(material) << 1) | 1], materialScale);
 
   vec4 normalHeight = multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(material) << 1) | 0], materialScale);
 
-  vec3 workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
+  vec3 workNormal = normalize(tangentSpaceBasis * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
 
   vec4 occlusionRoughnessMetallic = multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(material) << 1) | 0], materialScale);
  
