@@ -194,16 +194,17 @@ vec2 textureNoise22(vec2 p){
 }
 
 vec4 textureNoTile(const in sampler2D tex, in vec2 uv, const in vec2 duvdx, const in vec2 duvdy){
-
+#if 0
   return textureGrad(tex, uv, duvdx, duvdy);
-/*   
+#else
+
   // sample variation pattern   
   float k = clamp(textureNoise12(uv), 0.0, 1.0); // low-frequency noise lookup per hash function
     
   // compute index for 8 variation patterns in total  
   float l = k * 8.0;
-  float f = fract(l);    
   float ia = floor(l);
+  float f = l - ia;
   float ib = ia + 1.0;
     
   // offsets for the different virtual patterns      
@@ -221,7 +222,7 @@ vec4 textureNoTile(const in sampler2D tex, in vec2 uv, const in vec2 duvdx, cons
     
   // interpolate between the two virtual patterns  
   return mix(cola, colb, smoothstep(0.2, 0.8, f - (0.1 * dot(cola - colb, vec4(1.0)))));
-*/  
+#endif
 }
 
 vec3 multiplanarP;
@@ -276,11 +277,11 @@ void main(){
 
   vec3 sphereNormal = normalize(inBlock.sphereNormal.xyz); // re-normalize, because of vertex interpolation
 
-  vec3 normal = normalize((planetData.normalMatrix * vec4(textureMipMapPlanetOctahedralMap(uTextures[1], sphereNormal).xyz, 0.0)).xyz);
+  vec3 normal = normalize((planetData.normalMatrix * vec4(texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz, 0.0)).xyz);
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
-  vec3 viewDirection = normalize(inBlock.viewSpacePosition);
+  vec3 viewDirection = normalize(-inBlock.cameraRelativePosition);
 
   multiplanarP = inBlock.worldSpacePosition;
 
