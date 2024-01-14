@@ -128,6 +128,7 @@ type TpvScene3DPlanets=class;
              AlbedoTexture:TpvUInt32;
              NormalHeightTexture:TpvUInt32;
              OcclusionRoughnessMetallicTexture:TpvUInt32;
+             Scale:TpvFloat;
             end;
             PMaterial=^TMaterial;
             TMaterials=array[0..15] of TMaterial;
@@ -7228,7 +7229,7 @@ begin
     fPlanetData.Textures[MaterialIndex,0]:=Material^.AlbedoTexture;
     fPlanetData.Textures[MaterialIndex,1]:=Material^.NormalHeightTexture;
     fPlanetData.Textures[MaterialIndex,2]:=Material^.OcclusionRoughnessMetallicTexture;
-    fPlanetData.Textures[MaterialIndex,3]:=0;
+    fPlanetData.Textures[MaterialIndex,3]:=TpvUInt32(pointer(@Material^.Scale)^);
    end;
 
    fVulkanDevice.MemoryStaging.Upload(fVulkanUniversalQueue,

@@ -6,16 +6,18 @@ struct Material {
   uint albedo;
   uint normalHeight;
   uint occlusionRoughnessMetallic;
-  uint reserved; // for alignment
+  float scale;
 }; 
 #define GetMaterialAlbedoTextureIndex(m) (m).albedo
 #define GetMaterialNormalHeightTextureIndex(m) (m).normalHeight
 #define GetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).occlusionRoughnessMetallic
+#define GetMaterialScale(m) (m).scale
 #else
-#define Material uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = reserved
+#define Material uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = scale (float)
 #define GetMaterialAlbedoTextureIndex(m) (m).x
 #define GetMaterialNormalHeightTextureIndex(m) (m).y
 #define GetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).z
+#define GetMaterialScale(m) (uintBitsToFloat((m).w))
 #endif
 
 layout(set = 2, binding = 1, std430) readonly buffer PlanetData {

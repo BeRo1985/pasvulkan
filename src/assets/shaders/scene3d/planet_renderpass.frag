@@ -131,7 +131,102 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
           1.0);
 }
 
+float textureHash11(uint q){
+	uvec2 n = q * uvec2(1597334673U, 3812015801U);
+	q = (n.x ^ n.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((q >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+float textureHash11(float p){
+	uvec2 n = uint(int(p)) * uvec2(1597334673U, 3812015801U);
+	uint q = (n.x ^ n.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((q >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+float textureHash12(uvec2 q){
+	q *= uvec2(1597334673U, 3812015801U);
+	uint n = (q.x ^ q.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((n >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+float textureHash12(vec2 p){
+	uvec2 q = uvec2(ivec2(p)) * uvec2(1597334673U, 3812015801U);
+	uint n = (q.x ^ q.y) * 1597334673U;
+  return ((uintBitsToFloat(uint(uint(((n >> 9u) & uint(0x007fffffu)) | uint(0x3f800000u))))) - 1.0);
+}
+
+vec2 textureHash22(uvec2 q){
+  q *= uvec2(1597334673U, 3812015801U);
+  q = (q.x ^ q.y) * uvec2(1597334673U, 3812015801U);
+  return vec2(vec2(uintBitsToFloat(uvec2(uvec2(((q >> 9u) & uvec2(0x007fffffu)) | uvec2(0x3f800000u))))) - vec2(1.0));
+}
+
+vec2 textureHash22(vec2 p){
+  uvec2 q = uvec2(ivec2(p)) * uvec2(1597334673U, 3812015801U);
+  q = (q.x ^ q.y) * uvec2(1597334673U, 3812015801U);
+  return vec2(vec2(uintBitsToFloat(uvec2(uvec2(((q >> 9u) & uvec2(0x007fffffu)) | uvec2(0x3f800000u))))) - vec2(1.0));
+}
+
+float textureNoise11(float p){
+  float f = fract(p);
+  p -= f;
+  f = (f * f) * (3.0 - (2.0 * f));
+  return mix(textureHash11(p + 0.0), textureHash11(p + 1.0), f); 
+}
+
+float textureNoise12(vec2 p){
+  vec2 f = fract(p);
+  p -= f;
+  f = (f * f) * (3.0 - (2.0 * f));
+  vec2 n = vec2(0.0, 1.0);
+  return mix(mix(textureHash12(p + n.xx), textureHash12(p + n.yx), f.x),
+             mix(textureHash12(p + n.xy), textureHash12(p + n.yy), f.x), f.y);
+}
+
+vec2 textureNoise22(vec2 p){
+  vec2 f = fract(p);
+  p -= f;
+  f = (f * f) * (3.0 - (2.0 * f));
+  vec2 n = vec2(0.0, 1.0);
+  return mix(mix(textureHash22(p + n.xx), textureHash22(p + n.yx), f.x),
+             mix(textureHash22(p + n.xy), textureHash22(p + n.yy), f.x), f.y);
+  
+}
+
+vec4 textureNoTile(const in sampler2D tex, in vec2 uv, const in vec2 duvdx, const in vec2 duvdy){
+
+  return textureGrad(tex, uv, duvdx, duvdy);
+/*   
+  // sample variation pattern   
+  float k = clamp(textureNoise12(uv), 0.0, 1.0); // low-frequency noise lookup per hash function
+    
+  // compute index for 8 variation patterns in total  
+  float l = k * 8.0;
+  float f = fract(l);    
+  float ia = floor(l);
+  float ib = ia + 1.0;
+    
+  // offsets for the different virtual patterns      
+#if 1
+  vec2 offa = fma(textureNoise22(vec2(13.0, 17.0) * ia), vec2(2.0), vec2(-1.0));
+  vec2 offb = fma(textureNoise22(vec2(13.0, 17.0) * ib), vec2(2.0), vec2(-1.0));
+#else 
+  vec2 offa = sin(vec2(3.0, 7.0) * ia); // can replace with any other hash
+  vec2 offb = sin(vec2(3.0, 7.0) * ib); // can replace with any other hash 
+#endif
+
+  // sample the two closest virtual patterns   
+  vec4 cola = textureGrad(tex, uv + offa, duvdx, duvdy);
+  vec4 colb = textureGrad(tex, uv + offb, duvdx, duvdy);
+    
+  // interpolate between the two virtual patterns  
+  return mix(cola, colb, smoothstep(0.2, 0.8, f - (0.1 * dot(cola - colb, vec4(1.0)))));
+*/  
+}
+
 vec3 multiplanarP;
+vec3 multiplanarDX;
+vec3 multiplanarDY;
 
 float multiplanarK;
 
@@ -142,33 +237,33 @@ float multiplanarK;
 
 vec3 multiplanarM;
 
-vec4 multiplanarTexture(const in sampler2D tex){
-  return (texture(tex, multiplanarP.yz) * multiplanarM.x) + (texture(tex, multiplanarP.zx) * multiplanarM.y) + (texture(tex, multiplanarP.xy) * multiplanarM.z);
+vec4 multiplanarTexture(const in sampler2D tex, float scale){
+  return (textureNoTile(tex, multiplanarP.yz * scale, multiplanarDX.yz * scale, multiplanarDY.yz * scale) * multiplanarM.x) +
+         (textureNoTile(tex, multiplanarP.zx * scale, multiplanarDX.zx * scale, multiplanarDY.zx * scale) * multiplanarM.y) + 
+         (textureNoTile(tex, multiplanarP.xy * scale, multiplanarDX.xy * scale, multiplanarDY.xy * scale) * multiplanarM.z);
 }
 #else
 
 // Biplanar
 
-vec3 multiplanarDX;
-vec3 multiplanarDY;
 ivec3 multiplanarMA;
 ivec3 multiplanarMI;
 ivec3 multiplanarME;
 vec2 multiplanarM;
 
-vec4 multiplanarTexture(const in sampler2D tex){
- return (textureGrad(
+vec4 multiplanarTexture(const in sampler2D tex, float scale){
+ return (textureNoTile(
             tex, 
-            vec2(multiplanarP[multiplanarMA.y], multiplanarP[multiplanarMA.z]),
-            vec2(multiplanarDX[multiplanarMA.y], multiplanarDX[multiplanarMA.z]),
-            vec2(multiplanarDY[multiplanarMA.y], multiplanarDY[multiplanarMA.z])
+            vec2(multiplanarP[multiplanarMA.y], multiplanarP[multiplanarMA.z]) * scale,
+            vec2(multiplanarDX[multiplanarMA.y], multiplanarDX[multiplanarMA.z]) * scale,
+            vec2(multiplanarDY[multiplanarMA.y], multiplanarDY[multiplanarMA.z]) * scale
           ) * multiplanarM.x
         ) +
-        (textureGrad(
+        (textureNoTile(
            tex, 
-           vec2(multiplanarP[multiplanarME.y], multiplanarP[multiplanarME.z]),
-           vec2(multiplanarDX[multiplanarME.y], multiplanarDX[multiplanarME.z]),
-           vec2(multiplanarDY[multiplanarME.y], multiplanarDY[multiplanarME.z])
+           vec2(multiplanarP[multiplanarME.y], multiplanarP[multiplanarME.z]) * scale,
+           vec2(multiplanarDX[multiplanarME.y], multiplanarDX[multiplanarME.z]) * scale,
+           vec2(multiplanarDY[multiplanarME.y], multiplanarDY[multiplanarME.z]) * scale
           ) * multiplanarM.y
         );
 }
@@ -187,7 +282,10 @@ void main(){
 
   vec3 viewDirection = normalize(inBlock.viewSpacePosition);
 
-  multiplanarP = inBlock.worldSpacePosition * 0.1;
+  multiplanarP = inBlock.worldSpacePosition;
+
+  multiplanarDX = dFdx(multiplanarP);
+  multiplanarDY = dFdy(multiplanarP);
 
   multiplanarK = 6.0;
 
@@ -197,9 +295,6 @@ void main(){
   multiplanarM /= (multiplanarM.x + multiplanarM.y + multiplanarM.z);
 
 #else
-
-  multiplanarDX = dFdx(multiplanarP);
-  multiplanarDY = dFdy(multiplanarP);
 
   vec3 absNormal = abs(normal);
 
@@ -219,13 +314,15 @@ void main(){
 
   // Textures are stored in pairs, first as linear, then as sRGB.  
 
-  vec4 baseColor = multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(material) << 1) | 1]);
+  float materialScale = GetMaterialScale(material);
 
-  vec4 normalHeight = multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(material) << 1) | 0]);
+  vec4 baseColor = multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(material) << 1) | 1], materialScale);
+
+  vec4 normalHeight = multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(material) << 1) | 0], materialScale);
 
   vec3 workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
 
-  vec4 occlusionRoughnessMetallic = multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(material) << 1) | 0]);
+  vec4 occlusionRoughnessMetallic = multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(material) << 1) | 0], materialScale);
  
   ambientOcclusion = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
 
