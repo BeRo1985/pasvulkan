@@ -5863,15 +5863,15 @@ begin
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity'+Kind+'_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity_'+Kind+'frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe'+Kind+'_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_'+Kind+'frag.spv');
      end;
     end else begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity'+Kind+'_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_'+Kind+'frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass'+Kind+'_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'frag.spv');
      end;
     end;
     try
