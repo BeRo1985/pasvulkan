@@ -5851,17 +5851,27 @@ begin
 
    else begin
 
+    case TpvScene3DPlanet.SourcePrimitiveMode of
+     TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
+     TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
+      Kind:='external_';
+     end;
+     else begin
+      Kind:='';
+     end;
+    end;
+
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity'+Kind+'_frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe'+Kind+'_frag.spv');
      end;
     end else begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity'+Kind+'_frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass'+Kind+'_frag.spv');
      end;
     end;
     try

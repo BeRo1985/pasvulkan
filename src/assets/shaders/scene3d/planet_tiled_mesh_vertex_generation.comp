@@ -75,62 +75,67 @@ void main(){
         uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResolution;
 
 #if 1
-        // Variant that uses temporary neighbor vertices to calculate the normal
+        // Variant that uses temporary neighbor vertices to calculate the smoothed vertex normal
 
-        vec4 vertices[3][3];
-        for(int y = 0; y < 3; y++){
-          for(int x = 0; x < 3; x++){
-            ivec2 otherQuadXY = ivec2(quadXY) + ivec2(x - 1, y - 1);
-            otherQuadXY = wrapOctahedralTexelCoordinates(otherQuadXY, ivec2(totalResolution));
-            float height = texelFetch(uTextureHeightMap, ivec2(otherQuadXY), pushConstants.lod).x; 
-            vertices[y][x] = vec4(octPlanetUnsignedDecode(vec2(otherQuadXY) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height), height);
-          }
-        }
         // Calculate the normal as the average of the normals of some temporary virtual triangles
+
         // a(-1, -1) b( 0, -1) c( 1, -1)
         // d(-1,  0) e( 0,  0) f( 1,  0)
         // g(-1,  1) h( 0,  1) i( 1,  1)
-        // Calculate the smoothed normal at point e as the average of the normals of the surrounding triangles in triangle fan order:
-#define a vertices[0][0].xyz
-#define b vertices[0][1].xyz
-#define c vertices[0][2].xyz
-#define d vertices[1][0].xyz
-#define e vertices[1][1].xyz
-#define f vertices[1][2].xyz
-#define g vertices[2][0].xyz
-#define h vertices[2][1].xyz
-#define i vertices[2][2].xyz
-        vec3 normal = safeNormalize(
-          safeNormalize(cross(a - e, b - e)) + // Triangle EAB
-          safeNormalize(cross(b - e, c - e)) + // Triangle EBC          
-          safeNormalize(cross(c - e, f - e)) + // Triangle EDA
-          safeNormalize(cross(f - e, i - e)) + // Triangle EFI
-          safeNormalize(cross(i - e, h - e)) + // Triangle EIH
-          safeNormalize(cross(h - e, g - e)) + // Triangle EHG
-          safeNormalize(cross(g - e, d - e)) + // Triangle EGD
-          safeNormalize(cross(d - e, a - e))   // Triangle EDA
-        );          
-#undef a
-#undef b
-#undef c
-#undef d
-#undef e
-#undef f
-#undef g
-#undef h
-#undef i
 
-        float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
+        ivec2 axy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1, -1), ivec2(totalResolution));
+        ivec2 bxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0, -1), ivec2(totalResolution));
+        ivec2 cxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1, -1), ivec2(totalResolution));
+        ivec2 dxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1,  0), ivec2(totalResolution));
+        ivec2 exy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0,  0), ivec2(totalResolution));
+        ivec2 fxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1,  0), ivec2(totalResolution));
+        ivec2 gxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1,  1), ivec2(totalResolution));
+        ivec2 hxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0,  1), ivec2(totalResolution));
+        ivec2 ixy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1,  1), ivec2(totalResolution));
+
+        float ah = texelFetch(uTextureHeightMap, axy, pushConstants.lod).x;
+        float bh = texelFetch(uTextureHeightMap, bxy, pushConstants.lod).x;
+        float ch = texelFetch(uTextureHeightMap, cxy, pushConstants.lod).x;
+        float dh = texelFetch(uTextureHeightMap, dxy, pushConstants.lod).x;
+        float eh = texelFetch(uTextureHeightMap, exy, pushConstants.lod).x;
+        float fh = texelFetch(uTextureHeightMap, fxy, pushConstants.lod).x;
+        float gh = texelFetch(uTextureHeightMap, gxy, pushConstants.lod).x;
+        float hh = texelFetch(uTextureHeightMap, hxy, pushConstants.lod).x;
+        float ih = texelFetch(uTextureHeightMap, ixy, pushConstants.lod).x;
+        
+        vec4 av = vec4(octPlanetUnsignedDecode(vec2(axy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ah), ah);
+        vec4 bv = vec4(octPlanetUnsignedDecode(vec2(bxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, bh), bh);
+        vec4 cv = vec4(octPlanetUnsignedDecode(vec2(cxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ch), ch);
+        vec4 dv = vec4(octPlanetUnsignedDecode(vec2(dxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, dh), dh);
+        vec4 ev = vec4(octPlanetUnsignedDecode(vec2(exy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, eh), eh);
+        vec4 fv = vec4(octPlanetUnsignedDecode(vec2(fxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, fh), fh);
+        vec4 gv = vec4(octPlanetUnsignedDecode(vec2(gxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, gh), gh);
+        vec4 hv = vec4(octPlanetUnsignedDecode(vec2(hxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, hh), hh);
+        vec4 iv = vec4(octPlanetUnsignedDecode(vec2(ixy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ih), ih);
+        
+        // Calculate the smoothed normal at point e as the average of the normals of the surrounding triangles in triangle fan order:
+        vec3 normal = safeNormalize(
+          safeNormalize(cross(av.xyz - ev.xyz, bv.xyz - ev.xyz)) + // Triangle EAB
+          safeNormalize(cross(bv.xyz - ev.xyz, cv.xyz - ev.xyz)) + // Triangle EBC          
+          safeNormalize(cross(cv.xyz - ev.xyz, fv.xyz - ev.xyz)) + // Triangle EDA
+          safeNormalize(cross(fv.xyz - ev.xyz, iv.xyz - ev.xyz)) + // Triangle EFI
+          safeNormalize(cross(iv.xyz - ev.xyz, hv.xyz - ev.xyz)) + // Triangle EIH
+          safeNormalize(cross(hv.xyz - ev.xyz, gv.xyz - ev.xyz)) + // Triangle EHG
+          safeNormalize(cross(gv.xyz - ev.xyz, dv.xyz - ev.xyz)) + // Triangle EGD
+          safeNormalize(cross(dv.xyz - ev.xyz, av.xyz - ev.xyz))   // Triangle EDA
+        );          
 
         triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = TriangleVertex( 
-          vec4(vertices[1][1].xyz, length(vertices[1][1].xyz)), 
-          vec4(normal, vertices[1][1].w)
+          vec4(ev.xyz, length(ev.xyz)), 
+          vec4(normal, ev.w)
         );    
-
 
 #else
 
-        // Variant that uses the height map to get the normal directly, but it has some artifacts in the moment at some edge cases => TODO: fix it
+        // Variant that uses the height map to get the smoothed vertex normal directly, but it need another compute shader pass to 
+        // calculate the height map with the same calculation efford as above. So it's not really faster, but rather it can be even 
+        // slower, because the other compute shader pass works on the complete height map at once, while this variant above works 
+        // only on changed/updated tiles.
 
         float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
 

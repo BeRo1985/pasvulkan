@@ -376,9 +376,12 @@ compileshaderarguments=(
 
   "-V planet_renderpass.frag -o ${tempPath}/planet_renderpass_frag.spv"
   "-V planet_renderpass.frag -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_frag.spv"
+  "-V planet_renderpass.frag -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_velocity_external_frag.spv"
   "-V planet_renderpass.frag -DWIREFRAME -o ${tempPath}/planet_renderpass_wireframe_frag.spv"
   "-V planet_renderpass.frag -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_frag.spv"
-
+  "-V planet_renderpass.frag -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_external_frag.spv"
+  "-V planet_renderpass.frag -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_velocity_external_frag.spv"
+  
 )
 
 #############################################
