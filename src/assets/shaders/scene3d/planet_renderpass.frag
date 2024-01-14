@@ -408,10 +408,12 @@ void main(){
   {
     float weightSum = 0.0;
     [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
-      if(layerMaterialWeights[layerIndex] > 0.0){
-        albedo += multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetMaterialScale(layerMaterials[layerIndex])) * layerMaterialWeights[layerIndex];
-        normalHeight += multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetMaterialScale(layerMaterials[layerIndex])) * layerMaterialWeights[layerIndex];
-        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetMaterialScale(layerMaterials[layerIndex])) * layerMaterialWeights[layerIndex];
+      const float weight = layerMaterialWeights[layerIndex];
+      if(weight > 0.0){        
+        albedo += multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetMaterialScale(layerMaterials[layerIndex])) * weight;
+        normalHeight += multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetMaterialScale(layerMaterials[layerIndex])) * weight;
+        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetMaterialScale(layerMaterials[layerIndex])) * weight;
+        weightSum += weight;
       }
     }
     float factor = 1.0 / max(1e-7, weightSum);
