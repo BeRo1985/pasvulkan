@@ -93,15 +93,15 @@ void main(){
         ivec2 hxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0,  1), ivec2(totalResolution));
         ivec2 ixy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1,  1), ivec2(totalResolution));
 
-        float ah = texelFetch(uTextureHeightMap, axy, pushConstants.lod).x;
-        float bh = texelFetch(uTextureHeightMap, bxy, pushConstants.lod).x;
-        float ch = texelFetch(uTextureHeightMap, cxy, pushConstants.lod).x;
-        float dh = texelFetch(uTextureHeightMap, dxy, pushConstants.lod).x;
-        float eh = texelFetch(uTextureHeightMap, exy, pushConstants.lod).x;
-        float fh = texelFetch(uTextureHeightMap, fxy, pushConstants.lod).x;
-        float gh = texelFetch(uTextureHeightMap, gxy, pushConstants.lod).x;
-        float hh = texelFetch(uTextureHeightMap, hxy, pushConstants.lod).x;
-        float ih = texelFetch(uTextureHeightMap, ixy, pushConstants.lod).x;
+        float ah = texelFetch(uTextureHeightMap, axy << ivec2(pushConstants.lod), 0).x;
+        float bh = texelFetch(uTextureHeightMap, bxy << ivec2(pushConstants.lod), 0).x;
+        float ch = texelFetch(uTextureHeightMap, cxy << ivec2(pushConstants.lod), 0).x;
+        float dh = texelFetch(uTextureHeightMap, dxy << ivec2(pushConstants.lod), 0).x;
+        float eh = texelFetch(uTextureHeightMap, exy << ivec2(pushConstants.lod), 0).x;
+        float fh = texelFetch(uTextureHeightMap, fxy << ivec2(pushConstants.lod), 0).x;
+        float gh = texelFetch(uTextureHeightMap, gxy << ivec2(pushConstants.lod), 0).x;
+        float hh = texelFetch(uTextureHeightMap, hxy << ivec2(pushConstants.lod), 0).x;
+        float ih = texelFetch(uTextureHeightMap, ixy << ivec2(pushConstants.lod), 0).x;
         
         vec4 av = vec4(octPlanetUnsignedDecode(vec2(axy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ah), ah);
         vec4 bv = vec4(octPlanetUnsignedDecode(vec2(bxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, bh), bh);

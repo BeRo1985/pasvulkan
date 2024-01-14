@@ -20,7 +20,7 @@ shared float sharedHeights[8 * 8];
 /* clang-format on */
 
 float reduceOp(const in float a, const in float b){
-  return a;//max(a, b);
+  return (a + b) * 0.5;
 }
 
 void main() {
