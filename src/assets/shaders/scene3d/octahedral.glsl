@@ -29,6 +29,11 @@
   #define octUnsignedDecode octNonEqualAreaUnsignedDecode
 #endif
 
+ivec2 wrapOctahedralTexelCoordinates(const in ivec2 texel, const in ivec2 texSize) {
+  ivec2 wrapped = ((texel % texSize) + texSize) % texSize;
+  return ((((abs(texel.x / texSize.x) + int(texel.x < 0)) ^ (abs(texel.y / texSize.y) + int(texel.y < 0))) & 1) != 0) ? (texSize - (wrapped + ivec2(1))) : wrapped;
+}
+
 vec2 octNonEqualAreaSignedEncode(vec3 vector) {
   vector = normalize(vector); // just for to make sure that it is normalized
   vec2 result = vector.xy / (abs(vector.x) + abs(vector.y) + abs(vector.z));

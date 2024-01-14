@@ -277,7 +277,7 @@ void main(){
 
   vec3 sphereNormal = normalize(inBlock.sphereNormal.xyz); // re-normalize, because of vertex interpolation
 
-  vec3 normal = normalize((planetData.normalMatrix * vec4(texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz, 0.0)).xyz);
+  vec3 normal = inBlock.normal.xyz;//normalize((planetData.normalMatrix * vec4(texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz, 0.0)).xyz);
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 

@@ -40,6 +40,10 @@ layout(push_constant) uniform PushConstants {
 
 #include "octahedral.glsl"
 
+vec3 safeNormalize(vec3 v){
+  return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
+}
+
 void main(){
 
   const uint queuedTileIndex = uint(gl_GlobalInvocationID.y);
@@ -70,12 +74,72 @@ void main(){
         
         uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResolution;
 
+#if 1
+        // Variant that uses temporary neighbor vertices to calculate the normal
+
+        vec4 vertices[3][3];
+        for(int y = 0; y < 3; y++){
+          for(int x = 0; x < 3; x++){
+            ivec2 otherQuadXY = ivec2(quadXY) + ivec2(x - 1, y - 1);
+            otherQuadXY = wrapOctahedralTexelCoordinates(otherQuadXY, ivec2(totalResolution));
+            float height = texelFetch(uTextureHeightMap, ivec2(otherQuadXY), pushConstants.lod).x; 
+            vertices[y][x] = vec4(octPlanetUnsignedDecode(vec2(otherQuadXY) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height), height);
+          }
+        }
+        // Calculate the normal as the average of the normals of some temporary virtual triangles
+        // a(-1, -1) b( 0, -1) c( 1, -1)
+        // d(-1,  0) e( 0,  0) f( 1,  0)
+        // g(-1,  1) h( 0,  1) i( 1,  1)
+        // Calculate the smoothed normal at point e as the average of the normals of the surrounding triangles in triangle fan order:
+#define a vertices[0][0].xyz
+#define b vertices[0][1].xyz
+#define c vertices[0][2].xyz
+#define d vertices[1][0].xyz
+#define e vertices[1][1].xyz
+#define f vertices[1][2].xyz
+#define g vertices[2][0].xyz
+#define h vertices[2][1].xyz
+#define i vertices[2][2].xyz
+        vec3 normal = safeNormalize(
+          safeNormalize(cross(a - e, b - e)) + // Triangle EAB
+          safeNormalize(cross(b - e, c - e)) + // Triangle EBC          
+          safeNormalize(cross(c - e, f - e)) + // Triangle EDA
+          safeNormalize(cross(f - e, i - e)) + // Triangle EFI
+          safeNormalize(cross(i - e, h - e)) + // Triangle EIH
+          safeNormalize(cross(h - e, g - e)) + // Triangle EHG
+          safeNormalize(cross(g - e, d - e)) + // Triangle EGD
+          safeNormalize(cross(d - e, a - e))   // Triangle EDA
+        );          
+#undef a
+#undef b
+#undef c
+#undef d
+#undef e
+#undef f
+#undef g
+#undef h
+#undef i
+
+        float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
+
+        triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = TriangleVertex( 
+          vec4(vertices[1][1].xyz, length(vertices[1][1].xyz)), 
+          vec4(normal, vertices[1][1].w)
+        );    
+
+
+#else
+
+        // Variant that uses the height map to get the normal directly, but it has some artifacts in the moment at some edge cases => TODO: fix it
+
         float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
 
         triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = TriangleVertex( 
           vec4(vec4(octPlanetUnsignedDecode(vec2(quadXY) / vec2(totalResolution)), 1.0) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height)), 
           vec4(normalize(texelFetch(uTextureNormalMap, ivec2(quadXY), pushConstants.lod).xyz), height)
         );    
+
+#endif        
 
       }
     
