@@ -231,7 +231,7 @@ vec3 multiplanarDY;
 
 float multiplanarK;
 
-#define TRIPLANAR
+#undef TRIPLANAR
 #ifdef TRIPLANAR
 
 // Triplanar
