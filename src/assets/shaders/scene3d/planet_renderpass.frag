@@ -408,7 +408,9 @@ void main(){
 
   multiplanarSetup();
 
-  parallaxMapping();
+  if((planetData.flagsResolutions.x & (1u << 1u)) != 0){
+    parallaxMapping();
+  } 
 
   vec4 albedo = vec4(0.0);
   vec4 normalHeight = vec4(0.0);
@@ -473,7 +475,7 @@ void main(){
   }
 
 #ifdef WIREFRAME
-  if((planetData.flagsResolutions.x & 0x1u) != 0){
+  if((planetData.flagsResolutions.x & (1u << 0u)) != 0){
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
   }
 #endif  

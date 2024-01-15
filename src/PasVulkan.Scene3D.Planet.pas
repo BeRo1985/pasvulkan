@@ -196,6 +196,7 @@ type TpvScene3DPlanets=class;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
               fWireframeActive:Boolean;
+              fParallaxMappingActive:Boolean;
               fMeshVertices:TMeshVertices;
               fMeshIndices:TMeshIndices;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
@@ -240,6 +241,7 @@ type TpvScene3DPlanets=class;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
               property WireframeActive:Boolean read fWireframeActive write fWireframeActive;
+              property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
             { THeightMapRandomInitialization }
@@ -1351,6 +1353,8 @@ begin
 
  fWireframeActive:=false;
 
+ fParallaxMappingActive:=true;
+
 end;
 
 destructor TpvScene3DPlanet.TData.Destroy;
@@ -2160,6 +2164,7 @@ procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
  fWireframeActive:=aData.fWireframeActive;
+ fParallaxMappingActive:=aData.fParallaxMappingActive;
 end;
 
 { TpvScene3DPlanet.THeightMapRandomInitialization }
@@ -7228,8 +7233,11 @@ begin
    fPlanetData.TopRadius:=fTopRadius;
    fPlanetData.HeightMapScale:=fHeightMapScale;
    fPlanetData.Flags:=0;
-   if InFlightFrameData.WireframeActive then begin
+   if InFlightFrameData.fWireframeActive then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 0);
+   end;
+   if InFlightFrameData.fParallaxMappingActive then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 1);
    end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
