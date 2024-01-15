@@ -133,6 +133,7 @@ type TpvScene3DPlanets=class;
             PMaterial=^TMaterial;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
+            TSizeIntArray=array of TpvSizeInt;
        const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
              Direct:Boolean=false;
        type TMeshVertex=record
@@ -774,6 +775,10 @@ type TpvScene3DPlanets=class;
        fCountVisualMeshLODLevels:TpvSizeInt;
        fCountPhysicsMeshIndices:TpvSizeInt; 
        fCountPhysicsMeshLODLevels:TpvSizeInt;
+       fVisualMeshLODOffsets:TSizeIntArray;
+       fVisualMeshLODCounts:TSizeIntArray;
+       fPhysicsMeshLODOffsets:TSizeIntArray;
+       fPhysicsMeshLODCounts:TSizeIntArray;
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
        fReleaseFrameCounter:TpvInt32;
@@ -860,6 +865,10 @@ type TpvScene3DPlanets=class;
       public
        property PlanetData:PPlanetData read fPointerToPlanetData;
        property Materials:PMaterials read fPointerToMaterials; 
+       property VisualMeshLODOffsets:TSizeIntArray read fVisualMeshLODOffsets;
+       property VisualMeshLODCounts:TSizeIntArray read fVisualMeshLODCounts;
+       property PhysicsMeshLODOffsets:TSizeIntArray read fPhysicsMeshLODOffsets;
+       property PhysicsMeshLODCounts:TSizeIntArray read fPhysicsMeshLODCounts;
      end;
 
      TpvScene3DPlanets=class(TpvObjectGenericList<TpvScene3DPlanet>)
@@ -6547,16 +6556,28 @@ begin
 
  fCountVisualMeshIndices:=0;
  fCountVisualMeshLODLevels:=Max(1,IntLog2(fVisualTileResolution));
+ fVisualMeshLODOffsets:=nil;
+ fVisualMeshLODCounts:=nil;
+ SetLength(fVisualMeshLODOffsets,fCountVisualMeshLODLevels);
+ SetLength(fVisualMeshLODCounts,fCountVisualMeshLODLevels);
  for Index:=0 to fCountVisualMeshLODLevels-1 do begin
   Resolution:=fVisualTileResolution shr Index;
+  fVisualMeshLODOffsets[Index]:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
+  fVisualMeshLODCounts[Index]:=(Resolution*Resolution)*((fTileMapResolution*fTileMapResolution)*6);
   inc(fCountVisualMeshIndices,Resolution*Resolution);
  end;
  fCountVisualMeshIndices:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
 
  fCountPhysicsMeshIndices:=0;
  fCountPhysicsMeshLODLevels:=Max(1,IntLog2(fPhysicsTileResolution));
+ fPhysicsMeshLODOffsets:=nil;
+ fPhysicsMeshLODCounts:=nil;
+ SetLength(fPhysicsMeshLODOffsets,fCountPhysicsMeshLODLevels);
+ SetLength(fPhysicsMeshLODCounts,fCountPhysicsMeshLODLevels);
  for Index:=0 to fCountPhysicsMeshLODLevels-1 do begin
   Resolution:=fPhysicsTileResolution shr Index;
+  fPhysicsMeshLODOffsets[Index]:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
+  fPhysicsMeshLODCounts[Index]:=(Resolution*Resolution)*((fTileMapResolution*fTileMapResolution)*6);
   inc(fCountPhysicsMeshIndices,Resolution*Resolution);
  end;
  fCountPhysicsMeshIndices:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
@@ -6813,6 +6834,14 @@ begin
  FreeAndNil(fHeightMapRandomInitialization);
 
  FreeAndNil(fInFlightFrameDataList);
+
+ fVisualMeshLODOffsets:=nil;
+
+ fVisualMeshLODCounts:=nil;
+
+ fPhysicsMeshLODOffsets:=nil;
+
+ fPhysicsMeshLODCounts:=nil;
 
  FreeAndNil(fData);
 
