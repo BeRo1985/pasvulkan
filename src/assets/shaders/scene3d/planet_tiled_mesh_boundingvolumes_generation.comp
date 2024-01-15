@@ -11,8 +11,12 @@
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, std430) buffer BoundingSpheres {
-  vec4 data[];
+layout(set = 0, binding = 0, std430) buffer BoundingBoxes {
+  vec4 data[]; // pair-wise min/max, vec4 instead of vec3 for 16-byte alignment, so w is unused and zero in this case
+} boundingBoxes;
+
+layout(set = 0, binding = 1, std430) buffer BoundingSpheres {
+  vec4 data[]; // xyz = center, w = radius
 } boundingSpheres;
 
 layout(push_constant) uniform PushConstants {
@@ -37,7 +41,7 @@ void main(){
 
     // Gather the worst-case extreme points of the tile with conservative coordinates, by sampling 27 points on the
     // tile including the corners, the center on the corners, and the center of the tile. Probably more than necessary,
-    // but better safe than too few for a conservative bounding sphere.
+    // but better safe than too few for a conservative bounding box and sphere.
     vec3 aabbMin = vec3(uintBitsToFloat(0x7f800000u)); // +inf
     vec3 aabbMax = vec3(uintBitsToFloat(0xff800000u)); // -inf
     [[unroll]] for(uint h = 0u; h <= 2u; h++){
@@ -49,6 +53,10 @@ void main(){
         }
       }
     }    
+
+    // Store the conservative worst-case bounding box of the tile
+    boundingBoxes.data[(tileMapIndex << 1u) | 0u] = vec4(aabbMin, 0.0);
+    boundingBoxes.data[(tileMapIndex << 1u) | 1u] = vec4(aabbMax, 0.0);
 
     // Get the conservative worst-case bounding sphere of the tile from the bounding box
     boundingSpheres.data[tileMapIndex] = vec4((aabbMin + aabbMax) * 0.5, length(aabbMax - aabbMin) * 0.5);
