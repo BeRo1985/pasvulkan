@@ -258,14 +258,16 @@ vec2 multiplanarM;
 
 void multiplanarSetup(){
 
+  vec3 normal = tangentSpaceBasis[2]; // normalize(inBlock.normal.xyz);
+
 #ifdef TRIPLANAR
 
-  multiplanarM = pow(abs(tangentSpaceBasis[2]), vec3(multiplanarK));
+  multiplanarM = pow(abs(normal), vec3(multiplanarK));
   multiplanarM /= (multiplanarM.x + multiplanarM.y + multiplanarM.z);
 
 #else
 
-  vec3 absNormal = abs(tangentSpaceBasis[2]);
+  vec3 absNormal = abs(normal);
 
   multiplanarMA = ((absNormal.x > absNormal.y) && (absNormal.x > absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y > absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));    
   multiplanarMI = ((absNormal.x < absNormal.y) && (absNormal.x < absNormal.z)) ? ivec3(0, 1, 2) : ((absNormal.y < absNormal.z) ? ivec3(1, 2, 0) : ivec3(2, 0, 1));
@@ -342,17 +344,17 @@ vec3 getLayeredMultiplanarOcclusionRoughnessMetallic(){
 
 void parallaxMapping(){  
 
-#if 1
-   
-  // Relief parallax mapping like method, which is a bit more like raymarching than parallax mapping in the common sense in this case.
+  // Not the common known parallax mapping, since it doesn't work in tangent space but in world space, due to the fact that 
+  // layered multiplanar (bi-/triplanar) mapping is used, which would be very difficult to implement in tangent space.
+  // Therefore it is a bit more like raymarching than parallax mapping in the common sense. 
 
-  const float OFFSET_SCALE = 2.0; 
-  const float PARALLAX_SCALE = 0.04;
+  const float OFFSET_SCALE = 1.0; 
+  const float PARALLAX_SCALE = 0.1;
   const float OFFSET_BIAS = 0.0;
-  const int COUNT_FIRST_ITERATIONS = 10;
+  const int COUNT_FIRST_ITERATIONS = 8;
   const int COUNT_SECOND_ITERATIONS = 4; 
 
-  vec3 rayDirection = normalize(inBlock.cameraRelativePosition);
+  vec3 rayDirection = normalize(-inBlock.cameraRelativePosition);
 
   vec3 displacementVector = (tangentSpaceBasis[2] * dot(tangentSpaceBasis[2], rayDirection)) - rayDirection;
 
@@ -364,9 +366,9 @@ void parallaxMapping(){
   // First do a linear search to find a good starting point 
   [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_FIRST_ITERATIONS; iterationIndex++){
     multiplanarP = offsetBest.xyz;
-    if(getLayeredMultiplanarHeight() < offsetBest.w){
+    if(getLayeredMultiplanarHeight() <= offsetBest.w){
       offsetBest += offsetVector;
-    }else{
+    }else{ 
       break;
     }    
   }
@@ -379,41 +381,6 @@ void parallaxMapping(){
   }
 
   multiplanarP = offsetBest.xyz;
-
-#else
-
-  // Not the common lnown parallax mapping, since it doesn't work in tangent space but in world space, due to the fact that 
-  // layered multiplanar (bi-/triplanar) mapping is used, which would be very difficult to implement in tangent space.
-  // Therefore it is a bit more like raymarching than parallax mapping in the common sense. 
-
-  const float minLayers = 8.0;
-  const float maxLayers = 15.0;
-  const float scale = 0.001; 
-  const int maxSamples = 16;
-  float countLayers = mix(maxLayers, minLayers, abs(tangentSpaceViewDirection.z));
-
-  float currentHeight = getLayeredMultiplanarHeight();
-
-  float layerHeight = 1.0 / countLayers;
-
-  vec3 shift = viewDirection.xyz * scale;
-
-  float currentLayer = 0.0;
-
-  for(int sampleIndex = 0; sampleIndex < maxSamples; sampleIndex++){
-    vec3 lastMultiplanarP = multiplanarP;
-    multiplanarP += shift;
-    float newHeight = getLayeredMultiplanarHeight();
-    if(newHeight < currentHeight){
-      currentHeight = newHeight;
-      currentLayer += layerHeight;
-    }else{
-      multiplanarP = lastMultiplanarP;
-      break;
-    }
-  }
-  
-#endif
 
 }
 
