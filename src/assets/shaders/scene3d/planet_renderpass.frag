@@ -342,13 +342,44 @@ vec3 getLayeredMultiplanarOcclusionRoughnessMetallic(){
 
 void parallaxMapping(){  
 
+#if 1
+   
+  // The base idea of the following code is to shift the shaded position along the surface normal in the direction of the viewer. 
+  // This is accomplished by determining a displacement vector, which is then scaled. The scaling is also influenced by an offset 
+  // that is based on the angle of incidence.
+
+  const float OFFSET_SCALE = 2.0; 
+  const float PARALLAX_SCALE = 0.01;
+  const int COUNT_ITERATIONS = 4; 
+
+  vec3 rayDirection = normalize(inBlock.cameraRelativePosition);
+
+  vec3 displacementVector = (tangentSpaceBasis[2] * dot(tangentSpaceBasis[2], rayDirection)) - rayDirection;
+
+  displacementVector /= (abs(dot(displacementVector, rayDirection))) + OFFSET_SCALE;
+
+  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_ITERATIONS; iterationIndex++){
+    multiplanarP += displacementVector * getLayeredMultiplanarHeight() * PARALLAX_SCALE;
+  }
+
+/*  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_ITERATIONS; iterationIndex++){
+    vec3 lastMultiplanarP = multiplanarP;
+    multiplanarP += displacementVector * getLayeredMultiplanarHeight() * PARALLAX_SCALE;
+    if(length(multiplanarP - lastMultiplanarP) < 1e-7){
+      break;
+    }
+  }
+*/
+
+#else
+
   // Not the common lnown parallax mapping, since it doesn't work in tangent space but in world space, due to the fact that 
   // layered multiplanar (bi-/triplanar) mapping is used, which would be very difficult to implement in tangent space.
   // Therefore it is a bit more like raymarching than parallax mapping in the common sense. 
 
   const float minLayers = 8.0;
   const float maxLayers = 15.0;
-  const float scale = 0.03; 
+  const float scale = 0.001; 
   const int maxSamples = 16;
   float countLayers = mix(maxLayers, minLayers, abs(tangentSpaceViewDirection.z));
 
@@ -361,16 +392,20 @@ void parallaxMapping(){
   float currentLayer = 0.0;
 
   for(int sampleIndex = 0; sampleIndex < maxSamples; sampleIndex++){
+    vec3 lastMultiplanarP = multiplanarP;
     multiplanarP += shift;
     float newHeight = getLayeredMultiplanarHeight();
-    if(currentHeight < newHeight){
+    if(newHeight < currentHeight){
       currentHeight = newHeight;
       currentLayer += layerHeight;
     }else{
+      multiplanarP = lastMultiplanarP;
       break;
     }
   }
   
+#endif
+
 }
 
 void main(){
@@ -397,9 +432,7 @@ void main(){
 
   multiplanarSetup();
 
-  const float specularWeight = 1.0;
-
-  vec2 texUV = vec2(0.0); 
+  parallaxMapping();
 
   vec4 albedo = vec4(0.0);
   vec4 normalHeight = vec4(0.0);
@@ -447,7 +480,9 @@ void main(){
   vec3 diffuseOutput = vec3(0.0);
   vec3 specularOutput = vec3(0.0);
 
-  float iblWeight = 1.0;
+  const float specularWeight = 1.0;
+
+  const float iblWeight = 1.0;
 
   diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
   specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
