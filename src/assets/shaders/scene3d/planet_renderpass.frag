@@ -349,8 +349,8 @@ void parallaxMapping(){
   // that is based on the angle of incidence.
 
   const float OFFSET_SCALE = 2.0; 
-  const float PARALLAX_SCALE = 0.01;
-  const int COUNT_ITERATIONS = 4; 
+  const float PARALLAX_SCALE = 0.02;
+  const int COUNT_ITERATIONS = 16; 
 
   vec3 rayDirection = normalize(inBlock.cameraRelativePosition);
 
