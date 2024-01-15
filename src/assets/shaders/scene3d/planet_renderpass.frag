@@ -432,7 +432,7 @@ void main(){
 
   multiplanarSetup();
 
-  parallaxMapping();
+//  parallaxMapping();
 
   vec4 albedo = vec4(0.0);
   vec4 normalHeight = vec4(0.0);
