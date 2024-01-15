@@ -770,6 +770,10 @@ type TpvScene3DPlanets=class;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
+       fCountVisualMeshIndices:TpvSizeInt; 
+       fCountVisualMeshLODLevels:TpvSizeInt;
+       fCountPhysicsMeshIndices:TpvSizeInt; 
+       fCountPhysicsMeshLODLevels:TpvSizeInt;
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
        fReleaseFrameCounter:TpvInt32;
@@ -844,6 +848,10 @@ type TpvScene3DPlanets=class;
        property PhysicsTileResolution:TpvInt32 read fPhysicsTileResolution;
        property VisualResolution:TpvSizeInt read fVisualResolution;
        property PhysicsResolution:TpvSizeInt read fPhysicsResolution;
+       property CountVisualMeshIndices:TpvSizeInt read fCountVisualMeshIndices;
+       property CountVisualMeshLODLevels:TpvSizeInt read fCountVisualMeshLODLevels;
+       property CountPhysicsMeshIndices:TpvSizeInt read fCountPhysicsMeshIndices;
+       property CountPhysicsMeshLODLevels:TpvSizeInt read fCountPhysicsMeshLODLevels;
        property BottomRadius:TpvFloat read fBottomRadius;
        property TopRadius:TpvFloat read fTopRadius;
        property Ready:TPasMPBool32 read fReady;
@@ -1269,7 +1277,7 @@ begin
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fVisualMeshVertexBuffer');
            
     fVisualMeshIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                   fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution*6*SizeOf(TpvUInt32),
+                                                   fPlanet.fCountVisualMeshIndices*SizeOf(TpvUInt32),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                    BufferSharingMode,
                                                    BufferQueueFamilyIndices,
@@ -1309,7 +1317,7 @@ begin
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fPhysicsMeshVertexBuffer');
 
    fPhysicsMeshIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                   fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*6*SizeOf(TpvUInt32),
+                                                   fPlanet.fCountPhysicsMeshIndices*SizeOf(TpvUInt32),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                    BufferSharingMode,
                                                    BufferQueueFamilyIndices,
@@ -4416,14 +4424,14 @@ begin
                                  @fPushConstants);
 
  if fPhysics then begin
-  aCommandBuffer.CmdDispatch(((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fPhysicsTileResolution*fPlanet.fPhysicsTileResolution*6)+255) shr 8,
+  aCommandBuffer.CmdDispatch((fPlanet.fCountPhysicsMeshIndices+255) shr 8,
                              1,
                              1);
  end else begin
-  aCommandBuffer.CmdDispatch(((fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution*6)+255) shr 8,
+  aCommandBuffer.CmdDispatch((fPlanet.fCountVisualMeshIndices+255) shr 8,
                              1,
                              1);
- end; 
+ end;
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -6514,7 +6522,7 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aPhysicsResolution:TpvSizeInt;
                                     const aBottomRadius:TpvFloat;
                                     const aTopRadius:TpvFloat);
-var InFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
 begin
 
  inherited Create;
@@ -6536,6 +6544,22 @@ begin
  fVisualResolution:=fTileMapResolution*fVisualTileResolution;
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
+
+ fCountVisualMeshIndices:=0;
+ fCountVisualMeshLODLevels:=Max(1,IntLog2(fVisualTileResolution));
+ for Index:=0 to fCountVisualMeshLODLevels-1 do begin
+  Resolution:=fVisualTileResolution shr Index;
+  inc(fCountVisualMeshIndices,Resolution*Resolution);
+ end;
+ fCountVisualMeshIndices:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
+
+ fCountPhysicsMeshIndices:=0;
+ fCountPhysicsMeshLODLevels:=Max(1,IntLog2(fPhysicsTileResolution));
+ for Index:=0 to fCountPhysicsMeshLODLevels-1 do begin
+  Resolution:=fPhysicsTileResolution shr Index;
+  inc(fCountPhysicsMeshIndices,Resolution*Resolution);
+ end;
+ fCountPhysicsMeshIndices:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
 
  fBottomRadius:=aBottomRadius;
 
