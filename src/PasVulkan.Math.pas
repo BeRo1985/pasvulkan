@@ -1150,9 +1150,11 @@ type PpvScalar=^TpvScalar;
       public
        Center:TpvVector3;
        Radius:TpvScalar;
-       constructor Create(const pCenter:TpvVector3;const pRadius:TpvScalar);
+       constructor Create(const pCenter:TpvVector3;const pRadius:TpvScalar); overload;
+       constructor Create(const aVector:TpvVector4); overload;
        constructor CreateFromAABB(const ppvAABB:TpvAABB);
        constructor CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TpvScalar;const Position,Direction:TpvVector3);
+       function ToVector4:TpvVector4;
        function ToAABB(const pScale:TpvScalar=1.0):TpvAABB;
        function Cull(const p:array of TpvPlane):boolean;
        function Contains(const b:TpvSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -15659,6 +15661,12 @@ begin
  Radius:=pRadius;
 end;
 
+constructor TpvSphere.Create(const aVector:TpvVector4);
+begin
+ Center:=aVector.xyz;
+ Radius:=aVector.w;
+end;
+
 constructor TpvSphere.CreateFromAABB(const ppvAABB:TpvAABB);
 begin
  Center:=(ppvAABB.Min+ppvAABB.Max)*0.5;
@@ -15673,6 +15681,11 @@ begin
  Width:=Height*AspectRatio;
  Radius:=TpvVector3.Create(Width,Height,ViewLen).DistanceTo(TpvVector3.Create(0.0,0.0,zNear+(ViewLen*0.5)));
  Center:=Position+(Direction*((ViewLen*0.5)+zNear));
+end;
+
+function TpvSphere.ToVector4:TpvVector4;
+begin
+ result:=TpvVector4.InlineableCreate(Center,Radius);
 end;
 
 function TpvSphere.ToAABB(const pScale:TpvScalar=1.0):TpvAABB;

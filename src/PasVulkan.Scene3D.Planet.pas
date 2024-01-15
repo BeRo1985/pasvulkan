@@ -163,6 +163,9 @@ type TpvScene3DPlanets=class;
                     );
                    POwnershipHolderState=^TOwnershipHolderState;
                    TTileDirtyMap=array of TpvUInt32;
+                   TTiledMeshBoundingSphere=TpvVector4;
+                   PTiledMeshBoundingSphere=^TTiledMeshBoundingSphere;
+                   TTiledMeshBoundingSpheres=TpvDynamicArrayList<TTiledMeshBoundingSphere>;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
@@ -202,6 +205,7 @@ type TpvScene3DPlanets=class;
               fMeshIndices:TMeshIndices;
               fTileDirtyQueueItems:TTileDirtyQueueItems;
               fTileGenerations:TTileGenerations;
+              fTiledMeshBoundingSpheres:TTiledMeshBoundingSpheres;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -235,6 +239,7 @@ type TpvScene3DPlanets=class;
               property CountDirtyTiles:TpvUInt32 read fCountDirtyTiles;
              public
               property TileGenerations:TTileGenerations read fTileGenerations;
+              property TiledMeshBoundingSpheres:TTiledMeshBoundingSpheres read fTiledMeshBoundingSpheres;
               property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
               property Ready:TPasMPBool32 read fReady write fReady;
               property SelectedRegion:TpvVector4Property read fSelectedRegionProperty;
@@ -1193,20 +1198,20 @@ begin
                                             fTileDirtyQueueBuffer.Size);
 
    fTiledMeshBoundingSpheresBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                      fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*SizeOf(TpvVector4),
-                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                      VK_SHARING_MODE_EXCLUSIVE,
-                                                      [],
-                                                      0,
-                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      0,
-                                                      []
-                                                     );
+                                                           fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*SizeOf(TpvVector4),
+                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                           VK_SHARING_MODE_EXCLUSIVE,
+                                                           [],
+                                                           0,
+                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           0,
+                                                           []
+                                                          );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledMeshBoundingSpheresBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileBoundingSpheresBuffer');
 
   end;
@@ -1331,6 +1336,9 @@ begin
   SetLength(fTileGenerations,fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
   FillChar(fTileGenerations[0],Length(fTileGenerations)*SizeOf(TpvUInt64),#$ff);
 
+  fTiledMeshBoundingSpheres:=TTiledMeshBoundingSpheres.Create;
+  fTiledMeshBoundingSpheres.Resize(fPlanet.fTileMapResolution*fPlanet.fTileMapResolution);
+
  end else begin
 
   fMeshVertices:=nil;
@@ -1340,6 +1348,8 @@ begin
   fTileDirtyQueueItems:=nil;
 
   fTileGenerations:=nil;
+
+  fTiledMeshBoundingSpheres:=nil;
 
  end;
 
@@ -1377,6 +1387,8 @@ begin
  FreeAndNil(fMeshIndices);
 
  fTileGenerations:=nil;
+
+ FreeAndNil(fTiledMeshBoundingSpheres);
 
  FreeAndNil(fTileDirtyQueueItems);
 
@@ -6933,9 +6945,15 @@ begin
                                          fData.fMeshIndices.ItemArray[0],
                                          fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));
 
+    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+                                         fVulkanComputeCommandBuffer,
+                                         fVulkanComputeFence,
+                                         fData.fTiledMeshBoundingSpheresBuffer,
+                                         0,
+                                         fData.fTiledMeshBoundingSpheres.ItemArray[0],
+                                         fTileMapResolution*fTileMapResolution*SizeOf(TpvVector4));
 
    end;
-
 
   end;
 
