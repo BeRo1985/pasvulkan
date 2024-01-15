@@ -5,6 +5,8 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
 #extension GL_GOOGLE_include_directive : enable
 
 #ifdef TRIANGLES
@@ -50,6 +52,12 @@ struct View {
   mat4 inverseViewMatrix;
   mat4 inverseProjectionMatrix;
 };
+
+// Global descriptor set
+
+#define PLANETS
+#include "globaldescriptorset.glsl"
+#undef PLANETS
 
 // Global planet descriptor set
 
@@ -112,12 +120,26 @@ void main(){
 
   vec3 worldSpacePosition = position;
 
+  vec3 normal = sphereNormal;
+
+  if((planetData.flagsResolutions.x & (1u << 1u)) != 0){
+
+    normal = textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
+    
+    layerMaterialSetup(sphereNormal);
+
+    multiplanarSetup(position, vec3(1e-6), vec3(1e-6), normal);
+
+    float displacement = 1.0 - clamp(getLayeredMultiplanarHeight(), 0.0, 1.0);
+
+    position -= normal * displacement * 0.25;
+
+  }
+
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
-  vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
-
-  outBlock.position = position;   
+  outBlock.position = position;
   outBlock.sphereNormal = sphereNormal;      
   outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
   outBlock.worldSpacePosition = worldSpacePosition;

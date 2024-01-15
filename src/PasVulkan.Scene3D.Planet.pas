@@ -133,8 +133,8 @@ type TpvScene3DPlanets=class;
             PMaterial=^TMaterial;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
-             Direct:Boolean=false;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
+             Direct:Boolean=true;
        type TMeshVertex=record
              PositionAbsoluteHeight:TpvVector4;
              NormalRelativeHeight:TpvVector4;
@@ -196,6 +196,7 @@ type TpvScene3DPlanets=class;
               fModifyHeightMapBorderRadius:TpvScalar;
               fModifyHeightMapFactor:TpvScalar;
               fWireframeActive:Boolean;
+              fDisplacementMappingActive:Boolean;
               fParallaxMappingActive:Boolean;
               fMeshVertices:TMeshVertices;
               fMeshIndices:TMeshIndices;
@@ -241,6 +242,7 @@ type TpvScene3DPlanets=class;
               property ModifyHeightMapBorderRadius:TpvScalar read fModifyHeightMapBorderRadius write fModifyHeightMapBorderRadius;
               property ModifyHeightMapFactor:TpvScalar read fModifyHeightMapFactor write fModifyHeightMapFactor;
               property WireframeActive:Boolean read fWireframeActive write fWireframeActive;
+              property DisplacementMappingActive:Boolean read fDisplacementMappingActive write fDisplacementMappingActive;
               property ParallaxMappingActive:Boolean read fParallaxMappingActive write fParallaxMappingActive;
             end;
             TInFlightFrameDataList=TpvObjectGenericList<TData>;
@@ -1353,7 +1355,9 @@ begin
 
  fWireframeActive:=false;
 
- fParallaxMappingActive:=true;
+ fDisplacementMappingActive:=false;
+
+ fParallaxMappingActive:=false;
 
 end;
 
@@ -2164,6 +2168,7 @@ procedure TpvScene3DPlanet.TData.Assign(const aData:TData);
 begin
  fSelectedRegion:=aData.fSelectedRegion;
  fWireframeActive:=aData.fWireframeActive;
+ fDisplacementMappingActive:=aData.fDisplacementMappingActive;
  fParallaxMappingActive:=aData.fParallaxMappingActive;
 end;
 
@@ -5928,6 +5933,9 @@ begin
   fDescriptorSetLayout.AddBinding(1,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                   3,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -5935,6 +5943,9 @@ begin
   fDescriptorSetLayout.AddBinding(2,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                   3,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -5942,6 +5953,9 @@ begin
   fDescriptorSetLayout.AddBinding(3,
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                   1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -7236,8 +7250,11 @@ begin
    if InFlightFrameData.fWireframeActive then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 0);
    end;
-   if InFlightFrameData.fParallaxMappingActive then begin
+   if InFlightFrameData.fDisplacementMappingActive then begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 1);
+   end;
+   if InFlightFrameData.fParallaxMappingActive then begin
+    fPlanetData.Flags:=fPlanetData.Flags or (1 shl 2);
    end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;

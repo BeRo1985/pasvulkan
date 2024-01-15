@@ -6,6 +6,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_control_flow_attributes : enable
 
 #ifdef EXTERNAL_VERTICES
@@ -57,6 +58,12 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
 #if defined(OCTAHEDRAL)
 #include "octahedral.glsl"
 #endif
+
+// Global descriptor set
+
+#define PLANETS
+#include "globaldescriptorset.glsl"
+#undef PLANETS
 
 #include "planet_renderpass.glsl"
 
@@ -596,6 +603,20 @@ void main(){
 #endif  
 
   vec3 worldSpacePosition = position;
+
+  if((planetData.flagsResolutions.x & (1u << 1u)) != 0){
+
+    vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
+
+    layerMaterialSetup(sphereNormal);
+
+    multiplanarSetup(position, vec3(1e-6), vec3(1e-6), normal);
+
+    float displacement = 1.0 - clamp(getLayeredMultiplanarHeight(), 0.0, 1.0);
+
+    position -= normal * displacement * 0.25;
+
+  }
 
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;

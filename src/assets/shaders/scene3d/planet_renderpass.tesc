@@ -5,6 +5,8 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
 #extension GL_GOOGLE_include_directive : enable
 
 #ifdef TRIANGLES
@@ -24,8 +26,14 @@ layout(location = 0) out OutBlock {
   vec3 normal;
 } outBlocks[];
 
-#include "planet_renderpass.glsl"
+// Global descriptor set
 
+#define PLANETS
+#include "globaldescriptorset.glsl"
+#undef PLANETS
+
+#include "planet_renderpass.glsl"
+ 
 vec2 resolution = vec2(float(uint(pushConstants.resolutionXY & 0xffffu)), float(uint(pushConstants.resolutionXY >> 16u)));
 
 struct View {
@@ -38,7 +46,7 @@ struct View {
 layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256];
 } uView;
-
+ 
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
