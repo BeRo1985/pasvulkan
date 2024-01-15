@@ -149,34 +149,58 @@ void parallaxMapping(){
   const float OFFSET_SCALE = 1.0; 
   const float PARALLAX_SCALE = 0.5;
   const float OFFSET_BIAS = 0.0; 
-  const int COUNT_FIRST_ITERATIONS = 8;
+  const int COUNT_FIRST_ITERATIONS = 12;
   const int COUNT_SECOND_ITERATIONS = 4; 
 
   vec3 rayDirection = normalize(inBlock.cameraRelativePosition);
 
-  vec3 displacementVector = (tangentSpaceBasis[2] * dot(tangentSpaceBasis[2], rayDirection)) - rayDirection;
-
+#if 1 
+  vec3 displacementVector = rayDirection - (tangentSpaceBasis[2] * dot(tangentSpaceBasis[2], rayDirection));
   displacementVector /= (abs(dot(displacementVector, rayDirection))) + OFFSET_SCALE;
+#else
+  vec3 displacementVector = rayDirection; // just the ray direction because bi-/triplanar mapping uses the position in world space for the texture lookup 
+#endif
 
   vec4 offsetVector = vec4(displacementVector * PARALLAX_SCALE, -1.0) / float(COUNT_FIRST_ITERATIONS);
   vec4 offsetBest = vec4(multiplanarP - (offsetVector.xyz * OFFSET_BIAS), 1.0);
 
+  float height = 1.0;
+
+  vec4 lastOffsetBest = offsetBest;
+
   // First do a linear search to find a good starting point 
   [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_FIRST_ITERATIONS; iterationIndex++){
     multiplanarP = offsetBest.xyz;
-    if(getLayeredMultiplanarHeight() <= offsetBest.w){
+    if((height = getLayeredMultiplanarHeight()) < offsetBest.w){
+      lastOffsetBest = offsetBest;
       offsetBest += offsetVector;
     }else{ 
       break;
     }    
   }
 
+#if 0
+
+  offsetBest -= offsetVector;
+
   // Now do a binary search to find the best offset 
-  float f = 1.0; 
-  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_SECOND_ITERATIONS; iterationIndex++, f *= 0.5){
-    multiplanarP = offsetBest.xyz;
-    offsetBest += offsetVector * ((step(getLayeredMultiplanarHeight(), offsetBest.w) * f) - (f * 0.5));
+  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_SECOND_ITERATIONS; iterationIndex++){
+    multiplanarP = (lastOffsetBest = (offsetBest += (offsetVector *= 0.5))).xyz;    
+    offsetBest -= ((offsetBest.w < (height = getLayeredMultiplanarHeight())) ? 1.0 : 0.0) * offsetVector;
   }
+
+#else
+
+  // Now do a binary search to find the best offset 
+  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_SECOND_ITERATIONS; iterationIndex++, offsetVector *= 0.5){
+    multiplanarP = (lastOffsetBest = offsetBest).xyz;
+    offsetBest += offsetVector * (step(height = getLayeredMultiplanarHeight(), offsetBest.w) - 0.5);    
+  }
+  
+#endif
+
+  // Mix the last and the best offset to get a smooth transition between the two
+  offsetBest = mix(lastOffsetBest, offsetBest, clamp((height - lastOffsetBest.w) / max(1e-7, offsetBest.w - lastOffsetBest.w), 0.0, 1.0));
 
   multiplanarP = offsetBest.xyz;
 
