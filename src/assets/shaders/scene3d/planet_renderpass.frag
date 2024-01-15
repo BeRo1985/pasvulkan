@@ -344,13 +344,13 @@ void parallaxMapping(){
 
 #if 1
    
-  // The base idea of the following code is to shift the shaded position along the surface normal in the direction of the viewer. 
-  // This is accomplished by determining a displacement vector, which is then scaled. The scaling is also influenced by an offset 
-  // that is based on the angle of incidence.
+  // Relief parallax mapping like method, which is a bit more like raymarching than parallax mapping in the common sense in this case.
 
   const float OFFSET_SCALE = 2.0; 
-  const float PARALLAX_SCALE = 0.02;
-  const int COUNT_ITERATIONS = 16; 
+  const float PARALLAX_SCALE = 0.04;
+  const float OFFSET_BIAS = 0.0;
+  const int COUNT_FIRST_ITERATIONS = 10;
+  const int COUNT_SECOND_ITERATIONS = 4; 
 
   vec3 rayDirection = normalize(inBlock.cameraRelativePosition);
 
@@ -358,18 +358,27 @@ void parallaxMapping(){
 
   displacementVector /= (abs(dot(displacementVector, rayDirection))) + OFFSET_SCALE;
 
-  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_ITERATIONS; iterationIndex++){
-    multiplanarP += displacementVector * getLayeredMultiplanarHeight() * PARALLAX_SCALE;
+  vec4 offsetVector = vec4(displacementVector * PARALLAX_SCALE, -1.0) / float(COUNT_FIRST_ITERATIONS);
+  vec4 offsetBest = vec4(multiplanarP - (offsetVector.xyz * OFFSET_BIAS), 1.0);
+
+  // First do a linear search to find a good starting point 
+  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_FIRST_ITERATIONS; iterationIndex++){
+    multiplanarP = offsetBest.xyz;
+    if(getLayeredMultiplanarHeight() < offsetBest.w){
+      offsetBest += offsetVector;
+    }else{
+      break;
+    }    
   }
 
-/*  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_ITERATIONS; iterationIndex++){
-    vec3 lastMultiplanarP = multiplanarP;
-    multiplanarP += displacementVector * getLayeredMultiplanarHeight() * PARALLAX_SCALE;
-    if(length(multiplanarP - lastMultiplanarP) < 1e-7){
-      break;
-    }
+  // Now do a binary search to find the best offset 
+  float f = 1.0; 
+  [[unroll]] for(int iterationIndex = 0; iterationIndex < COUNT_SECOND_ITERATIONS; iterationIndex++, f *= 0.5){
+    multiplanarP = offsetBest.xyz;
+    offsetBest += offsetVector * ((step(getLayeredMultiplanarHeight(), offsetBest.w) * f) - (f * 0.5));
   }
-*/
+
+  multiplanarP = offsetBest.xyz;
 
 #else
 
@@ -432,7 +441,7 @@ void main(){
 
   multiplanarSetup();
 
-//  parallaxMapping();
+  parallaxMapping();
 
   vec4 albedo = vec4(0.0);
   vec4 normalHeight = vec4(0.0);
