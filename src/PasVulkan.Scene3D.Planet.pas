@@ -6487,32 +6487,15 @@ begin
                                      Planet.fVisualMeshLODOffsets[0],
                                      0,
                                      0);
-{      aCommandBuffer.CmdDrawIndexed(Planet.fTileMapResolution*
-                                     Planet.fTileMapResolution*
-                                     Planet.fVisualTileResolution*
-                                     Planet.fVisualTileResolution*
-                                     6,
-                                     1,0,0,0);}
-{      aCommandBuffer.CmdDraw(Planet.fTileMapResolution*
-                              Planet.fTileMapResolution*
-                              Planet.fVisualTileResolution*
-                              Planet.fVisualTileResolution,
-                              1,0,0);}
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsMeshVertexBuffer.Handle,@Offsets);
-       aCommandBuffer.CmdDrawIndexed(Planet.fTileMapResolution*
-                                     Planet.fTileMapResolution*
-                                     Planet.fPhysicsTileResolution*
-                                     Planet.fPhysicsTileResolution*
-                                     6,
-                                     1,0,0,0);
-{      aCommandBuffer.CmdDraw(Planet.fTileMapResolution*
-                              Planet.fTileMapResolution*
-                              Planet.fPhysicsTileResolution*
-                              Planet.fPhysicsTileResolution,
-                              1,0,0);}
+       aCommandBuffer.CmdDrawIndexed(Planet.fPhysicsMeshLODCounts[0],
+                                     1,
+                                     Planet.fPhysicsMeshLODOffsets[0],
+                                     0,
+                                     0);
       end;
      end;
 
