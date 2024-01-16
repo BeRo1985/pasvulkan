@@ -2819,6 +2819,7 @@ type EpvScene3D=class(Exception);
        fDefaultParticleTexture:TTexture;
        fGeneralComputeSampler:TpvVulkanSampler;
        fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetCullSimpleDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -3130,6 +3131,7 @@ type EpvScene3D=class(Exception);
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
+       property PlanetCullSimpleDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetCullSimpleDescriptorSetLayout;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -19649,6 +19651,8 @@ begin
 
   fPlanetDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(fVulkanDevice);
 
+  fPlanetCullSimpleDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetCullSimpleDescriptorSetLayout(fVulkanDevice);
+
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
   // Group - Vertices
@@ -19872,6 +19876,8 @@ begin
  FreeAndNil(fGeneralComputeSampler);
 
  FreeAndNil(fPlanetDescriptorSetLayout);
+
+ FreeAndNil(fPlanetCullSimpleDescriptorSetLayout);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 

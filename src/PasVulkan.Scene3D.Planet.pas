@@ -606,6 +606,33 @@ type TpvScene3DPlanets=class;
               public
                property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { TCullSimplePass } // Used by multiple TpvScene3DPlanet instances per renderer instance 
+            TCullSimplePass=class
+             public
+              type TPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    TileMapResolution:TpvUInt32;
+                    TileResolution:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+              private
+               fRenderer:TObject;
+               fRendererInstance:TObject;
+               fScene3D:TObject;
+               fVulkanDevice:TpvVulkanDevice;
+               fComputeShaderModule:TpvVulkanShaderModule;
+               fComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fPipeline:TpvVulkanComputePipeline;
+               fPipelineLayout:TpvVulkanPipelineLayout;
+               fPushConstants:TPushConstants;
+              public
+               constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+               destructor Destroy; override;               
+               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+              public
+               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TRenderPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance 
             TRenderPass=class
              public
@@ -776,6 +803,8 @@ type TpvScene3DPlanets=class;
        function HandleRelease:boolean;
        class function CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
+       class function CreatePlanetCullSimpleDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetCullSimpleDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        procedure BeginUpdate;
        procedure EndUpdate;
        procedure FlushUpdate;
@@ -4913,6 +4942,152 @@ begin
 
 end;
 
+            { TpvScene3DPlanet.TCullSimplePass } // Used by multiple TpvScene3DPlanet instances per renderer instance 
+{           TCullSimplePass=class
+             public
+              type TPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    TileMapResolution:TpvUInt32;
+                    TileResolution:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+              private
+               fRenderer:TObject;
+               fRendererInstance:TObject;
+               fScene3D:TObject;
+               fVulkanDevice:TpvVulkanDevice;
+               fComputeShaderModule:TpvVulkanShaderModule;
+               fComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fPipeline:TpvVulkanComputePipeline;
+               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+               fDescriptorPool:TpvVulkanDescriptorPool;
+               fDescriptorSet:TpvVulkanDescriptorSet;
+               fPipelineLayout:TpvVulkanPipelineLayout;
+               fPushConstants:TPushConstants;
+              public
+               constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject); reintroduce;
+               destructor Destroy; override;               
+               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+              public
+               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;}
+
+(*
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint baseViewIndex;
+  uint countViews;
+  uint tileMapResolution;
+  uint tileResolution;
+} pushConstants;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 0, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
+} uView;
+
+layout(set = 0, binding = 1, std430) buffer BoundingBoxes {
+  vec4 data[]; // pair-wise min/max, vec4 instead of vec3 for 16-byte alignment, so w is unused and zero in this case
+} boundingBoxes;
+
+layout(set = 0, binding = 2, std430) buffer BoundingSpheres {
+  vec4 data[]; // xyz = center, w = radius
+} boundingSpheres;
+
+/*
+// From Vulkan spec, just as reference: 
+struct VkDrawIndexedIndirectCommand {
+  uint indexCount;
+  uint instanceCount;
+  uint firstIndex;
+  int vertexOffset;
+  uint firstInstance;
+};
+*/
+
+struct DrawIndexedIndirectCommand {
+  uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = padding/unused, z = padding/unused, w = padding/unused
+  vec4 boundingSphere; // xyz = center, w = radius
+  uvec4 padding; // padding/unused
+}; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
+
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommands {
+  DrawIndexedIndirectCommand data[]; // 1-based, since 0 is used for counters and the like
+} outputDrawIndexedIndirectCommands;
+*)
+
+constructor TpvScene3DPlanet.TCullSimplePass.Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject);
+var Stream:TStream;
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_cull_simple_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TCullSimplePass.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetCullSimpleDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TCullSimplePass.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TCullSimplePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+begin
+end;
+
 { TpvScene3DPlanet.TRenderPass }
 
 constructor TpvScene3DPlanet.TRenderPass.Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aMode:TpvScene3DPlanet.TRenderPass.TMode);
@@ -6141,6 +6316,48 @@ begin
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetDescriptorPool');
 end;
 
+class function TpvScene3DPlanet.CreatePlanetCullSimpleDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+begin
+ result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
+ result.AddBinding(0,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(1,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(2,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.AddBinding(3,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetCullSimpleDescriptorSetLayout');
+end;
+
+class function TpvScene3DPlanet.CreatePlanetCullSimpleDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
+begin
+ result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
+                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                        aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),3*aCountInFlightFrames);
+ result.Initialize;
+ aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetCullSimpleDescriptorPool');
+end;
+       
 procedure TpvScene3DPlanet.BeginUpdate;
 begin
  TPasMPMultipleReaderSingleWriterSpinLock.AcquireWrite(fCommandBufferLock);
