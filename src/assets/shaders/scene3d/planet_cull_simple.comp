@@ -1,0 +1,163 @@
+#version 450 core
+
+#pragma shader_stage(compute)
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
+
+/* clang-format off */
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+  uint baseViewIndex;
+  uint countViews;
+  uint tileMapResolution;
+  uint tileResolution;
+} pushConstants;
+
+struct View {
+  mat4 viewMatrix;
+  mat4 projectionMatrix;
+  mat4 inverseViewMatrix;
+  mat4 inverseProjectionMatrix;
+};
+
+layout(set = 0, binding = 0, std140) uniform uboViews {
+  View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
+} uView;
+
+layout(set = 0, binding = 1, std430) buffer BoundingBoxes {
+  vec4 data[]; // pair-wise min/max, vec4 instead of vec3 for 16-byte alignment, so w is unused and zero in this case
+} boundingBoxes;
+
+layout(set = 0, binding = 2, std430) buffer BoundingSpheres {
+  vec4 data[]; // xyz = center, w = radius
+} boundingSpheres;
+
+/*
+// From Vulkan spec, just as reference: 
+struct VkDrawIndexedIndirectCommand {
+  uint indexCount;
+  uint instanceCount;
+  uint firstIndex;
+  int vertexOffset;
+  uint firstInstance;
+};
+*/
+
+struct DrawIndexedIndirectCommand {
+  uvec4 cmd0; // indexCount_instanceCount_firstIndex_vertexOffset; // x = indexCount, y = instanceCount, z = firstIndex, w = vertexOffset  
+  uvec4 cmd1; // firstInstance_padding0_padding1_padding2; // x = firstInstance, y = padding/unused, z = padding/unused, w = padding/unused
+  vec4 boundingSphere; // xyz = center, w = radius
+  uvec4 padding; // padding/unused
+}; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
+
+layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommands {
+  DrawIndexedIndirectCommand data[]; // 1-based, since 0 is used for counters and the like
+} outputDrawIndexedIndirectCommands;
+
+// The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
+// are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
+// forward approach in my opinion, so that almost everything is done on the GPU and is in the same place, as long as it don't hurts the performance
+// significantly.
+shared mat4 viewMatrices[8];
+shared mat4 projectionMatrices[8];
+shared vec4 inverseProjectionMatrixZData[8];
+shared float zNears[8]; 
+shared vec4 frustums[8];
+
+void main(){
+
+  uint localInvocationIndex = gl_LocalInvocationID.x;
+
+  // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
+  uint countViews = min(pushConstants.countViews, 8); 
+
+  if(localInvocationIndex < countViews){
+    
+    uint viewIndex = pushConstants.baseViewIndex + localInvocationIndex;
+
+    viewMatrices[localInvocationIndex] = uView.views[viewIndex].viewMatrix;
+
+    mat4 projectionMatrix = projectionMatrices[localInvocationIndex] = uView.views[viewIndex].projectionMatrix;
+
+    inverseProjectionMatrixZData[localInvocationIndex] = vec4(uView.views[viewIndex].inverseProjectionMatrix[2].zw, uView.views[viewIndex].inverseProjectionMatrix[3].zw);
+
+    // Get z near from projection matrix 
+    zNears[localInvocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
+
+    mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
+
+    frustums[localInvocationIndex] = vec4(
+      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
+      normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
+    );
+      
+  }
+
+  memoryBarrierShared();
+  groupMemoryBarrier();
+  barrier(); 
+
+  const uint tileMapIndex = gl_GlobalInvocationID.x;  
+
+  const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
+
+  if(tileMapIndex < tileMapSize){
+
+    vec4 boundingSphere = boundingSpheres.data[tileMapIndex];
+
+    bool visible = false;
+    for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+      vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+      vec4 frustum = frustums[viewIndex];
+      if((((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
+         (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
+         (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w)){
+        visible = true;
+        break;
+      }
+    }
+      
+    if(visible){
+
+      const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
+
+      const uint lod = 0u;
+
+      const uint tileResolution = pushConstants.tileResolution >> lod;
+
+      const uint tileSize = tileResolution * tileResolution;
+
+      const uint countTileIndices = tileSize * 6u;
+
+      uint tileIndexOffset = tileMapIndex * tileSize;
+      for(uint lodCounter = 0u; lodCounter < lod; lodCounter++){
+        tileIndexOffset += (tileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
+      }
+
+      outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
+        uvec4(
+          countTileIndices, // indexCount
+          1u, // instanceCount
+          tileIndexOffset, // firstIndex
+          0u  // vertexOffset
+        ),
+        uvec4(
+          0u, // firstInstance
+          0u, // padding/unused
+          0u, // padding/unused
+          0u  // padding/unused
+        ),
+        boundingSphere,
+        uvec4(0u) // padding/unused
+      );
+
+    }
+    
+  }
+
+}
+

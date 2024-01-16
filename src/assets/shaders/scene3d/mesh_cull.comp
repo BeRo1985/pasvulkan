@@ -272,7 +272,7 @@ void main(){
  
     vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
 
-    for(uint viewIndex = 0u, bit = 1u; viewIndex < countViews; viewIndex++, bit <<= 1u){
+    for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
 
       vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 

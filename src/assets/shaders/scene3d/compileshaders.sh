@@ -339,6 +339,8 @@ compileshaderarguments=(
 
   "-V planet_ray_intersection.comp -o ${tempPath}/planet_ray_intersection_comp.spv"
 
+  "-V planet_cull_simple.comp -o ${tempPath}/planet_cull_simple_comp.spv"
+
   "-V planet_renderpass.vert -o ${tempPath}/planet_renderpass_vert.spv"
   "-V planet_renderpass.vert -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_vert.spv"
   "-V planet_renderpass.vert -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_vert.spv"
