@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
@@ -93,6 +94,7 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
+       fPlanetCullSimplePass:TpvScene3DPlanet.TCullSimplePass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -136,10 +138,15 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
+ fPlanetCullSimplePass:=TpvScene3DPlanet.TCullSimplePass.Create(fInstance.Renderer,
+                                                                fInstance,
+                                                                fInstance.Renderer.Scene3D);
+
 end;
 
 procedure TpvScene3DRendererPassesMeshCullPass0ComputePass.ReleasePersistentResources;
 begin
+ FreeAndNil(fPlanetCullSimplePass);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
@@ -194,6 +201,8 @@ begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  PreviousInFlightFrameIndex:=FrameGraph.DrawPreviousInFlightFrameIndex;
+
+ fPlanetCullSimplePass.Execute(aCommandBuffer,aInFlightFrameIndex);
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
