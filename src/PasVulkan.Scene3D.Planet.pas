@@ -5120,14 +5120,13 @@ begin
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
         fPushConstants.TileResolution:=Planet.fVisualTileResolution;
 
-{       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+        aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                              fPipelineLayout.Handle,
                                              1,
                                              1,
-                                             @fDescriptorSets[aInFlightFrameIndex].Handle,
+                                             @RendererViewInstance.fDescriptorSets[aInFlightFrameIndex].Handle,
                                              0,
                                              nil);
-}
 
         aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                         TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
