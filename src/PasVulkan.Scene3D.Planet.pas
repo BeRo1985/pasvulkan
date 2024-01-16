@@ -5046,10 +5046,20 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TCullSimplePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-var PlanetIndex:TpvSizeInt;
+type TRenderViewPassKind=
+      (
+       FinalView=0,
+       CascadedShadowMap=1
+      );
+var PlanetIndex,RenderPassIndex,ViewBaseIndex,CountViews:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
+    RenderViewPassKind:TRenderViewPassKind;
+    InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
 begin
+
+ InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
  TpvScene3D(fScene3D).Planets.Lock.Acquire;
  try
@@ -5077,6 +5087,59 @@ begin
                                            @fDescriptorSets[aInFlightFrameIndex].Handle,
                                            0,
                                            nil);
+
+     end;
+
+     for RenderViewPassKind:=Low(TRenderViewPassKind) to High(TRenderViewPassKind) do begin
+
+      case RenderViewPassKind of
+       TRenderViewPassKind.FinalView:begin
+        RenderPassIndex:=InFlightFrameState^.ViewRenderPassIndex;
+        ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
+        CountViews:=InFlightFrameState^.CountFinalViews;
+       end;
+       TRenderViewPassKind.CascadedShadowMap:begin
+        RenderPassIndex:=InFlightFrameState^.CascadedShadowMapRenderPassIndex;
+        ViewBaseIndex:=InFlightFrameState^.CascadedShadowMapViewIndex;
+        CountViews:=InFlightFrameState^.CountCascadedShadowMapViews;
+       end;
+       else begin
+        break;
+       end;
+      end;
+
+      if (ViewBaseIndex>=0) and (CountViews>0) then begin
+
+       if Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
+                                                     RendererViewInstance) then begin
+
+        fPushConstants.ViewBaseIndex:=ViewBaseIndex;
+        fPushConstants.CountViews:=CountViews;
+        fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
+        fPushConstants.TileResolution:=Planet.fVisualTileResolution;
+
+{       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                             fPipelineLayout.Handle,
+                                             1,
+                                             1,
+                                             @fDescriptorSets[aInFlightFrameIndex].Handle,
+                                             0,
+                                             nil);
+}
+
+        aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                        0,
+                                        SizeOf(TPushConstants),
+                                        @fPushConstants);
+
+        aCommandBuffer.CmdDispatch((CountViews+255) shr 8,
+                                   1,
+                                   1);
+
+       end;
+
+      end;
 
      end;
 
