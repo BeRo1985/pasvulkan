@@ -669,18 +669,18 @@ type TpvScene3DPlanets=class;
                    TKey=record
                     public
                      fRendererInstance:TObject;
-                     fRenderPassIndex:TpvInt32;
+                     fRenderPassIndex:TpvSizeInt;
                     public
-                     constructor Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+                     constructor Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
                    end;
                    PKey=^TKey;
              private
               fPlanet:TpvScene3DPlanet;
               fRendererInstance:TObject;
-              fRenderPassIndex:TpvUInt32;
+              fRenderPassIndex:TpvSizeInt;
               fKey:TKey;
              public
-              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -782,6 +782,7 @@ type TpvScene3DPlanets=class;
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure FrameUpdate(const aInFlightFrameIndex:TpvSizeInt);
+       procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
@@ -5595,7 +5596,7 @@ end;
 
 { TpvScene3DPlanet.TRendererViewInstance.TKey }
 
-constructor TpvScene3DPlanet.TRendererViewInstance.TKey.Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+constructor TpvScene3DPlanet.TRendererViewInstance.TKey.Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
 begin
  fRendererInstance:=aRendererInstance;
  fRenderPassIndex:=aRenderPassIndex;
@@ -5603,7 +5604,7 @@ end;
 
 { TpvScene3DPlanet.TRendererViewInstance }
 
-constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
 begin
  inherited Create;
  fPlanet:=aPlanet;
@@ -6477,6 +6478,32 @@ begin
 
    fInFlightFrameReady[aInFlightFrameIndex]:=true;
 
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
+var RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+begin
+
+ if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+
+  fRendererViewInstanceListLock.Acquire;
+  try
+
+   if not fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(aRendererInstance,aRenderPassIndex),
+                                              RendererViewInstance) then begin
+    RendererViewInstance:=TpvScene3DPlanet.TRendererViewInstance.Create(self,aRendererInstance,aRenderPassIndex);
+   end;
+
+   if assigned(RendererViewInstance) then begin
+
+   end;
+
+  finally
+   fRendererViewInstanceListLock.Release;
   end;
 
  end;

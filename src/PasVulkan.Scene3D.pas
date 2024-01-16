@@ -21939,6 +21939,7 @@ var Index:TpvSizeInt;
     AABBTreeState:TpvBVHDynamicAABBTree.PState;
     View:TpvScene3D.PView;
     DrawChoreographyBatchItems:TDrawChoreographyBatchItems;
+    Planet:TpvScene3DPlanet;
 begin
 
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
@@ -22014,6 +22015,18 @@ begin
 
   finally
    Frustums:=nil;
+  end;
+
+  fPlanets.Lock.Acquire;
+  try
+   for Index:=0 to fPlanets.Count-1 do begin
+    Planet:=fPlanets[Index];
+    if Planet.Ready then begin
+     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex);
+    end;
+   end;
+  finally
+   fPlanets.Lock.Release;
   end;
 
  end;
