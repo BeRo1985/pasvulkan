@@ -1196,6 +1196,7 @@ begin
    if fUseDepthPrepass then begin
 
     fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
+                             InFlightFrameState^.ViewRenderPassIndex,
                              InFlightFrameState^.FinalViewIndex,
                              InFlightFrameState^.CountFinalViews,
                              aCommandBuffer);//}
@@ -1239,6 +1240,7 @@ begin
                 aCommandBuffer);
 
    fPlanetOpaquePass.Draw(aInFlightFrameIndex,
+                          InFlightFrameState^.ViewRenderPassIndex,
                           InFlightFrameState^.FinalViewIndex,
                           InFlightFrameState^.CountFinalViews,
                           aCommandBuffer);

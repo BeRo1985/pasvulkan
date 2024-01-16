@@ -490,6 +490,7 @@ begin
   if fInstance.Renderer.ShadowMode<>TpvScene3DRendererShadowMode.None then begin
 
    fPlanetShadowMapPass.Draw(aInFlightFrameIndex,
+                             InFlightFrameState^.CascadedShadowMapRenderPassIndex,
                              InFlightFrameState^.CascadedShadowMapViewIndex,
                              InFlightFrameState^.CountCascadedShadowMapViews,
                              aCommandBuffer);

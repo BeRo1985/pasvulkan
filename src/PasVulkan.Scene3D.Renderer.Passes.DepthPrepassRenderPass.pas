@@ -503,6 +503,7 @@ begin
   end else begin
 
    fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
+                            InFlightFrameState^.ViewRenderPassIndex,
                             InFlightFrameState^.FinalViewIndex,
                             InFlightFrameState^.CountFinalViews,
                             aCommandBuffer);

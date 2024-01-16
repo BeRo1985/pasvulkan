@@ -134,8 +134,8 @@ type TpvScene3DPlanets=class;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
             TSizeIntArray=array of TpvSizeInt;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
-             Direct:Boolean=false;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
+             Direct:Boolean=true;
        type TMeshVertex=record
              PositionAbsoluteHeight:TpvVector4;
              NormalRelativeHeight:TpvVector4;
@@ -688,7 +688,7 @@ type TpvScene3DPlanets=class;
                                           const aHeight:TpvInt32;
                                           const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
               procedure ReleaseResources;
-              procedure Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Draw(const aInFlightFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -5685,7 +5685,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 const Offsets:array[0..0] of TVkUInt32=(0);
 var PlanetIndex,Level:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -5699,7 +5699,17 @@ var PlanetIndex,Level:TpvSizeInt;
     LeftAnchor,RightAnchor,DownAnchor,UpAnchor,MinXY,MaxXY:TpvVector2;
     Rect:TpvRect;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
+    RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+    vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
+
+ if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount) then begin
+  vkCmdDrawIndexedIndirectCount:=TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCount;
+ end else if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCountKHR) then begin
+  vkCmdDrawIndexedIndirectCount:=addr(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawIndexedIndirectCountKHR);
+ end else begin
+  vkCmdDrawIndexedIndirectCount:=nil;
+ end;
 
  TpvScene3D(fScene3D).Planets.Lock.Acquire;
  try
@@ -5861,11 +5871,23 @@ begin
       TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
        aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);
-       aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
-                                     1,
-                                     Planet.fVisualMeshLODOffsets[0],
-                                     0,
-                                     0);
+       if assigned(vkCmdDrawIndexedIndirectCount) and
+          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
+                                                     RendererViewInstance) then begin
+        vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                      RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                      16*SizeOf(TVkUInt32),
+                                      RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                      0,
+                                      Planet.TileMapResolution*Planet.TileMapResolution,
+                                      16*SizeOf(TVkUInt32));
+       end else begin
+        aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
+                                      1,
+                                      Planet.fVisualMeshLODOffsets[0],
+                                      0,
+                                      0);
+       end;
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
