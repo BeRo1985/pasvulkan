@@ -142,9 +142,10 @@ void main(){
 
       const uint countTileIndices = tileSize * 6u;
 
-      uint tileIndexOffset = tileMapIndex * tileSize;
+      const uint lod0TileSize = pushConstants.tileResolution * pushConstants.tileResolution;
+      uint tileIndexOffset = tileMapIndex * countTileIndices;
       for(uint lodCounter = 0u; lodCounter < lod; lodCounter++){
-        tileIndexOffset += (tileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
+        tileIndexOffset += (lod0TileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
       }
 
       outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
