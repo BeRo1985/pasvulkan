@@ -662,6 +662,33 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { TRendererViewInstance }
+            TRendererViewInstance=class
+             public
+              type { TKey }
+                   TKey=record
+                    public
+                     fRendererInstance:TObject;
+                     fRenderPassIndex:TpvInt32;
+                    public
+                     constructor Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+                   end;
+                   PKey=^TKey;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fRendererInstance:TObject;
+              fRenderPassIndex:TpvUInt32;
+              fKey:TKey;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+              destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
+            end;
+            { TRendererViewInstances}
+            TRendererViewInstances=TpvObjectGenericList<TRendererViewInstance>;
+            { TRendererViewInstances}
+            TRendererViewInstanceHashMap=TpvHashMap<TRendererViewInstance.TKey,TRendererViewInstance>;
       private
        fScene3D:TObject;
        fVulkanDevice:TpvVulkanDevice;
@@ -730,6 +757,9 @@ type TpvScene3DPlanets=class;
        fPointerToMaterials:PMaterials;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fRendererViewInstanceListLock:TPasMPCriticalSection;
+       fRendererViewInstances:TRendererViewInstances;
+       fRendererViewInstanceHashMap:TRendererViewInstanceHashMap;
       public
        constructor Create(const aScene3D:TObject;
                           const aHeightMapResolution:TpvInt32=4096;
@@ -5563,6 +5593,60 @@ begin
 
 end;
 
+{ TpvScene3DPlanet.TRendererViewInstance.TKey }
+
+constructor TpvScene3DPlanet.TRendererViewInstance.TKey.Create(const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+begin
+ fRendererInstance:=aRendererInstance;
+ fRenderPassIndex:=aRenderPassIndex;
+end;
+
+{ TpvScene3DPlanet.TRendererViewInstance }
+
+constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvInt32);
+begin
+ inherited Create;
+ fPlanet:=aPlanet;
+ fRendererInstance:=aRendererInstance;
+ fRenderPassIndex:=aRenderPassIndex;
+ fKey:=TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,fRenderPassIndex);
+end;
+
+destructor TpvScene3DPlanet.TRendererViewInstance.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3DPlanet.TRendererViewInstance.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fPlanet) and assigned(fPlanet.fRendererViewInstanceListLock) then begin
+  fPlanet.fRendererViewInstanceListLock.Acquire;
+  try
+   fPlanet.fRendererViewInstances.Add(self);
+   fPlanet.fRendererViewInstanceHashMap.Add(fKey,self);
+  finally
+   fPlanet.fRendererViewInstanceListLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3DPlanet.TRendererViewInstance.BeforeDestruction;
+begin
+ if assigned(fPlanet) and assigned(fPlanet.fRendererViewInstanceListLock) then begin
+  fPlanet.fRendererViewInstanceListLock.Acquire;
+  try
+   fPlanet.fRendererViewInstanceHashMap.Delete(fKey);
+   fPlanet.fRendererViewInstances.RemoveWithoutFree(self);
+  finally
+   fPlanet.fRendererViewInstanceListLock.Release;
+  end;
+ end;
+ inherited BeforeDestruction;
+end;
+
+{ TpvScene3DPlanet.TRendererViewInstanceList }
+
 { TpvScene3DPlanet }
 
 constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
@@ -5801,6 +5885,12 @@ begin
  
  end;
 
+ fRendererViewInstanceListLock:=TPasMPCriticalSection.Create;
+
+ fRendererViewInstances:=TRendererViewInstances.Create(false);
+
+ fRendererViewInstanceHashMap:=TRendererViewInstanceHashMap.Create(nil);
+
  fReady:=true;
 
 end;
@@ -5808,7 +5898,18 @@ end;
 destructor TpvScene3DPlanet.Destroy;
 var InFlightFrameIndex:TpvSizeInt;
 begin
- 
+
+ fRendererViewInstanceListLock.Acquire;
+ try
+  while fRendererViewInstances.Count>0 do begin
+   fRendererViewInstances[fRendererViewInstances.Count-1].Free;
+  end;
+ finally
+  fRendererViewInstanceListLock.Release;
+ end;
+
+ FreeAndNil(fRendererViewInstanceListLock);
+
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
  end;

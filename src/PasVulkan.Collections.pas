@@ -272,6 +272,7 @@ type TpvDynamicArray<T>=record
        function Extract(const pIndex:TpvSizeInt):T;
        function ExtractIndex(const pIndex:TpvSizeInt):T;
        procedure Remove(const pItem:T);
+       procedure RemoveWithoutFree(const pItem:T);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
        function GetEnumerator:TValueEnumerator;
        property Count:TpvSizeInt read fCount write SetCount;
@@ -2104,6 +2105,15 @@ begin
  end;
 end;
 
+procedure TpvObjectGenericList<T>.RemoveWithoutFree(const pItem:T);
+var Index:TpvSizeInt;
+begin
+ Index:=IndexOf(pItem);
+ if Index>=0 then begin
+  ExtractIndex(Index);
+ end;
+end;
+
 procedure TpvObjectGenericList<T>.Exchange(const pIndex,pWithIndex:TpvSizeInt);
 var Temporary:T;
 begin
@@ -2115,7 +2125,7 @@ begin
  fItems[pWithIndex]:=Temporary;
 end;
 
-function TpvObjectGenericList<T>.GetEnumerator: TValueEnumerator;
+function TpvObjectGenericList<T>.GetEnumerator:TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
 end;
