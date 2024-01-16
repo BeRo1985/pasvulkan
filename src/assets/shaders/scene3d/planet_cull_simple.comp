@@ -28,11 +28,11 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
-layout(set = 0, binding = 1, std430) buffer BoundingBoxes {
+layout(set = 1, binding = 0, std430) buffer BoundingBoxes {
   vec4 data[]; // pair-wise min/max, vec4 instead of vec3 for 16-byte alignment, so w is unused and zero in this case
 } boundingBoxes;
 
-layout(set = 0, binding = 2, std430) buffer BoundingSpheres {
+layout(set = 1, binding = 1, std430) buffer BoundingSpheres {
   vec4 data[]; // xyz = center, w = radius
 } boundingSpheres;
 
@@ -54,7 +54,7 @@ struct DrawIndexedIndirectCommand {
   uvec4 padding; // padding/unused
 }; // 64 bytes per draw indexed indirect command, dividable by 32 bytes for better GPU cache line alignment 
 
-layout(set = 0, binding = 3, std430) buffer OutputDrawIndexedIndirectCommands {
+layout(set = 1, binding = 2, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand data[]; // 1-based, since 0 is used for counters and the like
 } outputDrawIndexedIndirectCommands;
 
