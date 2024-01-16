@@ -679,6 +679,8 @@ type TpvScene3DPlanets=class;
               fRendererInstance:TObject;
               fRenderPassIndex:TpvSizeInt;
               fKey:TKey;
+              fVulkanVisiblityBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+              fVulkanDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
               destructor Destroy; override;
@@ -5605,16 +5607,69 @@ end;
 { TpvScene3DPlanet.TRendererViewInstance }
 
 constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
+var Index:TpvSizeInt;
 begin
  inherited Create;
+
  fPlanet:=aPlanet;
+
  fRendererInstance:=aRendererInstance;
+
  fRenderPassIndex:=aRenderPassIndex;
+
  fKey:=TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,fRenderPassIndex);
+
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  fVulkanVisiblityBuffers[Index]:=nil;
+ end;
+
+ for Index:=0 to TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1 do begin
+  fVulkanVisiblityBuffers[Index]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                         (((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         0,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         []
+                                                        );
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisiblityBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TRendererViewInstance.fVulkanVisiblityBuffers['+IntToStr(Index)+']');
+ end;
+
+ fVulkanDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                 ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+1)*(SizeOf(TpvUInt32)*16),
+                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                 TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                 [],
+                                                                 0,
+                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                 0,
+                                                                 0,
+                                                                 0,
+                                                                 0,
+                                                                 0,
+                                                                 0,
+                                                                 []
+                                                                );
+ fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TRendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer');
+
 end;
 
 destructor TpvScene3DPlanet.TRendererViewInstance.Destroy;
+var Index:TpvSizeInt;
 begin
+ for Index:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fVulkanVisiblityBuffers[Index]);
+ end;
+ FreeAndNil(fVulkanDrawIndexedIndirectCommandBuffer);
  inherited Destroy;
 end;
 
@@ -5836,7 +5891,7 @@ begin
                                                                         0,
                                                                         0,
                                                                         [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
-                                                                       );     
+                                                                       );
   end; 
 
   fDescriptorPool:=TpvScene3DPlanet.CreatePlanetDescriptorPool(fVulkanDevice,TpvScene3D(fScene3D).CountInFlightFrames);
