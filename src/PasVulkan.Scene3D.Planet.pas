@@ -5600,7 +5600,15 @@ begin
  fPipeline.RasterizationState.DepthClampEnable:=false;
  fPipeline.RasterizationState.RasterizerDiscardEnable:=false;
  fPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
- fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+ case fMode of
+  TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+  TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+   fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+  end;
+  else begin
+   fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+  end;
+ end;
  fPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
  fPipeline.RasterizationState.DepthBiasEnable:=false;
  fPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
