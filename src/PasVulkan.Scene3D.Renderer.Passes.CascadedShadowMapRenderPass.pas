@@ -422,8 +422,8 @@ begin
  end;
 
  fPlanetShadowMapPass.AllocateResources(fVulkanRenderPass,
-                                        fInstance.ScaledWidth,
-                                        fInstance.ScaledHeight,
+                                        fInstance.CascadedShadowMapWidth,
+                                        fInstance.CascadedShadowMapHeight,
                                         fInstance.Renderer.ShadowMapSampleCountFlagBits);
 
 end;

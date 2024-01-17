@@ -199,7 +199,7 @@ void main(){
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
       vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
       vec4 fastFrustum = fastFrustums[viewIndex];
-      if((((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
+      if(//(((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
          (((viewSpaceBoundingSphere.z * fastFrustum.y) - (abs(viewSpaceBoundingSphere.x) * fastFrustum.x)) > -viewSpaceBoundingSphere.w) &&
          (((viewSpaceBoundingSphere.z * fastFrustum.w) - (abs(viewSpaceBoundingSphere.y) * fastFrustum.z)) > -viewSpaceBoundingSphere.w)){
         vec3 viewSpaceAABBMin = aabbMin;
