@@ -292,13 +292,14 @@ void main(){
       // Additional LOD stuff for the whole planet sphere itself
       float planetSphereScreenFillScale = 0.0;
       for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
-#if 1          
-        mat4 modelViewProjectionMatrix = projectionMatrices[viewIndex] * viewMatrices[viewIndex] * pushConstants.modelMatrix;
+#if 1         
+        vec4 planetSphereCenter = (viewMatrices[viewIndex] * pushConstants.modelMatrix) * vec4(0.0, 0.0, 0.0, 1.0);
+        planetSphereCenter.xyz /= planetSphereCenter.w;
         vec4 planetCorners[4] = vec4[4]( 
-          modelViewProjectionMatrix * vec4(-pushConstants.radius, -pushConstants.radius, 0.0, 1.0),
-          modelViewProjectionMatrix * vec4(pushConstants.radius, -pushConstants.radius, 0.0, 1.0),
-          modelViewProjectionMatrix * vec4(-pushConstants.radius, pushConstants.radius, 0.0, 1.0),
-          modelViewProjectionMatrix * vec4(pushConstants.radius, pushConstants.radius, 0.0, 1.0)
+          projectionMatrices[viewIndex] * vec4(vec3(planetSphereCenter.xyz + vec3(-pushConstants.radius, -pushConstants.radius, 0.0)), 1.0),
+          projectionMatrices[viewIndex] * vec4(vec3(planetSphereCenter.xyz + vec3(-pushConstants.radius, pushConstants.radius, 0.0)), 1.0),
+          projectionMatrices[viewIndex] * vec4(vec3(planetSphereCenter.xyz + vec3(pushConstants.radius, -pushConstants.radius, 0.0)), 1.0),
+          projectionMatrices[viewIndex] * vec4(vec3(planetSphereCenter.xyz + vec3(pushConstants.radius, pushConstants.radius, 0.0)), 1.0)
         );
         planetCorners[0].xy /= planetCorners[0].w;
         planetCorners[1].xy /= planetCorners[1].w;
@@ -316,7 +317,8 @@ void main(){
 #else
         vec4 planetSphereCenter = (viewMatrices[viewIndex] * pushConstants.modelMatrix) * vec4(0.0, 0.0, 0.0, 1.0);
         planetSphereCenter.xyz /= planetSphereCenter.w;
-        if(projectSphere(planetSphereCenter.xyz, pushConstants.radius, zNears[0], projectionMatrices[viewIndex], aabb2D)){
+        vec4 aabb2D;
+        if(projectSphere(planetSphereCenter.xyz, pushConstants.radius, zNears[viewIndex], projectionMatrices[viewIndex], aabb2D)){
           planetSphereScreenFillScale = max(planetSphereScreenFillScale, length(aabb2D.zw - aabb2D.xy) * 0.25);
         }
 #endif
@@ -326,14 +328,14 @@ void main(){
       }
 
 #if defined(TILE_SCREEN_FILL_SCALE)
-      const uint lod = uint(max(min(max(round(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u))),
-                                min(max(round(pow(max(0.0, log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 2.0)), 0.0), max(0.0, float(countLODLevels - 2u)))));
+      const uint lod = uint(max(min(max(floor(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u))),
+                                min(max(floor(pow(max(0.0, log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 2.0)), 0.0), max(0.0, float(countLODLevels - 2u)))));
 #else
-      const uint lod = uint(min(max(round(pow(max(0.0, log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 2.0)), 0.0), max(0.0, float(countLODLevels - 2u))));
+      const uint lod = uint(min(max(floor(pow(max(0.0, log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 2.0)), 0.0), max(0.0, float(countLODLevels - 2u))));
 #endif                                      
 #else
 #if defined(TILE_SCREEN_FILL_SCALE)
-      const uint lod = uint(min(max(round(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u)))); 
+      const uint lod = uint(min(max(floor(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u)))); 
 #else
       const uint lod = 0u;
 #endif      
