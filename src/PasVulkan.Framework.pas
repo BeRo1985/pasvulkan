@@ -12707,14 +12707,17 @@ begin
         ((aMemoryRequiredHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags)) and
         ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
         ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-        ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
+        ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
+        ((not (TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunkFlags)) or
+         (TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunk.fMemoryChunkFlags)) and
+//      ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped,TpvVulkanDeviceMemoryChunkFlag.BufferDeviceAddress])) and
         (not (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags)) then begin
 
       CurrentCost:=TPasMPMath.PopulationCount(aMemoryPreferredPropertyFlags and not MemoryChunk.fMemoryPropertyFlags)+
                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryPropertyFlags and aMemoryPreferredNotPropertyFlags)+
                    TPasMPMath.PopulationCount(aMemoryPreferredHeapFlags and not MemoryChunk.fMemoryHeapFlags)+
                    TPasMPMath.PopulationCount(MemoryChunk.fMemoryHeapFlags and aMemoryPreferredNotHeapFlags)+
-                   TPasMPMath.PopulationCount((ord(TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe in MemoryChunkFlags) and 1) and not (ord(TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunk.fMemoryChunkFlags) and 1));
+                   TPasMPMath.PopulationCount((ord((TpvVulkanDeviceMemoryChunkFlag.PersistentMappedIfPossibe in MemoryChunkFlags) or (TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunkFlags)) and 1) and not (ord(TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in MemoryChunk.fMemoryChunkFlags) and 1));
 
       if CurrentCost<BestCost then begin
 
@@ -12775,7 +12778,7 @@ begin
       if not assigned(result) then begin
        FreeAndNil(MemoryChunk);
       end;
-     end;
+     end;{}
 
      // When a new fresh allocation would have higher costs or it even did failed, then try to
      // allocate a block in the best found memory chunk with the lowest overall cost.
