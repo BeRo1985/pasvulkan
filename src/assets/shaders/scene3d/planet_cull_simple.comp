@@ -209,8 +209,16 @@ void main(){
         mat4 modelViewMatrix = viewMatrices[viewIndex] * pushConstants.modelMatrix;
         aabbTransform(viewSpaceAABBMin, viewSpaceAABBMax, modelViewMatrix);
         if(frustumCullingAABBTest(frustums[viewIndex], viewSpaceAABBMin, viewSpaceAABBMax)){
-          visible = true;
-          break;
+          
+          // Poor-man backface culling for avoiding to render the backside of the planet sphere, which is not visible anyway.
+          // With 120 degrees angle, where -0.5 is cos(120.0*(PI/180.0)), as threshold for backface culling for minimizing false positives.
+          vec4 centerPoint = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+          centerPoint.xyz /= centerPoint.w;
+          if(normalize(viewSpaceBoundingSphere.xyz - centerPoint.xyz).z >= -0.5){ 
+            visible = true;
+            break;
+          }
+
         }
       }
     }
