@@ -615,6 +615,7 @@ type TpvScene3DPlanets=class;
                     CountViews:TpvUInt32;
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
+                    Radius:TpvFloat;
                    end;
                    PPushConstants=^TPushConstants;
               private
@@ -5030,11 +5031,11 @@ begin
 
  FreeAndNil(fPipeline);
 
- FreeAndNil(fDescriptorPool);
-
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
  end;
+
+ FreeAndNil(fDescriptorPool);
 
  FreeAndNil(fPipelineLayout);
 
@@ -5122,6 +5123,7 @@ begin
         fPushConstants.CountViews:=CountViews;
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
         fPushConstants.TileResolution:=Planet.fVisualTileResolution;
+        fPushConstants.Radius:=Planet.fTopRadius;
 
         BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
