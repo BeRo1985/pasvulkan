@@ -5172,7 +5172,7 @@ begin
                                         SizeOf(TPushConstants),
                                         @fPushConstants);
 
-        aCommandBuffer.CmdDispatch((CountViews+255) shr 8,
+        aCommandBuffer.CmdDispatch(((Planet.TileMapResolution*Planet.TileMapResolution)+255) shr 8,
                                    1,
                                    1);
 
