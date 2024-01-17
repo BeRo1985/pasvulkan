@@ -17,6 +17,7 @@ layout(push_constant) uniform PushConstants {
   uint countViews;
   uint tileMapResolution;
   uint tileResolution;
+  float radius;
 } pushConstants;
 
 struct View {
@@ -137,6 +138,39 @@ void aabbTransform(inout vec3 aabbMin, inout vec3 aabbMax, mat4 m){
   }
 }
 
+bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
+
+  if(((-center.z) - radius) < zNear){
+
+    return false;
+
+  }else{
+
+    vec3 right = (projectionMatrix * vec4(vec3(-center.z, 0.0, center.x) * (radius / sqrt(dot(center, center) - (radius * radius))), 0.0)).xyw;
+    vec3 up = (projectionMatrix * vec2(0.0, radius).xyxx).xyw;
+
+    vec3 anchorCenter = (projectionMatrix * vec4(center, 1.0)).xyw;
+
+    vec2 leftAnchor = (anchorCenter.xy - right.xy) / (anchorCenter.z - right.z);
+    vec2 rightAnchor = (anchorCenter.xy + right.xy) / (anchorCenter.z + right.z);
+    vec2 downAnchor = (anchorCenter.xy - up.xy) / (anchorCenter.z - up.z);
+    vec2 upAnchor = (anchorCenter.xy + up.xy) / (anchorCenter.z + up.z);
+
+    aabb = fma(
+      vec4(
+        min(min(min(leftAnchor, rightAnchor), downAnchor), upAnchor),
+        max(max(max(leftAnchor, rightAnchor), downAnchor), upAnchor)
+      ),
+      vec4(0.5),
+      vec4(0.5)
+    );
+
+    return true;
+
+  }
+
+}
+
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
 // are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
 // forward approach in my opinion, so that almost everything is done on the GPU and is in the same place, as long as it don't hurts the performance
@@ -246,6 +280,15 @@ void main(){
         float screenFillScale = length(aabb2DMax - aabb2DMin);
 
         const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
+
+        {
+          vec4 aabb2D;
+          vec4 planetSphereCenter = pushConstants.modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+          planetSphereCenter.xyz /= planetSphereCenter.w;
+          if(projectSphere(planetSphereCenter.xyz, pushConstants.radius, zNears[0], projectionMatrices[0], aabb2D)) {
+            screenFillScale = min(screenFillScale, pow(length(aabb2D.zw - aabb2D.xy), 2.0));
+          }
+        }
 
         const uint lod = uint(min(max(round(log2(1.0 / clamp(screenFillScale, 1e-6, 1.0))), 0.0), float(countLODLevels - 1u))); 
 
