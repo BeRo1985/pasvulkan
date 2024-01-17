@@ -150,6 +150,8 @@ shared Frustum frustums[8];
 
 void main(){
 
+  const uint countLODLevels = uint(log2(float(pushConstants.tileResolution)));
+
   uint localInvocationIndex = gl_LocalInvocationID.x;
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
@@ -215,39 +217,60 @@ void main(){
       
     if(visible){
 
-      const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
-
-      uint lod = 0u;
-      // TODO: LOD-calculation
-
-      const uint tileResolution = pushConstants.tileResolution >> lod;
-
-      const uint tileSize = tileResolution * tileResolution;
-
-      const uint countTileIndices = tileSize * 6u;
-
-      const uint lod0TileSize = pushConstants.tileResolution * pushConstants.tileResolution;
-      uint tileIndexOffset = tileMapIndex * countTileIndices;
-      for(uint lodCounter = 0u; lodCounter < lod; lodCounter++){
-        tileIndexOffset += (lod0TileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
+      vec2 aabb2DMin, aabb2DMax;
+      {
+        mat4 modelViewProjectionMatrix = projectionMatrices[0] * viewMatrices[0] * pushConstants.modelMatrix;
+        for(uint cornerIndex = 0u; cornerIndex < 8u; cornerIndex++){
+          vec4 corner = modelViewProjectionMatrix * vec4(mix(aabbMin, aabbMax, vec3(greaterThanEqual(uvec3(cornerIndex & 1u, (cornerIndex >> 1u) & 1u, (cornerIndex >> 2u) & 1u), uvec3(1u)))), 1.0);
+          corner.xy = fma(corner.xy / corner.w, vec2(0.5), vec2(0.5)); // Perspective divide and transform to 0.0 .. 1.0 range
+          if(cornerIndex == 0u){
+            aabb2DMin = aabb2DMax = corner.xy;
+          }else{
+            aabb2DMin = min(aabb2DMin, corner.xy);
+            aabb2DMax = max(aabb2DMax, corner.xy);
+          }
+        }
       }
+      
+      // Safe-check if the 2D projected AABB is visible at all, just for to be sure
+      if(!(all(greaterThan(aabb2DMin, vec2(1.0))) || all(lessThan(aabb2DMax, vec2(0.0))))){
 
-      outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
-        uvec4(
-          countTileIndices, // indexCount
-          1u, // instanceCount
-          tileIndexOffset, // firstIndex
-          0u  // vertexOffset
-        ),
-        uvec4(
-          0u, // firstInstance
-          0u, // padding/unused
-          0u, // padding/unused
-          0u  // padding/unused
-        ),
-        boundingSphere,
-        uvec4(0u) // padding/unused
-      );
+        float screenFillScale = length(aabb2DMax - aabb2DMin);
+
+        const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
+
+        const uint lod = uint(min(max(round(log2(1.0 / clamp(screenFillScale, 1e-6, 1.0))), 0.0), float(countLODLevels - 1u))); 
+
+        const uint tileResolution = pushConstants.tileResolution >> lod;
+
+        const uint tileSize = tileResolution * tileResolution;
+
+        const uint countTileIndices = tileSize * 6u;
+
+        const uint lod0TileSize = pushConstants.tileResolution * pushConstants.tileResolution;
+        uint tileIndexOffset = tileMapIndex * countTileIndices;
+        for(uint lodCounter = 0u; lodCounter < lod; lodCounter++){
+          tileIndexOffset += (lod0TileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
+        }
+
+        outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
+          uvec4(
+            countTileIndices, // indexCount
+            1u, // instanceCount
+            tileIndexOffset, // firstIndex
+            0u  // vertexOffset
+          ),
+          uvec4(
+            0u, // firstInstance
+            0u, // padding/unused
+            0u, // padding/unused
+            0u  // padding/unused
+          ),
+          boundingSphere,
+          uvec4(0u) // padding/unused
+        );
+
+      }
 
     }
     
