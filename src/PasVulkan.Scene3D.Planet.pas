@@ -134,8 +134,8 @@ type TpvScene3DPlanets=class;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
             TSizeIntArray=array of TpvSizeInt;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
-             Direct:Boolean=true;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
+             Direct:Boolean=false;
        type TMeshVertex=record
              PositionAbsoluteHeight:TpvVector4;
              NormalRelativeHeight:TpvVector4;
