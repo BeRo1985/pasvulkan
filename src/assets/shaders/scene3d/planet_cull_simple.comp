@@ -11,6 +11,7 @@
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform PushConstants {
+  mat4 modelMatrix;
   uint baseViewIndex;
   uint countViews;
   uint tileMapResolution;
@@ -116,6 +117,7 @@ void main(){
   if(tileMapIndex < tileMapSize){
 
     vec4 boundingSphere = boundingSpheres.data[tileMapIndex];
+    boundingSphere.xyz = (pushConstants.modelMatrix * vec4(boundingSphere.xyz, 1.0)).xyz;
 
     bool visible = false;
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){

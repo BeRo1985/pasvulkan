@@ -610,6 +610,7 @@ type TpvScene3DPlanets=class;
             TCullSimplePass=class
              public
               type TPushConstants=packed record
+                    ModelMatrix:TpvMatrix4x4;
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     TileMapResolution:TpvUInt32;
@@ -5116,6 +5117,7 @@ begin
        if Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
                                                      RendererViewInstance) then begin
 
+        fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].ModelMatrix;
         fPushConstants.ViewBaseIndex:=ViewBaseIndex;
         fPushConstants.CountViews:=CountViews;
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
