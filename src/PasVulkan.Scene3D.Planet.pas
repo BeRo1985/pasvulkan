@@ -786,6 +786,8 @@ type TpvScene3DPlanets=class;
        fGlobalBufferQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fInFlightFrameSharingMode:TVkSharingMode;
        fInFlightFrameQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
+       fGlobalSharingMode:TVkSharingMode;
+       fGlobalQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fPlanetData:TPlanetData;
        fPointerToPlanetData:PPlanetData;
        fPlanetDataVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -1247,13 +1249,13 @@ begin
 
    // All only-visual buffers doesn't need to be accessible from the CPU, just from the GPU itself
     
-  {if fInFlightFrameIndex<0 then}begin
+   if fInFlightFrameIndex<0 then begin
 
     fVisualMeshVertexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                     (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*2*SizeOf(TpvVector4),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                    BufferSharingMode,
-                                                    BufferQueueFamilyIndices,
+                                                    fPlanet.fGlobalSharingMode,
+                                                    fPlanet.fGlobalQueueFamilyIndices,
                                                     0,
                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                     0,
@@ -1265,12 +1267,12 @@ begin
                                                     []
                                                    );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshVertexBuffer['+IntToStr(fInFlightFrameIndex)+']');
-           
+
     fVisualMeshIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fCountVisualMeshIndices*SizeOf(TpvUInt32),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                   BufferSharingMode,
-                                                   BufferQueueFamilyIndices,
+                                                   fPlanet.fGlobalSharingMode,
+                                                   fPlanet.fGlobalQueueFamilyIndices,
                                                    0,
                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                    0,
@@ -1509,7 +1511,7 @@ begin
                                                         fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
-   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(0,
+{  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(0,
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
@@ -1523,7 +1525,7 @@ begin
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                           fVisualMeshIndexBuffer.Handle,
                                                           0,
-                                                          VK_WHOLE_SIZE);
+                                                          VK_WHOLE_SIZE);}
    
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnUniversalQueue',[0.5,0.25,0.25,1.0]);
     
@@ -1536,7 +1538,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT),
                                      0,
                                      0,nil,
-                                     2,@BufferMemoryBarriers[0],
+                                     0,nil,//2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
@@ -1602,7 +1604,7 @@ begin
                                                         fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);      
 
-   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+{  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           0,
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
@@ -1616,7 +1618,7 @@ begin
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                           fVisualMeshIndexBuffer.Handle,
                                                           0,
-                                                          VK_WHOLE_SIZE); 
+                                                          VK_WHOLE_SIZE);} 
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnUniversalQueue',[0.5,0.25,0.25,1.0]);
 
@@ -1629,7 +1631,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                      0,
                                      0,nil,
-                                     2,@BufferMemoryBarriers[0],
+                                     0,nil,//2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);    
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);       
@@ -1695,7 +1697,7 @@ begin
                                                         fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
-   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(0,
+{  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(0,
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
@@ -1709,7 +1711,7 @@ begin
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                           fVisualMeshIndexBuffer.Handle,
                                                           0,
-                                                          VK_WHOLE_SIZE);
+                                                          VK_WHOLE_SIZE);}
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnComputeQueue',[0.5,0.25,0.25,1.0]);
 
@@ -1717,7 +1719,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
                                      0,nil,
-                                     2,@BufferMemoryBarriers[0],
+                                     0,nil,//2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);    
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);  
@@ -1783,7 +1785,7 @@ begin
                                                         fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);      
 
-   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+{  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           0,
                                                           fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
@@ -1797,7 +1799,7 @@ begin
                                                           fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                           fVisualMeshIndexBuffer.Handle,
                                                           0,
-                                                          VK_WHOLE_SIZE);   
+                                                          VK_WHOLE_SIZE); }  
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnComputeQueue',[0.5,0.25,0.25,1.0]);
 
@@ -1805,7 +1807,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                      0,
                                      0,nil,
-                                     2,@BufferMemoryBarriers[0],
+                                     0,nil,//2,@BufferMemoryBarriers[0],
                                      3,@ImageMemoryBarriers[0]);   
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
@@ -1981,7 +1983,7 @@ begin
                                                         aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);          
 
-   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+{  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
@@ -2011,13 +2013,13 @@ begin
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           aInFlightFrameData.fVisualMeshIndexBuffer.Handle,
                                                           0,
-                                                          VK_WHOLE_SIZE);    
+                                                          VK_WHOLE_SIZE); }   
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                      0,
                                      0,nil,
-                                     4,@BufferMemoryBarriers[0],
+                                     0,nil,//4,@BufferMemoryBarriers[0],
                                      6,@ImageMemoryBarriers[0]);                                                 
 
   end;   
@@ -2066,7 +2068,7 @@ begin
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1,@ImageCopies[0]);
 
-   BufferCopy.srcOffset:=0;
+{  BufferCopy.srcOffset:=0;
    BufferCopy.dstOffset:=0;
    BufferCopy.size:=fVisualMeshVertexBuffer.Size;
    aCommandBuffer.CmdCopyBuffer(fVisualMeshVertexBuffer.Handle,
@@ -2080,7 +2082,7 @@ begin
    aCommandBuffer.CmdCopyBuffer(fVisualMeshIndexBuffer.Handle,
                                 aInFlightFrameData.fVisualMeshIndexBuffer.Handle,
                                 1,
-                                @BufferCopy);
+                                @BufferCopy);}
 
   end;
 
@@ -2158,7 +2160,7 @@ begin
                                                         aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
-   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+{  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           VK_QUEUE_FAMILY_IGNORED,
@@ -2188,14 +2190,14 @@ begin
                                                           VK_QUEUE_FAMILY_IGNORED,
                                                           aInFlightFrameData.fVisualMeshIndexBuffer.Handle,
                                                           0,
-                                                          VK_WHOLE_SIZE);  
+                                                          VK_WHOLE_SIZE);    }
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
                                      0,
                                      nil,
-                                     4,@BufferMemoryBarriers[0],
+                                     0,nil,//4,@BufferMemoryBarriers[0],
                                      6,@ImageMemoryBarriers[0]);
       
   end;
@@ -5881,8 +5883,10 @@ begin
        aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*3*20,1,0,0);
       end;
       TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
-       aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);
+       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);
+{      aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);}
        if assigned(vkCmdDrawIndexedIndirectCount) and
           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
                                                      RendererViewInstance) then begin
@@ -6188,6 +6192,9 @@ begin
    fInFlightFrameQueueFamilyIndices:=nil;
   end;
 
+  fGlobalSharingMode:=TVkSharingMode(VK_SHARING_MODE_CONCURRENT);
+  fGlobalQueueFamilyIndices:=[fVulkanDevice.UniversalQueueFamilyIndex,fVulkanDevice.ComputeQueueFamilyIndex];
+
   fVulkanMemoryStagingQueue:=TpvVulkanDeviceMemoryStagingQueue.Create;
 
   fVulkanComputeQueue:=fVulkanDevice.ComputeQueue;
@@ -6443,6 +6450,8 @@ begin
  fGlobalBufferQueueFamilyIndices:=nil;
 
  fInFlightFrameQueueFamilyIndices:=nil;
+
+ fGlobalQueueFamilyIndices:=nil;
 
  inherited Destroy;
 
