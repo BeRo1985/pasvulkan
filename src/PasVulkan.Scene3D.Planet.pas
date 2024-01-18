@@ -139,8 +139,6 @@ type TpvScene3DPlanets=class;
        type TMeshVertex=packed record
              Position:TpvVector3;
              OctahedralEncodedNormal:TpvInt16Vector2;
-{            PositionAbsoluteHeight:TpvVector4;
-             NormalRelativeHeight:TpvVector4;}
             end;
             PMeshVertex=^TMeshVertex;
             TMeshVertices=TpvDynamicArrayList<TMeshVertex>;
