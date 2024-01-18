@@ -12,10 +12,8 @@
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
-#define TriangleVertex uvec4 // 16 bytes per vertex
-
 layout(set = 0, binding = 0, std430) buffer TriangleVertices {
-  TriangleVertex vertices[]; // 16 bytes per vertex
+  uvec4 vertices[]; // 16 bytes per vertex
 } triangleVertices;
 
 layout(set = 0, binding = 1, std430) buffer QueuedTiles {
@@ -40,42 +38,6 @@ layout(push_constant) uniform PushConstants {
 vec3 safeNormalize(vec3 v){
   return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
 }
-
-#if 0
-uvec4 encodeVertex(vec3 position, vec3 normal){
-#if 0
-  // -32768 to 32767, where each positive and negative value has different amount of representable values
-  vec2 octNormal = octSignedEncode(normal);  
-  ivec4 octNormalIntFloorCeil = ivec4(
-     clamp(int(floor(octNormal.x * 32767.5)), -32768, 32767), clamp(int(floor(octNormal.y * 32767.5)), -32768, 32767),
-     clamp(int(ceil(octNormal.x * 32767.5)), -32768, 32767), clamp(int(ceil(octNormal.y * 32767.5)), -32768, 32767)
-  );
-  ivec2 octNormalInts[4] = ivec2[4](octNormalIntFloorCeil.xy, octNormalIntFloorCeil.zy, octNormalIntFloorCeil.xw, octNormalIntFloorCeil.zw);
-  int bestIndex = 0;
-  vec2 octNormalFloat = vec2(
-    (octNormalInts[0].x < 0) ? (float(octNormalsInts.x[0]) / 32768.0) : (float(octNormalsInts.x[0]) / 32767.0), 
-    (octNormalInts[0].y < 0) ? (float(octNormalsInts.x[0]) / 32768.0) : (float(octNormalsInts.x[0]) / 32767.0)
-  );
-  float bestDot = dot(octNormal, octSignedDecode(octNormalFloat));
-  for(int i = 1; i < 4; i++){
-    octNormalFloat = vec2(
-      (octNormalInts[i].x < 0) ? (float(octNormalsInts.x[i]) / 32768.0) : (float(octNormalsInts.x[i]) / 32767.0), 
-      (octNormalInts[i].y < 0) ? (float(octNormalsInts.x[i]) / 32768.0) : (float(octNormalsInts.x[i]) / 32767.0)
-    );
-    float dotProduct = dot(octNormal, octSignedDecode(octNormalFloat));
-    if(dotProduct > bestDot){
-      bestDot = dotProduct;
-      bestIndex = i;
-    }
-  }
-  return uvec4(floatBitsToUint(position), (uint(octNormalInts[bestIndex].x) & 0xffffu) | ((uint(octNormalInts[bestIndex].y) & 0xffffu) << 16));
-#else
-  // -32767 to 32767, where -32768 is clamped to -32767, for to have a equal-sized range for positive and negative values, and so that 
-  // a zero normal is easily possible.
-  return uvec4(floatBitsToUint(position), packSnorm2x16(octSignedEncode(normal)));
-#endif
-}
-#endif
 
 void main(){
 
