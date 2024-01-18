@@ -611,7 +611,7 @@ void main(){
   if((planetData.flagsResolutions.x & (1u << 1u)) != 0){
 
 #ifndef EXTERNAL_VERTICES
-    vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
+    vec3 normal = normalize(fma(textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz, vec3(2.0), vec3(-1.0)));
 #endif
 
     layerMaterialSetup(sphereNormal);

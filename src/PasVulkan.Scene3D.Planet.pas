@@ -180,7 +180,7 @@ type TpvScene3DPlanets=class;
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
-              fBlendMapImage:TpvScene3DRendererImage2D; // R8RG8B8A8_SNORM
+              fBlendMapImage:TpvScene3DRendererImage2D; // A2B10G10R10_UNORM_PACK32
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileDirtyMapBuffer:TpvVulkanBuffer;
@@ -1112,7 +1112,7 @@ begin
   fNormalMapImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
                                                           fPlanet.fHeightMapResolution,
                                                           fPlanet.fHeightMapResolution,
-                                                          VK_FORMAT_R8G8B8A8_SNORM,
+                                                          VK_FORMAT_A2B10G10R10_UNORM_PACK32,
                                                           true,
                                                           VK_SAMPLE_COUNT_1_BIT,
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

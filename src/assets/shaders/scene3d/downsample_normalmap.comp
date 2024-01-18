@@ -8,8 +8,8 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, rgba8_snorm) readonly uniform image2D uSourceTexture;
-layout(set = 0, binding = 1, rgba8_snorm) writeonly uniform image2D uDestinationTextures[];
+layout(set = 0, binding = 0, rgb10_a2) readonly uniform image2D uSourceTexture;
+layout(set = 0, binding = 1, rgb10_a2) writeonly uniform image2D uDestinationTextures[];
 
 layout(push_constant) uniform PushConstants {
   int countMipMapLevels;
@@ -40,10 +40,10 @@ void main() {
 
   if(all(lessThan(invocationPosition.xy, sourceSize))){
     mat4x3 normals = mat4x3(
-      imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 0)).xyz,
-      imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 0)).xyz,
-      imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 1)).xyz,
-      imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 1)).xyz
+      fma(imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 0)).xyz, vec3(2.0), vec3(-1.0)),
+      fma(imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 0)).xyz, vec3(2.0), vec3(-1.0)),
+      fma(imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(0, 1)).xyz, vec3(2.0), vec3(-1.0)),
+      fma(imageLoad(uSourceTexture, (invocationPosition.xy << 1) + ivec2(1, 1)).xyz, vec3(2.0), vec3(-1.0)) 
     );
     normal = normalize(reduceOp(reduceOp(normals[0], normals[1]), reduceOp(normals[2], normals[3])));
   }else{
@@ -51,7 +51,7 @@ void main() {
   } 
 
   if(all(lessThan(invocationPosition.xy >> 0, destinationTextureSize))){
-    imageStore(uDestinationTextures[0], invocationPosition.xy >> 0, normal.xyzz);
+    imageStore(uDestinationTextures[0], invocationPosition.xy >> 0, vec4(fma(normal.xyz, vec3(0.5), vec3(0.5)), 1.0));
   }
   if(pushConstants.countMipMapLevels == 1){
     return;
@@ -81,7 +81,7 @@ void main() {
       )
     );
     if(all(lessThan(invocationPosition.xy >> 1, destinationTextureSize))){
-      imageStore(uDestinationTextures[1], invocationPosition.xy >> 1, normal.xyzz);
+      imageStore(uDestinationTextures[1], invocationPosition.xy >> 1, vec4(fma(normal.xyz, vec3(0.5), vec3(0.5)), 1.0));
     }
     sharedX[localInvocationIndex] = normal.x;
     sharedY[localInvocationIndex] = normal.y;
@@ -108,7 +108,7 @@ void main() {
       )
     );
     if(all(lessThan(invocationPosition.xy >> 2, destinationTextureSize))){
-      imageStore(uDestinationTextures[2], invocationPosition.xy >> 2, normal.xyzz);
+      imageStore(uDestinationTextures[2], invocationPosition.xy >> 2, vec4(fma(normal.xyz, vec3(0.5), vec3(0.5)), 1.0));
     }
     sharedX[localInvocationIndex] = normal.x;
     sharedY[localInvocationIndex] = normal.y;
@@ -135,7 +135,7 @@ void main() {
       )
     );
     if(all(lessThan(invocationPosition.xy >> 3, destinationTextureSize))){
-      imageStore(uDestinationTextures[3], invocationPosition.xy >> 3, normal.xyzz);
+      imageStore(uDestinationTextures[3], invocationPosition.xy >> 3, vec4(fma(normal.xyz, vec3(0.5), vec3(0.5)), 1.0));
     }
   }
 
