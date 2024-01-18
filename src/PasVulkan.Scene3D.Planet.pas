@@ -174,6 +174,7 @@ type TpvScene3DPlanets=class;
                    PTiledMeshBoundingSphere=^TTiledMeshBoundingSphere;
                    TTiledMeshBoundingSpheres=TpvDynamicArrayList<TTiledMeshBoundingSphere>;
                    TDoubleBufferedVulkanBuffers=array[0..1] of TpvVulkanBuffer;
+                   TVisualMeshVertexBufferCopies=TpvDynamicArrayList<TVkBufferCopy>;
              private    // All 2D maps are octahedral projected maps in this implementation (not equirectangular projected maps or cube maps)
               fPlanet:TpvScene3DPlanet;
               fInFlightFrameIndex:TpvInt32; // -1 is the ground truth instance, >=0 are the in-flight frame instances
@@ -190,6 +191,7 @@ type TpvScene3DPlanets=class;
               fTiledMeshBoundingSpheresBuffer:TpvVulkanBuffer;
               fVisualMeshIndexBuffer:TpvVulkanBuffer;
               fVisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
+              fVisualMeshVertexBufferCopies:TVisualMeshVertexBufferCopies;
               fVisualMeshVertexBufferUpdateIndex:TPasMPInt32;
               fVisualMeshVertexBufferNextRenderIndex:TPasMPInt32;
               fVisualMeshVertexBufferRenderIndex:TPasMPInt32;
@@ -1083,9 +1085,11 @@ begin
  fVisualMeshVertexBuffers[0]:=nil;
  fVisualMeshVertexBuffers[1]:=nil;
 
+ fVisualMeshVertexBufferCopies:=nil;
+
  fVisualMeshVertexBufferUpdateIndex:=0;
- fVisualMeshVertexBufferNextRenderIndex:=1;
- fVisualMeshVertexBufferRenderIndex:=1;
+ fVisualMeshVertexBufferNextRenderIndex:=0;
+ fVisualMeshVertexBufferRenderIndex:=0;
 
  fVisualMeshIndexBuffer:=nil;
 
@@ -1292,6 +1296,8 @@ begin
                                                        );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshVertexBuffer['+IntToStr(fInFlightFrameIndex)+'][1]');
 
+    fVisualMeshVertexBufferCopies:=TVisualMeshVertexBufferCopies.Create;
+
    end;
 
    if fInFlightFrameIndex<0 then begin
@@ -1472,6 +1478,8 @@ begin
 
  FreeAndNil(fVisualMeshVertexBuffers[0]);
  FreeAndNil(fVisualMeshVertexBuffers[1]);
+
+ FreeAndNil(fVisualMeshVertexBufferCopies);
 
  FreeAndNil(fVisualMeshIndexBuffer);
 
@@ -4587,14 +4595,25 @@ begin
                                     3,@BufferMemoryBarriers[0],
                                     2,@ImageMemoryBarriers[0]);
 
-  BufferCopy.srcOffset:=0;
-  BufferCopy.dstOffset:=0;
-  BufferCopy.size:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Size;
+  if fPlanet.fData.fVisualMeshVertexBufferCopies.Count=0 then begin
 
-  aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fVisualMeshVertexBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
-                               fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Handle,
-                               1,
-                               @BufferCopy);
+   BufferCopy.srcOffset:=0;
+   BufferCopy.dstOffset:=0;
+   BufferCopy.size:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Size;
+
+   aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fVisualMeshVertexBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
+                                fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Handle,
+                                1,
+                                @BufferCopy);
+
+  end else begin
+
+   aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fVisualMeshVertexBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
+                                fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Handle,
+                                fPlanet.fData.fVisualMeshVertexBufferCopies.Count,
+                                @fPlanet.fData.fVisualMeshVertexBufferCopies.ItemArray[0]);
+
+  end;
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -6842,9 +6861,16 @@ begin
      TpvTypedSort<TpvUInt32>.IntroSort(@fData.fTileDirtyQueueItems.ItemArray[0],0,fData.fCountDirtyTiles-1,TpvTypedSortCompareUInt32);
     end;
 
+    fData.fVisualMeshVertexBufferCopies.ClearNoFree;
+
     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
      TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
      inc(fData.fTileGenerations[TileIndex]);
+     if UpdateRenderIndex and (fData.fCountDirtyTiles<>(fTileMapResolution*fTileMapResolution)) then begin
+      fData.fVisualMeshVertexBufferCopies.Add(TVkBufferCopy.Create(TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
+                                                                   TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
+                                                                   fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex)));
+     end;
     end;
 
     if fData.fCountDirtyTiles=(fTileMapResolution*fTileMapResolution) then begin
