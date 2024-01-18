@@ -179,19 +179,19 @@ begin
  end;
 
  fMemoryBlock:=aDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
-                                                                            MemoryRequirements.size,
-                                                                            MemoryRequirements.alignment,
-                                                                            MemoryRequirements.memoryTypeBits,
-                                                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
-                                                                            @fVulkanImage.Handle);
+                                                         MemoryRequirements.size,
+                                                         MemoryRequirements.alignment,
+                                                         MemoryRequirements.memoryTypeBits,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
+                                                         @fVulkanImage.Handle);
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;

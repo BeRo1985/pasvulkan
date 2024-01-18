@@ -182,7 +182,7 @@ type TpvScene3DPlanets=class;
               fHeightMap:THeightMap; // only on the ground truth instance, otherwise nil
               fHeightMapImage:TpvScene3DRendererMipmapImage2D; // R32_SFLOAT (at least for now, just for the sake of simplicity, later maybe R16_UNORM or R16_SNORM)
               fNormalMapImage:TpvScene3DRendererMipmapImage2D; // R16G16B16A16_SNORM (at least for now, just for the sake of simplicity, later maybe RGBA8_SNORM)
-              fTangentBitangentMapImage:TpvScene3DRendererImage2D; // R16RG16B16A16_SFLOAT (octahedral-wise)
+              fBlendMapImage:TpvScene3DRendererImage2D; // R8RG8B8A8_SNORM
               fTileDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileExpandedDirtyMap:TpvScene3DPlanet.TData.TTileDirtyMap;
               fTileDirtyMapBuffer:TpvVulkanBuffer;
@@ -237,7 +237,7 @@ type TpvScene3DPlanets=class;
               property HeightMap:THeightMap read fHeightMap;              
               property HeightMapImage:TpvScene3DRendererMipmapImage2D read fHeightMapImage;
               property NormalMapImage:TpvScene3DRendererMipmapImage2D read fNormalMapImage;
-              property TangentBitangentMapImage:TpvScene3DRendererImage2D read fTangentBitangentMapImage; 
+              property BlendMapImage:TpvScene3DRendererImage2D read fBlendMapImage;
               property TileDirtyMapBuffer:TpvVulkanBuffer read fTileDirtyMapBuffer;
               property TileExpandedDirtyMapBuffer:TpvVulkanBuffer read fTileExpandedDirtyMapBuffer;
               property TileDirtyQueueBuffer:TpvVulkanBuffer read fTileDirtyQueueBuffer;
@@ -1065,7 +1065,7 @@ begin
 
  fNormalMapImage:=nil;
 
- fTangentBitangentMapImage:=nil;
+ fBlendMapImage:=nil;
 
  fTileDirtyMap:=nil;
 
@@ -1123,17 +1123,17 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
 
-  fTangentBitangentMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
-                                                              fPlanet.fHeightMapResolution,
-                                                              fPlanet.fHeightMapResolution,
-                                                              VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                              true,
-                                                              VK_SAMPLE_COUNT_1_BIT,
-                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                              ImageSharingMode,
-                                                              ImageQueueFamilyIndices);
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.Image');
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTangentBitangentMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTangentBitangentMapImage.ImageView');
+  fBlendMapImage:=TpvScene3DRendererImage2D.Create(fPlanet.fVulkanDevice,
+                                                   fPlanet.fHeightMapResolution,
+                                                   fPlanet.fHeightMapResolution,
+                                                   VK_FORMAT_R8G8B8A8_SNORM,
+                                                   true,
+                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   ImageSharingMode,
+                                                   ImageQueueFamilyIndices);
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.Image');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ImageView');
 
   if fInFlightFrameIndex<0 then begin
 
@@ -1442,7 +1442,7 @@ begin
 
  FreeAndNil(fNormalMapImage);
 
- FreeAndNil(fTangentBitangentMapImage);
+ FreeAndNil(fBlendMapImage);
 
  FreeAndNil(fMeshVertices);
 
@@ -1536,7 +1536,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
-                                                        fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnUniversalQueue',[0.5,0.25,0.25,1.0]);
@@ -1612,7 +1612,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
-                                                        fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);      
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnUniversalQueue',[0.5,0.25,0.25,1.0]);
@@ -1688,7 +1688,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
-                                                        fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].AcquireOnComputeQueue',[0.5,0.25,0.25,1.0]);
@@ -1760,7 +1760,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         fPlanet.fVulkanDevice.ComputeQueueFamilyIndex,
                                                         fPlanet.fVulkanDevice.UniversalQueueFamilyIndex,
-                                                        fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);      
 
    fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].ReleaseOnComputeQueue',[0.5,0.25,0.25,1.0]);
@@ -1905,7 +1905,7 @@ begin
                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange); 
 
    ImageMemoryBarriers[3]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -1940,7 +1940,7 @@ begin
                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        aInFlightFrameData.fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);          
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -1990,9 +1990,9 @@ begin
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                fNormalMapImage.MipMapLevels,@ImageCopies[0]);
 
-   aCommandBuffer.CmdCopyImage(fTangentBitangentMapImage.VulkanImage.Handle,
+   aCommandBuffer.CmdCopyImage(fBlendMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
+                               aInFlightFrameData.fBlendMapImage.VulkanImage.Handle,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1,@ImageCopies[0]);
 
@@ -2034,7 +2034,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
    ImageMemoryBarriers[3]:=TVkImageMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -2069,7 +2069,7 @@ begin
                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                         VK_QUEUE_FAMILY_IGNORED,
                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                        aInFlightFrameData.fTangentBitangentMapImage.VulkanImage.Handle,
+                                                        aInFlightFrameData.fBlendMapImage.VulkanImage.Handle,
                                                         ImageSubresourceRange);
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
@@ -6279,7 +6279,7 @@ begin
                                                                                            fInFlightFrameDataList[InFlightFrameIndex].fNormalMapImage.VulkanImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
                                                              TVkDescriptorImageInfo.Create(TpvScene3D(fScene3D).GeneralComputeSampler.Handle,
-                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fTangentBitangentMapImage.VulkanImageView.Handle,
+                                                                                           fInFlightFrameDataList[InFlightFrameIndex].fBlendMapImage.VulkanImageView.Handle,
                                                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                             [],
                                                             [],
