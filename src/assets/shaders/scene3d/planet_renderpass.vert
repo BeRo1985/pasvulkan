@@ -604,9 +604,15 @@ void main(){
 
   vec3 worldSpacePosition = position;
 
+#ifdef EXTERNAL_VERTICES
+  vec3 normal = octSignedDecode(inOctahedralEncodedNormal);
+#endif
+
   if((planetData.flagsResolutions.x & (1u << 1u)) != 0){
 
+#ifndef EXTERNAL_VERTICES
     vec3 normal = textureCatmullRomPlanetOctahedralMap(uTextures[1], sphereNormal).xyz;
+#endif
 
     layerMaterialSetup(sphereNormal);
 
@@ -624,7 +630,7 @@ void main(){
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
 #ifdef EXTERNAL_VERTICES
-  outBlock.normal = normalize((planetData.normalMatrix * vec4(octSignedDecode(inOctahedralEncodedNormal), 0.0)).xyz);
+  outBlock.normal = normalize((planetData.normalMatrix * vec4(normal, 0.0)).xyz);
 #else
   outBlock.normal = normalize((planetData.normalMatrix * vec4(sphereNormal, 0.0)).xyz);
 #endif
