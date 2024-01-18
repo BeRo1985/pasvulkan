@@ -360,8 +360,8 @@ type EpvScene3D=class(Exception);
                false:(
                 Position:TpvVector3;                  //  12   12 (32-bit float 3D vector)
                 NodeIndex:TpvUInt32;                  // + 4 = 16 (unsigned 32-bit node index)
-                Normal:TInt16Vector2;                 // + 4 = 20 (signed 16-bit oct-encoded normal)
-                Tangent:TInt16Vector2;                // + 4 = 24 (signed 16-bit oct-encoded tangent)
+                Normal:TpvInt16Vector2;               // + 4 = 20 (signed 16-bit oct-encoded normal)
+                Tangent:TpvInt16Vector2;              // + 4 = 24 (signed 16-bit oct-encoded tangent)
                 TexCoord0:TpvVector2;                 // + 8 = 32 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                 TexCoord1:TpvVector2;                 // + 8 = 40 (must be full 32-bit float, for 0.0 .. 1.0 out-of-range texcoords)
                 Color0:TpvHalfFloatVector4;           // + 8 = 48 (must be at least half-float for HDR)
@@ -388,8 +388,8 @@ type EpvScene3D=class(Exception);
                RootNode:TpvUInt32;                   // + 4 = 44 (unsigned 32-bit root node)
                NodeIndex:TpvUInt32;                  // + 4 = 32 (unsigned 32-bit node index)
 
-               Normal:TInt16Vector2;                 // + 4 = 36 (signed 16-bit oct-encoded normal)
-               Tangent:TInt16Vector2;                // + 4 = 40 (signed 16-bit oct-encoded tangent)
+               Normal:TpvInt16Vector2;               // + 4 = 36 (signed 16-bit oct-encoded normal)
+               Tangent:TpvInt16Vector2;              // + 4 = 40 (signed 16-bit oct-encoded tangent)
                Flags:TpvUInt32;                      // + 4 = 44 (unsigned 32-bit flags)
                Generation:TpvUInt32;                 // + 4 = 48 (unsigned 32-bit generation)
 
@@ -3156,7 +3156,7 @@ type TAnimationChannelTargetOverwriteGroupMap=array[TpvScene3D.TGroup.TAnimation
 
 var AnimationChannelTargetOverwriteGroupMap:TAnimationChannelTargetOverwriteGroupMap;
 
-function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvScene3D.TInt16Vector2; overload;
+{function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvScene3D.TInt16Vector2; overload;
 var Vector:TpvVector3;
     x,y,s,tx,ty:TpvScalar;
 begin
@@ -3251,7 +3251,7 @@ begin
   BestDot:=Dot;
  end;
 
-end;
+end;}
 
 type { TPOCAScene3DGroupAnimationChannel }
      TPOCAScene3DGroupAnimationChannel=class(TPOCANativeObject)

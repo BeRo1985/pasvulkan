@@ -136,9 +136,11 @@ type TpvScene3DPlanets=class;
             TSizeIntArray=array of TpvSizeInt;
        const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
              Direct:Boolean=true;
-       type TMeshVertex=record
-             PositionAbsoluteHeight:TpvVector4;
-             NormalRelativeHeight:TpvVector4;
+       type TMeshVertex=packed record
+             Position:TpvVector3;
+             OctahedralEncodedNormal:TpvInt16Vector2;
+{            PositionAbsoluteHeight:TpvVector4;
+             NormalRelativeHeight:TpvVector4;}
             end;
             PMeshVertex=^TMeshVertex;
             TMeshVertices=TpvDynamicArrayList<TMeshVertex>;
@@ -5550,9 +5552,9 @@ begin
  case TpvScene3DPlanet.SourcePrimitiveMode of
   TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
   TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
-   fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvVector4)*2,VK_VERTEX_INPUT_RATE_VERTEX);
+   fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TMeshVertex),VK_VERTEX_INPUT_RATE_VERTEX);
    fPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
-   fPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,SizeOf(TpvVector4));
+   fPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16_SNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PMeshVertex(nil)^.OctahedralEncodedNormal)));
   end;
   else begin
   end;
@@ -7118,13 +7120,15 @@ procedure TpvScene3DPlanet.ExportPhysicsMeshToOBJ(const aStream:TStream);
  end;
 var Index:TpvSizeInt;
     Vertex:TpvScene3DPlanet.PMeshVertex;
+    Normal:TpvVector3;
 begin
  WriteLine('# Exported physics mesh from TpvScene3DPlanet');
  WriteLine('o Planet');
  for Index:=0 to fData.fMeshVertices.Count-1 do begin
   Vertex:=@fData.fMeshVertices.ItemArray[Index];  
-  WriteLine('v '+ConvertDoubleToString(Vertex^.PositionAbsoluteHeight.x)+' '+ConvertDoubleToString(Vertex^.PositionAbsoluteHeight.y)+' '+ConvertDoubleToString(Vertex^.PositionAbsoluteHeight.z));
-  WriteLine('vn '+ConvertDoubleToString(Vertex^.NormalRelativeHeight.x)+' '+ConvertDoubleToString(Vertex^.NormalRelativeHeight.y)+' '+ConvertDoubleToString(Vertex^.NormalRelativeHeight.z));
+  WriteLine('v '+ConvertDoubleToString(Vertex^.Position.x)+' '+ConvertDoubleToString(Vertex^.Position.y)+' '+ConvertDoubleToString(Vertex^.Position.z));
+  Normal:=OctDecode(Vertex^.OctahedralEncodedNormal);
+  WriteLine('vn '+ConvertDoubleToString(Normal.x)+' '+ConvertDoubleToString(Normal.y)+' '+ConvertDoubleToString(Normal.z));
  end;
  Index:=0;
  while (Index+2)<fData.fMeshIndices.Count do begin

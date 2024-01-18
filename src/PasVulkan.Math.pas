@@ -138,6 +138,13 @@ type PpvScalar=^TpvScalar;
        x,y:TpvInt32;
      end;
 
+     PPpvInt16Vector2=^PpvInt16Vector2;
+     PpvInt16Vector2=^TpvInt16Vector2;
+     TpvInt16Vector2=packed record
+      public
+       x,y:TpvInt16;
+     end;
+
      PpvVector2=^TpvVector2;
      TpvVector2=record
       public
@@ -1738,6 +1745,10 @@ function DecodeNormalFromUInt32(const aNormal:TpvUInt32):TpvVector3;
 
 function OctahedralProjectionMappingEncode(const aVector:TpvVector3):TpvVector2;
 function OctahedralProjectionMappingDecode(const aVector:TpvVector2):TpvVector3;
+
+function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvInt16Vector2; overload;
+function OctDecode(const aOct:TpvInt16Vector2):TpvVector3;
+function OctEncode(const aVector:TpvVector3):TpvInt16Vector2; overload;
 
 implementation
 
@@ -19901,6 +19912,93 @@ begin
   result.xy:=(TpvVector2.InlineableCreate(1.0,1.0)-result.yx.Abs)*TpvVector2.InlineableCreate(SignNonZero(result.x),SignNonZero(result.y));
  end;
  result:=result.Normalize;
+end;
+
+function OctEncode(const aVector:TpvVector3;const aFloorX,aFloorY:Boolean):TpvInt16Vector2; overload;
+var Vector:TpvVector3;
+    x,y,s,tx,ty:TpvScalar;
+begin
+ Vector:=aVector.Normalize;
+ s:=abs(Vector.x)+abs(Vector.y)+abs(Vector.z);
+ x:=Vector.x/s;
+ y:=Vector.y/s;
+ if Vector.z<0.0 then begin
+  tx:=1.0-abs(y);
+  if x<0.0 then begin
+   tx:=-tx;
+  end;
+  ty:=1.0-abs(x);
+  if y<0.0 then begin
+   ty:=-ty;
+  end;
+  x:=tx;
+  y:=ty;
+ end;
+ if aFloorX then begin
+  result.x:=Min(Max(trunc(Floor(x*32767.0)),-32767),32767);
+ end else begin
+  result.x:=Min(Max(trunc(Ceil(x*32767.0)),-32767),32767);
+ end;
+ if aFloorY then begin
+  result.y:=Min(Max(trunc(Floor(y*32767.0)),-32767),32767);
+ end else begin
+  result.y:=Min(Max(trunc(Ceil(y*32767.0)),-32767),32767);
+ end;
+end;
+
+function OctDecode(const aOct:TpvInt16Vector2):TpvVector3;
+var x,y,z,s,tx,ty:TpvScalar;
+begin
+ x:=Max(-32767,aOct.x)/32767.0;
+ y:=Max(-32767,aOct.y)/32767.0;
+ z:=(1.0-abs(x))-abs(y);
+ if z<0 then begin
+  tx:=1.0-abs(y);
+  if x<0.0 then begin
+   tx:=-tx;
+  end;
+  ty:=1.0-abs(x);
+  if y<0.0 then begin
+   ty:=-ty;
+  end;
+  x:=tx;
+  y:=ty;
+ end;
+ result:=TpvVector3.Create(x,y,z).Normalize;
+end;
+
+function OctEncode(const aVector:TpvVector3):TpvInt16Vector2; overload;
+var Vector:TpvVector3;
+    Oct:TpvInt16Vector2;
+    BestDot,Dot:TpvScalar;
+begin
+
+ Vector:=aVector.Normalize;
+
+ result:=OctEncode(Vector,false,false);
+ BestDot:=Vector.Dot(OctDecode(result));
+
+ Oct:=OctEncode(Vector,false,true);
+ Dot:=Vector.Dot(OctDecode(Oct));
+ if BestDot>Dot then begin
+  result:=Oct;
+  BestDot:=Dot;
+ end;
+
+ Oct:=OctEncode(Vector,true,true);
+ Dot:=Vector.Dot(OctDecode(Oct));
+ if BestDot>Dot then begin
+  result:=Oct;
+  BestDot:=Dot;
+ end;
+
+ Oct:=OctEncode(Vector,true,false);
+ Dot:=Vector.Dot(OctDecode(Oct));
+ if BestDot>Dot then begin
+  result:=Oct;
+  BestDot:=Dot;
+ end;
+
 end;
 
 initialization

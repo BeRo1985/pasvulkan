@@ -117,6 +117,20 @@ vec3 octDecode(vec2 oct) {
   return normalize(v);
 }
 
+#if 0
+vec2 unpackSnorm2x16Ex(uint v){
+  // -32768 .. 32767 -> -1.0 .. 1.0 instad -32767 .. 32767 -> -1.0 .. 1.0 like at unpackSnorm2x16
+  ivec2 s = ivec2(
+    int(uint(uint(v & 0x0000ffffu) << 16u)) >> 16,
+    int(uint(v & 0xffff0000u)) >> 16
+  );
+  return vec2(
+    (s.x < 0) ? (float(s.x) / 32768.0) : (float(s.x) / 32767.0), 
+    (s.y < 0) ? (float(s.y) / 32768.0) : (float(s.y) / 32767.0)
+  ); 
+}
+#endif
+
 void main() {
   uint vertexIndex = gl_GlobalInvocationID.x;
   // uint vertexIndex = uint((((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x);

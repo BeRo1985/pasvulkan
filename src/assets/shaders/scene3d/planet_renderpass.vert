@@ -11,7 +11,7 @@
 
 #ifdef EXTERNAL_VERTICES
   layout(location = 0) in vec3 inVector;
-  layout(location = 1) in vec3 inNormal;
+  layout(location = 1) in vec2 inOctahedralEncodedNormal;
 #endif
 
 #ifdef DIRECT
@@ -624,7 +624,7 @@ void main(){
   outBlock.position = position;         
   outBlock.sphereNormal = sphereNormal;
 #ifdef EXTERNAL_VERTICES
-  outBlock.normal = normalize((planetData.normalMatrix * vec4(inNormal, 0.0)).xyz);
+  outBlock.normal = normalize((planetData.normalMatrix * vec4(octSignedDecode(inOctahedralEncodedNormal), 0.0)).xyz);
 #else
   outBlock.normal = normalize((planetData.normalMatrix * vec4(sphereNormal, 0.0)).xyz);
 #endif
@@ -638,7 +638,6 @@ void main(){
 #endif
 
   gl_Position = viewProjectionMatrix * vec4(position, 1.0);
-
 
 #else
 
