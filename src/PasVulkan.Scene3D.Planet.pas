@@ -191,6 +191,7 @@ type TpvScene3DPlanets=class;
               fVisualMeshIndexBuffer:TpvVulkanBuffer;
               fVisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
               fVisualMeshVertexBufferUpdateIndex:TPasMPInt32;
+              fVisualMeshVertexBufferNextRenderIndex:TPasMPInt32;
               fVisualMeshVertexBufferRenderIndex:TPasMPInt32;
               fPhysicsMeshIndexBuffer:TpvVulkanBuffer;
               fPhysicsMeshVertexBuffer:TpvVulkanBuffer;
@@ -1083,6 +1084,7 @@ begin
  fVisualMeshVertexBuffers[1]:=nil;
 
  fVisualMeshVertexBufferUpdateIndex:=0;
+ fVisualMeshVertexBufferNextRenderIndex:=1;
  fVisualMeshVertexBufferRenderIndex:=1;
 
  fVisualMeshIndexBuffer:=nil;
@@ -4708,7 +4710,7 @@ begin
                                     1,@BufferMemoryBarriers[0],
                                     0,nil);
 
-  TPasMPInterlocked.Write(fPlanet.fData.fVisualMeshVertexBufferRenderIndex,fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1);
+  fPlanet.fData.fVisualMeshVertexBufferNextRenderIndex:=fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1;
 
   fPlanet.fData.fVisualMeshVertexBufferUpdateIndex:=(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
 
@@ -6747,9 +6749,12 @@ procedure TpvScene3DPlanet.Update(const aInFlightFrameIndex:TpvSizeInt);
 var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
+    UpdateRenderIndex:Boolean;
 begin
 
  fData.fCountDirtyTiles:=0;
+
+ UpdateRenderIndex:=false;
 
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
     fData.fModifyHeightMapActive then begin
@@ -6803,6 +6808,8 @@ begin
      fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
      fPhysicsMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+
+     UpdateRenderIndex:=true;
 
     end;
 
@@ -6893,6 +6900,10 @@ begin
 
     end;
 
+   end;
+
+   if UpdateRenderIndex then begin
+    TPasMPInterlocked.Write(fData.fVisualMeshVertexBufferRenderIndex,fData.fVisualMeshVertexBufferNextRenderIndex);
    end;
 
   end;
