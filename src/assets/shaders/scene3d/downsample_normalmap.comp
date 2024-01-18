@@ -8,8 +8,8 @@
 
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, rgba16_snorm) readonly uniform image2D uSourceTexture;
-layout(set = 0, binding = 1, rgba16_snorm) writeonly uniform image2D uDestinationTextures[];
+layout(set = 0, binding = 0, rgba8_snorm) readonly uniform image2D uSourceTexture;
+layout(set = 0, binding = 1, rgba8_snorm) writeonly uniform image2D uDestinationTextures[];
 
 layout(push_constant) uniform PushConstants {
   int countMipMapLevels;

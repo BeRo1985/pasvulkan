@@ -1114,7 +1114,7 @@ begin
   fNormalMapImage:=TpvScene3DRendererMipmapImage2D.Create(fPlanet.fVulkanDevice,
                                                           fPlanet.fHeightMapResolution,
                                                           fPlanet.fHeightMapResolution,
-                                                          VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                          VK_FORMAT_R8G8B8A8_SNORM,
                                                           true,
                                                           VK_SAMPLE_COUNT_1_BIT,
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
