@@ -378,28 +378,30 @@ type TpvDynamicArray<T>=record
 
      TpvHashMap<TpvHashMapKey,TpvHashMapValue>=class
       public
-       const CELL_EMPTY=-1;
-             CELL_DELETED=-2;
-             ENT_EMPTY=-1;
-             ENT_DELETED=-2;
-       type PpvHashMapEntity=^TpvHashMapEntity;
-            TpvHashMapEntity=record
-             Key:TpvHashMapKey;
-             Value:TpvHashMapValue;
+       type TEntity=record
+             public
+              const Empty=0;
+                    Used=1;
+                    Deleted=2;
+             public
+              State:TpvUInt32;
+              Key:TpvHashMapKey;
+              Value:TpvHashMapValue;
             end;
-            TpvHashMapEntities=array of TpvHashMapEntity;
+            PEntity=^TEntity;
+            TEntities=array of TEntity;
       private
-       type TpvHashMapEntityEnumerator=record
+       type TEntityEnumerator=record
              private
               fHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>;
               fIndex:TpvSizeInt;
-              function GetCurrent:TpvHashMapEntity; inline;
+              function GetCurrent:TEntity; inline;
              public
               constructor Create(const aHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
               function MoveNext:boolean; inline;
-              property Current:TpvHashMapEntity read GetCurrent;
+              property Current:TEntity read GetCurrent;
             end;
-            TpvHashMapKeyEnumerator=record
+            TKeyEnumerator=record
              private
               fHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>;
               fIndex:TpvSizeInt;
@@ -419,21 +421,21 @@ type TpvDynamicArray<T>=record
               function MoveNext:boolean; inline;
               property Current:TpvHashMapValue read GetCurrent;
             end;
-            TpvHashMapEntitiesObject=class
+            TEntitiesObject=class
              private
               fOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>;
              public
               constructor Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
-              function GetEnumerator:TpvHashMapEntityEnumerator;
+              function GetEnumerator:TEntityEnumerator;
             end;
-            TpvHashMapKeysObject=class
+            TKeysObject=class
              private
               fOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>;
              public
               constructor Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
-              function GetEnumerator:TpvHashMapKeyEnumerator;
+              function GetEnumerator:TKeyEnumerator;
             end;
-            TpvHashMapValuesObject=class
+            TValuesObject=class
              private
               fOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>;
               function GetValue(const Key:TpvHashMapKey):TpvHashMapValue; inline;
@@ -444,21 +446,19 @@ type TpvDynamicArray<T>=record
               property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
             end;
       private
-       fRealSize:TpvInt32;
-       fLogSize:TpvInt32;
-       fSize:TpvInt32;
-       fEntities:TpvHashMapEntities;
-       fEntityToCellIndex:TpvHashMapEntityIndices;
-       fCellToEntityIndex:TpvHashMapEntityIndices;
+       fSize:TpvSizeUInt;
+       fLogSize:TpvSizeUInt;
+       fCountNonEmptyEntites:TpvSizeUInt;
+       fEntities:TEntities;
        fDefaultValue:TpvHashMapValue;
        fCanShrink:boolean;
-       fEntitiesObject:TpvHashMapEntitiesObject;
-       fKeysObject:TpvHashMapKeysObject;
-       fValuesObject:TpvHashMapValuesObject;
+       fEntitiesObject:TEntitiesObject;
+       fKeysObject:TKeysObject;
+       fValuesObject:TValuesObject;
        function HashData(const Data:TpvPointer;const DataLength:TpvUInt32):TpvUInt32;
        function HashKey(const Key:TpvHashMapKey):TpvUInt32;
        function CompareKey(const KeyA,KeyB:TpvHashMapKey):boolean;
-       function FindCell(const Key:TpvHashMapKey):TpvUInt32;
+       function FindEntity(const Key:TpvHashMapKey):PEntity;
        procedure Resize;
       protected
        function GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
@@ -467,44 +467,46 @@ type TpvDynamicArray<T>=record
        constructor Create(const DefaultValue:TpvHashMapValue);
        destructor Destroy; override;
        procedure Clear;
-       function Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PpvHashMapEntity;
-       function Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PpvHashMapEntity;
+       function Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PEntity;
+       function Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PEntity;
        function TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
        function ExistKey(const Key:TpvHashMapKey):boolean;
        function Delete(const Key:TpvHashMapKey):boolean;
        property EntityValues[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
-       property Entities:TpvHashMapEntitiesObject read fEntitiesObject;
-       property Keys:TpvHashMapKeysObject read fKeysObject;
-       property Values:TpvHashMapValuesObject read fValuesObject;
+       property Entities:TEntitiesObject read fEntitiesObject;
+       property Keys:TKeysObject read fKeysObject;
+       property Values:TValuesObject read fValuesObject;
        property CanShrink:boolean read fCanShrink write fCanShrink;
      end;
 
 {$ifdef ExtraStringHashMap}
      TpvStringHashMap<TpvHashMapValue>=class
       private
-       const CELL_EMPTY=-1;
-             CELL_DELETED=-2;
-             ENT_EMPTY=-1;
-             ENT_DELETED=-2;
        type TpvHashMapKey=RawByteString;
-            PpvHashMapEntity=^TpvHashMapEntity;
-            TpvHashMapEntity=record
-             Key:TpvHashMapKey;
-             Value:TpvHashMapValue;
+            TEntity=record
+             public
+              const Empty=0;
+                    Used=1;
+                    Deleted=2;
+             public
+              State:TpvUInt32;
+              Key:TpvHashMapKey;
+              Value:TpvHashMapValue;
             end;
-            TpvHashMapEntities=array of TpvHashMapEntity;
+            PEntity=^TEntity;
+            TEntities=array of TEntity;
       private
-       type TpvHashMapEntityEnumerator=record
+       type TEntityEnumerator=record
              private
               fHashMap:TpvStringHashMap<TpvHashMapValue>;
               fIndex:TpvSizeInt;
-              function GetCurrent:TpvHashMapEntity; inline;
+              function GetCurrent:TEntity; inline;
              public
               constructor Create(const aHashMap:TpvStringHashMap<TpvHashMapValue>);
               function MoveNext:boolean; inline;
-              property Current:TpvHashMapEntity read GetCurrent;
+              property Current:TEntity read GetCurrent;
             end;
-            TpvHashMapKeyEnumerator=record
+            TKeyEnumerator=record
              private
               fHashMap:TpvStringHashMap<TpvHashMapValue>;
               fIndex:TpvSizeInt;
@@ -524,21 +526,21 @@ type TpvDynamicArray<T>=record
               function MoveNext:boolean; inline;
               property Current:TpvHashMapValue read GetCurrent;
             end;
-            TpvHashMapEntitiesObject=class
+            TEntitiesObject=class
              private
               fOwner:TpvStringHashMap<TpvHashMapValue>;
              public
               constructor Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
-              function GetEnumerator:TpvHashMapEntityEnumerator;
+              function GetEnumerator:TEntityEnumerator;
             end;
-            TpvHashMapKeysObject=class
+            TKeysObject=class
              private
               fOwner:TpvStringHashMap<TpvHashMapValue>;
              public
               constructor Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
-              function GetEnumerator:TpvHashMapKeyEnumerator;
+              function GetEnumerator:TKeyEnumerator;
             end;
-            TpvHashMapValuesObject=class
+            TValuesObject=class
              private
               fOwner:TpvStringHashMap<TpvHashMapValue>;
               function GetValue(const Key:TpvHashMapKey):TpvHashMapValue; inline;
@@ -549,20 +551,17 @@ type TpvDynamicArray<T>=record
               property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
             end;
       private
-       fRealSize:TpvInt32;
-       fLogSize:TpvInt32;
-       fSize:TpvInt32;
-       fEntities:TpvHashMapEntities;
-       fEntityToCellIndex:TpvHashMapEntityIndices;
-       fCellToEntityIndex:TpvHashMapEntityIndices;
+       fSize:TpvSizeUInt;
+       fLogSize:TpvSizeUInt;
+       fCountNonEmptyEntites:TpvSizeUInt;
+       fEntities:TEntities;
        fDefaultValue:TpvHashMapValue;
        fCanShrink:boolean;
-       fEntitiesObject:TpvHashMapEntitiesObject;
-       fKeysObject:TpvHashMapKeysObject;
-       fValuesObject:TpvHashMapValuesObject;
-      private
+       fEntitiesObject:TEntitiesObject;
+       fKeysObject:TKeysObject;
+       fValuesObject:TValuesObject;
        function HashKey(const Key:TpvHashMapKey):TpvUInt32;
-       function FindCell(const Key:TpvHashMapKey):TpvUInt32;
+       function FindEntity(const Key:TpvHashMapKey):PEntity;
        procedure Resize;
       protected
        function GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
@@ -571,15 +570,15 @@ type TpvDynamicArray<T>=record
        constructor Create(const DefaultValue:TpvHashMapValue);
        destructor Destroy; override;
        procedure Clear;
-       function Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PpvHashMapEntity;
-       function Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PpvHashMapEntity;
+       function Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PEntity;
+       function Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PEntity;
        function TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
        function ExistKey(const Key:TpvHashMapKey):boolean;
        function Delete(const Key:TpvHashMapKey):boolean;
        property EntityValues[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
-       property Entities:TpvHashMapEntitiesObject read fEntitiesObject;
-       property Keys:TpvHashMapKeysObject read fKeysObject;
-       property Values:TpvHashMapValuesObject read fValuesObject;
+       property Entities:TEntitiesObject read fEntitiesObject;
+       property Keys:TKeysObject read fKeysObject;
+       property Values:TValuesObject read fValuesObject;
        property CanShrink:boolean read fCanShrink write fCanShrink;
      end;
 {$else}
@@ -2669,23 +2668,23 @@ end;
 {$warnings off}
 {$hints off}
 
-constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapEntityEnumerator.Create(const aHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
+constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TEntityEnumerator.Create(const aHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
 begin
  fHashMap:=aHashMap;
  fIndex:=-1;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapEntityEnumerator.GetCurrent:TpvHashMapEntity;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TEntityEnumerator.GetCurrent:TEntity;
 begin
  result:=fHashMap.fEntities[fIndex];
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapEntityEnumerator.MoveNext:boolean;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TEntityEnumerator.MoveNext:boolean;
 begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
+   if fHashMap.fEntities[fIndex].State=TEntity.Used then begin
     result:=true;
     exit;
    end;
@@ -2696,23 +2695,23 @@ begin
  result:=false;
 end;
 
-constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapKeyEnumerator.Create(const aHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
+constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TKeyEnumerator.Create(const aHashMap:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
 begin
  fHashMap:=aHashMap;
  fIndex:=-1;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapKeyEnumerator.GetCurrent:TpvHashMapKey;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TKeyEnumerator.GetCurrent:TpvHashMapKey;
 begin
  result:=fHashMap.fEntities[fIndex].Key;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapKeyEnumerator.MoveNext:boolean;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TKeyEnumerator.MoveNext:boolean;
 begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
+   if fHashMap.fEntities[fIndex].State=TEntity.Used then begin
     result:=true;
     exit;
    end;
@@ -2739,7 +2738,7 @@ begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
+   if fHashMap.fEntities[fIndex].State=TEntity.Used then begin
     result:=true;
     exit;
    end;
@@ -2750,45 +2749,45 @@ begin
  result:=false;
 end;
 
-constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapEntitiesObject.Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
+constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TEntitiesObject.Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
 begin
  inherited Create;
  fOwner:=aOwner;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapEntitiesObject.GetEnumerator:TpvHashMapEntityEnumerator;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TEntitiesObject.GetEnumerator:TEntityEnumerator;
 begin
- result:=TpvHashMapEntityEnumerator.Create(fOwner);
+ result:=TEntityEnumerator.Create(fOwner);
 end;
 
-constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapKeysObject.Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
-begin
- inherited Create;
- fOwner:=aOwner;
-end;
-
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapKeysObject.GetEnumerator:TpvHashMapKeyEnumerator;
-begin
- result:=TpvHashMapKeyEnumerator.Create(fOwner);
-end;
-
-constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapValuesObject.Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
+constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TKeysObject.Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
 begin
  inherited Create;
  fOwner:=aOwner;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapValuesObject.GetEnumerator:TpvHashMapValueEnumerator;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TKeysObject.GetEnumerator:TKeyEnumerator;
+begin
+ result:=TKeyEnumerator.Create(fOwner);
+end;
+
+constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TValuesObject.Create(const aOwner:TpvHashMap<TpvHashMapKey,TpvHashMapValue>);
+begin
+ inherited Create;
+ fOwner:=aOwner;
+end;
+
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TValuesObject.GetEnumerator:TpvHashMapValueEnumerator;
 begin
  result:=TpvHashMapValueEnumerator.Create(fOwner);
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapValuesObject.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TValuesObject.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
 begin
  result:=fOwner.GetValue(Key);
 end;
 
-procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TpvHashMapValuesObject.SetValue(const Key:TpvHashMapKey;const aValue:TpvHashMapValue);
+procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TValuesObject.SetValue(const Key:TpvHashMapKey;const aValue:TpvHashMapValue);
 begin
  fOwner.SetValue(Key,aValue);
 end;
@@ -2796,31 +2795,27 @@ end;
 constructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Create(const DefaultValue:TpvHashMapValue);
 begin
  inherited Create;
- fRealSize:=0;
- fLogSize:=0;
  fSize:=0;
+ fLogSize:=0;
+ fCountNonEmptyEntites:=0;
  fEntities:=nil;
- fEntityToCellIndex:=nil;
- fCellToEntityIndex:=nil;
  fDefaultValue:=DefaultValue;
  fCanShrink:=true;
- fEntitiesObject:=TpvHashMapEntitiesObject.Create(self);
- fKeysObject:=TpvHashMapKeysObject.Create(self);
- fValuesObject:=TpvHashMapValuesObject.Create(self);
+ fEntitiesObject:=TEntitiesObject.Create(self);
+ fKeysObject:=TKeysObject.Create(self);
+ fValuesObject:=TValuesObject.Create(self);
  Resize;
 end;
 
 destructor TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Destroy;
-var Counter:TpvInt32;
+var Index:TpvSizeInt;
 begin
  Clear;
- for Counter:=0 to length(fEntities)-1 do begin
-  Finalize(fEntities[Counter].Key);
-  Finalize(fEntities[Counter].Value);
+ for Index:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Index].Key);
+  Finalize(fEntities[Index].Value);
  end;
- SetLength(fEntities,0);
- SetLength(fEntityToCellIndex,0);
- SetLength(fCellToEntityIndex,0);
+ fEntities:=nil;
  FreeAndNil(fEntitiesObject);
  FreeAndNil(fKeysObject);
  FreeAndNil(fValuesObject);
@@ -2828,26 +2823,21 @@ begin
 end;
 
 procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Clear;
-var Counter:TpvInt32;
+var Index:TpvSizeInt;
 begin
- for Counter:=0 to length(fEntities)-1 do begin
-  Finalize(fEntities[Counter].Key);
-  Finalize(fEntities[Counter].Value);
+ for Index:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Index].Key);
+  Finalize(fEntities[Index].Value);
  end;
  if fCanShrink then begin
-  fRealSize:=0;
-  fLogSize:=0;
   fSize:=0;
-  SetLength(fEntities,0);
-  SetLength(fEntityToCellIndex,0);
-  SetLength(fCellToEntityIndex,0);
+  fLogSize:=0;
+  fCountNonEmptyEntites:=0;
+  fEntities:=nil;
   Resize;
  end else begin
-  for Counter:=0 to length(fCellToEntityIndex)-1 do begin
-   fCellToEntityIndex[Counter]:=ENT_EMPTY;
-  end;
-  for Counter:=0 to length(fEntityToCellIndex)-1 do begin
-   fEntityToCellIndex[Counter]:=CELL_EMPTY;
+  for Index:=0 to length(fEntities)-1 do begin
+   fEntities[Index].State:=TEntity.Empty;
   end;
  end;
 end;
@@ -3090,129 +3080,99 @@ begin
  end;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.FindCell(const Key:TpvHashMapKey):TpvUInt32;
-var HashCode,Mask,Step:TpvUInt32;
-    Entity:TpvInt32;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.FindEntity(const Key:TpvHashMapKey):PEntity;
+var Index,HashCode,Mask,Step:TpvSizeUInt;
 begin
  HashCode:=HashKey(Key);
  Mask:=(2 shl fLogSize)-1;
  Step:=((HashCode shl 1)+1) and Mask;
- if fLogSize<>0 then begin
-  result:=HashCode shr (32-fLogSize);
- end else begin
-  result:=0;
- end;
+ Index:=HashCode shr (32-fLogSize);
  repeat
-  Entity:=fCellToEntityIndex[result];
-  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and CompareKey(fEntities[Entity].Key,Key)) then begin
+  result:=@fEntities[Index];
+  if (result^.State=TEntity.Empty) or ((result^.State=TEntity.Used) and CompareKey(result^.Key,Key)) then begin
    exit;
   end;
-  result:=(result+Step) and Mask;
+  Index:=(Index+Step) and Mask;
  until false;
 end;
 
 procedure TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
-    OldEntities:TpvHashMapEntities;
-    OldCellToEntityIndex:TpvHashMapEntityIndices;
-    OldEntityToCellIndex:TpvHashMapEntityIndices;
+var Index:TpvSizeInt;
+    OldEntities:TEntities;
+    OldEntity:PEntity;
 begin
- NewLogSize:=0;
- NewSize:=fRealSize;
- while NewSize<>0 do begin
-  NewSize:=NewSize shr 1;
-  inc(NewLogSize);
- end;
- if NewLogSize<1 then begin
-  NewLogSize:=1;
- end;
- fSize:=0;
- fRealSize:=0;
- fLogSize:=NewLogSize;
+
+ fLogSize:={$ifdef cpu64}IntLog264{$else}IntLog2{$endif}(fCountNonEmptyEntites)+1;
+
+ fSize:=2 shl fLogSize;
+
+ fCountNonEmptyEntites:=0;
+
  OldEntities:=fEntities;
- OldCellToEntityIndex:=fCellToEntityIndex;
- OldEntityToCellIndex:=fEntityToCellIndex;
+
  fEntities:=nil;
- fCellToEntityIndex:=nil;
- fEntityToCellIndex:=nil;
- SetLength(fEntities,2 shl fLogSize);
- SetLength(fCellToEntityIndex,2 shl fLogSize);
- SetLength(fEntityToCellIndex,2 shl fLogSize);
- for Counter:=0 to length(fCellToEntityIndex)-1 do begin
-  fCellToEntityIndex[Counter]:=ENT_EMPTY;
+ SetLength(fEntities,fSize);
+
+ for Index:=0 to length(fEntities)-1 do begin
+  fEntities[Index].State:=TEntity.Empty;
  end;
- for Counter:=0 to length(fEntityToCellIndex)-1 do begin
-  fEntityToCellIndex[Counter]:=CELL_EMPTY;
- end;
- for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
-  Cell:=OldEntityToCellIndex[Counter];
-  if Cell>=0 then begin
-   Entity:=OldCellToEntityIndex[Cell];
-   if Entity>=0 then begin
-    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+
+ if length(OldEntities)>0 then begin
+  try
+   for Index:=0 to length(OldEntities)-1 do begin
+    OldEntity:=@OldEntities[Index];
+    if OldEntity^.State=TEntity.Used then begin
+     Add(OldEntity^.Key,OldEntity^.Value);
+    end;
+{   Finalize(OldEntity^.Key);
+    Finalize(OldEntity^.Value);}
    end;
+  finally
+   OldEntities:=nil;
   end;
  end;
- for Counter:=0 to length(OldEntities)-1 do begin
-  Finalize(OldEntities[Counter].Key);
-  Finalize(OldEntities[Counter].Value);
- end;
- SetLength(OldEntities,0);
- SetLength(OldCellToEntityIndex,0);
- SetLength(OldEntityToCellIndex,0);
+
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PpvHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PEntity;
 begin
- result:=nil;
- while fRealSize>=(1 shl fLogSize) do begin
+ while fCountNonEmptyEntites>=(1 shl fLogSize) do begin
   Resize;
  end;
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@fEntities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
-  exit;
+ result:=FindEntity(Key);
+ if result^.State=TEntity.Empty then begin
+  inc(fCountNonEmptyEntites);
  end;
- Entity:=fSize;
- inc(fSize);
- if Entity<(2 shl fLogSize) then begin
-  fCellToEntityIndex[Cell]:=Entity;
-  fEntityToCellIndex[Entity]:=Cell;
-  inc(fRealSize);
-  result:=@fEntities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
- end;
+ result^.State:=TEntity.Used;
+ result^.Key:=Key;
+ result^.Value:=Value;
 end;
 
-function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PpvHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-    Value:TpvHashMapValue;
+function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PEntity;
+var Value:TpvHashMapValue;
 begin
- result:=nil;
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@fEntities[Entity];
- end else if CreateIfNotExist then begin
-  Initialize(Value);
-  result:=Add(Key,Value);
+ result:=FindEntity(Key);
+ case result^.State of
+  TEntity.Used:begin
+  end;
+  else {TEntity.Empty,TEntity.Deleted:}begin
+   if CreateIfNotExist then begin
+    Initialize(Value);
+    result:=Add(Key,Value);
+   end else begin
+    result:=nil;
+   end;
+  end;
  end;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
-var Entity:TpvInt32;
+var Entity:PEntity;
 begin
- Entity:=fCellToEntityIndex[FindCell(Key)];
- result:=Entity>=0;
+ Entity:=FindEntity(Key);
+ result:=Entity^.State=TEntity.Used;
  if result then begin
-  Value:=fEntities[Entity].Value;
+  Value:=Entity^.Value;
  end else begin
   Initialize(Value);
  end;
@@ -3220,33 +3180,27 @@ end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.ExistKey(const Key:TpvHashMapKey):boolean;
 begin
- result:=fCellToEntityIndex[FindCell(Key)]>=0;
+ result:=FindEntity(Key).State=TEntity.Used;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
+var Entity:PEntity;
 begin
- result:=false;
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  Finalize(fEntities[Entity].Key);
-  Finalize(fEntities[Entity].Value);
-  fEntityToCellIndex[Entity]:=CELL_DELETED;
-  fCellToEntityIndex[Cell]:=ENT_DELETED;
-  result:=true;
+ Entity:=FindEntity(Key);
+ result:=Entity^.State=TEntity.Used;
+ if result then begin
+  Entity^.State:=TEntity.Deleted;
+  Finalize(Entity^.Key);
+  Finalize(Entity^.Value);
  end;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
+var Entity:PEntity;
 begin
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=fEntities[Entity].Value;
+ Entity:=FindEntity(Key);
+ if Entity^.State=TEntity.Used then begin
+  result:=Entity^.Value;
  end else begin
   result:=fDefaultValue;
  end;
@@ -3258,23 +3212,23 @@ begin
 end;
 
 {$ifdef ExtraStringHashMap}
-constructor TpvStringHashMap<TpvHashMapValue>.TpvHashMapEntityEnumerator.Create(const aHashMap:TpvStringHashMap<TpvHashMapValue>);
+constructor TpvStringHashMap<TpvHashMapValue>.TEntityEnumerator.Create(const aHashMap:TpvStringHashMap<TpvHashMapValue>);
 begin
  fHashMap:=aHashMap;
  fIndex:=-1;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapEntityEnumerator.GetCurrent:TpvHashMapEntity;
+function TpvStringHashMap<TpvHashMapValue>.TEntityEnumerator.GetCurrent:TEntity;
 begin
  result:=fHashMap.fEntities[fIndex];
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapEntityEnumerator.MoveNext:boolean;
+function TpvStringHashMap<TpvHashMapValue>.TEntityEnumerator.MoveNext:boolean;
 begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
+   if fHashMap.fEntities[fIndex].State=TEntity.Used then begin
     result:=true;
     exit;
    end;
@@ -3285,23 +3239,23 @@ begin
  result:=false;
 end;
 
-constructor TpvStringHashMap<TpvHashMapValue>.TpvHashMapKeyEnumerator.Create(const aHashMap:TpvStringHashMap<TpvHashMapValue>);
+constructor TpvStringHashMap<TpvHashMapValue>.TKeyEnumerator.Create(const aHashMap:TpvStringHashMap<TpvHashMapValue>);
 begin
  fHashMap:=aHashMap;
  fIndex:=-1;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapKeyEnumerator.GetCurrent:TpvHashMapKey;
+function TpvStringHashMap<TpvHashMapValue>.TKeyEnumerator.GetCurrent:TpvHashMapKey;
 begin
  result:=fHashMap.fEntities[fIndex].Key;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapKeyEnumerator.MoveNext:boolean;
+function TpvStringHashMap<TpvHashMapValue>.TKeyEnumerator.MoveNext:boolean;
 begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
+   if fHashMap.fEntities[fIndex].State=TEntity.Used then begin
     result:=true;
     exit;
    end;
@@ -3328,7 +3282,7 @@ begin
  repeat
   inc(fIndex);
   if fIndex<fHashMap.fSize then begin
-   if (fHashMap.fEntityToCellIndex[fIndex]>=0) and (fHashMap.fCellToEntityIndex[fHashMap.fEntityToCellIndex[fIndex]]>=0) then begin
+   if fHashMap.fEntities[fIndex].State=TEntity.Used then begin
     result:=true;
     exit;
    end;
@@ -3339,45 +3293,45 @@ begin
  result:=false;
 end;
 
-constructor TpvStringHashMap<TpvHashMapValue>.TpvHashMapEntitiesObject.Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
+constructor TpvStringHashMap<TpvHashMapValue>.TEntitiesObject.Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
 begin
  inherited Create;
  fOwner:=aOwner;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapEntitiesObject.GetEnumerator:TpvHashMapEntityEnumerator;
+function TpvStringHashMap<TpvHashMapValue>.TEntitiesObject.GetEnumerator:TEntityEnumerator;
 begin
- result:=TpvHashMapEntityEnumerator.Create(fOwner);
+ result:=TEntityEnumerator.Create(fOwner);
 end;
 
-constructor TpvStringHashMap<TpvHashMapValue>.TpvHashMapKeysObject.Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
-begin
- inherited Create;
- fOwner:=aOwner;
-end;
-
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapKeysObject.GetEnumerator:TpvHashMapKeyEnumerator;
-begin
- result:=TpvHashMapKeyEnumerator.Create(fOwner);
-end;
-
-constructor TpvStringHashMap<TpvHashMapValue>.TpvHashMapValuesObject.Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
+constructor TpvStringHashMap<TpvHashMapValue>.TKeysObject.Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
 begin
  inherited Create;
  fOwner:=aOwner;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapValuesObject.GetEnumerator:TpvHashMapValueEnumerator;
+function TpvStringHashMap<TpvHashMapValue>.TKeysObject.GetEnumerator:TKeyEnumerator;
+begin
+ result:=TKeyEnumerator.Create(fOwner);
+end;
+
+constructor TpvStringHashMap<TpvHashMapValue>.TValuesObject.Create(const aOwner:TpvStringHashMap<TpvHashMapValue>);
+begin
+ inherited Create;
+ fOwner:=aOwner;
+end;
+
+function TpvStringHashMap<TpvHashMapValue>.TValuesObject.GetEnumerator:TpvHashMapValueEnumerator;
 begin
  result:=TpvHashMapValueEnumerator.Create(fOwner);
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.TpvHashMapValuesObject.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
+function TpvStringHashMap<TpvHashMapValue>.TValuesObject.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
 begin
  result:=fOwner.GetValue(Key);
 end;
 
-procedure TpvStringHashMap<TpvHashMapValue>.TpvHashMapValuesObject.SetValue(const Key:TpvHashMapKey;const aValue:TpvHashMapValue);
+procedure TpvStringHashMap<TpvHashMapValue>.TValuesObject.SetValue(const Key:TpvHashMapKey;const aValue:TpvHashMapValue);
 begin
  fOwner.SetValue(Key,aValue);
 end;
@@ -3385,31 +3339,27 @@ end;
 constructor TpvStringHashMap<TpvHashMapValue>.Create(const DefaultValue:TpvHashMapValue);
 begin
  inherited Create;
- fRealSize:=0;
- fLogSize:=0;
  fSize:=0;
+ fLogSize:=0;
+ fCountNonEmptyEntites:=0;
  fEntities:=nil;
- fEntityToCellIndex:=nil;
- fCellToEntityIndex:=nil;
  fDefaultValue:=DefaultValue;
  fCanShrink:=true;
- fEntitiesObject:=TpvHashMapEntitiesObject.Create(self);
- fKeysObject:=TpvHashMapKeysObject.Create(self);
- fValuesObject:=TpvHashMapValuesObject.Create(self);
+ fEntitiesObject:=TEntitiesObject.Create(self);
+ fKeysObject:=TKeysObject.Create(self);
+ fValuesObject:=TValuesObject.Create(self);
  Resize;
 end;
 
 destructor TpvStringHashMap<TpvHashMapValue>.Destroy;
-var Counter:TpvInt32;
+var Index:TpvSizeInt;
 begin
  Clear;
- for Counter:=0 to length(fEntities)-1 do begin
-  Finalize(fEntities[Counter].Key);
-  Finalize(fEntities[Counter].Value);
+ for Index:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Index].Key);
+  Finalize(fEntities[Index].Value);
  end;
- SetLength(fEntities,0);
- SetLength(fEntityToCellIndex,0);
- SetLength(fCellToEntityIndex,0);
+ fEntities:=nil;
  FreeAndNil(fEntitiesObject);
  FreeAndNil(fKeysObject);
  FreeAndNil(fValuesObject);
@@ -3417,26 +3367,21 @@ begin
 end;
 
 procedure TpvStringHashMap<TpvHashMapValue>.Clear;
-var Counter:TpvInt32;
+var Index:TpvSizeInt;
 begin
- for Counter:=0 to length(fEntities)-1 do begin
-  Finalize(fEntities[Counter].Key);
-  Finalize(fEntities[Counter].Value);
+ for Index:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Index].Key);
+  Finalize(fEntities[Index].Value);
  end;
  if fCanShrink then begin
-  fRealSize:=0;
-  fLogSize:=0;
   fSize:=0;
-  SetLength(fEntities,0);
-  SetLength(fEntityToCellIndex,0);
-  SetLength(fCellToEntityIndex,0);
+  fLogSize:=0;
+  fCountNonEmptyEntites:=0;
+  fEntities:=nil;
   Resize;
  end else begin
-  for Counter:=0 to length(fCellToEntityIndex)-1 do begin
-   fCellToEntityIndex[Counter]:=ENT_EMPTY;
-  end;
-  for Counter:=0 to length(fEntityToCellIndex)-1 do begin
-   fEntityToCellIndex[Counter]:=CELL_EMPTY;
+  for Index:=0 to length(fEntities)-1 do begin
+   fEntities[Index].State:=TEntity.Empty;
   end;
  end;
 end;
@@ -3540,129 +3485,99 @@ begin
 {$ifend}
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.FindCell(const Key:TpvHashMapKey):TpvUInt32;
-var HashCode,Mask,Step:TpvUInt32;
-    Entity:TpvInt32;
+function TpvStringHashMap<TpvHashMapValue>.FindEntity(const Key:TpvHashMapKey):PEntity;
+var Index,HashCode,Mask,Step:TpvSizeUInt;
 begin
  HashCode:=HashKey(Key);
  Mask:=(2 shl fLogSize)-1;
  Step:=((HashCode shl 1)+1) and Mask;
- if fLogSize<>0 then begin
-  result:=HashCode shr (32-fLogSize);
- end else begin
-  result:=0;
- end;
+ Index:=HashCode shr (32-fLogSize);
  repeat
-  Entity:=fCellToEntityIndex[result];
-  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and (fEntities[Entity].Key=Key)) then begin
+  result:=@fEntities[Index];
+  if (result^.State=TEntity.Empty) or ((result^.State=TEntity.Used) and (result^.Key=Key)) then begin
    exit;
   end;
-  result:=(result+Step) and Mask;
+  Index:=(Index+Step) and Mask;
  until false;
 end;
 
 procedure TpvStringHashMap<TpvHashMapValue>.Resize;
-var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
-    OldEntities:TpvHashMapEntities;
-    OldCellToEntityIndex:TpvHashMapEntityIndices;
-    OldEntityToCellIndex:TpvHashMapEntityIndices;
+var Index:TpvSizeInt;
+    OldEntities:TEntities;
+    OldEntity:PEntity;
 begin
- NewLogSize:=0;
- NewSize:=fRealSize;
- while NewSize<>0 do begin
-  NewSize:=NewSize shr 1;
-  inc(NewLogSize);
- end;
- if NewLogSize<1 then begin
-  NewLogSize:=1;
- end;
- fSize:=0;
- fRealSize:=0;
- fLogSize:=NewLogSize;
+
+ fLogSize:={$ifdef cpu64}IntLog264{$else}IntLog2{$endif}(fCountNonEmptyEntites)+1;
+
+ fSize:=2 shl fLogSize;
+
+ fCountNonEmptyEntites:=0;
+
  OldEntities:=fEntities;
- OldCellToEntityIndex:=fCellToEntityIndex;
- OldEntityToCellIndex:=fEntityToCellIndex;
+
  fEntities:=nil;
- fCellToEntityIndex:=nil;
- fEntityToCellIndex:=nil;
- SetLength(fEntities,2 shl fLogSize);
- SetLength(fCellToEntityIndex,2 shl fLogSize);
- SetLength(fEntityToCellIndex,2 shl fLogSize);
- for Counter:=0 to length(fCellToEntityIndex)-1 do begin
-  fCellToEntityIndex[Counter]:=ENT_EMPTY;
+ SetLength(fEntities,fSize);
+
+ for Index:=0 to length(fEntities)-1 do begin
+  fEntities[Index].State:=TEntity.Empty;
  end;
- for Counter:=0 to length(fEntityToCellIndex)-1 do begin
-  fEntityToCellIndex[Counter]:=CELL_EMPTY;
- end;
- for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
-  Cell:=OldEntityToCellIndex[Counter];
-  if Cell>=0 then begin
-   Entity:=OldCellToEntityIndex[Cell];
-   if Entity>=0 then begin
-    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+
+ if length(OldEntities)>0 then begin
+  try
+   for Index:=0 to length(OldEntities)-1 do begin
+    OldEntity:=@OldEntities[Index];
+    if OldEntity^.State=TEntity.Used then begin
+     Add(OldEntity^.Key,OldEntity^.Value);
+    end;
+{   Finalize(OldEntity^.Key);
+    Finalize(OldEntity^.Value);}
    end;
+  finally
+   OldEntities:=nil;
   end;
  end;
- for Counter:=0 to length(OldEntities)-1 do begin
-  Finalize(OldEntities[Counter].Key);
-  Finalize(OldEntities[Counter].Value);
- end;
- SetLength(OldEntities,0);
- SetLength(OldCellToEntityIndex,0);
- SetLength(OldEntityToCellIndex,0);
+
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PpvHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
+function TpvStringHashMap<TpvHashMapValue>.Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PEntity;
 begin
- result:=nil;
- while fRealSize>=(1 shl fLogSize) do begin
+ while fCountNonEmptyEntites>=(1 shl fLogSize) do begin
   Resize;
  end;
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@fEntities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
-  exit;
+ result:=FindEntity(Key);
+ if result^.State=TEntity.Empty then begin
+  inc(fCountNonEmptyEntites);
  end;
- Entity:=fSize;
- inc(fSize);
- if Entity<(2 shl fLogSize) then begin
-  fCellToEntityIndex[Cell]:=Entity;
-  fEntityToCellIndex[Entity]:=Cell;
-  inc(fRealSize);
-  result:=@fEntities[Entity];
-  result^.Key:=Key;
-  result^.Value:=Value;
- end;
+ result^.State:=TEntity.Used;
+ result^.Key:=Key;
+ result^.Value:=Value;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PpvHashMapEntity;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
-    Value:TpvHashMapValue;
+function TpvStringHashMap<TpvHashMapValue>.Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PEntity;
+var Value:TpvHashMapValue;
 begin
- result:=nil;
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=@fEntities[Entity];
- end else if CreateIfNotExist then begin
-  Initialize(Value);
-  result:=Add(Key,Value);
+ result:=FindEntity(Key);
+ case result^.State of
+  TEntity.Used:begin
+  end;
+  else {TEntity.Empty,TEntity.Deleted:}begin
+   if CreateIfNotExist then begin
+    Initialize(Value);
+    result:=Add(Key,Value);
+   end else begin
+    result:=nil;
+   end;
+  end;
  end;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.TryGet(const Key:TpvHashMapKey;out Value:TpvHashMapValue):boolean;
-var Entity:TpvInt32;
+var Entity:PEntity;
 begin
- Entity:=fCellToEntityIndex[FindCell(Key)];
- result:=Entity>=0;
+ Entity:=FindEntity(Key);
+ result:=Entity^.State=TEntity.Used;
  if result then begin
-  Value:=fEntities[Entity].Value;
+  Value:=Entity^.Value;
  end else begin
   Initialize(Value);
  end;
@@ -3670,33 +3585,27 @@ end;
 
 function TpvStringHashMap<TpvHashMapValue>.ExistKey(const Key:TpvHashMapKey):boolean;
 begin
- result:=fCellToEntityIndex[FindCell(Key)]>=0;
+ result:=FindEntity(Key).State=TEntity.Used;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
+var Entity:PEntity;
 begin
- result:=false;
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  Finalize(fEntities[Entity].Key);
-  Finalize(fEntities[Entity].Value);
-  fEntityToCellIndex[Entity]:=CELL_DELETED;
-  fCellToEntityIndex[Cell]:=ENT_DELETED;
-  result:=true;
+ Entity:=FindEntity(Key);
+ result:=Entity^.State=TEntity.Used;
+ if result then begin
+  Entity^.State:=TEntity.Deleted;
+  Finalize(Entity^.Key);
+  Finalize(Entity^.Value);
  end;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.GetValue(const Key:TpvHashMapKey):TpvHashMapValue;
-var Entity:TpvInt32;
-    Cell:TpvUInt32;
+var Entity:PEntity;
 begin
- Cell:=FindCell(Key);
- Entity:=fCellToEntityIndex[Cell];
- if Entity>=0 then begin
-  result:=fEntities[Entity].Value;
+ Entity:=FindEntity(Key);
+ if Entity^.State=TEntity.Used then begin
+  result:=Entity^.Value;
  end else begin
   result:=fDefaultValue;
  end;
