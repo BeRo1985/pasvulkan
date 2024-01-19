@@ -380,9 +380,9 @@ type TpvDynamicArray<T>=record
       public
        type TEntity=record
              public
-              const Empty=0;
-                    Used=1;
-                    Deleted=2;
+              const Empty=1 shl 0;
+                    Deleted=1 shl 1;
+                    Used=1 shl 2;
              public
               State:TpvUInt32;
               Key:TpvHashMapKey;
@@ -485,9 +485,9 @@ type TpvDynamicArray<T>=record
        type TpvHashMapKey=RawByteString;
             TEntity=record
              public
-              const Empty=0;
-                    Used=1;
-                    Deleted=2;
+              const Empty=1 shl 0;
+                    Deleted=1 shl 1;
+                    Used=1 shl 2;
              public
               State:TpvUInt32;
               Key:TpvHashMapKey;
@@ -3089,7 +3089,7 @@ begin
  Index:=HashCode shr (32-fLogSize);
  repeat
   result:=@fEntities[Index];
-  if (result^.State=TEntity.Empty) or ((result^.State=TEntity.Used) and CompareKey(result^.Key,Key)) then begin
+  if ((result^.State and TEntity.Empty)<>0) or ((result^.State=TEntity.Used) and CompareKey(result^.Key,Key)) then begin
    exit;
   end;
   Index:=(Index+Step) and Mask;
@@ -3494,7 +3494,7 @@ begin
  Index:=HashCode shr (32-fLogSize);
  repeat
   result:=@fEntities[Index];
-  if (result^.State=TEntity.Empty) or ((result^.State=TEntity.Used) and (result^.Key=Key)) then begin
+  if ((result^.State and TEntity.Empty)<>0) or ((result^.State=TEntity.Used) and (result^.Key=Key)) then begin
    exit;
   end;
   Index:=(Index+Step) and Mask;
