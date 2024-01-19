@@ -1904,7 +1904,7 @@ end;
 function IntLog2(x:TpvUInt32):TpvUInt32; {$if defined(fpc)}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  if x<>0 then begin
-  result:=BSRWord(x);
+  result:=BSRDWord(x);
  end else begin
   result:=0;
  end;

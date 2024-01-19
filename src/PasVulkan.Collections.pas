@@ -3180,7 +3180,7 @@ end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.ExistKey(const Key:TpvHashMapKey):boolean;
 begin
- result:=FindEntity(Key).State=TEntity.Used;
+ result:=FindEntity(Key)^.State=TEntity.Used;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
@@ -3585,7 +3585,7 @@ end;
 
 function TpvStringHashMap<TpvHashMapValue>.ExistKey(const Key:TpvHashMapKey):boolean;
 begin
- result:=FindEntity(Key).State=TEntity.Used;
+ result:=FindEntity(Key)^.State=TEntity.Used;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.Delete(const Key:TpvHashMapKey):boolean;
