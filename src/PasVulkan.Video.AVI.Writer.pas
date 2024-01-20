@@ -1,0 +1,2610 @@
+(******************************************************************************
+ *                                 PasVulkan                                  *
+ ******************************************************************************
+ *                       Version see PasVulkan.Framework.pas                  *
+ ******************************************************************************
+ *                                zlib license                                *
+ *============================================================================*
+ *                                                                            *
+ * Copyright (C) 2016-2024, Benjamin Rosseaux (benjamin@rosseaux.de)          *
+ *                                                                            *
+ * This software is provided 'as-is', without any express or implied          *
+ * warranty. In no event will the authors be held liable for any damages      *
+ * arising from the use of this software.                                     *
+ *                                                                            *
+ * Permission is granted to anyone to use this software for any purpose,      *
+ * including commercial applications, and to alter it and redistribute it     *
+ * freely, subject to the following restrictions:                             *
+ *                                                                            *
+ * 1. The origin of this software must not be misrepresented; you must not    *
+ *    claim that you wrote the original software. If you use this software    *
+ *    in a product, an acknowledgement in the product documentation would be  *
+ *    appreciated but is not required.                                        *
+ * 2. Altered source versions must be plainly marked as such, and must not be *
+ *    misrepresented as being the original software.                          *
+ * 3. This notice may not be removed or altered from any source distribution. *
+ *                                                                            *
+ ******************************************************************************
+ *                  General guidelines for code contributors                  *
+ *============================================================================*
+ *                                                                            *
+ * 1. Make sure you are legally allowed to make a contribution under the zlib *
+ *    license.                                                                *
+ * 2. The zlib license header goes at the top of each source file, with       *
+ *    appropriate copyright notice.                                           *
+ * 3. This PasVulkan wrapper may be used only with the PasVulkan-own Vulkan   *
+ *    Pascal header.                                                          *
+ * 4. After a pull request, check the status of your pull request on          *
+      http://github.com/pv1985/pasvulkan                                    *
+ * 5. Write code which's compatible with Delphi >= 2009 and FreePascal >=     *
+ *    3.1.1                                                                   *
+ * 6. Don't use Delphi-only, FreePascal-only or Lazarus-only libraries/units, *
+ *    but if needed, make it out-ifdef-able.                                  *
+ * 7. No use of third-party libraries/units as possible, but if needed, make  *
+ *    it out-ifdef-able.                                                      *
+ * 8. Try to use const when possible.                                         *
+ * 9. Make sure to comment out writeln, used while debugging.                 *
+ * 10. Make sure the code compiles on 32-bit and 64-bit platforms (x86-32,    *
+ *     x86-64, ARM, ARM64, etc.).                                             *
+ * 11. Make sure the code runs on all platforms with Vulkan support           *
+ *                                                                            *
+ ******************************************************************************)
+unit PasVulkan.Video.AVI.Writer;
+{$i PasVulkan.inc}
+{$ifndef fpc}
+ {$ifdef conditionalexpressions}
+  {$if CompilerVersion>=24.0}
+   {$legacyifend on}
+  {$ifend}
+ {$endif}
+{$endif}
+{$undef GoodCompilerForSIMD}
+{$ifdef fpc}
+ {$define caninline}
+ {-$codealign 16}
+ {$codealign CONSTMIN=16} // For SIMD-constants
+ {$codealign CONSTMAX=16} // For SIMD-constants
+{$else}
+ {$undef caninline}
+ {$ifdef ver180}
+  {$define caninline}
+ {$else}
+  {$ifdef conditionalexpressions}
+   {$if compilerversion>=18}
+    {$define caninline}
+   {$ifend}
+   {$if compilerversion>=28}
+    {$define GoodCompilerForSIMD} // For example: Delphi 7 isn't SIMD-friendly (since it doesn't align constant variables to 16-TpvUInt8 boundaries, and for example movdqa gives then exceptions), but XE7 is SIMD-friendly
+    {$codealign 16}
+   {$ifend}
+  {$endif}
+ {$endif}
+{$endif}
+{$ifndef cpu386}
+ {$define PurePascal}
+{$endif}
+{$ifdef fpc}
+ {-$define PasVulkanUseX264}
+{$endif}
+{-$define PurePascal} // Needed for example for PIC code
+
+interface
+
+uses SysUtils,Classes,Math,
+     {$ifdef PasVulkanUseX264},x264{$endif}
+     {$ifdef fpc}
+      dynlibs,
+     {$else}
+      Windows,
+     {$endif}
+     PasVulkan.Types,
+     PasVulkan.Math,
+     PasVulkan.Image.JPEG;
+
+const MaxChunkDepth=16;
+
+      MaxSuperIndex=1024;
+
+      vcRGB2=0;
+      vcI420=1;
+      vcMJPG=2;
+      vcMJPEG=vcMJPG;
+      vcX264_420=3;
+      vcX264_444=4;
+
+{$ifdef fpc}
+      pvAVINilLibHandle=NilHandle;
+{$else}
+      pvAVINilLibHandle=THandle(0);
+{$endif}
+
+type PpvAVIIndexEntry=^TpvAVIIndexEntry;
+     TpvAVIIndexEntry=record
+      Frame:TpvInt32;
+      Type_:TpvInt32;
+      Size:TpvInt32;
+      Offset:TpvUInt32;
+     end;
+
+     TpvAVIIndexEntries=array of PpvAVIIndexEntry;
+
+     PpvAVISegmentInfo=^TpvAVISegmentInfo;
+     TpvAVISegmentInfo=record
+      Offset:TpvInt64;
+      VideoIndexOffset:TpvInt64;
+      SoundIndexOffset:TpvInt64;
+      FirstIndex:TpvInt32;
+      VideoIndexSize:TpvUInt32;
+      SoundIndexSize:TpvUInt32;
+      IndexFrames:TpvUInt32;
+      VideoFrames:TpvUInt32;
+      SoundFrames:TpvUInt32;
+     end;
+
+     TpvAVISegmentInfos=array of PpvAVISegmentInfo;
+
+     TpvAVIChunkSignature=array[0..3] of ansichar;
+
+     TpvAVIIntegers=array of TpvInt32;
+
+     PpvAVILibHandle=^TpvAVILibHandle;
+{$ifdef fpc}
+     TpvAVILibHandle=TLibHandle;
+{$else}
+     TpvAVILibHandle=THandle;
+{$endif}
+
+     EpvAVIWriter=class(Exception);
+
+     TpvAVIWriter_tjInitCompress=function:pointer; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+
+     TpvAVIWriter_tjDestroy=function(handle:pointer):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+
+     TpvAVIWriter_tjAlloc=function(bytes:TpvInt32):pointer; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+
+     TpvAVIWriter_tjFree=procedure(buffer:pointer); {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+
+     TpvAVIWriter_tjCompress2=function(handle:pointer;
+                                       srcBuf:pointer;
+                                       width:TpvInt32;
+                                       pitch:TpvInt32;
+                                       height:TpvInt32;
+                                       pixelFormat:TpvInt32;
+                                       var jpegBuf:pointer;
+                                       var jpegSize:TpvUInt32;
+                                       jpegSubsamp:TpvInt32;
+                                       jpegQual:TpvInt32;
+                                       flags:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
+     TpvAVIWriter=class
+      private
+       XCache:TpvAVIIntegers;
+       fTurboJpegLibrary:TpvAVILibHandle;
+       ftjInitCompress:TpvAVIWriter_tjInitCompress;
+       ftjDestroy:TpvAVIWriter_tjDestroy;
+       ftjAlloc:TpvAVIWriter_tjAlloc;
+       ftjFree:TpvAVIWriter_tjFree;
+       ftjCompress2:TpvAVIWriter_tjCompress2;
+{$ifdef PasVulkanUseX264}
+       x264_param:Tx264_param_t;
+       x264_pic:Tx264_picture_t;
+       x264_pic_out:Tx264_picture_t;
+       x264_handle:Px264_t;
+       x264_nal:Px264_nal_t;
+       x264_inal:PpvInt32;
+{$endif}
+      protected
+       procedure WriteSigned8Bit(s8Bit:TpvInt8);
+       procedure WriteSigned16Bit(s16Bit:TpvInt16);
+       procedure WriteSigned32Bit(s32Bit:TpvInt32);
+       procedure WriteUnsigned8Bit(us8Bit:TpvUInt8);
+       procedure WriteUnsigned16Bit(us16Bit:TpvUInt16);
+       procedure WriteUnsigned32Bit(us32Bit:TpvUInt32);
+      public
+       Stream:TStream;
+       DoFree:longbool;
+       MaxCompressedSize:TpvUInt32;
+       Compressed:pansichar;
+       RGB:pansichar;
+       RGB2:pansichar;
+       JPEGEncoder:TpvJPEGEncoder;
+       VideoFrames:TpvUInt32;
+       VideoWidth:TpvUInt32;
+       VideoHeight:TpvUInt32;
+       VideoFPS:TpvUInt32;
+       VideoCodec:TpvUInt32;
+       VideoFrameSize:TpvUInt32;
+       SoundSampleRate:TpvInt32;
+       SoundChannels:TpvInt32;
+       SoundBits:TpvInt32;
+       IndexEntries:TList;
+       SegmentInfos:TList;
+       FileFramesOffset:TpvInt64;
+       FileExtFramesOffset:TpvInt64;
+       FileVideoOffset:TpvInt64;
+       FileSoundOffset:TpvInt64;
+       SuperIndexVideoOffset:TpvInt64;
+       SuperIndexSoundOffset:TpvInt64;
+       ChunkDepth:TpvInt32;
+       ChunkOffsets:array[0..MaxChunkDepth-1] of TpvInt64;
+       Quality:TpvInt32;
+       Fast:longbool;
+       ChromaSubsampling:TpvInt32;
+       constructor Create(AStream:TStream;ADoFree:longbool;AVideoCodec:TpvUInt32;AVideoWidth,AVideoHeight,AVideoFPS,ASoundSampleRate,ASoundChannels,ASoundBits:TpvInt32;AQuality:TpvInt32=95;AFast:boolean=false;AChromaSubsampling:TpvInt32=-1);
+       destructor Destroy; override;
+       function AddIndex(Frame,Type_,Size:TpvInt32):PpvAVIIndexEntry;
+       procedure StartChunk(const ChunkSignature:TpvAVIChunkSignature;Size:TpvUInt32=0);
+       procedure ListChunk(const ChunkSignature,ListChunkSignature:TpvAVIChunkSignature);
+       procedure EndChunk;
+       procedure EndListChunk;
+       procedure WriteChunk(const ChunkSignature:TpvAVIChunkSignature;Data:pointer;Size:TpvUInt32);
+       procedure FlushSegment;
+       function NextSegment:boolean;
+       function WriteVideoFrame(Pixels:pointer;Width,Height:TpvUInt32;Frame:TpvUInt32):boolean;
+       function WriteSoundFrame(Data:pointer;FrameSize,Frame:TpvUInt32):boolean;
+     end;
+
+implementation
+
+type TAVIH=packed record
+      dwMicroSecPerFrame:TpvUInt32;
+      dwMaxBytesPerSec:TpvUInt32;
+      dwPaddingGranularity:TpvUInt32;
+      dwFlags:TpvUInt32;
+      dwTotalFrames:TpvUInt32;
+      dwInitialFrames:TpvUInt32;
+      dwStreams:TpvUInt32; // 1 for just video, 2 for video and audio
+      dwSuggestedBufferSize:TpvUInt32;
+      dwWidth:TpvUInt32;
+      dwHeight:TpvUInt32;
+      dwReserved:array[0..3] of TpvUInt32;
+     end;
+
+     TSTRH=packed record
+      fccType:TpvAVIChunkSignature;
+      fccHandler:TpvAVIChunkSignature;
+      dwFlags:TpvUInt32;
+      wPriority:TpvUInt16;
+      wLanguage:TpvUInt16;
+      dwInitialFrames:TpvUInt32;
+      dwScale:TpvUInt32;
+      dwRate:TpvUInt32;
+      dwStart:TpvUInt32;
+      dwLength:TpvUInt32;
+      dwSuggestedBufferSize:TpvUInt32;
+      dwQuality:TpvUInt32;
+      dwSampleSize:TpvUInt32;
+      rcFrame:packed record
+       Left:TpvInt16;
+       Top:TpvInt16;
+       Right:TpvInt16;
+       Bottom:TpvInt16;
+      end;
+     end;
+
+     TINDX=packed record
+      wLongsPerEntry:TpvUInt16;
+      bIndexSubType:TpvUInt8;
+      bIndexType:TpvUInt8;
+      nEntriesInUse:TpvUInt32;
+      dwChunkId:TpvAVIChunkSignature;
+      dwReserved:array[0..2] of TpvUInt32;
+     end;
+
+     TINDXEntry=packed record
+      dwOffsetLow:TpvUInt32;
+      dwOffsetHigh:TpvUInt32;
+      dwSize:TpvUInt32;
+      dwDuration:TpvUInt32;
+     end;
+
+     TVPRP=packed record
+      dwVideoFormat:TpvUInt32;
+      dwVideoStandard:TpvUInt32;
+      dwVerticalRefreshRate:TpvUInt32;
+      dwHorizontalTotal:TpvUInt32;
+      dwVerticalTotal:TpvUInt32;
+      wAspectDenominator:TpvUInt16;
+      wAspectNumerator:TpvUInt16;
+      dwFrameWidth:TpvUInt32;
+      dwFrameHeight:TpvUInt32;
+      dwFieldsPerFrame:TpvUInt32;
+      dwCompressedBitmapWidth:TpvUInt32;
+      dwCompressedBitmapHeight:TpvUInt32;
+      dwValidBitmapWidth:TpvUInt32;
+      dwValidBitmapHeight:TpvUInt32;
+      dwValidBitmapXOffset:TpvUInt32;
+      dwValidBitmapYOffset:TpvUInt32;
+      dwVideoXOffset:TpvUInt32;
+      dwVideoYOffset:TpvUInt32;
+     end;
+
+     TBitmapInfoHeader=packed record
+      biSize:TpvUInt32;
+      biWidth:TpvInt32;
+      biHeight:TpvInt32;
+      biPlanes:TpvUInt16;
+      biBitCount:TpvUInt16;
+      biCompression:TpvAVIChunkSignature;
+      biSizeImage:TpvUInt32;
+      biXPelsPerMeter:TpvInt32;
+      biYPelsPerMeter:TpvInt32;
+      biClrUsed:TpvUInt32;
+      biClrImportant:TpvUInt32;
+     end;
+
+     TWaveFormatEx=packed record
+      wFormatTag:TpvUInt16;
+      nChannels:TpvUInt16;
+      nSamplesPerSec:TpvUInt32;
+      nAvgBytesPerSec:TpvUInt32;
+      nBlockAlign:TpvUInt16;
+      wBitsPerSample:TpvUInt16;
+      cbSize:TpvUInt16;
+     end;
+
+const ISTFData:ansistring='PasVulkan.Video.AVI.Writer'+#0;
+
+{$ifndef HasSAR}
+function SARLongint(Value,Shift:TpvInt32):TpvInt32;
+{$ifdef PurePascal}
+{$ifdef caninline}inline;{$endif}
+begin
+{$ifdef HasSAR}
+ result:=SARLongint(Value,Shift);
+{$else}
+ Shift:=Shift and 31;
+ result:=(TpvUInt32(Value) shr Shift) or (TpvUInt32(TpvInt32(TpvUInt32(0-TpvUInt32(TpvUInt32(Value) shr 31)) and TpvUInt32(0-TpvUInt32(ord(Shift<>0))))) shl (32-Shift));
+{$endif}
+end;
+{$else}
+{$ifdef cpu386} assembler; register; {$ifdef fpc}nostackframe;{$endif}
+asm
+ mov ecx,edx
+ sar eax,cl
+end;
+{$else}
+{$ifdef cpuarm} assembler; {$ifdef fpc}nostackframe;{$endif}
+asm
+ mov r0,r0,asr r1
+{$if defined(cpuarmv3) or defined(cpuarmv4) or defined(cpuarmv5)}
+ mov pc,lr
+{$else}
+ bx lr
+{$ifend}
+end;
+{$else}
+ {$error You must define PurePascal, since no inline assembler function variant doesn't exist for your target platform }
+{$endif}
+{$endif}
+{$endif}
+{$endif}
+
+function GCD(a,b:TpvInt32):TpvInt32;
+begin
+ if a=0 then begin
+  b:=a;
+ end;
+ if b=0 then begin
+  a:=b;
+ end;
+ while a<>b do begin
+  if a>b then begin
+   dec(a,b);
+  end;
+  if b>a then begin
+   dec(b,a);
+  end;
+ end;
+ if a=0 then begin
+  a:=1;
+ end;
+ result:=a;
+end;
+
+function ClampToByte(v:TpvInt32):TpvUInt8;
+{$ifdef PurePascal}
+begin
+ if v<0 then begin
+  result:=0;
+ end else if v>255 then begin
+  result:=255;
+ end else begin
+  result:=v;
+ end;
+end;
+{$else}
+{$ifdef cpu386} assembler; register;
+asm
+{cmp eax,255
+ cmovgt eax,255
+ test eax,eax
+ cmovlt eax,0{}
+ mov ecx,eax
+ and ecx,$ffffff00
+ neg ecx
+ sbb ecx,ecx
+ or eax,ecx{}
+{mov ecx,255
+ sub ecx,eax
+ sar ecx,31
+ or cl,al
+ sar eax,31
+ not al
+ and al,cl{}
+end;
+{$else}
+ {$error You must define PurePascal, since no inline assembler function variant doesn't exist for your target platform }
+{$endif}
+{$endif}
+
+procedure ResizeRGB32(Src:pointer;SrcWidth,SrcHeight:TpvInt32;Dst:pointer;DstWidth,DstHeight:TpvInt32;var XCache:TpvAVIIntegers);
+type PLongwords=^TLongwords;
+     TLongwords=array[0..65535] of TpvUInt32;
+var DstX,DstY,SrcX,SrcY:TpvInt32;
+    r,g,b,w,Pixel,SrcR,SrcG,SrcB,SrcA,Weight,xUL,xUR,xLL,xLR,
+    RedBlue,Green,Remainder,WeightX,WeightY:TpvUInt32;
+    TempSrc,TempDst:PLongwords;
+    UpsampleX,UpsampleY:longbool;
+    WeightShift,xa,xb,xc,xd,ya,yb,yc,yd:TpvInt32;
+    SourceTexelsPerOutPixel,WeightPerPixel,AccumlatorPerPixel,WeightDivider,fw,fh:single;
+begin
+ if (SrcWidth=(DstWidth*2)) and (SrcHeight=(DstHeight*2)) then begin
+  Remainder:=0;
+  TempDst:=pointer(Dst);
+  for DstY:=0 to DstHeight-1 do begin
+   SrcY:=DstY*2;
+   TempSrc:=pointer(@pansichar(Src)[(SrcY*SrcWidth) shl 2]);
+   for DstX:=0 to DstWidth-1 do begin
+    xUL:=TempSrc^[0];
+    xUR:=TempSrc^[1];
+    xLL:=TempSrc^[SrcWidth];
+    xLR:=TempSrc^[SrcWidth+1];
+    RedBlue:=(xUL and $00ff00ff)+(xUR and $00ff00ff)+(xLL and $00ff00ff)+(xLR and $00ff00ff)+(Remainder and $00ff00ff);
+    Green:=(xUL and $0000ff00)+(xUR and $0000ff00)+(xLL and $0000ff00)+(xLR and $0000ff00)+(Remainder and $0000ff00);
+    Remainder:=(RedBlue and $00030003) or (Green and $00000300);
+    TempDst[0]:=((RedBlue and $03fc03fc) or (Green and $0003fc00)) shr 2;
+    TempDst:=pointer(@TempDst^[1]);
+    TempSrc:=pointer(@TempSrc^[2]);
+   end;
+  end;
+ end else begin
+  UpsampleX:=SrcWidth<DstWidth;
+  UpsampleY:=DstHeight<DstHeight;
+  WeightShift:=0;
+  SourceTexelsPerOutPixel:=((SrcWidth/DstWidth)+1)*((SrcHeight/DstHeight)+1);
+  WeightPerPixel:=SourceTexelsPerOutPixel*65536;
+  AccumlatorPerPixel:=WeightPerPixel*256;
+  WeightDivider:=AccumlatorPerPixel/4294967000.0;
+  if WeightDivider>1.0 then begin
+   WeightShift:=trunc(ceil(ln(WeightDivider)/ln(2.0)));
+  end;
+  WeightShift:=min(WeightShift,15);
+  fw:=(256*SrcWidth)/DstWidth;
+  fh:=(256*SrcHeight)/DstHeight;
+  if UpsampleX and UpsampleY then begin
+   if length(XCache)<TpvInt32(DstWidth) then begin
+    SetLength(XCache,TpvInt32(DstWidth));
+   end;
+   for DstX:=0 to DstWidth-1 do begin
+    XCache[DstX]:=min(trunc(DstX*fw),(256*(SrcWidth-1))-1);
+   end;
+   for DstY:=0 to DstHeight-1 do begin
+    ya:=min(trunc(DstY*fh),(256*(SrcHeight-1))-1);
+    yc:=ya shr 8;
+    TempDst:=pointer(@pansichar(Dst)[(DstY*DstWidth) shl 2]);
+    for DstX:=0 to DstWidth-1 do begin
+     xa:=XCache[DstX];
+     xc:=xa shr 8;
+     TempSrc:=pointer(@pansichar(Src)[((yc*SrcWidth)+xc) shl 2]);
+     r:=0;
+     g:=0;
+     b:=0;
+     WeightX:=TpvUInt32(TpvInt32(256-(xa and $ff)));
+     WeightY:=TpvUInt32(TpvInt32(256-(ya and $ff)));
+     for SrcY:=0 to 1 do begin
+      for SrcX:=0 to 1 do begin
+       Pixel:=TempSrc^[(SrcY*SrcWidth)+SrcX];
+       SrcR:=(Pixel shr 0) and $ff;
+       SrcG:=(Pixel shr 8) and $ff;
+       SrcB:=(Pixel shr 16) and $ff;
+       Weight:=(WeightX*WeightY) shr WeightShift;
+       inc(r,SrcR*Weight);
+       inc(g,SrcG*Weight);
+       inc(b,SrcB*Weight);
+       WeightX:=256-WeightX;
+      end;
+      WeightY:=256-WeightY;
+     end;
+     TempDst^[0]:=((r shr 16) and $ff) or ((g shr 8) and $ff00) or (b and $ff0000);
+     TempDst:=pointer(@TempDst^[1]);
+    end;
+   end;
+  end else begin
+   if length(XCache)<(TpvInt32(DstWidth)*2) then begin
+    SetLength(XCache,TpvInt32(DstWidth)*2);
+   end;
+   for DstX:=0 to DstWidth-1 do begin
+    xa:=trunc(DstX*fw);
+    if UpsampleX then begin
+     xb:=xa+256;
+    end else begin
+     xb:=trunc((DstX+1)*fw);
+    end;
+    XCache[(DstX shl 1) or 0]:=min(xa,(256*SrcWidth)-1);
+    XCache[(DstX shl 1) or 1]:=min(xb,(256*SrcWidth)-1);
+   end;
+   for DstY:=0 to DstHeight-1 do begin
+    ya:=trunc(DstY*fh);
+    if UpsampleY then begin
+     yb:=ya+256;
+    end else begin
+     yb:=trunc((DstY+1)*fh);
+    end;
+    TempDst:=pointer(@pansichar(Dst)[(DstY*DstWidth) shl 2]);
+    yc:=ya shr 8;
+    yd:=yb shr 8;
+    for DstX:=0 to DstWidth-1 do begin
+     xa:=XCache[(DstX shl 1) or 0];
+     xb:=XCache[(DstX shl 1) or 1];
+     xc:=xa shr 8;
+     xd:=xb shr 8;
+     r:=0;
+     g:=0;
+     b:=0;
+     w:=0;
+     for SrcY:=yc to yd do begin
+      if (SrcY<0) or (SrcY>=SrcHeight) then begin
+       continue;
+      end;
+      WeightY:=256;
+      if yc<>yd then begin
+       if SrcY=yc then begin
+        WeightY:=256-(ya and $ff);
+       end else if SrcY=yd then begin
+        WeightY:=yb and $ff;
+       end;
+      end;
+      TempSrc:=pointer(@pansichar(Src)[((SrcY*SrcWidth)+xc) shl 2]);
+      for SrcX:=xc to xd do begin
+       if (SrcX<0) or (SrcX>=SrcWidth) then begin
+        continue;
+       end;
+       WeightX:=256;
+       if xc<>xd then begin
+        if SrcX=xc then begin
+         WeightX:=256-(xa and $ff);
+        end else if SrcX=xd then begin
+         WeightX:=xb and $ff;
+        end;
+       end;
+       Pixel:=TempSrc^[0];
+       inc(PAnsiChar(TempSrc),SizeOf(TpvUInt32));
+       SrcR:=(Pixel shr 0) and $ff;
+       SrcG:=(Pixel shr 8) and $ff;
+       SrcB:=(Pixel shr 16) and $ff;
+       Weight:=(WeightX*WeightY) shr WeightShift;
+       inc(r,SrcR*Weight);
+       inc(g,SrcG*Weight);
+       inc(b,SrcB*Weight);
+       inc(w,Weight);
+      end;
+     end;
+     if w>0 then begin
+      TempDst^[0]:=((r div w) and $ff) or (((g div w) shl 8) and $ff00) or (((b div w) shl 16) and $ff0000);
+     end else begin
+      TempDst^[0]:=0;
+     end;
+     TempDst:=pointer(@TempDst^[1]);
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure EncodeI420(RGB,I420:pointer;VideoWidth,VideoHeight:TpvInt32);
+type PLongwords=^TLongwords;
+     TLongwords=array[0..65535] of TpvUInt32;
+var Src,TempSrc:PLongwords;
+    x,y,PlaneSize:TpvInt32;
+    Pixel,SrcR,SrcG,SrcB:TpvUInt32;
+    PlaneY,PlaneU,PlaneV:pansichar;
+begin
+ PlaneSize:=VideoWidth*VideoHeight;
+ PlaneY:=I420;
+ PlaneU:=pointer(@pansichar(I420)[PlaneSize]);
+ PlaneV:=pointer(@pansichar(I420)[PlaneSize+(PlaneSize shr 2)]);
+ Src:=RGB;
+ for y:=0 to VideoHeight-1 do begin
+  TempSrc:=pointer(@Src[((VideoHeight-1)-y)*VideoWidth]);
+  for x:=0 to VideoWidth-1 do begin
+   Pixel:=TempSrc^[x];
+   SrcR:=(Pixel shr 0) and $ff;
+   SrcG:=(Pixel shr 8) and $ff;
+   SrcB:=(Pixel shr 16) and $ff;
+   TpvUInt8(PlaneY^):=ClampToByte(((16 shl 12)+(1052*SrcR)+(2065*SrcG)+(401*SrcB)) shr 12);
+// TpvUInt8(PlaneY^):=ClampToByte(((16 shl 16)+(16763*SrcR)+(32910*SrcG)+(6391*SrcB)) shr 16);
+   inc(PlaneY);
+  end;
+  if ((y and 1)=0) and ((y shr 1)<(VideoHeight shr 1)) then begin
+   TempSrc:=pointer(@Src[(((VideoHeight-2)-y)*VideoWidth)]);
+   for x:=0 to (VideoWidth shr 1)-1 do begin
+    Pixel:=TempSrc^[0];
+    SrcR:=(Pixel shr 0) and $ff;
+    SrcG:=(Pixel shr 8) and $ff;
+    SrcB:=(Pixel shr 16) and $ff;
+    Pixel:=TempSrc^[1];
+    inc(SrcR,(Pixel shr 0) and $ff);
+    inc(SrcG,(Pixel shr 8) and $ff);
+    inc(SrcB,(Pixel shr 16) and $ff);
+    Pixel:=TempSrc^[VideoWidth];
+    inc(SrcR,(Pixel shr 0) and $ff);
+    inc(SrcG,(Pixel shr 8) and $ff);
+    inc(SrcB,(Pixel shr 16) and $ff);
+    Pixel:=TempSrc^[VideoWidth+1];
+    inc(SrcR,(Pixel shr 0) and $ff);
+    inc(SrcG,(Pixel shr 8) and $ff);
+    inc(SrcB,(Pixel shr 16) and $ff);
+    TpvUInt8(PlaneU^):=ClampToByte(SARLongint((((128 shl 12)-(152*SrcR))-(298*SrcG))+(450*SrcB),12));
+    TpvUInt8(PlaneV^):=ClampToByte(SARLongint((((128 shl 12)+(450*SrcR))-(377*SrcG))-(73*SrcB),12));
+{   TpvUInt8(PlaneU^):=ClampToByte(SARLongint((((128 shl 18)-(38704*SrcR))-(75984*SrcG))+(114688*SrcB),18));
+    TpvUInt8(PlaneV^):=ClampToByte(SARLongint((((128 shl 18)+(114688*SrcR))-(96037*SrcG))-(18651*SrcB),18));}
+    inc(PlaneU);
+    inc(PlaneV);
+    TempSrc:=pointer(@TempSrc^[2]);
+   end;
+  end;
+ end;
+end;
+
+procedure EncodeI444(RGB,I444:pointer;VideoWidth,VideoHeight:TpvInt32);
+type PLongwords=^TLongwords;
+     TLongwords=array[0..65535] of TpvUInt32;
+var Src,TempSrc:PLongwords;
+    x,y,PlaneSize:TpvInt32;
+    Pixel,SrcR,SrcG,SrcB:TpvUInt32;
+    PlaneY,PlaneU,PlaneV:pansichar;
+begin
+ PlaneSize:=VideoWidth*VideoHeight;
+ PlaneY:=I444;
+ PlaneU:=pointer(@pansichar(I444)[PlaneSize]);
+ PlaneV:=pointer(@pansichar(I444)[PlaneSize shl 1]);
+ Src:=RGB;
+ for y:=0 to VideoHeight-1 do begin
+  TempSrc:=pointer(@Src[((VideoHeight-1)-y)*VideoWidth]);
+  for x:=0 to VideoWidth-1 do begin
+   Pixel:=TempSrc^[x];
+   SrcR:=(Pixel shr 0) and $ff;
+   SrcG:=(Pixel shr 8) and $ff;
+   SrcB:=(Pixel shr 16) and $ff;
+   TpvUInt8(PlaneY^):=ClampToByte(((16 shl 12)+(1052*SrcR)+(2065*SrcG)+(401*SrcB)) shr 12);
+   TpvUInt8(PlaneU^):=ClampToByte(SARLongint((((128 shl 12)-(604*SrcR))-(1187*SrcG))+(1792*SrcB),12));
+   TpvUInt8(PlaneV^):=ClampToByte(SARLongint((((128 shl 12)+(1792*SrcR))-(1501*SrcG))-(291*SrcB),12));
+{  TpvUInt8(PlaneY^):=ClampToByte(((16 shl 16)+(16763*SrcR)+(32910*SrcG)+(6391*SrcB)) shr 16);
+   TpvUInt8(PlaneU^):=ClampToByte(SARLongint((((128 shl 16)-(9676*SrcR))-(18996*SrcG))+(28672*SrcB),16));
+   TpvUInt8(PlaneV^):=ClampToByte(SARLongint((((128 shl 16)+(28672*SrcR))-(24010*SrcG))-(4663*SrcB),16));}
+   inc(PlaneY);
+   inc(PlaneU);
+   inc(PlaneV);
+  end;
+ end;
+end;
+
+procedure VerticalFlip(Pixels:pointer;VideoWidth,VideoHeight:TpvInt32); overload;
+var x,y:TpvInt32;
+    p0,p1:PpvUInt32;
+    t:TpvUInt32;
+begin
+ p0:=Pixels;
+ p1:=Pixels;
+ inc(p1,VideoWidth*(VideoHeight-1));
+ for y:=1 to VideoHeight div 2 do begin
+  for x:=1 to VideoWidth do begin
+   t:=p0^;
+   p0^:=p1^;
+   p1^:=t;
+   inc(p0);
+   inc(p1);
+  end;
+  dec(p1,VideoWidth shl 1);
+ end;
+end;
+
+procedure VerticalFlip(Pixels,ToPixels:pointer;VideoWidth,VideoHeight:TpvInt32); overload;
+var y:TpvInt32;
+    p0,p1:PpvUInt32;
+begin
+ p0:=Pixels;
+ p1:=ToPixels;
+ inc(p1,VideoWidth*(VideoHeight-1));
+ for y:=1 to VideoHeight do begin
+  Move(p0^,p1^,VideoWidth shl 2);
+  inc(p0,VideoWidth);
+  dec(p1,VideoWidth);
+ end;
+end;
+
+procedure RGBtoBGR(Pixels:pointer;VideoWidth,VideoHeight:TpvInt32);
+var Counter:TpvInt32;
+    Pixel:pansichar;
+    t:ansichar;
+begin
+ Pixel:=Pixels;
+ for Counter:=1 to VideoWidth*VideoHeight do begin
+  t:=Pixel[0];
+  Pixel[0]:=Pixel[2];
+  Pixel[2]:=t;
+  inc(Pixel,4);
+ end;
+end;
+
+procedure RGBAtoBGR(Pixels:pointer;VideoWidth,VideoHeight:TpvInt32);
+var Counter:TpvInt32;
+    ip,op:pansichar;
+    p:array[0..2] of ansichar;
+begin
+ ip:=Pixels;
+ op:=Pixels;
+ for Counter:=1 to VideoWidth*VideoHeight do begin
+  p[0]:=ip[0];
+  p[1]:=ip[1];
+  p[2]:=ip[2];
+  op[0]:=p[2];
+  op[1]:=p[1];
+  op[2]:=p[0];
+  inc(ip,4);
+  inc(op,3);
+ end;
+end;
+
+procedure RGBAtoRGB(Pixels:pointer;VideoWidth,VideoHeight:TpvInt32);
+var Counter:TpvInt32;
+    ip,op:pansichar;
+begin
+ ip:=Pixels;
+ op:=Pixels;
+ for Counter:=1 to VideoWidth*VideoHeight do begin
+  op[0]:=ip[0];
+  op[1]:=ip[1];
+  op[2]:=ip[2];
+  inc(ip,4);
+  inc(op,3);
+ end;
+end;
+
+constructor TpvAVIWriter.Create(AStream:TStream;ADoFree:longbool;AVideoCodec:TpvUInt32;AVideoWidth,AVideoHeight,AVideoFPS,ASoundSampleRate,ASoundChannels,ASoundBits:TpvInt32;AQuality:TpvInt32=95;AFast:boolean=false;AChromaSubsampling:TpvInt32=-1);
+var Counter,GCDValue:TpvInt32;
+    AVIH:TAVIH;
+    STRH:TSTRH;
+    BitmapInfoHeader:TBitmapInfoHeader;
+    INDX:TINDX;
+    INDXEntry:TINDXEntry;
+    VPRP:TVPRP;
+    WaveFormatEx:TWaveFormatEx;
+begin
+ inherited Create;
+ XCache:=nil;
+ Stream:=AStream;
+ DoFree:=ADoFree;
+ Quality:=AQuality;
+ if Quality<1 then begin
+  Quality:=1;
+ end else if Quality>100 then begin
+  Quality:=100;
+ end;
+ Fast:=AFast;
+ ChromaSubsampling:=AChromaSubsampling;
+ Compressed:=nil;
+ RGB:=nil;
+ RGB2:=nil;
+ JPEGEncoder:=nil;
+ begin
+  fTurboJpegLibrary:=LoadLibrary({$ifdef Windows}'turbojpeg.dll'{$else}'turbojpeg.so'{$endif});
+  if fTurboJpegLibrary<>pvAVINilLibHandle then begin
+   ftjInitCompress:=GetProcAddress(fTurboJpegLibrary,'tjInitCompress');
+   ftjDestroy:=GetProcAddress(fTurboJpegLibrary,'tjDestroy');
+   ftjAlloc:=GetProcAddress(fTurboJpegLibrary,'tjAlloc');
+   ftjFree:=GetProcAddress(fTurboJpegLibrary,'tjFree');
+   ftjCompress2:=GetProcAddress(fTurboJpegLibrary,'tjCompress2');
+  end;
+ end;
+ VideoFrames:=0;
+ VideoWidth:=AVideoWidth and not 1;
+ VideoHeight:=AVideoHeight and not 1;
+ VideoFPS:=AVideoFPS;
+ VideoCodec:=AVideoCodec;
+ case VideoCodec of
+  vcI420:begin
+   VideoFrameSize:=(VideoWidth*VideoHeight)+(((VideoWidth div 2)*(VideoHeight div 2))*2);
+  end;
+  vcMJPG:begin
+   VideoFrameSize:=(VideoWidth*VideoHeight)*3;
+   JPEGEncoder:=TpvJPEGEncoder.Create;
+  end;
+  vcX264_420,vcX264_444:begin
+   VideoFrameSize:=(VideoWidth*VideoHeight)*4;
+{$ifdef PasVulkanUseX264}
+   if x264_param_default_preset(@x264_param,'medium',nil)<0 then begin
+    raise EpvAVIWriter.Create('x264_param_default_preset failed');
+   end;
+   x264_param.i_threads:=X264_THREADS_AUTO;
+   case VideoCodec of
+    vcX264_420:begin
+     x264_param.i_csp:=X264_CSP_I420;
+    end;
+    vcX264_444:begin
+     x264_param.i_csp:=X264_CSP_I444;
+{    x264_param.rc.i_rc_method:=X264_RC_CRF;
+     x264_param.rc.f_rf_constant:=0.0;}
+    end;
+    else begin
+     x264_param.i_csp:=X264_CSP_BGRA;
+    end;
+   end;
+
+   x264_param.i_width:=VideoWidth;
+   x264_param.i_height:=VideoHeight;
+   x264_param.i_fps_num:=VideoFPS;
+   x264_param.i_fps_den:=1;
+// x264_param.i_log_level:=X264_LOG_ERROR;
+
+   x264_param.i_keyint_max:=Max(1,x264_param.i_fps_num div (4*x264_param.i_fps_den));
+ //x264_param.i_frame_reference:=1;
+   x264_param.b_intra_refresh:=1;
+
+   x264_param.rc.i_rc_method:=X264_RC_CRF;
+   x264_param.rc.f_rf_constant:=18.0;
+// x264_param.rc.f_rf_constant_max:=20.0;
+
+   x264_param.b_vfr_input:=0;
+   x264_param.b_repeat_headers:=1;
+   x264_param.b_annexb:=1;
+
+   case x264_param.i_csp of
+    X264_CSP_I444,X264_CSP_YV24,X264_CSP_RGB,X264_CSP_BGR,X264_CSP_BGRA:begin
+     if x264_param_apply_profile(@x264_param,'high444')<0 then begin
+      raise EpvAVIWriter.Create('x264_param_apply_profile failed');
+     end;
+    end;
+    X264_CSP_I422,X264_CSP_YV16,X264_CSP_NV16,X264_CSP_V210:begin
+     if x264_param_apply_profile(@x264_param,'high422')<0 then begin
+      raise EpvAVIWriter.Create('x264_param_apply_profile failed');
+     end;
+    end;
+    else begin
+     if x264_param_apply_profile(@x264_param,'high')<0 then begin
+      raise EpvAVIWriter.Create('x264_param_apply_profile failed');
+     end;
+    end;
+   end;
+   if x264_picture_alloc(@x264_pic,x264_param.i_csp,x264_param.i_width,x264_param.i_height)<0 then begin
+    raise EpvAVIWriter.Create('x264_picture_alloc failed');
+   end;
+   x264_handle:=x264_encoder_open(@x264_param);
+   if not assigned(x264_handle) then begin
+    raise EpvAVIWriter.Create('x264_encoder_open failed');
+   end;
+{$else}
+   Assert(false,'X264 support not compiled in');
+{$endif}
+  end;
+  else begin
+   VideoFrameSize:=(VideoWidth*VideoHeight) shl 2;
+  end;
+ end;
+ MaxCompressedSize:=VideoWidth*VideoHeight*8;
+ GetMem(Compressed,MaxCompressedSize);
+ GetMem(RGB,VideoWidth*VideoHeight*4);
+ GetMem(RGB2,VideoWidth*VideoHeight*4);
+ SoundSampleRate:=ASoundSampleRate;
+ SoundChannels:=ASoundChannels;
+ SoundBits:=ASoundBits;
+ IndexEntries:=TList.Create;
+ SegmentInfos:=TList.Create;
+ FileFramesOffset:=0;
+ FileExtFramesOffset:=0;
+ FileVideoOffset:=0;
+ FileSoundOffset:=0;
+ SuperIndexVideoOffset:=0;
+ SuperIndexSoundOffset:=0;
+ ChunkDepth:=-1;
+
+ ListChunk('RIFF','AVI ');
+ ListChunk('LIST','hdrl');
+
+ StartChunk('avih',SizeOf(TAVIH));
+ FillChar(AVIH,SizeOf(TAVIH),AnsiChar(#0));
+ AVIH.dwMicroSecPerFrame:=1000000 div VideoFPS;
+ AVIH.dwMaxBytesPerSec:=0;
+ AVIH.dwPaddingGranularity:=0;
+ AVIH.dwFlags:=$10{Index} or $20{mustuseindex};
+ FileFramesOffset:=Stream.Position+TpvPtrInt(TpvPtrInt(pointer(@AVIH.dwTotalFrames))-TpvPtrInt(pointer(@AVIH)));
+ AVIH.dwTotalFrames:=0;
+ AVIH.dwInitialFrames:=0;
+ if SoundSampleRate>0 then begin
+  AVIH.dwStreams:=2;
+ end else begin
+  AVIH.dwStreams:=1;
+ end;
+ AVIH.dwSuggestedBufferSize:=0;
+ AVIH.dwWidth:=VideoWidth;
+ AVIH.dwHeight:=VideoHeight;
+ Stream.Write(AVIH,SizeOf(TAVIH));
+ EndChunk;
+
+ ListChunk('LIST','strl');
+
+ StartChunk('strh',SizeOf(TSTRH));
+ FillChar(STRH,SizeOf(TSTRH),AnsiChar(#0));
+ STRH.fccType:='vids';
+ case VideoCodec of
+  vcI420:begin
+   STRH.fccHandler:='I420';
+  end;
+  vcMJPG:begin
+   STRH.fccHandler:='MJPG';
+  end;
+  else begin
+   STRH.fccHandler:='RGB2';
+  end;
+ end;
+ STRH.dwFlags:=0;
+ STRH.wPriority:=0;
+ STRH.wLanguage:=0;
+ STRH.dwInitialFrames:=0;
+ STRH.dwScale:=1;
+ STRH.dwRate:=VideoFPS;
+ STRH.dwStart:=0;
+ FileVideoOffset:=Stream.Position+TpvPtrInt(TpvPtrInt(pointer(@STRH.dwLength))-TpvPtrInt(pointer(@STRH)));
+ STRH.dwLength:=0;
+ case VideoCodec of
+  vcMJPG:begin
+   STRH.dwSuggestedBufferSize:=1048576;
+   STRH.dwQuality:=$ffffffff;
+  end;
+  else begin
+   STRH.dwSuggestedBufferSize:=VideoFrameSize;
+   STRH.dwQuality:=0;
+  end;
+ end;
+ STRH.dwSampleSize:=0;
+ STRH.rcFrame.Left:=0;
+ STRH.rcFrame.Top:=0;
+ STRH.rcFrame.Right:=VideoWidth;
+ STRH.rcFrame.Bottom:=VideoHeight;
+ Stream.Write(STRH,SizeOf(TSTRH));
+ EndChunk;
+
+ StartChunk('strf',SizeOf(TBitmapInfoHeader));
+ FillChar(BitmapInfoHeader,SizeOf(TBitmapInfoHeader),AnsiChar(#0));
+ BitmapInfoHeader.biSize:=SizeOf(TBitmapInfoHeader);
+ BitmapInfoHeader.biWidth:=VideoWidth;
+ BitmapInfoHeader.biHeight:=VideoHeight;
+ case VideoCodec of
+  vcI420:begin
+   BitmapInfoHeader.biPlanes:=3;
+   BitmapInfoHeader.biBitCount:=12;
+   BitmapInfoHeader.biCompression:='I420';
+  end;
+  vcMJPG:begin
+   BitmapInfoHeader.biPlanes:=1;
+   BitmapInfoHeader.biBitCount:=24;
+   BitmapInfoHeader.biCompression:='MJPG';
+  end;
+  vcX264_420,vcX264_444:begin
+   BitmapInfoHeader.biPlanes:=1;
+   BitmapInfoHeader.biBitCount:=24;
+   BitmapInfoHeader.biCompression:='H264';
+  end;
+  else begin
+   BitmapInfoHeader.biPlanes:=1;
+   BitmapInfoHeader.biBitCount:=32;
+   BitmapInfoHeader.biCompression:=#$00#$00#$00#$00;
+  end;
+ end;
+ BitmapInfoHeader.biSizeImage:=VideoFrameSize;
+ BitmapInfoHeader.biXPelsPerMeter:=0;
+ BitmapInfoHeader.biYPelsPerMeter:=0;
+ BitmapInfoHeader.biClrUsed:=0;
+ BitmapInfoHeader.biClrImportant:=0;
+ Stream.Write(BitmapInfoHeader,SizeOf(TBitmapInfoHeader));
+ EndChunk;
+
+ StartChunk('indx',SizeOf(TINDX)+(MaxSuperIndex*SizeOf(TINDXEntry)));
+ SuperIndexVideoOffset:=Stream.Position;
+ FillChar(INDX,SizeOf(TINDX),AnsiChar(#0));
+ INDX.wLongsPerEntry:=4;
+ INDX.bIndexSubType:=0;
+ INDX.bIndexType:=0;
+ INDX.nEntriesInUse:=0;
+ INDX.dwChunkId:='00dc';
+ INDX.dwReserved[0]:=0;
+ INDX.dwReserved[1]:=0;
+ INDX.dwReserved[2]:=0;
+ Stream.Write(INDX,SizeOf(TINDX));
+ FillChar(INDXEntry,SizeOf(TINDXEntry),AnsiChar(#0));
+ for Counter:=1 to MaxSuperIndex do begin
+  Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+ end;
+ EndChunk;
+
+ StartChunk('vprp',SizeOf(TVPRP));
+ FillChar(VPRP,SizeOf(TVPRP),AnsiChar(#0));
+ VPRP.dwVideoFormat:=0;
+ VPRP.dwVideoStandard:=0;
+ VPRP.dwVerticalRefreshRate:=VideoFPS;
+ VPRP.dwHorizontalTotal:=VideoWidth;
+ VPRP.dwVerticalTotal:=VideoHeight;
+ GCDValue:=GCD(VideoWidth,VideoHeight);
+ VPRP.wAspectDenominator:=VideoHeight div TpvUInt32(GCDValue);
+ VPRP.wAspectNumerator:=VideoWidth div TpvUInt32(GCDValue);
+ VPRP.dwFrameWidth:=VideoWidth;
+ VPRP.dwFrameHeight:=VideoHeight;
+ VPRP.dwFieldsPerFrame:=1;
+ VPRP.dwCompressedBitmapWidth:=VideoWidth;
+ VPRP.dwCompressedBitmapHeight:=VideoHeight;
+ VPRP.dwValidBitmapWidth:=VideoWidth;
+ VPRP.dwValidBitmapHeight:=VideoHeight;
+ VPRP.dwValidBitmapXOffset:=0;
+ VPRP.dwValidBitmapYOffset:=0;
+ VPRP.dwVideoXOffset:=0;
+ VPRP.dwVideoYOffset:=0;
+ Stream.Write(VPRP,SizeOf(TVPRP));
+ EndChunk;
+
+ EndListChunk;
+
+ if SoundSampleRate>0 then begin
+
+  ListChunk('LIST','strl');
+
+  StartChunk('strh',SizeOf(TSTRH));
+  FillChar(STRH,SizeOf(TSTRH),AnsiChar(#0));
+  STRH.fccType:='auds';
+  STRH.fccHandler:=#$01#$00#0#$00;
+  STRH.dwFlags:=0;
+  STRH.wPriority:=0;
+  STRH.wLanguage:=0;
+  STRH.dwInitialFrames:=0;
+  STRH.dwScale:=1;
+  STRH.dwRate:=SoundSampleRate;
+  STRH.dwStart:=0;
+  FileSoundOffset:=Stream.Position+TpvPtrInt(TpvPtrInt(pointer(@STRH.dwLength))-TpvPtrInt(pointer(@STRH)));
+  STRH.dwLength:=0;
+  STRH.dwSuggestedBufferSize:=((SoundSampleRate*SoundBits*SoundChannels)+7) shr (3+1);
+  STRH.dwQuality:=0;
+  STRH.dwSampleSize:=((SoundBits*SoundChannels)+7) shr 3;
+  STRH.rcFrame.Left:=0;
+  STRH.rcFrame.Top:=0;
+  STRH.rcFrame.Right:=0;
+  STRH.rcFrame.Bottom:=0;
+  Stream.Write(STRH,SizeOf(TSTRH));
+  EndChunk;
+
+  StartChunk('strf',SizeOf(WaveFormatEx));
+  FillChar(WaveFormatEx,SizeOf(WaveFormatEx),AnsiChar(#0));
+  WaveFormatEx.wFormatTag:=1;
+  WaveFormatEx.nChannels:=SoundChannels;
+  WaveFormatEx.nSamplesPerSec:=SoundSampleRate;
+  WaveFormatEx.nAvgBytesPerSec:=((SoundSampleRate*SoundBits*SoundChannels)+7) shr 3;
+  WaveFormatEx.nBlockAlign:=((SoundBits*SoundChannels)+7) shr 3;
+  WaveFormatEx.wBitsPerSample:=SoundBits;
+  WaveFormatEx.cbSize:=0;
+  Stream.Write(WaveFormatEx,SizeOf(WaveFormatEx));
+  EndChunk;
+
+  StartChunk('indx',SizeOf(TINDX)+(MaxSuperIndex*SizeOf(TINDXEntry)));
+  SuperIndexSoundOffset:=Stream.Position;
+  FillChar(INDX,SizeOf(TINDX),AnsiChar(#0));
+  INDX.wLongsPerEntry:=4;
+  INDX.bIndexSubType:=0;
+  INDX.bIndexType:=0;
+  INDX.nEntriesInUse:=0;
+  INDX.dwChunkId:='00dc';
+  INDX.dwReserved[0]:=0;
+  INDX.dwReserved[1]:=0;
+  INDX.dwReserved[2]:=0;
+  Stream.Write(INDX,SizeOf(TINDX));
+  FillChar(INDXEntry,SizeOf(TINDXEntry),AnsiChar(#0));
+  for Counter:=1 to MaxSuperIndex do begin
+   Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+  end;
+  EndChunk;
+
+  EndListChunk;
+
+ end;
+
+ ListChunk('LIST','odml');
+ StartChunk('dmlh',SizeOf(TpvUInt32));
+ FileExtFramesOffset:=Stream.Position;
+ WriteUnsigned32Bit(0);
+ EndChunk;
+ EndListChunk;
+
+ ListChunk('LIST','info');
+ WriteChunk('ISTF',@ISTFData[1],length(ISTFData)*SizeOf(ansichar));
+ EndListChunk;
+
+ EndListChunk;
+
+ NextSegment;
+
+end;
+
+destructor TpvAVIWriter.Destroy;
+var Counter:TpvInt32;
+    SoundIndices,VideoIndices{,SoundFrames,VideoFrames{},IndexFrames:TpvUInt32;
+    SegmentInfo:PpvAVISegmentInfo;
+    IndexEntry:PpvAVIIndexEntry;
+    INDX:TINDX;
+    INDXEntry:TINDXEntry;
+begin
+ case VideoCodec of
+  vcX264_420,vcX264_444:begin
+{$ifdef PasVulkanUseX264}
+   if assigned(x264_handle) then begin
+    while x264_encoder_delayed_frames(x264_handle)<>0 do begin
+     WriteVideoFrame(nil,VideoWidth,VideoHeight,VideoFrames);
+    end;
+   end;
+{$else}
+   Assert(false,'X264 support not compiled in');
+{$endif}
+  end;
+ end;
+ FlushSegment;
+ SoundIndices:=0;
+ VideoIndices:=0;
+{SoundFrames:=0;
+ VideoFrames:=0;{}
+ IndexFrames:=0;
+ for Counter:=0 to SegmentInfos.Count-1 do begin
+  SegmentInfo:=SegmentInfos[Counter];
+  if assigned(SegmentInfo) then begin
+   if SegmentInfo^.SoundIndexOffset<>0 then begin
+    inc(SoundIndices);
+   end;
+   inc(VideoIndices);
+{  inc(SoundFrames,SegmentInfo^.SoundFrames);
+   inc(VideoFrames,SegmentInfo^.VideoFrames);{}
+   inc(IndexFrames,SegmentInfo^.IndexFrames);
+  end;
+ end;
+ if SegmentInfos.Count>0 then begin
+  SegmentInfo:=SegmentInfos[0];
+  if assigned(SegmentInfo) then begin
+   begin
+    Stream.Seek(FileFramesOffset,soBeginning);
+    WriteUnsigned32Bit(SegmentInfo^.IndexFrames);
+   end;
+   begin
+    Stream.Seek(FileVideoOffset,soBeginning);
+    WriteUnsigned32Bit(SegmentInfo^.VideoFrames);
+   end;
+   if SegmentInfo^.SoundFrames>0 then begin
+    Stream.Seek(FileSoundOffset,soBeginning);
+    WriteUnsigned32Bit(SegmentInfo^.SoundFrames);
+   end;
+   begin
+    Stream.Seek(FileExtFramesOffset,soBeginning);
+    WriteUnsigned32Bit(IndexFrames);
+   end;                           
+   begin
+    Stream.Seek(SuperIndexVideoOffset+TpvPtrInt(TpvPtrInt(pointer(@INDX.nEntriesInUse))-TpvPtrInt(pointer(@INDX))),soBeginning);
+    WriteUnsigned32Bit(VideoIndices);
+    Stream.Seek(SuperIndexVideoOffset+SizeOf(TINDX),soBeginning);
+    for Counter:=0 to SegmentInfos.Count-1 do begin
+     SegmentInfo:=SegmentInfos[Counter];
+     if assigned(SegmentInfo) then begin
+      INDXEntry.dwOffsetLow:=SegmentInfo^.VideoIndexOffset and $ffffffff;
+      INDXEntry.dwOffsetHigh:=(SegmentInfo^.VideoIndexOffset shr 32) and $ffffffff;
+      INDXEntry.dwSize:=SegmentInfo^.VideoIndexSize;
+      INDXEntry.dwDuration:=SegmentInfo^.IndexFrames;
+      Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+     end;
+    end;
+   end;
+   if SoundIndices>0 then begin
+    Stream.Seek(SuperIndexSoundOffset+TpvPtrInt(TpvPtrInt(pointer(@INDX.nEntriesInUse))-TpvPtrInt(pointer(@INDX))),soBeginning);
+    WriteUnsigned32Bit(SoundIndices);
+    Stream.Seek(SuperIndexSoundOffset+SizeOf(TINDX),soBeginning);
+    for Counter:=0 to SegmentInfos.Count-1 do begin
+     SegmentInfo:=SegmentInfos[Counter];
+     if assigned(SegmentInfo) then begin
+      INDXEntry.dwOffsetLow:=SegmentInfo^.SoundIndexOffset and $ffffffff;
+      INDXEntry.dwOffsetHigh:=(SegmentInfo^.SoundIndexOffset shr 32) and $ffffffff;
+      INDXEntry.dwSize:=SegmentInfo^.SoundIndexSize;
+      INDXEntry.dwDuration:=SegmentInfo^.SoundFrames;
+      Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+     end;
+    end;
+   end;
+   Stream.Seek(0,soEnd);
+  end;
+ end;
+ for Counter:=0 to IndexEntries.Count-1 do begin
+  IndexEntry:=IndexEntries[Counter];
+  if assigned(IndexEntry) then begin
+   FreeMem(IndexEntry);
+  end;
+ end;
+ IndexEntries.Free;
+ for Counter:=0 to SegmentInfos.Count-1 do begin
+  SegmentInfo:=SegmentInfos[Counter];
+  if assigned(SegmentInfo) then begin
+   FreeMem(SegmentInfo);
+  end;
+ end;
+ SegmentInfos.Free;
+ if DoFree then begin
+  FreeAndNil(Stream);
+ end;
+ if assigned(RGB) then begin
+  FreeMem(RGB);
+ end;
+ if assigned(RGB2) then begin
+  FreeMem(RGB2);
+ end;
+ if assigned(Compressed) then begin
+  FreeMem(Compressed);
+ end;
+ FreeAndNil(JPEGEncoder);
+ case VideoCodec of
+  vcX264_420,vcX264_444:begin
+{$ifdef PasVulkanUseX264}
+   if assigned(x264_handle) then begin
+    x264_encoder_close(x264_handle);
+   end;
+   x264_picture_clean(@x264_pic);
+{$else}
+   Assert(false,'X264 support not compiled in');
+{$endif}
+  end;
+ end;
+ SetLength(XCache,0);
+ if fTurboJpegLibrary<>pvAVINilLibHandle then begin
+  FreeLibrary(fTurboJpegLibrary);
+  fTurboJpegLibrary:=pvAVINilLibHandle;
+ end;
+ inherited Destroy;
+end;
+
+procedure TpvAVIWriter.WriteSigned8Bit(s8Bit:TpvInt8);
+begin
+ Stream.Write(s8Bit,SizeOf(TpvInt8));
+end;
+
+procedure TpvAVIWriter.WriteSigned16Bit(s16Bit:TpvInt16);
+begin
+ Stream.Write(s16Bit,SizeOf(TpvInt16));
+end;
+
+procedure TpvAVIWriter.WriteSigned32Bit(s32Bit:TpvInt32);
+begin
+ Stream.Write(s32Bit,SizeOf(TpvInt32));
+end;
+
+procedure TpvAVIWriter.WriteUnsigned8Bit(us8Bit:TpvUInt8);
+begin
+ Stream.Write(us8Bit,SizeOf(TpvUInt8));
+end;
+
+procedure TpvAVIWriter.WriteUnsigned16Bit(us16Bit:TpvUInt16);
+begin
+ Stream.Write(us16Bit,SizeOf(TpvUInt16));
+end;
+
+procedure TpvAVIWriter.WriteUnsigned32Bit(us32Bit:TpvUInt32);
+begin
+ Stream.Write(us32Bit,SizeOf(TpvUInt32));
+end;
+
+function TpvAVIWriter.AddIndex(Frame,Type_,Size:TpvInt32):PpvAVIIndexEntry;
+var Index:TpvInt32;
+    SegmentInfo:PpvAVISegmentInfo;
+    IndexEntry:PpvAVIIndexEntry;
+begin
+ SegmentInfo:=SegmentInfos[SegmentInfos.Count-1];
+ Index:=IndexEntries.Count;
+ repeat
+  dec(Index);
+  if Index>=SegmentInfo.FirstIndex then begin
+   IndexEntry:=IndexEntries[Index];
+   if (Frame>IndexEntry^.Frame) or ((Frame=IndexEntry^.Frame) and (Type_<IndexEntry^.Type_)) then begin
+    break;
+   end;
+  end else begin
+   break;
+  end;
+ until false;
+ New(result);
+ FillChar(result^,SizeOf(TpvAVIIndexEntry),AnsiChar(#0));
+ result^.Frame:=Frame;
+ result^.Type_:=Type_;
+ result^.Size:=Size;
+ result^.Offset:=Stream.Position-ChunkOffsets[ChunkDepth];
+ IndexEntries.Insert(Index+1,result);
+end;
+
+procedure TpvAVIWriter.StartChunk(const ChunkSignature:TpvAVIChunkSignature;Size:TpvUInt32=0);
+begin
+ inc(ChunkDepth);
+ Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+ Stream.Write(Size,SizeOf(TpvUInt32));
+ ChunkOffsets[ChunkDepth]:=Stream.Position;
+end;
+
+procedure TpvAVIWriter.ListChunk(const ChunkSignature,ListChunkSignature:TpvAVIChunkSignature);
+begin
+ StartChunk(ChunkSignature);
+ Stream.Write(ListChunkSignature,SizeOf(TpvAVIChunkSignature));
+end;
+
+procedure TpvAVIWriter.EndChunk;
+begin
+ Assert(ChunkDepth>=0);
+ dec(ChunkDepth);
+end;
+
+procedure TpvAVIWriter.EndListChunk;
+var Size:TpvInt64;
+    Size32Bit:TpvUInt32;
+    Dummy:TpvUInt8;
+begin
+ Assert(ChunkDepth>=0);
+ Size:=Stream.Position-ChunkOffsets[ChunkDepth];
+ Stream.Seek(ChunkOffsets[ChunkDepth]-SizeOf(TpvUInt32),soBeginning);
+ Size32Bit:=Size;
+ Stream.Write(Size32Bit,SizeOf(TpvUInt32));
+ Stream.Seek(0,soEnd);
+ if (Size and 1)<>0 then begin
+  Dummy:=0;
+  Stream.Write(Dummy,SizeOf(TpvUInt8));
+ end;
+ EndChunk;
+end;
+
+procedure TpvAVIWriter.WriteChunk(const ChunkSignature:TpvAVIChunkSignature;Data:pointer;Size:TpvUInt32);
+begin
+ Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+ Stream.Write(Size,SizeOf(TpvUInt32));
+ if Size>0 then begin
+  Stream.Write(Data^,Size);
+ end;
+end;
+
+procedure TpvAVIWriter.FlushSegment;
+var Index:TpvInt32;
+    IndexFrames,VideoFrames,SoundFrames:TpvInt32;
+    SegmentInfo:PpvAVISegmentInfo;
+    IndexEntry:PpvAVIIndexEntry;
+    ChunkSignature:TpvAVIChunkSignature;
+begin
+ EndListChunk;
+
+ SegmentInfo:=SegmentInfos[SegmentInfos.Count-1];
+
+ IndexFrames:=0;
+ VideoFrames:=0;
+ SoundFrames:=0;
+ for Index:=SegmentInfo^.FirstIndex to IndexEntries.Count-1 do begin
+  IndexEntry:=IndexEntries[Index];
+  if IndexEntry^.Type_<>0 then begin
+   inc(SoundFrames);
+  end else begin
+   if (Index=SegmentInfo^.FirstIndex) or (PpvAVIIndexEntry(IndexEntries[Index-1])^.Offset<>IndexEntry^.Offset) then begin
+    inc(VideoFrames);
+   end;
+   inc(IndexFrames);
+  end;
+ end;
+
+ SegmentInfo^.IndexFrames:=IndexFrames;
+
+ if SegmentInfos.Count=1 then begin
+  StartChunk('idx1',IndexEntries.Count*16);
+  for Index:=0 to IndexEntries.Count-1 do begin
+   IndexEntry:=IndexEntries[Index];
+   if IndexEntry^.Type_<>0 then begin
+    ChunkSignature:='01wb';
+   end else begin
+    ChunkSignature:='00dc';
+   end;
+   Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+   WriteUnsigned32Bit($00000010);
+   WriteUnsigned32Bit(IndexEntry^.Offset);
+   WriteUnsigned32Bit(IndexEntry^.Size);
+  end;
+  EndChunk;
+ end;
+
+ SegmentInfo^.VideoFrames:=VideoFrames;
+ SegmentInfo^.VideoIndexOffset:=Stream.Position;
+ StartChunk('ix00',24+(IndexFrames*8));
+ WriteUnsigned16Bit(2);
+ WriteUnsigned16Bit($0100);
+ WriteUnsigned32Bit(IndexFrames);
+ ChunkSignature:='00dc';
+ Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+ WriteUnsigned32Bit(SegmentInfo^.Offset and $ffffffff);
+ WriteUnsigned32Bit((SegmentInfo^.Offset shr 32) and $ffffffff);
+ WriteUnsigned32Bit(0);
+ for Index:=SegmentInfo^.FirstIndex to IndexEntries.Count-1 do begin
+  IndexEntry:=IndexEntries[Index];
+  if IndexEntry^.Type_=0 then begin
+   WriteUnsigned32Bit(IndexEntry^.Offset+8);
+   WriteUnsigned32Bit(IndexEntry^.Size);
+  end;
+ end;
+ EndChunk;
+ SegmentInfo^.VideoIndexSize:=Stream.Position-SegmentInfo^.VideoIndexOffset;
+
+ if SoundFrames<>0 then begin
+  SegmentInfo^.SoundFrames:=SoundFrames;
+  SegmentInfo^.SoundIndexOffset:=Stream.Position;
+  StartChunk('ix01',24+(SoundFrames*8));
+  WriteUnsigned16Bit(2);
+  WriteUnsigned16Bit($0100);
+  WriteUnsigned32Bit(SoundFrames);
+  ChunkSignature:='01wb';
+  Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+  WriteUnsigned32Bit(SegmentInfo^.Offset and $ffffffff);
+  WriteUnsigned32Bit((SegmentInfo^.Offset shr 32) and $ffffffff);
+  WriteUnsigned32Bit(0);
+  for Index:=SegmentInfo^.FirstIndex to IndexEntries.Count-1 do begin
+   IndexEntry:=IndexEntries[Index];
+   if IndexEntry^.Type_<>0 then begin
+    WriteUnsigned32Bit(IndexEntry^.Offset+8);
+    WriteUnsigned32Bit(IndexEntry^.Size);
+   end;
+  end;
+  EndChunk;
+  SegmentInfo^.SoundIndexSize:=Stream.Position-SegmentInfo^.SoundIndexOffset;
+ end;
+
+ EndListChunk;
+end;
+
+function TpvAVIWriter.NextSegment:boolean;
+var SegmentInfo:PpvAVISegmentInfo;
+begin
+ result:=false;
+ if SegmentInfos.Count<>0 then begin
+  if SegmentInfos.Count>=MaxSuperIndex then begin
+   exit;
+  end;
+  FlushSegment;
+  ListChunk('RIFF','AVIX');
+ end;
+ ListChunk('LIST','movi');
+ New(SegmentInfo);
+ FillChar(SegmentInfo^,SizeOf(TpvAVISegmentInfo),AnsiChar(#0));
+ SegmentInfo^.Offset:=ChunkOffsets[ChunkDepth];
+ SegmentInfo^.FirstIndex:=IndexEntries.Count;
+ SegmentInfos.Add(SegmentInfo);
+ result:=true;
+end;
+
+function TpvAVIWriter.WriteVideoFrame(Pixels:pointer;Width,Height:TpvUInt32;Frame:TpvUInt32):boolean;
+const TJPF_RGB=0;
+      TJPF_BGR=1;
+      TJPF_RGBX=2;
+      TJPF_BGRX=3;
+      TJPF_XBGR=4;
+      TJPF_XRGB=5;
+      TJPF_GRAY=6;
+      TJPF_RGBA=7;
+      TJPF_BGRA=8;
+      TJPF_ABGR=9;
+      TJPF_ARGB=10;
+      TJPF_CMYK=11;
+      TJSAMP_444=0;
+      TJSAMP_422=1;
+      TJSAMP_420=2;
+      TJSAMP_GRAY=3;
+      TJSAMP_440=4;
+      TJSAMP_411=5;
+      TJFLAG_BGR=1;
+      TJFLAG_BOTTOMUP=2;
+      TJFLAG_FORCEMMX=8;
+      TJFLAG_FORCESSE=16;
+      TJFLAG_FORCESSE2=32;
+      TJFLAG_ALPHAFIRST=64;
+      TJFLAG_FORCESSE3=128;
+      TJFLAG_FASTUPSAMPLE=256;
+      TJFLAG_NOREALLOC=1024;
+      TJFLAG_FASTDCT=2048;
+      TJFLAG_ACCURATEDCT=4096;
+var LocalVideoFrameSize{$ifdef PasVulkanUseX264},y{$endif},BlockEncodingMode:TpvInt32;
+    LocalCompressed,tjCompressed,tjHandle,LocalCompressedAndFree:pointer;
+    tjCompressedSize:TpvUInt32;
+begin
+ result:=false;
+ if Frame<VideoFrames then begin
+  result:=true;
+  exit;
+ end;
+ if (Width<>VideoWidth) or (Height<>VideoHeight) then begin
+  if assigned(Pixels) then begin
+   ResizeRGB32(Pixels,Width,Height,RGB,VideoWidth,VideoHeight,XCache);
+   Pixels:=RGB;
+  end;
+ end;
+ LocalVideoFrameSize:=VideoFrameSize;
+ LocalCompressed:=nil;
+ LocalCompressedAndFree:=nil;
+ case VideoCodec of
+  vcI420:begin
+   if assigned(Pixels) then begin
+    EncodeI420(Pixels,Compressed,VideoWidth,VideoHeight);
+   end;
+  end;
+  vcMJPG:begin
+   if assigned(Pixels) then begin
+    LocalVideoFrameSize:=0;
+    if fTurboJpegLibrary<>pvAVINilLibHandle then begin
+     tjHandle:=ftjInitCompress;
+     if assigned(tjHandle) then begin
+      try
+       tjCompressed:=nil;
+       try
+        tjCompressedSize:=0;
+        case ChromaSubsampling of
+         0:begin
+          BlockEncodingMode:=TJSAMP_444; // H1V1 4:4:4 (common for the most high-end digital cameras and professional image editing software)
+         end;
+         1:begin
+          BlockEncodingMode:=TJSAMP_422; // H2V1 4:2:2 (common for the most mid-range digital cameras and consumer image editing software)
+         end;
+         2:begin
+          BlockEncodingMode:=TJSAMP_420; // H2V2 4:2:0 (common for the most cheap digital cameras and other cheap stuff)
+         end;
+         else {-1:}begin
+          if Quality>=95 then begin
+           BlockEncodingMode:=TJSAMP_444; // H1V1 4:4:4 (common for the most high-end digital cameras and professional image editing software)
+          end else if Quality>=50 then begin
+           BlockEncodingMode:=TJSAMP_422; // H2V1 4:2:2 (common for the most mid-range digital cameras and consumer image editing software)
+          end else begin
+           BlockEncodingMode:=TJSAMP_420; // H2V2 4:2:0 (common for the most cheap digital cameras and other cheap stuff)
+          end;
+         end;
+        end;
+        VerticalFlip(Pixels,
+                     RGB2,
+                     VideoWidth,
+                     VideoHeight);
+        ftjCompress2(tjHandle,
+                     RGB2,
+                     VideoWidth,
+                     0,
+                     VideoHeight,
+                     TJPF_RGBX,
+                     tjCompressed,
+                     tjCompressedSize,
+                     BlockEncodingMode,
+                     Quality,
+                     IfThen(Fast,TJFLAG_FASTDCT,TJFLAG_ACCURATEDCT)
+                    );
+        if assigned(tjCompressed) and (tjCompressedSize>0) then begin
+         if tjCompressedSize<MaxCompressedSize then begin
+          Move(tjCompressed^,Compressed^,tjCompressedSize);
+         end else begin
+          GetMem(LocalCompressedAndFree,tjCompressedSize);
+          Move(tjCompressed^,LocalCompressedAndFree^,tjCompressedSize);
+         end;
+         LocalVideoFrameSize:=tjCompressedSize;
+        end;
+       finally
+        if assigned(tjCompressed) then begin
+         ftjFree(tjCompressed);
+        end;
+       end;
+      finally
+       ftjDestroy(tjHandle);
+      end;
+     end;
+    end;
+    if LocalVideoFrameSize=0 then begin
+     LocalVideoFrameSize:=JPEGEncoder.Encode(Pixels,Compressed,VideoWidth,VideoHeight,Quality,MaxCompressedSize,Fast,ChromaSubsampling);
+    end;
+   end else begin
+    LocalVideoFrameSize:=0;
+   end;
+  end;
+  vcX264_420,vcX264_444:begin
+{$ifdef PasVulkanUseX264}
+   if assigned(Pixels) then begin
+    case x264_param.i_csp of
+     X264_CSP_I420:begin
+      EncodeI420(Pixels,Compressed,VideoWidth,VideoHeight);
+      Move(PByteArray(Compressed)^[0],x264_pic.img.plane[0]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight],x264_pic.img.plane[1]^,((VideoWidth*VideoHeight)+3) shr 2);
+      Move(PByteArray(Compressed)^[(VideoWidth*VideoHeight)+(((VideoWidth*VideoHeight)+3) shr 2)],x264_pic.img.plane[2]^,((VideoWidth*VideoHeight)+3) shr 2);
+     end;
+     X264_CSP_I444:begin
+      EncodeI444(Pixels,Compressed,VideoWidth,VideoHeight);
+      Move(PByteArray(Compressed)^[0],x264_pic.img.plane[0]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight],x264_pic.img.plane[1]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight*2],x264_pic.img.plane[2]^,VideoWidth*VideoHeight);
+     end;
+     X264_CSP_RGB:begin
+      RGBAtoRGB(Pixels,VideoWidth,VideoHeight);
+      for y:=0 to VideoHeight-1 do begin
+       Move(PByteArray(Pixels)^[VideoWidth*3*y],PByteArray(x264_pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*3],VideoWidth*3);
+      end;
+     end;
+     X264_CSP_BGR:begin
+      RGBAtoBGR(Pixels,VideoWidth,VideoHeight);
+      for y:=0 to VideoHeight-1 do begin
+       Move(PByteArray(Pixels)^[VideoWidth*3*y],PByteArray(x264_pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*3],VideoWidth*3);
+      end;
+     end;
+     X264_CSP_BGRA:begin
+      RGBtoBGR(Pixels,VideoWidth,VideoHeight);
+      for y:=0 to VideoHeight-1 do begin
+       Move(PByteArray(Pixels)^[VideoWidth*4*y],PByteArray(x264_pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*4],VideoWidth*4);
+      end;
+     end;
+    end;
+    LocalVideoFrameSize:=x264_encoder_encode(x264_handle,@x264_nal,@x264_inal,@x264_pic,@x264_pic_out);
+   end else begin
+    LocalVideoFrameSize:=x264_encoder_encode(x264_handle,@x264_nal,@x264_inal,nil,@x264_pic_out);
+   end;
+   if assigned(x264_nal) and (LocalVideoFrameSize>0) then begin
+    LocalCompressed:=pointer(x264_nal^.p_payload);
+   end else begin
+    LocalVideoFrameSize:=0;
+   end;
+{$else}
+   Assert(false,'X264 support not compiled in');
+{$endif}
+  end;
+  else begin
+   if assigned(Pixels) then begin
+    RGBtoBGR(Pixels,VideoWidth,VideoHeight);
+   end else begin
+    LocalVideoFrameSize:=0;
+   end;
+  end;
+ end;
+ if (LocalVideoFrameSize=0) or not assigned(Pixels) then begin
+  exit;
+ end;
+ if ((Stream.Position-PpvAVISegmentInfo(SegmentInfos[SegmentInfos.Count-1])^.Offset)+(LocalVideoFrameSize+8))>1000000000 then begin
+  if not NextSegment then begin
+   exit;
+  end;
+ end;
+ while VideoFrames<=Frame do begin
+  AddIndex(VideoFrames,0,LocalVideoFrameSize);
+  inc(VideoFrames);
+ end;
+ if assigned(LocalCompressedAndFree) then begin
+  WriteChunk('00dc',LocalCompressedAndFree,LocalVideoFrameSize);
+  FreeMem(LocalCompressedAndFree);
+ end else begin
+  case VideoCodec of
+   vcI420,vcMJPG:begin
+    WriteChunk('00dc',Compressed,LocalVideoFrameSize);
+   end;
+   vcX264_420,vcX264_444:begin
+    WriteChunk('00dc',LocalCompressed,LocalVideoFrameSize);
+   end;
+   else begin
+    WriteChunk('00dc',Pixels,LocalVideoFrameSize);
+   end;
+  end;
+ end;
+ result:=true;
+end;
+
+function TpvAVIWriter.WriteSoundFrame(Data:pointer;FrameSize,Frame:TpvUInt32):boolean;
+begin
+ result:=false;
+ if ((Stream.Position-PpvAVISegmentInfo(SegmentInfos[SegmentInfos.Count-1])^.Offset)+(FrameSize+8))>1000000000 then begin
+  if not NextSegment then begin
+   exit;
+  end;
+ end;
+ AddIndex(Frame,1,FrameSize);
+ WriteChunk('01wb',Data,FrameSize);
+ result:=true;
+end;
+
+end.
+
+// C sources of the DCT functions:
+
+inline __m128i _mm_mr_epi16(__m128i x, __m128i y, __m128i c){
+	__m128i h = _mm_mulhi_epi16(x, y), l = _mm_mullo_epi16(x, y);
+	return _mm_packs_epi32(_mm_srai_epi32(_mm_slli_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi16(l, h), c), 15), 16), 16), 
+		                   _mm_srai_epi32(_mm_slli_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi16(l, h), c), 15), 16), 16));
+}
+
+#define _mm_mradds_epi16(x, y, z) _mm_adds_epi16(_mm_mr_epi16(x, y, c), z)
+
+__declspec(dllexport) void __stdcall DCT2DSlow(uint8_t *input, int16_t *output) {
+
+	__m128i x0, x1, x2, x3, x4, x5, x6, x7, y0, y1, y2, y3, y4, y5, y6, y7;
+
+	const __m128i k_ZERO = _mm_setzero_si128();
+
+	{
+		// Load unsigned bytes as signed words by subtracting by 128 as offset
+		const __m128i k_128 = _mm_set1_epi16(128);
+		y0 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (0 * 8))), k_ZERO), k_128);
+		y1 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (1 * 8))), k_ZERO), k_128);
+		y2 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (2 * 8))), k_ZERO), k_128);
+		y3 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (3 * 8))), k_ZERO), k_128);
+		y4 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (4 * 8))), k_ZERO), k_128);
+		y5 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (5 * 8))), k_ZERO), k_128);
+		y6 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (6 * 8))), k_ZERO), k_128);
+		y7 = _mm_sub_epi16(_mm_unpacklo_epi8(_mm_loadl_epi64((const __m128i *)(input + (7 * 8))), k_ZERO), k_128);
+	}
+
+	const __m128i c = _mm_set1_epi32(1 << 14);
+
+	for(int32_t pass = 0; pass < 2; pass++){
+
+		{
+			// Transpose
+			__m128i a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7;
+
+			b0 = _mm_unpacklo_epi16(y0, y4); // [ 00 40 01 41 02 42 03 43 ]
+			b1 = _mm_unpackhi_epi16(y0, y4); // [ 04 44 05 45 06 46 07 47 ]
+			b2 = _mm_unpacklo_epi16(y1, y5); // [ 10 50 11 51 12 52 13 53 ]
+			b3 = _mm_unpackhi_epi16(y1, y5); // [ 14 54 15 55 16 56 17 57 ]
+			b4 = _mm_unpacklo_epi16(y2, y6); // [ 20 60 21 61 22 62 23 63 ]
+			b5 = _mm_unpackhi_epi16(y2, y6); // [ 24 64 25 65 26 66 27 67 ]
+			b6 = _mm_unpacklo_epi16(y3, y7); // [ 30 70 31 71 32 72 33 73 ]
+			b7 = _mm_unpackhi_epi16(y3, y7); // [ 34 74 35 75 36 76 37 77 ]
+
+			a0 = _mm_unpacklo_epi16(b0, b4); // [ 00 20 40 60 01 21 41 61 ]	
+			a1 = _mm_unpackhi_epi16(b0, b4); // [ 02 22 42 62 03 23 43 63 ]			
+			a2 = _mm_unpacklo_epi16(b1, b5); // [ 04 24 44 64 05 25 45 65 ]
+			a3 = _mm_unpackhi_epi16(b1, b5); // [ 06 26 46 66 07 27 47 67 ]
+			a4 = _mm_unpacklo_epi16(b2, b6); // [ 10 30 50 70 11 31 51 71 ]
+			a5 = _mm_unpackhi_epi16(b2, b6); // [ 12 32 52 72 13 33 53 73 ]
+			a6 = _mm_unpacklo_epi16(b3, b7); // [ 14 34 54 74 15 35 55 75 ]
+			a7 = _mm_unpackhi_epi16(b3, b7); // [ 16 36 56 76 17 37 57 77 ]
+
+			x0 = _mm_unpacklo_epi16(a0, a4); // [ 00 10 20 30 40 50 60 70 ]
+			x1 = _mm_unpackhi_epi16(a0, a4); // [ 01 11 21 31 41 51 61 71 ]
+			x2 = _mm_unpacklo_epi16(a1, a5); // [ 02 12 22 32 42 52 62 72 ]
+			x3 = _mm_unpackhi_epi16(a1, a5); // [ 03 13 23 33 43 53 63 73 ]
+			x4 = _mm_unpacklo_epi16(a2, a6); // [ 04 14 24 34 44 54 64 74 ]
+			x5 = _mm_unpackhi_epi16(a2, a6); // [ 05 15 25 35 45 55 65 75 ]
+			x6 = _mm_unpacklo_epi16(a3, a7); // [ 06 16 26 36 46 56 66 76 ]
+			x7 = _mm_unpackhi_epi16(a3, a7); // [ 07 17 27 37 47 57 67 77 ]
+	  
+		}
+
+		{
+			// Transform
+			__m128i t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+
+			t8 = _mm_adds_epi16(x0, x7);
+			t9 = _mm_subs_epi16(x0, x7);
+			t0 = _mm_adds_epi16(x1, x6);
+			t7 = _mm_subs_epi16(x1, x6);
+			t1 = _mm_adds_epi16(x2, x5);
+			t6 = _mm_subs_epi16(x2, x5);
+			t2 = _mm_adds_epi16(x3, x4);
+			t5 = _mm_subs_epi16(x3, x4);
+
+			t3 = _mm_adds_epi16(t8, t2);
+			t4 = _mm_subs_epi16(t8, t2);
+			t2 = _mm_adds_epi16(t0, t1);
+			t8 = _mm_subs_epi16(t0, t1);
+
+			t1 = _mm_adds_epi16(t7, t6);
+			t0 = _mm_subs_epi16(t7, t6);
+
+			y0 = _mm_adds_epi16(t3, t2);
+			y4 = _mm_subs_epi16(t3, t2);
+
+			const __m128i c13573 = _mm_set1_epi16(13573);
+			const __m128i c21895 = _mm_set1_epi16(21895);
+			const __m128i cNeg21895 = _mm_set1_epi16(-21895);
+			const __m128i c23170 = _mm_set1_epi16(23170);
+			const __m128i cNeg23170 = _mm_set1_epi16(-23170);
+			const __m128i c6518 = _mm_set1_epi16(6518);
+
+			y2 = _mm_mradds_epi16(t8, c13573, t4);
+			t10 = _mm_mr_epi16(t4, c13573, c);
+
+			y6 = _mm_subs_epi16(t10, t8);
+
+			t6 = _mm_mradds_epi16(t0, c23170, t5);
+			t7 = _mm_mradds_epi16(t0, cNeg23170, t5);
+			t2 = _mm_mradds_epi16(t1, cNeg23170, t9);
+			t3 = _mm_mradds_epi16(t1, c23170, t9);
+
+			y1 = _mm_mradds_epi16(t6, c6518, t3);
+			t9 = _mm_mr_epi16(t3, c6518, c);
+
+			y7 = _mm_subs_epi16(t9, t6);
+			y5 = _mm_mradds_epi16(t2, c21895, t7);
+			y3 = _mm_mradds_epi16(t7, cNeg21895, t2);
+
+		}
+	}
+
+	{
+		// Post scale and store	
+		const __m128i k_B = _mm_set_epi16(7880, 7422, 6680, 5681, 6680, 7422, 7880, 5681);
+		const __m128i k_C = _mm_set_epi16(7422, 6992, 6292, 5351, 6292, 6992, 7422, 5351);
+		const __m128i k_D = _mm_set_epi16(6680, 6292, 5663, 4816, 5663, 6292, 6680, 4816);
+		_mm_storeu_si128((__m128i *)(&output[0 * 8]), _mm_mradds_epi16(_mm_set_epi16(5681, 5351, 4816, 4095, 4816, 5351, 5681, 4095), y0, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[1 * 8]), _mm_mradds_epi16(k_B, y1, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[2 * 8]), _mm_mradds_epi16(k_C, y2, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[3 * 8]), _mm_mradds_epi16(k_D, y3, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[4 * 8]), _mm_mradds_epi16(_mm_set_epi16(5681, 5351, 4816, 4095, 4816, 5351, 5681, 4095), y4, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[5 * 8]), _mm_mradds_epi16(k_D, y5, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[6 * 8]), _mm_mradds_epi16(k_C, y6, k_ZERO));		
+		_mm_storeu_si128((__m128i *)(&output[7 * 8]), _mm_mradds_epi16(k_B, y7, k_ZERO));		
+	}
+
+}
+
+__declspec(dllexport) void __stdcall DCT2DFast(uint8_t *input, int16_t *output){
+
+	const int32_t CONST_BITS = 13;
+	const int32_t ROW_BITS = 2;
+	const int32_t SHIFT0 = CONST_BITS - ROW_BITS;
+	const int32_t SHIFT0ADD = 1 << (SHIFT0 - 1);
+	const int32_t SHIFT1 = ROW_BITS + 3;
+	const int32_t SHIFT1ADD = 1 << (SHIFT1 - 1);
+	const int32_t SHIFT2 = CONST_BITS + ROW_BITS + 3;
+	const int32_t SHIFT2ADD = 1 << (SHIFT2 - 1);
+	const __m128i rounder_11 = _mm_set1_epi32(SHIFT0ADD);
+	const __m128i rounder_18 = _mm_set1_epi32(SHIFT2ADD + 16384);
+	const __m128i rounder_5 = _mm_set1_epi16(SHIFT1ADD + 2); 
+	const __m128i FIX_1 = _mm_set_epi16(4433, 10703, 4433, 10703, 4433, 10703, 4433, 10703);
+	const __m128i FIX_2 = _mm_set_epi16(-10704, 4433, -10704, 4433, -10704, 4433, -10704, 4433);
+	const __m128i FIX_3a = _mm_set_epi16(2260, 6437, 2260, 6437, 2260, 6437, 2260, 6437);
+	const __m128i FIX_3b = _mm_set_epi16(9633, 11363, 9633, 11363, 9633, 11363, 9633, 11363);
+	const __m128i FIX_4a = _mm_set_epi16(-6436, -11362, -6436, -11362, -6436, -11362, -6436, -11362);
+	const __m128i FIX_4b = _mm_set_epi16(-2259, 9633, -2259, 9633, -2259, 9633, -2259, 9633);
+	const __m128i FIX_5a = _mm_set_epi16(9633, 2261, 9633, 2261, 9633, 2261, 9633, 2261);
+	const __m128i FIX_5b = _mm_set_epi16(-11362, 6437, -11362, 6437, -11362, 6437, -11362, 6437);
+	const __m128i FIX_6a = _mm_set_epi16(-11363, 9633, -11363, 9633, -11363, 9633, -11363, 9633);
+	const __m128i FIX_6b = _mm_set_epi16(-6436, 2260, -6436, 2260, -6436, 2260, -6436, 2260);
+	const __m128i k_128 = _mm_set1_epi16(128);
+	
+	__m128i data[8];
+	__m128i buffer[8];
+
+	__asm {
+
+		push eax
+		push edx
+
+		lea eax,dword ptr [data] 
+		mov edx,dword ptr [input]
+
+		// Load unsigned bytes as signed words by subtracting by 128 as offset
+		pxor xmm7,xmm7 
+		movdqa xmm6,xmmword ptr [k_128]
+		movq xmm0,qword ptr [edx+0]
+		movq xmm1,qword ptr [edx+8]
+		movq xmm2,qword ptr [edx+16]
+		movq xmm3,qword ptr [edx+24]
+		movq xmm4,qword ptr [edx+32]
+		movq xmm5,qword ptr [edx+40]
+		punpcklbw xmm0,xmm7
+		punpcklbw xmm1,xmm7
+		punpcklbw xmm2,xmm7
+		punpcklbw xmm3,xmm7
+		punpcklbw xmm4,xmm7
+		punpcklbw xmm5,xmm7
+		psubw xmm0,xmm6
+		psubw xmm1,xmm6
+		psubw xmm2,xmm6
+		psubw xmm3,xmm6
+		psubw xmm4,xmm6
+		psubw xmm5,xmm6
+		movdqa xmmword ptr [eax+0],xmm0
+		movdqa xmmword ptr [eax+16],xmm1
+		movq xmm0,qword ptr [edx+48]
+		movq xmm1,qword ptr [edx+56]
+		punpcklbw xmm0,xmm7
+		punpcklbw xmm1,xmm7
+		psubw xmm0,xmm6
+		psubw xmm1,xmm6
+		movdqa xmmword ptr [eax+32],xmm2
+		movdqa xmmword ptr [eax+48],xmm3
+		movdqa xmmword ptr [eax+64],xmm4
+		movdqa xmmword ptr [eax+80],xmm5
+		movdqa xmmword ptr [eax+96],xmm0
+		movdqa xmmword ptr [eax+112],xmm1
+		
+		lea	edx,dword ptr [buffer] 
+
+		prefetchnta [FIX_1]
+        prefetchnta [FIX_3a]
+        prefetchnta [FIX_5a] 
+
+		// First we transpose last 4 rows 
+		movdqa xmm0,xmmword ptr [eax+0*16]  // 07 06 05 04 03 02 01 00
+        movdqa xmm6,xmmword ptr [eax+2*16]  // 27 26 25 24 23 22 21 20
+        movdqa xmm4,xmmword ptr [eax+4*16]  // 47 46 45 44 43 42 41 40
+        movdqa xmm7,xmmword ptr [eax+6*16]  // 67 66 65 64 63 62 61 60
+        punpckhwd xmm0,xmmword ptr [eax+1*16]   
+        movdqa xmm2,xmm0
+        punpckhwd xmm6,xmmword ptr [eax+3*16]  
+        punpckhwd xmm4,xmmword ptr [eax+5*16]  
+        movdqa xmm5,xmm4
+        punpckhwd xmm7,xmmword ptr [eax+7*16]  
+        punpckldq xmm0,xmm6 // 31 21 11 01 30 20 10 00
+        movdqa xmm1,xmm0
+        punpckldq xmm4,xmm7 // 71 61 51 41 70 60 50 40
+        punpckhdq xmm2,xmm6 // 33 23 13 03 32 22 12 02
+        movdqa xmm3,xmm2
+        punpckhdq xmm5,xmm7 // 73 63 53 43 72 62 52 42
+        punpcklqdq xmm0,xmm4 // 70 60 50 40 30 20 10 00
+        punpcklqdq xmm2,xmm5 // 72 62 52 42 32 22 21 02
+        punpckhqdq xmm1,xmm4 // 71 61 51 41 31 21 11 01
+        punpckhqdq xmm3,xmm5 // 73 63 53 43 33 23 13 03
+        movdqa xmmword ptr [edx+4*16],xmm0
+        movdqa xmmword ptr [edx+5*16],xmm1
+        movdqa xmmword ptr [edx+6*16],xmm2
+        movdqa xmmword ptr [edx+7*16],xmm3 	
+
+		// Then we transpose first 4 rows 
+		movdqa xmm0,xmmword ptr [eax+0*16] // 07 06 05 04 03 02 01 00
+        movdqa xmm6,xmmword ptr [eax+2*16] // 27 26 25 24 23 22 21 20
+        movdqa xmm4,xmmword ptr [eax+4*16] // 47 46 45 44 43 42 41 40
+        movdqa xmm7,xmmword ptr [eax+6*16] // 67 66 65 64 63 62 61 60
+        punpcklwd xmm0,xmmword ptr [eax+1*16] // 13 03 12 02 11 01 10 00
+        movdqa xmm2,xmm0
+        punpcklwd xmm6,xmmword ptr [eax+3*16] // 33 23 32 22 31 21 30 20
+        punpcklwd xmm4,xmmword ptr [eax+5*16] // 53 43 52 42 51 41 50 40
+        movdqa xmm5,xmm4
+        punpcklwd xmm7,xmmword ptr [eax+7*16] // 73 63 72 62 71 61 70 60
+        punpckldq xmm0,xmm6 // 31 21 11 01 30 20 10 00
+        movdqa xmm1,xmm0
+        punpckldq xmm4,xmm7 // 71 61 51 41 70 60 50 40
+        punpckhdq xmm2,xmm6 // 33 23 13 03 32 22 12 02
+        movdqa xmm3,xmm2
+        punpckhdq xmm5,xmm7 // 73 63 53 43 72 62 52 42
+        punpcklqdq xmm0,xmm4 // 70 60 50 40 30 20 10 00
+        punpcklqdq xmm2,xmm5 // 72 62 52 42 32 22 21 02
+        punpckhqdq xmm1,xmm4 // 71 61 51 41 31 21 11 01
+        punpckhqdq xmm3,xmm5 // 73 63 53 43 33 23 13 03
+        movdqa xmmword ptr [edx+0*16],xmm0
+        movdqa xmmword ptr [edx+1*16],xmm1
+        movdqa xmmword ptr [edx+2*16],xmm2
+        movdqa xmmword ptr [edx+3*16],xmm3 	
+
+		// DCT 1D
+		paddsw	xmm0,xmmword ptr [edx+16*7]	// tmp0
+        movdqa  xmm4,xmm0
+		paddsw	xmm1,xmmword ptr [edx+16*6]	// tmp1
+        movdqa  xmm5,xmm1
+		paddsw	xmm2,xmmword ptr [edx+16*5]	// tmp2
+		paddsw	xmm3,xmmword ptr [edx+16*4]	// tmp3
+		
+		paddsw xmm0,xmm3 // tmp10
+        movdqa xmm6,xmm0 // tmp10
+		paddsw xmm1,xmm2 // tmp11
+		psubsw xmm4,xmm3 // tmp13
+		psubsw xmm5,xmm2 // tmp12
+		
+		paddsw xmm0,xmm1
+		psubsw xmm6,xmm1
+		
+		psllw xmm0,2
+		psllw xmm6,2
+
+		movdqa xmm1,xmm4
+        movdqa xmm2,xmm4
+
+		movdqa xmmword ptr [eax+16*0],xmm0
+		movdqa xmmword ptr [eax+16*4],xmm6
+       
+        movdqa xmm7,xmmword ptr [FIX_1]
+
+        punpckhwd xmm1,xmm5 // 12 13 12 13 12 13 12 13 high part
+        movdqa xmm6,xmm1 // high
+        punpcklwd xmm2,xmm5 // 12 13 12 13 12 13 12 13 low part
+        movdqa xmm0,xmm2 // low
+
+        movdqa xmm4,xmmword ptr [FIX_2]
+
+        movdqa xmm5,xmmword ptr [rounder_11]
+
+        pmaddwd xmm2,xmm7 // [FIX_1] 
+        pmaddwd xmm1,xmm7 // [FIX_1]
+        pmaddwd xmm0,xmm4 // [FIX_2]
+        pmaddwd xmm6,xmm4 // [FIX_2]
+
+        paddd xmm2,xmm5 // rounder
+        paddd xmm1,xmm5 // rounder
+        psrad xmm2,11
+        psrad xmm1,11
+		
+		packssdw xmm2,xmm1
+		movdqa xmmword ptr [eax+16*2],xmm2
+
+        paddd xmm0,xmm5 // rounder
+        paddd xmm6,xmm5 // rounder
+        psrad xmm0,11
+        psrad xmm6,11
+		
+		packssdw xmm0,xmm6
+		movdqa xmmword ptr [eax+16*6],xmm0
+
+		movdqa xmm0,xmmword ptr [edx+16*0]	
+		movdqa xmm1,xmmword ptr [edx+16*1]	
+		movdqa xmm2,xmmword ptr [edx+16*2]	
+		movdqa xmm3,xmmword ptr [edx+16*3]	
+
+		psubsw xmm0,xmmword ptr [edx+16*7]	// tmp7
+		movdqa xmm4,xmm0
+		psubsw xmm1,xmmword ptr [edx+16*6]	// tmp6
+		psubsw xmm2,xmmword ptr [edx+16*5]	// tmp5
+		movdqa xmm6,xmm2
+		psubsw xmm3,xmmword ptr [edx+16*4]	// tmp4
+
+        punpckhwd xmm4,xmm1 // 6 7 6 7 6 7 6 7 high part
+        punpcklwd xmm0,xmm1 // 6 7 6 7 6 7 6 7 low part
+        punpckhwd xmm6,xmm3 // 4 5 4 5 4 5 4 5 high part
+        punpcklwd xmm2,xmm3 // 4 5 4 5 4 5 4 5 low part 
+
+		movdqa xmm1,xmmword ptr [FIX_3a]   
+        movdqa xmm5,xmmword ptr [FIX_3b]   
+        movdqa xmm3,xmm1       
+        movdqa xmm7,xmm5       
+        pmaddwd xmm1,xmm2       
+        pmaddwd xmm5,xmm0       
+        paddd xmm1,xmm5
+        movdqa xmm5,xmmword ptr [rounder_11]
+        pmaddwd xmm3,xmm6      
+        pmaddwd xmm7,xmm4      
+		paddd xmm3,xmm7
+        paddd xmm1,xmm5
+        paddd xmm3,xmm5
+        psrad xmm1,11
+        psrad xmm3,11
+		packssdw xmm1,xmm3
+		movdqa xmmword ptr [eax+16*1],xmm1
+ 
+		movdqa xmm1,xmmword ptr [FIX_4a]   
+        movdqa xmm5,xmmword ptr [FIX_4b]   
+        movdqa xmm3,xmm1       
+        movdqa xmm7,xmm5       
+        pmaddwd xmm1,xmm2       
+        pmaddwd xmm5,xmm0       
+        paddd xmm1,xmm5
+        movdqa xmm5,xmmword ptr [rounder_11]
+        pmaddwd xmm3,xmm6      
+        pmaddwd xmm7,xmm4      
+		paddd xmm3,xmm7
+        paddd xmm1,xmm5
+        paddd xmm3,xmm5
+        psrad xmm1,11
+        psrad xmm3,11
+		packssdw xmm1,xmm3
+		movdqa xmmword ptr [eax+16*3],xmm1
+ 
+		movdqa xmm1,xmmword ptr [FIX_5a]   
+        movdqa xmm5,xmmword ptr [FIX_5b]   
+        movdqa xmm3,xmm1       
+        movdqa xmm7,xmm5       
+        pmaddwd xmm1,xmm2       
+        pmaddwd xmm5,xmm0       
+        paddd xmm1,xmm5
+        movdqa xmm5,xmmword ptr [rounder_11]
+        pmaddwd xmm3,xmm6      
+        pmaddwd xmm7,xmm4      
+		paddd xmm3,xmm7
+        paddd xmm1,xmm5
+        paddd xmm3,xmm5
+        psrad xmm1,11
+        psrad xmm3,11
+		packssdw xmm1,xmm3
+		movdqa xmmword ptr [eax+16*5],xmm1
+ 
+        pmaddwd xmm2,xmmword ptr [FIX_6a]
+        pmaddwd xmm0,xmmword ptr [FIX_6b]
+        paddd xmm2,xmm0
+        pmaddwd xmm6,xmmword ptr [FIX_6a]
+        pmaddwd xmm4,xmmword ptr [FIX_6b]
+        paddd xmm6,xmm4
+        paddd xmm2,xmm5 // rounder
+        paddd xmm6,xmm5 // rounder
+        psrad xmm2,11
+        psrad xmm6,11
+
+        packssdw xmm2,xmm6
+        movdqa xmmword ptr [eax+16*7],xmm2 
+		
+		// First we transpose last 4 rows 
+		movdqa xmm0,xmmword ptr [eax+0*16]  // 07 06 05 04 03 02 01 00
+        movdqa xmm6,xmmword ptr [eax+2*16]  // 27 26 25 24 23 22 21 20
+        movdqa xmm4,xmmword ptr [eax+4*16]  // 47 46 45 44 43 42 41 40
+        movdqa xmm7,xmmword ptr [eax+6*16]  // 67 66 65 64 63 62 61 60
+        punpckhwd xmm0,xmmword ptr [eax+1*16]   
+        movdqa xmm2,xmm0
+        punpckhwd xmm6,xmmword ptr [eax+3*16]  
+        punpckhwd xmm4,xmmword ptr [eax+5*16]  
+        movdqa xmm5,xmm4
+        punpckhwd xmm7,xmmword ptr [eax+7*16]  
+        punpckldq xmm0,xmm6 // 31 21 11 01 30 20 10 00
+        movdqa xmm1,xmm0
+        punpckldq xmm4,xmm7 // 71 61 51 41 70 60 50 40
+        punpckhdq xmm2,xmm6 // 33 23 13 03 32 22 12 02
+        movdqa xmm3,xmm2
+        punpckhdq xmm5,xmm7 // 73 63 53 43 72 62 52 42
+        punpcklqdq xmm0,xmm4 // 70 60 50 40 30 20 10 00
+        punpcklqdq xmm2,xmm5 // 72 62 52 42 32 22 21 02
+        punpckhqdq xmm1,xmm4 // 71 61 51 41 31 21 11 01
+        punpckhqdq xmm3,xmm5 // 73 63 53 43 33 23 13 03
+        movdqa xmmword ptr [edx+4*16],xmm0
+        movdqa xmmword ptr [edx+5*16],xmm1
+        movdqa xmmword ptr [edx+6*16],xmm2
+        movdqa xmmword ptr [edx+7*16],xmm3 	
+
+		// Then we transpose first 4 rows 
+		movdqa xmm0,xmmword ptr [eax+0*16] // 07 06 05 04 03 02 01 00
+        movdqa xmm6,xmmword ptr [eax+2*16] // 27 26 25 24 23 22 21 20
+        movdqa xmm4,xmmword ptr [eax+4*16] // 47 46 45 44 43 42 41 40
+        movdqa xmm7,xmmword ptr [eax+6*16] // 67 66 65 64 63 62 61 60
+        punpcklwd xmm0,xmmword ptr [eax+1*16] // 13 03 12 02 11 01 10 00
+        movdqa xmm2,xmm0
+        punpcklwd xmm6,xmmword ptr [eax+3*16] // 33 23 32 22 31 21 30 20
+        punpcklwd xmm4,xmmword ptr [eax+5*16] // 53 43 52 42 51 41 50 40
+        movdqa xmm5,xmm4
+        punpcklwd xmm7,xmmword ptr [eax+7*16] // 73 63 72 62 71 61 70 60
+        punpckldq xmm0,xmm6 // 31 21 11 01 30 20 10 00
+        movdqa xmm1,xmm0
+        punpckldq xmm4,xmm7 // 71 61 51 41 70 60 50 40
+        punpckhdq xmm2,xmm6 // 33 23 13 03 32 22 12 02
+        movdqa xmm3,xmm2
+        punpckhdq xmm5,xmm7 // 73 63 53 43 72 62 52 42
+        punpcklqdq xmm0,xmm4 // 70 60 50 40 30 20 10 00
+        punpcklqdq xmm2,xmm5 // 72 62 52 42 32 22 21 02
+        punpckhqdq xmm1,xmm4 // 71 61 51 41 31 21 11 01
+        punpckhqdq xmm3,xmm5 // 73 63 53 43 33 23 13 03
+        movdqa xmmword ptr [edx+0*16],xmm0
+        movdqa xmmword ptr [edx+1*16],xmm1
+        movdqa xmmword ptr [edx+2*16],xmm2
+        movdqa xmmword ptr [edx+3*16],xmm3 	
+
+        movdqa xmm7,xmmword ptr [rounder_5]
+	
+		paddsw xmm0,xmmword ptr [edx+16*7] //tmp0
+        movdqa xmm4,xmm0
+		paddsw xmm1,xmmword ptr [edx+16*6] // tmp1
+        movdqa xmm5,xmm1
+		paddsw xmm2,xmmword ptr [edx+16*5] // tmp2
+		paddsw xmm3,xmmword ptr [edx+16*4] // tmp3
+
+		paddsw xmm0,xmm3 // tmp10
+        // In the second pass we must round and shift before
+        // the tmp10+tmp11 and tmp10-tmp11 calculation
+        // or the overflow will happen.
+        paddsw xmm0,xmm7 // [rounder_5]
+        psraw xmm0,5
+        movdqa xmm6,xmm0 // tmp10
+		paddsw xmm1,xmm2 // tmp11
+		psubsw xmm4,xmm3 // tmp13
+		psubsw xmm5,xmm2 // tmp12
+
+        paddsw xmm1,xmm7 // [rounder_5]
+        psraw xmm1,5
+
+		paddsw xmm0,xmm1
+		psubsw xmm6,xmm1
+
+        movdqa xmm1,xmm4
+        movdqa xmm2,xmm4
+
+		movdqa xmmword ptr [eax+16*0],xmm0
+		movdqa xmmword ptr [eax+16*4],xmm6
+       
+        movdqa xmm7,xmmword ptr [FIX_1]
+
+        punpckhwd xmm1,xmm5 // 12 13 12 13 12 13 12 13 high part
+        movdqa xmm6,xmm1 // high
+        punpcklwd xmm2,xmm5 // 12 13 12 13 12 13 12 13 low part
+        movdqa xmm0,xmm2 // low
+
+        movdqa xmm4,xmmword ptr [FIX_2]
+
+        movdqa xmm5,xmmword ptr [rounder_18]
+
+        pmaddwd xmm2,xmm7 // [FIX_1] 
+        pmaddwd xmm1,xmm7 // [FIX_1]
+        pmaddwd xmm0,xmm4 // [FIX_2]
+        pmaddwd xmm6,xmm4 // [FIX_2]
+
+        paddd xmm2,xmm5 // rounder
+        paddd xmm1,xmm5 // rounder
+        psrad xmm2,18
+        psrad xmm1,18
+		        
+		packssdw xmm2,xmm1
+		movdqa xmmword ptr [eax+16*2],xmm2
+
+        paddd xmm0,xmm5 // rounder
+        paddd xmm6,xmm5 // rounder
+        psrad xmm0,18
+        psrad xmm6,18
+
+		packssdw xmm0,xmm6
+		movdqa xmmword ptr [eax+16*6],xmm0
+
+		movdqa xmm0,xmmword ptr [edx+16*0]	
+		movdqa xmm1,xmmword ptr [edx+16*1]	
+		movdqa xmm2,xmmword ptr [edx+16*2]	
+		movdqa xmm3,xmmword ptr [edx+16*3]	
+
+		psubsw xmm0,xmmword ptr [edx+16*7] // tmp7
+		movdqa xmm4,xmm0
+		psubsw xmm1,xmmword ptr [edx+16*6] // tmp6
+		psubsw xmm2,xmmword ptr [edx+16*5] // tmp5
+		movdqa xmm6,xmm2
+		psubsw xmm3,xmmword ptr [edx+16*4] // tmp4
+
+        punpckhwd xmm4,xmm1 // 6 7 6 7 6 7 6 7 high part
+        punpcklwd xmm0,xmm1 // 6 7 6 7 6 7 6 7 low part
+        punpckhwd xmm6,xmm3 // 4 5 4 5 4 5 4 5 high part
+        punpcklwd xmm2,xmm3 // 4 5 4 5 4 5 4 5 low part
+
+		movdqa xmm1,xmmword ptr [FIX_3a]   
+        movdqa xmm5,xmmword ptr [FIX_3b]   
+        movdqa xmm3,xmm1       
+        movdqa xmm7,xmm5       
+        pmaddwd xmm1,xmm2       
+        pmaddwd xmm5,xmm0       
+        paddd xmm1,xmm5
+        movdqa xmm5,xmmword ptr [rounder_18]
+        pmaddwd xmm3,xmm6      
+        pmaddwd xmm7,xmm4      
+		paddd xmm3,xmm7
+        paddd xmm1,xmm5
+        paddd xmm3,xmm5
+        psrad xmm1,18
+        psrad xmm3,18
+		packssdw xmm1,xmm3
+		movdqa xmmword ptr [eax+16],xmm1
+ 
+		movdqa xmm1,xmmword ptr [FIX_4a]   
+        movdqa xmm5,xmmword ptr [FIX_4b]   
+        movdqa xmm3,xmm1       
+        movdqa xmm7,xmm5       
+        pmaddwd xmm1,xmm2       
+        pmaddwd xmm5,xmm0       
+        paddd xmm1,xmm5
+        movdqa xmm5,xmmword ptr [rounder_18]
+        pmaddwd xmm3,xmm6      
+        pmaddwd xmm7,xmm4      
+		paddd xmm3,xmm7
+        paddd xmm1,xmm5
+        paddd xmm3,xmm5
+        psrad xmm1,18
+        psrad xmm3,18
+		packssdw xmm1,xmm3
+		movdqa xmmword ptr [eax+48],xmm1
+ 
+		movdqa xmm1,xmmword ptr [FIX_5a]   
+        movdqa xmm5,xmmword ptr [FIX_5b]   
+        movdqa xmm3,xmm1       
+        movdqa xmm7,xmm5       
+        pmaddwd xmm1,xmm2       
+        pmaddwd xmm5,xmm0       
+        paddd xmm1,xmm5
+        movdqa xmm5,xmmword ptr [rounder_18]
+        pmaddwd xmm3,xmm6      
+        pmaddwd xmm7,xmm4      
+		paddd xmm3,xmm7
+        paddd xmm1,xmm5
+        paddd xmm3,xmm5
+        psrad xmm1,18
+        psrad xmm3,18
+		packssdw xmm1,xmm3
+		movdqa xmmword ptr [eax+80],xmm1
+ 
+        pmaddwd xmm2,xmmword ptr [FIX_6a]
+        pmaddwd xmm0,xmmword ptr [FIX_6b]
+        paddd xmm2,xmm0
+        pmaddwd xmm6,xmmword ptr [FIX_6a]
+        pmaddwd xmm4,xmmword ptr [FIX_6b]
+        paddd xmm6,xmm4
+        paddd xmm2,xmm5 // rounder
+        paddd xmm6,xmm5 // rounder
+        psrad xmm2,18
+        psrad xmm6,18
+
+        packssdw xmm2,xmm6
+        movdqa xmmword ptr [eax+112],xmm2 
+
+		// Store result
+		mov edx,dword ptr [output]
+		movdqa xmm0,xmmword ptr [eax+0]
+		movdqa xmm1,xmmword ptr [eax+16]
+		movdqa xmm2,xmmword ptr [eax+32]
+		movdqa xmm3,xmmword ptr [eax+48]
+		movdqa xmm4,xmmword ptr [eax+64]
+		movdqa xmm5,xmmword ptr [eax+80]
+		movdqa xmm6,xmmword ptr [eax+96]
+		movdqa xmm7,xmmword ptr [eax+112]
+		movdqu xmmword ptr [edx+0],xmm0 
+		movdqu xmmword ptr [edx+16],xmm1
+		movdqu xmmword ptr [edx+32],xmm2 
+		movdqu xmmword ptr [edx+48],xmm3 
+		movdqu xmmword ptr [edx+64],xmm4 
+		movdqu xmmword ptr [edx+80],xmm5 
+		movdqu xmmword ptr [edx+96],xmm6 
+		movdqu xmmword ptr [edx+112],xmm7 
+
+		pop edx
+		pop eax
+
+	}
+}
+
+// and for Delphi 7:
+
+inline __m128i _mm_mr_epi16(__m128i x, __m128i y, __m128i c) {
+	__m128i h = _mm_mulhi_epi16(x, y), l = _mm_mullo_epi16(x, y);
+   return _mm_packs_epi32( _mm_srai_epi32( _mm_slli_epi32((_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi16(l, h), c), 15), 16), 16), _mm_srai_epi32( _mm_slli_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi16(l, h), c), 15), 16), 16) )
+}
+
+#define _mm_mradds_epi16(x, y, z) _mm_adds_epi16(_mm_mr_epi16(x, y, *((__m128i*)(&c))), z)
+
+__declspec(dllexport) void __stdcall dct_vector(uint8_t *input, int16_t *output) {
+
+	static int16_t PostScaleArray[64] = {
+		4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681,
+		5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880,
+		5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422,
+		4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680,
+		4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681,
+		4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680,
+		5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422,
+		5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880
+	};
+
+	__m128i t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
+	__m128i a0, a1, a2, a3, a4, a5, a6, a7;
+	__m128i b0, b1, b2, b3, b4, b5, b6, b7;
+
+	volatile __m128i c13573 = _mm_set1_epi16(13573);
+	volatile __m128i c21895 = _mm_set1_epi16(21895);
+	volatile __m128i cNeg21895 = _mm_set1_epi16(-21895);
+	volatile __m128i c23170 = _mm_set1_epi16(23170);
+	volatile __m128i cNeg23170 = _mm_set1_epi16(-23170);
+	volatile __m128i c6518 = _mm_set1_epi16(6518);
+	volatile __m128i c = _mm_set1_epi32(1 << 14);
+
+	__m128i vx[8], vy[8];
+
+	const __m128i k__ZERO = _mm_setzero_si128();
+	volatile __m128i k__128 = _mm_set1_epi16(128);
+
+	__m128i in0 = _mm_loadl_epi64((const __m128i *)(input + (0 * 8)));
+	__m128i in1 = _mm_loadl_epi64((const __m128i *)(input + (1 * 8)));
+	__m128i in2 = _mm_loadl_epi64((const __m128i *)(input + (2 * 8)));
+	__m128i in3 = _mm_loadl_epi64((const __m128i *)(input + (3 * 8)));
+	__m128i in4 = _mm_loadl_epi64((const __m128i *)(input + (4 * 8)));
+	__m128i in5 = _mm_loadl_epi64((const __m128i *)(input + (5 * 8)));
+	__m128i in6 = _mm_loadl_epi64((const __m128i *)(input + (6 * 8)));
+	__m128i in7 = _mm_loadl_epi64((const __m128i *)(input + (7 * 8)));
+	// Convert bytes to words
+	in0 = _mm_unpacklo_epi8(in0, k__ZERO);
+	in1 = _mm_unpacklo_epi8(in1, k__ZERO);
+	in2 = _mm_unpacklo_epi8(in2, k__ZERO);
+	in3 = _mm_unpacklo_epi8(in3, k__ZERO);
+	in4 = _mm_unpacklo_epi8(in4, k__ZERO);
+	in5 = _mm_unpacklo_epi8(in5, k__ZERO);
+	in6 = _mm_unpacklo_epi8(in6, k__ZERO);
+	in7 = _mm_unpacklo_epi8(in7, k__ZERO);
+	// Convert unsigned words to signed words (subtracting by 128)
+	vy[0] = _mm_sub_epi16(in0, *((__m128i*)(&k__128)));
+	vy[1] = _mm_sub_epi16(in1, *((__m128i*)(&k__128)));
+	vy[2] = _mm_sub_epi16(in2, *((__m128i*)(&k__128)));
+	vy[3] = _mm_sub_epi16(in3, *((__m128i*)(&k__128)));
+	vy[4] = _mm_sub_epi16(in4, *((__m128i*)(&k__128)));
+	vy[5] = _mm_sub_epi16(in5, *((__m128i*)(&k__128)));
+	vy[6] = _mm_sub_epi16(in6, *((__m128i*)(&k__128)));
+	vy[7] = _mm_sub_epi16(in7, *((__m128i*)(&k__128)));
+	
+	{
+		// Transpose
+
+		b0 = _mm_unpacklo_epi16(vy[0], vy[4]);     /* [ 00 40 01 41 02 42 03 43 ]*/
+		b1 = _mm_unpackhi_epi16(vy[0], vy[4]);     /* [ 04 44 05 45 06 46 07 47 ]*/
+		b2 = _mm_unpacklo_epi16(vy[1], vy[5]);     /* [ 10 50 11 51 12 52 13 53 ]*/
+		b3 = _mm_unpackhi_epi16(vy[1], vy[5]);     /* [ 14 54 15 55 16 56 17 57 ]*/
+		b4 = _mm_unpacklo_epi16(vy[2], vy[6]);     /* [ 20 60 21 61 22 62 23 63 ]*/
+		b5 = _mm_unpackhi_epi16(vy[2], vy[6]);     /* [ 24 64 25 65 26 66 27 67 ]*/
+		b6 = _mm_unpacklo_epi16(vy[3], vy[7]);     /* [ 30 70 31 71 32 72 33 73 ]*/
+		b7 = _mm_unpackhi_epi16(vy[3], vy[7]);     /* [ 34 74 35 75 36 76 37 77 ]*/
+
+		a0 = _mm_unpacklo_epi16(b0, b4);                 /* [ 00 20 40 60 01 21 41 61 ]*/
+		a1 = _mm_unpackhi_epi16(b0, b4);                 /* [ 02 22 42 62 03 23 43 63 ]*/
+		a2 = _mm_unpacklo_epi16(b1, b5);                 /* [ 04 24 44 64 05 25 45 65 ]*/
+		a3 = _mm_unpackhi_epi16(b1, b5);                 /* [ 06 26 46 66 07 27 47 67 ]*/
+		a4 = _mm_unpacklo_epi16(b2, b6);                 /* [ 10 30 50 70 11 31 51 71 ]*/
+		a5 = _mm_unpackhi_epi16(b2, b6);                 /* [ 12 32 52 72 13 33 53 73 ]*/
+		a6 = _mm_unpacklo_epi16(b3, b7);                 /* [ 14 34 54 74 15 35 55 75 ]*/
+		a7 = _mm_unpackhi_epi16(b3, b7);                 /* [ 16 36 56 76 17 37 57 77 ]*/
+
+		vx[0] = _mm_unpacklo_epi16(a0, a4);          /* [ 00 10 20 30 40 50 60 70 ]*/
+		vx[1] = _mm_unpackhi_epi16(a0, a4);          /* [ 01 11 21 31 41 51 61 71 ]*/
+		vx[2] = _mm_unpacklo_epi16(a1, a5);          /* [ 02 12 22 32 42 52 62 72 ]*/
+		vx[3] = _mm_unpackhi_epi16(a1, a5);          /* [ 03 13 23 33 43 53 63 73 ]*/
+		vx[4] = _mm_unpacklo_epi16(a2, a6);          /* [ 04 14 24 34 44 54 64 74 ]*/
+		vx[5] = _mm_unpackhi_epi16(a2, a6);          /* [ 05 15 25 35 45 55 65 75 ]*/
+		vx[6] = _mm_unpacklo_epi16(a3, a7);          /* [ 06 16 26 36 46 56 66 76 ]*/
+		vx[7] = _mm_unpackhi_epi16(a3, a7);          /* [ 07 17 27 37 47 57 67 77 ]*/
+	  
+	}
+
+	{
+		// Transform
+
+		t8 = _mm_adds_epi16(vx[0], vx[7]);
+		t9 = _mm_subs_epi16(vx[0], vx[7]);
+		t0 = _mm_adds_epi16(vx[1], vx[6]);
+		t7 = _mm_subs_epi16(vx[1], vx[6]);
+		t1 = _mm_adds_epi16(vx[2], vx[5]);
+		t6 = _mm_subs_epi16(vx[2], vx[5]);
+		t2 = _mm_adds_epi16(vx[3], vx[4]);
+		t5 = _mm_subs_epi16(vx[3], vx[4]);
+
+		t3 = _mm_adds_epi16(t8, t2);
+		t4 = _mm_subs_epi16(t8, t2);
+		t2 = _mm_adds_epi16(t0, t1);
+		t8 = _mm_subs_epi16(t0, t1);
+
+		t1 = _mm_adds_epi16(t7, t6);
+		t0 = _mm_subs_epi16(t7, t6);
+
+		vy[0] = _mm_adds_epi16(t3, t2);
+		vy[4] = _mm_subs_epi16(t3, t2);
+
+		vy[2] = _mm_mradds_epi16(t8, *((__m128i*)(&c13573)), t4);
+		t10 = _mm_mr_epi16(t4, *((__m128i*)(&c13573)), *((__m128i*)(&c)));
+
+		vy[6] = _mm_subs_epi16(t10, t8);
+
+		t6 = _mm_mradds_epi16(t0, *((__m128i*)(&c23170)), t5);
+		t7 = _mm_mradds_epi16(t0, *((__m128i*)(&cNeg23170)), t5);
+		t2 = _mm_mradds_epi16(t1, *((__m128i*)(&cNeg23170)), t9);
+		t3 = _mm_mradds_epi16(t1, *((__m128i*)(&c23170)), t9);
+
+		vy[1] = _mm_mradds_epi16(t6, *((__m128i*)(&c6518)), t3);
+		t9 = _mm_mr_epi16(t3, *((__m128i*)(&c6518)), *((__m128i*)(&c)));
+
+		vy[7] = _mm_subs_epi16(t9, t6);
+		vy[5] = _mm_mradds_epi16(t2, *((__m128i*)(&c21895)), t7);
+		vy[3] = _mm_mradds_epi16(t7, *((__m128i*)(&cNeg21895)), t2);
+
+	}
+	
+	{
+		// Transpose
+
+		b0 = _mm_unpacklo_epi16(vy[0], vy[4]);     /* [ 00 40 01 41 02 42 03 43 ]*/
+		b1 = _mm_unpackhi_epi16(vy[0], vy[4]);     /* [ 04 44 05 45 06 46 07 47 ]*/
+		b2 = _mm_unpacklo_epi16(vy[1], vy[5]);     /* [ 10 50 11 51 12 52 13 53 ]*/
+		b3 = _mm_unpackhi_epi16(vy[1], vy[5]);     /* [ 14 54 15 55 16 56 17 57 ]*/
+		b4 = _mm_unpacklo_epi16(vy[2], vy[6]);     /* [ 20 60 21 61 22 62 23 63 ]*/
+		b5 = _mm_unpackhi_epi16(vy[2], vy[6]);     /* [ 24 64 25 65 26 66 27 67 ]*/
+		b6 = _mm_unpacklo_epi16(vy[3], vy[7]);     /* [ 30 70 31 71 32 72 33 73 ]*/
+		b7 = _mm_unpackhi_epi16(vy[3], vy[7]);     /* [ 34 74 35 75 36 76 37 77 ]*/
+
+		a0 = _mm_unpacklo_epi16(b0, b4);                 /* [ 00 20 40 60 01 21 41 61 ]*/
+		a1 = _mm_unpackhi_epi16(b0, b4);                 /* [ 02 22 42 62 03 23 43 63 ]*/
+		a2 = _mm_unpacklo_epi16(b1, b5);                 /* [ 04 24 44 64 05 25 45 65 ]*/
+		a3 = _mm_unpackhi_epi16(b1, b5);                 /* [ 06 26 46 66 07 27 47 67 ]*/
+		a4 = _mm_unpacklo_epi16(b2, b6);                 /* [ 10 30 50 70 11 31 51 71 ]*/
+		a5 = _mm_unpackhi_epi16(b2, b6);                 /* [ 12 32 52 72 13 33 53 73 ]*/
+		a6 = _mm_unpacklo_epi16(b3, b7);                 /* [ 14 34 54 74 15 35 55 75 ]*/
+		a7 = _mm_unpackhi_epi16(b3, b7);                 /* [ 16 36 56 76 17 37 57 77 ]*/
+
+		vx[0] = _mm_unpacklo_epi16(a0, a4);          /* [ 00 10 20 30 40 50 60 70 ]*/
+		vx[1] = _mm_unpackhi_epi16(a0, a4);          /* [ 01 11 21 31 41 51 61 71 ]*/
+		vx[2] = _mm_unpacklo_epi16(a1, a5);          /* [ 02 12 22 32 42 52 62 72 ]*/
+		vx[3] = _mm_unpackhi_epi16(a1, a5);          /* [ 03 13 23 33 43 53 63 73 ]*/
+		vx[4] = _mm_unpacklo_epi16(a2, a6);          /* [ 04 14 24 34 44 54 64 74 ]*/
+		vx[5] = _mm_unpackhi_epi16(a2, a6);          /* [ 05 15 25 35 45 55 65 75 ]*/
+		vx[6] = _mm_unpacklo_epi16(a3, a7);          /* [ 06 16 26 36 46 56 66 76 ]*/
+		vx[7] = _mm_unpackhi_epi16(a3, a7);          /* [ 07 17 27 37 47 57 67 77 ]*/
+	  
+	}
+
+	{
+		// Transform
+
+		t8 = _mm_adds_epi16(vx[0], vx[7]);
+		t9 = _mm_subs_epi16(vx[0], vx[7]);
+		t0 = _mm_adds_epi16(vx[1], vx[6]);
+		t7 = _mm_subs_epi16(vx[1], vx[6]);
+		t1 = _mm_adds_epi16(vx[2], vx[5]);
+		t6 = _mm_subs_epi16(vx[2], vx[5]);
+		t2 = _mm_adds_epi16(vx[3], vx[4]);
+		t5 = _mm_subs_epi16(vx[3], vx[4]);
+
+		t3 = _mm_adds_epi16(t8, t2);
+		t4 = _mm_subs_epi16(t8, t2);
+		t2 = _mm_adds_epi16(t0, t1);
+		t8 = _mm_subs_epi16(t0, t1);
+
+		t1 = _mm_adds_epi16(t7, t6);
+		t0 = _mm_subs_epi16(t7, t6);
+
+		vy[0] = _mm_adds_epi16(t3, t2);
+		vy[4] = _mm_subs_epi16(t3, t2);
+
+		vy[2] = _mm_mradds_epi16(t8, *((__m128i*)(&c13573)), t4);
+		t10 = _mm_mr_epi16(t4, *((__m128i*)(&c13573)), *((__m128i*)(&c)));
+
+		vy[6] = _mm_subs_epi16(t10, t8);
+
+		t6 = _mm_mradds_epi16(t0, *((__m128i*)(&c23170)), t5);
+		t7 = _mm_mradds_epi16(t0, *((__m128i*)(&cNeg23170)), t5);
+		t2 = _mm_mradds_epi16(t1, *((__m128i*)(&cNeg23170)), t9);
+		t3 = _mm_mradds_epi16(t1, *((__m128i*)(&c23170)), t9);
+
+		vy[1] = _mm_mradds_epi16(t6, *((__m128i*)(&c6518)), t3);
+		t9 = _mm_mr_epi16(t3, *((__m128i*)(&c6518)), *((__m128i*)(&c)));
+
+		vy[7] = _mm_subs_epi16(t9, t6);
+		vy[5] = _mm_mradds_epi16(t2, *((__m128i*)(&c21895)), t7);
+		vy[3] = _mm_mradds_epi16(t7, *((__m128i*)(&cNeg21895)), t2);
+
+	}
+
+	{
+		volatile __m128i *PostScalev = (__m128i*)&PostScaleArray;
+		__m128i *v = (__m128i*) output;
+		{
+			static const int32_t i = 0;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i])); 
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 1;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 2;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 3;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 4;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 5;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 6;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+		{
+			static const int32_t i = 7;
+			__m128i t = _mm_loadu_si128((const __m128i *)(&PostScalev[i]));
+			_mm_storeu_si128((__m128i *)(&v[i]), _mm_mradds_epi16(t, vy[i], _mm_set1_epi16(0)));
+		}
+	}
+
+}
+
+
