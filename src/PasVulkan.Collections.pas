@@ -3241,7 +3241,7 @@ begin
   Finalize(Entity^.Key);
   Finalize(Entity^.Value);
   inc(fCountDeletedEntites);
-  if fCanShrink and (fCountDeletedEntites>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
+  if fCanShrink and (fSize>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
    dec(fCountNonEmptyEntites,fCountDeletedEntites);
    Resize;
   end;
@@ -3695,7 +3695,7 @@ begin
   Finalize(Entity^.Key);
   Finalize(Entity^.Value);
   inc(fCountDeletedEntites);
-  if fCanShrink and (fCountDeletedEntites>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
+  if fCanShrink and (fSize>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
    dec(fCountNonEmptyEntites,fCountDeletedEntites);
    Resize;
   end;
