@@ -3100,13 +3100,13 @@ end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.FindEntityForAdd(const aKey:TpvHashMapKey):PEntity;
 var Index,HashCode,Mask,Step:TpvSizeUInt;
-    SawDeleted:Boolean;
+    DeletedEntity:PEntity;
 begin
  HashCode:=HashKey(aKey);
  Mask:=(2 shl fLogSize)-1;
  Step:=((HashCode shl 1)+1) and Mask;
  Index:=HashCode shr (32-fLogSize);
- SawDeleted:=false;
+ DeletedEntity:=nil;
  repeat
   result:=@fEntities[Index];
   case result^.State of
@@ -3114,7 +3114,9 @@ begin
     break;
    end;
    TEntity.Deleted:begin
-    SawDeleted:=true;
+    if not assigned(DeletedEntity) then begin
+     DeletedEntity:=result;
+    end;
    end;
    else {TEntity.Used:}begin
     if CompareKey(result^.Key,aKey) then begin
@@ -3124,22 +3126,8 @@ begin
   end;
   Index:=(Index+Step) and Mask;
  until false;
- if SawDeleted then begin
-  Index:=HashCode shr (32-fLogSize);
-  repeat
-   result:=@fEntities[Index];
-   case result^.State of
-    TEntity.Empty,TEntity.Deleted:begin
-     break;
-    end;
-    else {TEntity.Used:}begin
-     if CompareKey(result^.Key,aKey) then begin
-      exit;
-     end;
-    end;
-   end;
-   Index:=(Index+Step) and Mask;
-  until false;
+ if assigned(DeletedEntity) then begin
+  result:=DeletedEntity;
  end;
 end;
 
@@ -3550,13 +3538,13 @@ end;
 
 function TpvStringHashMap<TpvHashMapValue>.FindEntityForAdd(const aKey:TpvHashMapKey):PEntity;
 var Index,HashCode,Mask,Step:TpvSizeUInt;
-    SawDeleted:Boolean;
+    DeletedEntity:PEntity;
 begin
  HashCode:=HashKey(aKey);
  Mask:=(2 shl fLogSize)-1;
  Step:=((HashCode shl 1)+1) and Mask;
  Index:=HashCode shr (32-fLogSize);
- SawDeleted:=false;
+ DeletedEntity:=nil;
  repeat
   result:=@fEntities[Index];
   case result^.State of
@@ -3564,7 +3552,9 @@ begin
     break;
    end;
    TEntity.Deleted:begin
-    SawDeleted:=true;
+    if not assigned(DeletedEntity) then begin
+     DeletedEntity:=result;
+    end;
    end;
    else {TEntity.Used:}begin
     if result^.Key=aKey then begin
@@ -3574,22 +3564,8 @@ begin
   end;
   Index:=(Index+Step) and Mask;
  until false;
- if SawDeleted then begin
-  Index:=HashCode shr (32-fLogSize);
-  repeat
-   result:=@fEntities[Index];
-   case result^.State of
-    TEntity.Empty,TEntity.Deleted:begin
-     break;
-    end;
-    else {TEntity.Used:}begin
-     if result^.Key=aKey then begin
-      exit;
-     end;
-    end;
-   end;
-   Index:=(Index+Step) and Mask;
-  until false;
+ if assigned(DeletedEntity) then begin
+  result:=DeletedEntity;
  end;
 end;
 
