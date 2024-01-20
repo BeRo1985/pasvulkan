@@ -3233,7 +3233,6 @@ end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.Delete(const aKey:TpvHashMapKey):boolean;
 var Entity:PEntity;
-    Index:TpvSizeInt;
 begin
  Entity:=FindEntity(aKey);
  result:=Entity^.State=TEntity.Used;
@@ -3243,12 +3242,7 @@ begin
   Finalize(Entity^.Value);
   inc(fCountDeletedEntites);
   if fCanShrink and (fCountDeletedEntites>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
-   fCountNonEmptyEntites:=0;
-   for Index:=0 to length(fEntities)-1 do begin
-    if fEntities[Index].State=TEntity.Used then begin
-     inc(fCountNonEmptyEntites);
-    end;
-   end;
+   dec(fCountNonEmptyEntites,fCountDeletedEntites);
    Resize;
   end;
  end;
@@ -3693,7 +3687,6 @@ end;
 
 function TpvStringHashMap<TpvHashMapValue>.Delete(const aKey:TpvHashMapKey):boolean;
 var Entity:PEntity;
-    Index:TpvSizeInt;
 begin
  Entity:=FindEntity(aKey);
  result:=Entity^.State=TEntity.Used;
@@ -3703,12 +3696,7 @@ begin
   Finalize(Entity^.Value);
   inc(fCountDeletedEntites);
   if fCanShrink and (fCountDeletedEntites>=8) and (fCountDeletedEntites>=((fSize+3) shr 2)) then begin
-   fCountNonEmptyEntites:=0;
-   for Index:=0 to length(fEntities)-1 do begin
-    if fEntities[Index].State=TEntity.Used then begin
-     inc(fCountNonEmptyEntites);
-    end;
-   end;
+   dec(fCountNonEmptyEntites,fCountDeletedEntites);
    Resize;
   end;
  end;
