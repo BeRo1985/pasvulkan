@@ -3181,8 +3181,15 @@ begin
   Resize;
  end;
  result:=FindEntityForAdd(aKey);
- if result^.State=TEntity.Empty then begin
-  inc(fCountNonEmptyEntites);
+ case result^.State of
+  TEntity.Empty:begin
+   inc(fCountNonEmptyEntites);
+  end;
+  TEntity.Deleted:begin
+   dec(fCountDeletedEntites);
+  end;
+  else begin
+  end;
  end;
  result^.State:=TEntity.Used;
  result^.Key:=aKey;
@@ -3634,8 +3641,15 @@ begin
   Resize;
  end;
  result:=FindEntityForAdd(aKey);
- if result^.State=TEntity.Empty then begin
-  inc(fCountNonEmptyEntites);
+ case result^.State of
+  TEntity.Empty:begin
+   inc(fCountNonEmptyEntites);
+  end;
+  TEntity.Deleted:begin
+   dec(fCountDeletedEntites);
+  end;
+  else begin
+  end;
  end;
  result^.State:=TEntity.Used;
  result^.Key:=aKey;
