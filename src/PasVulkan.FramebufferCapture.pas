@@ -110,12 +110,12 @@ type EpvFramebufferCapture=class(Exception);
        fHeight:TpvSizeInt;
        fImageFormat:TVkFormat;
        fReady:boolean;
+       procedure AllocateResources;
+       procedure ReleaseResources;
        procedure SetSwapChain(const aSwapChain:TpvVulkanSwapChain);
       public
        constructor Create(const aSwapChain:TpvVulkanSwapChain);
        destructor Destroy; override;
-       procedure AllocateResources;
-       procedure ReleaseResources;
        function Compatible(const aSwapChain:TpvVulkanSwapChain):boolean;
        procedure Capture(var aImage:TImage;const aSwapChainImage:TpvVulkanImage=nil);
       published 
