@@ -116,7 +116,7 @@ type EpvFramebufferCapture=class(Exception);
        destructor Destroy; override;
        procedure AllocateResources;
        procedure ReleaseResources;
-       function Compatible(const aSwapChain:TpvVulkanSwapChain):boolean; // If false, the framebuffer capture object must be recreated
+       function Compatible(const aSwapChain:TpvVulkanSwapChain):boolean;
        procedure Capture(var aImage:TImage;const aSwapChainImage:TpvVulkanImage=nil);
       published 
        property Width:TpvSizeInt read fWidth;
