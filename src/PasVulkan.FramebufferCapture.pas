@@ -117,7 +117,7 @@ type EpvFramebufferCapture=class(Exception);
        constructor Create(const aSwapChain:TpvVulkanSwapChain);
        destructor Destroy; override;
        function Compatible(const aSwapChain:TpvVulkanSwapChain):boolean;
-       procedure Capture(var aImage:TImage;const aSwapChainImage:TpvVulkanImage=nil);
+       procedure Capture(var aImage:TpvFramebufferCapture.TImage;const aSwapChainImage:TpvVulkanImage=nil);
       published 
        property Width:TpvSizeInt read fWidth;
        property Height:TpvSizeInt read fHeight;
@@ -396,7 +396,7 @@ begin
  end;
 end;
 
-procedure TpvFramebufferCapture.Capture(var aImage:TImage;const aSwapChainImage:TpvVulkanImage=nil);
+procedure TpvFramebufferCapture.Capture(var aImage:TpvFramebufferCapture.TImage;const aSwapChainImage:TpvVulkanImage=nil);
 var Size,Index,y:TpvSizeInt;
     p,pp:PpvUInt32;
     Pixel:TpvUInt32;
@@ -408,6 +408,10 @@ begin
  end else begin
   SwapChainImageHandle:=fSwapChain.CurrentImage.Handle;
  end;
+
+ fDevice.GraphicsQueue.WaitIdle; 
+
+ fDevice.WaitIdle;
 
  Size:=fWidth*fHeight*SizeOf(TpvUInt8)*4;
 
