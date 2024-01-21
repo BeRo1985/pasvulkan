@@ -39,7 +39,7 @@ void main(){
 
   vec4 centerSample = textureLod(uTextureInput, uvw, 0);
 
-  centerSample.xyz = clamp(centerSample.xyz, vec3(0.0), vec3(32768.0));
+  centerSample.xyz = clamp(centerSample.xyz, vec3(0.0), vec3(65504.0));
 
   if(SeparateNearFarProcessing){
 
@@ -62,7 +62,7 @@ void main(){
 
       vec4 sampleTexel = textureLod(uTextureInput, uvw + vec3(offset, 0.0), 0.0);
 
-      sampleTexel.xyz = clamp(sampleTexel.xyz, vec3(0.0), vec3(32768.0));
+      sampleTexel.xyz = clamp(sampleTexel.xyz, vec3(0.0), vec3(65504.0));
           
       farSum += vec4(sampleTexel.xyz, 1.0) * clamp(((max(0.0, min(centerSample.w, sampleTexel.w)) - offsetDistance) + margin) / margin, 0.0, 1.0);
 
@@ -100,7 +100,7 @@ void main(){
 
       vec4 sampleTexel = textureLod(uTextureInput, uvw + vec3(offset, 0.0), 0.0);
           
-      sampleTexel.xyz = clamp(sampleTexel.xyz, vec3(0.0), vec3(32768.0));
+      sampleTexel.xyz = clamp(sampleTexel.xyz, vec3(0.0), vec3(65504.0));
 
       float weight = smoothstep(offsetDistance - halfMargin, 
                                 offsetDistance + halfMargin,

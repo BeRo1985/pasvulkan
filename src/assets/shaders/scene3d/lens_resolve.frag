@@ -55,7 +55,7 @@ vec4 textureDistorted(const in vec2 texCoord, const in vec2 direction, const in 
 							  textureLimited((texCoord + (direction * distortion.b))).b,
                 1.0),
            vec4(0.0),
-           vec4(32768.0)
+           vec4(65504.0)
           );
 }
 
@@ -80,7 +80,7 @@ vec4 getLensFlare(){
 
 
 void main(){
-  vec4 bloom = clamp(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0), vec4(0.0), vec4(32768.0));  
+  vec4 bloom = clamp(textureLod(uTextureBloom, vec3(inTexCoord, gl_ViewIndex), 0.0), vec4(0.0), vec4(65504.0));  
   vec4 lensflares = vec4(0.0);
   vec4 lensStar = vec4(0.0);
   vec2 texCoord = ((inTexCoord - vec2(0.5)) * vec2(pushConstants.aspectRatio, 1.0) * 0.5) + vec2(0.5);
@@ -90,7 +90,7 @@ void main(){
     lensStar = getLensStar(lensStarTexCoord);
   }
   vec4 lensDirt = getLensDirt(inTexCoord);
-  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(0.0), vec4(32768.0)), 
+  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(0.0), vec4(65504.0)), 
                      (
                       ((bloom * lensDirt) * pushConstants.bloomFactor) + 
                       ((lensflares * (lensDirt + lensStar)) * pushConstants.lensflaresFactor)

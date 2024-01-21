@@ -19,5 +19,5 @@ void main(){
                    textureLod(uTextureInput, uvw + vec3(offsets.zy, 0.0), 0.0) + //
                    textureLod(uTextureInput, uvw + vec3(offsets.xy, 0.0), 0.0), //
                    vec2(0.0, -65536.0).xxxy, //
-                   vec2(32768.0, 65536.0).xxxy) * 0.25;
+                   vec2(65504.0, 65536.0).xxxy) * 0.25;
 }

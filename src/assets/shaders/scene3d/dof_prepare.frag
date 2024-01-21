@@ -49,7 +49,7 @@ float linearizeDepth(float z) {
 
 void main(){
   vec4 color = subpassLoad(uSubpassColor);
-  color.xyz = clamp(color.xyz, vec3(0.0), vec3(32768.0));
+  color.xyz = clamp(color.xyz, vec3(0.0), vec3(65504.0));
   float rawDepth = texelFetch(uTextureDepth, ivec3(gl_FragCoord.xy, gl_ViewIndex), 0).x;
   float depth = clamp(linearizeDepth(rawDepth), 0.0, 4096.0);
 #if 0
