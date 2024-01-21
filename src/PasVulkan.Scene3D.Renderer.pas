@@ -958,6 +958,7 @@ var Stream:TStream;
 begin
 
  if assigned(fScene3D) and assigned(fScene3D.SkyTextureImage) then begin
+  fScene3D.SkyTextureImage.Upload;
   SkyTexture:=fScene3D.SkyTextureImage.Texture;
  end else begin
   SkyTexture:=nil;
@@ -966,6 +967,10 @@ begin
  fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat,SkyTexture);
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyCubeMap.ImageView');
+
+ if assigned(fScene3D) and assigned(fScene3D.SkyTextureImage) then begin
+  fScene3D.SkyTextureImage.Unload;
+ end;
 
  fSkySphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                       SizeOf(TSphericalHarmonicsBufferData),
