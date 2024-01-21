@@ -624,7 +624,7 @@ begin
    fNeedColorSwizzle:=(not fBlitSupported) and (fImageFormat in [VK_FORMAT_B8G8R8A8_SRGB,VK_FORMAT_B8G8R8A8_UNORM,VK_FORMAT_B8G8R8A8_SNORM]);
 
    pp:=@aImage.Data[0];
-   if SizeOf(TpvUInt32)*fWidth=fSubresourceLayout.rowPitch then begin
+   if (SizeOf(TpvUInt32)*fWidth)=fSubresourceLayout.rowPitch then begin
     Move(p^,pp^,SizeOf(TpvUInt32)*fWidth*fHeight);
    end else begin
     for y:=0 to fHeight-1 do begin
