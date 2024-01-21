@@ -24547,6 +24547,14 @@ const DDS_MAGIC=$20534444;
       D3DFMT_BC5S=$53354342;
       D3DFMT_RXGB=$42475852;
       D3DFMT_DX10=$30315844;
+      D3DFMT_A16B16G16R16=36;
+      D3DFMT_Q16W16V16U16=110;
+      D3DFMT_R16F=111;
+      D3DFMT_G16R16F=112;
+      D3DFMT_A16B16G16R16F=113;
+      D3DFMT_R32F=114;
+      D3DFMT_G32R32F=115;
+      D3DFMT_A32B32G32R32F=116;
       DXGI_FORMAT_UNKNOWN=0;
       DXGI_FORMAT_R32G32B32A32_TYPELESS=1;
       DXGI_FORMAT_R32G32B32A32_FLOAT=2;
@@ -24786,6 +24794,30 @@ begin
     end;
     D3DFMT_BC5S:begin
      ImageFormat:=VK_FORMAT_BC5_SNORM_BLOCK;
+    end;
+    D3DFMT_A16B16G16R16:begin
+     ImageFormat:=VK_FORMAT_BC5_SNORM_BLOCK;
+    end;
+    D3DFMT_Q16W16V16U16:begin
+     ImageFormat:=VK_FORMAT_R16G16B16A16_SNORM;
+    end;
+    D3DFMT_R16F:begin
+     ImageFormat:=VK_FORMAT_R16_SFLOAT;
+    end;
+    D3DFMT_G16R16F:begin
+     ImageFormat:=VK_FORMAT_R16G16_SFLOAT;
+    end;
+    D3DFMT_A16B16G16R16F:begin
+     ImageFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
+    end;
+    D3DFMT_R32F:begin
+     ImageFormat:=VK_FORMAT_R32_SFLOAT;
+    end;
+    D3DFMT_G32R32F:begin
+     ImageFormat:=VK_FORMAT_R32G32_SFLOAT;
+    end;
+    D3DFMT_A32B32G32R32F:begin
+     ImageFormat:=VK_FORMAT_R32G32B32A32_SFLOAT;
     end;
     D3DFMT_DX10:begin
      if aStream.Read(HeaderDX10,SizeOf(TDDSHeaderDX10))<>SizeOf(TDDSHeaderDX10) then begin
