@@ -237,8 +237,8 @@ begin
                                                                 fMemoryRequirements.size,
                                                                 fMemoryRequirements.alignment,
                                                                 fMemoryRequirements.memoryTypeBits,
-                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                0,
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
                                                                 0,
                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                 0,
@@ -291,8 +291,8 @@ begin
                                                                  fMemoryRequirements.size,
                                                                  fMemoryRequirements.alignment,
                                                                  fMemoryRequirements.memoryTypeBits,
-                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-                                                                 0,
+                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
                                                                  0,
                                                                  TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                  0,
@@ -401,6 +401,7 @@ var Size,Index,y:TpvSizeInt;
     p,pp:PpvUInt32;
     Pixel:TpvUInt32;
     SwapChainImageHandle:TVkImage;
+    MappedMemoryRange:TVkMappedMemoryRange;
 begin
  
  if not fReady then begin
@@ -609,9 +610,17 @@ begin
 
  if fNeedTwoSteps then begin
   fDevice.Commands.GetImageSubresourceLayout(fDevice.Handle,fSecondImage.Handle,@fImageSubresource,@fSubresourceLayout);
+  if (fSecondMemoryBlock.MemoryChunk.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))=0 then begin
+   MappedMemoryRange:=TVkMappedMemoryRange.Create(fSecondMemoryBlock.MemoryChunk.Handle,0,VK_WHOLE_SIZE);
+   fDevice.Commands.InvalidateMappedMemoryRanges(fDevice.Handle,1,@MappedMemoryRange);
+  end;
   p:=fSecondMemoryBlock.MapMemory(0,fSecondMemoryBlock.Size);
  end else begin
   fDevice.Commands.GetImageSubresourceLayout(fDevice.Handle,fFirstImage.Handle,@fImageSubresource,@fSubresourceLayout);
+  if (fFirstMemoryBlock.MemoryChunk.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))=0 then begin
+   MappedMemoryRange:=TVkMappedMemoryRange.Create(fFirstMemoryBlock.MemoryChunk.Handle,0,VK_WHOLE_SIZE);
+   fDevice.Commands.InvalidateMappedMemoryRanges(fDevice.Handle,1,@MappedMemoryRange);
+  end;
   p:=fFirstMemoryBlock.MapMemory(0,fFirstMemoryBlock.Size);
  end;
 

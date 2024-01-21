@@ -17501,6 +17501,7 @@ var Index,y:TpvSizeInt;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    MappedMemoryRange:TVkMappedMemoryRange;
 begin
 
  if assigned(aSwapChainImage) then begin
@@ -17588,10 +17589,10 @@ begin
                                                                 MemoryRequirements.size,
                                                                 MemoryRequirements.alignment,
                                                                 MemoryRequirements.memoryTypeBits,
-                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
                                                                 0,
-                                                                0,
-                                                                0,
+                                                                TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                 0,
                                                                 0,
                                                                 0,
@@ -17646,10 +17647,10 @@ begin
                                                                    MemoryRequirements.size,
                                                                    MemoryRequirements.alignment,
                                                                    MemoryRequirements.memoryTypeBits,
-                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
                                                                    0,
-                                                                   0,
-                                                                   0,
+                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
                                                                    0,
                                                                    0,
                                                                    0,
@@ -17883,9 +17884,17 @@ begin
 
      if NeedTwoSteps then begin
       fDevice.fDeviceVulkan.GetImageSubresourceLayout(fDevice.fDeviceHandle,SecondImage.fImageHandle,@ImageSubresource,@SubresourceLayout);
+      if (SecondMemoryBlock.MemoryChunk.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))=0 then begin
+       MappedMemoryRange:=TVkMappedMemoryRange.Create(SecondMemoryBlock.MemoryChunk.Handle,0,VK_WHOLE_SIZE);
+       fDevice.Commands.InvalidateMappedMemoryRanges(fDevice.Handle,1,@MappedMemoryRange);
+      end;
       p:=SecondMemoryBlock.MapMemory(0,SecondMemoryBlock.fSize);
      end else begin
       fDevice.fDeviceVulkan.GetImageSubresourceLayout(fDevice.fDeviceHandle,FirstImage.fImageHandle,@ImageSubresource,@SubresourceLayout);
+      if (FirstMemoryBlock.MemoryChunk.MemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_CACHED_BIT))=0 then begin
+       MappedMemoryRange:=TVkMappedMemoryRange.Create(FirstMemoryBlock.MemoryChunk.Handle,0,VK_WHOLE_SIZE);
+       fDevice.Commands.InvalidateMappedMemoryRanges(fDevice.Handle,1,@MappedMemoryRange);
+      end;
       p:=FirstMemoryBlock.MapMemory(0,FirstMemoryBlock.fSize);
      end;
      if assigned(p) then begin
