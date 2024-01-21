@@ -23087,6 +23087,14 @@ begin
    aMipMapSize:=((aMipMapHeight+11) div 12)*((aMipMapWidth+11) div 12)*16;
    aCompressed:=true;
   end;
+  VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
+   aMipMapSize:=aMipMapHeight*aMipMapWidth*SizeOf(TpvUInt32);
+   aCompressed:=false;
+  end;
+  VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+   aMipMapSize:=aMipMapHeight*aMipMapWidth*SizeOf(TpvUInt32);
+   aCompressed:=false;
+  end;
   else begin
    raise EpvVulkanTextureException.Create('Non-supported texture image format ('+IntToStr(TpvInt32(aFormat))+')');
   end;
