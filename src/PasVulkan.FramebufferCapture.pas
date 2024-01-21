@@ -381,7 +381,7 @@ end;
 
 procedure TpvFramebufferCapture.SetSwapChain(const aSwapChain:TpvVulkanSwapChain);
 begin
- if fSwapChain<>aSwapChain then begin
+ if (fSwapChain<>aSwapChain) or (assigned(fSwapChain) and not Compatible(fSwapChain)) then begin
   if assigned(fSwapChain) then begin
    if Compatible(aSwapChain) then begin
     fSwapChain:=aSwapChain;
@@ -403,6 +403,13 @@ var Size,Index,y:TpvSizeInt;
     SwapChainImageHandle:TVkImage;
 begin
  
+ if not fReady then begin
+  AllocateResources;
+ end else if not Compatible(fSwapChain) then begin
+  ReleaseResources;
+  AllocateResources;
+ end;
+
  if assigned(aSwapChainImage) then begin
   SwapChainImageHandle:=aSwapChainImage.Handle;
  end else begin
