@@ -200,7 +200,7 @@ type EpvLoadJPEGImage=class(Exception);
       public
        constructor Create;
        destructor Destroy; override;
-       function Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;const Fast:boolean=false;const ChromaSubsampling:TpvInt32=-1):TpvUInt32;
+       function Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;const Fast:boolean=false;const ChromaSubsampling:TpvInt32=-1;const aOwnCompressedData:Boolean=true):TpvUInt32;
      end;
 
 function LoadJPEGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean):boolean;
@@ -5469,7 +5469,7 @@ begin
  result:=true;
 end;
 
-function TpvJPEGEncoder.Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;const Fast:boolean=false;const ChromaSubsampling:TpvInt32=-1):TpvUInt32;
+function TpvJPEGEncoder.Encode(const FrameData:TpvPointer;var CompressedData:TpvPointer;Width,Height:TpvInt32;Quality,MaxCompressedDataSize:TpvUInt32;const Fast:boolean=false;const ChromaSubsampling:TpvInt32=-1;const aOwnCompressedData:Boolean=true):TpvUInt32;
 type PPixel=^TPixel;
      TPixel=packed record
       r,g,b,a:TpvUInt8;
@@ -5559,11 +5559,13 @@ begin
   fMCUChannels[0]:=nil;
   fMCUChannels[1]:=nil;
   fMCUChannels[2]:=nil;
-  if result>0 then begin
-   ReallocMem(fCompressedData,fCompressedDataPosition);
-  end else if assigned(fCompressedData) then begin
-   FreeMem(fCompressedData);
-   fCompressedData:=nil;
+  if aOwnCompressedData then begin
+   if result>0 then begin
+    ReallocMem(fCompressedData,fCompressedDataPosition);
+   end else if assigned(fCompressedData) then begin
+    FreeMem(fCompressedData);
+    fCompressedData:=nil;
+   end;
   end;
   CompressedData:=fCompressedData;
  end;

@@ -1605,7 +1605,7 @@ begin
      end;
     end;
     if LocalVideoFrameSize=0 then begin
-     LocalVideoFrameSize:=JPEGEncoder.Encode(Pixels,Compressed,VideoWidth,VideoHeight,Quality,MaxCompressedSize,Fast,ChromaSubsampling);
+     LocalVideoFrameSize:=JPEGEncoder.Encode(Pixels,Compressed,VideoWidth,VideoHeight,Quality,MaxCompressedSize,Fast,ChromaSubsampling,false);
     end;
    end else begin
     LocalVideoFrameSize:=0;
