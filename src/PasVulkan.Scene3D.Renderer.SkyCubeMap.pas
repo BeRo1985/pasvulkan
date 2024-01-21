@@ -153,13 +153,13 @@ begin
  LocalLightDirection:=TpvVector4.InlineableCreate(fLightDirection,0.0);
 
  if assigned(aTexture) then begin
-  if aTexture.CountArrayLayers=6 then begin
+  if aTexture.CountFaces=6 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_comp.spv');
    fWidth:=RoundDownToPowerOfTwo(aTexture.Width);
    fHeight:=RoundDownToPowerOfTwo(aTexture.Height);
   end else begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_comp.spv');
-   fWidth:=RoundDownToPowerOfTwo(Min(Max(round(Max(aTexture.Width,aTexture.Height)/PI),512),8192));
+   fWidth:=RoundUpToPowerOfTwo(Min(Max(round(Max(aTexture.Width,aTexture.Height)/PI),512),8192));
    fHeight:=fWidth;
   end;
  end else begin
