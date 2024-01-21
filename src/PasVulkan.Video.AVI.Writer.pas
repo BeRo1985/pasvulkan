@@ -798,7 +798,7 @@ begin
  RGB2:=nil;
  JPEGEncoder:=nil;
  begin
-  fTurboJpegLibrary:=LoadLibrary({$ifdef Windows}'turbojpeg.dll'{$else}'turbojpeg.so'{$endif});
+  fTurboJpegLibrary:=LoadLibrary({$ifdef Windows}'turbojpeg.dll'{$else}'libturbojpeg.so'{$endif});
   if fTurboJpegLibrary<>pvAVINilLibHandle then begin
    ftjInitCompress:=GetProcAddress(fTurboJpegLibrary,'tjInitCompress');
    ftjDestroy:=GetProcAddress(fTurboJpegLibrary,'tjDestroy');
@@ -1569,10 +1569,10 @@ begin
           end;
          end;
         end;
-        VerticalFlip(Pixels,
+{       VerticalFlip(Pixels,
                      RGB2,
                      VideoWidth,
-                     VideoHeight);
+                     VideoHeight);}
         ftjCompress2(tjHandle,
                      RGB2,
                      VideoWidth,
