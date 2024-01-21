@@ -1574,7 +1574,7 @@ begin
                      VideoWidth,
                      VideoHeight);}
         ftjCompress2(tjHandle,
-                     RGB2,
+                     Pixels,//RGB2,
                      VideoWidth,
                      0,
                      VideoHeight,
