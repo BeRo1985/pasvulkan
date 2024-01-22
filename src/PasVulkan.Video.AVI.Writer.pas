@@ -175,7 +175,8 @@ type PpvAVIIndexEntry=^TpvAVIIndexEntry;
                                        jpegSubsamp:TpvInt32;
                                        jpegQual:TpvInt32;
                                        flags:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
-     TpvAVIWriter=class
+     { TpvAVIWriter }
+     TpvAVIWriter=class // OpenDML / AVI 2.0 compatible AVI writer
       private
        fStream:TStream;
        fDoFree:longbool;
