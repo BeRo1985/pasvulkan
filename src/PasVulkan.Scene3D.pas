@@ -1230,6 +1230,7 @@ type EpvScene3D=class(Exception);
               fCastShadows:boolean;
               fVisible:boolean;
               fAlways:boolean;
+              fGeneration:TpvUInt64;
              public
               property Type_:TLightType read fType_ write fType_;
               property Intensity:TpvFloat read fIntensity write fIntensity;
@@ -1240,6 +1241,7 @@ type EpvScene3D=class(Exception);
               property CastShadows:boolean read fCastShadows write fCastShadows;
               property Visible:boolean read fVisible write fVisible;
               property Always:boolean read fAlways write fAlways;
+              property Generation:TpvUInt64 read fGeneration write fGeneration;
             end;
             PLightData=^TLightData;
             TLightItem=packed record
@@ -1310,6 +1312,7 @@ type EpvScene3D=class(Exception);
               fScissorRect:TpvFloatClipRect;
               fAABBTreeProxy:TpvSizeInt;
               fLightItemIndex:TpvSizeInt;
+              fGeneration:TpvUInt64;
              public
               constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
               destructor Destroy; override;
@@ -1325,6 +1328,7 @@ type EpvScene3D=class(Exception);
               property OuterConeAngle:TpvFloat read fData.fOuterConeAngle write fData.fOuterConeAngle;
               property Color:TpvVector3 read fData.fColor write fData.fColor;
               property CastShadows:boolean read fData.fCastShadows write fData.fCastShadows;
+              property Generation:TpvUInt64 read fData.fGeneration write fData.fGeneration;
              published
               property ShadowMapIndex:TpvInt32 read fShadowMapIndex write fShadowMapIndex;
              public
@@ -7287,6 +7291,7 @@ begin
  fAABBTreeProxy:=-1;
  fInstanceLight:=nil;
  fDataPointer:=@fData;
+ fGeneration:=0;
 end;
 
 destructor TpvScene3D.TLight.Destroy;
@@ -7326,6 +7331,7 @@ var Position,Direction:TpvVector3;
     Data:TpvScene3D.PLightData;
 begin
  Data:=fDataPointer;
+ fGeneration:=Data^.fGeneration;
  if Data^.fVisible then begin
   Position:=(fMatrix*TpvVector3.Origin).xyz;
   Direction:=(((fMatrix*DownZ).xyz)-Position).Normalize;
@@ -11125,6 +11131,7 @@ begin
  fData.fColor.z:=1.0;
  fData.fVisible:=true;
  fData.fCastShadows:=false;
+ fData.fGeneration:=1;
  if assigned(aSourceLight) then begin
   fName:=TPasJSON.GetString(aSourceLight.Properties['name'],'');
   TypeString:=TPasJSON.GetString(aSourceLight.Properties['type'],'');
@@ -17612,9 +17619,12 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
     InstanceLight:=fLights[Node.fLight.fIndex];
     if assigned(InstanceNode^.Light) then begin
      Light:=InstanceNode^.Light;
-     if (Light.fMatrix<>Matrix) or (Light.fDataPointer<>InstanceLight.fEffectiveData) then begin
+     if (Light.fMatrix<>Matrix) or
+        (Light.fDataPointer<>InstanceLight.fEffectiveData) or
+        (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
       Light.fMatrix:=Matrix;
       Light.fDataPointer:=InstanceLight.fEffectiveData;
+      Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
       Light.Update;
      end;
     end else begin
@@ -17624,6 +17634,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       Light.fInstanceLight:=InstanceLight;
       Light.fData:=Node.fLight.fData;
       Light.fDataPointer:=InstanceLight.fEffectiveData;
+      Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
       Light.fMatrix:=Matrix;
       Light.Update;
      finally
