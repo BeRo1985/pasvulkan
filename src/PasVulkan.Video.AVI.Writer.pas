@@ -177,7 +177,36 @@ type PpvAVIIndexEntry=^TpvAVIIndexEntry;
                                        flags:TpvInt32):TpvInt32; {$ifdef Windows}stdcall;{$else}cdecl;{$endif}
      TpvAVIWriter=class
       private
-       XCache:TpvAVIIntegers;
+       fStream:TStream;
+       fDoFree:longbool;
+       fMaxCompressedSize:TpvUInt32;
+       fCompressed:Pointer;
+       fRGB:Pointer;
+       fRGB2:Pointer;
+       fJPEGEncoder:TpvJPEGEncoder;
+       fVideoFrames:TpvUInt32;
+       fVideoWidth:TpvUInt32;
+       fVideoHeight:TpvUInt32;
+       fVideoFPS:TpvUInt32;
+       fVideoCodec:TpvUInt32;
+       fVideoFrameSize:TpvUInt32;
+       fSoundSampleRate:TpvInt32;
+       fSoundChannels:TpvInt32;
+       fSoundBits:TpvInt32;
+       fIndexEntries:TList;
+       fSegmentInfos:TList;
+       fFileFramesOffset:TpvInt64;
+       fFileExtFramesOffset:TpvInt64;
+       fFileVideoOffset:TpvInt64;
+       fFileSoundOffset:TpvInt64;
+       fSuperIndexVideoOffset:TpvInt64;
+       fSuperIndexSoundOffset:TpvInt64;
+       fChunkDepth:TpvInt32;
+       fChunkOffsets:array[0..MaxChunkDepth-1] of TpvInt64;
+       fQuality:TpvInt32;
+       fFast:longbool;
+       fChromaSubsampling:TpvInt32;
+       fXCache:TpvAVIIntegers;
        fTurboJpegLibrary:TpvAVILibHandle;
        ftjInitCompress:TpvAVIWriter_tjInitCompress;
        ftjDestroy:TpvAVIWriter_tjDestroy;
@@ -199,48 +228,19 @@ type PpvAVIIndexEntry=^TpvAVIIndexEntry;
        procedure WriteUnsigned8Bit(us8Bit:TpvUInt8);
        procedure WriteUnsigned16Bit(us16Bit:TpvUInt16);
        procedure WriteUnsigned32Bit(us32Bit:TpvUInt32);
-      public
-       Stream:TStream;
-       DoFree:longbool;
-       MaxCompressedSize:TpvUInt32;
-       Compressed:pansichar;
-       RGB:pansichar;
-       RGB2:pansichar;
-       JPEGEncoder:TpvJPEGEncoder;
-       VideoFrames:TpvUInt32;
-       VideoWidth:TpvUInt32;
-       VideoHeight:TpvUInt32;
-       VideoFPS:TpvUInt32;
-       VideoCodec:TpvUInt32;
-       VideoFrameSize:TpvUInt32;
-       SoundSampleRate:TpvInt32;
-       SoundChannels:TpvInt32;
-       SoundBits:TpvInt32;
-       IndexEntries:TList;
-       SegmentInfos:TList;
-       FileFramesOffset:TpvInt64;
-       FileExtFramesOffset:TpvInt64;
-       FileVideoOffset:TpvInt64;
-       FileSoundOffset:TpvInt64;
-       SuperIndexVideoOffset:TpvInt64;
-       SuperIndexSoundOffset:TpvInt64;
-       ChunkDepth:TpvInt32;
-       ChunkOffsets:array[0..MaxChunkDepth-1] of TpvInt64;
-       Quality:TpvInt32;
-       Fast:longbool;
-       ChromaSubsampling:TpvInt32;
-       constructor Create(AStream:TStream;ADoFree:longbool;AVideoCodec:TpvUInt32;AVideoWidth,AVideoHeight,AVideoFPS,ASoundSampleRate,ASoundChannels,ASoundBits:TpvInt32;AQuality:TpvInt32=95;AFast:boolean=false;AChromaSubsampling:TpvInt32=-1);
-       destructor Destroy; override;
-       function AddIndex(Frame,Type_,Size:TpvInt32):PpvAVIIndexEntry;
-       procedure StartChunk(const ChunkSignature:TpvAVIChunkSignature;Size:TpvUInt32=0);
-       procedure ListChunk(const ChunkSignature,ListChunkSignature:TpvAVIChunkSignature);
+       function AddIndex(aFrame,aType,aSize:TpvInt32):PpvAVIIndexEntry;
+       procedure StartChunk(const aChunkSignature:TpvAVIChunkSignature;aSize:TpvUInt32=0);
+       procedure ListChunk(const aChunkSignature,aListChunkSignature:TpvAVIChunkSignature);
        procedure EndChunk;
        procedure EndListChunk;
-       procedure WriteChunk(const ChunkSignature:TpvAVIChunkSignature;Data:pointer;Size:TpvUInt32);
+       procedure WriteChunk(const aChunkSignature:TpvAVIChunkSignature;aData:pointer;aSize:TpvUInt32);
        procedure FlushSegment;
        function NextSegment:boolean;
-       function WriteVideoFrame(Pixels:pointer;Width,Height:TpvUInt32;Frame:TpvUInt32):boolean;
-       function WriteSoundFrame(Data:pointer;FrameSize,Frame:TpvUInt32):boolean;
+      public
+       constructor Create(aStream:TStream;aDoFree:longbool;aVideoCodec:TpvUInt32;aVideoWidth,aVideoHeight,aVideoFPS,aSoundSampleRate,aSoundChannels,aSoundBits:TpvInt32;aQuality:TpvInt32=95;aFast:boolean=false;aChromaSubsampling:TpvInt32=-1);
+       destructor Destroy; override;
+       function WriteVideoFrame(aPixels:pointer;aWidth,aHeight:TpvUInt32;aFrame:TpvUInt32):boolean;
+       function WriteSoundFrame(aData:pointer;aFrameSize,aFrame:TpvUInt32):boolean;
      end;
 
 implementation
@@ -771,7 +771,7 @@ begin
  end;
 end;
 
-constructor TpvAVIWriter.Create(AStream:TStream;ADoFree:longbool;AVideoCodec:TpvUInt32;AVideoWidth,AVideoHeight,AVideoFPS,ASoundSampleRate,ASoundChannels,ASoundBits:TpvInt32;AQuality:TpvInt32=95;AFast:boolean=false;AChromaSubsampling:TpvInt32=-1);
+constructor TpvAVIWriter.Create(aStream:TStream;aDoFree:longbool;aVideoCodec:TpvUInt32;aVideoWidth,aVideoHeight,aVideoFPS,aSoundSampleRate,aSoundChannels,aSoundBits:TpvInt32;aQuality:TpvInt32=95;aFast:boolean=false;aChromaSubsampling:TpvInt32=-1);
 var Counter,GCDValue:TpvInt32;
     AVIH:TAVIH;
     STRH:TSTRH;
@@ -782,21 +782,21 @@ var Counter,GCDValue:TpvInt32;
     WaveFormatEx:TWaveFormatEx;
 begin
  inherited Create;
- XCache:=nil;
- Stream:=AStream;
- DoFree:=ADoFree;
- Quality:=AQuality;
- if Quality<1 then begin
-  Quality:=1;
- end else if Quality>100 then begin
-  Quality:=100;
+ fXCache:=nil;
+ fStream:=aStream;
+ fDoFree:=aDoFree;
+ fQuality:=aQuality;
+ if fQuality<1 then begin
+  fQuality:=1;
+ end else if fQuality>100 then begin
+  fQuality:=100;
  end;
- Fast:=AFast;
- ChromaSubsampling:=AChromaSubsampling;
- Compressed:=nil;
- RGB:=nil;
- RGB2:=nil;
- JPEGEncoder:=nil;
+ fFast:=aFast;
+ fChromaSubsampling:=aChromaSubsampling;
+ fCompressed:=nil;
+ fRGB:=nil;
+ fRGB2:=nil;
+ fJPEGEncoder:=nil;
  begin
   fTurboJpegLibrary:=LoadLibrary({$ifdef Windows}'turbojpeg.dll'{$else}'libturbojpeg.so'{$endif});
   if fTurboJpegLibrary<>pvAVINilLibHandle then begin
@@ -807,21 +807,21 @@ begin
    ftjCompress2:=GetProcAddress(fTurboJpegLibrary,'tjCompress2');
   end;
  end;
- VideoFrames:=0;
- VideoWidth:=AVideoWidth and not 1;
- VideoHeight:=AVideoHeight and not 1;
- VideoFPS:=AVideoFPS;
- VideoCodec:=AVideoCodec;
- case VideoCodec of
+ fVideoFrames:=0;
+ fVideoWidth:=aVideoWidth and not 1;
+ fVideoHeight:=aVideoHeight and not 1;
+ fVideoFPS:=aVideoFPS;
+ fVideoCodec:=aVideoCodec;
+ case fVideoCodec of
   vcI420:begin
-   VideoFrameSize:=(VideoWidth*VideoHeight)+(((VideoWidth div 2)*(VideoHeight div 2))*2);
+   fVideoFrameSize:=(fVideoWidth*fVideoHeight)+(((fVideoWidth div 2)*(fVideoHeight div 2))*2);
   end;
   vcMJPG:begin
-   VideoFrameSize:=(VideoWidth*VideoHeight)*3;
-   JPEGEncoder:=TpvJPEGEncoder.Create;
+   fVideoFrameSize:=(fVideoWidth*fVideoHeight)*3;
+   fJPEGEncoder:=TpvJPEGEncoder.Create;
   end;
   vcX264_420,vcX264_444:begin
-   VideoFrameSize:=(VideoWidth*VideoHeight)*4;
+   fVideoFrameSize:=(fVideoWidth*fVideoHeight)*4;
 {$ifdef PasVulkanUseX264}
    if x264_param_default_preset(@x264_param,'medium',nil)<0 then begin
     raise EpvAVIWriter.Create('x264_param_default_preset failed');
@@ -888,47 +888,47 @@ begin
 {$endif}
   end;
   else begin
-   VideoFrameSize:=(VideoWidth*VideoHeight) shl 2;
+   fVideoFrameSize:=(fVideoWidth*fVideoHeight) shl 2;
   end;
  end;
- MaxCompressedSize:=VideoWidth*VideoHeight*8;
- GetMem(Compressed,MaxCompressedSize);
- GetMem(RGB,VideoWidth*VideoHeight*4);
- GetMem(RGB2,VideoWidth*VideoHeight*4);
- SoundSampleRate:=ASoundSampleRate;
- SoundChannels:=ASoundChannels;
- SoundBits:=ASoundBits;
- IndexEntries:=TList.Create;
- SegmentInfos:=TList.Create;
- FileFramesOffset:=0;
- FileExtFramesOffset:=0;
- FileVideoOffset:=0;
- FileSoundOffset:=0;
- SuperIndexVideoOffset:=0;
- SuperIndexSoundOffset:=0;
- ChunkDepth:=-1;
+ fMaxCompressedSize:=fVideoWidth*fVideoHeight*8;
+ GetMem(fCompressed,fMaxCompressedSize);
+ GetMem(fRGB,fVideoWidth*fVideoHeight*4);
+ GetMem(fRGB2,fVideoWidth*fVideoHeight*4);
+ fSoundSampleRate:=aSoundSampleRate;
+ fSoundChannels:=aSoundChannels;
+ fSoundBits:=aSoundBits;
+ fIndexEntries:=TList.Create;
+ fSegmentInfos:=TList.Create;
+ fFileFramesOffset:=0;
+ fFileExtFramesOffset:=0;
+ fFileVideoOffset:=0;
+ fFileSoundOffset:=0;
+ fSuperIndexVideoOffset:=0;
+ fSuperIndexSoundOffset:=0;
+ fChunkDepth:=-1;
 
  ListChunk('RIFF','AVI ');
  ListChunk('LIST','hdrl');
 
  StartChunk('avih',SizeOf(TAVIH));
  FillChar(AVIH,SizeOf(TAVIH),AnsiChar(#0));
- AVIH.dwMicroSecPerFrame:=1000000 div VideoFPS;
+ AVIH.dwMicroSecPerFrame:=1000000 div fVideoFPS;
  AVIH.dwMaxBytesPerSec:=0;
  AVIH.dwPaddingGranularity:=0;
  AVIH.dwFlags:=$10{Index} or $20{mustuseindex};
- FileFramesOffset:=Stream.Position+TpvPtrInt(TpvPtrInt(pointer(@AVIH.dwTotalFrames))-TpvPtrInt(pointer(@AVIH)));
+ fFileFramesOffset:=fStream.Position+TpvPtrInt(TpvPtrInt(pointer(@AVIH.dwTotalFrames))-TpvPtrInt(pointer(@AVIH)));
  AVIH.dwTotalFrames:=0;
  AVIH.dwInitialFrames:=0;
- if SoundSampleRate>0 then begin
+ if fSoundSampleRate>0 then begin
   AVIH.dwStreams:=2;
  end else begin
   AVIH.dwStreams:=1;
  end;
  AVIH.dwSuggestedBufferSize:=0;
- AVIH.dwWidth:=VideoWidth;
- AVIH.dwHeight:=VideoHeight;
- Stream.Write(AVIH,SizeOf(TAVIH));
+ AVIH.dwWidth:=fVideoWidth;
+ AVIH.dwHeight:=fVideoHeight;
+ fStream.Write(AVIH,SizeOf(TAVIH));
  EndChunk;
 
  ListChunk('LIST','strl');
@@ -936,7 +936,7 @@ begin
  StartChunk('strh',SizeOf(TSTRH));
  FillChar(STRH,SizeOf(TSTRH),AnsiChar(#0));
  STRH.fccType:='vids';
- case VideoCodec of
+ case fVideoCodec of
   vcI420:begin
    STRH.fccHandler:='I420';
   end;
@@ -952,34 +952,34 @@ begin
  STRH.wLanguage:=0;
  STRH.dwInitialFrames:=0;
  STRH.dwScale:=1;
- STRH.dwRate:=VideoFPS;
+ STRH.dwRate:=fVideoFPS;
  STRH.dwStart:=0;
- FileVideoOffset:=Stream.Position+TpvPtrInt(TpvPtrInt(pointer(@STRH.dwLength))-TpvPtrInt(pointer(@STRH)));
+ fFileVideoOffset:=fStream.Position+TpvPtrInt(TpvPtrInt(pointer(@STRH.dwLength))-TpvPtrInt(pointer(@STRH)));
  STRH.dwLength:=0;
- case VideoCodec of
+ case fVideoCodec of
   vcMJPG:begin
    STRH.dwSuggestedBufferSize:=1048576;
    STRH.dwQuality:=$ffffffff;
   end;
   else begin
-   STRH.dwSuggestedBufferSize:=VideoFrameSize;
+   STRH.dwSuggestedBufferSize:=fVideoFrameSize;
    STRH.dwQuality:=0;
   end;
  end;
  STRH.dwSampleSize:=0;
  STRH.rcFrame.Left:=0;
  STRH.rcFrame.Top:=0;
- STRH.rcFrame.Right:=VideoWidth;
- STRH.rcFrame.Bottom:=VideoHeight;
- Stream.Write(STRH,SizeOf(TSTRH));
+ STRH.rcFrame.Right:=fVideoWidth;
+ STRH.rcFrame.Bottom:=fVideoHeight;
+ fStream.Write(STRH,SizeOf(TSTRH));
  EndChunk;
 
  StartChunk('strf',SizeOf(TBitmapInfoHeader));
  FillChar(BitmapInfoHeader,SizeOf(TBitmapInfoHeader),AnsiChar(#0));
  BitmapInfoHeader.biSize:=SizeOf(TBitmapInfoHeader);
- BitmapInfoHeader.biWidth:=VideoWidth;
- BitmapInfoHeader.biHeight:=VideoHeight;
- case VideoCodec of
+ BitmapInfoHeader.biWidth:=fVideoWidth;
+ BitmapInfoHeader.biHeight:=fVideoHeight;
+ case fVideoCodec of
   vcI420:begin
    BitmapInfoHeader.biPlanes:=3;
    BitmapInfoHeader.biBitCount:=12;
@@ -1001,29 +1001,33 @@ begin
    BitmapInfoHeader.biCompression:=#$00#$00#$00#$00;
   end;
  end;
- BitmapInfoHeader.biSizeImage:=VideoFrameSize;
+ BitmapInfoHeader.biSizeImage:=fVideoFrameSize;
  BitmapInfoHeader.biXPelsPerMeter:=0;
  BitmapInfoHeader.biYPelsPerMeter:=0;
  BitmapInfoHeader.biClrUsed:=0;
  BitmapInfoHeader.biClrImportant:=0;
- Stream.Write(BitmapInfoHeader,SizeOf(TBitmapInfoHeader));
+ fStream.Write(BitmapInfoHeader,SizeOf(TBitmapInfoHeader));
  EndChunk;
 
  StartChunk('indx',SizeOf(TINDX)+(MaxSuperIndex*SizeOf(TINDXEntry)));
- SuperIndexVideoOffset:=Stream.Position;
+ fSuperIndexVideoOffset:=fStream.Position;
  FillChar(INDX,SizeOf(TINDX),AnsiChar(#0));
  INDX.wLongsPerEntry:=4;
  INDX.bIndexSubType:=0;
  INDX.bIndexType:=0;
  INDX.nEntriesInUse:=0;
- INDX.dwChunkId:='00dc';
+ if fVideoCodec=vcRGB2 then begin
+  INDX.dwChunkId:='00db';
+ end else begin
+  INDX.dwChunkId:='00dc';
+ end;
  INDX.dwReserved[0]:=0;
  INDX.dwReserved[1]:=0;
  INDX.dwReserved[2]:=0;
- Stream.Write(INDX,SizeOf(TINDX));
+ fStream.Write(INDX,SizeOf(TINDX));
  FillChar(INDXEntry,SizeOf(TINDXEntry),AnsiChar(#0));
  for Counter:=1 to MaxSuperIndex do begin
-  Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+  fStream.Write(INDXEntry,SizeOf(TINDXEntry));
  end;
  EndChunk;
 
@@ -1031,29 +1035,29 @@ begin
  FillChar(VPRP,SizeOf(TVPRP),AnsiChar(#0));
  VPRP.dwVideoFormat:=0;
  VPRP.dwVideoStandard:=0;
- VPRP.dwVerticalRefreshRate:=VideoFPS;
- VPRP.dwHorizontalTotal:=VideoWidth;
- VPRP.dwVerticalTotal:=VideoHeight;
- GCDValue:=GCD(VideoWidth,VideoHeight);
- VPRP.wAspectDenominator:=VideoHeight div TpvUInt32(GCDValue);
- VPRP.wAspectNumerator:=VideoWidth div TpvUInt32(GCDValue);
- VPRP.dwFrameWidth:=VideoWidth;
- VPRP.dwFrameHeight:=VideoHeight;
+ VPRP.dwVerticalRefreshRate:=fVideoFPS;
+ VPRP.dwHorizontalTotal:=fVideoWidth;
+ VPRP.dwVerticalTotal:=fVideoHeight;
+ GCDValue:=GCD(fVideoWidth,fVideoHeight);
+ VPRP.wAspectDenominator:=fVideoHeight div TpvUInt32(GCDValue);
+ VPRP.wAspectNumerator:=fVideoWidth div TpvUInt32(GCDValue);
+ VPRP.dwFrameWidth:=fVideoWidth;
+ VPRP.dwFrameHeight:=fVideoHeight;
  VPRP.dwFieldsPerFrame:=1;
- VPRP.dwCompressedBitmapWidth:=VideoWidth;
- VPRP.dwCompressedBitmapHeight:=VideoHeight;
- VPRP.dwValidBitmapWidth:=VideoWidth;
- VPRP.dwValidBitmapHeight:=VideoHeight;
+ VPRP.dwCompressedBitmapWidth:=fVideoWidth;
+ VPRP.dwCompressedBitmapHeight:=fVideoHeight;
+ VPRP.dwValidBitmapWidth:=fVideoWidth;
+ VPRP.dwValidBitmapHeight:=fVideoHeight;
  VPRP.dwValidBitmapXOffset:=0;
  VPRP.dwValidBitmapYOffset:=0;
  VPRP.dwVideoXOffset:=0;
  VPRP.dwVideoYOffset:=0;
- Stream.Write(VPRP,SizeOf(TVPRP));
+ fStream.Write(VPRP,SizeOf(TVPRP));
  EndChunk;
 
  EndListChunk;
 
- if SoundSampleRate>0 then begin
+ if fSoundSampleRate>0 then begin
 
   ListChunk('LIST','strl');
 
@@ -1066,34 +1070,34 @@ begin
   STRH.wLanguage:=0;
   STRH.dwInitialFrames:=0;
   STRH.dwScale:=1;
-  STRH.dwRate:=SoundSampleRate;
+  STRH.dwRate:=fSoundSampleRate;
   STRH.dwStart:=0;
-  FileSoundOffset:=Stream.Position+TpvPtrInt(TpvPtrInt(pointer(@STRH.dwLength))-TpvPtrInt(pointer(@STRH)));
+  fFileSoundOffset:=fStream.Position+TpvPtrInt(TpvPtrInt(pointer(@STRH.dwLength))-TpvPtrInt(pointer(@STRH)));
   STRH.dwLength:=0;
-  STRH.dwSuggestedBufferSize:=((SoundSampleRate*SoundBits*SoundChannels)+7) shr (3+1);
+  STRH.dwSuggestedBufferSize:=((fSoundSampleRate*fSoundBits*fSoundChannels)+7) shr (3+1);
   STRH.dwQuality:=0;
-  STRH.dwSampleSize:=((SoundBits*SoundChannels)+7) shr 3;
+  STRH.dwSampleSize:=((fSoundBits*fSoundChannels)+7) shr 3;
   STRH.rcFrame.Left:=0;
   STRH.rcFrame.Top:=0;
   STRH.rcFrame.Right:=0;
   STRH.rcFrame.Bottom:=0;
-  Stream.Write(STRH,SizeOf(TSTRH));
+  fStream.Write(STRH,SizeOf(TSTRH));
   EndChunk;
 
   StartChunk('strf',SizeOf(WaveFormatEx));
   FillChar(WaveFormatEx,SizeOf(WaveFormatEx),AnsiChar(#0));
   WaveFormatEx.wFormatTag:=1;
-  WaveFormatEx.nChannels:=SoundChannels;
-  WaveFormatEx.nSamplesPerSec:=SoundSampleRate;
-  WaveFormatEx.nAvgBytesPerSec:=((SoundSampleRate*SoundBits*SoundChannels)+7) shr 3;
-  WaveFormatEx.nBlockAlign:=((SoundBits*SoundChannels)+7) shr 3;
-  WaveFormatEx.wBitsPerSample:=SoundBits;
+  WaveFormatEx.nChannels:=fSoundChannels;
+  WaveFormatEx.nSamplesPerSec:=fSoundSampleRate;
+  WaveFormatEx.nAvgBytesPerSec:=((fSoundSampleRate*fSoundBits*fSoundChannels)+7) shr 3;
+  WaveFormatEx.nBlockAlign:=((fSoundBits*fSoundChannels)+7) shr 3;
+  WaveFormatEx.wBitsPerSample:=fSoundBits;
   WaveFormatEx.cbSize:=0;
-  Stream.Write(WaveFormatEx,SizeOf(WaveFormatEx));
+  fStream.Write(WaveFormatEx,SizeOf(WaveFormatEx));
   EndChunk;
 
   StartChunk('indx',SizeOf(TINDX)+(MaxSuperIndex*SizeOf(TINDXEntry)));
-  SuperIndexSoundOffset:=Stream.Position;
+  fSuperIndexSoundOffset:=fStream.Position;
   FillChar(INDX,SizeOf(TINDX),AnsiChar(#0));
   INDX.wLongsPerEntry:=4;
   INDX.bIndexSubType:=0;
@@ -1103,10 +1107,10 @@ begin
   INDX.dwReserved[0]:=0;
   INDX.dwReserved[1]:=0;
   INDX.dwReserved[2]:=0;
-  Stream.Write(INDX,SizeOf(TINDX));
+  fStream.Write(INDX,SizeOf(TINDX));
   FillChar(INDXEntry,SizeOf(TINDXEntry),AnsiChar(#0));
   for Counter:=1 to MaxSuperIndex do begin
-   Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+   fStream.Write(INDXEntry,SizeOf(TINDXEntry));
   end;
   EndChunk;
 
@@ -1116,7 +1120,7 @@ begin
 
  ListChunk('LIST','odml');
  StartChunk('dmlh',SizeOf(TpvUInt32));
- FileExtFramesOffset:=Stream.Position;
+ fFileExtFramesOffset:=fStream.Position;
  WriteUnsigned32Bit(0);
  EndChunk;
  EndListChunk;
@@ -1133,13 +1137,13 @@ end;
 
 destructor TpvAVIWriter.Destroy;
 var Counter:TpvInt32;
-    SoundIndices,VideoIndices{,SoundFrames,VideoFrames{},IndexFrames:TpvUInt32;
+    SoundIndices,VideoIndices{,SoundFrames,fVideoFrames{},IndexFrames:TpvUInt32;
     SegmentInfo:PpvAVISegmentInfo;
     IndexEntry:PpvAVIIndexEntry;
     INDX:TINDX;
     INDXEntry:TINDXEntry;
 begin
- case VideoCodec of
+ case fVideoCodec of
   vcX264_420,vcX264_444:begin
 {$ifdef PasVulkanUseX264}
    if assigned(x264_handle) then begin
@@ -1156,100 +1160,100 @@ begin
  SoundIndices:=0;
  VideoIndices:=0;
 {SoundFrames:=0;
- VideoFrames:=0;{}
+ fVideoFrames:=0;{}
  IndexFrames:=0;
- for Counter:=0 to SegmentInfos.Count-1 do begin
-  SegmentInfo:=SegmentInfos[Counter];
+ for Counter:=0 to fSegmentInfos.Count-1 do begin
+  SegmentInfo:=fSegmentInfos[Counter];
   if assigned(SegmentInfo) then begin
    if SegmentInfo^.SoundIndexOffset<>0 then begin
     inc(SoundIndices);
    end;
    inc(VideoIndices);
 {  inc(SoundFrames,SegmentInfo^.SoundFrames);
-   inc(VideoFrames,SegmentInfo^.VideoFrames);{}
+   inc(fVideoFrames,SegmentInfo^.VideoFrames);{}
    inc(IndexFrames,SegmentInfo^.IndexFrames);
   end;
  end;
- if SegmentInfos.Count>0 then begin
-  SegmentInfo:=SegmentInfos[0];
+ if fSegmentInfos.Count>0 then begin
+  SegmentInfo:=fSegmentInfos[0];
   if assigned(SegmentInfo) then begin
    begin
-    Stream.Seek(FileFramesOffset,soBeginning);
+    fStream.Seek(fFileFramesOffset,soBeginning);
     WriteUnsigned32Bit(SegmentInfo^.IndexFrames);
    end;
    begin
-    Stream.Seek(FileVideoOffset,soBeginning);
+    fStream.Seek(fFileVideoOffset,soBeginning);
     WriteUnsigned32Bit(SegmentInfo^.VideoFrames);
    end;
    if SegmentInfo^.SoundFrames>0 then begin
-    Stream.Seek(FileSoundOffset,soBeginning);
+    fStream.Seek(fFileSoundOffset,soBeginning);
     WriteUnsigned32Bit(SegmentInfo^.SoundFrames);
    end;
    begin
-    Stream.Seek(FileExtFramesOffset,soBeginning);
+    fStream.Seek(fFileExtFramesOffset,soBeginning);
     WriteUnsigned32Bit(IndexFrames);
    end;                           
    begin
-    Stream.Seek(SuperIndexVideoOffset+TpvPtrInt(TpvPtrInt(pointer(@INDX.nEntriesInUse))-TpvPtrInt(pointer(@INDX))),soBeginning);
+    fStream.Seek(fSuperIndexVideoOffset+TpvPtrInt(TpvPtrInt(pointer(@INDX.nEntriesInUse))-TpvPtrInt(pointer(@INDX))),soBeginning);
     WriteUnsigned32Bit(VideoIndices);
-    Stream.Seek(SuperIndexVideoOffset+SizeOf(TINDX),soBeginning);
-    for Counter:=0 to SegmentInfos.Count-1 do begin
-     SegmentInfo:=SegmentInfos[Counter];
+    fStream.Seek(fSuperIndexVideoOffset+SizeOf(TINDX),soBeginning);
+    for Counter:=0 to fSegmentInfos.Count-1 do begin
+     SegmentInfo:=fSegmentInfos[Counter];
      if assigned(SegmentInfo) then begin
       INDXEntry.dwOffsetLow:=SegmentInfo^.VideoIndexOffset and $ffffffff;
       INDXEntry.dwOffsetHigh:=(SegmentInfo^.VideoIndexOffset shr 32) and $ffffffff;
       INDXEntry.dwSize:=SegmentInfo^.VideoIndexSize;
       INDXEntry.dwDuration:=SegmentInfo^.IndexFrames;
-      Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+      fStream.Write(INDXEntry,SizeOf(TINDXEntry));
      end;
     end;
    end;
    if SoundIndices>0 then begin
-    Stream.Seek(SuperIndexSoundOffset+TpvPtrInt(TpvPtrInt(pointer(@INDX.nEntriesInUse))-TpvPtrInt(pointer(@INDX))),soBeginning);
+    fStream.Seek(fSuperIndexSoundOffset+TpvPtrInt(TpvPtrInt(pointer(@INDX.nEntriesInUse))-TpvPtrInt(pointer(@INDX))),soBeginning);
     WriteUnsigned32Bit(SoundIndices);
-    Stream.Seek(SuperIndexSoundOffset+SizeOf(TINDX),soBeginning);
-    for Counter:=0 to SegmentInfos.Count-1 do begin
-     SegmentInfo:=SegmentInfos[Counter];
+    fStream.Seek(fSuperIndexSoundOffset+SizeOf(TINDX),soBeginning);
+    for Counter:=0 to fSegmentInfos.Count-1 do begin
+     SegmentInfo:=fSegmentInfos[Counter];
      if assigned(SegmentInfo) then begin
       INDXEntry.dwOffsetLow:=SegmentInfo^.SoundIndexOffset and $ffffffff;
       INDXEntry.dwOffsetHigh:=(SegmentInfo^.SoundIndexOffset shr 32) and $ffffffff;
       INDXEntry.dwSize:=SegmentInfo^.SoundIndexSize;
       INDXEntry.dwDuration:=SegmentInfo^.SoundFrames;
-      Stream.Write(INDXEntry,SizeOf(TINDXEntry));
+      fStream.Write(INDXEntry,SizeOf(TINDXEntry));
      end;
     end;
    end;
-   Stream.Seek(0,soEnd);
+   fStream.Seek(0,soEnd);
   end;
  end;
- for Counter:=0 to IndexEntries.Count-1 do begin
-  IndexEntry:=IndexEntries[Counter];
+ for Counter:=0 to fIndexEntries.Count-1 do begin
+  IndexEntry:=fIndexEntries[Counter];
   if assigned(IndexEntry) then begin
    FreeMem(IndexEntry);
   end;
  end;
- IndexEntries.Free;
- for Counter:=0 to SegmentInfos.Count-1 do begin
-  SegmentInfo:=SegmentInfos[Counter];
+ fIndexEntries.Free;
+ for Counter:=0 to fSegmentInfos.Count-1 do begin
+  SegmentInfo:=fSegmentInfos[Counter];
   if assigned(SegmentInfo) then begin
    FreeMem(SegmentInfo);
   end;
  end;
- SegmentInfos.Free;
- if DoFree then begin
-  FreeAndNil(Stream);
+ fSegmentInfos.Free;
+ if fDoFree then begin
+  FreeAndNil(fStream);
  end;
- if assigned(RGB) then begin
-  FreeMem(RGB);
+ if assigned(fRGB) then begin
+  FreeMem(fRGB);
  end;
- if assigned(RGB2) then begin
-  FreeMem(RGB2);
+ if assigned(fRGB2) then begin
+  FreeMem(fRGB2);
  end;
- if assigned(Compressed) then begin
-  FreeMem(Compressed);
+ if assigned(fCompressed) then begin
+  FreeMem(fCompressed);
  end;
- FreeAndNil(JPEGEncoder);
- case VideoCodec of
+ FreeAndNil(fJPEGEncoder);
+ case fVideoCodec of
   vcX264_420,vcX264_444:begin
 {$ifdef PasVulkanUseX264}
    if assigned(x264_handle) then begin
@@ -1261,7 +1265,7 @@ begin
 {$endif}
   end;
  end;
- SetLength(XCache,0);
+ SetLength(fXCache,0);
  if fTurboJpegLibrary<>pvAVINilLibHandle then begin
   FreeLibrary(fTurboJpegLibrary);
   fTurboJpegLibrary:=pvAVINilLibHandle;
@@ -1271,46 +1275,46 @@ end;
 
 procedure TpvAVIWriter.WriteSigned8Bit(s8Bit:TpvInt8);
 begin
- Stream.Write(s8Bit,SizeOf(TpvInt8));
+ fStream.Write(s8Bit,SizeOf(TpvInt8));
 end;
 
 procedure TpvAVIWriter.WriteSigned16Bit(s16Bit:TpvInt16);
 begin
- Stream.Write(s16Bit,SizeOf(TpvInt16));
+ fStream.Write(s16Bit,SizeOf(TpvInt16));
 end;
 
 procedure TpvAVIWriter.WriteSigned32Bit(s32Bit:TpvInt32);
 begin
- Stream.Write(s32Bit,SizeOf(TpvInt32));
+ fStream.Write(s32Bit,SizeOf(TpvInt32));
 end;
 
 procedure TpvAVIWriter.WriteUnsigned8Bit(us8Bit:TpvUInt8);
 begin
- Stream.Write(us8Bit,SizeOf(TpvUInt8));
+ fStream.Write(us8Bit,SizeOf(TpvUInt8));
 end;
 
 procedure TpvAVIWriter.WriteUnsigned16Bit(us16Bit:TpvUInt16);
 begin
- Stream.Write(us16Bit,SizeOf(TpvUInt16));
+ fStream.Write(us16Bit,SizeOf(TpvUInt16));
 end;
 
 procedure TpvAVIWriter.WriteUnsigned32Bit(us32Bit:TpvUInt32);
 begin
- Stream.Write(us32Bit,SizeOf(TpvUInt32));
+ fStream.Write(us32Bit,SizeOf(TpvUInt32));
 end;
 
-function TpvAVIWriter.AddIndex(Frame,Type_,Size:TpvInt32):PpvAVIIndexEntry;
+function TpvAVIWriter.AddIndex(aFrame,aType,aSize:TpvInt32):PpvAVIIndexEntry;
 var Index:TpvInt32;
     SegmentInfo:PpvAVISegmentInfo;
     IndexEntry:PpvAVIIndexEntry;
 begin
- SegmentInfo:=SegmentInfos[SegmentInfos.Count-1];
- Index:=IndexEntries.Count;
+ SegmentInfo:=fSegmentInfos[fSegmentInfos.Count-1];
+ Index:=fIndexEntries.Count;
  repeat
   dec(Index);
   if Index>=SegmentInfo.FirstIndex then begin
-   IndexEntry:=IndexEntries[Index];
-   if (Frame>IndexEntry^.Frame) or ((Frame=IndexEntry^.Frame) and (Type_<IndexEntry^.Type_)) then begin
+   IndexEntry:=fIndexEntries[Index];
+   if (aFrame>IndexEntry^.Frame) or ((aFrame=IndexEntry^.Frame) and (aType<IndexEntry^.Type_)) then begin
     break;
    end;
   end else begin
@@ -1319,31 +1323,31 @@ begin
  until false;
  New(result);
  FillChar(result^,SizeOf(TpvAVIIndexEntry),AnsiChar(#0));
- result^.Frame:=Frame;
- result^.Type_:=Type_;
- result^.Size:=Size;
- result^.Offset:=Stream.Position-ChunkOffsets[ChunkDepth];
- IndexEntries.Insert(Index+1,result);
+ result^.Frame:=aFrame;
+ result^.Type_:=aType;
+ result^.Size:=aSize;
+ result^.Offset:=fStream.Position-fChunkOffsets[fChunkDepth];
+ fIndexEntries.Insert(Index+1,result);
 end;
 
-procedure TpvAVIWriter.StartChunk(const ChunkSignature:TpvAVIChunkSignature;Size:TpvUInt32=0);
+procedure TpvAVIWriter.StartChunk(const aChunkSignature:TpvAVIChunkSignature;aSize:TpvUInt32=0);
 begin
- inc(ChunkDepth);
- Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
- Stream.Write(Size,SizeOf(TpvUInt32));
- ChunkOffsets[ChunkDepth]:=Stream.Position;
+ inc(fChunkDepth);
+ fStream.Write(aChunkSignature,SizeOf(TpvAVIChunkSignature));
+ fStream.Write(aSize,SizeOf(TpvUInt32));
+ fChunkOffsets[fChunkDepth]:=fStream.Position;
 end;
 
-procedure TpvAVIWriter.ListChunk(const ChunkSignature,ListChunkSignature:TpvAVIChunkSignature);
+procedure TpvAVIWriter.ListChunk(const aChunkSignature,aListChunkSignature:TpvAVIChunkSignature);
 begin
- StartChunk(ChunkSignature);
- Stream.Write(ListChunkSignature,SizeOf(TpvAVIChunkSignature));
+ StartChunk(aChunkSignature);
+ fStream.Write(aListChunkSignature,SizeOf(TpvAVIChunkSignature));
 end;
 
 procedure TpvAVIWriter.EndChunk;
 begin
- Assert(ChunkDepth>=0);
- dec(ChunkDepth);
+ Assert(fChunkDepth>=0);
+ dec(fChunkDepth);
 end;
 
 procedure TpvAVIWriter.EndListChunk;
@@ -1351,25 +1355,25 @@ var Size:TpvInt64;
     Size32Bit:TpvUInt32;
     Dummy:TpvUInt8;
 begin
- Assert(ChunkDepth>=0);
- Size:=Stream.Position-ChunkOffsets[ChunkDepth];
- Stream.Seek(ChunkOffsets[ChunkDepth]-SizeOf(TpvUInt32),soBeginning);
+ Assert(fChunkDepth>=0);
+ Size:=fStream.Position-fChunkOffsets[fChunkDepth];
+ fStream.Seek(fChunkOffsets[fChunkDepth]-SizeOf(TpvUInt32),soBeginning);
  Size32Bit:=Size;
- Stream.Write(Size32Bit,SizeOf(TpvUInt32));
- Stream.Seek(0,soEnd);
+ fStream.Write(Size32Bit,SizeOf(TpvUInt32));
+ fStream.Seek(0,soEnd);
  if (Size and 1)<>0 then begin
   Dummy:=0;
-  Stream.Write(Dummy,SizeOf(TpvUInt8));
+  fStream.Write(Dummy,SizeOf(TpvUInt8));
  end;
  EndChunk;
 end;
 
-procedure TpvAVIWriter.WriteChunk(const ChunkSignature:TpvAVIChunkSignature;Data:pointer;Size:TpvUInt32);
+procedure TpvAVIWriter.WriteChunk(const aChunkSignature:TpvAVIChunkSignature;aData:pointer;aSize:TpvUInt32);
 begin
- Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
- Stream.Write(Size,SizeOf(TpvUInt32));
- if Size>0 then begin
-  Stream.Write(Data^,Size);
+ fStream.Write(aChunkSignature,SizeOf(TpvAVIChunkSignature));
+ fStream.Write(aSize,SizeOf(TpvUInt32));
+ if aSize>0 then begin
+  fStream.Write(aData^,aSize);
  end;
 end;
 
@@ -1382,17 +1386,17 @@ var Index:TpvInt32;
 begin
  EndListChunk;
 
- SegmentInfo:=SegmentInfos[SegmentInfos.Count-1];
+ SegmentInfo:=fSegmentInfos[fSegmentInfos.Count-1];
 
  IndexFrames:=0;
  VideoFrames:=0;
  SoundFrames:=0;
- for Index:=SegmentInfo^.FirstIndex to IndexEntries.Count-1 do begin
-  IndexEntry:=IndexEntries[Index];
+ for Index:=SegmentInfo^.FirstIndex to fIndexEntries.Count-1 do begin
+  IndexEntry:=fIndexEntries[Index];
   if IndexEntry^.Type_<>0 then begin
    inc(SoundFrames);
   end else begin
-   if (Index=SegmentInfo^.FirstIndex) or (PpvAVIIndexEntry(IndexEntries[Index-1])^.Offset<>IndexEntry^.Offset) then begin
+   if (Index=SegmentInfo^.FirstIndex) or (PpvAVIIndexEntry(fIndexEntries[Index-1])^.Offset<>IndexEntry^.Offset) then begin
     inc(VideoFrames);
    end;
    inc(IndexFrames);
@@ -1401,16 +1405,20 @@ begin
 
  SegmentInfo^.IndexFrames:=IndexFrames;
 
- if SegmentInfos.Count=1 then begin
-  StartChunk('idx1',IndexEntries.Count*16);
-  for Index:=0 to IndexEntries.Count-1 do begin
-   IndexEntry:=IndexEntries[Index];
+ if fSegmentInfos.Count=1 then begin
+  StartChunk('idx1',fIndexEntries.Count*16);
+  for Index:=0 to fIndexEntries.Count-1 do begin
+   IndexEntry:=fIndexEntries[Index];
    if IndexEntry^.Type_<>0 then begin
     ChunkSignature:='01wb';
    end else begin
-    ChunkSignature:='00dc';
+    if fVideoCodec=vcRGB2 then begin
+     ChunkSignature:='00db';
+    end else begin
+     ChunkSignature:='00dc';
+    end;
    end;
-   Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+   fStream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
    WriteUnsigned32Bit($00000010);
    WriteUnsigned32Bit(IndexEntry^.Offset);
    WriteUnsigned32Bit(IndexEntry^.Size);
@@ -1419,47 +1427,51 @@ begin
  end;
 
  SegmentInfo^.VideoFrames:=VideoFrames;
- SegmentInfo^.VideoIndexOffset:=Stream.Position;
+ SegmentInfo^.VideoIndexOffset:=fStream.Position;
  StartChunk('ix00',24+(IndexFrames*8));
  WriteUnsigned16Bit(2);
  WriteUnsigned16Bit($0100);
  WriteUnsigned32Bit(IndexFrames);
- ChunkSignature:='00dc';
- Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+ if fVideoCodec=vcRGB2 then begin
+  ChunkSignature:='00db';
+ end else begin
+  ChunkSignature:='00dc';
+ end;
+ fStream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
  WriteUnsigned32Bit(SegmentInfo^.Offset and $ffffffff);
  WriteUnsigned32Bit((SegmentInfo^.Offset shr 32) and $ffffffff);
  WriteUnsigned32Bit(0);
- for Index:=SegmentInfo^.FirstIndex to IndexEntries.Count-1 do begin
-  IndexEntry:=IndexEntries[Index];
+ for Index:=SegmentInfo^.FirstIndex to fIndexEntries.Count-1 do begin
+  IndexEntry:=fIndexEntries[Index];
   if IndexEntry^.Type_=0 then begin
    WriteUnsigned32Bit(IndexEntry^.Offset+8);
    WriteUnsigned32Bit(IndexEntry^.Size);
   end;
  end;
  EndChunk;
- SegmentInfo^.VideoIndexSize:=Stream.Position-SegmentInfo^.VideoIndexOffset;
+ SegmentInfo^.VideoIndexSize:=fStream.Position-SegmentInfo^.VideoIndexOffset;
 
  if SoundFrames<>0 then begin
   SegmentInfo^.SoundFrames:=SoundFrames;
-  SegmentInfo^.SoundIndexOffset:=Stream.Position;
+  SegmentInfo^.SoundIndexOffset:=fStream.Position;
   StartChunk('ix01',24+(SoundFrames*8));
   WriteUnsigned16Bit(2);
   WriteUnsigned16Bit($0100);
   WriteUnsigned32Bit(SoundFrames);
   ChunkSignature:='01wb';
-  Stream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
+  fStream.Write(ChunkSignature,SizeOf(TpvAVIChunkSignature));
   WriteUnsigned32Bit(SegmentInfo^.Offset and $ffffffff);
   WriteUnsigned32Bit((SegmentInfo^.Offset shr 32) and $ffffffff);
   WriteUnsigned32Bit(0);
-  for Index:=SegmentInfo^.FirstIndex to IndexEntries.Count-1 do begin
-   IndexEntry:=IndexEntries[Index];
+  for Index:=SegmentInfo^.FirstIndex to fIndexEntries.Count-1 do begin
+   IndexEntry:=fIndexEntries[Index];
    if IndexEntry^.Type_<>0 then begin
     WriteUnsigned32Bit(IndexEntry^.Offset+8);
     WriteUnsigned32Bit(IndexEntry^.Size);
    end;
   end;
   EndChunk;
-  SegmentInfo^.SoundIndexSize:=Stream.Position-SegmentInfo^.SoundIndexOffset;
+  SegmentInfo^.SoundIndexSize:=fStream.Position-SegmentInfo^.SoundIndexOffset;
  end;
 
  EndListChunk;
@@ -1469,8 +1481,8 @@ function TpvAVIWriter.NextSegment:boolean;
 var SegmentInfo:PpvAVISegmentInfo;
 begin
  result:=false;
- if SegmentInfos.Count<>0 then begin
-  if SegmentInfos.Count>=MaxSuperIndex then begin
+ if fSegmentInfos.Count<>0 then begin
+  if fSegmentInfos.Count>=MaxSuperIndex then begin
    exit;
   end;
   FlushSegment;
@@ -1479,13 +1491,13 @@ begin
  ListChunk('LIST','movi');
  New(SegmentInfo);
  FillChar(SegmentInfo^,SizeOf(TpvAVISegmentInfo),AnsiChar(#0));
- SegmentInfo^.Offset:=ChunkOffsets[ChunkDepth];
- SegmentInfo^.FirstIndex:=IndexEntries.Count;
- SegmentInfos.Add(SegmentInfo);
+ SegmentInfo^.Offset:=fChunkOffsets[fChunkDepth];
+ SegmentInfo^.FirstIndex:=fIndexEntries.Count;
+ fSegmentInfos.Add(SegmentInfo);
  result:=true;
 end;
 
-function TpvAVIWriter.WriteVideoFrame(Pixels:pointer;Width,Height:TpvUInt32;Frame:TpvUInt32):boolean;
+function TpvAVIWriter.WriteVideoFrame(aPixels:pointer;aWidth,aHeight:TpvUInt32;aFrame:TpvUInt32):boolean;
 const TJPF_RGB=0;
       TJPF_BGR=1;
       TJPF_RGBX=2;
@@ -1520,27 +1532,27 @@ var LocalVideoFrameSize{$ifdef PasVulkanUseX264},y{$endif},BlockEncodingMode:Tpv
     tjCompressedSize:TpvUInt32;
 begin
  result:=false;
- if Frame<VideoFrames then begin
+ if aFrame<fVideoFrames then begin
   result:=true;
   exit;
  end;
- if (Width<>VideoWidth) or (Height<>VideoHeight) then begin
-  if assigned(Pixels) then begin
-   ResizeRGB32(Pixels,Width,Height,RGB,VideoWidth,VideoHeight,XCache);
-   Pixels:=RGB;
+ if (aWidth<>fVideoWidth) or (aHeight<>fVideoHeight) then begin
+  if assigned(aPixels) then begin
+   ResizeRGB32(aPixels,aWidth,aHeight,fRGB,fVideoWidth,fVideoHeight,fXCache);
+   aPixels:=fRGB;
   end;
  end;
- LocalVideoFrameSize:=VideoFrameSize;
+ LocalVideoFrameSize:=fVideoFrameSize;
  LocalCompressed:=nil;
  LocalCompressedAndFree:=nil;
- case VideoCodec of
+ case fVideoCodec of
   vcI420:begin
-   if assigned(Pixels) then begin
-    EncodeI420(Pixels,Compressed,VideoWidth,VideoHeight);
+   if assigned(aPixels) then begin
+    EncodeI420(aPixels,fCompressed,fVideoWidth,fVideoHeight);
    end;
   end;
   vcMJPG:begin
-   if assigned(Pixels) then begin
+   if assigned(aPixels) then begin
     LocalVideoFrameSize:=0;
     if fTurboJpegLibrary<>pvAVINilLibHandle then begin
      tjHandle:=ftjInitCompress;
@@ -1549,7 +1561,7 @@ begin
        tjCompressed:=nil;
        try
         tjCompressedSize:=0;
-        case ChromaSubsampling of
+        case fChromaSubsampling of
          0:begin
           BlockEncodingMode:=TJSAMP_444; // H1V1 4:4:4 (common for the most high-end digital cameras and professional image editing software)
          end;
@@ -1560,34 +1572,34 @@ begin
           BlockEncodingMode:=TJSAMP_420; // H2V2 4:2:0 (common for the most cheap digital cameras and other cheap stuff)
          end;
          else {-1:}begin
-          if Quality>=95 then begin
+          if fQuality>=95 then begin
            BlockEncodingMode:=TJSAMP_444; // H1V1 4:4:4 (common for the most high-end digital cameras and professional image editing software)
-          end else if Quality>=50 then begin
+          end else if fQuality>=50 then begin
            BlockEncodingMode:=TJSAMP_422; // H2V1 4:2:2 (common for the most mid-range digital cameras and consumer image editing software)
           end else begin
            BlockEncodingMode:=TJSAMP_420; // H2V2 4:2:0 (common for the most cheap digital cameras and other cheap stuff)
           end;
          end;
         end;
-{       VerticalFlip(Pixels,
-                     RGB2,
-                     VideoWidth,
-                     VideoHeight);}
+{       VerticalFlip(aPixels,
+                     fRGB2,
+                     fVideoWidth,
+                     fVideoHeight);}
         ftjCompress2(tjHandle,
-                     Pixels,//RGB2,
-                     VideoWidth,
+                     aPixels,//fRGB2,
+                     fVideoWidth,
                      0,
-                     VideoHeight,
+                     fVideoHeight,
                      TJPF_RGBX,
                      tjCompressed,
                      tjCompressedSize,
                      BlockEncodingMode,
-                     Quality,
-                     IfThen(Fast,TJFLAG_FASTDCT,TJFLAG_ACCURATEDCT)
+                     fQuality,
+                     IfThen(fFast,TJFLAG_FASTDCT,TJFLAG_ACCURATEDCT)
                     );
         if assigned(tjCompressed) and (tjCompressedSize>0) then begin
-         if tjCompressedSize<MaxCompressedSize then begin
-          Move(tjCompressed^,Compressed^,tjCompressedSize);
+         if tjCompressedSize<fMaxCompressedSize then begin
+          Move(tjCompressed^,fCompressed^,tjCompressedSize);
          end else begin
           GetMem(LocalCompressedAndFree,tjCompressedSize);
           Move(tjCompressed^,LocalCompressedAndFree^,tjCompressedSize);
@@ -1605,7 +1617,7 @@ begin
      end;
     end;
     if LocalVideoFrameSize=0 then begin
-     LocalVideoFrameSize:=JPEGEncoder.Encode(Pixels,Compressed,VideoWidth,VideoHeight,Quality,MaxCompressedSize,Fast,ChromaSubsampling,false);
+     LocalVideoFrameSize:=fJPEGEncoder.Encode(aPixels,fCompressed,fVideoWidth,fVideoHeight,fQuality,fMaxCompressedSize,fFast,fChromaSubsampling,false);
     end;
    end else begin
     LocalVideoFrameSize:=0;
@@ -1660,54 +1672,61 @@ begin
 {$endif}
   end;
   else begin
-   if assigned(Pixels) then begin
-    RGBtoBGR(Pixels,VideoWidth,VideoHeight);
+   if assigned(aPixels) then begin
+    RGBtoBGR(aPixels,fVideoWidth,fVideoHeight);
    end else begin
     LocalVideoFrameSize:=0;
    end;
   end;
  end;
- if (LocalVideoFrameSize=0) or not assigned(Pixels) then begin
+ if (LocalVideoFrameSize=0) or not assigned(aPixels) then begin
   exit;
  end;
- if ((Stream.Position-PpvAVISegmentInfo(SegmentInfos[SegmentInfos.Count-1])^.Offset)+(LocalVideoFrameSize+8))>1000000000 then begin
+ if ((fStream.Position-PpvAVISegmentInfo(fSegmentInfos[fSegmentInfos.Count-1])^.Offset)+(LocalVideoFrameSize+8))>=$3ff00000{1000000000} then begin
   if not NextSegment then begin
    exit;
   end;
  end;
- while VideoFrames<=Frame do begin
-  AddIndex(VideoFrames,0,LocalVideoFrameSize);
-  inc(VideoFrames);
+ while fVideoFrames<=aFrame do begin
+  AddIndex(fVideoFrames,0,LocalVideoFrameSize);
+  inc(fVideoFrames);
  end;
  if assigned(LocalCompressedAndFree) then begin
-  WriteChunk('00dc',LocalCompressedAndFree,LocalVideoFrameSize);
+  if fVideoCodec=vcRGB2 then begin
+   WriteChunk('00db',LocalCompressedAndFree,LocalVideoFrameSize);
+  end else begin
+   WriteChunk('00dc',LocalCompressedAndFree,LocalVideoFrameSize);
+  end;
   FreeMem(LocalCompressedAndFree);
  end else begin
-  case VideoCodec of
+  case fVideoCodec of
    vcI420,vcMJPG:begin
-    WriteChunk('00dc',Compressed,LocalVideoFrameSize);
+    WriteChunk('00dc',fCompressed,LocalVideoFrameSize);
    end;
    vcX264_420,vcX264_444:begin
     WriteChunk('00dc',LocalCompressed,LocalVideoFrameSize);
    end;
+   vcRGB2:begin
+    WriteChunk('00db',aPixels,LocalVideoFrameSize);
+   end;
    else begin
-    WriteChunk('00dc',Pixels,LocalVideoFrameSize);
+    WriteChunk('00dc',aPixels,LocalVideoFrameSize);
    end;
   end;
  end;
  result:=true;
 end;
 
-function TpvAVIWriter.WriteSoundFrame(Data:pointer;FrameSize,Frame:TpvUInt32):boolean;
+function TpvAVIWriter.WriteSoundFrame(aData:pointer;aFrameSize,aFrame:TpvUInt32):boolean;
 begin
  result:=false;
- if ((Stream.Position-PpvAVISegmentInfo(SegmentInfos[SegmentInfos.Count-1])^.Offset)+(FrameSize+8))>1000000000 then begin
+ if ((fStream.Position-PpvAVISegmentInfo(fSegmentInfos[fSegmentInfos.Count-1])^.Offset)+(aFrameSize+8))>1000000000 then begin
   if not NextSegment then begin
    exit;
   end;
  end;
- AddIndex(Frame,1,FrameSize);
- WriteChunk('01wb',Data,FrameSize);
+ AddIndex(aFrame,1,aFrameSize);
+ WriteChunk('01wb',aData,aFrameSize);
  result:=true;
 end;
 
