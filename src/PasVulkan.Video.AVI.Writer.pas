@@ -1099,7 +1099,7 @@ begin
   INDX.bIndexSubType:=0;
   INDX.bIndexType:=0;
   INDX.nEntriesInUse:=0;
-  INDX.dwChunkId:='00wb';
+  INDX.dwChunkId:='01wb';
   INDX.dwReserved[0]:=0;
   INDX.dwReserved[1]:=0;
   INDX.dwReserved[2]:=0;
