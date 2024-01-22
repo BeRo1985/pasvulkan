@@ -214,12 +214,12 @@ type PpvAVIIndexEntry=^TpvAVIIndexEntry;
        ftjFree:TpvAVIWriter_tjFree;
        ftjCompress2:TpvAVIWriter_tjCompress2;
 {$ifdef PasVulkanUseX264}
-       x264_param:Tx264_param_t;
-       x264_pic:Tx264_picture_t;
-       x264_pic_out:Tx264_picture_t;
-       x264_handle:Px264_t;
-       x264_nal:Px264_nal_t;
-       x264_inal:PpvInt32;
+       fX264Param:Tx264_param_t;
+       fX264Pic:Tx264_picture_t;
+       fX264PicOut:Tx264_picture_t;
+       fX264Handle:Px264_t;
+       fX264NAL:Px264_nal_t;
+       fX264INAL:PpvInt32;
 {$endif}
       protected
        procedure WriteSigned8Bit(s8Bit:TpvInt8);
@@ -823,64 +823,64 @@ begin
   vcX264_420,vcX264_444:begin
    fVideoFrameSize:=(fVideoWidth*fVideoHeight)*4;
 {$ifdef PasVulkanUseX264}
-   if x264_param_default_preset(@x264_param,'medium',nil)<0 then begin
+   if x264_param_default_preset(@fX264Param,'medium',nil)<0 then begin
     raise EpvAVIWriter.Create('x264_param_default_preset failed');
    end;
-   x264_param.i_threads:=X264_THREADS_AUTO;
-   case VideoCodec of
+   fX264Param.i_threads:=X264_THREADS_AUTO;
+   case fVideoCodec of
     vcX264_420:begin
-     x264_param.i_csp:=X264_CSP_I420;
+     fX264Param.i_csp:=X264_CSP_I420;
     end;
     vcX264_444:begin
-     x264_param.i_csp:=X264_CSP_I444;
-{    x264_param.rc.i_rc_method:=X264_RC_CRF;
-     x264_param.rc.f_rf_constant:=0.0;}
+     fX264Param.i_csp:=X264_CSP_I444;
+{    fX264Param.rc.i_rc_method:=X264_RC_CRF;
+     fX264Param.rc.f_rf_constant:=0.0;}
     end;
     else begin
-     x264_param.i_csp:=X264_CSP_BGRA;
+     fX264Param.i_csp:=X264_CSP_BGRA;
     end;
    end;
 
-   x264_param.i_width:=VideoWidth;
-   x264_param.i_height:=VideoHeight;
-   x264_param.i_fps_num:=VideoFPS;
-   x264_param.i_fps_den:=1;
-// x264_param.i_log_level:=X264_LOG_ERROR;
+   fX264Param.i_width:=fVideoWidth;
+   fX264Param.i_height:=fVideoHeight;
+   fX264Param.i_fps_num:=fVideoFPS;
+   fX264Param.i_fps_den:=1;
+// fX264Param.i_log_level:=X264_LOG_ERROR;
 
-   x264_param.i_keyint_max:=Max(1,x264_param.i_fps_num div (4*x264_param.i_fps_den));
- //x264_param.i_frame_reference:=1;
-   x264_param.b_intra_refresh:=1;
+   fX264Param.i_keyint_max:=Max(1,fX264Param.i_fps_num div (4*fX264Param.i_fps_den));
+ //fX264Param.i_frame_reference:=1;
+   fX264Param.b_intra_refresh:=1;
 
-   x264_param.rc.i_rc_method:=X264_RC_CRF;
-   x264_param.rc.f_rf_constant:=18.0;
-// x264_param.rc.f_rf_constant_max:=20.0;
+   fX264Param.rc.i_rc_method:=X264_RC_CRF;
+   fX264Param.rc.f_rf_constant:=18.0;
+// fX264Param.rc.f_rf_constant_max:=20.0;
 
-   x264_param.b_vfr_input:=0;
-   x264_param.b_repeat_headers:=1;
-   x264_param.b_annexb:=1;
+   fX264Param.b_vfr_input:=0;
+   fX264Param.b_repeat_headers:=1;
+   fX264Param.b_annexb:=1;
 
-   case x264_param.i_csp of
+   case fX264Param.i_csp of
     X264_CSP_I444,X264_CSP_YV24,X264_CSP_RGB,X264_CSP_BGR,X264_CSP_BGRA:begin
-     if x264_param_apply_profile(@x264_param,'high444')<0 then begin
+     if x264_param_apply_profile(@fX264Param,'high444')<0 then begin
       raise EpvAVIWriter.Create('x264_param_apply_profile failed');
      end;
     end;
     X264_CSP_I422,X264_CSP_YV16,X264_CSP_NV16,X264_CSP_V210:begin
-     if x264_param_apply_profile(@x264_param,'high422')<0 then begin
+     if x264_param_apply_profile(@fX264Param,'high422')<0 then begin
       raise EpvAVIWriter.Create('x264_param_apply_profile failed');
      end;
     end;
     else begin
-     if x264_param_apply_profile(@x264_param,'high')<0 then begin
+     if x264_param_apply_profile(@fX264Param,'high')<0 then begin
       raise EpvAVIWriter.Create('x264_param_apply_profile failed');
      end;
     end;
    end;
-   if x264_picture_alloc(@x264_pic,x264_param.i_csp,x264_param.i_width,x264_param.i_height)<0 then begin
+   if x264_picture_alloc(@fX264Pic,fX264Param.i_csp,fX264Param.i_width,fX264Param.i_height)<0 then begin
     raise EpvAVIWriter.Create('x264_picture_alloc failed');
    end;
-   x264_handle:=x264_encoder_open(@x264_param);
-   if not assigned(x264_handle) then begin
+   fX264Handle:=x264_encoder_open(@fX264Param);
+   if not assigned(fX264Handle) then begin
     raise EpvAVIWriter.Create('x264_encoder_open failed');
    end;
 {$else}
@@ -1146,9 +1146,9 @@ begin
  case fVideoCodec of
   vcX264_420,vcX264_444:begin
 {$ifdef PasVulkanUseX264}
-   if assigned(x264_handle) then begin
-    while x264_encoder_delayed_frames(x264_handle)<>0 do begin
-     WriteVideoFrame(nil,VideoWidth,VideoHeight,VideoFrames);
+   if assigned(fX264Handle) then begin
+    while x264_encoder_delayed_frames(fX264Handle)<>0 do begin
+     WriteVideoFrame(nil,fVideoWidth,fVideoHeight,fVideoFrames);
     end;
    end;
 {$else}
@@ -1256,10 +1256,10 @@ begin
  case fVideoCodec of
   vcX264_420,vcX264_444:begin
 {$ifdef PasVulkanUseX264}
-   if assigned(x264_handle) then begin
-    x264_encoder_close(x264_handle);
+   if assigned(fX264Handle) then begin
+    x264_encoder_close(fX264Handle);
    end;
-   x264_picture_clean(@x264_pic);
+   x264_picture_clean(@fX264Pic);
 {$else}
    Assert(false,'X264 support not compiled in');
 {$endif}
@@ -1626,44 +1626,44 @@ begin
   vcX264_420,vcX264_444:begin
 {$ifdef PasVulkanUseX264}
    if assigned(Pixels) then begin
-    case x264_param.i_csp of
+    case fX264Param.i_csp of
      X264_CSP_I420:begin
       EncodeI420(Pixels,Compressed,VideoWidth,VideoHeight);
-      Move(PByteArray(Compressed)^[0],x264_pic.img.plane[0]^,VideoWidth*VideoHeight);
-      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight],x264_pic.img.plane[1]^,((VideoWidth*VideoHeight)+3) shr 2);
-      Move(PByteArray(Compressed)^[(VideoWidth*VideoHeight)+(((VideoWidth*VideoHeight)+3) shr 2)],x264_pic.img.plane[2]^,((VideoWidth*VideoHeight)+3) shr 2);
+      Move(PByteArray(Compressed)^[0],fX264Pic.img.plane[0]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight],fX264Pic.img.plane[1]^,((VideoWidth*VideoHeight)+3) shr 2);
+      Move(PByteArray(Compressed)^[(VideoWidth*VideoHeight)+(((VideoWidth*VideoHeight)+3) shr 2)],fX264Pic.img.plane[2]^,((VideoWidth*VideoHeight)+3) shr 2);
      end;
      X264_CSP_I444:begin
       EncodeI444(Pixels,Compressed,VideoWidth,VideoHeight);
-      Move(PByteArray(Compressed)^[0],x264_pic.img.plane[0]^,VideoWidth*VideoHeight);
-      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight],x264_pic.img.plane[1]^,VideoWidth*VideoHeight);
-      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight*2],x264_pic.img.plane[2]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[0],fX264Pic.img.plane[0]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight],fX264Pic.img.plane[1]^,VideoWidth*VideoHeight);
+      Move(PByteArray(Compressed)^[VideoWidth*VideoHeight*2],fX264Pic.img.plane[2]^,VideoWidth*VideoHeight);
      end;
      X264_CSP_RGB:begin
       RGBAtoRGB(Pixels,VideoWidth,VideoHeight);
       for y:=0 to VideoHeight-1 do begin
-       Move(PByteArray(Pixels)^[VideoWidth*3*y],PByteArray(x264_pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*3],VideoWidth*3);
+       Move(PByteArray(Pixels)^[VideoWidth*3*y],PByteArray(fX264Pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*3],VideoWidth*3);
       end;
      end;
      X264_CSP_BGR:begin
       RGBAtoBGR(Pixels,VideoWidth,VideoHeight);
       for y:=0 to VideoHeight-1 do begin
-       Move(PByteArray(Pixels)^[VideoWidth*3*y],PByteArray(x264_pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*3],VideoWidth*3);
+       Move(PByteArray(Pixels)^[VideoWidth*3*y],PByteArray(fX264Pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*3],VideoWidth*3);
       end;
      end;
      X264_CSP_BGRA:begin
       RGBtoBGR(Pixels,VideoWidth,VideoHeight);
       for y:=0 to VideoHeight-1 do begin
-       Move(PByteArray(Pixels)^[VideoWidth*4*y],PByteArray(x264_pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*4],VideoWidth*4);
+       Move(PByteArray(Pixels)^[VideoWidth*4*y],PByteArray(fX264Pic.img.plane[0])^[(VideoHeight-(y+1))*VideoWidth*4],VideoWidth*4);
       end;
      end;
     end;
-    LocalVideoFrameSize:=x264_encoder_encode(x264_handle,@x264_nal,@x264_inal,@x264_pic,@x264_pic_out);
+    LocalVideoFrameSize:=x264_encoder_encode(fX264Handle,@fX264NAL,@fX264INAL,@fX264Pic,@fX264PicOut);
    end else begin
-    LocalVideoFrameSize:=x264_encoder_encode(x264_handle,@x264_nal,@x264_inal,nil,@x264_pic_out);
+    LocalVideoFrameSize:=x264_encoder_encode(fX264Handle,@fX264NAL,@fX264INAL,nil,@fX264PicOut);
    end;
-   if assigned(x264_nal) and (LocalVideoFrameSize>0) then begin
-    LocalCompressed:=pointer(x264_nal^.p_payload);
+   if assigned(fX264NAL) and (LocalVideoFrameSize>0) then begin
+    LocalCompressed:=pointer(fX264NAL^.p_payload);
    end else begin
     LocalVideoFrameSize:=0;
    end;
