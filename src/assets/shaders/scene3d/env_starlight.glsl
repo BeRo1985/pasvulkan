@@ -1,4 +1,4 @@
-#ifdef ENV_STARLIGHT_GLSL
+#ifndef ENV_STARLIGHT_GLSL
 #define ENV_STARLIGHT_GLSL
 
 vec3 starlightHash33(uvec3 q){
