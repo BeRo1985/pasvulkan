@@ -48,7 +48,7 @@ vec2 starlightVoronoi(in vec3 x){
         vec3 g = vec3(ivec3(i, j, k));  
         vec3 o = starlightHash33(n + g);
         vec3 r = (g - f) + o;
-	    float d = dot(r, r);
+	      float d = dot(r, r);
         m = (d < m.w) ? vec4(o, d) : m;
       }  
     }
@@ -56,11 +56,25 @@ vec2 starlightVoronoi(in vec3 x){
   return vec2(sqrt(m.w), dot(m.xyz, vec3(1.0)));
 }
 
-vec3 getStarlight(vec3 direction, float resolution){
-  float w = 64.0;
+vec3 getStarlight(
+#ifdef COMPUTE_DERIVATIVES
+                  vec3 direction,
+                  vec3 directionX, 
+                  vec3 directionY
+#else
+                  vec3 direction                  
+#endif
+                 ){
+  const float w = 64.0;  
   vec3 d = normalize(direction) * w;
-  float f = (resolution > 0.0) ? (clamp(256.0 / resolution, 0.1, 1.0) * (w / 128.0)) : abs(resolution);
-  return vec3(clamp(smoothstep(0.0, 1.0, starlightNoise(d + vec3(3.0, 5.0, 7.0)).z) * smoothstep(f, 0.0, starlightVoronoi(d).x) * 0.1, 0.0, 65504.0));
+  vec2 v = starlightVoronoi(d);
+#ifdef COMPUTE_DERIVATIVES
+  vec2 vdxy = vec2(starlightVoronoi(normalize(directionX) * w).x, starlightVoronoi(normalize(directionY) * w).x) - v.xx;
+#else  
+  vec2 vdxy = vec2(dFdxFine(v.x), dFdyFine(v.x));
+#endif
+  float f = max(1.0 / w, max(length(vdxy), max(abs(vdxy.x), abs(vdxy.y)))) * 1.4142135623730951;
+  return vec3(clamp(smoothstep(0.0, 1.0, starlightNoise(d + vec3(3.0, 5.0, 7.0)).z) * smoothstep(f, 0.0, v.x) * 0.1, 0.0, 65504.0));
 } 
 
 #endif

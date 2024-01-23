@@ -87,7 +87,6 @@ type { TpvScene3DRendererSkyBox }
              WidthHeight:TpvUInt32;
 
              Mode:TpvUInt32;
-             StarlightResolution:TpvFloat;
 
             end;
             PPushConstants=^TPushConstants;
@@ -322,8 +321,6 @@ begin
  PushConstants.CountViews:=aCountViews;
  PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  PushConstants.WidthHeight:=(fWidth and $ffff) or (fHeight shl 16);
-
- PushConstants.StarlightResolution:=-0.03125;
 
  if assigned(fScene3D.SkyTextureImage) then begin
   PushConstants.Mode:=0;
