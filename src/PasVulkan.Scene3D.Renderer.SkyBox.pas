@@ -323,7 +323,7 @@ begin
  PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  PushConstants.WidthHeight:=(fWidth and $ffff) or (fHeight shl 16);
 
- PushConstants.StarlightResolution:=-0.1;
+ PushConstants.StarlightResolution:=-0.03125;
 
  if assigned(fScene3D.SkyTextureImage) then begin
   PushConstants.Mode:=0;
