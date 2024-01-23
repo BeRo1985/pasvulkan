@@ -219,6 +219,7 @@ compileshaderarguments=(
   "-V cubemap_sky.comp -DFAST -o ${tempPath}/cubemap_sky_fast_comp.spv"
   "-V cubemap_sky.frag -o ${tempPath}/cubemap_sky_frag.spv"
   "-V cubemap_sky.frag -DFAST -o ${tempPath}/cubemap_sky_fast_frag.spv"
+  "-V cubemap_starlight.comp -o ${tempPath}/cubemap_starlight_comp.spv"
   "-V cubemap_filter.comp -o ${tempPath}/cubemap_filter_comp.spv"
   
   "-V passthrough.vert -o ${tempPath}/passthrough_vert.spv"
