@@ -73,7 +73,7 @@ vec3 getStarlight(
 #else  
   vec2 vdxy = vec2(dFdxFine(v.x), dFdyFine(v.x));
 #endif
-  float f = max(1.0 / w, max(length(vdxy), max(abs(vdxy.x), abs(vdxy.y)))) * 1.4142135623730951;
+  float f = max(1.0 / w, max(length(vdxy), max(abs(vdxy.x), abs(vdxy.y)))) * 2.0; //1.4142135623730951;
   return vec3(clamp(smoothstep(0.0, 1.0, starlightNoise(d + vec3(3.0, 5.0, 7.0)).z) * smoothstep(f, 0.0, v.x) * 0.1, 0.0, 65504.0));
 } 
 
