@@ -22740,6 +22740,10 @@ begin
    aMipMapSize:=aMipMapHeight*aMipMapWidth*4*SizeOf(TpvUInt8);
    aCompressed:=false;
   end;
+  VK_FORMAT_R8G8B8A8_UINT:begin
+   aMipMapSize:=aMipMapHeight*aMipMapWidth*4*SizeOf(TpvUInt8);
+   aCompressed:=false;
+  end;
   VK_FORMAT_R8_SNORM:begin
    aMipMapSize:=aMipMapHeight*aMipMapWidth*1*SizeOf(TpvInt8);
    aCompressed:=false;
