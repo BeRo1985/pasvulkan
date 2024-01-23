@@ -77,15 +77,25 @@ uses SysUtils,
 type { TpvScene3DRendererSkyBox }
      TpvScene3DRendererSkyBox=class
       public
-       type TPushConstants=record
+       type TPushConstants=packed record
+
+             LightDirection:TpvVector4;
+
              ViewBaseIndex:TpvUInt32;
              CountViews:TpvUInt32;
              SkyBoxBrightnessFactor:TpvFloat;
+             WidthHeight:TpvUInt32;
+
+             Mode:TpvUInt32;
+
             end;
+            PPushConstants=^TPushConstants;
       private
        fRenderer:TpvScene3DRenderer;
        fRendererInstance:TpvScene3DRendererInstance;
        fScene3D:TpvScene3D;
+       fWidth:TpvInt32;
+       fHeight:TpvInt32;
        fVertexShaderModule:TpvVulkanShaderModule;
        fFragmentShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageVertex:TpvVulkanPipelineShaderStage;
@@ -187,7 +197,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fRenderer.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvScene3DRendererSkyBox.TPushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkPipelineStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkPipelineStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererSkyBox.TPushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -214,6 +224,10 @@ procedure TpvScene3DRendererSkyBox.AllocateResources(const aRenderPass:TpvVulkan
                                                      const aHeight:TpvInt32;
                                                      const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
 begin
+
+ fWidth:=aWidth;
+
+ fHeight:=aHeight;
 
  fVulkanPipeline:=TpvVulkanGraphicsPipeline.Create(fRenderer.VulkanDevice,
                                                    fRenderer.VulkanPipelineCache,
@@ -300,15 +314,35 @@ end;
 procedure TpvScene3DRendererSkyBox.Draw(const aInFlightFrameIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 var PushConstants:TpvScene3DRendererSkyBox.TPushConstants;
 begin
+
+ PushConstants.LightDirection:=TpvVector4.InlineableCreate(fScene3D.PrimaryLightDirection,0.0);
+
  PushConstants.ViewBaseIndex:=aViewBaseIndex;
  PushConstants.CountViews:=aCountViews;
  PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
+ PushConstants.WidthHeight:=(fWidth and $ffff) or (fHeight shl 16);
+
+ if assigned(fScene3D.SkyTextureImage) then begin
+  PushConstants.Mode:=0;
+ end else begin
+  case fScene3D.SkyBoxEnvironmentMode of
+   TpvScene3DSkyBoxEnvironmentMode.Starlight:begin
+    PushConstants.Mode:=1;
+   end;
+   else begin
+    PushConstants.Mode:=0;
+   end;
+  end;
+ end;
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipeline.Handle);
+
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
-                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
+                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TpvScene3DRendererSkyBox.TPushConstants),
                                  @PushConstants);
+
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
@@ -316,7 +350,9 @@ begin
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
                                       0,
                                       nil);
+
  aCommandBuffer.CmdDraw(36,1,0,0);
+
 end;
 
 end.

@@ -3,37 +3,21 @@
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_GOOGLE_include_directive : enable
 
 // layout(location = 0) in vec3 inPosition;
 
 layout(location = 0) out vec3 outPosition;
-layout(location = 1) flat out float outSkyBoxBrightnessFactor;
 
 /* clang-format off */
 
-layout(push_constant) uniform PushConstants {
-  uint viewBaseIndex;  //
-  uint countViews;     //
-  float skyBoxBrightnessFactor; //
-} pushConstants;
-
-struct View {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
-  mat4 inverseViewMatrix;
-  mat4 inverseProjectionMatrix;
-};
-
-layout(set = 0, binding = 0, std140) uniform uboViews {
-   View views[256];
-} uView;
+#include "skybox.glsl"
 
 /* clang-format on */
 
 void main() {
   int vertexID = int(gl_VertexIndex), vertexIndex = vertexID % 3, faceIndex = vertexID / 3, stripVertexID = faceIndex + (((faceIndex & 1) == 0) ? (2 - vertexIndex) : vertexIndex), reversed = int(stripVertexID > 6), index = (reversed == 1) ? (13 - stripVertexID) : stripVertexID;
   outPosition = (vec3(ivec3(int((index < 3) || (index == 4)), reversed ^ int((index > 0) && (index < 4)), reversed ^ int((index < 2) || (index > 5)))) * 2.0) - vec3(1.0);
-  outSkyBoxBrightnessFactor = pushConstants.skyBoxBrightnessFactor;
   View view = uView.views[pushConstants.viewBaseIndex + uint(gl_ViewIndex)];
   gl_Position = ((view.projectionMatrix *                                   //
                   mat4(vec4(view.viewMatrix[0].xyz, 0.0),                   //
