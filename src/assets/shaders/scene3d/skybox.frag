@@ -18,7 +18,7 @@ void main(){
   switch(pushConstants.mode){
     case 1u:{
       // Realtime starlight
-      outFragColor = vec4(getStarlight(normalize(inPosition), float(uint(pushConstants.widthHeight >> 16u))) * pushConstants.skyBoxBrightnessFactor, 1.0);
+      outFragColor = vec4(getStarlight(normalize(inPosition), pushConstants.starlightResolution) * pushConstants.skyBoxBrightnessFactor, 1.0);
       break;
     }
     default:{

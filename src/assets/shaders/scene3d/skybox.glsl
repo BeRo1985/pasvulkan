@@ -11,6 +11,7 @@ layout(push_constant) uniform PushConstants {
   uint widthHeight;    // low 16 bits: width, high 16 bits: height
 
   uint mode;           // 0: cube map, 1: realtime starlight
+  float starlightResolution;
 
 } pushConstants;
 
