@@ -201,8 +201,8 @@ type TpvScene3DRendererAntialiasingMode=
        AGXRec2020Golden=15,
        AGXRec2020Punchy=16
       );
-      PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
-      
+     PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
+
 var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 
 implementation

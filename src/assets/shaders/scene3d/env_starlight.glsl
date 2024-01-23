@@ -56,10 +56,11 @@ vec2 starlightVoronoi(in vec3 x){
   return vec2(sqrt(m.w), dot(m.xyz, vec3(1.0)));
 }
 
-vec3 getStarlight(vec3 direction, float resolution, float w, float intensity){
+vec3 getStarlight(vec3 direction, float resolution){
+  float w = 64.0;
   vec3 d = normalize(direction) * w;
   float f = clamp(256.0 / resolution, 0.1, 1.0) * (w / 128.0);
-  return vec3(clamp(smoothstep(0.0, 1.0, starlightNoise(d + vec3(3.0, 5.0, 7.0)).z) * smoothstep(f, 0.0, starlightVoronoi(d).x) * intensity, 0.0, 65504.0));
+  return vec3(clamp(smoothstep(0.0, 1.0, starlightNoise(d + vec3(3.0, 5.0, 7.0)).z) * smoothstep(f, 0.0, starlightVoronoi(d).x) * 0.1, 0.0, 65504.0));
 } 
 
 #endif

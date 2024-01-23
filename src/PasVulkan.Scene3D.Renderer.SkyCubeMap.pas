@@ -70,6 +70,7 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
+     PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals;
 
 type { TpvScene3DRendererSkyCubeMap }
@@ -88,7 +89,7 @@ type { TpvScene3DRendererSkyCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode=TpvScene3DSkyBoxEnvironmentMode.Sky);
 
        destructor Destroy; override;
 
@@ -116,7 +117,7 @@ implementation
 
 { TpvScene3DRendererSkyCubeMap }
 
-constructor TpvScene3DRendererSkyCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture);
+constructor TpvScene3DRendererSkyCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode);
 var Index,FaceIndex,MipMaps:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -163,17 +164,33 @@ begin
    fHeight:=fWidth;
   end;
  end else begin
-  case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
-   TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
-//  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
-    fWidth:=2048;
-    fHeight:=2048;
+  case aSkyBoxEnvironmentMode of
+   TpvScene3DSkyBoxEnvironmentMode.Starlight:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_comp.spv');
+    case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
+     TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
+      fWidth:=4096;
+      fHeight:=4096;
+     end;
+     else begin
+      fWidth:=2048;
+      fHeight:=2048;
+     end;
+    end;
    end;
    else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
-    fWidth:=512;
-    fHeight:=512;
+    case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
+     TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
+      fWidth:=2048;
+      fHeight:=2048;
+     end;
+     else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+      fWidth:=512;
+      fHeight:=512;
+     end;
+    end;
    end;
   end;
  end;
