@@ -250,7 +250,8 @@ begin
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
-                                     TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
+                                     TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) or
+                                     TVkImageCreateFlags(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkUInt32(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) or TVkUInt32(VK_IMAGE_CREATE_EXTENDED_USAGE_BIT),0)),
                                      VK_IMAGE_TYPE_2D,
                                      aImageFormat,
                                      fWidth,

@@ -154,6 +154,7 @@ type TpvScene3DRenderer=class;
        fMeshFragGlobalIlluminationTypeName:TpvUTF8String;
        fMeshFragShadowTypeName:TpvUTF8String;
        fOptimizedNonAlphaFormat:TVkFormat;
+       fOptimizedCubeMapFormat:TVkFormat;
        fUseDepthPrepass:boolean;
        fUseDemote:boolean;
        fUseNoDiscard:boolean;
@@ -233,6 +234,7 @@ type TpvScene3DRenderer=class;
        property MeshFragGlobalIlluminationTypeName:TpvUTF8String read fMeshFragGlobalIlluminationTypeName;
        property MeshFragShadowTypeName:TpvUTF8String read fMeshFragShadowTypeName;
        property OptimizedNonAlphaFormat:TVkFormat read fOptimizedNonAlphaFormat;
+       property OptimizedCubeMapFormat:TVkFormat read fOptimizedCubeMapFormat;
        property UseDepthPrepass:boolean read fUseDepthPrepass;
        property UseDemote:boolean read fUseDemote;
        property UseNoDiscard:boolean read fUseNoDiscard;
@@ -610,6 +612,33 @@ begin
 
 //fOptimizedNonAlphaFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
 
+ FormatProperties:=fVulkanDevice.PhysicalDevice.GetFormatProperties(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32);
+ if //(fVulkanDevice.PhysicalDevice.Properties.deviceType=VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) and
+    ((FormatProperties.linearTilingFeatures and (TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                 TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                 TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) or
+                                                 TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_DST_BIT) or
+                                                 TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)))=(TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                                                                              TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                                                                              TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) or
+                                                                                                              TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_DST_BIT) or
+                                                                                                              TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT))) and
+    ((FormatProperties.optimalTilingFeatures and (TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_DST_BIT) or
+                                                  TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)))=(TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) or
+                                                                                                               TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) or
+                                                                                                               TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) or
+                                                                                                               TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) or
+                                                                                                               TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_DST_BIT) or
+                                                                                                               TVkFormatFeatureFlags(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT))) then begin
+  fOptimizedCubeMapFormat:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+ end else begin
+  fOptimizedCubeMapFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
+ end;
+
  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
   TpvVulkanVendorID.ImgTec,
   TpvVulkanVendorID.ARM,
@@ -964,7 +993,7 @@ begin
   SkyTexture:=nil;
  end;
 
- fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,{fOptimizedNonAlphaFormat}VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,SkyTexture,fScene3D.SkyBoxEnvironmentMode);
+ fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedCubeMapFormat,SkyTexture,fScene3D.SkyBoxEnvironmentMode);
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyCubeMap.ImageView');
 
@@ -1032,7 +1061,7 @@ begin
  fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fLensStar.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fLensStar.ImageView');
 
- fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedNonAlphaFormat);
+ fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedCubeMapFormat);
 
  case fShadowMode of
 

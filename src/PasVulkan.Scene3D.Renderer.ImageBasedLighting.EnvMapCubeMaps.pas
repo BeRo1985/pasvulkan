@@ -283,13 +283,23 @@ var ImageIndex,Index,MipMaps:TpvSizeInt;
 //ImageMemoryBarrier:TVkImageMemoryBarrier;
     Images:array[0..2] of PpvVulkanImage;
     MemoryBlocks:array[0..2] of PpvVulkanDeviceMemoryBlock;
+    AdditionalImageFormat:TVkFormat;
+    FormatVariant:String;
 //  ImportanceSamples:TImportanceSamples;
 begin
  inherited Create;
 
 //GetImportanceSamples(ImportanceSamples,1024,0.1,Charlie);
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_filter_comp.spv');
+ if aImageFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
+  AdditionalImageFormat:=VK_FORMAT_R32_UINT;
+  FormatVariant:='rgb9e5_';
+ end else begin
+  AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
+  FormatVariant:='';
+ end;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_filter_'+FormatVariant+'comp.spv');
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(aVulkanDevice,Stream);
  finally
@@ -327,7 +337,8 @@ begin
                                              VK_SHARING_MODE_EXCLUSIVE,
                                              0,
                                              nil,
-                                             VK_IMAGE_LAYOUT_UNDEFINED
+                                             VK_IMAGE_LAYOUT_UNDEFINED,
+                                             AdditionalImageFormat
                                             );
 
   MemoryRequirements:=aVulkanDevice.MemoryManager.GetImageMemoryRequirements(Images[ImageIndex]^.Handle,
@@ -431,7 +442,7 @@ begin
        fVulkanGGXImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                       fVulkanGGXImage,
                                                       TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                      aImageFormat,
+                                                      TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
                                                       TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                       TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                       TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -445,7 +456,7 @@ begin
        fVulkanCharlieImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                           fVulkanCharlieImage,
                                                           TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                          aImageFormat,
+                                                          TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -459,7 +470,7 @@ begin
        fVulkanLambertianImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                              fVulkanLambertianImage,
                                                              TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                             aImageFormat,
+                                                             TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
                                                              TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                              TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                              TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
