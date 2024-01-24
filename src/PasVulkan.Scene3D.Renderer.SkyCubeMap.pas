@@ -261,7 +261,6 @@ begin
                                      6,
                                      VK_SAMPLE_COUNT_1_BIT,
                                      VK_IMAGE_TILING_OPTIMAL,
-                                     TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT) or
                                      TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
@@ -379,7 +378,11 @@ begin
                                                    0,
                                                    MipMaps,
                                                    0,
-                                                   6);
+                                                   6,
+                                                   true,
+                                                   TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT) or
+                                                   TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT) or
+                                                   TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
        fDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                            fVulkanImageView.Handle,

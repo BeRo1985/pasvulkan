@@ -321,7 +321,8 @@ begin
  for ImageIndex:=0 to 2 do begin
 
   Images[ImageIndex]^:=TpvVulkanImage.Create(aVulkanDevice,
-                                             TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
+                                             TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) or
+                                             TVkImageCreateFlags(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkUInt32(VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) or TVkUInt32(VK_IMAGE_CREATE_EXTENDED_USAGE_BIT),0)),
                                              VK_IMAGE_TYPE_2D,
                                              aImageFormat,
                                              Width,
@@ -331,7 +332,6 @@ begin
                                              6,
                                              VK_SAMPLE_COUNT_1_BIT,
                                              VK_IMAGE_TILING_OPTIMAL,
-                                             TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or
                                              TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT) or
                                              TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                              VK_SHARING_MODE_EXCLUSIVE,
@@ -442,7 +442,7 @@ begin
        fVulkanGGXImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                       fVulkanGGXImage,
                                                       TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                      TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
+                                                      aImageFormat,
                                                       TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                       TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                       TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -451,12 +451,14 @@ begin
                                                       0,
                                                       MipMaps,
                                                       0,
-                                                      6);
+                                                      6,
+                                                      true,
+                                                      TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
        fVulkanCharlieImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                           fVulkanCharlieImage,
                                                           TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                          TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
+                                                          aImageFormat,
                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                           TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -465,12 +467,14 @@ begin
                                                           0,
                                                           MipMaps,
                                                           0,
-                                                          6);
+                                                          6,
+                                                          true,
+                                                          TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
        fVulkanLambertianImageView:=TpvVulkanImageView.Create(aVulkanDevice,
                                                              fVulkanLambertianImage,
                                                              TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                             TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
+                                                             aImageFormat,
                                                              TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                              TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                              TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
@@ -479,7 +483,9 @@ begin
                                                              0,
                                                              MipMaps,
                                                              0,
-                                                             6);
+                                                             6,
+                                                             true,
+                                                             TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT));
 
        fGGXDescriptorImageInfo:=TVkDescriptorImageInfo.Create(fVulkanSampler.Handle,
                                                               fVulkanGGXImageView.Handle,
@@ -512,7 +518,7 @@ begin
           ImageViews[ImageIndex,Index]:=TpvVulkanImageView.Create(aVulkanDevice,
                                                                   Images[ImageIndex]^,
                                                                   TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                                  aImageFormat,
+                                                                  TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),

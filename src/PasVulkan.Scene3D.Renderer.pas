@@ -646,6 +646,8 @@ begin
   fOptimizedCubeMapFormat:=VK_FORMAT_R16G16B16A16_SFLOAT;
  end;
 
+ fOptimizedCubeMapFormat:=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+
  case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
   TpvVulkanVendorID.ImgTec,
   TpvVulkanVendorID.ARM,

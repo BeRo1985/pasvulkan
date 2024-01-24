@@ -1909,7 +1909,9 @@ type EpvVulkanException=class(Exception);
                           const aBaseMipLevel:TpvUInt32=0;
                           const aCountMipMapLevels:TpvUInt32=1;
                           const aBaseArrayLayer:TpvUInt32=1;
-                          const aCountArrayLayers:TpvUInt32=0); reintroduce; overload;
+                          const aCountArrayLayers:TpvUInt32=0;
+                          const aHasUsageFlags:Boolean=false;
+                          const aUsageFlags:TVkImageUsageFlags=0); reintroduce; overload;
        destructor Destroy; override;
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -16433,16 +16435,19 @@ constructor TpvVulkanImageView.Create(const aDevice:TpvVulkanDevice;
                                       const aImage:TpvVulkanImage;
                                       const aImageViewType:TVkImageViewType;
                                       const aFormat:TvkFormat;
-                                      const aComponentRed:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                      const aComponentGreen:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                      const aComponentBlue:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                      const aComponentAlpha:TVkComponentSwizzle=VK_COMPONENT_SWIZZLE_IDENTITY;
-                                      const aImageAspectFlags:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
-                                      const aBaseMipLevel:TpvUInt32=0;
-                                      const aCountMipMapLevels:TpvUInt32=1;
-                                      const aBaseArrayLayer:TpvUInt32=1;
-                                      const aCountArrayLayers:TpvUInt32=0);
+                                      const aComponentRed:TVkComponentSwizzle;
+                                      const aComponentGreen:TVkComponentSwizzle;
+                                      const aComponentBlue:TVkComponentSwizzle;
+                                      const aComponentAlpha:TVkComponentSwizzle;
+                                      const aImageAspectFlags:TVkImageAspectFlags;
+                                      const aBaseMipLevel:TpvUInt32;
+                                      const aCountMipMapLevels:TpvUInt32;
+                                      const aBaseArrayLayer:TpvUInt32;
+                                      const aCountArrayLayers:TpvUInt32;
+                                      const aHasUsageFlags:Boolean;
+                                      const aUsageFlags:TVkImageUsageFlags);
 var ImageViewCreateInfo:TVkImageViewCreateInfo;
+    ImageViewUsageCreateInfo:TVkImageViewUsageCreateInfo;
 begin
 
  inherited Create;
@@ -16469,6 +16474,14 @@ begin
  ImageViewCreateInfo.subresourceRange.levelCount:=aCountMipMapLevels;
  ImageViewCreateInfo.subresourceRange.baseArrayLayer:=aBaseArrayLayer;
  ImageViewCreateInfo.subresourceRange.layerCount:=aCountArrayLayers;
+
+ if aHasUsageFlags then begin
+  FillChar(ImageViewUsageCreateInfo,SizeOf(TVkImageViewUsageCreateInfo),#0);
+  ImageViewUsageCreateInfo.sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+  ImageViewUsageCreateInfo.pNext:=nil;
+  ImageViewCreateInfo.pNext:=@ImageViewUsageCreateInfo;
+  ImageViewUsageCreateInfo.usage:=aUsageFlags;
+ end;
 
  VulkanCheckResult(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
 
