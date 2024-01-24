@@ -964,7 +964,7 @@ begin
   SkyTexture:=nil;
  end;
 
- fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedNonAlphaFormat,SkyTexture,fScene3D.SkyBoxEnvironmentMode);
+ fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,{fOptimizedNonAlphaFormat}VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,SkyTexture,fScene3D.SkyBoxEnvironmentMode);
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyCubeMap.ImageView');
 
