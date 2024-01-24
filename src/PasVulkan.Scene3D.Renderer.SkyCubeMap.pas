@@ -753,8 +753,8 @@ begin
                                                     SizeOf(TpvUInt32),
                                                     @DownsampleMipMapIndex);
 
-              ComputeCommandBuffer.CmdDispatch(Max(1,(fWidth shr (DownsampleMipMapIndex shl 2))+((1 shl 3)-1)) shr 3,
-                                               Max(1,(fHeight shr (DownsampleMipMapIndex shl 2))+((1 shl 3)-1)) shr 3,
+              ComputeCommandBuffer.CmdDispatch(Max(1,(fWidth+((1 shl (3+DownsampleMipMapIndex))-1)) shr (3+DownsampleMipMapIndex)),
+                                               Max(1,(fHeight+((1 shl (3+DownsampleMipMapIndex))-1)) shr (3+DownsampleMipMapIndex)),
                                                6);
 
               FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
