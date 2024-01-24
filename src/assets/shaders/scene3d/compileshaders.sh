@@ -111,7 +111,7 @@ compileshaderarguments=(
 
   "-V downsample_cubemap.comp -o ${tempPath}/downsample_cubemap_rgba8_comp.spv"
   "-V downsample_cubemap.comp -DUSE_RGB9E5 -o ${tempPath}/downsample_cubemap_rgb9e5_comp.spv"
-  "-V downsample_cubemap.comp -DUSE_R10G11B10F -o ${tempPath}/downsample_cubemap_r10g11b10f_comp.spv" 
+  "-V downsample_cubemap.comp -DUSE_R11G11B10F -o ${tempPath}/downsample_cubemap_r11g11b10f_comp.spv" 
   "-V downsample_cubemap.comp -DUSE_RGBA16F -o ${tempPath}/downsample_cubemap_rgba16f_comp.spv"
   "-V downsample_cubemap.comp -DUSE_RGBA32F -o ${tempPath}/downsample_cubemap_rgba32f_comp.spv"  
     

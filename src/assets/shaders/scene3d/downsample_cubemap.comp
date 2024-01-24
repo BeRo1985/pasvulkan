@@ -21,7 +21,7 @@ layout(set = 0, binding = 1, rgba32f) writeonly uniform imageCube uDestinationTe
 #define ALPHA
 layout(set = 0, binding = 0, rgba16f) readonly uniform imageCube uSourceTexture;
 layout(set = 0, binding = 1, rgba16f) writeonly uniform imageCube uDestinationTextures[];
-#elif defined(USE_R10G11B10F)
+#elif defined(USE_R11G11B10F)
 #undef ALPHA
 layout(set = 0, binding = 0, r11f_g11f_b10f) readonly uniform imageCube uSourceTexture;
 layout(set = 0, binding = 1, r11f_g11f_b10f) writeonly uniform imageCube uDestinationTextures[];
