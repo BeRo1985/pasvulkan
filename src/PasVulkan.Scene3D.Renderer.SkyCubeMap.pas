@@ -147,6 +147,7 @@ var Index,FaceIndex,MipMaps:TpvSizeInt;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     LocalLightDirection:TpvVector4;
     AdditionalImageFormat:TVkFormat;
+    FormatVariant:String;
 begin
  inherited Create;
 
@@ -154,20 +155,28 @@ begin
 
  LocalLightDirection:=TpvVector4.InlineableCreate(fLightDirection,0.0);
 
+ if AdditionalImageFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
+  AdditionalImageFormat:=VK_FORMAT_R32_UINT;
+  FormatVariant:='rgb9e5_';
+ end else begin
+  AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
+  FormatVariant:='';
+ end;
+
  if assigned(aTexture) then begin
   if aTexture.CountFaces=6 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_'+FormatVariant+'comp.spv');
    fWidth:=RoundDownToPowerOfTwo(aTexture.Width);
    fHeight:=RoundDownToPowerOfTwo(aTexture.Height);
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_equirectangularmap_'+FormatVariant+'comp.spv');
    fWidth:=RoundUpToPowerOfTwo(Min(Max(round(Max(aTexture.Width,aTexture.Height)/PI),512),8192));
    fHeight:=fWidth;
   end;
  end else begin
   case aSkyBoxEnvironmentMode of
    TpvScene3DSkyBoxEnvironmentMode.Starlight:begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_comp.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_'+FormatVariant+'comp.spv');
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
      TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
       fWidth:=4096;
@@ -182,12 +191,12 @@ begin
    else begin
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
      TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_comp.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_'+FormatVariant+'comp.spv');
       fWidth:=2048;
       fHeight:=2048;
      end;
      else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_comp.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_sky_fast_'+FormatVariant+'comp.spv');
       fWidth:=512;
       fHeight:=512;
      end;
@@ -204,12 +213,6 @@ begin
  MipMaps:=IntLog2(Max(fWidth,fHeight))+1;
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
-
- if AdditionalImageFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
-  AdditionalImageFormat:=VK_FORMAT_R32_UINT;
- end else begin
-  AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
- end;
 
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
@@ -349,7 +352,7 @@ begin
        ImageView:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
                                             fVulkanImage,
                                             TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                            aImageFormat,
+                                            TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
                                             TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                             TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
                                             TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
