@@ -17,7 +17,15 @@ layout(push_constant, std140, row_major) uniform PushConstants {
 
 layout(set = 0, binding = 0) uniform samplerCube uSourceTexture;
 
+#ifdef USE_RGB9E5
+layout(set = 0, binding = 1, r32ui) writeonly uniform uimageCube uDestinationTexture;
+#else
 layout(set = 0, binding = 1) writeonly uniform imageCube uDestinationTexture;
+#endif
+
+#ifdef USE_RGB9E5
+#include "rgb9e5.glsl"
+#endif
 
 #define COMPUTESHADER
 #include "roughness.glsl"
@@ -74,7 +82,11 @@ void main() {
           break;
         }
       }
+#ifdef USE_RGB9E5
+      imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(result.xyz)));
+#else    
       imageStore(uDestinationTexture, uvw, result);
+#endif
     }
   }
 }

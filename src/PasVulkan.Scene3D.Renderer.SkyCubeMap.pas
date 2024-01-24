@@ -146,6 +146,7 @@ var Index,FaceIndex,MipMaps:TpvSizeInt;
     ImageBlit:TVkImageBlit;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     LocalLightDirection:TpvVector4;
+    AdditionalImageFormat:TVkFormat;
 begin
  inherited Create;
 
@@ -204,6 +205,12 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
+ if AdditionalImageFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
+  AdditionalImageFormat:=VK_FORMAT_R32_UINT;
+ end else begin
+  AdditionalImageFormat:=VK_FORMAT_UNDEFINED;
+ end;
+
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      TVkImageCreateFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT),
                                      VK_IMAGE_TYPE_2D,
@@ -223,7 +230,8 @@ begin
                                      VK_SHARING_MODE_EXCLUSIVE,
                                      0,
                                      nil,
-                                     VK_IMAGE_LAYOUT_UNDEFINED
+                                     VK_IMAGE_LAYOUT_UNDEFINED,
+                                     AdditionalImageFormat
                                     );
 
  MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,

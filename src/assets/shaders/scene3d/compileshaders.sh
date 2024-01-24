@@ -214,13 +214,19 @@ compileshaderarguments=(
   
   "-V cubemap.vert -o ${tempPath}/cubemap_vert.spv"
   "-V cubemap_cubemap.comp -o ${tempPath}/cubemap_cubemap_comp.spv"
+  "-V cubemap_cubemap.comp -DUSE_RGB9E5 -o ${tempPath}/cubemap_cubemap_rgb9e5_comp.spv"
   "-V cubemap_equirectangularmap.comp -o ${tempPath}/cubemap_equirectangularmap_comp.spv"
+  "-V cubemap_equirectangularmap.comp -DUSE_RGB9E5 -o ${tempPath}/cubemap_equirectangularmap_rgb9e5_comp.spv"
   "-V cubemap_sky.comp -o ${tempPath}/cubemap_sky_comp.spv"
   "-V cubemap_sky.comp -DFAST -o ${tempPath}/cubemap_sky_fast_comp.spv"
+  "-V cubemap_sky.comp -DUSE_RGB9E5 -o ${tempPath}/cubemap_sky_rgb9e5_comp.spv"
+  "-V cubemap_sky.comp -DUSE_RGB9E5 -DFAST -o ${tempPath}/cubemap_sky_fast_rgb9e5_comp.spv"
   "-V cubemap_sky.frag -o ${tempPath}/cubemap_sky_frag.spv"
   "-V cubemap_sky.frag -DFAST -o ${tempPath}/cubemap_sky_fast_frag.spv"
   "-V cubemap_starlight.comp -o ${tempPath}/cubemap_starlight_comp.spv"
+  "-V cubemap_starlight.comp -DUSE_RGB9E5 -o ${tempPath}/cubemap_starlight_rgb9e5_comp.spv"
   "-V cubemap_filter.comp -o ${tempPath}/cubemap_filter_comp.spv"
+  "-V cubemap_filter.comp -DUSE_RGB9E5 -o ${tempPath}/cubemap_filter_rgb9e5_comp.spv"
   
   "-V passthrough.vert -o ${tempPath}/passthrough_vert.spv"
   
