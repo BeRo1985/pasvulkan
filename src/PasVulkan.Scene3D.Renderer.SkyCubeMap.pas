@@ -118,7 +118,7 @@ implementation
 { TpvScene3DRendererSkyCubeMap }
 
 constructor TpvScene3DRendererSkyCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode);
-var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex,CountMipMaps:TpvSizeInt;
+var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -157,7 +157,8 @@ var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex,CountMipMap
     DownsampleVulkanDescriptorSets:array[0..7] of TpvVulkanDescriptorSet;
     DownsampleVulkanComputePipelineLayout:TpvVulkanPipelineLayout;
     DownsampleVulkanComputePipeline:TpvVulkanComputePipeline;    
-    DownsampleMipMapIndex:TpvUInt32;
+    DownsampleMipMapIndex:TpvInt32;
+    DownsampleCountMipMaps:TpvInt32;
 begin
  inherited Create;
 
@@ -733,9 +734,9 @@ begin
 
               DownsampleMipMapIndex:=(MipMapLevelSetIndex shl 2) or 1;
 
-              CountMipMaps:=Min(4,MipMaps-TpvInt32(DownsampleMipMapIndex));
+              DownsampleCountMipMaps:=Min(4,MipMaps-TpvInt32(DownsampleMipMapIndex));
 
-              if CountMipMaps<=0 then begin
+              if DownsampleCountMipMaps<=0 then begin
                break;
               end;
 
@@ -751,7 +752,7 @@ begin
                                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
                                                     0,
                                                     SizeOf(TpvUInt32),
-                                                    @DownsampleMipMapIndex);
+                                                    @DownsampleCountMipMaps);
 
               ComputeCommandBuffer.CmdDispatch(Max(1,(fWidth+((1 shl (3+DownsampleMipMapIndex))-1)) shr (3+DownsampleMipMapIndex)),
                                                Max(1,(fHeight+((1 shl (3+DownsampleMipMapIndex))-1)) shr (3+DownsampleMipMapIndex)),
@@ -769,7 +770,7 @@ begin
               ImageMemoryBarrier.image:=fVulkanImage.Handle;
               ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
               ImageMemoryBarrier.subresourceRange.baseMipLevel:=DownsampleMipMapIndex;
-              ImageMemoryBarrier.subresourceRange.levelCount:=CountMipMaps;
+              ImageMemoryBarrier.subresourceRange.levelCount:=DownsampleCountMipMaps;
               ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
               ImageMemoryBarrier.subresourceRange.layerCount:=1;
               ComputeCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
