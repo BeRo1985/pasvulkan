@@ -592,7 +592,7 @@ begin
     end;
 
     // Generate mipmaps
-    if true then begin
+    if true{AdditionalImageFormat<>VK_FORMAT_UNDEFINED} then begin
 
      // With compute shader, 4 mipmaps at once per compute pass 
 
@@ -659,18 +659,18 @@ begin
 
            for Index:=0 to 3 do begin
             DownsampleVulkanTargetImageViews[MipMapLevelSetIndex,Index]:=TpvVulkanImageView.Create(pvApplication.VulkanDevice,
-                                                                                               fVulkanImage,
-                                                                                               TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
-                                                                                               TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
-                                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                                               TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
-                                                                                               TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                                               Min(Min(MipMapLevelSetIndex shl 2,MipMaps-1)+(Index+1),MipMaps-1),
-                                                                                               1,
-                                                                                               0,
-                                                                                               6);
+                                                                                                   fVulkanImage,
+                                                                                                   TVkImageViewType(VK_IMAGE_VIEW_TYPE_CUBE),
+                                                                                                   TVkFormat(IfThen(AdditionalImageFormat<>VK_FORMAT_UNDEFINED,TVkInt32(AdditionalImageFormat),TVkInt32(aImageFormat))),
+                                                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                                                   TVkComponentSwizzle(VK_COMPONENT_SWIZZLE_IDENTITY),
+                                                                                                   TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                                                   Min(Min(MipMapLevelSetIndex shl 2,MipMaps-1)+(Index+1),MipMaps-1),
+                                                                                                   1,
+                                                                                                   0,
+                                                                                                   6);
            end;
 
            DownsampleVulkanDescriptorSets[MipMapLevelSetIndex]:=TpvVulkanDescriptorSet.Create(DownsampleVulkanDescriptorPool,

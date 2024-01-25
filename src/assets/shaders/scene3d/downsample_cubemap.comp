@@ -49,7 +49,17 @@ shared float sharedA[8 * 8];
 #endif
 
 vec4 reduceOp(const in vec4 a, const in vec4 b){
-  return mix(a, b, 0.5);
+#ifdef USE_RGB9E5
+  return clamp(mix(a, b, 0.5), vec4(0.0), vec4(65408.0));
+#elif defined(USE_RGBA16F)
+  return clamp(mix(a, b, 0.5), vec4(0.0), vec4(65504.0));
+#elif defined(USE_RGBA32F)
+  return max(mix(a, b, 0.5), vec4(0.0));
+#elif defined(USE_R11G11B10F)
+  return clamp(mix(a, b, 0.5), vec4(0.0), vec4(65024.0));
+#else
+  return clamp(mix(a, b, 0.5), vec4(0.0), vec4(255.0)); 
+#endif
 }
 
 void main() {
@@ -79,7 +89,7 @@ void main() {
       imageLoad(uSourceTexture, ivec3((invocationPosition.xy << 1) + ivec2(1, 1), invocationPosition.z))
 #endif      
     );
-    texel = normalize(reduceOp(reduceOp(texels[0], texels[1]), reduceOp(texels[2], texels[3])));
+    texel = reduceOp(reduceOp(texels[0], texels[1]), reduceOp(texels[2], texels[3]));
   }else{
     texel = vec4(0.0);
   } 
@@ -109,25 +119,23 @@ void main() {
   destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
   
   if((localInvocationIndex & 0x09 /*0b001001*/) == 0){
-    texel = normalize(
+    texel = reduceOp(
       reduceOp(
-        reduceOp(
-          texel, 
+        texel, 
 #ifdef ALPHA
-          vec4(sharedR[localInvocationIndex + 0x01], sharedG[localInvocationIndex + 0x01], sharedB[localInvocationIndex + 0x01], sharedA[localInvocationIndex + 0x01])
+        vec4(sharedR[localInvocationIndex + 0x01], sharedG[localInvocationIndex + 0x01], sharedB[localInvocationIndex + 0x01], sharedA[localInvocationIndex + 0x01])
 #else          
-          vec4(sharedR[localInvocationIndex + 0x01], sharedG[localInvocationIndex + 0x01], sharedB[localInvocationIndex + 0x01], 1.0)
+        vec4(sharedR[localInvocationIndex + 0x01], sharedG[localInvocationIndex + 0x01], sharedB[localInvocationIndex + 0x01], 1.0)
 #endif
-        ), 
-        reduceOp(
+      ), 
+      reduceOp(
 #ifdef ALPHA
-          vec4(sharedR[localInvocationIndex + 0x08], sharedG[localInvocationIndex + 0x08], sharedB[localInvocationIndex + 0x08], sharedA[localInvocationIndex + 0x08]),
-          vec4(sharedR[localInvocationIndex + 0x09], sharedG[localInvocationIndex + 0x09], sharedB[localInvocationIndex + 0x09], sharedA[localInvocationIndex + 0x09])
+        vec4(sharedR[localInvocationIndex + 0x08], sharedG[localInvocationIndex + 0x08], sharedB[localInvocationIndex + 0x08], sharedA[localInvocationIndex + 0x08]),
+        vec4(sharedR[localInvocationIndex + 0x09], sharedG[localInvocationIndex + 0x09], sharedB[localInvocationIndex + 0x09], sharedA[localInvocationIndex + 0x09])
 #else
-          vec4(sharedR[localInvocationIndex + 0x08], sharedG[localInvocationIndex + 0x08], sharedB[localInvocationIndex + 0x08], 1.0),
-          vec4(sharedR[localInvocationIndex + 0x09], sharedG[localInvocationIndex + 0x09], sharedB[localInvocationIndex + 0x09], 1.0)
+        vec4(sharedR[localInvocationIndex + 0x08], sharedG[localInvocationIndex + 0x08], sharedB[localInvocationIndex + 0x08], 1.0),
+        vec4(sharedR[localInvocationIndex + 0x09], sharedG[localInvocationIndex + 0x09], sharedB[localInvocationIndex + 0x09], 1.0)
 #endif          
-        )
       )
     );
     if(all(lessThan(invocationPosition.xy >> 1, destinationTextureSize))){
@@ -152,25 +160,23 @@ void main() {
   destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
 
   if((localInvocationIndex & 0x1b /*0b011011*/) == 0){
-    texel = normalize(
+    texel = reduceOp(
       reduceOp(
-        reduceOp(
-          texel, 
+        texel, 
 #ifdef ALPHA
-          vec4(sharedR[localInvocationIndex + 0x02], sharedG[localInvocationIndex + 0x02], sharedB[localInvocationIndex + 0x02], sharedA[localInvocationIndex + 0x02])
+        vec4(sharedR[localInvocationIndex + 0x02], sharedG[localInvocationIndex + 0x02], sharedB[localInvocationIndex + 0x02], sharedA[localInvocationIndex + 0x02])
 #else
-          vec4(sharedR[localInvocationIndex + 0x02], sharedG[localInvocationIndex + 0x02], sharedB[localInvocationIndex + 0x02], 1.0)
+        vec4(sharedR[localInvocationIndex + 0x02], sharedG[localInvocationIndex + 0x02], sharedB[localInvocationIndex + 0x02], 1.0)
 #endif          
-        ), 
-        reduceOp(
+      ), 
+      reduceOp(
 #ifdef ALPHA
-          vec4(sharedR[localInvocationIndex + 0x10], sharedG[localInvocationIndex + 0x10], sharedB[localInvocationIndex + 0x10], sharedA[localInvocationIndex + 0x10]), 
-          vec4(sharedR[localInvocationIndex + 0x12], sharedG[localInvocationIndex + 0x12], sharedB[localInvocationIndex + 0x12], sharedA[localInvocationIndex + 0x12])
+        vec4(sharedR[localInvocationIndex + 0x10], sharedG[localInvocationIndex + 0x10], sharedB[localInvocationIndex + 0x10], sharedA[localInvocationIndex + 0x10]), 
+        vec4(sharedR[localInvocationIndex + 0x12], sharedG[localInvocationIndex + 0x12], sharedB[localInvocationIndex + 0x12], sharedA[localInvocationIndex + 0x12])
 #else
-          vec4(sharedR[localInvocationIndex + 0x10], sharedG[localInvocationIndex + 0x10], sharedB[localInvocationIndex + 0x10], 1.0),  
-          vec4(sharedR[localInvocationIndex + 0x12], sharedG[localInvocationIndex + 0x12], sharedB[localInvocationIndex + 0x12], 1.0)
+        vec4(sharedR[localInvocationIndex + 0x10], sharedG[localInvocationIndex + 0x10], sharedB[localInvocationIndex + 0x10], 1.0),  
+        vec4(sharedR[localInvocationIndex + 0x12], sharedG[localInvocationIndex + 0x12], sharedB[localInvocationIndex + 0x12], 1.0)
 #endif          
-        )
       )
     );
     if(all(lessThan(invocationPosition.xy >> 2, destinationTextureSize))){
@@ -195,25 +201,23 @@ void main() {
   destinationTextureSize = max(ivec2(1), destinationTextureSize >> 1);
 
   if((localInvocationIndex & 0x3f /*0b111111*/) == 0){
-    texel = normalize(
+    texel = reduceOp(
       reduceOp(
-        reduceOp(
-          texel, 
+        texel, 
 #ifdef ALPHA
-          vec4(sharedR[localInvocationIndex + 0x04], sharedG[localInvocationIndex + 0x04], sharedB[localInvocationIndex + 0x04], sharedA[localInvocationIndex + 0x04])  
+        vec4(sharedR[localInvocationIndex + 0x04], sharedG[localInvocationIndex + 0x04], sharedB[localInvocationIndex + 0x04], sharedA[localInvocationIndex + 0x04])  
 #else
-          vec4(sharedR[localInvocationIndex + 0x04], sharedG[localInvocationIndex + 0x04], sharedB[localInvocationIndex + 0x04], 1.0)
+        vec4(sharedR[localInvocationIndex + 0x04], sharedG[localInvocationIndex + 0x04], sharedB[localInvocationIndex + 0x04], 1.0)
 #endif          
-        ), 
-        reduceOp(
+      ), 
+      reduceOp(
 #ifdef ALPHA
-          vec4(sharedR[localInvocationIndex + 0x20], sharedG[localInvocationIndex + 0x20], sharedB[localInvocationIndex + 0x20], sharedA[localInvocationIndex + 0x20]),
-          vec4(sharedR[localInvocationIndex + 0x24], sharedG[localInvocationIndex + 0x24], sharedB[localInvocationIndex + 0x24], sharedA[localInvocationIndex + 0x24])
+        vec4(sharedR[localInvocationIndex + 0x20], sharedG[localInvocationIndex + 0x20], sharedB[localInvocationIndex + 0x20], sharedA[localInvocationIndex + 0x20]),
+        vec4(sharedR[localInvocationIndex + 0x24], sharedG[localInvocationIndex + 0x24], sharedB[localInvocationIndex + 0x24], sharedA[localInvocationIndex + 0x24])
 #else
-          vec4(sharedR[localInvocationIndex + 0x20], sharedG[localInvocationIndex + 0x20], sharedB[localInvocationIndex + 0x20], 1.0),
-          vec4(sharedR[localInvocationIndex + 0x24], sharedG[localInvocationIndex + 0x24], sharedB[localInvocationIndex + 0x24], 1.0)
+        vec4(sharedR[localInvocationIndex + 0x20], sharedG[localInvocationIndex + 0x20], sharedB[localInvocationIndex + 0x20], 1.0),
+        vec4(sharedR[localInvocationIndex + 0x24], sharedG[localInvocationIndex + 0x24], sharedB[localInvocationIndex + 0x24], 1.0)
 #endif          
-        )
       )
     );
     if(all(lessThan(invocationPosition.xy >> 3, destinationTextureSize))){
