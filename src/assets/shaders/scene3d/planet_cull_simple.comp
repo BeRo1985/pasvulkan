@@ -283,7 +283,7 @@ void main(){
       
       const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
 
-#define PLANET_SCREEN_FILL_SCALE
+#undef PLANET_SCREEN_FILL_SCALE
 #if defined(PLANET_SCREEN_FILL_SCALE)
       // Additional LOD stuff for the whole planet sphere itself
       float planetSphereScreenFillScale = 0.0;
