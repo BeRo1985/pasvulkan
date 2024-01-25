@@ -37,20 +37,40 @@ vec4 pow2(vec4 t){
   return t * t; //
 }
 
+float pow3(float t){
+  return t * t * t; //
+}
+
+vec2 pow3(vec2 t){
+  return t * t * t; //
+}
+
+vec3 pow3(vec3 t){
+  return t * t * t; //
+}
+
+vec4 pow3(vec4 t){
+  return t * t * t; //
+}
+
 float pow4(float t){
-  return t * t * t * t;  
+  t *= t;
+  return t * t; 
 }
 
 vec2 pow4(vec2 t){
-  return t * t * t * t;  
+  t *= t;
+  return t * t; 
 }
 
 vec3 pow4(vec3 t){
-  return t * t * t * t;  
+  t *= t;
+  return t * t; 
 }
 
 vec4 pow4(vec4 t){
-  return t * t * t * t;  
+  t *= t;
+  return t * t; 
 }
 
 float linearStep(float a, float b, float v) {
