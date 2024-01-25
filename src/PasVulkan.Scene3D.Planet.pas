@@ -667,6 +667,7 @@ type TpvScene3DPlanets=class;
                     ResolutionXY:TpvUInt32;
                     TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
+                    FrameIndex:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -707,7 +708,7 @@ type TpvScene3DPlanets=class;
                                           const aHeight:TpvInt32;
                                           const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
               procedure ReleaseResources;
-              procedure Draw(const aInFlightFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
@@ -5212,6 +5213,7 @@ constructor TpvScene3DPlanet.TRenderPass.Create(const aRenderer:TObject;
                                                 const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource);
 var Stream:TStream;
     Kind:TpvUTF8String;
+    ShadowKind:TpvUTF8String;
 begin
 
  inherited Create;
@@ -5251,6 +5253,18 @@ begin
    end;
    else begin
     Kind:='';
+   end;
+  end;
+
+  case TpvScene3DRenderer(fRenderer).ShadowMode of
+   TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.PCSS:begin
+    ShadowKind:='pcfpcss_';
+   end;
+   TpvScene3DRendererShadowMode.MSM:begin
+    ShadowKind:='msm_';
+   end;
+   else begin
+    ShadowKind:='';
    end;
   end;
 
@@ -5354,15 +5368,15 @@ begin
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity_'+Kind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_velocity_'+Kind+ShadowKind+'frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_'+Kind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_wireframe_'+Kind+ShadowKind+'frag.spv');
      end;
     end else begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_'+Kind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_velocity_'+Kind+ShadowKind+'frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+ShadowKind+'frag.spv');
      end;
     end;
     try
@@ -5803,7 +5817,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3DPlanet.TRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
 const Offsets:array[0..0] of TVkUInt32=(0);
 var PlanetIndex,Level:TpvSizeInt;
     Planet:TpvScene3DPlanet;
@@ -5960,6 +5974,7 @@ begin
      end else begin
       fPushConstants.Jitter:=TpvVector2.Null;
      end;
+     fPushConstants.FrameIndex:=aFrameIndex;
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 

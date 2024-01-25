@@ -47,6 +47,8 @@ layout(push_constant) uniform PushConstants {
   float tessellationFactor; // = factor / referenceMinEdgeSize, for to avoid at least one division in the shader 
   vec2 jitter;
 
+  int frameIndex; 
+
 } pushConstants;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

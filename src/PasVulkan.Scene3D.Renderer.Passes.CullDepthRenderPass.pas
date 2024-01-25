@@ -477,6 +477,7 @@ begin
   end else begin
 
    fPlanetDepthPrePass.Draw(aInFlightFrameIndex,
+                            aFrameIndex,
                             InFlightFrameState^.ViewRenderPassIndex,
                             InFlightFrameState^.FinalViewIndex,
                             InFlightFrameState^.CountFinalViews,

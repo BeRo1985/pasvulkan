@@ -162,6 +162,8 @@ void parallaxMapping(){
 
 vec3 workNormal;
 
+#define NOTEXCOORDS
+#define inFrameIndex pushConstants.frameIndex
 #include "shadows.glsl"
 
 #include "pbr.glsl"

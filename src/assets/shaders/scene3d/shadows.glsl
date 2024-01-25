@@ -243,7 +243,11 @@ float DoDPCF_PCSS(const in sampler2DArray shadowMapArray,
   float rotationAngle; 
   {
     const uint k = 1103515245u;
+#if defined(NOTEXCOORDS)
+    uvec3 v = uvec3(floatBitsToUint(inWorldSpacePosition.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(gl_FragCoord.xy)); 
+#else    
     uvec3 v = uvec3(floatBitsToUint(inTexCoord0.xy), uint(inFrameIndex)) ^ uvec3(0u, uvec2(gl_FragCoord.xy)); 
+#endif
     v = ((v >> 8u) ^ v.yzx) * k;
     v = ((v >> 8u) ^ v.yzx) * k;
     v = ((v >> 8u) ^ v.yzx) * k;
