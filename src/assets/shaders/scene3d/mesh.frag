@@ -284,8 +284,7 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 #include "roughness.glsl"
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
-
-float ambientOcclusion;
+ 
 uint flags, shadingModel;
 
 vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
@@ -529,135 +528,7 @@ vec3 evalIridescence(float outsideIOR, float eta2, float cosTheta1, float thinFi
 }
 
 ////////////////////////////
-
-vec3 diffuseOutput = vec3(0.0);
-vec3 specularOutput = vec3(0.0);
-vec3 sheenOutput = vec3(0.0);
-vec3 clearcoatOutput = vec3(0.0);
-vec3 clearcoatFresnel = vec3(0.0);
-#if defined(TRANSMISSION)
-vec3 transmissionOutput = vec3(0.0);
-#endif
-
-float albedoSheenScaling = 1.0;
-
-float albedoSheenScalingLUT(const in float NdotV, const in float sheenRoughnessFactor) {
-  return textureLod(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor), 0.0).x;  //
-}
-
-void doSingleLight(const in vec3 lightColor, 
-                   const in vec3 lightLit, 
-                   const in vec3 lightDirection, 
-                   const in vec3 normal, 
-                   const in vec3 diffuseColor, 
-                   const in vec3 F0, 
-                   const in vec3 F90, 
-                   const in vec3 viewDirection, 
-                   const in float refractiveAngle, 
-                   const in float materialTransparency,
-                   const in float alphaRoughness, 
-                   const in float materialCavity, 
-                   const in vec3 sheenColor, 
-                   const in float sheenRoughness,
-                   const in vec3 clearcoatNormal, 
-                   const in vec3 clearcoatF0,
-                   const float clearcoatRoughness, 
-                   const in float specularWeight){
-  float nDotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
-  float nDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  if((nDotL > 0.0) || (nDotV > 0.0)){
-    vec3 halfVector = normalize(viewDirection + lightDirection);
-    float nDotH = clamp(dot(normal, halfVector), 0.0, 1.0);
-    float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
-    vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-#ifdef ENABLE_ANISOTROPIC
-    anisotropyTdotL = dot(anisotropyT, lightDirection);
-    anisotropyBdotL = dot(anisotropyB, lightDirection);
-    anisotropyTdotH = dot(anisotropyT, halfVector);
-    anisotropyBdotH = dot(anisotropyB, halfVector);
-#endif
-    diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
-    specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
-    if ((flags & (1u << 7u)) != 0u) {
-      float sheenColorMax = max(max(sheenColor.x, sheenColor.y), sheenColor.z);
-      albedoSheenScaling = min(1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotV, sheenRoughness)), //
-                               1.0 - (sheenColorMax * albedoSheenScalingLUT(nDotL, sheenRoughness)));
-      sheenOutput += BRDF_specularSheen(sheenColor, sheenRoughness, nDotL, nDotV, nDotH) * lit;
-    }
-    if ((flags & (1u << 8u)) != 0u) {
-      float nDotL = clamp(dot(clearcoatNormal, lightDirection), 1e-5, 1.0);
-      float nDotV = clamp(abs(dot(clearcoatNormal, viewDirection)) + 1e-5, 0.0, 1.0);
-      float nDotH = clamp(dot(clearcoatNormal, halfVector), 0.0, 1.0);
-      vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-      clearcoatOutput += F_Schlick(clearcoatF0, vec3(1.0), vDotH) *  //
-                        D_GGX(nDotH, clearcoatRoughness) *          //
-                        V_GGX(nDotV, nDotL, clearcoatRoughness) * specularWeight * specularOcclusion * lit;
-    }
-  }
-}
-
-vec4 getEnvMap(sampler2D texEnvMap, vec3 rayDirection, float texLOD) {
-  rayDirection = normalize(rayDirection);
-  return textureLod(texEnvMap, (vec2((atan(rayDirection.z, rayDirection.x) / PI2) + 0.5, acos(rayDirection.y) / 3.1415926535897932384626433832795)), texLOD);
-}
-
-vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
-  float ao = cavity * ambientOcclusion;
-  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
-  vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
-  vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
-  vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
-  vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
-  vec3 k_S = mixedF0 + (Fr * pow(1.0 - NdotV, 5.0));
-  vec3 FssEss = (specularWeight * k_S * f_ab.x) + f_ab.y;
-  float Ems = 1.0 - (f_ab.x + f_ab.y);
-  vec3 F_avg = specularWeight * (mixedF0 + ((1.0 - mixedF0) / 21.0));
-  vec3 FmsEms = (Ems * FssEss * F_avg) / (vec3(1.0) - (F_avg * Ems));
-  vec3 k_D = (diffuseColor * ((1.0 - FssEss) + FmsEms) * ao);
-  return (FmsEms + k_D) * irradiance;
-}
-
-vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
-  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-#ifdef ENABLE_ANISOTROPIC
-  if(anisotropyActive){
-  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);  
-    normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
-  }
-#endif
-  vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  float ao = cavity * ambientOcclusion,                                                                                                   //
-      lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
-      specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
-  vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
-  return (texture(uImageBasedLightingEnvMaps[0],  //
-                  reflectionVector,               //
-                  roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
-              .xyz *                                                                     //
-          fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
-                  iridescenceFresnel,                                                    //
-                  iridescenceFactor),                                                    //
-              brdf.xxx,                                                                  //
-              brdf.yyy * clamp(max(max(F0.x, F0.y), F0.z) * 50.0, 0.0, 1.0)) *           //
-          specularWeight *                                                               //
-          specularOcclusion *                                                            //
-          1.0);
-}
-
-vec3 getIBLRadianceCharlie(vec3 normal, vec3 viewDirection, float sheenRoughness, vec3 sheenColor) {
-  float ao = cavity * ambientOcclusion;
-  float NdotV = clamp(dot(normal.xyz, viewDirection), 0.0, 1.0);
-  vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  return texture(uImageBasedLightingEnvMaps[1],  //
-                 reflectionVector,               //
-                 roughnessToMipMapLevel(sheenRoughness, envMapMaxLevelCharlie))
-             .xyz *    //
-         sheenColor *  //
-         textureLod(uImageBasedLightingBRDFTextures[1], clamp(vec2(NdotV, sheenRoughness), vec2(0.0), vec2(1.0)), 0.0).x *
-         ao;
-}
-
+ 
 #ifdef TRANSMISSION
 vec4 cubic(float v) {
   vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;

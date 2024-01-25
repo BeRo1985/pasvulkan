@@ -39,6 +39,12 @@ vec3 safeNormalize(vec3 v){
   return (length(v) > 0.0) ? normalize(v) : vec3(0.0);
 }
 
+#define safeNormalizeEx safeNormalize
+
+/*vec3 safeNormalizeEx(vec3 v){
+  return v;
+}*/
+
 void main(){
 
   const uint queuedTileIndex = uint(gl_GlobalInvocationID.y);
@@ -110,14 +116,14 @@ void main(){
         
         // Calculate the smoothed normal at point e as the average of the normals of the surrounding triangles in triangle fan order:
         vec3 normal = safeNormalize(
-          safeNormalize(cross(av.xyz - ev.xyz, bv.xyz - ev.xyz)) + // Triangle EAB
-          safeNormalize(cross(bv.xyz - ev.xyz, cv.xyz - ev.xyz)) + // Triangle EBC          
-          safeNormalize(cross(cv.xyz - ev.xyz, fv.xyz - ev.xyz)) + // Triangle EDA
-          safeNormalize(cross(fv.xyz - ev.xyz, iv.xyz - ev.xyz)) + // Triangle EFI
-          safeNormalize(cross(iv.xyz - ev.xyz, hv.xyz - ev.xyz)) + // Triangle EIH
-          safeNormalize(cross(hv.xyz - ev.xyz, gv.xyz - ev.xyz)) + // Triangle EHG
-          safeNormalize(cross(gv.xyz - ev.xyz, dv.xyz - ev.xyz)) + // Triangle EGD
-          safeNormalize(cross(dv.xyz - ev.xyz, av.xyz - ev.xyz))   // Triangle EDA
+          safeNormalizeEx(cross(av.xyz - ev.xyz, bv.xyz - ev.xyz)) + // Triangle EAB
+          safeNormalizeEx(cross(bv.xyz - ev.xyz, cv.xyz - ev.xyz)) + // Triangle EBC          
+          safeNormalizeEx(cross(cv.xyz - ev.xyz, fv.xyz - ev.xyz)) + // Triangle EDA
+          safeNormalizeEx(cross(fv.xyz - ev.xyz, iv.xyz - ev.xyz)) + // Triangle EFI
+          safeNormalizeEx(cross(iv.xyz - ev.xyz, hv.xyz - ev.xyz)) + // Triangle EIH
+          safeNormalizeEx(cross(hv.xyz - ev.xyz, gv.xyz - ev.xyz)) + // Triangle EHG
+          safeNormalizeEx(cross(gv.xyz - ev.xyz, dv.xyz - ev.xyz)) + // Triangle EGD
+          safeNormalizeEx(cross(dv.xyz - ev.xyz, av.xyz - ev.xyz))   // Triangle EDA
         );          
 
         triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = uvec4(floatBitsToUint(ev.xyz), packSnorm2x16(octSignedEncode(normal))); 

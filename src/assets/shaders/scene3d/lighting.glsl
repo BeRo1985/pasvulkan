@@ -113,9 +113,9 @@
               }
 #endif
             }
-#endif
+#endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
             float lightAttenuationEx = lightAttenuation;
-#endif
+#endif // SHADOWS
             switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 1u: {  // Directional
@@ -140,7 +140,7 @@
                 lightDirection = normalizedLightVector;
                 break;
               }
-#endif
+#endif // !defined(REFLECTIVESHADOWMAPOUTPUT)
               case 4u: {  // Primary directional
                 imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;
                 break;
@@ -240,7 +240,7 @@
                 }
                 transmissionOutput += transmittedLight;
               }
-#endif
+#endif // TRANSMISSION
             }
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
           }

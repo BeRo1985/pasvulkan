@@ -66,6 +66,7 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 #include "tangentspacebasis.glsl" 
 
 float envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
+float envMapMaxLevelCharlie = 0.0;//max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
 
 #include "roughness.glsl"
 
@@ -158,84 +159,6 @@ void parallaxMapping(){
 }
 
 #include "pbr.glsl"
- 
-vec3 getIBLRadianceLambertian(const in vec3 normal, const in vec3 viewDirection, const in float roughness, const in vec3 diffuseColor, const in vec3 F0, const in float specularWeight) {
-  float ao = cavity;
-  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
-  vec2 f_ab = textureLod(uImageBasedLightingBRDFTextures[0], brdfSamplePoint, 0.0).xy;
-  vec3 irradiance = textureLod(uImageBasedLightingEnvMaps[2], normal.xyz, 0.0).xyz;
-  vec3 mixedF0 = mix(F0, vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor);
-  vec3 Fr = max(vec3(1.0 - roughness), mixedF0) - mixedF0;
-  vec3 k_S = mixedF0 + (Fr * pow(1.0 - NdotV, 5.0));
-  vec3 FssEss = (specularWeight * k_S * f_ab.x) + f_ab.y;
-  float Ems = 1.0 - (f_ab.x + f_ab.y);
-  vec3 F_avg = specularWeight * (mixedF0 + ((1.0 - mixedF0) / 21.0));
-  vec3 FmsEms = (Ems * FssEss * F_avg) / (vec3(1.0) - (F_avg * Ems));
-  vec3 k_D = (diffuseColor * ((1.0 - FssEss) + FmsEms) * ao);
-  return (FmsEms + k_D) * irradiance;
-}
-
-vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F0, const in float specularWeight, const in vec3 viewDirection, const in float litIntensity, const in vec3 imageLightBasedLightDirection) {
-  float NdotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-#ifdef ENABLE_ANISOTROPIC
-  if(anisotropyActive){
-  //float tangentRoughness = mix(roughness, 1.0, anisotropyStrength * anisotropyStrength);  
-    normal = normalize(mix(cross(cross(anisotropyDirection, viewDirection), anisotropyDirection), normal, pow4(1.0 - (anisotropyStrength * (1.0 - roughness)))));
-  }
-#endif
-  vec3 reflectionVector = normalize(reflect(-viewDirection, normal));
-  float ao = cavity,                                                                                                   //
-      lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
-      specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
-  vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
-  return (texture(uImageBasedLightingEnvMaps[0],  //
-                  reflectionVector,               //
-                  roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
-              .xyz *                                                                     //
-          fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
-                  iridescenceFresnel,                                                    //
-                  iridescenceFactor),                                                    //
-              brdf.xxx,                                                                  //
-              brdf.yyy * clamp(max(max(F0.x, F0.y), F0.z) * 50.0, 0.0, 1.0)) *           //
-          specularWeight *                                                               //
-          specularOcclusion *                                                            //
-          1.0);
-} 
-
-vec3 diffuseOutput = vec3(0.0);
-vec3 specularOutput = vec3(0.0);
-
-void doSingleLight(const in vec3 lightColor, 
-                   const in vec3 lightLit, 
-                   const in vec3 lightDirection, 
-                   const in vec3 normal, 
-                   const in vec3 diffuseColor, 
-                   const in vec3 F0, 
-                   const in vec3 F90, 
-                   const in vec3 viewDirection, 
-                   const in float refractiveAngle, 
-                   const in float materialTransparency,
-                   const in float alphaRoughness, 
-                   const in float materialCavity, 
-                   const in vec3 sheenColor, 
-                   const in float sheenRoughness,
-                   const in vec3 clearcoatNormal, 
-                   const in vec3 clearcoatF0,
-                   const float clearcoatRoughness, 
-                   const in float specularWeight){
-  float nDotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
-  float nDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
-  if((nDotL > 0.0) || (nDotV > 0.0)){
-    vec3 halfVector = normalize(viewDirection + lightDirection);
-    float nDotH = clamp(dot(normal, halfVector), 0.0, 1.0);
-    float vDotH = clamp(dot(viewDirection, halfVector), 0.0, 1.0);
-    vec3 lit = vec3((materialCavity * nDotL * lightColor) * lightLit);
-    diffuseOutput += BRDF_lambertian(F0, F90, diffuseColor, specularWeight, vDotH) * lit;
-    specularOutput += BRDF_specularGGX(F0, F90, alphaRoughness, specularWeight, vDotH, nDotL, nDotV, nDotH) * specularOcclusion * lit;
-  }
-}
-
 
 void main(){
 
