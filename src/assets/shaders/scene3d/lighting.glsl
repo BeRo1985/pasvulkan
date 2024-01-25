@@ -86,24 +86,29 @@
                     }
                   }
 #endif
+                  float shadow = 1.0;
                   for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
+                    float cascadedShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
+                    shadow = min(shadow, cascadedShadow);
+                  }
+/*                for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
                     vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
                     if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
-                      float shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
+                      float cascadedShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
                       int nextCascadedShadowMapIndex = cascadedShadowMapIndex + 1;
                       if (nextCascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
                         vec2 nextShadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[nextCascadedShadowMapIndex].xy;
                         if ((viewSpaceDepth >= nextShadowMapSplitDepth.x) && (viewSpaceDepth <= nextShadowMapSplitDepth.y)) {
                           float splitFade = smoothstep(nextShadowMapSplitDepth.x, shadowMapSplitDepth.y, viewSpaceDepth);
                           if (splitFade > 0.0) {
-                            shadow = mix(shadow, doCascadedShadowMapShadow(nextCascadedShadowMapIndex, -light.directionZFar.xyz), splitFade);
+                            cascadedShadow = mix(cascadedShadow, doCascadedShadowMapShadow(nextCascadedShadowMapIndex, -light.directionZFar.xyz), splitFade);
                           }
                         }
                       }
-                      lightAttenuation *= shadow;
-                      break;
+                      shadow = min(shadow, cascadedShadow);
                     }
-                  }
+                  }*/
+                  lightAttenuation *= shadow;
                   break;
                 }
               }
