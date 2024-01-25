@@ -13,6 +13,7 @@
 #endif
 
 #define LIGHTS 
+#define SHADOWS
 
 layout(location = 0) in InBlock {
   vec3 position;
@@ -33,6 +34,7 @@ layout(location = 0) out vec4 outFragColor;
 layout(location = 1) out vec2 outVelocity;
 #endif
 
+#define inViewSpacePosition inBlock.viewSpacePosition
 #define inWorldSpacePosition inBlock.worldSpacePosition
 
 // Global descriptor set
@@ -44,7 +46,7 @@ layout(location = 1) out vec2 outVelocity;
 // Pass descriptor set
 
 #include "mesh_rendering_pass_descriptorset.glsl"
-
+  
 layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
   vec4 dominantLightDirection;
   vec4 dominantLightColor;
@@ -58,6 +60,8 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 #include "planet_renderpass.glsl"
 
 #define FRAGMENT_SHADER
+
+#include "math.glsl"
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
@@ -156,6 +160,10 @@ void parallaxMapping(){
 
 }
 
+vec3 workNormal;
+
+#include "shadows.glsl"
+
 #include "pbr.glsl"
 
 void main(){
@@ -202,7 +210,7 @@ void main(){
     occlusionRoughnessMetallic *= factor;
   }
 
-  vec3 workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
+  workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
  
   cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     

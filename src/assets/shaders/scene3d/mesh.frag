@@ -2,8 +2,6 @@
 
 #define MESH_FRAGMENT_SHADER
 
-#define NUM_SHADOW_CASCADES 4
-
 #define CAN_HAVE_EXTENDED_PBR_MATERIAL
 
 #if defined(VOXELIZATION)
@@ -237,6 +235,7 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 #endif
 
 #if !(defined(DEPTHONLY) || defined(VOXELIZATION))
+
 #include "roughness.glsl"
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
@@ -564,7 +563,9 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 #endif
 
 #include "shadows.glsl"
- 
+
+#endif // !defined(DEPTHONLY) || defined(VOXELIZATION) 
+
 #ifdef NOBUFFERREFERENCE
 #define material materials[inMaterialID]
 //Material material = materials[inMaterialID];
@@ -1075,7 +1076,7 @@ void main() {
     #if defined(MBOIT) && defined(MBOITPASS1)    
       alpha = 0.0;    
     #else
-      finalColor = vec4(alpha = 0.0);     
+      finalColor = vec4(alpha = 0.0);      
     #endif
   #else 
     #if defined(NODISCARD)  

@@ -1,6 +1,8 @@
 #ifndef MESH_RENDERING_PASS_DESCRIPTORSET_GLSL
 #define MESH_RENDERING_PASS_DESCRIPTORSET_GLSL
 
+#define NUM_SHADOW_CASCADES 4
+
 struct View {
   mat4 viewMatrix;
   mat4 projectionMatrix;

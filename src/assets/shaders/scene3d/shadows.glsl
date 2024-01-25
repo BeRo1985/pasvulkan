@@ -462,7 +462,6 @@ float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in ve
 }
 
 #endif
-#endif 
 #endif // SHADOWS
 
 #endif // SHADOWS_GLSL
