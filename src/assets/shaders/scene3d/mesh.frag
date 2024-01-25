@@ -4,6 +4,8 @@
 
 #define NUM_SHADOW_CASCADES 4
 
+#define CAN_HAVE_EXTENDED_PBR_MATERIAL
+
 #if defined(VOXELIZATION)
   #undef LIGHTS
   #undef SHADOWS
@@ -245,54 +247,8 @@ layout (set = 1, binding = 8, std430) readonly buffer FrustumClusterGridData {
 
 vec3 workTangent, workBitangent, workNormal;
 
-float sq(float t){
-  return t * t; //
-}
-
-vec2 sq(vec2 t){
-  return t * t; //
-}
-
-vec3 sq(vec3 t){
-  return t * t; //
-}
-
-vec4 sq(vec4 t){
-  return t * t; //
-}
-
-float pow2(float t){
-  return t * t; //
-}
-
-vec2 pow2(vec2 t){
-  return t * t; //
-}
-
-vec3 pow2(vec3 t){
-  return t * t; //
-}
-
-vec4 pow2(vec4 t){
-  return t * t; //
-}
-
-float pow4(float t){
-  return t * t * t * t;  
-}
-
-vec2 pow4(vec2 t){
-  return t * t * t * t;  
-}
-
-vec3 pow4(vec3 t){
-  return t * t * t * t;  
-}
-
-vec4 pow4(vec4 t){
-  return t * t * t * t;  
-}
-
+#include "math.glsl" 
+ 
 #if 0
 vec3 convertLinearRGBToSRGB(vec3 c) {
   return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), c * vec3(12.92), lessThan(c, vec3(3.1308e-3)));  //
@@ -329,11 +285,7 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
 
 float envMapMaxLevelGGX, envMapMaxLevelCharlie;
 
-const float PI = 3.14159265358979323846,     //
-    PI2 = 6.283185307179586476925286766559,  //
-    OneOverPI = 1.0 / PI;
-
-float cavity, ambientOcclusion, specularOcclusion;
+float ambientOcclusion;
 uint flags, shadingModel;
 
 vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
@@ -430,29 +382,6 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
 
 }
 
-vec3 iridescenceFresnel = vec3(0.0);
-vec3 iridescenceF0 = vec3(0.0);
-float iridescenceFactor = 0.0;
-float iridescenceIor = 1.3;
-float iridescenceThickness = 400.0;
-
-#define ENABLE_ANISOTROPIC
-#ifdef ENABLE_ANISOTROPIC
-bool anisotropyActive;
-vec3 anisotropyDirection;
-vec3 anisotropyT;
-vec3 anisotropyB;
-float anisotropyStrength;
-float alphaRoughnessAnisotropyT;
-float alphaRoughnessAnisotropyB;
-float anisotropyTdotV;
-float anisotropyBdotV;
-float anisotropyTdotL;
-float anisotropyBdotL;
-float anisotropyTdotH;
-float anisotropyBdotH;
-#endif
-
 #if defined(BLEND) || defined(LOOPOIT) || defined(LOCKOIT) || defined(MBOIT) || defined(WBOIT) || defined(DFAOIT)
   #define TRANSMISSION
 #endif
@@ -465,135 +394,8 @@ vec3 volumeAttenuationColor = vec3(1.0);
 float volumeAttenuationDistance = 1.0 / 0.0; // +INF
 #endif
 
-float applyIorToRoughness(float roughness, float ior) {
-  // Scale roughness with IOR so that an IOR of 1.0 results in no microfacet refraction and an IOR of 1.5 results in the default amount of microfacet refraction.
-  return roughness * clamp(fma(ior, 2.0, -2.0), 0.0, 1.0);
-}
-
-vec3 approximateAnalyticBRDF(vec3 specularColor, float NoV, float roughness) {
-  const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
-  const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
-  vec4 r = fma(c0, vec4(roughness), c1);
-  vec2 AB = fma(vec2(-1.04, 1.04), vec2((min(r.x * r.x, exp2(-9.28 * NoV)) * r.x) + r.y), r.zw);
-  return fma(specularColor, AB.xxx, AB.yyy);
-}
-
-vec3 F_Schlick(vec3 f0, vec3 f90, float VdotH) {
-  return mix(f0, f90, pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0));  //
-}
-
-float F_Schlick(float f0, float f90, float VdotH) {
-  float x = clamp(1.0 - VdotH, 0.0, 1.0);
-  float x2 = x * x;
-  return mix(f0, f90, x * x2 * x2);  
-}
-
-float F_Schlick(float f0, float VdotH) {
-  return F_Schlick(f0, 1.0, VdotH);
-}
-
-vec3 F_Schlick(vec3 f0, float VdotH) {
-  return F_Schlick(f0, vec3(1.0), VdotH);
-}
-
-vec3 Schlick_to_F0(vec3 f, vec3 f90, float VdotH) {
-  float x = clamp(1.0 - VdotH, 0.0, 1.0);
-  float x2 = x * x;
-  float x5 = clamp(x * x2 * x2, 0.0, 0.9999);
-
-  return (f - f90 * x5) / (1.0 - x5);
-}
-
-float Schlick_to_F0(float f, float f90, float VdotH) {
-  float x = clamp(1.0 - VdotH, 0.0, 1.0);
-  float x2 = x * x;
-  float x5 = clamp(x * x2 * x2, 0.0, 0.9999);
-
-  return (f - f90 * x5) / (1.0 - x5);
-}
-
-vec3 Schlick_to_F0(vec3 f, float VdotH) { return Schlick_to_F0(f, vec3(1.0), VdotH); }
-
-float Schlick_to_F0(float f, float VdotH) { return Schlick_to_F0(f, 1.0, VdotH); }
-
-float V_GGX(float NdotL, float NdotV, float alphaRoughness) {
-#ifdef ENABLE_ANISOTROPIC
-  float GGX;
-  if (anisotropyActive) {
-    GGX = (NdotL * length(vec3(alphaRoughnessAnisotropyT * anisotropyTdotV, alphaRoughnessAnisotropyB * anisotropyBdotV, NdotV))) + //
-          (NdotV * length(vec3(alphaRoughnessAnisotropyT * anisotropyTdotL, alphaRoughnessAnisotropyB * anisotropyBdotL, NdotL)));
-  }else{
-    float alphaRoughnessSq = alphaRoughness * alphaRoughness;
-    GGX = (NdotL * sqrt(((NdotV * NdotV) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq)) +  //
-          (NdotV * sqrt(((NdotL * NdotL) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq));
-  }
-  return (GGX > 0.0) ? clamp(0.5 / GGX, 0.0, 1.0) : 0.0;
-#else
-  float alphaRoughnessSq = alphaRoughness * alphaRoughness;
-  float GGX = (NdotL * sqrt(((NdotV * NdotV) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq)) +  //
-              (NdotV * sqrt(((NdotL * NdotL) * (1.0 - alphaRoughnessSq)) + alphaRoughnessSq));
-  return (GGX > 0.0) ? (0.5 / GGX) : 0.0;
-#endif  
-}
-
-float D_GGX(float NdotH, float alphaRoughness) {
-#ifdef ENABLE_ANISOTROPIC
-  if (anisotropyActive) {
-    float a2 = alphaRoughnessAnisotropyT * alphaRoughnessAnisotropyB;
-    vec3 f = vec3(alphaRoughnessAnisotropyB * anisotropyTdotH, alphaRoughnessAnisotropyT * anisotropyBdotH, a2 * NdotH);
-    return (a2 * pow2(a2 / dot(f, f))) / PI;  
-  }else{
-    float alphaRoughnessSq = alphaRoughness * alphaRoughness;
-    float f = ((NdotH * NdotH) * (alphaRoughnessSq - 1.0)) + 1.0;
-    return alphaRoughnessSq / (PI * (f * f));
-  }
-#else
-  float alphaRoughnessSq = alphaRoughness * alphaRoughness;
-  float f = ((NdotH * NdotH) * (alphaRoughnessSq - 1.0)) + 1.0;
-  return alphaRoughnessSq / (PI * (f * f));
-#endif
-}
-
-float lambdaSheenNumericHelper(float x, float alphaG) {
-  float oneMinusAlphaSq = (1.0 - alphaG) * (1.0 - alphaG);
-  return ((mix(21.5473, 25.3245, oneMinusAlphaSq) /          //
-           (1.0 + (mix(3.82987, 3.32435, oneMinusAlphaSq) *  //
-                   pow(x, mix(0.19823, 0.16801, oneMinusAlphaSq))))) +
-          (mix(-1.97760, -1.27393, oneMinusAlphaSq) * x)) +  //
-         mix(-4.32054, -4.85967, oneMinusAlphaSq);
-}
-
-float lambdaSheen(float cosTheta, float alphaG) {
-  return (abs(cosTheta) < 0.5) ?  //
-             exp(lambdaSheenNumericHelper(cosTheta, alphaG))
-                               :  //
-             exp((2.0 * lambdaSheenNumericHelper(0.5, alphaG)) - lambdaSheenNumericHelper(1.0 - cosTheta, alphaG));
-}
-
-float V_Sheen(float NdotL, float NdotV, float sheenRoughness) {
-  sheenRoughness = max(sheenRoughness, 0.000001);
-  float alphaG = sheenRoughness * sheenRoughness;
-  return clamp(1.0 / (((1.0 + lambdaSheen(NdotV, alphaG)) + lambdaSheen(NdotL, alphaG)) * (4.0 * NdotV * NdotL)), 0.0, 1.0);
-}
-
-float D_Charlie(float sheenRoughness, float NdotH) {
-  sheenRoughness = max(sheenRoughness, 0.000001);
-  float invR = 1.0 / (sheenRoughness * sheenRoughness);
-  return ((2.0 + invR) * pow(1.0 - (NdotH * NdotH), invR * 0.5)) / (2.0 * PI);
-}
-
-vec3 BRDF_lambertian(vec3 f0, vec3 f90, vec3 diffuseColor, float specularWeight, float VdotH) {
-  return (1.0 - (specularWeight * mix(F_Schlick(f0, f90, VdotH), vec3(max(max(iridescenceF0.x, iridescenceF0.y), iridescenceF0.z)), iridescenceFactor))) * (diffuseColor * OneOverPI);  //
-}
-
-vec3 BRDF_specularGGX(vec3 f0, vec3 f90, float alphaRoughness, float specularWeight, float VdotH, float NdotL, float NdotV, float NdotH) {
-  return specularWeight * mix(F_Schlick(f0, f90, VdotH), iridescenceFresnel, iridescenceFactor) * V_GGX(NdotL, NdotV, alphaRoughness) * D_GGX(NdotH, alphaRoughness);  //
-}
-
-vec3 BRDF_specularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float NdotV, float NdotH) {
-  return sheenColor * D_Charlie(sheenRoughness, NdotH) * V_Sheen(NdotL, NdotV, sheenRoughness);  //
-}
-
+#include "pbr.glsl"
+ 
 /////////////////////////////
 
 vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness, vec3 f0, vec3 f90, vec3 baseColor, float ior) {
@@ -743,11 +545,24 @@ float albedoSheenScalingLUT(const in float NdotV, const in float sheenRoughnessF
   return textureLod(uImageBasedLightingBRDFTextures[2], vec2(NdotV, sheenRoughnessFactor), 0.0).x;  //
 }
 
-float getSpecularOcclusion(const in float NdotV, const in float ao, const in float roughness){
-  return clamp((pow(NdotV + ao, /*roughness * roughness*/exp2((-16.0 * roughness) - 1.0)) - 1.0) + ao, 0.0, 1.0); 
-} 
-
-void doSingleLight(const in vec3 lightColor, const in vec3 lightLit, const in vec3 lightDirection, const in vec3 normal, const in vec3 diffuseColor, const in vec3 F0, const in vec3 F90, const in vec3 viewDirection, const in float refractiveAngle, const in float materialTransparency, const in float alphaRoughness, const in float materialCavity, const in vec3 sheenColor, const in float sheenRoughness, const in vec3 clearcoatNormal, const in vec3 clearcoatF0, const float clearcoatRoughness, const in float specularWeight) {
+void doSingleLight(const in vec3 lightColor, 
+                   const in vec3 lightLit, 
+                   const in vec3 lightDirection, 
+                   const in vec3 normal, 
+                   const in vec3 diffuseColor, 
+                   const in vec3 F0, 
+                   const in vec3 F90, 
+                   const in vec3 viewDirection, 
+                   const in float refractiveAngle, 
+                   const in float materialTransparency,
+                   const in float alphaRoughness, 
+                   const in float materialCavity, 
+                   const in vec3 sheenColor, 
+                   const in float sheenRoughness,
+                   const in vec3 clearcoatNormal, 
+                   const in vec3 clearcoatF0,
+                   const float clearcoatRoughness, 
+                   const in float specularWeight){
   float nDotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
   float nDotV = clamp(dot(normal, viewDirection), 0.0, 1.0);
   if((nDotL > 0.0) || (nDotV > 0.0)){
@@ -1757,297 +1572,10 @@ void main() {
       }
 #endif
 
-#ifdef LIGHTS
-#if defined(REFLECTIVESHADOWMAPOUTPUT)
-      if(lights[0].metaData.x == 4u){ // Only the first light is supported for RSMs, and only when it is the primary directional light 
-        for(int lightIndex = 0; lightIndex < 1; lightIndex++){
-          {
-            Light light = lights[lightIndex];
-#elif defined(LIGHTCLUSTERS)
-      // Light cluster grid
-      uvec3 clusterXYZ = uvec3(uvec2(uvec2(gl_FragCoord.xy) / uFrustumClusterGridGlobals.tileSizeZNearZFar.xy), 
-                               uint(clamp(fma(log2(-inViewSpacePosition.z), uFrustumClusterGridGlobals.scaleBiasMax.x, uFrustumClusterGridGlobals.scaleBiasMax.y), 0.0, uFrustumClusterGridGlobals.scaleBiasMax.z)));
-      uint clusterIndex = clamp((((clusterXYZ.z * uFrustumClusterGridGlobals.clusterSize.y) + clusterXYZ.y) * uFrustumClusterGridGlobals.clusterSize.x) + clusterXYZ.x, 0u, uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z) +
-                          (uint(gl_ViewIndex + uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.w) * uFrustumClusterGridGlobals.countLightsViewIndexSizeOffsetedViewIndex.z);
-      uvec2 clusterData = frustumClusterGridData[clusterIndex].xy; // x = index, y = count and ignore decal data for now  
-      for(uint clusterLightIndex = clusterData.x, clusterCountLights = clusterData.y; clusterCountLights > 0u; clusterLightIndex++, clusterCountLights--){
-        {
-          {
-            Light light = lights[frustumClusterGridIndexList[clusterLightIndex]];
-#else
-      // Light BVH
-      uint lightTreeNodeIndex = 0;
-      uint lightTreeNodeCount = lightTreeNodes[0].aabbMinSkipCount.w;
-      while (lightTreeNodeIndex < lightTreeNodeCount) {
-        LightTreeNode lightTreeNode = lightTreeNodes[lightTreeNodeIndex];
-        vec3 aabbMin = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMinSkipCount.xyz)));
-        vec3 aabbMax = vec3(uintBitsToFloat(uvec3(lightTreeNode.aabbMaxUserData.xyz)));
-        if (all(greaterThanEqual(inWorldSpacePosition.xyz, aabbMin)) && all(lessThanEqual(inWorldSpacePosition.xyz, aabbMax))) {
-          if (lightTreeNode.aabbMaxUserData.w != 0xffffffffu) {
-            Light light = lights[lightTreeNode.aabbMaxUserData.w];
-#endif
-            float lightAttenuation = 1.0;
-            vec3 lightDirection;
-            vec3 lightPosition = light.positionRange.xyz; 
-            vec3 lightVector = lightPosition - inWorldSpacePosition.xyz;
-            vec3 normalizedLightVector = normalize(lightVector);
-#ifdef SHADOWS
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
-            if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
-              switch (light.metaData.x) {
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
-#if 0
-                case 1u: { // Directional 
-                  // imageLightBasedLightDirection = light.directionZFar.xyz;
-                  // fall-through
-                }
-                case 3u: {  // Spot
-                  vec4 shadowNDC = light.shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);                  
-                  shadowNDC /= shadowNDC.w;
-                  if (all(greaterThanEqual(shadowNDC, vec4(-1.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
-                    shadowNDC.xyz = fma(shadowNDC.xyz, vec3(0.5), vec3(0.5));
-                    vec4 moments = (textureLod(uNormalShadowMapArrayTexture, vec3(shadowNDC.xy, float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-                    lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, 5e-3, 1e-2), 0.0);
-                  }
-                  break;
-                }
-                case 2u: {  // Point
-                  float znear = 1e-2, zfar = max(1.0, light.directionZFar.w);
-                  vec3 vector = light.positionRange.xyz - inWorldSpacePosition;
-                  vec4 moments = (textureLod(uCubeMapShadowMapArrayTexture, vec4(vec3(normalize(vector)), float(int(light.metaData.y))), 0.0) + vec2(-0.035955884801, 0.0).xyyy) * mat4(0.2227744146, 0.0771972861, 0.7926986636, 0.0319417555, 0.1549679261, 0.1394629426, 0.7963415838, -0.172282317, 0.1451988946, 0.2120202157, 0.7258694464, -0.2758014811, 0.163127443, 0.2591432266, 0.6539092497, -0.3376131734);
-                  lightAttenuation *= reduceLightBleeding(getMSMShadowIntensity(moments, clamp((length(vector) - znear) / (zfar - znear), 0.0, 1.0), 5e-3, 1e-2), 0.0);
-                  break;
-                }
-#endif
-#endif
-                case 4u: {  // Primary directional
-                  imageLightBasedLightDirection = light.directionZFar.xyz;
-                  litIntensity = lightAttenuation;
-                  float viewSpaceDepth = -inViewSpacePosition.z;
-#ifdef UseReceiverPlaneDepthBias
-                  // Outside of doCascadedShadowMapShadow as an own loop, for the reason, that the partial derivative based
-                  // computeReceiverPlaneDepthBias function can work correctly then, when all cascaded shadow map slice
-                  // position are already known in advance, and always at any time and at any real current cascaded shadow 
-                  // map slice. Because otherwise one can see dFdx/dFdy caused artefacts on cascaded shadow map border
-                  // transitions.  
-                  {
-                    const vec3 lightDirection = -light.directionZFar.xyz;
-                    for(int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++){
-                      vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
-                      vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
-                      shadowPosition = fma(shadowPosition / shadowPosition.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
-                      cascadedShadowMapPositions[cascadedShadowMapIndex] = shadowPosition;
-                    }
-                  }
-#endif
-                  for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
-                    vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
-                    if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
-                      float shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
-                      int nextCascadedShadowMapIndex = cascadedShadowMapIndex + 1;
-                      if (nextCascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
-                        vec2 nextShadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[nextCascadedShadowMapIndex].xy;
-                        if ((viewSpaceDepth >= nextShadowMapSplitDepth.x) && (viewSpaceDepth <= nextShadowMapSplitDepth.y)) {
-                          float splitFade = smoothstep(nextShadowMapSplitDepth.x, shadowMapSplitDepth.y, viewSpaceDepth);
-                          if (splitFade > 0.0) {
-                            shadow = mix(shadow, doCascadedShadowMapShadow(nextCascadedShadowMapIndex, -light.directionZFar.xyz), splitFade);
-                          }
-                        }
-                      }
-                      lightAttenuation *= shadow;
-                      break;
-                    }
-                  }
-                  break;
-                }
-              }
-#if 0              
-              if (lightIndex == 0) {
-                litIntensity = lightAttenuation;
-              }
-#endif
-            }
-#endif
-            float lightAttenuationEx = lightAttenuation;
-#endif
-            switch (light.metaData.x) {
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
-              case 1u: {  // Directional
-                lightDirection = -light.directionZFar.xyz;
-                break;
-              }
-              case 2u: {  // Point
-                lightDirection = normalizedLightVector;
-                break;
-              }
-              case 3u: {  // Spot
-#if 1
-                float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
-#else
-                // Just for as reference
-                float innerConeCosinus = uintBitsToFloat(light.metaData.z);
-                float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
-                float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
-#endif
-                lightAttenuation *= angularAttenuation * angularAttenuation;
-                lightDirection = normalizedLightVector;
-                break;
-              }
-#endif
-              case 4u: {  // Primary directional
-                imageLightBasedLightDirection = lightDirection = -light.directionZFar.xyz;
-                break;
-              }
-              default: {
-                continue;
-              }
-            }
-#if !defined(REFLECTIVESHADOWMAPOUTPUT)
-            switch (light.metaData.x) {
-              case 2u:    // Point
-              case 3u: {  // Spot
-                if (light.positionRange.w >= 0.0) {
-                  float currentDistance = length(lightVector);
-                  if (currentDistance > 0.0) {
-                    lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-                    if (light.positionRange.w > 0.0) {
-                      float distanceByRange = currentDistance / light.positionRange.w;
-                      lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
-                    }
-                  }
-                }
-                break;
-              }
-            }
-#endif
-            if((lightAttenuation > 0.0) || ((flags & ((1u << 7u) | (1u << 8u))) != 0u)){
-#if defined(REFLECTIVESHADOWMAPOUTPUT)
-              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
-#else
-              doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
-                            vec3(lightAttenuation),                             //
-                            lightDirection,                                     //
-                            normal.xyz,                                         //
-                            diffuseColorAlpha.xyz,                              //
-                            F0,                                                 //
-                            F90,                                                //
-                            viewDirection,                                      //
-                            refractiveAngle,                                    //
-                            transparency,                                       //
-                            alphaRoughness,                                     //
-                            cavity,                                             //
-                            sheenColor,                                         //
-                            sheenRoughness,                                     //
-                            clearcoatNormal,                                    //
-                            clearcoatF0,                                        //
-                            clearcoatRoughness,                                 //
-                            specularWeight);                                    //
-#endif
-#ifdef TRANSMISSION
-              if ((flags & (1u << 11u)) != 0u) {
-                // If the light ray travels through the geometry, use the point it exits the geometry again.
-                // That will change the angle to the light source, if the material refracts the light ray.
-                vec3 transmissionRay = getVolumeTransmissionRay(normal.xyz, viewDirection, volumeThickness, ior);
-                vec3 pointToLight = ((light.metaData.x == 0) ? lightDirection : lightVector) - transmissionRay;
-                vec3 normalizedLightVector = normalize(pointToLight);
-                float lightAttenuation = lightAttenuationEx;
-                switch (light.metaData.x) {
-                  case 3u: {  // Spot
-    #if 1
-                    float angularAttenuation = clamp(fma(dot(normalize(light.directionZFar.xyz), -normalizedLightVector), uintBitsToFloat(light.metaData.z), uintBitsToFloat(light.metaData.w)), 0.0, 1.0);
-    #else
-                    // Just for as reference
-                    float innerConeCosinus = uintBitsToFloat(light.metaData.z);
-                    float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                    float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
-                    float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
-    #endif
-                    lightAttenuation *= angularAttenuation * angularAttenuation;
-                    lightDirection = normalizedLightVector;
-                    break;
-                  }
-                }
-                switch (light.metaData.x) {
-                  case 2u:    // Point
-                  case 3u: {  // Spot
-                    if (light.positionRange.w >= 0.0) {
-                      float currentDistance = length(pointToLight);
-                      if (currentDistance > 0.0) {
-                        lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-                        if (light.positionRange.w > 0.0) {
-                          float distanceByRange = currentDistance / light.positionRange.w;
-                          lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
-                        }
-                      }
-                    }
-                    break;
-                  }
-                }
-                vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, normalizedLightVector, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, ior);
-                if ((flags & (1u << 12u)) != 0u) {
-                  transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
-                }
-                transmissionOutput += transmittedLight;
-              }
-#endif
-            }
-#if defined(REFLECTIVESHADOWMAPOUTPUT)
-          }
-        }
-      }
-#elif defined(LIGHTCLUSTERS)
-          }
-        }
-      }
-#else
-          }
-          lightTreeNodeIndex++;
-        } else {
-          lightTreeNodeIndex += max(1u, lightTreeNode.aabbMinSkipCount.w);
-        }
-      }
-#endif
-/*    if (lightTreeNodeIndex == 0u) {
-        doSingleLight(vec3(1.7, 1.15, 0.70),              //
-                      vec3(1.0),                          //
-                      normalize(-vec3(0.5, -1.0, -1.0)),  //
-                      normal.xyz,                         //
-                      diffuseColorAlpha.xyz,              //
-                      F0,                                 //
-                      F90,                                //
-                      viewDirection,                      //
-                      refractiveAngle,                    //
-                      transparency,                       //
-                      alphaRoughness,                     //
-                      cavity,                             //
-                      sheenColor,                         //
-                      sheenRoughness,                     //
-                      clearcoatNormal,                    //
-                      clearcoatF0,                        //
-                      clearcoatRoughness,                 //
-                      specularWeight);                    //
-      }*/
-#elif 1
-      doSingleLight(vec3(1.7, 1.15, 0.70),              //
-                    vec3(1.0),                          //
-                    normalize(-vec3(0.5, -1.0, -1.0)),  //
-                    normal.xyz,                         //
-                    diffuseColorAlpha.xyz,              //
-                    F0,                                 //
-                    F90,                                //
-                    viewDirection,                      //
-                    refractiveAngle,                    //
-                    transparency,                       //
-                    alphaRoughness,                     //
-                    cavity,                             //
-                    sheenColor,                         //
-                    sheenRoughness,                     //
-                    clearcoatNormal,                    //
-                    clearcoatF0,                        //
-                    clearcoatRoughness,                 //
-                    specularWeight);                    //
-#endif
+#define LIGHTING_IMPLEMENTATION
+#include "lighting.glsl"
+#undef LIGHTING_IMPLEMENTATION
+
 #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS)
       {
         vec3 volumeSphericalHarmonics[9];
