@@ -58,7 +58,7 @@ vec4 reduceOp(const in vec4 a, const in vec4 b){
 #elif defined(USE_R11G11B10F)
   return clamp(mix(a, b, 0.5), vec4(0.0), vec4(65024.0));
 #else
-  return clamp(mix(a, b, 0.5), vec4(0.0), vec4(255.0)); 
+  return clamp(mix(a, b, 0.5), vec4(0.0), vec4(1.0)); 
 #endif
 }
 
