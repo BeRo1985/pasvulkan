@@ -647,6 +647,7 @@ type PpvAudioInt32=^TpvInt32;
        AudioEngine:TpvAudio;
        Buffer:TpvPointer;
        Event:TEvent;
+       ReadEvent:TEvent;
        Sleeping:TpvInt32;
        constructor Create(AAudioEngine:TpvAudio);
        destructor Destroy; override;
@@ -4324,6 +4325,7 @@ begin
  FillChar(Buffer^,AudioEngine.OutputBufferSize,AnsiChar(#0));
  FreeOnTerminate:=false;
  Event:=TEvent.Create(nil,false,false,'');
+ ReadEvent:=TEvent.Create(nil,false,false,'');
 //Priority:=tpHighest;
  inherited Create(false);
 end;
@@ -4331,9 +4333,11 @@ end;
 destructor TpvAudioThread.Destroy;
 begin
  Terminate;
+ ReadEvent.SetEvent;
  Event.SetEvent;
  WaitFor;
- Event.Destroy;
+ FreeAndNil(ReadEvent);
+ FreeAndNil(Event);
  FreeMem(Buffer);
  inherited Destroy;
 end;
@@ -4371,7 +4375,7 @@ begin
       AudioEngine.RingBuffer.Write(AudioEngine.OutputBuffer,AudioEngine.OutputBufferSize);
       break;
      end else begin
-      Sleep(1);
+      ReadEvent.WaitFor(1);
      end;
     until Terminated or not (AudioEngine.IsReady and AudioEngine.IsActive);
    end else begin

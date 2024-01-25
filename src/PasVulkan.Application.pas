@@ -6909,6 +6909,7 @@ begin
  while (AudioEngine.IsReady and AudioEngine.IsActive) and assigned(AudioEngine.Thread) and not AudioEngine.Thread.Terminated do begin
   if AudioEngine.RingBuffer.AvailableForRead>=Len then begin
    AudioEngine.RingBuffer.Read(Buffer,Len);
+   AudioEngine.Thread.ReadEvent.SetEvent;
    exit;
   end;
   if AudioEngine.Thread.Sleeping<>0 then begin
