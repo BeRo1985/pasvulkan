@@ -1075,7 +1075,7 @@ void main() {
     #if defined(MBOIT) && defined(MBOITPASS1)    
       alpha = 0.0;    
     #else
-      finalColor = vec4(alpha = 0.0);    
+      finalColor = vec4(alpha = 0.0);     
     #endif
   #else 
     #if defined(NODISCARD)  

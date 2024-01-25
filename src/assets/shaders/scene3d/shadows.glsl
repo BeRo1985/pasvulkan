@@ -412,10 +412,6 @@ float computeMSM(in vec4 moments, in float fragmentDepth, in float depthBias, in
   return 1.0 - clamp((switchVal[2] + (switchVal[3] * quotient)), 0.0, 1.0);
 }
 
-float linearStep(float a, float b, float v) {
-  return clamp((v - a) / (b - a), 0.0, 1.0);  //
-}
-
 float reduceLightBleeding(float pMax, float amount) {
   return linearStep(amount, 1.0, pMax);  //
 }
