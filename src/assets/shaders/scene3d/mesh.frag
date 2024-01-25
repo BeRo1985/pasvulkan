@@ -1268,12 +1268,13 @@ void main() {
   #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT) || defined(BLEND) || defined(ENVMAP)
       ambientOcclusion = 1.0;
   #else      
+      ivec2 ambientOcclusionTextureSize = ivec2(textureSize(uPassTextures[0], 0).xy);
   #if defined(GLOBAL_ILLUMINATION_CASCADED_RADIANCE_HINTS) || defined(GLOBAL_ILLUMINATION_CASCADED_VOXEL_CONE_TRACING)
-      screenSpaceAmbientOcclusion = texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
+      screenSpaceAmbientOcclusion = texelFetch(uPassTextures[0], ivec3(min(ivec2(gl_FragCoord.xy), ambientOcclusionTextureSize - ivec2(1)), int(gl_ViewIndex)), 0).x;
       ambientOcclusion = screenSpaceAmbientOcclusion;
       //ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : screenSpaceAmbientOcclusion;
   #else
-      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(gl_FragCoord.xy, int(gl_ViewIndex)), 0).x;
+      ambientOcclusion = ((textureFlags.x & (1 << 3)) != 0) ? 1.0 : texelFetch(uPassTextures[0], ivec3(min(ivec2(gl_FragCoord.xy), ambientOcclusionTextureSize - ivec2(1)), int(gl_ViewIndex)), 0).x;
       screenSpaceAmbientOcclusion = ambientOcclusion;
   #endif
   #endif
