@@ -244,7 +244,9 @@ begin
  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                           fInstance,
                                                           fInstance.Renderer.Scene3D,
-                                                          TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass);
+                                                          TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
+                                                          nil,
+                                                          nil);
 
 end;
 

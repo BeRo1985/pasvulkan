@@ -221,7 +221,9 @@ begin
  fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                            fInstance,
                                                            fInstance.Renderer.Scene3D,
-                                                           TpvScene3DPlanet.TRenderPass.TMode.ShadowMap);
+                                                           TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+                                                           nil,
+                                                           nil);
 
 end;
 

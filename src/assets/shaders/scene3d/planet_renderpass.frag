@@ -43,11 +43,9 @@ layout(location = 1) out vec2 outVelocity;
 
 // Pass descriptor set
 
-layout(set = 1, binding = 1) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
+#include "mesh_rendering_pass_descriptorset.glsl"
 
-layout(set = 1, binding = 2) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
-
-layout(set = 1, binding = 3, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
+layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
   vec4 dominantLightDirection;
   vec4 dominantLightColor;
   vec4 ambientLightColor;

@@ -134,13 +134,6 @@ const int TEXTURE_ENVMAP_LAMBERTIAN = 5;
 
 const int TEXTURE_BASE_INDEX = 10;
 
-struct View {
-  mat4 viewMatrix;
-  mat4 projectionMatrix;
-  mat4 inverseViewMatrix;
-  mat4 inverseProjectionMatrix;
-};
-
 // Global descriptor set
 
 #define MESHS
@@ -149,44 +142,7 @@ struct View {
 
 // Pass descriptor set
 
-layout(set = 1, binding = 0, std140) uniform uboViews {
-  View views[256];
-} uView;
-
-#if !(defined(DEPTHONLY) || defined(VOXELIZATION))
-
-layout(set = 1, binding = 1) uniform sampler2D uImageBasedLightingBRDFTextures[];  // 0 = GGX, 1 = Charlie, 2 = Sheen E
-
-layout(set = 1, binding = 2) uniform samplerCube uImageBasedLightingEnvMaps[];  // 0 = GGX, 1 = Charlie, 2 = Lambertian
-
-#ifdef SHADOWS
-const uint SHADOWMAP_MODE_NONE = 1;
-const uint SHADOWMAP_MODE_PCF = 2;
-const uint SHADOWMAP_MODE_DPCF = 3;
-const uint SHADOWMAP_MODE_PCSS = 4;
-const uint SHADOWMAP_MODE_MSM = 5;
-
-layout(set = 1, binding = 3, std140) uniform uboCascadedShadowMaps {
-  mat4 shadowMapMatrices[NUM_SHADOW_CASCADES];
-  vec4 shadowMapSplitDepthsScales[NUM_SHADOW_CASCADES];
-  vec4 constantBiasNormalBiasSlopeBiasClamp[NUM_SHADOW_CASCADES];
-  uvec4 metaData; // x = type
-} uCascadedShadowMaps;
-
-layout(set = 1, binding = 4) uniform sampler2DArray uCascadedShadowMapTexture;
-
-#ifdef PCFPCSS
-
-// Yay! Binding Aliasing! :-)
-layout(set = 1, binding = 4) uniform sampler2DArrayShadow uCascadedShadowMapTextureShadow;
-
-#endif
-
-#endif
-
-layout(set = 1, binding = 5) uniform sampler2DArray uPassTextures[]; // 0 = SSAO, 1 = Opaque frame buffer
-
-#endif
+#include "mesh_rendering_pass_descriptorset.glsl"
 
 #ifdef FRUSTUMCLUSTERGRID
 layout (set = 1, binding = 6, std140) readonly uniform FrustumClusterGridGlobals {

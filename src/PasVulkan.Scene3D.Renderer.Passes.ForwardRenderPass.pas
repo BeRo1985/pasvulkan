@@ -472,13 +472,17 @@ begin
   fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                            fInstance,
                                                            fInstance.Renderer.Scene3D,
-                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass);
+                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
+                                                           fResourceCascadedShadowMap,
+                                                           fResourceSSAO);
  end;
 
  fPlanetOpaquePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
                                                         fInstance,
                                                         fInstance.Renderer.Scene3D,
-                                                        TpvScene3DPlanet.TRenderPass.TMode.Opaque);
+                                                        TpvScene3DPlanet.TRenderPass.TMode.Opaque,
+                                                        fResourceCascadedShadowMap,
+                                                        fResourceSSAO);
 
  fVoxelVisualization:=nil;
  fVoxelMeshVisualization:=nil;
@@ -623,23 +627,23 @@ begin
   fPassVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPassVulkanDescriptorPool,
                                                                                  fPassVulkanDescriptorSetLayout);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                       [],
-                                                                       [fInstance.VulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                     [],
+                                                                     [fInstance.VulkanViewUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                                       0,
-                                                                       3,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [fInstance.Renderer.GGXBRDF.DescriptorImageInfo,
-                                                                        fInstance.Renderer.CharlieBRDF.DescriptorImageInfo,
-                                                                        fInstance.Renderer.SheenEBRDF.DescriptorImageInfo],
-                                                                       [],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     3,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                     [fInstance.Renderer.GGXBRDF.DescriptorImageInfo,
+                                                                      fInstance.Renderer.CharlieBRDF.DescriptorImageInfo,
+                                                                      fInstance.Renderer.SheenEBRDF.DescriptorImageInfo],
+                                                                     [],
+                                                                     [],
+                                                                     false);
   if assigned(fInstance.ImageBasedLightingReflectionProbeCubeMaps) then begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
                                                                         0,
@@ -664,79 +668,79 @@ begin
                                                                         false);
   end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                       [],
-                                                                       [fInstance.CascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                     [],
+                                                                     [fInstance.CascadedShadowMapVulkanUniformBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.ShadowMapSampler.Handle,
-                                                                                                      fResourceCascadedShadowMap.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                      fResourceCascadedShadowMap.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                       [],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                     [TVkDescriptorImageInfo.Create(fInstance.Renderer.ShadowMapSampler.Handle,
+                                                                                                    fResourceCascadedShadowMap.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                    fResourceCascadedShadowMap.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                     [],
+                                                                     [],
+                                                                     false);
   if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                                        0,
-                                                                        2,
-                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                       fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                         // Duplicate as dummy really non-used opaque texture
-                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                       fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
-                                                                                                       fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                                        [],
-                                                                        [],
-                                                                        false);
+                                                                      0,
+                                                                      2,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                      [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                     fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                     fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
+                                                                       // Duplicate as dummy really non-used opaque texture
+                                                                       TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                     fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
+                                                                                                     fResourceSSAO.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+                                                                      [],
+                                                                      [],
+                                                                      false);
   end else begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                                        0,
-                                                                        2,
-                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                       fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
-                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
-                                                                         // Duplicate as dummy really non-used opaque texture
-                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                       fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
-                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-                                                                        ],
-                                                                        [],
-                                                                        [],
-                                                                        false);
+                                                                      0,
+                                                                      2,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                      [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                     fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                                                     TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
+                                                                       // Duplicate as dummy really non-used opaque texture
+                                                                       TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                                                     fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                                                     TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+                                                                      ],
+                                                                      [],
+                                                                      [],
+                                                                      false);
   end;
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-                                                                       [],
-                                                                       [fInstance.FrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                     [],
+                                                                     [fInstance.FrustumClusterGridGlobalsVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(7,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                       [],
-                                                                       [fInstance.FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [fInstance.FrustumClusterGridIndexListVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(8,
-                                                                       0,
-                                                                       1,
-                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                                       [],
-                                                                       [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                                       [],
-                                                                       false);
+                                                                     0,
+                                                                     1,
+                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                     [],
+                                                                     [fInstance.FrustumClusterGridDataVulkanBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                     [],
+                                                                     false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 
