@@ -58,15 +58,15 @@ float linearStep(float a, float b, float v) {
 }
 
 vec2 linearStep(vec2 a, vec2 b, vec2 v) {
-  return clamp((v - a) / (b - a), 0.0, 1.0);  //
+  return clamp((v - a) / (b - a), vec2(0.0), vec2(1.0));  //
 }
 
 vec3 linearStep(vec3 a, vec3 b, vec3 v) {
-  return clamp((v - a) / (b - a), 0.0, 1.0);  //
+  return clamp((v - a) / (b - a), vec3(0.0), vec3(1.0));  //
 }
 
 vec4 linearStep(vec4 a, vec4 b, vec4 v) {
-  return clamp((v - a) / (b - a), 0.0, 1.0);  //
+  return clamp((v - a) / (b - a), vec4(0.0), vec4(1.0));  //
 }
 
 #endif
