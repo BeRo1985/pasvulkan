@@ -348,6 +348,7 @@ vec3 volumeAttenuationColor = vec3(1.0);
 float volumeAttenuationDistance = 1.0 / 0.0; // +INF
 #endif
 
+#define ENABLE_ANISOTROPIC
 #include "pbr.glsl"
  
 /////////////////////////////

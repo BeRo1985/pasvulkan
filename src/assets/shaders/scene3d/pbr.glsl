@@ -15,7 +15,6 @@ float iridescenceFactor = 0.0;
 float iridescenceIor = 1.3;
 float iridescenceThickness = 400.0;
 
-#define ENABLE_ANISOTROPIC
 #ifdef ENABLE_ANISOTROPIC
 bool anisotropyActive;
 vec3 anisotropyDirection;

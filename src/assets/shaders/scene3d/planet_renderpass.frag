@@ -166,6 +166,7 @@ vec3 workNormal;
 #define inFrameIndex pushConstants.frameIndex
 #include "shadows.glsl"
 
+#undef ENABLE_ANISOTROPIC
 #include "pbr.glsl"
 
 void main(){
