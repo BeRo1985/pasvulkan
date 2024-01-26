@@ -20907,6 +20907,7 @@ var Index,OtherIndex,MaterialBufferDataOffset,MaterialBufferDataSize:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     Planet:TpvScene3DPlanet;
     GroupInstanceStack:TGroupInstanceStack;
+    Sphere:TpvSphere;
 begin
 
  fCountLights[aInFlightFrameIndex]:=0;
@@ -21015,25 +21016,50 @@ begin
   end;
  end;
 
- First:=true;
- fBoundingBox.Min:=TpvVector3.Origin;
- fBoundingBox.Max:=TpvVector3.Origin;
- for GroupInstance in fGroupInstances do begin
-  if GroupInstance.fGroup.Usable and GroupInstance.fActive then begin
-   if First then begin
-    First:=false;
-    fBoundingBox:=GroupInstance.fBoundingBox;
-   end else begin
-    fBoundingBox.DirectCombine(GroupInstance.fBoundingBox);
+ begin
+
+  First:=true;
+
+  fBoundingBox.Min:=TpvVector3.Origin;
+  fBoundingBox.Max:=TpvVector3.Origin;
+
+  for GroupInstance in fGroupInstances do begin
+   if GroupInstance.fGroup.Usable and GroupInstance.fActive then begin
+    if First then begin
+     First:=false;
+     fBoundingBox:=GroupInstance.fBoundingBox;
+    end else begin
+     fBoundingBox.DirectCombine(GroupInstance.fBoundingBox);
+    end;
    end;
   end;
- end;
- if First or IsZero(fBoundingBox.Radius) then begin
-  fBoundingBox.Min:=TpvVector3.InlineableCreate(-1.0,-1.0,-1.0);
-  fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
- end;
 
- fInFlightFrameBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+  fPlanets.Lock.Acquire;
+  try
+   for Index:=0 to fPlanets.Count-1 do begin
+    Planet:=fPlanets[Index];
+    if Planet.Ready then begin
+     Sphere:=TpvSphere.Create(Planet.Data.ModelMatrix.MulHomogen(TpvVector3.Origin),Planet.TopRadius);
+     if First then begin
+      First:=false;
+      fBoundingBox:=Sphere.ToAABB;
+     end else begin
+      fBoundingBox.DirectCombine(Sphere.ToAABB);
+     end;
+    end;
+   end;
+  finally
+   fPlanets.Lock.Release;
+  end;
+
+  if First or IsZero(fBoundingBox.Radius) then begin
+   fBoundingBox.Min:=TpvVector3.InlineableCreate(-1.0,-1.0,-1.0);
+   fBoundingBox.Max:=TpvVector3.InlineableCreate(1.0,1.0,-1.0);
+  end;
+
+  fInFlightFrameBoundingBoxes[aInFlightFrameIndex]:=fBoundingBox;
+
+ end;
 
 end;
 
