@@ -350,18 +350,20 @@ float DoDPCF_PCSS(const in sampler2DArray shadowMapArray,
 
 }  
 
-float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
-  float value = 1.0;
+float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection, out vec3 shadowUVW) {
+  float value = -1.0;
   shadowMapSize = (uCascadedShadowMaps.metaData.x == SHADOWMAP_MODE_PCF) ? vec2(textureSize(uCascadedShadowMapTextureShadow, 0).xy) :  vec2(textureSize(uCascadedShadowMapTexture, 0).xy);
   shadowMapTexelSize = vec3(vec2(1.0) / shadowMapSize, 0.0);
 #ifdef UseReceiverPlaneDepthBias
   vec4 shadowPosition = cascadedShadowMapPositions[cascadedShadowMapIndex];
   shadowPositionReceiverPlaneDepthBias = computeReceiverPlaneDepthBias(shadowPosition.xyz); 
   shadowPosition.z -= min(2.0 * dot(shadowMapTexelSize.xy, abs(shadowPositionReceiverPlaneDepthBias)), 1e-2);
+  shadowUVW = fma(shadowPosition.xyz, vec3(2.0), vec3(-1.0)); 
 #else
   vec3 worldSpacePosition = getOffsetedBiasedWorldPositionForShadowMapping(uCascadedShadowMaps.constantBiasNormalBiasSlopeBiasClamp[cascadedShadowMapIndex], lightDirection);
   vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(worldSpacePosition, 1.0);
-  shadowPosition = fma(shadowPosition / shadowPosition.w, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
+  shadowUVW = (shadowPosition /= shadowPosition.w).xyz;
+  shadowPosition = fma(shadowPosition, vec2(0.5, 1.0).xxyy, vec2(0.5, 0.0).xxyy);
 #endif
   if(all(greaterThanEqual(shadowPosition, vec4(0.0))) && all(lessThanEqual(shadowPosition, vec4(1.0)))){
     switch(uCascadedShadowMaps.metaData.x){
@@ -446,11 +448,10 @@ float fastTanArcCos(const in float x){
   return sqrt(-fma(x, x, -1.0)) / x; // tan(acos(x)); sqrt(1.0 - (x * x)) / x 
 }
 
-float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection) {
+float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in vec3 lightDirection, out vec3 shadowUVW) {
   mat4 shadowMapMatrix = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex];
   vec4 shadowNDC = shadowMapMatrix * vec4(inWorldSpacePosition, 1.0);
-  shadowNDC /= shadowNDC.w;
-  shadowNDC.xy = fma(shadowNDC.xy, vec2(0.5), vec2(0.5));
+  shadowNDC.xy = fma((shadowUVW = ((shadowNDC /= shadowNDC.w).xyz)).xy, vec2(0.5), vec2(0.5));
   if (all(greaterThanEqual(shadowNDC, vec4(0.0))) && all(lessThanEqual(shadowNDC, vec4(1.0)))) {
     vec4 moments = (textureLod(uCascadedShadowMapTexture, vec3(shadowNDC.xy, float(int(cascadedShadowMapIndex))), 0.0) +  //
                     vec2(-0.035955884801, 0.0).xyyy) *                                                                    //
@@ -461,28 +462,58 @@ float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in ve
     float depthBias = clamp(0.005 * fastTanArcCos(clamp(dot(workNormal, -lightDirection), -1.0, 1.0)), 0.0, 0.1) * 0.15;
     return clamp(reduceLightBleeding(getMSMShadowIntensity(moments, shadowNDC.z, depthBias, 3e-4), 0.25), 0.0, 1.0);
   } else {
-    return 1.0;
+    return -1.0;
   }
 }
 
 #endif
 
 vec4 shadowGetCascadeFactors(){
+#if 0
   float viewSpaceDepth = -inViewSpacePosition.z;
+#endif
   int cascadedShadowMapIndex = 0;
   while(cascadedShadowMapIndex < NUM_SHADOW_CASCADES){
+#if 1
+    vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(inWorldSpacePosition.xyz, 1.0);
+    if(all(lessThanEqual(abs(shadowPosition / shadowPosition.w), vec4(1.0)))){
+      break; 
+    }else{
+      cascadedShadowMapIndex++;
+    }
+#else
     vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
     if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
       break;
     }else{
       cascadedShadowMapIndex++;
     }
+#endif
   }
   if(cascadedShadowMapIndex >= NUM_SHADOW_CASCADES){
     cascadedShadowMapIndex = NUM_SHADOW_CASCADES - 1;
   }
   vec4 weights = vec4(0.0);
   if((cascadedShadowMapIndex >= 0) && (cascadedShadowMapIndex < NUM_SHADOW_CASCADES)){
+#if 1
+    if((cascadedShadowMapIndex + 1) < NUM_SHADOW_CASCADES){
+#if 1
+      // Calculate the factor by fading out the shadow map at the edges itself, with 20% corner threshold.
+      vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[cascadedShadowMapIndex] * vec4(inWorldSpacePosition.xyz, 1.0);
+      vec3 edgeFactor = clamp((clamp(abs(shadowPosition.xyz / shadowPosition.w), vec3(0.0), vec3(1.0)) - vec3(0.8)) * 5.0, vec3(0.0), vec3(1.0)); 
+      float factor = max(edgeFactor.x, max(edgeFactor.y, edgeFactor.z));
+#else                
+      // Calculate the factor by doing a smoothstep between the two split depths.
+      float factor = smoothstep(uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex + 1].x, 
+                                uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].y, 
+                                viewSpaceDepth);
+#endif
+      weights[cascadedShadowMapIndex] = 1.0 - factor;
+      weights[cascadedShadowMapIndex + 1] = factor;
+    }else{
+      weights[cascadedShadowMapIndex] = 1.0;
+    }
+#else    
     float current = 1.0;    
     for(int currentCascadedShadowMapIndex = cascadedShadowMapIndex; currentCascadedShadowMapIndex < NUM_SHADOW_CASCADES; currentCascadedShadowMapIndex++){
       if(currentCascadedShadowMapIndex == (NUM_SHADOW_CASCADES - 1)){
@@ -490,9 +521,17 @@ vec4 shadowGetCascadeFactors(){
         break;
       }else if((viewSpaceDepth >= uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex].x) &&
                (viewSpaceDepth <= uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex].y)){
+#if 1
+        // Calculate the factor by fading out the shadow map at the edges itself, with 20% corner threshold.
+        vec4 shadowPosition = uCascadedShadowMaps.shadowMapMatrices[currentCascadedShadowMapIndex] * vec4(inWorldSpacePosition.xyz, 1.0);
+        vec3 edgeFactor = clamp((clamp(abs(shadowPosition.xyz / shadowPosition.w), vec3(0.0), vec3(1.0)) - vec3(0.8)) * 5.0, vec3(0.0), vec3(1.0)); 
+        float factor = 1.0 - max(edgeFactor.x, max(edgeFactor.y, edgeFactor.z));
+#else                
+        // Calculate the factor by doing a smoothstep between the two split depths.
         float factor = 1.0 - smoothstep(uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex + 1].x, 
                                         uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex].y, 
                                         viewSpaceDepth);
+#endif
         weights[currentCascadedShadowMapIndex] = current * factor;
         current *= 1.0 - factor;
         if(current < 1e-6){
@@ -506,6 +545,7 @@ vec4 shadowGetCascadeFactors(){
     if(sum > 0.0){
       weights /= sum;
     }
+#endif    
   }
   return weights;
 }
