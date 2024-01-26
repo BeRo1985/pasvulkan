@@ -96,6 +96,7 @@
                     float cascadedShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
                     shadow = min(shadow, cascadedShadow);
                   }
+                  
 #elif CASCADED_SHADOW_MAPPING_VARIANT == 1
 
                   // Weighted variant, a bit optimized variant of the brute force variant
