@@ -5385,9 +5385,9 @@ begin
  fName:=aSourceSampler.Name;
  case aSourceSampler.MinFilter of
   TPasGLTF.TSampler.TMinFilter.None:begin
-   fMinFilter:=VK_FILTER_NEAREST;
-   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
-   fMipmapActive:=false;
+   fMinFilter:=VK_FILTER_LINEAR;
+   fMipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
+   fMipmapActive:=true;
   end;
   TPasGLTF.TSampler.TMinFilter.Nearest:begin
    fMinFilter:=VK_FILTER_NEAREST;
@@ -5425,7 +5425,7 @@ begin
  end;
  case aSourceSampler.MagFilter of
   TPasGLTF.TSampler.TMagFilter.None:begin
-   fMagFilter:=VK_FILTER_NEAREST;
+   fMagFilter:=VK_FILTER_LINEAR;
   end;
   TPasGLTF.TSampler.TMagFilter.Nearest:begin
    fMagFilter:=VK_FILTER_NEAREST;
