@@ -134,8 +134,8 @@ type TpvScene3DPlanets=class;
             TMaterials=array[0..15] of TMaterial;
             PMaterials=^TMaterials;
             TSizeIntArray=array of TpvSizeInt;
-       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
-             Direct:Boolean=true;
+       const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads;
+             Direct:Boolean=false;
        type TMeshVertex=packed record
              Position:TpvVector3;
              OctahedralEncodedNormal:TpvInt16Vector2;
@@ -5913,7 +5913,7 @@ begin
          TessellationFactor:=1.0/256.0;
         end;
         else begin
-         TessellationFactor:=1.0/16.0;
+         TessellationFactor:=1.0/4.0;
         end;
        end;
        Level:=-1;
@@ -5942,7 +5942,7 @@ begin
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
        if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=32;
+        fPushConstants.CountQuadPointsInOneDirection:=64;
        end else begin
         fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(1 shl Level,32),256);
        end;
@@ -5950,14 +5950,14 @@ begin
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
       TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
        if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=32;
+        fPushConstants.CountQuadPointsInOneDirection:=64;
        end else begin
         fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(1 shl Level,16),256);
        end;
       end;
       else begin
        if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=32;
+        fPushConstants.CountQuadPointsInOneDirection:=64;
        end else begin
         fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
        end;
