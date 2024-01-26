@@ -350,7 +350,7 @@ float volumeAttenuationDistance = 1.0 / 0.0; // +INF
 
 #define ENABLE_ANISOTROPIC
 #include "pbr.glsl"
- 
+  
 /////////////////////////////
 
 vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness, vec3 f0, vec3 f90, vec3 baseColor, float ior) {

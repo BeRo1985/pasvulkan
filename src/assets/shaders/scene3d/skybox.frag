@@ -25,6 +25,6 @@ void main(){
       // Cube map
       outFragColor = texture(uTexture, normalize(inPosition)) * vec2(pushConstants.skyBoxBrightnessFactor, 1.0).xxxy;
       break;
-    }
+    } 
   }
 }

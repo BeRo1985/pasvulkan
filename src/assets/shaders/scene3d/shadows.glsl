@@ -466,6 +466,58 @@ float doCascadedShadowMapShadow(const in int cascadedShadowMapIndex, const in ve
 }
 
 #endif
+
+vec4 shadowGetCascadeFactors(){
+  float viewSpaceDepth = -inViewSpacePosition.z;
+  int cascadedShadowMapIndex = 0;
+  while(cascadedShadowMapIndex < NUM_SHADOW_CASCADES){
+    vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
+    if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
+      break;
+    }else{
+      cascadedShadowMapIndex++;
+    }
+  }
+  if(cascadedShadowMapIndex >= NUM_SHADOW_CASCADES){
+    cascadedShadowMapIndex = NUM_SHADOW_CASCADES - 1;
+  }
+  vec4 weights = vec4(0.0);
+  if((cascadedShadowMapIndex >= 0) && (cascadedShadowMapIndex < NUM_SHADOW_CASCADES)){
+    float current = 1.0;    
+    for(int currentCascadedShadowMapIndex = cascadedShadowMapIndex; currentCascadedShadowMapIndex < NUM_SHADOW_CASCADES; currentCascadedShadowMapIndex++){
+      if(currentCascadedShadowMapIndex == (NUM_SHADOW_CASCADES - 1)){
+        weights[currentCascadedShadowMapIndex] = current;
+        break;
+      }else if((viewSpaceDepth >= uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex].x) &&
+               (viewSpaceDepth <= uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex].y)){
+        float factor = 1.0 - smoothstep(uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex + 1].x, 
+                                        uCascadedShadowMaps.shadowMapSplitDepthsScales[currentCascadedShadowMapIndex].y, 
+                                        viewSpaceDepth);
+        weights[currentCascadedShadowMapIndex] = current * factor;
+        current *= 1.0 - factor;
+        if(current < 1e-6){
+          break;
+        }
+      }else{
+        break;
+      }
+    }    
+    float sum = dot(weights, vec4(1.0));
+    if(sum > 0.0){
+      weights /= sum;
+    }
+  }
+  return weights;
+}
+
+vec4 shadowCascadeVisualizationColor(){
+  vec4 weights = shadowGetCascadeFactors();
+  return (vec4(0.125, 0.0, 0.0, 1.0) * weights.x) + 
+         (vec4(0.0, 0.125, 0.0, 1.0) * weights.y) + 
+         (vec4(0.0, 0.0, 0.125, 1.0) * weights.z) + 
+         (vec4(0.125, 0.125, 0.0, 1.0) * weights.w);
+}
+
 #endif // SHADOWS
 
 #endif // SHADOWS_GLSL

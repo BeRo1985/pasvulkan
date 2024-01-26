@@ -86,12 +86,77 @@
                     }
                   }
 #endif
+#define CASCADED_SHADOW_MAPPING_VARIANT 2
+#if CASCADED_SHADOW_MAPPING_VARIANT == 0
+
+                  // Brute force variant
+
                   float shadow = 1.0;
                   for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
                     float cascadedShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
                     shadow = min(shadow, cascadedShadow);
                   }
-/*                for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
+#elif CASCADED_SHADOW_MAPPING_VARIANT == 1
+
+                  // Weighted variant, a bit optimized variant of the brute force variant
+
+                  float shadow = 1.0;
+                  vec4 cascadedShadowWeights = shadowGetCascadeFactors();
+                  if(dot(cascadedShadowWeights, vec4(1.0)) > 0.0){
+                    shadow = 0.0;
+                    for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
+                      if(cascadedShadowWeights[cascadedShadowMapIndex] > 0.0){
+                        shadow += doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz) * cascadedShadowWeights[cascadedShadowMapIndex];
+                      }
+                    }
+                  }
+
+#elif CASCADED_SHADOW_MAPPING_VARIANT == 2
+
+                  // Optimized variant, which uses the fact, that the shadow map slices are sorted by depth, and that the
+                  // current fragment is only inside of one shadow map slice, and that the shadow map slices are not overlapping.                  
+
+                  vec2 shadowMapSplitDepth;
+
+                  // Find the first cascaded shadow map slice, which is responsible for the current fragment.
+                  int cascadedShadowMapIndex = 0;
+                  while(cascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
+                    shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
+                    if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
+                      break;
+                    }else{
+                      cascadedShadowMapIndex++;
+                    }
+                  }
+
+                  // If the current fragment is outside of the cascaded shadow map range, then use the last cascaded shadow map slice.
+                  if(cascadedShadowMapIndex >= NUM_SHADOW_CASCADES){
+                    cascadedShadowMapIndex = NUM_SHADOW_CASCADES - 1;
+                    shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
+                  }
+
+                  // Do the shadow map lookup for the found cascaded shadow map slice.
+                  float shadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
+
+                  // Try to use the next cascaded shadow map slice, if the current fragment is inside the transition range, and 
+                  // fade between the two shadow map slices.
+                  int nextCascadedShadowMapIndex = cascadedShadowMapIndex + 1;
+                  if (nextCascadedShadowMapIndex < NUM_SHADOW_CASCADES) {
+                    vec2 nextShadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[nextCascadedShadowMapIndex].xy;
+                    if ((viewSpaceDepth >= nextShadowMapSplitDepth.x) && (viewSpaceDepth <= nextShadowMapSplitDepth.y)) {
+                      float splitFade = smoothstep(nextShadowMapSplitDepth.x, shadowMapSplitDepth.y, viewSpaceDepth);
+                      if (splitFade > 0.0) {
+                        shadow = mix(shadow, doCascadedShadowMapShadow(nextCascadedShadowMapIndex, -light.directionZFar.xyz), splitFade);
+                      }
+                    }
+                  }
+
+#else
+
+                  // Old original variant which lacks the out-of-cascaded-shadow-map-index-range handling
+
+                  float shadow = 1.0;
+                  for (int cascadedShadowMapIndex = 0; cascadedShadowMapIndex < NUM_SHADOW_CASCADES; cascadedShadowMapIndex++) {
                     vec2 shadowMapSplitDepth = uCascadedShadowMaps.shadowMapSplitDepthsScales[cascadedShadowMapIndex].xy;
                     if ((viewSpaceDepth >= shadowMapSplitDepth.x) && (viewSpaceDepth <= shadowMapSplitDepth.y)) {
                       float cascadedShadow = doCascadedShadowMapShadow(cascadedShadowMapIndex, -light.directionZFar.xyz);
@@ -107,7 +172,9 @@
                       }
                       shadow = min(shadow, cascadedShadow);
                     }
-                  }*/
+                  }
+
+#endif
                   lightAttenuation *= shadow;
                   break;
                 }

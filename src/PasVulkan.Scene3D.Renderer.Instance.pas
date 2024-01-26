@@ -1079,7 +1079,7 @@ begin
 
  if IsInfinite(fInstance.fZFar) then begin
   RealZNear:=0.1;
-  RealZFar:=16.0;
+  RealZFar:=256.0;
   for Index:=0 to fInstance.fCountRealViews[aInFlightFrameIndex]-1 do begin
    fViewMatrix:=fInstance.fViews[aInFlightFrameIndex].Items[Index].ViewMatrix.SimpleInverse;
    if fSceneWorldSpaceSphere.Contains(fViewMatrix.Translation.xyz) then begin

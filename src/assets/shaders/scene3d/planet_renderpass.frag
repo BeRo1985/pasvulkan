@@ -280,6 +280,14 @@ void main(){
   }
 #endif  
 
+
+#if defined(SHADOWS) && 0
+  {
+    vec4 d = shadowCascadeVisualizationColor();
+    c = mix(c, d, d.w * 0.25);
+  } 
+#endif
+   
   outFragColor = c;
 
 #ifdef VELOCITY
