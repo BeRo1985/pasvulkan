@@ -52,7 +52,7 @@ void main(){
       const float hdrScalar = referenceWhiteNits / st2084max;      
       color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
       color.xyz = convertToREC2084(color.xyz); // convert to ST. 2084
-      outFragColor = clamp((color * vec2(hdrScalar, 1.0)).xxxy, vec4(0.0), vec4(1.0));
+      outFragColor = clamp(color * vec2(hdrScalar, 1.0).xxxy, vec4(0.0), vec4(1.0));
       break;
     } 
     default:{ //case COLOR_SPACE_SRGB_NONLINEAR:

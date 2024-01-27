@@ -266,6 +266,8 @@ compileshaderarguments=(
   
   "-V blit.frag -o ${tempPath}/blit_frag.spv"
 
+  "-V framebuffer_blit.frag -o ${tempPath}/framebuffer_blit_frag.spv"
+
   "-V msaa_resolve.frag -o ${tempPath}/msaa_resolve_frag.spv"
   
   "-V msm_blur.frag -o ${tempPath}/msm_blur_frag.spv"
