@@ -40,23 +40,28 @@ void main(){
   switch(pushConstants.colorSpace){
     case COLOR_SPACE_EXTENDED_SRGB_LINEAR:{
       // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
-      outFragColor = color; // just forward, no conversion, since the framebuffer is already in linear sRGB 
+      // Just forward, no conversion, since the framebuffer is already in linear sRGB, but clip the lower values to 0.0, 
+      // for avoiding negative values.
+      outFragColor = max(vec4(0.0), color); 
       break;
     }
     case COLOR_SPACE_HDR10_ST2084:{
-      // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
+      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
       const float referenceWhiteNits = 80.0;
       const float st2084max = 10000.0;
       const float hdrScalar = referenceWhiteNits / st2084max;      
       color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
       color.xyz = convertToREC2084(color.xyz); // convert to ST. 2084
-      outFragColor = color;
+      outFragColor = clamp((color * vec2(hdrScalar, 1.0)).xxxy, vec4(0.0), vec4(1.0));
       break;
     } 
     default:{ //case COLOR_SPACE_SRGB_NONLINEAR:
       // Target format: VK_FORMAT_R8G8B8A8_SRGB or VK_FORMAT_B8G8R8A8_SRGB (depends on the swapchain format)
-      outFragColor = color; // just forward, no conversion, since the framebuffer is already in sRGB where the GPU transforms it already itself,
-      break;                // where the GPU converts the linear sRGB input to sRGB gamma corrected sRGB output through the hardware pipeline. 
+      // Just forward, no conversion, since the framebuffer is already in sRGB where the GPU transforms it already itself,
+      // where the GPU converts the linear sRGB input to sRGB gamma corrected sRGB output through the hardware pipeline,
+      // but clamp the values to the range [0.0, 1.0] for ensuring that these are in the output range.
+      outFragColor = clamp(color, vec4(0.0), vec4(1.0)); 
+      break;                
     }
   }
 }
