@@ -626,6 +626,7 @@ type TpvScene3DPlanets=class;
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
                     Radius:TpvFloat;
+                    MinimumLODLevel:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
               private
@@ -5116,6 +5117,7 @@ begin
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
         fPushConstants.TileResolution:=Planet.fVisualTileResolution;
         fPushConstants.Radius:=Planet.fTopRadius;
+        fPushConstants.MinimumLODLevel:=0;
 
         BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),

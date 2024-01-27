@@ -18,6 +18,7 @@ layout(push_constant) uniform PushConstants {
   uint tileMapResolution;
   uint tileResolution;
   float radius;
+  uint minimumLODLevel;
 } pushConstants;
 
 struct View {
@@ -300,17 +301,19 @@ void main(){
       }
 
 #if defined(TILE_SCREEN_FILL_SCALE)
-      const uint lod = uint(min(max(floor(log2(1.0 / clamp(min(tileScreenFillScale, planetSphereScreenFillScale), 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u)))); 
+      uint lod = uint(min(max(floor(log2(1.0 / clamp(min(tileScreenFillScale, planetSphereScreenFillScale), 1e-6, 1.0))), 0.0), max(0.0, float(int(countLODLevels) - 2)))); 
 #else
-      const uint lod = uint(min(max(floor(log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u))));
+      uint lod = uint(min(max(floor(log2(1.0 / clamp(planetSphereScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(int(countLODLevels) - 2))));
 #endif                                      
 #else
 #if defined(TILE_SCREEN_FILL_SCALE)
-      const uint lod = uint(min(max(floor(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(countLODLevels - 2u)))); 
+      uint lod = uint(min(max(floor(log2(1.0 / clamp(tileScreenFillScale, 1e-6, 1.0))), 0.0), max(0.0, float(int(countLODLevels) - 2)))); 
 #else
-      const uint lod = 0u;
+      uint lod = 0u;
 #endif      
 #endif
+
+      lod = min(max(lod, pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
 
       const uint tileResolution = pushConstants.tileResolution >> lod;
 
