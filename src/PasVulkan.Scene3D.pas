@@ -3033,6 +3033,7 @@ type EpvScene3D=class(Exception);
                          const aCountViews:TpvSizeInt;
                          const aViewPortWidth:TpvInt32;
                          const aViewPortHeight:TpvInt32;
+                         const aMainViewPort:Boolean;
                          const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes=[TpvScene3D.TMaterial.TAlphaMode.Opaque,TpvScene3D.TMaterial.TAlphaMode.Blend,TpvScene3D.TMaterial.TAlphaMode.Mask];
                          const aLights:boolean=true;
                          const aFrustumCulling:boolean=true;
@@ -21978,6 +21979,7 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aCountViews:TpvSizeInt;
                              const aViewPortWidth:TpvInt32;
                              const aViewPortHeight:TpvInt32;
+                             const aMainViewPort:Boolean;
                              const aMaterialAlphaModes:TpvScene3D.TMaterial.TAlphaModes;
                              const aLights:boolean;
                              const aFrustumCulling:boolean;
@@ -22076,7 +22078,7 @@ begin
    for Index:=0 to fPlanets.Count-1 do begin
     Planet:=fPlanets[Index];
     if Planet.Ready then begin
-     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aViewPortWidth,aViewPortHeight,aGPUCulling);
+     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aViewPortWidth,aViewPortHeight,aMainViewPort);
     end;
    end;
   finally
