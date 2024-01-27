@@ -2505,7 +2505,6 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectionprobe_color',
                                   false,
-//                                VK_FORMAT_R8G8B8A8_SRGB,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
@@ -2536,8 +2535,6 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectiveshadowmap_color',
                                   false,
-//                                VK_FORMAT_R8G8B8A8_SRGB,
-                                  //VK_FORMAT_R16G16B16A16_SFLOAT,
                                   Renderer.OptimizedNonAlphaFormat,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
@@ -2548,7 +2545,6 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectiveshadowmap_normalused',
                                   false,
-//                                VK_FORMAT_R8G8B8A8_SRGB,
                                   VK_FORMAT_A2B10G10R10_UNORM_PACK32,
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.Color,
@@ -2559,7 +2555,6 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_reflectiveshadowmap_depth',
                                   false,
-//                                VK_FORMAT_R8G8B8A8_SRGB,
                                   VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat},
                                   VK_SAMPLE_COUNT_1_BIT,
                                   TpvFrameGraph.TImageType.From(VK_FORMAT_D32_SFLOAT{pvApplication.VulkanDepthImageFormat}),
@@ -2660,20 +2655,20 @@ begin
 
  fFrameGraph.AddImageResourceType('resourcetype_color_tonemapping',
                                   false,
-                                  VK_FORMAT_R8G8B8A8_SRGB,//TVkFormat(TpvInt32(IfThen(Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),TpvInt32(VK_FORMAT_R8G8B8A8_SRGB),TpvInt32(VK_FORMAT_R8G8B8A8_UNORM)))),
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//VK_FORMAT_R8G8B8A8_SRGB,//TVkFormat(TpvInt32(IfThen(Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),TpvInt32(VK_FORMAT_R8G8B8A8_SRGB),TpvInt32(VK_FORMAT_R8G8B8A8_UNORM)))),
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
                                   TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
                                   1,
                                   VK_IMAGE_LAYOUT_UNDEFINED,
-                                  VK_IMAGE_LAYOUT_UNDEFINED,
-                                  VK_FORMAT_R8G8B8A8_UNORM
+                                  VK_IMAGE_LAYOUT_UNDEFINED{,
+                                  VK_FORMAT_R8G8B8A8_UNORM}
                                  );
 
  fFrameGraph.AddImageResourceType('resourcetype_dithering_color',
                                   false,
-                                  VK_FORMAT_R8G8B8A8_SRGB,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//VK_FORMAT_R8G8B8A8_SRGB,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
@@ -2744,7 +2739,6 @@ begin
  fFrameGraph.AddImageResourceType('resourcetype_color_antialiasing',
                                   false,
                                   Renderer.OptimizedNonAlphaFormat,
-//                                VK_FORMAT_R8G8B8A8_SRGB,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
                                   TpvFrameGraph.TImageType.Color,
                                   TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,fSizeFactor,fSizeFactor,1.0,fCountSurfaceViews),

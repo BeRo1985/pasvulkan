@@ -246,7 +246,7 @@ begin
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
-                                                                                                fResourceColor.VulkanAdditionalFormatImageViews[InFlightFrameIndex].Handle,
+                                                                                                fResourceColor.VulkanImageViews[InFlightFrameIndex].Handle,//fResourceColor.VulkanAdditionalFormatImageViews[InFlightFrameIndex].Handle,
                                                                                                 fResourceColor.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                  [],
                                                                  [],
