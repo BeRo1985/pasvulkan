@@ -1225,7 +1225,10 @@ begin
 
   fLightSpaceWorldAABB:=fSceneWorldSpaceBoundingBox.HomogenTransform(fLightViewMatrix);
 
-  fFrustumAABB:=fFrustumAABB.GetIntersection(fLightSpaceWorldAABB);
+  fFrustumAABB.Min.x:=Math.Max(fFrustumAABB.Min.x,fLightSpaceWorldAABB.Min.x);
+  fFrustumAABB.Min.y:=Math.Max(fFrustumAABB.Min.y,fLightSpaceWorldAABB.Min.y);
+  fFrustumAABB.Max.x:=Math.Min(fFrustumAABB.Max.x,fLightSpaceWorldAABB.Max.x);
+  fFrustumAABB.Max.y:=Math.Min(fFrustumAABB.Max.y,fLightSpaceWorldAABB.Max.y);
 
   fLightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(fFrustumAABB.Min.x,
                                                                        fFrustumAABB.Max.x,
