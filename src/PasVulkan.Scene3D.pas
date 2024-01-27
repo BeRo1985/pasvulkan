@@ -22076,7 +22076,7 @@ begin
    for Index:=0 to fPlanets.Count-1 do begin
     Planet:=fPlanets[Index];
     if Planet.Ready then begin
-     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex);
+     Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aViewPortWidth,aViewPortHeight);
     end;
    end;
   finally
