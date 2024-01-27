@@ -7286,7 +7286,7 @@ begin
 
     if assigned(RendererInstance) then begin
 
-     RendererInstance.fMinimumLODLevel:=1;
+     RendererInstance.fMinimumLODLevel:=2;
 
     end;
 
