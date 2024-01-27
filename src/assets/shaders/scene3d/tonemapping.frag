@@ -26,6 +26,7 @@ layout(set = 0, binding = 1) uniform ColorGradingSettingsBuffer {
   ColorGradingSettings colorGradingSettings;
 } colorGradingSettingsBuffer;
 
+#define MODE_NONE 0 // No tonemapping (just color grading, if enabled, and HDR negative value to zero clamping)
 #define MODE_LINEAR 1
 #define MODE_REINHARD 2
 #define MODE_HEJL 3
@@ -340,7 +341,7 @@ vec3 doToneMapping(vec3 color){
       break;
     }
     default:{
-      color = clamp(color.xyz, vec3(0.0), vec3(1.0));
+      color = max(color.xyz, vec3(0.0)); // Clamp negative values to 0.0, but not higher values than 1.0, for HDR 
       break;
     }
   }
