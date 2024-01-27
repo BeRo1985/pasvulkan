@@ -380,11 +380,10 @@ begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  PushConstants.Flags:=0;
- if not (assigned(FrameGraph) and
-         ((FrameGraph.SurfaceColorFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or
-          (FrameGraph.SurfaceColorFormat=VK_FORMAT_A2B10G10R10_UNORM_PACK32))) then begin
+ if assigned(FrameGraph) and (FrameGraph.SurfaceColorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) then begin
   PushConstants.Flags:=PushConstants.Flags or (1 shl 0); // sRGB SDR => Enable dithering
  end;
+
  PushConstants.FrameCounter:=TpvInt32(FrameGraph.DrawFrameIndex);
 
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,

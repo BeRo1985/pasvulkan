@@ -1187,6 +1187,7 @@ type EpvFrameGraph=class(Exception);
        fSurfaceWidth:TpvSizeInt;
        fSurfaceHeight:TpvSizeInt;
        fSurfaceColorFormat:TVkFormat;
+       fSurfaceColorSpace:TVkColorSpaceKHR;
        fSurfaceDepthFormat:TVkFormat;
        fSurfaceImages:array of TpvVulkanImage;
        fCountInFlightFrames:TpvSizeInt;
@@ -1315,6 +1316,7 @@ type EpvFrameGraph=class(Exception);
        property SurfaceWidth:TpvSizeInt read fSurfaceWidth write fSurfaceWidth;
        property SurfaceHeight:TpvSizeInt read fSurfaceHeight write fSurfaceHeight;
        property SurfaceColorFormat:TVkFormat read fSurfaceColorFormat write fSurfaceColorFormat;
+       property SurfaceColorSpace:TVkColorSpaceKHR read fSurfaceColorSpace write fSurfaceColorSpace;
        property SurfaceDepthFormat:TVkFormat read fSurfaceDepthFormat write fSurfaceDepthFormat;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property CountSurfaceImages:TpvSizeInt read fCountSurfaceImages write fCountSurfaceImages;
@@ -4379,7 +4381,9 @@ begin
  fSurfaceWidth:=1;
  fSurfaceHeight:=1;
 
- fSurfaceColorFormat:=VK_FORMAT_B8G8R8A8_UNORM;
+ fSurfaceColorFormat:=VK_FORMAT_R8G8B8A8_SRGB;
+
+ fSurfaceColorSpace:=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
  fSurfaceDepthFormat:=VK_FORMAT_D32_SFLOAT;
 
@@ -4556,6 +4560,7 @@ begin
  fSurfaceHeight:=aSwapChain.Height;
  fCountSurfaceImages:=aSwapChain.CountImages;
  fSurfaceColorFormat:=aSwapChain.ImageFormat;
+ fSurfaceColorSpace:=aSwapChain.ImageColorSpace;
  fSurfaceDepthFormat:=aSurfaceDepthFormat;
  if fCountSurfaceImages>0 then begin
   SetLength(fSurfaceImages,fCountSurfaceImages);
