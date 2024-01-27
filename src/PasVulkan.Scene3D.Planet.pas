@@ -7274,22 +7274,26 @@ begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
 
-  fRendererInstanceListLock.Acquire;
-  try
+  if aMainViewPort then begin
 
-   if not fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(aRendererInstance),
-                                          RendererInstance) then begin
-    RendererInstance:=TpvScene3DPlanet.TRendererInstance.Create(self,aRendererInstance);
+   fRendererInstanceListLock.Acquire;
+   try
+
+    if not fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(aRendererInstance),
+                                           RendererInstance) then begin
+     RendererInstance:=TpvScene3DPlanet.TRendererInstance.Create(self,aRendererInstance);
+    end;
+
+    if assigned(RendererInstance) then begin
+
+     RendererInstance.fMinimumLODLevel:=0;
+
+    end;
+
+   finally
+    fRendererInstanceListLock.Release;
    end;
 
-   if assigned(RendererInstance) then begin
-
-    RendererInstance.fMinimumLODLevel:=0;
-
-   end;
-
-  finally
-   fRendererInstanceListLock.Release;
   end;
 
   fRendererViewInstanceListLock.Acquire;
