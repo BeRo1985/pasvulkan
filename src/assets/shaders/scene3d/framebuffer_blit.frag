@@ -60,6 +60,8 @@ void main(){
       // Just forward, no conversion, since the framebuffer is already in sRGB where the GPU transforms it already itself,
       // where the GPU converts the linear sRGB input to sRGB gamma corrected sRGB output through the hardware pipeline,
       // but clamp the values to the range [0.0, 1.0] for ensuring that these are in the output range.
+      // But this shader should actually never be used when the framebuffer is in sRGB, since the GPU automatically converts
+      // the sRGB texture to linear sRGB through the hardware sampler.
       outFragColor = clamp(color, vec4(0.0), vec4(1.0)); 
       break;                
     }
