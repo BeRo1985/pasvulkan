@@ -389,7 +389,15 @@ procedure TpvScene3DRendererPassesTonemappingRenderPass.Execute(const aCommandBu
 var PushConstants:TpvScene3DRendererPassesTonemappingRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.Mode:=TpvInt32(fInstance.Renderer.TonemappingMode);
+ if assigned(fResourceSurface) and
+    assigned(fResourceSurface.ResourceType) and
+    (fResourceSurface.ResourceType is TpvFrameGraph.TImageResourceType) and
+    ((TpvFrameGraph.TImageResourceType(fResourceSurface.ResourceType).Format=VK_FORMAT_R16G16B16A16_SFLOAT) or
+     (TpvFrameGraph.TImageResourceType(fResourceSurface.ResourceType).Format=VK_FORMAT_A2B10G10R10_UNORM_PACK32)) then begin
+  PushConstants.Mode:=0; // HDR => No tone mapping, just color grading if all.
+ end else begin
+  PushConstants.Mode:=TpvInt32(fInstance.Renderer.TonemappingMode);
+ end;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
