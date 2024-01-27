@@ -5082,6 +5082,7 @@ var PlanetIndex,RenderPassIndex,ViewBaseIndex,CountViews:TpvSizeInt;
     First:Boolean;
     RenderViewPassKind:TRenderViewPassKind;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
+    RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     BufferMemoryBarrier:TVkBufferMemoryBarrier;
 begin
@@ -5137,7 +5138,9 @@ begin
 
       if (ViewBaseIndex>=0) and (CountViews>0) then begin
 
-       if Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
+       if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),
+                                                 RendererInstance) and
+          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
                                                      RendererViewInstance) then begin
 
         fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].ModelMatrix;
@@ -5146,7 +5149,7 @@ begin
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
         fPushConstants.TileResolution:=Planet.fVisualTileResolution;
         fPushConstants.Radius:=Planet.fTopRadius;
-        fPushConstants.MinimumLODLevel:=0;
+        fPushConstants.MinimumLODLevel:=RendererInstance.fMinimumLODLevel;
 
         BufferMemoryBarrier:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -5862,6 +5865,7 @@ var PlanetIndex,Level:TpvSizeInt;
     LeftAnchor,RightAnchor,DownAnchor,UpAnchor,MinXY,MaxXY:TpvVector2;
     Rect:TpvRect;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
+    RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
@@ -7264,10 +7268,29 @@ begin
 end;
 
 procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
-var RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+var RendererInstance:TpvScene3DPlanet.TRendererInstance;
+    RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
+
+  fRendererInstanceListLock.Acquire;
+  try
+
+   if not fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(aRendererInstance),
+                                          RendererInstance) then begin
+    RendererInstance:=TpvScene3DPlanet.TRendererInstance.Create(self,aRendererInstance);
+   end;
+
+   if assigned(RendererInstance) then begin
+
+    RendererInstance.fMinimumLODLevel:=0;
+
+   end;
+
+  finally
+   fRendererInstanceListLock.Release;
+  end;
 
   fRendererViewInstanceListLock.Acquire;
   try
