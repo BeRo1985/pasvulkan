@@ -78,6 +78,12 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesDitheringRenderPass }
       TpvScene3DRendererPassesDitheringRenderPass=class(TpvFrameGraph.TRenderPass)
+       public
+        type TPushConstants=packed record
+              Flags:TpvUInt32;
+              FrameCounter:TpvInt32;
+             end;
+             PPushConstants=^TPushConstants;
        private
         fInstance:TpvScene3DRendererInstance;
         fVulkanRenderPass:TpvVulkanRenderPass;
@@ -270,7 +276,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvInt32));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesDitheringRenderPass.TPushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -368,18 +374,34 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesDitheringRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var FrameCounter:TpvInt32;
+var PushConstants:TpvScene3DRendererPassesDitheringRenderPass.TPushConstants;
 begin
+
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- FrameCounter:=TpvInt32(FrameGraph.DrawFrameIndex);
+
+ PushConstants.Flags:=0;
+ if not (assigned(FrameGraph) and
+         ((FrameGraph.SurfaceColorFormat=VK_FORMAT_R16G16B16A16_SFLOAT) or
+          (FrameGraph.SurfaceColorFormat=VK_FORMAT_A2B10G10R10_UNORM_PACK32))) then begin
+  PushConstants.Flags:=PushConstants.Flags or (1 shl 0); // sRGB SDR => Enable dithering
+ end;
+ PushConstants.FrameCounter:=TpvInt32(FrameGraph.DrawFrameIndex);
+
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
                                       1,
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
- aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvInt32),@FrameCounter);
+
+ aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
+                                 TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
+                                 0,
+                                 SizeOf(TpvScene3DRendererPassesDitheringRenderPass.TPushConstants),
+                                 @PushConstants);
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
+
 end;
 
 end.

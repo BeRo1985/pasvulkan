@@ -14,7 +14,8 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 // layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
 layout(push_constant) uniform PushConstants {
-  int frameCounter;  //
+  uint flags; // bit 0 = enabled (should be off for HDR but on for sRGB SDR) 
+  int frameCounter; // frame counter (for animated noise variation)
 } pushConstants;
 
 vec4 whiteNoise2(ivec4 p){
@@ -74,20 +75,24 @@ vec3 pseudoBlueNoise(ivec3 p) {
 #include "srgb.glsl" 
 
 void main() {
+  vec4 c = subpassLoad(uSubpassInput);
+  if((pushConstants.flags & (1u << 0u)) != 0u) {
 #if 1
-  vec3 n = fma(pseudoBlueNoise(ivec3(gl_FragCoord.xy + ivec2(pushConstants.frameCounter), 0)).xyz, vec3(2.0), vec3(-1.0));
-  n = sign(n) * (vec3(1.0) - sqrt(vec3(1.0) - abs(n)));
-  outFragColor = convertSRGBToLinearRGB(convertLinearRGBToSRGB(subpassLoad(uSubpassInput)) + vec4(n * (1.0 / 255.0), 0.0));
+    vec3 n = fma(pseudoBlueNoise(ivec3(gl_FragCoord.xy + ivec2(pushConstants.frameCounter), 0)).xyz, vec3(2.0), vec3(-1.0));
+    n = sign(n) * (vec3(1.0) - sqrt(vec3(1.0) - abs(n)));
+    c = convertSRGBToLinearRGB(convertLinearRGBToSRGB(c) + vec4(n * (1.0 / 255.0), 0.0));
 #elif 0
-  uvec3 v = uvec3(uvec2(gl_FragCoord.xy), uint(pushConstants.frameCounter));
-  const uint k = 1103515245u;
-  v = ((v >> 8u) ^ v.yzx) * k;
-  v = ((v >> 8u) ^ v.yzx) * k;
-  v = ((v >> 8u) ^ v.yzx) * k;
-  vec3 n = fma(vec3(vec3(uintBitsToFloat(uvec3(uvec3(((v >> 9u) & uvec3(0x007fffffu)) | uvec3(0x3f800000u))))) - vec3(1.0)), vec3(2.0), vec3(-1.0));
-  n = sign(n) * (vec3(1.0) - sqrt(vec3(1.0) - abs(n)));
-  outFragColor = convertSRGBToLinearRGB(convertLinearRGBToSRGB(subpassLoad(uSubpassInput)) + vec4(n * (1.0 / 255.0), 0.0));
+    uvec3 v = uvec3(uvec2(gl_FragCoord.xy), uint(pushConstants.frameCounter));
+    const uint k = 1103515245u;
+    v = ((v >> 8u) ^ v.yzx) * k;
+    v = ((v >> 8u) ^ v.yzx) * k;
+    v = ((v >> 8u) ^ v.yzx) * k;
+    vec3 n = fma(vec3(vec3(uintBitsToFloat(uvec3(uvec3(((v >> 9u) & uvec3(0x007fffffu)) | uvec3(0x3f800000u))))) - vec3(1.0)), vec3(2.0), vec3(-1.0));
+    n = sign(n) * (vec3(1.0) - sqrt(vec3(1.0) - abs(n)));
+    c = convertSRGBToLinearRGB(convertLinearRGBToSRGB(c) + vec4(n * (1.0 / 255.0), 0.0));
 #else
-  outFragColor = convertSRGBToLinearRGB(convertLinearRGBToSRGB(subpassLoad(uSubpassInput)) + vec4(vec3(((fract((vec3(dot(vec2(171.0, 231.0), vec2(gl_FragCoord.xy) + vec2(ivec2(int(pushConstants.frameCounter & 0xff)))))) / vec3(103.0, 71.0, 97.0)) - vec3(0.5)) / vec3(255.0)) * 0.375), 0.0));
+    c = convertSRGBToLinearRGB(convertLinearRGBToSRGB(c) + vec4(vec3(((fract((vec3(dot(vec2(171.0, 231.0), vec2(gl_FragCoord.xy) + vec2(ivec2(int(pushConstants.frameCounter & 0xff)))))) / vec3(103.0, 71.0, 97.0)) - vec3(0.5)) / vec3(255.0)) * 0.375), 0.0));
 #endif
+  }
+  outFragColor = c;
 }
