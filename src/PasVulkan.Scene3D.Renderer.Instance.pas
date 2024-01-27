@@ -357,6 +357,7 @@ type { TpvScene3DRendererInstance }
               fWorldSpaceFrustumCorners:array[0..7,0..7] of TpvVector3;
               fTemporaryFrustumCorners:array[0..7,0..7] of TpvVector3;
               fFrustumAABB:TpvAABB;
+              fLightSpaceWorldAABB:TpvAABB;
              protected
               procedure SnapLightFrustum(var aScale,aOffset:TpvVector2;const aMatrix:TpvMatrix4x4;const aWorldOrigin:TpvVector3;const aShadowMapResolution:TpvVector2);
              public
@@ -1067,6 +1068,7 @@ var CascadedShadowMapIndex,Index,ViewIndex:TpvSizeInt;
     Renderer:TpvScene3DRenderer;
     FrustumCenterX,FrustumCenterY,FrustumCenterZ:TpvDouble;
     FrustumRadius:TpvScalar;
+    fLightSpaceWorldAABB:TpvAABB;
 begin
 
  Renderer:=fInstance.Renderer;
@@ -1220,6 +1222,10 @@ begin
   fLightViewMatrix.RawComponents[3,0]:=-fLightSideVector.Dot(fOrigin);
   fLightViewMatrix.RawComponents[3,1]:=-fLightUpVector.Dot(fOrigin);
   fLightViewMatrix.RawComponents[3,2]:=-fLightForwardVector.Dot(fOrigin);
+
+  fLightSpaceWorldAABB:=fSceneWorldSpaceBoundingBox.HomogenTransform(fLightViewMatrix);
+
+  fFrustumAABB:=fFrustumAABB.GetIntersection(fLightSpaceWorldAABB);
 
   fLightProjectionMatrix:=TpvMatrix4x4.CreateOrthoRightHandedZeroToOne(fFrustumAABB.Min.x,
                                                                        fFrustumAABB.Max.x,
