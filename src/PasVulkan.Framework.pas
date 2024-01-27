@@ -451,7 +451,8 @@ type EpvVulkanException=class(Exception);
        function GetMemoryType(const aTypeBits:TpvUInt32;const aProperties:TVkFlags):TpvUInt32;
        function GetBestSupportedDepthFormat(const aWithStencil:boolean):TVkFormat;
        function GetQueueNodeIndex(const aSurface:TpvVulkanSurface;const aQueueFlagBits:TVkQueueFlagBits):TpvInt32;
-       function GetSurfaceFormat(const aSurface:TpvVulkanSurface;const aSRGB:boolean=false):TVkSurfaceFormatKHR;
+       function GetSurfaceFormat(const aSurface:TpvVulkanSurface;const aSRGB:boolean=false;const aHDR:boolean=false):TVkSurfaceFormatKHR;
+       function GetSurfaceHDRSupport(const aSurface:TpvVulkanSurface):Boolean;
        property Properties:TVkPhysicalDeviceProperties read fProperties;
        property MemoryProperties:TVkPhysicalDeviceMemoryProperties read fMemoryProperties;
        property Features:TVkPhysicalDeviceFeatures read fFeatures;
@@ -2076,7 +2077,8 @@ type EpvVulkanException=class(Exception);
                           const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
                           const aClipped:boolean=true;
                           const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
-                          const aSRGB:boolean=false;
+                          const aSRGB:boolean=true;
+                          const aHDR:boolean=false;
                           const aFullScreen:boolean=false;
                           const aExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode=TpvVulkanExclusiveFullScreenMode.Default;
                           const aWindow:Pointer=nil); reintroduce; overload;
@@ -8876,10 +8878,11 @@ begin
  end;
 end;
 
-function TpvVulkanPhysicalDevice.GetSurfaceFormat(const aSurface:TpvVulkanSurface;const aSRGB:boolean=false):TVkSurfaceFormatKHR;
+function TpvVulkanPhysicalDevice.GetSurfaceFormat(const aSurface:TpvVulkanSurface;const aSRGB:boolean=false;const aHDR:boolean=false):TVkSurfaceFormatKHR;
 var FormatCount,Index,BestIndex:TpvUInt32;
     SurfaceFormats:TVkSurfaceFormatKHRArray;
 begin
+
  SurfaceFormats:=nil;
  try
 
@@ -8926,15 +8929,29 @@ begin
 {$ifend}
    result.ColorSpace:=SurfaceFormats[0].colorSpace;
   end else begin
-   BestIndex:=0;
-   for Index:=0 to FormatCount-1 do begin
-    if (aSRGB and (SurfaceFormats[Index].format in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB])) or
-       ((not aSRGB) and (SurfaceFormats[Index].format in [VK_FORMAT_R8G8B8A8_UNORM,VK_FORMAT_B8G8R8A8_UNORM])) then begin
-     BestIndex:=Index;
-     break;
+   result.format:=VK_FORMAT_UNDEFINED;
+   if aHDR then begin
+    for Index:=0 to FormatCount-1 do begin
+     if ((SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) or
+         (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_BT2020_LINEAR_EXT) or
+         (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_HDR10_ST2084_EXT)) and
+        (SurfaceFormats[Index].format in [VK_FORMAT_A2B10G10R10_UNORM_PACK32,VK_FORMAT_R16G16B16A16_SFLOAT]) then begin
+      result:=SurfaceFormats[Index];
+      break;
+     end;
     end;
    end;
-   result:=SurfaceFormats[BestIndex];
+   if result.format=VK_FORMAT_UNDEFINED then begin
+    BestIndex:=0;
+    for Index:=0 to FormatCount-1 do begin
+     if (aSRGB and (SurfaceFormats[Index].format in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB])) or
+        ((not aSRGB) and (SurfaceFormats[Index].format in [VK_FORMAT_R8G8B8A8_UNORM,VK_FORMAT_B8G8R8A8_UNORM])) then begin
+      BestIndex:=Index;
+      break;
+     end;
+    end;
+    result:=SurfaceFormats[BestIndex];
+   end;
   end;
 
 {$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
@@ -8947,6 +8964,43 @@ begin
  end;
 
 end;
+
+function TpvVulkanPhysicalDevice.GetSurfaceHDRSupport(const aSurface:TpvVulkanSurface):Boolean;
+var FormatCount,Index:TpvUInt32;
+    SurfaceFormats:TVkSurfaceFormatKHRArray;
+begin
+
+ result:=false;
+
+ SurfaceFormats:=nil;
+ try
+
+  FormatCount:=0;
+  VulkanCheckResult(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,nil));
+
+  if FormatCount>0 then begin
+   SetLength(SurfaceFormats,FormatCount);
+   VulkanCheckResult(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,@SurfaceFormats[0]));
+  end;
+
+  if FormatCount>0 then begin
+   for Index:=0 to FormatCount-1 do begin
+    if ((SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) or
+        (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_BT2020_LINEAR_EXT) or
+        (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_HDR10_ST2084_EXT)) and
+       (SurfaceFormats[Index].format in [VK_FORMAT_A2B10G10R10_UNORM_PACK32,VK_FORMAT_R16G16B16A16_SFLOAT]) then begin
+     result:=true;
+     break;
+    end;
+   end;
+  end;
+
+ finally
+  SetLength(SurfaceFormats,0);
+ end;
+
+end;
+
 
 (*constructor TpvVulkanSurface.Create(const aInstance:TpvVulkanInstance;
 {$if defined(Android)}
@@ -16998,6 +17052,7 @@ constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
                                       const aClipped:boolean;
                                       const aDesiredTransform:TVkSurfaceTransformFlagsKHR;
                                       const aSRGB:boolean;
+                                      const aHDR:boolean;
                                       const aFullScreen:boolean;
                                       const aExclusiveFullScreenMode:TpvVulkanExclusiveFullScreenMode;
                                       const aWindow:Pointer);
@@ -17141,7 +17196,7 @@ begin
   end;
 
   if aImageFormat=VK_FORMAT_UNDEFINED then begin
-   SurfaceFormat:=fDevice.fPhysicalDevice.GetSurfaceFormat(fSurface,aSRGB);
+   SurfaceFormat:=fDevice.fPhysicalDevice.GetSurfaceFormat(fSurface,aSRGB,aHDR);
    SwapChainCreateInfo.imageFormat:=SurfaceFormat.format;
    SwapChainCreateInfo.imageColorSpace:=SurfaceFormat.colorSpace;
   end else begin

@@ -1340,6 +1340,8 @@ type EpvApplication=class(Exception)
 
        fSwapChainColorSpace:TpvApplicationSwapChainColorSpace;
 
+       fSwapChainHDR:Boolean;
+
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fFullscreen:boolean;
@@ -1908,6 +1910,8 @@ type EpvApplication=class(Exception)
        property PathName:TpvUTF8String read fPathName write fPathName;
 
        property SwapChainColorSpace:TpvApplicationSwapChainColorSpace read fSwapChainColorSpace write fSwapChainColorSpace;
+
+       property SwapChainHDR:Boolean read fSwapChainHDR write fSwapChainHDR;
 
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
@@ -7130,6 +7134,8 @@ begin
 
  fSwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 
+ fSwapChainHDR:=false;
+
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
@@ -8475,6 +8481,7 @@ begin
                                              true,
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB,
+                                             fSwapChainHDR,
                                              fFullscreen,
                                              fExclusiveFullScreenMode,
                                              {$if defined(Windows)}@WindowHandle{$else}nil{$ifend});

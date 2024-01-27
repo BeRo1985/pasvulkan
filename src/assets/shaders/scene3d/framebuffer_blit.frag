@@ -14,9 +14,10 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 
 //layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
-const uint COLOR_SPACE_SRGB_NONLINEAR = 0;
-const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 1;
-const uint COLOR_SPACE_HDR10_ST2084 = 2;
+const uint COLOR_SPACE_SRGB_NONLINEAR = 0u;
+const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 1u;
+const uint COLOR_SPACE_HDR10_ST2084 = 2u;
+const uint COLOR_SPACE_BT2020_LINEAR = 3u;
 
 layout(push_constant) uniform PushConstants {
   uint colorSpace;
@@ -55,6 +56,15 @@ void main(){
       outFragColor = clamp(color * vec2(hdrScalar, 1.0).xxxy, vec4(0.0), vec4(1.0));
       break;
     } 
+    case COLOR_SPACE_BT2020_LINEAR:{
+      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
+      const float referenceWhiteNits = 80.0;
+      const float bt2020max = 10000.0; // TODO: check if this is correct for BT. 2020 
+      const float hdrScalar = referenceWhiteNits / bt2020max;
+      color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
+      outFragColor = clamp(color * vec2(hdrScalar, 1.0).xxxy, vec4(0.0), vec4(1.0));
+      break;
+    }
     default:{ //case COLOR_SPACE_SRGB_NONLINEAR:
       // Target format: VK_FORMAT_R8G8B8A8_SRGB or VK_FORMAT_B8G8R8A8_SRGB (depends on the swapchain format)
       // Just forward, no conversion, since the framebuffer is already in sRGB where the GPU transforms it already itself,
