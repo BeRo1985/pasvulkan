@@ -8879,7 +8879,7 @@ begin
 end;
 
 function TpvVulkanPhysicalDevice.GetSurfaceFormat(const aSurface:TpvVulkanSurface;const aSRGB:boolean=false;const aHDR:boolean=false):TVkSurfaceFormatKHR;
-var FormatCount,Index,BestIndex:TpvUInt32;
+var FormatCount,Index,BestIndex,BestScore,Score:TpvUInt32;
     SurfaceFormats:TVkSurfaceFormatKHRArray;
 begin
 
@@ -8931,13 +8931,39 @@ begin
   end else begin
    result.format:=VK_FORMAT_UNDEFINED;
    if aHDR then begin
+    BestScore:=0;
     for Index:=0 to FormatCount-1 do begin
-     if ((SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) or
-         (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_BT2020_LINEAR_EXT) or
-         (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_HDR10_ST2084_EXT)) and
-        (SurfaceFormats[Index].format in [VK_FORMAT_A2B10G10R10_UNORM_PACK32,VK_FORMAT_R16G16B16A16_SFLOAT]) then begin
-      result:=SurfaceFormats[Index];
-      break;
+     case SurfaceFormats[Index].format of
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+       case SurfaceFormats[Index].colorSpace of
+        VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:begin
+         Score:=5;
+        end;
+        VK_COLOR_SPACE_EXTENDED_SRGB_NON_LINEAR_EXT:begin
+         Score:=4;
+        end;
+        VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
+         Score:=3;
+        end;
+        VK_COLOR_SPACE_HDR10_ST2084_EXT:begin
+         Score:=2;
+        end;
+        VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:begin
+         Score:=1;
+        end;
+        else begin
+         Score:=0;
+        end;
+       end;
+       if BestScore<Score then begin
+        BestScore:=Score;
+        result:=SurfaceFormats[Index];
+       end;
+      end;
+      else begin
+      end;
      end;
     end;
    end;

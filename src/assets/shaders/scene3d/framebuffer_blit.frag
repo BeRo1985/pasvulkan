@@ -1,5 +1,8 @@
 #version 450 core
 
+// This shader should be really the last shader in the pipeline, since it converts the linear sRGB framebuffer to the target color space,
+// and it applies optional dithering for reducing banding artifacts for the 8-bit sRGB framebuffer case, with pseudo blue noise dithering.
+
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -14,19 +17,29 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 
 //layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
-const uint COLOR_SPACE_SRGB_NONLINEAR = 0u;
-const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 1u;
-const uint COLOR_SPACE_HDR10_ST2084 = 2u;
-const uint COLOR_SPACE_BT2020_LINEAR = 3u;
+const uint COLOR_SPACE_SRGB_NONLINEAR_SDR = 0u;
+const uint COLOR_SPACE_SRGB_NONLINEAR_HDR = 1u;
+const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 2u; 
+const uint COLOR_SPACE_EXTENDED_SRGB_NONLINEAR = 3u; 
+const uint COLOR_SPACE_HDR10_ST2084 = 5u;
+const uint COLOR_SPACE_HDR10_HLG = 6u;
+const uint COLOR_SPACE_BT709_LINEAR = 7u;
+const uint COLOR_SPACE_BT2020_LINEAR = 8u;
 
 layout(push_constant) uniform PushConstants {
   uint colorSpace;
+  uint frameCounter; // frame counter (for animated noise variation)
 } pushConstants;
+
+#define FRAGMENT_SHADER
 
 #include "rec2020.glsl"
 #include "rec709.glsl"
 #include "rec2084.glsl"
+#include "hlg.glsl"
 #include "srgb.glsl"
+
+#include "dithering.glsl"
 
 void main(){
   // Input format: 
@@ -39,12 +52,24 @@ void main(){
   vec4 color = subpassLoad(uSubpassInput);
 //vec4 Color = textureLod(uTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);
   switch(pushConstants.colorSpace){
+    case COLOR_SPACE_SRGB_NONLINEAR_HDR:{
+      // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
+      color.xyz = clamp(convertLinearRGBToSRGB(color.xyz), vec3(-0.5), vec3(7.5)); // scRGB -0.5 to 7.5 wide color gamut range 
+      break;
+    }
     case COLOR_SPACE_EXTENDED_SRGB_LINEAR:{
       // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
       // Just forward, no conversion, since the framebuffer is already in linear sRGB, but clip the lower values to 0.0, 
       // for avoiding negative values.
-      outFragColor = max(vec4(0.0), color); 
+      color.xyz = max(vec3(0.0), color.xyz); 
       break;
+    }
+    case COLOR_SPACE_EXTENDED_SRGB_NONLINEAR:{
+      // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
+      // Convert to sRGB, and clip the lower values to 0.0, for avoiding negative values, but don't clip the upper values 
+      // for allowing HDR. 
+      color.xyz = max(vec3(0.0), convertLinearRGBToSRGB(color.xyz));
+      break;                
     }
     case COLOR_SPACE_HDR10_ST2084:{
       // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
@@ -52,28 +77,41 @@ void main(){
       const float st2084max = 10000.0;
       const float hdrScalar = referenceWhiteNits / st2084max;      
       color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
-      color.xyz = convertToREC2084(color.xyz); // convert to ST. 2084
-      outFragColor = clamp(color * vec2(hdrScalar, 1.0).xxxy, vec4(0.0), vec4(1.0));
+      color.xyz = oetfREC2084(color.xyz); // convert to ST. 2084
+      color.xyz = clamp(color.xyz * hdrScalar, vec3(0.0), vec3(1.0));
       break;
     } 
-    case COLOR_SPACE_BT2020_LINEAR:{
+    case COLOR_SPACE_HDR10_HLG:{
+      // TODO: Check this
       // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
-      const float referenceWhiteNits = 80.0;
-      const float bt2020max = 10000.0; // TODO: check if this is correct for BT. 2020 
-      const float hdrScalar = referenceWhiteNits / bt2020max;
+      const float referenceWhiteNits = 1000.0;
+      const float st2084max = 10000.0;
+      const float hdrScalar = referenceWhiteNits / st2084max;      
       color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
-      outFragColor = clamp(color * vec2(hdrScalar, 1.0).xxxy, vec4(0.0), vec4(1.0));
+      color.xyz = oetfHLG(color.xyz); // convert to HLG
+      color.xyz = clamp(color.xyz * hdrScalar, vec3(0.0), vec3(1.0));
+      break;
+    } 
+    case COLOR_SPACE_BT709_LINEAR:{
+      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
+      color.xyz = max(vec3(0.0), color.xyz); // clip the lower values to 0.0, for avoiding negative values
       break;
     }
-    default:{ //case COLOR_SPACE_SRGB_NONLINEAR:
+    case COLOR_SPACE_BT2020_LINEAR:{
+      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
+      color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
+      color.xyz = max(vec3(0.0), color.xyz); // clip the lower values to 0.0, for avoiding negative values
+      break;
+    }
+    default:{ //case COLOR_SPACE_SRGB_NONLINEAR_SDR:
       // Target format: VK_FORMAT_R8G8B8A8_SRGB or VK_FORMAT_B8G8R8A8_SRGB (depends on the swapchain format)
       // Just forward, no conversion, since the framebuffer is already in sRGB where the GPU transforms it already itself,
       // where the GPU converts the linear sRGB input to sRGB gamma corrected sRGB output through the hardware pipeline,
       // but clamp the values to the range [0.0, 1.0] for ensuring that these are in the output range.
-      // But this shader should actually never be used when the framebuffer is in sRGB, since the GPU automatically converts
-      // the sRGB texture to linear sRGB through the hardware sampler.
-      outFragColor = clamp(color, vec4(0.0), vec4(1.0)); 
+      // And additionally, apply dithering for reducing banding artifacts.
+      color.xyz = clamp(ditherSRGB(color.xyz, ivec2(gl_FragCoord.xy), int(pushConstants.frameCounter)), vec3(0.0), vec3(1.0)); 
       break;                
     }
   }
+  outFragColor = color;
 }
