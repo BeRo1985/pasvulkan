@@ -80,6 +80,8 @@ type { TpvScene3DRendererPassesFrameBufferBlitRenderPass }
       TpvScene3DRendererPassesFrameBufferBlitRenderPass=class(TpvFrameGraph.TRenderPass)
        public
         const ColorSpaceSRGBNonLinearSDR=0;
+              ColorSpaceExtendedSRGBLinear=1;
+{       const ColorSpaceSRGBNonLinearSDR=0;
               ColorSpaceSRGBNonLinearSDRManualGammaCorrection=1;
               ColorSpaceSRGBNonLinearHDR=2;
               ColorSpaceExtendedSRGBLinear=3;
@@ -87,7 +89,7 @@ type { TpvScene3DRendererPassesFrameBufferBlitRenderPass }
               ColorSpaceHDR10ST2084=5;
               ColorSpaceHDR10HLG=6;
               ColorSpaceBT709Linear=7;
-              ColorSpaceBT2020Linear=8;
+              ColorSpaceBT2020Linear=8;}
         type TPushConstants=packed record
               Mode:TpvUInt32;
               FrameCounter:TpvInt32;
@@ -390,7 +392,8 @@ begin
 
  case FrameGraph.SurfaceColorSpace of
   VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:begin
-   case FrameGraph.SurfaceColorFormat of
+   PushConstants.Mode:=ColorSpaceSRGBNonLinearSDR;
+{  case FrameGraph.SurfaceColorFormat of
     VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB:begin
      PushConstants.Mode:=ColorSpaceSRGBNonLinearSDR;
     end;
@@ -400,12 +403,12 @@ begin
     else begin
      PushConstants.Mode:=ColorSpaceSRGBNonLinearHDR;
     end; 
-   end;
+   end;}
   end;
   VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:begin
    PushConstants.Mode:=ColorSpaceExtendedSRGBLinear;
   end;
-  VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:begin
+{ VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:begin
    PushConstants.Mode:=ColorSpaceExtendedSRGBNonLinear;
   end;
   VK_COLOR_SPACE_HDR10_ST2084_EXT:begin
@@ -419,7 +422,7 @@ begin
   end;
   VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
    PushConstants.Mode:=ColorSpaceBT2020Linear;
-  end;
+  end;}
   else begin
    // Fallback to SRGB Non-Linear SDR for unknown color spaces, even if it would be wrong in the worst case, but still better than nothing
    PushConstants.Mode:=ColorSpaceSRGBNonLinearSDR;
