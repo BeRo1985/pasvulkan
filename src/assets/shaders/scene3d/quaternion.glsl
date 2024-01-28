@@ -89,9 +89,9 @@ vec3 transformVectorByQuaternion(vec3 v, vec4 q){
   vec3 t = cross(q.xyz, v) * 2.0;
   return v + fma(t, vec3(q.w), cross(q.xyz, t));
 #else
-  return v + (2.0 * cross(q.xyz, cross(q.xyz, v) + (q.w * v)));
-//return fma(cross(q.xyz, fma(v, vec3(q.w), cross(q.xyz, v))), vec3(2.0), v);
-#endif
+//return v + (2.0 * cross(q.xyz, cross(q.xyz, v) + (q.w * v)));
+  return fma(cross(q.xyz, fma(v, vec3(q.w), cross(q.xyz, v))), vec3(2.0), v);
+#endif 
 }
 
 vec4 transformVectorByQuaternion(vec4 v, vec4 q){
@@ -152,13 +152,11 @@ vec4 packQuaternionToRGB10A2(vec4 q){
   int maxComponentIndex = (qAbs.x > qAbs.y) ? ((qAbs.x > qAbs.z) ? ((qAbs.x > qAbs.w) ? 0 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)) : ((qAbs.y > qAbs.z) ? ((qAbs.y > qAbs.w) ? 1 : 3) : ((qAbs.z > qAbs.w) ? 2 : 3)); 
   q = mix(q, -q, float(q[maxComponentIndex] < 0.0));
   q = vec4[4](q.yzwx, q.xzwy, q.xywz, q.xyzw)[maxComponentIndex]; 
-  return vec4((((q.xyz * sign(q.w)) * vec3(0.7071067811865476)) + vec3(0.5)), float(maxComponentIndex) / 3.0);
-//return vec4(fma(q.xyz * sign(q.w), vec3(0.7071067811865476),vec3(0.5)), float(maxComponentIndex) / 3.0);
+  return vec4(fma(q.xyz * sign(q.w), vec3(0.7071067811865476),vec3(0.5)), float(maxComponentIndex) / 3.0);
 }
 
 vec4 unpackQuaternionFromRGB10A2(vec4 q){
-//vec4 r = vec4(fma(q.xyz, vec3(1.4142135623730951), vec3(-0.7071067811865475)), 0.0);
-  vec4 r = vec4(((q.xyz * vec3(1.4142135623730951)) + vec3(-0.7071067811865475)), 0.0);
+  vec4 r = vec4(fma(q.xyz, vec3(1.4142135623730951), vec3(-0.7071067811865475)), 0.0);
   r.w = sqrt(1.0 - clamp(dot(r.xyz, r.xyz), 0.0, 1.0));
   return normalize(vec4[4](r.wxyz, r.xwyz, r.xywz, r.xyzw)[int(q.w * 3.0)]);
 }
