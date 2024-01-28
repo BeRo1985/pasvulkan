@@ -30,16 +30,6 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 const uint COLOR_SPACE_SRGB_NONLINEAR_SDR = 0u;
 const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 1u; 
 
-/*const uint COLOR_SPACE_SRGB_NONLINEAR_SDR = 0u;
-const uint COLOR_SPACE_SRGB_NONLINEAR_SDR_MANUAL_GAMMA_CORRECTION = 1u;
-const uint COLOR_SPACE_SRGB_NONLINEAR_HDR = 2u;
-const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 3u; 
-const uint COLOR_SPACE_EXTENDED_SRGB_NONLINEAR = 4u; 
-const uint COLOR_SPACE_HDR10_ST2084 = 5u;
-const uint COLOR_SPACE_HDR10_HLG = 6u;
-const uint COLOR_SPACE_BT709_LINEAR = 7u;
-const uint COLOR_SPACE_BT2020_LINEAR = 8u;*/
-
 layout(push_constant) uniform PushConstants {
   uint colorSpace;
   uint frameCounter; // frame counter (for animated noise variation)
@@ -47,10 +37,6 @@ layout(push_constant) uniform PushConstants {
 
 #define FRAGMENT_SHADER
 
-#include "rec2020.glsl"
-#include "rec709.glsl"
-#include "rec2084.glsl"
-#include "hlg.glsl"
 #include "srgb.glsl"
 
 #include "dithering.glsl"
@@ -66,64 +52,13 @@ void main(){
   vec4 color = subpassLoad(uSubpassInput);
 //vec4 Color = textureLod(uTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);
   switch(pushConstants.colorSpace){
-/*  case COLOR_SPACE_SRGB_NONLINEAR_SDR_MANUAL_GAMMA_CORRECTION:{
-      // Target format: VK_FORMAT_R8G8B8A8_UNORM or VK_FORMAT_B8G8R8A8_UNORM (depends on the swapchain format)
-      color.xyz = clamp(convertLinearRGBToSRGB(ditherSRGB(clamp(color.xyz, vec3(0.0), vec3(1.0)), ivec2(gl_FragCoord.xy), int(pushConstants.frameCounter))), vec3(0.0), vec3(1.0)); 
-      break;                
-    }    
-    case COLOR_SPACE_SRGB_NONLINEAR_HDR:{
-      // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
-      color.xyz = convertLinearRGBToSRGB(abs(color.xyz)) * sign(color.xyz);
-      break;
-    }*/
     case COLOR_SPACE_EXTENDED_SRGB_LINEAR:{
       // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
       // Nothing to do, since the input is already linear sRGB
       break;
     }
-/*  case COLOR_SPACE_EXTENDED_SRGB_NONLINEAR:{
-      // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
-      color.xyz = convertLinearRGBToSRGB(abs(color.xyz)) * sign(color.xyz);
-      break;                
-    }
-    case COLOR_SPACE_HDR10_ST2084:{
-      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
-      const float referenceWhiteNits = 80.0;
-      const float st2084max = 10000.0;
-      const float hdrScalar = referenceWhiteNits / st2084max;      
-      color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
-      color.xyz = oetfREC2084(color.xyz); // convert to ST. 2084
-      color.xyz = clamp(color.xyz * hdrScalar, vec3(0.0), vec3(1.0));
-      break;
-    } 
-    case COLOR_SPACE_HDR10_HLG:{
-      // TODO: Check this
-      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
-      const float referenceWhiteNits = 1000.0;
-      const float st2084max = 10000.0;
-      const float hdrScalar = referenceWhiteNits / st2084max;      
-      color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
-      color.xyz = oetfHLG(color.xyz); // convert to HLG
-      color.xyz = clamp(color.xyz * hdrScalar, vec3(0.0), vec3(1.0));
-      break;
-    } 
-    case COLOR_SPACE_BT709_LINEAR:{
-      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
-      color.xyz = max(vec3(0.0), color.xyz); // clip the lower values to 0.0, for avoiding negative values
-      break;
-    }
-    case COLOR_SPACE_BT2020_LINEAR:{
-      // Target format: VK_FORMAT_A2B10G10R10_UNORM_PACK32 or VK_FORMAT_R16G16B16A16_SFLOAT (depends on the swapchain format) 
-      color.xyz = LinearSRGBToLinearRec2020Matrix * color.xyz; // convert to linear Rec. 2020
-      color.xyz = max(vec3(0.0), color.xyz); // clip the lower values to 0.0, for avoiding negative values
-      break;
-    }*/
     default:{ //case COLOR_SPACE_SRGB_NONLINEAR_SDR:
       // Target format: VK_FORMAT_R8G8B8A8_SRGB or VK_FORMAT_B8G8R8A8_SRGB (depends on the swapchain format)
-      // Just forward, no conversion, since the framebuffer is already in sRGB where the GPU transforms it already itself,
-      // where the GPU converts the linear sRGB input to sRGB gamma corrected sRGB output through the hardware pipeline,
-      // but clamp the values to the range [0.0, 1.0] for ensuring that these are in the output range.
-      // And additionally, apply dithering for reducing banding artifacts.
       color.xyz = clamp(ditherSRGB(clamp(color.xyz, vec3(0.0), vec3(1.0)), ivec2(gl_FragCoord.xy), int(pushConstants.frameCounter)), vec3(0.0), vec3(1.0)); 
       break;                
     }
