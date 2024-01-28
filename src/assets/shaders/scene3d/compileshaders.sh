@@ -238,7 +238,7 @@ compileshaderarguments=(
   
   "-V dummy.frag -o ${tempPath}/dummy_frag.spv"
 
-  "-V dithering.frag -o ${tempPath}/dithering_frag.spv"
+  #"-V dithering.frag -o ${tempPath}/dithering_frag.spv"
 
   "-V debug_blit.frag -o ${tempPath}/debug_blit_frag.spv"
   
