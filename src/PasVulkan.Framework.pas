@@ -8939,21 +8939,18 @@ begin
       VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
        case SurfaceFormats[Index].colorSpace of
         VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:begin
-         Score:=6;
-        end;
-        VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:begin
          Score:=5;
         end;
-        VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
+        VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:begin
          Score:=4;
         end;
-        VK_COLOR_SPACE_HDR10_ST2084_EXT:begin
+        VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
          Score:=3;
         end;
-        VK_COLOR_SPACE_HDR10_HLG_EXT:begin
+        VK_COLOR_SPACE_HDR10_ST2084_EXT:begin
          Score:=2;
         end;
-        VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:begin
+        VK_COLOR_SPACE_HDR10_HLG_EXT:begin
          Score:=1;
         end;
         else begin
@@ -9023,8 +9020,7 @@ begin
        VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT,
        VK_COLOR_SPACE_BT2020_LINEAR_EXT,
        VK_COLOR_SPACE_HDR10_ST2084_EXT,
-       VK_COLOR_SPACE_HDR10_HLG_EXT,
-       VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:begin
+       VK_COLOR_SPACE_HDR10_HLG_EXT:begin
         result:=true;
         break;
        end;
