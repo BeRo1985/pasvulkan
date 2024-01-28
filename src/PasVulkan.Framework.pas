@@ -8934,17 +8934,17 @@ begin
     BestScore:=0;
     for Index:=0 to FormatCount-1 do begin
      case SurfaceFormats[Index].format of
-      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_R16G16B16A16_SFLOAT{,
       VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-      VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+      VK_FORMAT_B10G11R11_UFLOAT_PACK32}:begin
        case SurfaceFormats[Index].colorSpace of
         VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:begin
-         Score:=4;
+         Score:=1;
         end;
 {       VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:begin // Ignore for now, so that all color calculations can be done in linear sRGB, even for HDR, when aSRGB is true
          Score:=4;
         end;}
-        VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
+{       VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
          if aSRGB then begin
           // Not sRGB compatible, so skip it
           Score:=0;
@@ -8967,7 +8967,7 @@ begin
          end else begin
           Score:=1;
          end;
-        end;
+        end; }
         else begin
          Score:=0;
         end;
@@ -9027,23 +9027,23 @@ begin
   if FormatCount>0 then begin
    for Index:=0 to FormatCount-1 do begin
     case SurfaceFormats[Index].format of
-     VK_FORMAT_R16G16B16A16_SFLOAT,
+     VK_FORMAT_R16G16B16A16_SFLOAT{,
      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-     VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+     VK_FORMAT_B10G11R11_UFLOAT_PACK32}:begin
       case SurfaceFormats[Index].colorSpace of
        VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:begin
         result:=true;
         break;
        end;
        // VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT  // Ignore for now, so that all color calculations can be done in linear sRGB, even for HDR, when aSRGB is true
-       VK_COLOR_SPACE_BT2020_LINEAR_EXT,
+{      VK_COLOR_SPACE_BT2020_LINEAR_EXT,
        VK_COLOR_SPACE_HDR10_ST2084_EXT,
        VK_COLOR_SPACE_HDR10_HLG_EXT:begin
         if not aSRGB then begin
          result:=true;
          break;
         end;
-       end;
+       end;}
        else begin
        end;
       end;
