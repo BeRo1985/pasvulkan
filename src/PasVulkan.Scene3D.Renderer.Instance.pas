@@ -912,11 +912,10 @@ uses PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TonemappingRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.DitheringRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.HUDMipMapCustomPass,
      PasVulkan.Scene3D.Renderer.Passes.ContentProjectionRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DebugBlitRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.BlitRenderPass;
+     PasVulkan.Scene3D.Renderer.Passes.FrameBufferBlitRenderPass;
 
 type TpvScene3DRendererInstancePasses=class
       private
@@ -1010,12 +1009,11 @@ type TpvScene3DRendererInstancePasses=class
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
        fTonemappingRenderPass:TpvScene3DRendererPassesTonemappingRenderPass;
-       fDitheringRenderPass:TpvScene3DRendererPassesDitheringRenderPass;
        fHUDRenderPass:TpvScene3DRendererInstance.THUDRenderPass;
        fHUDMipMapCustomPass:TpvScene3DRendererPassesHUDMipMapCustomPass;
        fContentProjectionRenderPass:TpvScene3DRendererPassesContentProjectionRenderPass;
        fDebugBlitRenderPass:TpvScene3DRendererPassesDebugBlitRenderPass;
-       fBlitRenderPass:TpvScene3DRendererPassesBlitRenderPass;
+       fFrameBufferBlitRenderPass:TpvScene3DRendererPassesFrameBufferBlitRenderPass;
      end;
 
 const CountJitterOffsets=128;
@@ -2666,6 +2664,19 @@ begin
                                   VK_FORMAT_R8G8B8A8_UNORM}
                                  );
 
+ fFrameGraph.AddImageResourceType('resourcetype_color_output',
+                                  false,
+                                  VK_FORMAT_R16G16B16A16_SFLOAT,//VK_FORMAT_R8G8B8A8_SRGB,//TVkFormat(TpvInt32(IfThen(Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),TpvInt32(VK_FORMAT_R8G8B8A8_SRGB),TpvInt32(VK_FORMAT_R8G8B8A8_UNORM)))),
+                                  TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
+                                  TpvFrameGraph.TImageType.Color,
+                                  TpvFrameGraph.TImageSize.Create(TpvFrameGraph.TImageSize.TKind.SurfaceDependent,1.0,1.0,1.0,fCountSurfaceViews),
+                                  TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT),
+                                  1,
+                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                  VK_IMAGE_LAYOUT_UNDEFINED{,
+                                  VK_FORMAT_R8G8B8A8_UNORM}
+                                 );
+
  fFrameGraph.AddImageResourceType('resourcetype_dithering_color',
                                   false,
                                   VK_FORMAT_R16G16B16A16_SFLOAT,//VK_FORMAT_R8G8B8A8_SRGB,
@@ -3521,51 +3532,33 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass.AddExplicitPassDependency(AntialiasingLastPass);
  end;
 
- if fUseDebugBlit or assigned(fHUDRenderPassClass) then begin
+ if assigned(fHUDRenderPassClass) then begin
+  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass:=fHUDRenderPassClass.Create(fFrameGraph,self,fHUDRenderPassParent);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fTonemappingRenderPass);
 
-  TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,false);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass:=TpvScene3DRendererPassesHUDMipMapCustomPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
 
-  if assigned(fHUDRenderPassClass) then begin
-   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass:=fHUDRenderPassClass.Create(fFrameGraph,self,fHUDRenderPassParent);
-   TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass);
-
-   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass:=TpvScene3DRendererPassesHUDMipMapCustomPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
-
-   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass:=TpvScene3DRendererPassesContentProjectionRenderPass.Create(fFrameGraph,self);
-   TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass);
-
-  end;
-
-  if fUseDebugBlit then begin
-
-   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass:=TpvScene3DRendererPassesDebugBlitRenderPass.Create(fFrameGraph,self);
-   if assigned(fHUDRenderPassClass) then begin
-    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
-    TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
-   end;
-
-   fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
-
-  end else begin
-
-   TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass:=TpvScene3DRendererPassesBlitRenderPass.Create(fFrameGraph,self);
-   if assigned(fHUDRenderPassClass) then begin
-    TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
-    TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
-   end;
-
-   fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fBlitRenderPass;
-
-  end;
-
- end else begin
-
-  TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass:=TpvScene3DRendererPassesDitheringRenderPass.Create(fFrameGraph,self,true);
-
-  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDitheringRenderPass;
+  TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass:=TpvScene3DRendererPassesContentProjectionRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDMipMapCustomPass);
 
  end;
+
+ if fUseDebugBlit then begin
+
+  TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass:=TpvScene3DRendererPassesDebugBlitRenderPass.Create(fFrameGraph,self);
+  if assigned(fHUDRenderPassClass) then begin
+   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fHUDRenderPass);
+   TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fContentProjectionRenderPass);
+  end;
+
+  fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fDebugBlitRenderPass;
+
+ end;
+
+ TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass:=TpvScene3DRendererPassesFrameBufferBlitRenderPass.Create(fFrameGraph,self,true);
+
+ fFrameGraph.RootPass:=TpvScene3DRendererInstancePasses(fPasses).fFrameBufferBlitRenderPass;
 
  fFrameGraph.DoWaitOnSemaphore:=true;
 

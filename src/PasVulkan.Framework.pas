@@ -8939,15 +8939,18 @@ begin
       VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
        case SurfaceFormats[Index].colorSpace of
         VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:begin
+         Score:=6;
+        end;
+        VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:begin
          Score:=5;
         end;
-        VK_COLOR_SPACE_EXTENDED_SRGB_NON_LINEAR_EXT:begin
+        VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
          Score:=4;
         end;
-        VK_COLOR_SPACE_BT2020_LINEAR_EXT:begin
+        VK_COLOR_SPACE_HDR10_ST2084_EXT:begin
          Score:=3;
         end;
-        VK_COLOR_SPACE_HDR10_ST2084_EXT:begin
+        VK_COLOR_SPACE_HDR10_HLG_EXT:begin
          Score:=2;
         end;
         VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:begin
@@ -9011,12 +9014,26 @@ begin
 
   if FormatCount>0 then begin
    for Index:=0 to FormatCount-1 do begin
-    if ((SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) or
-        (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_BT2020_LINEAR_EXT) or
-        (SurfaceFormats[Index].colorSpace=VK_COLOR_SPACE_HDR10_ST2084_EXT)) and
-       (SurfaceFormats[Index].format in [VK_FORMAT_A2B10G10R10_UNORM_PACK32,VK_FORMAT_R16G16B16A16_SFLOAT]) then begin
-     result:=true;
-     break;
+    case SurfaceFormats[Index].format of
+     VK_FORMAT_R16G16B16A16_SFLOAT,
+     VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+     VK_FORMAT_B10G11R11_UFLOAT_PACK32:begin
+      case SurfaceFormats[Index].colorSpace of
+       VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
+       VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT,
+       VK_COLOR_SPACE_BT2020_LINEAR_EXT,
+       VK_COLOR_SPACE_HDR10_ST2084_EXT,
+       VK_COLOR_SPACE_HDR10_HLG_EXT,
+       VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:begin
+        result:=true;
+        break;
+       end;
+       else begin
+       end;
+      end;
+     end;
+     else begin
+     end;
     end;
    end;
   end;
@@ -9026,7 +9043,6 @@ begin
  end;
 
 end;
-
 
 (*constructor TpvVulkanSurface.Create(const aInstance:TpvVulkanInstance;
 {$if defined(Android)}

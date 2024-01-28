@@ -182,7 +182,7 @@ begin
   end;
  end;
 
- if assigned(fInstance.ExternalOutputImageData) then begin
+{if assigned(fInstance.ExternalOutputImageData) then begin
   fResourceSurface:=AddImageOutput('resourcetype_output_color',
                                    'resource_output',
                                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -202,6 +202,16 @@ begin
                                    TpvFrameGraph.TResourceInstanceType.InstancePerInFlightFrame
                                   );
  end;
+
+ fInstance.LastOutputResource:=fResourceSurface;}
+
+ fResourceSurface:=AddImageOutput('resourcetype_color_output',
+                                  'resource_color_debugblit',
+                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                               TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)),
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
 
  fInstance.LastOutputResource:=fResourceSurface;
 

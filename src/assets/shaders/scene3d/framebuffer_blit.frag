@@ -1,7 +1,7 @@
 #version 450 core
 
 // This shader should be really the last shader in the pipeline, since it converts the linear sRGB framebuffer to the target color space,
-// and it applies optional dithering for reducing banding artifacts for the 8-bit sRGB framebuffer case, with pseudo blue noise dithering.
+// and it applies optional dithering for reducing banding artifacts for the 8-bit sRGB framebuffer cases, with pseudo blue noise dithering.
 
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
@@ -18,9 +18,10 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput uS
 //layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
 const uint COLOR_SPACE_SRGB_NONLINEAR_SDR = 0u;
-const uint COLOR_SPACE_SRGB_NONLINEAR_HDR = 1u;
-const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 2u; 
-const uint COLOR_SPACE_EXTENDED_SRGB_NONLINEAR = 3u; 
+const uint COLOR_SPACE_SRGB_NONLINEAR_SDR_MANUAL_GAMMA_CORRECTION = 1u;
+const uint COLOR_SPACE_SRGB_NONLINEAR_HDR = 2u;
+const uint COLOR_SPACE_EXTENDED_SRGB_LINEAR = 3u; 
+const uint COLOR_SPACE_EXTENDED_SRGB_NONLINEAR = 4u; 
 const uint COLOR_SPACE_HDR10_ST2084 = 5u;
 const uint COLOR_SPACE_HDR10_HLG = 6u;
 const uint COLOR_SPACE_BT709_LINEAR = 7u;
@@ -52,6 +53,11 @@ void main(){
   vec4 color = subpassLoad(uSubpassInput);
 //vec4 Color = textureLod(uTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0);
   switch(pushConstants.colorSpace){
+    case COLOR_SPACE_SRGB_NONLINEAR_SDR_MANUAL_GAMMA_CORRECTION:{
+      // Target format: VK_FORMAT_R8G8B8A8_UNORM or VK_FORMAT_B8G8R8A8_UNORM (depends on the swapchain format)
+      color.xyz = clamp(convertLinearRGBToSRGB(ditherSRGB(color.xyz, ivec2(gl_FragCoord.xy), int(pushConstants.frameCounter))), vec3(0.0), vec3(1.0)); 
+      break;                
+    }    
     case COLOR_SPACE_SRGB_NONLINEAR_HDR:{
       // Target format: VK_FORMAT_R16G16B16A16_SFLOAT
       color.xyz = clamp(convertLinearRGBToSRGB(color.xyz), vec3(-0.5), vec3(7.5)); // scRGB -0.5 to 7.5 wide color gamut range 
