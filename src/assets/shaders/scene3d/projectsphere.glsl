@@ -152,10 +152,10 @@ bool projectSphere(vec3 center, const in float radius, const in float zNear, con
     center.z = min(-zNear, center.z); // clamp center to near plane
 //  center.z = min(-zNear, center.z + radius); // move towards the near plane and clamp center to near plane when necessary
 
-    vec3 screenMin = (projectionMatrix * vec4(center - vec3(radius, radius, 0.0), 1.0)).xyw;
+    vec3 screenMin = (projectionMatrix * vec4(center - vec2(radius, 0.0).xxy, 1.0)).xyw;
     screenMin.xy /= screenMin.z;
 
-    vec3 screenMax = (projectionMatrix * vec4(center + vec3(radius, radius, 0.0), 1.0)).xyw;
+    vec3 screenMax = (projectionMatrix * vec4(center + vec2(radius, 0.0).xxy, 1.0)).xyw;
     screenMax.xy /= screenMax.z;
     
     aabb = fma(
