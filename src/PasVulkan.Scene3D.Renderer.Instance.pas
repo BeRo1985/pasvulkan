@@ -541,11 +541,11 @@ type { TpvScene3DRendererInstance }
        fApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer;
        fApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
       private
-       fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages:TOrderIndependentTransparencyImages;
-       fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages:TOrderIndependentTransparencyImages;
-       fDeepAndFastApproximateOrderIndependentTransparencyAverageImages:TOrderIndependentTransparencyImages;
-       fDeepAndFastApproximateOrderIndependentTransparencyBucketImages:TOrderIndependentTransparencyImages;
-       fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages;
+       fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImage:TpvScene3DRendererOrderIndependentTransparencyImage;
+       fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImage:TpvScene3DRendererOrderIndependentTransparencyImage;
+       fDeepAndFastApproximateOrderIndependentTransparencyAverageImage:TpvScene3DRendererOrderIndependentTransparencyImage;
+       fDeepAndFastApproximateOrderIndependentTransparencyBucketImage:TpvScene3DRendererOrderIndependentTransparencyImage;
+       fDeepAndFastApproximateOrderIndependentTransparencySpinLockImage:TpvScene3DRendererOrderIndependentTransparencyImage;
       private
        fCascadedShadowMapCullDepthArray2DImage:TpvScene3DRendererArray2DImage;
        fCascadedShadowMapCullDepthPyramidMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
@@ -743,11 +743,11 @@ type { TpvScene3DRendererInstance }
        property ApproximationOrderIndependentTransparentUniformBuffer:TApproximationOrderIndependentTransparentUniformBuffer read fApproximationOrderIndependentTransparentUniformBuffer;
        property ApproximationOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer read fApproximationOrderIndependentTransparentUniformVulkanBuffer;
       public
-       property DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterFragmentDepthsSampleMaskImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages;
-       property DeepAndFastApproximateOrderIndependentTransparencyAccumulationImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages;
-       property DeepAndFastApproximateOrderIndependentTransparencyAverageImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyAverageImages;
-       property DeepAndFastApproximateOrderIndependentTransparencyBucketImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyBucketImages;
-       property DeepAndFastApproximateOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages;
+       property DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterFragmentDepthsSampleMaskImage:TpvScene3DRendererOrderIndependentTransparencyImage read fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImage;
+       property DeepAndFastApproximateOrderIndependentTransparencyAccumulationImage:TpvScene3DRendererOrderIndependentTransparencyImage read fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImage;
+       property DeepAndFastApproximateOrderIndependentTransparencyAverageImage:TpvScene3DRendererOrderIndependentTransparencyImage read fDeepAndFastApproximateOrderIndependentTransparencyAverageImage;
+       property DeepAndFastApproximateOrderIndependentTransparencyBucketImage:TpvScene3DRendererOrderIndependentTransparencyImage read fDeepAndFastApproximateOrderIndependentTransparencyBucketImage;
+       property DeepAndFastApproximateOrderIndependentTransparencySpinLockImage:TpvScene3DRendererOrderIndependentTransparencyImage read fDeepAndFastApproximateOrderIndependentTransparencySpinLockImage;
       public
        property CascadedShadowMapCullDepthArray2DImage:TpvScene3DRendererArray2DImage read fCascadedShadowMapCullDepthArray2DImage;
        property CascadedShadowMapCullDepthPyramidMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fCascadedShadowMapCullDepthPyramidMipmappedArray2DImage;
@@ -4278,58 +4278,58 @@ begin
       TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
       TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
 
-       for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+       begin
 
-        fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                                                 fScaledWidth,
-                                                                                                                                                                 fScaledHeight,
-                                                                                                                                                                 fCountSurfaceViews,
-                                                                                                                                                                 Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                                                 VK_FORMAT_R32G32B32A32_UINT,
-                                                                                                                                                                 Renderer.SurfaceSampleCountFlagBits);
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages['+IntToStr(InFlightFrameIndex)+'].Image');
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+        fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                                                            fScaledWidth,
+                                                                                                                                            fScaledHeight,
+                                                                                                                                            fCountSurfaceViews,
+                                                                                                                                            Renderer.OrderIndependentTransparencySampler,
+                                                                                                                                            VK_FORMAT_R32G32B32A32_UINT,
+                                                                                                                                            Renderer.SurfaceSampleCountFlagBits);
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages.Image');
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages.ImageView');
 
-        fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                                              fScaledWidth,
-                                                                                                                                                              fScaledHeight,
-                                                                                                                                                              fCountSurfaceViews,
-                                                                                                                                                              Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                                              VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                                              Renderer.SurfaceSampleCountFlagBits);
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages['+IntToStr(InFlightFrameIndex)+'].Image');
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+        fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                                                         fScaledWidth,
+                                                                                                                                         fScaledHeight,
+                                                                                                                                         fCountSurfaceViews,
+                                                                                                                                         Renderer.OrderIndependentTransparencySampler,
+                                                                                                                                         VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                         Renderer.SurfaceSampleCountFlagBits);
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages.Image');
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages.ImageView');
 
-        fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                                         fScaledWidth,
-                                                                                                                                                         fScaledHeight,
-                                                                                                                                                         fCountSurfaceViews,
-                                                                                                                                                         Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                                         VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                                         Renderer.SurfaceSampleCountFlagBits);
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAverageImages['+IntToStr(InFlightFrameIndex)+'].Image');
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAverageImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+        fDeepAndFastApproximateOrderIndependentTransparencyAverageImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                                                    fScaledWidth,
+                                                                                                                                    fScaledHeight,
+                                                                                                                                    fCountSurfaceViews,
+                                                                                                                                    Renderer.OrderIndependentTransparencySampler,
+                                                                                                                                    VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                    Renderer.SurfaceSampleCountFlagBits);
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAverageImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAverageImages.Image');
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyAverageImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyAverageImages.ImageView');
 
-        fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                                        fScaledWidth,
-                                                                                                                                                        fScaledHeight,
-                                                                                                                                                        fCountSurfaceViews*2,
-                                                                                                                                                        Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                                        VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                                                                                                                        Renderer.SurfaceSampleCountFlagBits);
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyBucketImages['+IntToStr(InFlightFrameIndex)+'].Image');
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyBucketImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+        fDeepAndFastApproximateOrderIndependentTransparencyBucketImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                                                   fScaledWidth,
+                                                                                                                                   fScaledHeight,
+                                                                                                                                   fCountSurfaceViews*2,
+                                                                                                                                   Renderer.OrderIndependentTransparencySampler,
+                                                                                                                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                                                                                                   Renderer.SurfaceSampleCountFlagBits);
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyBucketImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyBucketImages.Image');
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencyBucketImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencyBucketImages.ImageView');
 
         if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
-         fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                                           fScaledWidth,
-                                                                                                                                                           fScaledHeight,
-                                                                                                                                                           fCountSurfaceViews,
-                                                                                                                                                           Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                                           VK_FORMAT_R32_UINT,
-                                                                                                                                                           VK_SAMPLE_COUNT_1_BIT);
-         Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages['+IntToStr(InFlightFrameIndex)+'].Image');
-         Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+         fDeepAndFastApproximateOrderIndependentTransparencySpinLockImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                                                      fScaledWidth,
+                                                                                                                                      fScaledHeight,
+                                                                                                                                      fCountSurfaceViews,
+                                                                                                                                      Renderer.OrderIndependentTransparencySampler,
+                                                                                                                                      VK_FORMAT_R32_UINT,
+                                                                                                                                      VK_SAMPLE_COUNT_1_BIT);
+         Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages.Image');
+         Renderer.VulkanDevice.DebugUtils.SetObjectName(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages.ImageView');
         end;
        end;
       end;
@@ -4640,14 +4640,12 @@ begin
 
   TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
   TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
-   for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
-    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImages[InFlightFrameIndex]);
-    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex]);
-    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex]);
-    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex]);
-    if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
-     FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]);
-    end;
+   FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyFragmentCounterImage);
+   FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyAccumulationImage);
+   FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyAverageImage);
+   FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencyBucketImage);
+   if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT then begin
+    FreeAndNil(fDeepAndFastApproximateOrderIndependentTransparencySpinLockImage);
    end;
   end;
 

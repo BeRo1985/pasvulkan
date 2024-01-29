@@ -304,7 +304,7 @@ begin
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterFragmentDepthsSampleMaskImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyFragmentCounterFragmentDepthsSampleMaskImage.DescriptorImageInfo],
                                                                  [],
                                                                  [],
                                                                  false
@@ -313,7 +313,7 @@ begin
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAccumulationImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAccumulationImage.DescriptorImageInfo],
                                                                  [],
                                                                  [],
                                                                  false
@@ -322,7 +322,7 @@ begin
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAverageImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyAverageImage.DescriptorImageInfo],
                                                                  [],
                                                                  [],
                                                                  false
@@ -331,7 +331,7 @@ begin
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyBucketImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                 [fInstance.DeepAndFastApproximateOrderIndependentTransparencyBucketImage.DescriptorImageInfo],
                                                                  [],
                                                                  [],
                                                                  false
