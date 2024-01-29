@@ -288,7 +288,7 @@ begin
                                                                  [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                 //fResourceOverlay.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                 //fResourceOverlay.ResourceTransition.Layout)],// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
-                                                                                                fInstance.HUDMipmappedArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,
+                                                                                                fInstance.HUDMipmappedArray2DImage.VulkanImageView.Handle,
                                                                                                 TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                  [],
                                                                  [],

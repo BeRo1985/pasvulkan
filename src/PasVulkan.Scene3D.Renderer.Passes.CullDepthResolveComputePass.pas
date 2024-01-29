@@ -274,7 +274,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                   [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                 fInstance.CullDepthArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,
+                                                                                                 fInstance.CullDepthArray2DImage.VulkanImageView.Handle,
                                                                                                  VK_IMAGE_LAYOUT_GENERAL)],
                                                                   [],
                                                                   [],
@@ -324,7 +324,7 @@ begin
  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarrier.image:=fInstance.CullDepthArray2DImages[InFlightFrameIndex].VulkanImage.Handle;
+ ImageMemoryBarrier.image:=fInstance.CullDepthArray2DImage.VulkanImage.Handle;
  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
  ImageMemoryBarrier.subresourceRange.levelCount:=1;
@@ -370,7 +370,7 @@ begin
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fInstance.CullDepthArray2DImages[InFlightFrameIndex].VulkanImage.Handle;
+  ImageMemoryBarrier.image:=fInstance.CullDepthArray2DImage.VulkanImage.Handle;
   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
   ImageMemoryBarrier.subresourceRange.levelCount:=1;

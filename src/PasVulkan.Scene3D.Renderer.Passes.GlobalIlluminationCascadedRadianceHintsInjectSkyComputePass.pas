@@ -234,9 +234,9 @@ begin
    end;
 
    fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
-                                                                    fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].VulkanImage,
+                                                                    fInstance.DepthMipmappedArray2DImage.VulkanImage,
                                                                     TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D),
-                                                                    fInstance.DepthMipmappedArray2DImages[InFlightFrameIndex].Format,
+                                                                    fInstance.DepthMipmappedArray2DImage.Format,
                                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
