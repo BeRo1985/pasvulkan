@@ -99,65 +99,7 @@ layout(set = 0, binding = 4, std430) buffer OutputVisiblityBuffer {
 
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepth;
 
-#define USE_MORE_ROBUST_SPHERE_CULLING
-#ifdef USE_MORE_ROBUST_SPHERE_CULLING
-bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-
-  if(((-center.z) - radius) < zNear){
-
-    return false;
-
-  }else{
-
-    vec3 right = (projectionMatrix * vec4(vec3(-center.z, 0.0, center.x) * (radius / sqrt(dot(center, center) - (radius * radius))), 0.0)).xyw;
-    vec3 up = (projectionMatrix * vec2(0.0, radius).xyxx).xyw;
-
-    vec3 anchorCenter = (projectionMatrix * vec4(center, 1.0)).xyw;
-
-    vec2 leftAnchor = (anchorCenter.xy - right.xy) / (anchorCenter.z - right.z);
-    vec2 rightAnchor = (anchorCenter.xy + right.xy) / (anchorCenter.z + right.z);
-    vec2 downAnchor = (anchorCenter.xy - up.xy) / (anchorCenter.z - up.z);
-    vec2 upAnchor = (anchorCenter.xy + up.xy) / (anchorCenter.z + up.z);
-
-    aabb = fma(
-      vec4(
-        min(min(min(leftAnchor, rightAnchor), downAnchor), upAnchor),
-        max(max(max(leftAnchor, rightAnchor), downAnchor), upAnchor)
-      ),
-      vec4(0.5),
-      vec4(0.5)
-    );
-
-    return true;
-
-  }
-
-}
-#else
-// Further optimized variant of: 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-bool projectSphere(vec3 center, float radius, float zNear, vec2 p00p11, out vec4 aabb){
-
-  if(((-center.z) - radius) < zNear){
-
-    return false;
-
-  }else{
-
-    vec3 cxy = -center.xyz;
-    vec3 vxy = vec3(sqrt(vec2(dot(cxy.xz, cxy.xz), dot(cxy.yz, cxy.yz)) - vec2(radius * radius)), radius);
-    vec2 minx = mat2(vxy.x, vxy.z, -vxy.z, vxy.x) * cxy.xz;
-    vec2 maxx = mat2(vxy.x, -vxy.z, vxy.z, vxy.x) * cxy.xz;
-    vec2 miny = mat2(vxy.y, vxy.z, -vxy.z, vxy.y) * cxy.yz;
-    vec2 maxy = mat2(vxy.y, -vxy.z, vxy.z, vxy.y) * cxy.yz;
-
-    aabb = fma(vec4((vec4(minx.x, miny.x, maxx.x, maxy.x) / vec4(minx.y, miny.y, maxx.y, maxy.y)) * p00p11.xyxy), vec4(0.5), vec4(0.5)); 
-
-    return true;
-
-  }  
-
-}
-#endif
+#include "projectsphere.glsl"
 
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
 // are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
@@ -167,9 +109,6 @@ shared mat4 viewMatrices[8];
 shared mat4 projectionMatrices[8];
 shared vec4 inverseProjectionMatrixZData[8];
 shared float zNears[8]; 
-#ifndef USE_MORE_ROBUST_SPHERE_CULLING
-shared vec2 p00p11[8];
-#endif
 shared vec4 frustums[8];
 
 #endif
@@ -234,10 +173,6 @@ void main(){
     // Get z near from projection matrix 
     zNears[localInvocationIndex] = abs(uView.views[viewIndex].inverseProjectionMatrix[3][2] / uView.views[viewIndex].inverseProjectionMatrix[2][3]);
 
-#ifndef USE_MORE_ROBUST_SPHERE_CULLING
-    p00p11[localInvocationIndex] = vec2(projectionMatrix[0][0], projectionMatrix[1][1]);
-#endif
-
     mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
 
     frustums[localInvocationIndex] = vec4(
@@ -289,11 +224,7 @@ void main(){
         vec4 aabb;
 
         if(
-#ifdef USE_MORE_ROBUST_SPHERE_CULLING
            projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb)
-#else        
-           projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], p00p11[viewIndex], aabb)
-#endif
           ){
 
           vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
