@@ -148,6 +148,7 @@ bool projectSphere(vec3 center, const in float radius, const in float zNear, con
 
   }else{
 
+    // This following is just for ensure that it is just conservative enough to avoid false negatives.
     center.z = min(-zNear, center.z); // clamp center to near plane
 //  center.z = min(-zNear, center.z + radius); // move towards the near plane and clamp center to near plane when necessary
 
