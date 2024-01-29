@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Application,
      PasVulkan.FrameGraph,
      PasVulkan.Scene3D,
+     PasVulkan.Scene3D.Planet,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance;
@@ -97,6 +98,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
+       fPlanetCullPass:TpvScene3DPlanet.TCullPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -140,10 +142,17 @@ begin
 
  fVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
+ fPlanetCullPass:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
+                                                    fInstance,
+                                                    fInstance.Renderer.Scene3D,
+                                                    TpvScene3DPlanet.TCullPass.TCullMode.FinalView,
+                                                    1);
+
 end;
 
 procedure TpvScene3DRendererPassesMeshCullPass1ComputePass.ReleasePersistentResources;
 begin
+ FreeAndNil(fPlanetCullPass);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
@@ -171,11 +180,14 @@ begin
                                             0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshCullPass1ComputePass.fPipeline');
 
+ fPlanetCullPass.AllocateResources;
+
 end;
 
 procedure TpvScene3DRendererPassesMeshCullPass1ComputePass.ReleaseVolatileResources;
 var Index:TpvSizeInt;
 begin
+ fPlanetCullPass.ReleaseResources;
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  inherited ReleaseVolatileResources;
@@ -195,6 +207,8 @@ var RenderPassIndex,
     PushConstants:TpvScene3DRendererPassesMeshCullPass1ComputePass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ fPlanetCullPass.Execute(aCommandBuffer,aInFlightFrameIndex);
 
  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

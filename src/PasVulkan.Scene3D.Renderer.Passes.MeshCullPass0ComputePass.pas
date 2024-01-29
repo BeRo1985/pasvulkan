@@ -143,7 +143,7 @@ begin
                                                     fInstance,
                                                     fInstance.Renderer.Scene3D,
                                                     TpvScene3DPlanet.TCullPass.TCullMode.FinalView,
-                                                    -1);
+                                                    0);
 
  fPlanetCullPass2:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
                                                      fInstance,
