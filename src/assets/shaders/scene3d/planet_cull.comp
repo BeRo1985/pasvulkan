@@ -368,7 +368,7 @@ void main(){
         uvec4(0u) // padding/unused
       );
 
-#if defined(PASS0) || defined(PASS1)
+#if defined(PASS1)
       atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
 #endif
 
