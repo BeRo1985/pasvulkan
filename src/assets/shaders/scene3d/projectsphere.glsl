@@ -3,7 +3,7 @@
 
 //#define fma(a, b, c) ((a) * (b) + (c))
 
-#define PROJECTSPHERE_VARIANT 0
+#define PROJECTSPHERE_VARIANT 2
 
 #if PROJECTSPHERE_VARIANT == 0
 
