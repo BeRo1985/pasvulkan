@@ -139,38 +139,7 @@ void aabbTransform(inout vec3 aabbMin, inout vec3 aabbMax, mat4 m){
   }
 }
 
-bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-
-  if(((-center.z) - radius) < zNear){
-
-    return false;
-
-  }else{
-
-    vec3 right = (projectionMatrix * vec4(vec3(-center.z, 0.0, center.x) * (radius / sqrt(dot(center, center) - (radius * radius))), 0.0)).xyw;
-    vec3 up = (projectionMatrix * vec2(0.0, radius).xyxx).xyw;
-
-    vec3 anchorCenter = (projectionMatrix * vec4(center, 1.0)).xyw;
-
-    vec2 leftAnchor = (anchorCenter.xy - right.xy) / (anchorCenter.z - right.z);
-    vec2 rightAnchor = (anchorCenter.xy + right.xy) / (anchorCenter.z + right.z);
-    vec2 downAnchor = (anchorCenter.xy - up.xy) / (anchorCenter.z - up.z);
-    vec2 upAnchor = (anchorCenter.xy + up.xy) / (anchorCenter.z + up.z);
-
-    aabb = fma(
-      vec4(
-        min(min(min(leftAnchor, rightAnchor), downAnchor), upAnchor),
-        max(max(max(leftAnchor, rightAnchor), downAnchor), upAnchor)
-      ),
-      vec4(0.5),
-      vec4(0.5)
-    );
-
-    return true;
-
-  }
-
-}
+#include "projectsphere.glsl"
 
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
 // are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
@@ -312,6 +281,7 @@ void main(){
       uint lod = 0u;
 #endif      
 #endif
+
 
       lod = min(max(lod, pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
 
