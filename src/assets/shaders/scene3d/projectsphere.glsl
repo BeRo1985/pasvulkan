@@ -3,7 +3,7 @@
 
 //#define fma(a, b, c) ((a) * (b) + (c))
 
-#define PROJECTSPHERE_VARIANT 2
+#define PROJECTSPHERE_VARIANT 3
 
 #if PROJECTSPHERE_VARIANT == 0
 
@@ -52,15 +52,14 @@ vec4 projectSphereToScreenRectOrtho(vec3 center, float radius, mat4 projectionMa
 } 
 
 bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-  vec2 sphereMinMaxZ = vec2(center.z - radius, center.z + radius);
-  if(sphereMinMaxZ.y < zNear){
+  if(((-center.z) - radius) < zNear){
     return false;
   }else{
 //  float depth;
     if(projectionMatrix[3][3] >= 1.0){
       aabb = projectSphereToScreenRectOrtho(center, radius, projectionMatrix);
 //    depth = fma(sphereMinMaxZ.x, projectionMatrix[2][2], projectionMatrix[3][2]);
-    }else if(sphereMinMaxZ.x < zNear){
+    }else if((((-center.z) + radius) < zNear){
       aabb = projectSphereToScreenRectNearClip(center, radius, projectionMatrix, zNear);
 //    depth = (projectionMatrix[3][2] / center.z) + projectionMatrix[2][2];
     }else{
@@ -77,7 +76,7 @@ bool projectSphere(vec3 center, const in float radius, const in float zNear, con
 // Further optimized variant of: 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
 
-  if(((center.z) + radius) < zNear){
+  if(((-center.z) - radius) < zNear){
 
     return false;
 
@@ -98,7 +97,7 @@ bool projectSphere(vec3 center, const in float radius, const in float zNear, con
 
 }
 
-#else // PROJECTSPHERE_VARIANT == 2
+#elif PROJECTSPHERE_VARIANT == 2
 
 bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
 
@@ -128,6 +127,40 @@ bool projectSphere(const in vec3 center, const in float radius, const in float z
     );
 
     return true;
+
+  }
+
+}
+
+#else // PROJECTSPHERE_VARIANT == 3
+
+bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
+
+  if(((-center.z) - radius) < zNear){
+
+    return false;
+
+  }else{
+
+    center.z = -max(zNear, -center.z); // clamp center to near plane
+//  center.z = -max(zNear, (-center.z) - radius); // move and clamp center to near plane
+
+    vec3 screenMin = (projectionMatrix * vec4(center - vec3(radius, radius, 0.0), 1.0)).xyw;
+    screenMin.xy /= screenMin.z;
+
+    vec3 screenMax = (projectionMatrix * vec4(center + vec3(radius, radius, 0.0), 1.0)).xyw;
+    screenMax.xy /= screenMax.z;
+    
+    aabb = fma(
+      vec4(
+        min(screenMin.xy, screenMax.xy),
+        max(screenMin.xy, screenMax.xy)
+      ),
+      vec4(0.5),
+      vec4(0.5)
+    );
+    
+    return all(lessThanEqual(aabb.xy, vec2(1.0))) && all(greaterThanEqual(aabb.zw, vec2(0.0)));
 
   }
 

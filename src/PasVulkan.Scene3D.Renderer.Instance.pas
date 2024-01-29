@@ -4501,17 +4501,31 @@ begin
                                                                                      [],
                                                                                      false
                                                                                     );
-  fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                                                     0,
-                                                                                     1,
-                                                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                                     [TVkDescriptorImageInfo.Create(Renderer.ClampedSampler.Handle,
-                                                                                                                    fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
-                                                                                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
-                                                                                     [],
-                                                                                     [],
-                                                                                     false
-                                                                                    );
+  if fZNear<0.0 then begin
+   fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                                      0,
+                                                                                      1,
+                                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                      [TVkDescriptorImageInfo.Create(Renderer.MipMapMinFilterSampler.Handle,
+                                                                                                                     fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                      [],
+                                                                                      [],
+                                                                                      false
+                                                                                     );
+  end else begin
+   fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                                      0,
+                                                                                      1,
+                                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                                                      [TVkDescriptorImageInfo.Create(Renderer.MipMapMaxFilterSampler.Handle,
+                                                                                                                     fCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex].VulkanArrayImageView.Handle,
+                                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
+                                                                                      [],
+                                                                                      [],
+                                                                                      false
+                                                                                     );
+  end;
   fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].Flush;
   Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DRendererInstance.fMeshCullPass1ComputeVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
 
