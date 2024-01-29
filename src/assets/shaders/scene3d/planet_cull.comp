@@ -235,7 +235,7 @@ void main(){
 
           vec4 aabb;
 
-          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb)){
+          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb, false)){
 
             vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
 

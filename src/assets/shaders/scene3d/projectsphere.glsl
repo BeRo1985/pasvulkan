@@ -51,8 +51,8 @@ vec4 projectSphereToScreenRectOrtho(vec3 center, float radius, mat4 projectionMa
   ).xzyw;
 } 
 
-bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-  if(((-center.z) - radius) < zNear){
+bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb, bool zNearTest){
+  if(zNearTest && (((-center.z) - radius) < zNear)){
     return false;
   }else{
 //  float depth;
@@ -99,9 +99,9 @@ bool projectSphere(vec3 center, const in float radius, const in float zNear, con
 
 #elif PROJECTSPHERE_VARIANT == 2
 
-bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-
-  if(((-center.z) - radius) < zNear){
+bool projectSphere(const in vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb, bool zNearTest){
+  
+  if(zNearTest && (((-center.z) - radius) < zNear)){
 
     return false;
 
@@ -137,13 +137,13 @@ bool projectSphere(const in vec3 center, const in float radius, const in float z
 // This variant appears to be the most robust, although it may not be the fastest. It prioritizes robustness and avoiding false negatives 
 // over speed to avoid false negatives at the culling. 
 
-bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
-
+bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb, bool zNearTest){
+  
   // center is in view space with negative z pointing into the screen, therefore the sphere center is after the near plane if
   // (center.z + radius) < -zNear or ((-center.z) - radius) > zNear
 
-  if(((-center.z) - radius) < zNear){
-
+  if(zNearTest && (((-center.z) - radius) < zNear)){
+  
     return false;
 
   }else{
