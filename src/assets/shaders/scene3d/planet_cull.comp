@@ -7,6 +7,9 @@
 #extension GL_EXT_control_flow_attributes : enable
 #extension GL_GOOGLE_include_directive : enable
 
+#undef TILE_SCREEN_FILL_SCALE // can occur cracks between tiles between different LOD levels
+#undef PLANET_SCREEN_FILL_SCALE
+
 /* clang-format off */
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
@@ -31,6 +34,10 @@ struct View {
 layout(set = 0, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
+
+#if defined(PASS1)
+layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
+#endif
 
 layout(set = 1, binding = 0, std430) readonly buffer BoundingBoxes {
   vec4 data[]; // pair-wise min/max, vec4 instead of vec3 for 16-byte alignment, so w is unused and zero in this case
@@ -193,7 +200,17 @@ void main(){
 
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
-  if(tileMapIndex < tileMapSize){
+  if(
+     (tileMapIndex < tileMapSize)
+#if defined(PASS0)
+     && ((previousVisibilityBuffer.bitmap[tileMapIndex >> 5u] & (1u << (tileMapIndex & 31u))) != 0u)
+#endif
+    ){
+
+#if defined(PASS1)
+    vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
+    int countLODLevels = textureQueryLevels(uTextureDepth);
+#endif
 
     vec4 boundingSphere = boundingSpheres.data[tileMapIndex];
     boundingSphere.xyz = (pushConstants.modelMatrix * vec4(boundingSphere.xyz, 1.0)).xyz;
@@ -214,7 +231,40 @@ void main(){
         aabbTransform(viewSpaceAABBMin, viewSpaceAABBMax, modelViewMatrix);
         if(frustumCullingAABBTest(frustums[viewIndex], viewSpaceAABBMin, viewSpaceAABBMax)){
 
-#if 0          
+#if defined(PASS1)
+
+          vec4 aabb;
+
+          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb)){
+
+            vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+
+            float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
+
+  #undef USE_FASTER_DEPTH_CALCULATIONS
+  #ifdef USE_FASTER_DEPTH_CALCULATIONS
+            vec2 depthZ = fma(
+              inverseProjectionMatrixZData[viewIndex].xy, 
+              textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
+              inverseProjectionMatrixZData[viewIndex].zw
+            );
+  #else
+            vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
+              (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
+              textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
+              1.0
+            )).zw;
+  #endif
+            float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
+            
+            if(((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth){
+              visible = true;
+              break;
+            }
+
+          }
+
+#elif 0          
           // Poor-man backface culling for avoiding to render the backside of the planet sphere, which is not visible anyway.
           // With ~154.2 degrees angle as threshold for backface culling for minimizing false positives.
           vec4 centerPoint = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
@@ -231,11 +281,13 @@ void main(){
         }
       }
     }
-      
+     
     if(visible){
 
+      const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
 
-#undef TILE_SCREEN_FILL_SCALE // can occur cracks between tiles between different LOD levels
+#if defined(PLANET_SCREEN_FILL_SCALE) || defined(TILE_SCREEN_FILL_SCALE)
+
 #if defined(TILE_SCREEN_FILL_SCALE)
       float tileScreenFillScale = 0.0;
       for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
@@ -250,10 +302,7 @@ void main(){
         tileScreenFillScale = 1.0;
       }
 #endif
-      
-      const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
 
-#undef PLANET_SCREEN_FILL_SCALE
 #if defined(PLANET_SCREEN_FILL_SCALE)
       // Additional LOD stuff for the whole planet sphere itself
       float planetSphereScreenFillScale = 0.0;
@@ -284,6 +333,12 @@ void main(){
 
       lod = min(max(lod, pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
 
+#else
+ 
+      const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
+
+#endif // defined(PLANET_SCREEN_FILL_SCALE) || defined(TILE_SCREEN_FILL_SCALE)
+
       const uint tileResolution = pushConstants.tileResolution >> lod;
 
       const uint tileSize = tileResolution * tileResolution;
@@ -312,6 +367,10 @@ void main(){
         boundingSphere,
         uvec4(0u) // padding/unused
       );
+
+#if defined(PASS0) || defined(PASS1)
+      atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], (1u << (tileMapIndex & 31u)));
+#endif
 
     }
     
