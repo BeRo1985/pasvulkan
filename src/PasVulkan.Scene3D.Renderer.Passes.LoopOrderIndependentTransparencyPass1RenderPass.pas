@@ -545,7 +545,7 @@ begin
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                        [],
                                                                        [],
-                                                                       [fInstance.LoopOrderIndependentTransparencyZBufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
+                                                                       [fInstance.LoopOrderIndependentTransparencyZBufferBuffer.VulkanBufferView.Handle],
                                                                        false);
   fPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
