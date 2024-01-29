@@ -653,10 +653,7 @@ type TpvScene3DPlanets=class;
               public
                constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullMode:TCullMode;const aPass:TpvSizeInt); reintroduce;
                destructor Destroy; override;               
-               procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass;
-                                           const aWidth:TpvInt32;
-                                           const aHeight:TpvInt32;
-                                           const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+               procedure AllocateResources;
                procedure ReleaseResources;
                procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
               public
@@ -5083,10 +5080,7 @@ begin
 
 end;
 
-procedure TpvScene3DPlanet.TCullPass.AllocateResources(const aRenderPass:TpvVulkanRenderPass;
-                                                       const aWidth:TpvInt32;
-                                                       const aHeight:TpvInt32;
-                                                       const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+procedure TpvScene3DPlanet.TCullPass.AllocateResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 

@@ -184,13 +184,9 @@ begin
                                             0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DRendererPassesMeshCullPass0ComputePass.fPipeline');
 
- fPlanetCullPass.AllocateResources(nil,
-                                   0,
-                                   0);
+ fPlanetCullPass.AllocateResources;
 
- fPlanetCullPass2.AllocateResources(nil,
-                                    0,
-                                    0);
+ fPlanetCullPass2.AllocateResources;
 
 end;
 
