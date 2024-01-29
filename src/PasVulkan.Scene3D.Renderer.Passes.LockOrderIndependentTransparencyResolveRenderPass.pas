@@ -301,14 +301,14 @@ begin
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
                                                                  [],
                                                                  [],
-                                                                 [fInstance.LockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle],
+                                                                 [fInstance.LockOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle],
                                                                  false
                                                                 );
   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
                                                                  0,
                                                                  1,
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-                                                                 [fInstance.LockOrderIndependentTransparencyAuxImages[InFlightFrameIndex].DescriptorImageInfo],
+                                                                 [fInstance.LockOrderIndependentTransparencyAuxImage.DescriptorImageInfo],
                                                                  [],
                                                                  [],
                                                                  false

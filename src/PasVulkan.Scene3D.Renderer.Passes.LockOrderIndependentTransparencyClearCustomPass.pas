@@ -149,14 +149,14 @@ begin
 
  ImageSubresourceRange:=TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),0,1,0,fInstance.CountSurfaceViews);
 
- aCommandBuffer.CmdClearColorImage(fInstance.LockOrderIndependentTransparencyAuxImages[aInFlightFrameIndex].VulkanImage.Handle,
+ aCommandBuffer.CmdClearColorImage(fInstance.LockOrderIndependentTransparencyAuxImage.VulkanImage.Handle,
                                    VK_IMAGE_LAYOUT_GENERAL,
                                    @ClearValue,
                                    1,
                                    @ImageSubresourceRange);
 
  if fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKOIT then begin
-  aCommandBuffer.CmdClearColorImage(fInstance.LockOrderIndependentTransparencySpinLockImages[aInFlightFrameIndex].VulkanImage.Handle,
+  aCommandBuffer.CmdClearColorImage(fInstance.LockOrderIndependentTransparencySpinLockImage.VulkanImage.Handle,
                                     VK_IMAGE_LAYOUT_GENERAL,
                                     @ClearValue,
                                     1,
@@ -167,7 +167,7 @@ begin
                                                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                     VK_QUEUE_FAMILY_IGNORED,
                                                     VK_QUEUE_FAMILY_IGNORED,
-                                                    fInstance.LockOrderIndependentTransparencyABufferBuffers[aInFlightFrameIndex].VulkanBuffer.Handle,
+                                                    fInstance.LockOrderIndependentTransparencyABufferBuffer.VulkanBuffer.Handle,
                                                     0,
                                                     VK_WHOLE_SIZE);
 
@@ -177,7 +177,7 @@ begin
                                                       TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
                                                       VK_QUEUE_FAMILY_IGNORED,
                                                       VK_QUEUE_FAMILY_IGNORED,
-                                                      fInstance.LockOrderIndependentTransparencyAuxImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                      fInstance.LockOrderIndependentTransparencyAuxImage.VulkanImage.Handle,
                                                       ImageSubresourceRange);
 
  if fInstance.Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKOIT then begin
@@ -187,7 +187,7 @@ begin
                                                        TVkImageLayout(VK_IMAGE_LAYOUT_GENERAL),
                                                        VK_QUEUE_FAMILY_IGNORED,
                                                        VK_QUEUE_FAMILY_IGNORED,
-                                                       fInstance.LockOrderIndependentTransparencySpinLockImages[aInFlightFrameIndex].VulkanImage.Handle,
+                                                       fInstance.LockOrderIndependentTransparencySpinLockImage.VulkanImage.Handle,
                                                        ImageSubresourceRange);
   CountImageMemoryBarriers:=2;
  end else begin

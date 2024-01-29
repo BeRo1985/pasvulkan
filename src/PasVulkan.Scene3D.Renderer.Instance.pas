@@ -527,9 +527,9 @@ type { TpvScene3DRendererInstance }
        fCountLockOrderIndependentTransparencyLayers:TpvInt32;
        fLockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer;
        fLockOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer;
-       fLockOrderIndependentTransparencyABufferBuffers:TOrderIndependentTransparencyBuffers;
-       fLockOrderIndependentTransparencyAuxImages:TOrderIndependentTransparencyImages;
-       fLockOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages;
+       fLockOrderIndependentTransparencyABufferBuffer:TpvScene3DRendererOrderIndependentTransparencyBuffer;
+       fLockOrderIndependentTransparencyAuxImage:TpvScene3DRendererOrderIndependentTransparencyImage;
+       fLockOrderIndependentTransparencySpinLockImage:TpvScene3DRendererOrderIndependentTransparencyImage;
       private
        fCountLoopOrderIndependentTransparencyLayers:TpvInt32;
        fLoopOrderIndependentTransparentUniformBuffer:TLoopOrderIndependentTransparentUniformBuffer;
@@ -729,9 +729,9 @@ type { TpvScene3DRendererInstance }
        property CountLockOrderIndependentTransparencyLayers:TpvInt32 read fCountLockOrderIndependentTransparencyLayers;
        property LockOrderIndependentTransparentUniformBuffer:TLockOrderIndependentTransparentUniformBuffer read fLockOrderIndependentTransparentUniformBuffer;
        property LockOrderIndependentTransparentUniformVulkanBuffer:TpvVulkanBuffer read fLockOrderIndependentTransparentUniformVulkanBuffer;
-       property LockOrderIndependentTransparencyABufferBuffers:TOrderIndependentTransparencyBuffers read fLockOrderIndependentTransparencyABufferBuffers;
-       property LockOrderIndependentTransparencyAuxImages:TOrderIndependentTransparencyImages read fLockOrderIndependentTransparencyAuxImages;
-       property LockOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages read fLockOrderIndependentTransparencySpinLockImages;
+       property LockOrderIndependentTransparencyABufferBuffer:TpvScene3DRendererOrderIndependentTransparencyBuffer read fLockOrderIndependentTransparencyABufferBuffer;
+       property LockOrderIndependentTransparencyAuxImage:TpvScene3DRendererOrderIndependentTransparencyImage read fLockOrderIndependentTransparencyAuxImage;
+       property LockOrderIndependentTransparencySpinLockImage:TpvScene3DRendererOrderIndependentTransparencyImage read fLockOrderIndependentTransparencySpinLockImage;
       public
        property CountLoopOrderIndependentTransparencyLayers:TpvInt32 read fCountLoopOrderIndependentTransparencyLayers;
        property LoopOrderIndependentTransparentUniformBuffer:TLoopOrderIndependentTransparentUniformBuffer read fLoopOrderIndependentTransparentUniformBuffer;
@@ -4176,35 +4176,35 @@ begin
                                                                       SizeOf(TLockOrderIndependentTransparentUniformBuffer));
        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparentUniformVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fLockOrderIndependentTransparentUniformVulkanBuffer');
 
-       for InFlightFrameIndex:=0 to fFrameGraph.CountInFlightFrames-1 do begin
+       begin
 
-        fLockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fScene3D.VulkanDevice,
-                                                                                                                                         fScaledWidth*fScaledHeight*fCountLockOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*4),
-                                                                                                                                         VK_FORMAT_R32G32B32A32_UINT,
-                                                                                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyABufferBuffers['+IntToStr(InFlightFrameIndex)+'].Buffer');
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex].VulkanBufferView.Handle,VK_OBJECT_TYPE_BUFFER_VIEW,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyABufferBuffers['+IntToStr(InFlightFrameIndex)+'].BufferView');
+        fLockOrderIndependentTransparencyABufferBuffer:=TpvScene3DRendererOrderIndependentTransparencyBuffer.Create(fScene3D.VulkanDevice,
+                                                                                                                    fScaledWidth*fScaledHeight*fCountLockOrderIndependentTransparencyLayers*fCountSurfaceViews*(SizeOf(UInt32)*4),
+                                                                                                                    VK_FORMAT_R32G32B32A32_UINT,
+                                                                                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT));
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyABufferBuffer.VulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyABufferBuffer.Buffer');
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyABufferBuffer.VulkanBufferView.Handle,VK_OBJECT_TYPE_BUFFER_VIEW,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyABufferBuffer.BufferView');
 
-        fLockOrderIndependentTransparencyAuxImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                   fScaledWidth,
-                                                                                                                                   fScaledHeight,
-                                                                                                                                   fCountSurfaceViews,
-                                                                                                                                   Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                   VK_FORMAT_R32_UINT,
-                                                                                                                                   VK_SAMPLE_COUNT_1_BIT);
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyAuxImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyAuxImages['+IntToStr(InFlightFrameIndex)+'].Image');
-        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyAuxImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyAuxImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+        fLockOrderIndependentTransparencyAuxImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                              fScaledWidth,
+                                                                                                              fScaledHeight,
+                                                                                                              fCountSurfaceViews,
+                                                                                                              Renderer.OrderIndependentTransparencySampler,
+                                                                                                              VK_FORMAT_R32_UINT,
+                                                                                                              VK_SAMPLE_COUNT_1_BIT);
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyAuxImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyAuxImage.Image');
+        Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencyAuxImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencyAuxImage.ImageView');
 
         if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKOIT then begin
-         fLockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
-                                                                                                                                         fScaledWidth,
-                                                                                                                                         fScaledHeight,
-                                                                                                                                         fCountSurfaceViews,
-                                                                                                                                         Renderer.OrderIndependentTransparencySampler,
-                                                                                                                                         VK_FORMAT_R32_UINT,
-                                                                                                                                         VK_SAMPLE_COUNT_1_BIT);
-         Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencySpinLockImages['+IntToStr(InFlightFrameIndex)+'].Image');
-         Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencySpinLockImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+         fLockOrderIndependentTransparencySpinLockImage:=TpvScene3DRendererOrderIndependentTransparencyImage.Create(fScene3D.VulkanDevice,
+                                                                                                                    fScaledWidth,
+                                                                                                                    fScaledHeight,
+                                                                                                                    fCountSurfaceViews,
+                                                                                                                    Renderer.OrderIndependentTransparencySampler,
+                                                                                                                    VK_FORMAT_R32_UINT,
+                                                                                                                    VK_SAMPLE_COUNT_1_BIT);
+         Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencySpinLockImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencySpinLockImage.Image');
+         Renderer.VulkanDevice.DebugUtils.SetObjectName(fLockOrderIndependentTransparencySpinLockImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fLockOrderIndependentTransparencySpinLockImage.ImageView');
         end;
 
        end;
@@ -4625,11 +4625,11 @@ begin
 
   TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
   TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
-   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
-    FreeAndNil(fLockOrderIndependentTransparencyABufferBuffers[InFlightFrameIndex]);
-    FreeAndNil(fLockOrderIndependentTransparencyAuxImages[InFlightFrameIndex]);
+   begin
+    FreeAndNil(fLockOrderIndependentTransparencyABufferBuffer);
+    FreeAndNil(fLockOrderIndependentTransparencyAuxImage);
     if Renderer.TransparencyMode=TpvScene3DRendererTransparencyMode.SPINLOCKOIT then begin
-     FreeAndNil(fLockOrderIndependentTransparencySpinLockImages[InFlightFrameIndex]);
+     FreeAndNil(fLockOrderIndependentTransparencySpinLockImage);
     end;
    end;
   end;
