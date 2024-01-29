@@ -235,7 +235,7 @@ void main(){
 
           vec4 aabb;
 
-          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb, false)){
+          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb, true)){
 
             vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
 
@@ -261,6 +261,13 @@ void main(){
               visible = true;
               break;
             }
+
+          }else{
+
+            // projectSphere() failed, so mark it as visible for safety reasons
+            
+            visible = true;
+            break;
 
           }
 
