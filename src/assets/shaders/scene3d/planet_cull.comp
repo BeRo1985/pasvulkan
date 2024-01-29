@@ -241,20 +241,20 @@ void main(){
 
             float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
 
-  #undef USE_FASTER_DEPTH_CALCULATIONS
-  #ifdef USE_FASTER_DEPTH_CALCULATIONS
+#undef USE_FASTER_DEPTH_CALCULATIONS
+#ifdef USE_FASTER_DEPTH_CALCULATIONS
             vec2 depthZ = fma(
               inverseProjectionMatrixZData[viewIndex].xy, 
               textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
               inverseProjectionMatrixZData[viewIndex].zw
             );
-  #else
+#else
             vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
               (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
               textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
               1.0
             )).zw;
-  #endif
+#endif
             float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
             
             if(((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth){
