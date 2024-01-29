@@ -547,6 +547,8 @@ type { TpvScene3DRendererInstance }
        fDeepAndFastApproximateOrderIndependentTransparencyBucketImages:TOrderIndependentTransparencyImages;
        fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages;
       private
+       fCascadedShadowMapCullDepthArray2DImages:TArray2DImages;
+       fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages;
        fCullDepthArray2DImages:TArray2DImages;
        fCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages;
        fDepthMipmappedArray2DImages:TMipmappedArray2DImages;
@@ -747,6 +749,8 @@ type { TpvScene3DRendererInstance }
        property DeepAndFastApproximateOrderIndependentTransparencyBucketImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencyBucketImages;
        property DeepAndFastApproximateOrderIndependentTransparencySpinLockImages:TOrderIndependentTransparencyImages read fDeepAndFastApproximateOrderIndependentTransparencySpinLockImages;
       public
+       property CascadedShadowMapCullDepthArray2DImages:TArray2DImages read fCascadedShadowMapCullDepthArray2DImages;
+       property CascadedShadowMapCullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages read fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages;
        property CullDepthArray2DImages:TArray2DImages read fCullDepthArray2DImages;
        property CullDepthPyramidMipmappedArray2DImages:TMipmappedArray2DImages read fCullDepthPyramidMipmappedArray2DImages;
        property DepthMipmappedArray2DImages:TMipmappedArray2DImages read fDepthMipmappedArray2DImages;
@@ -3584,6 +3588,22 @@ begin
 
  if assigned(Renderer.VulkanDevice) then begin
 
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+   if Renderer.ShadowMapSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    fCascadedShadowMapCullDepthArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererArray2DImage.Create(fScene3D.VulkanDevice,fCascadedShadowMapWidth,fCascadedShadowMapHeight,CountCascadedShadowMapCascades,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,true);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapCullDepthArray2DImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCascadedShadowMapCullDepthArray2DImages['+IntToStr(InFlightFrameIndex)+'].Image');
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapCullDepthArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fCascadedShadowMapCullDepthArray2DImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+   end else begin
+    fCascadedShadowMapCullDepthArray2DImages[InFlightFrameIndex]:=nil;
+   end;
+
+   fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex]:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,Max(1,RoundDownToPowerOfTwo(fCascadedShadowMapWidth)),Max(1,RoundDownToPowerOfTwo(fCascadedShadowMapHeight)),CountCascadedShadowMapCascades,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex].VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+'].Image');
+   Renderer.VulkanDevice.DebugUtils.SetObjectName(fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex].VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages['+IntToStr(InFlightFrameIndex)+'].ImageView');
+
+  end;
+
   for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
 
    case fScene3D.BufferStreamingMode of
@@ -3846,6 +3866,14 @@ begin
   end;
 
  end;
+
+  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
+
+   FreeAndNil(fCascadedShadowMapCullDepthArray2DImages[InFlightFrameIndex]);
+
+   FreeAndNil(fCascadedShadowMapCullDepthPyramidMipmappedArray2DImages[InFlightFrameIndex]);
+
+  end;
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
   FreeAndNil(fMeshCullPass0ComputeVulkanDescriptorSets[InFlightFrameIndex]);
