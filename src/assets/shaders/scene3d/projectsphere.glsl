@@ -135,7 +135,7 @@ bool projectSphere(const in vec3 center, const in float radius, const in float z
 #else // PROJECTSPHERE_VARIANT == 3
 
 // This variant appears to be the most robust, although it may not be the fastest. It prioritizes robustness and avoiding false negatives 
-// over speed to avoid false negatives.
+// over speed to avoid false negatives at the culling. 
 
 bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
 
