@@ -369,7 +369,7 @@ void main(){
       );
 
 #if defined(PASS0) || defined(PASS1)
-      atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], (1u << (tileMapIndex & 31u)));
+      atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
 #endif
 
     }
