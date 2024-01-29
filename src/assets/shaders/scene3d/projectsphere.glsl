@@ -139,6 +139,9 @@ bool projectSphere(const in vec3 center, const in float radius, const in float z
 
 bool projectSphere(vec3 center, const in float radius, const in float zNear, const in mat4 projectionMatrix, out vec4 aabb){
 
+  // center is in view space with negative z pointing into the screen, therefore the sphere center is after the near plane if
+  // (center.z + radius) < -zNear or ((-center.z) - radius) > zNear
+
   if(((-center.z) - radius) < zNear){
 
     return false;
