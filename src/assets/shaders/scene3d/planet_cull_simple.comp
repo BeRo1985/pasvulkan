@@ -282,7 +282,6 @@ void main(){
 #endif      
 #endif
 
-
       lod = min(max(lod, pushConstants.minimumLODLevel), max(1u, countLODLevels) - 1u);
 
       const uint tileResolution = pushConstants.tileResolution >> lod;
