@@ -5181,6 +5181,7 @@ var PlanetIndex,RenderPassIndex,ViewBaseIndex,CountViews,CountBufferMemoryBarrie
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
     BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
+    DstPipelineStageFlags:TVkPipelineStageFlags;
 begin
 
  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
@@ -5256,6 +5257,8 @@ begin
 
          CountBufferMemoryBarriers:=0;
 
+         DstPipelineStageFlags:=0;
+
          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                         VK_QUEUE_FAMILY_IGNORED,
@@ -5268,7 +5271,7 @@ begin
          case fPass of
           0:begin
 
-           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                           VK_QUEUE_FAMILY_IGNORED,
                                                                                           VK_QUEUE_FAMILY_IGNORED,
@@ -5277,8 +5280,8 @@ begin
                                                                                           VK_WHOLE_SIZE);
            inc(CountBufferMemoryBarriers);
 
-           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
-                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                           VK_QUEUE_FAMILY_IGNORED,
                                                                                           VK_QUEUE_FAMILY_IGNORED,
                                                                                           RendererViewInstance.fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].Handle,
@@ -5286,10 +5289,12 @@ begin
                                                                                           VK_WHOLE_SIZE);
            inc(CountBufferMemoryBarriers);
 
+           DstPipelineStageFlags:=DstPipelineStageFlags or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
           end;
           1:begin
 
-           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                           TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                           VK_QUEUE_FAMILY_IGNORED,
                                                                                           VK_QUEUE_FAMILY_IGNORED,
@@ -5302,7 +5307,7 @@ begin
          end;
 
          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
-                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or DstPipelineStageFlags,
                                            0,
                                            0,nil,
                                            CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
