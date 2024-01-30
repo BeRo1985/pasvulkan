@@ -3811,9 +3811,7 @@ begin
  FillChar(fPerInFlightFrameGPUCountObjectIndicesArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray),#0);
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
-  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
-   fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex,RenderPassIndex].Initialize;
-  end;
+  fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex].Initialize;
  end;
 
  fMeshCullPass0ComputeVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(Renderer.VulkanDevice);
@@ -3920,9 +3918,7 @@ begin
   FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[InFlightFrameIndex]);
 
-  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
-   fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex,RenderPassIndex].Finalize;
-  end;
+  fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex].Finalize;
 
  end;
 
@@ -4747,8 +4743,9 @@ begin
 
  fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex].Count:=0;
 
+ fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex].Count:=0;
+
  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
-  fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex].Count:=0;
   fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex]:=false;
  end;
 
@@ -5353,7 +5350,7 @@ begin
 
  GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex];
 
- DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+ DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
 
@@ -5488,7 +5485,7 @@ begin
    vkCmdDrawIndexedIndirectCount:=nil;
   end;
 
-  DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+  DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeDynamicArray.Count-1 do begin
 
