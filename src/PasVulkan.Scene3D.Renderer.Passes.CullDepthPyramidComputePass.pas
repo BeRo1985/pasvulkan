@@ -74,12 +74,14 @@ uses SysUtils,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Renderer.MipmappedArray2DImage;
 
 type { TpvScene3DRendererPassesCullDepthPyramidComputePass }
      TpvScene3DRendererPassesCullDepthPyramidComputePass=class(TpvFrameGraph.TComputePass)
       private
        fInstance:TpvScene3DRendererInstance;
+       fCullRenderPass:TpvScene3DRendererCullRenderPass;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
        fFirstPassComputeShaderModule:TpvVulkanShaderModule;
        fReductionComputeShaderModule:TpvVulkanShaderModule;
@@ -98,7 +100,7 @@ type { TpvScene3DRendererPassesCullDepthPyramidComputePass }
        fReductionPipeline:TpvVulkanComputePipeline;
        fCountMipMapLevelSets:TpvSizeInt;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -112,31 +114,78 @@ implementation
 
 { TpvScene3DRendererPassesCullDepthPyramidComputePass  }
 
-constructor TpvScene3DRendererPassesCullDepthPyramidComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesCullDepthPyramidComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass);
 begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='CullDepthPyramidComputePass';
+ fCullRenderPass:=aCullRenderPass;
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.FinalView:begin
+   Name:='FinalViewCullDepthPyramidComputePass';
+  end;
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   Name:='CascadedShadowMapCullDepthPyramidComputePass';
+  end;
+  else begin
+   Name:='CullDepthPyramidComputePass';
+  end;
+ end;
 
-  fResourceInput:=AddImageInput('resourcetype_depth',
-                                'resource_depth_data',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
+ case fCullRenderPass of
 
- end else begin
+  TpvScene3DRendererCullRenderPass.FinalView:begin
 
-  fResourceInput:=nil;
-                 {AddImageInput('resourcetype_msaa_depth',
-                                'resource_msaa_cull_depth_data',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );}
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
 
+    fResourceInput:=AddImageInput('resourcetype_depth',
+                                  'resource_depth_data',
+   	                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+	                               );
+
+    end else begin
+
+     fResourceInput:=nil;
+  	                 {AddImageInput('resourcetype_msaa_depth',
+                                    'resource_msaa_cull_depth_data',
+	                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+	                                 );}
+
+   end;
+
+  end;
+
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+
+   case fInstance.Renderer.ShadowMode of
+    TpvScene3DRendererShadowMode.MSM:begin
+     if fInstance.Renderer.ShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+      fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_depth',
+                                    'resource_cascadedshadowmap_single_depth',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+     end else begin
+      fResourceInput:=nil;
+     end;
+    end
+    else begin
+     fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_data',
+                                   'resource_cascadedshadowmap_data_final',
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                  );
+    end;
+   end;
+
+  end;
+
+  else begin
+  end;
  end;
 
 end;
@@ -152,17 +201,28 @@ begin
 
  inherited AcquirePersistentResources;
 
- if fInstance.ZFar<0.0 then begin
-  if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_firstpass_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_firstpass_comp.spv');
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_firstpass_comp.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_firstpass_comp.spv');
+   end;
   end;
- end else begin
-  if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_firstpass_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_firstpass_comp.spv');
+  else begin
+   if fInstance.ZFar<0.0 then begin
+    if fInstance.CountSurfaceViews>1 then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_firstpass_comp.spv');
+    end else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_firstpass_comp.spv');
+    end;
+   end else begin
+    if fInstance.CountSurfaceViews>1 then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_firstpass_comp.spv');
+    end else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_firstpass_comp.spv');
+    end;
+   end;
   end;
  end;
  try
@@ -170,19 +230,30 @@ begin
  finally
   Stream.Free;
  end;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'CullDepthPyramidComputePass.fFirstPassComputeShaderModule');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,Name+'.fFirstPassComputeShaderModule');
 
- if fInstance.ZFar<0.0 then begin
-  if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_reduction_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_reduction_comp.spv');
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reduction_comp.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reduction_comp.spv');
+   end;
   end;
- end else begin
-  if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reduction_comp.spv');
-  end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reduction_comp.spv');
+  else begin
+   if fInstance.ZFar<0.0 then begin
+    if fInstance.CountSurfaceViews>1 then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_reduction_comp.spv');
+    end else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_reduction_comp.spv');
+    end;
+   end else begin
+    if fInstance.CountSurfaceViews>1 then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reduction_comp.spv');
+    end else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reduction_comp.spv');
+    end;
+   end;
   end;
  end;
  try
@@ -190,7 +261,7 @@ begin
  finally
   Stream.Free;
  end;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'CullDepthPyramidComputePass.fReductionComputeShaderModule');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,Name+'.fReductionComputeShaderModule');
 
  fFirstPassVulkanPipelineShaderStageCompute:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fFirstPassComputeShaderModule,'main');
 
@@ -208,23 +279,55 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesCullDepthPyramidComputePass.AcquireVolatileResources;
-var InFlightFrameIndex,MipMapLevelSetIndex:TpvInt32;
+var InFlightFrameIndex,MipMapLevelSetIndex,CountViews:TpvInt32;
     ImageViewType:TVkImageViewType;
     Sampler:TpvVulkanSampler;
+    MipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
 begin
 
  inherited AcquireVolatileResources;
 
- if fInstance.CountSurfaceViews>1 then begin
-  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
- end else begin
-  ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+ case fCullRenderPass of
+
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+
+   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+    ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
+   end else begin
+    ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+   end;
+
+   Sampler:=fInstance.Renderer.MipMapMaxFilterSampler;
+
+  end;
+
+  else begin
+
+   if fInstance.CountSurfaceViews>1 then begin
+    ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
+   end else begin
+    ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
+   end;
+
+   if fInstance.ZFar<0.0 then begin
+    Sampler:=fInstance.Renderer.MipMapMinFilterSampler;
+   end else begin
+    Sampler:=fInstance.Renderer.MipMapMaxFilterSampler;
+   end;
+
+  end;
+
  end;
 
- if fInstance.ZFar<0.0 then begin
-  Sampler:=fInstance.Renderer.MipMapMinFilterSampler;
- end else begin
-  Sampler:=fInstance.Renderer.MipMapMaxFilterSampler;
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   MipmappedArray2DImage:=fInstance.CascadedShadowMapCullDepthPyramidMipmappedArray2DImage;
+   CountViews:=TpvScene3DRendererInstance.CountCascadedShadowMapCascades;
+  end;
+  else begin
+   MipmappedArray2DImage:=fInstance.CullDepthPyramidMipmappedArray2DImage;
+   CountViews:=fInstance.CountSurfaceViews;
+  end;
  end;
 
  fFirstPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
@@ -233,7 +336,7 @@ begin
  fFirstPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
  fFirstPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames);
  fFirstPassVulkanDescriptorPool.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorPool');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,Name+'.fFirstPassVulkanDescriptorPool');
 
  fFirstPassVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fFirstPassVulkanDescriptorSetLayout.AddBinding(0,
@@ -247,12 +350,12 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
  fFirstPassVulkanDescriptorSetLayout.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorSetLayout');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,Name+'.fFirstPassVulkanDescriptorSetLayout');
 
  fFirstPassPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fFirstPassPipelineLayout.AddDescriptorSetLayout(fFirstPassVulkanDescriptorSetLayout);
  fFirstPassPipelineLayout.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'CullDepthPyramidComputePass.fFirstPassPipelineLayout');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,Name+'.fFirstPassPipelineLayout');
 
  fFirstPassPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                      fInstance.Renderer.VulkanPipelineCache,
@@ -261,41 +364,78 @@ begin
                                                      fFirstPassPipelineLayout,
                                                      nil,
                                                      0);
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'CullDepthPyramidComputePass.fFirstPassPipeline');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,Name+'.fFirstPassPipeline');
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
-  if assigned(fResourceInput) then begin
-   fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
-                                                                    fResourceInput.VulkanImages[InFlightFrameIndex],
-                                                                    ImageViewType,
-                                                                    TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
-                                                                    0,
-                                                                    1,
-                                                                    0,
-                                                                    fInstance.CountSurfaceViews
-                                                                   );
-  end else begin
-   fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
-                                                                    fInstance.CullDepthArray2DImage.VulkanImage,
-                                                                    ImageViewType,
-                                                                    fInstance.CullDepthArray2DImage.Format,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                    TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                                    0,
-                                                                    1,
-                                                                    0,
-                                                                    fInstance.CountSurfaceViews
-                                                                   );
+  case fCullRenderPass of
+   TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+    if assigned(fResourceInput) then begin
+     fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                      fResourceInput.VulkanImages[InFlightFrameIndex],
+                                                                      ImageViewType,
+                                                                      TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                      0,
+                                                                      1,
+                                                                      0,
+                                                                      CountViews
+                                                                     );
+    end else begin
+     fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                      fInstance.CascadedShadowMapCullDepthArray2DImage.VulkanImage,
+                                                                      ImageViewType,
+                                                                      fInstance.CascadedShadowMapCullDepthArray2DImage.Format,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                      0,
+                                                                      1,
+                                                                      0,
+                                                                      CountViews
+                                                                     );
+    end;
+   end;
+   else begin
+    if assigned(fResourceInput) then begin
+     fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                      fResourceInput.VulkanImages[InFlightFrameIndex],
+                                                                      ImageViewType,
+                                                                      TpvFrameGraph.TImageResourceType(fResourceInput.ResourceType).Format,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT),
+                                                                      0,
+                                                                      1,
+                                                                      0,
+                                                                      CountViews
+                                                                     );
+    end else begin
+     fVulkanImageViews[InFlightFrameIndex]:=TpvVulkanImageView.Create(fInstance.Renderer.VulkanDevice,
+                                                                      fInstance.CullDepthArray2DImage.VulkanImage,
+                                                                      ImageViewType,
+                                                                      fInstance.CullDepthArray2DImage.Format,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                      TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                                      0,
+                                                                      1,
+                                                                      0,
+                                                                      CountViews
+                                                                     );
+    end;
+   end;
   end;
-  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'CullDepthPyramidComputePass.fVulkanImageViews['+IntToStr(InFlightFrameIndex)+']');
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanImageViews[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_IMAGE_VIEW,Name+'.fVulkanImageViews['+IntToStr(InFlightFrameIndex)+']');
 
   fFirstPassVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fFirstPassVulkanDescriptorPool,
                                                                                     fFirstPassVulkanDescriptorSetLayout);
@@ -329,14 +469,14 @@ begin
                                                                           1,
                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                           [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                         fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImageViews[0].Handle,
+                                                                                                         MipmappedArray2DImage.VulkanImageViews[0].Handle,
                                                                                                          VK_IMAGE_LAYOUT_GENERAL)],
                                                                           [],
                                                                           [],
                                                                           false
                                                                          );
   fFirstPassVulkanDescriptorSets[InFlightFrameIndex].Flush;
-  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'CullDepthPyramidComputePass.fFirstPassVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fFirstPassVulkanDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,Name+'.fFirstPassVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
  end;
 
  /////
@@ -347,7 +487,7 @@ begin
  fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,fInstance.Renderer.CountInFlightFrames);
  fReductionVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,fInstance.Renderer.CountInFlightFrames*(4*4));
  fReductionVulkanDescriptorPool.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'CullDepthPyramidComputePass.fReductionVulkanDescriptorPool');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,Name+'.fReductionVulkanDescriptorPool');
 
  fReductionVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
  fReductionVulkanDescriptorSetLayout.AddBinding(0,
@@ -361,13 +501,13 @@ begin
                                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                 []);
  fReductionVulkanDescriptorSetLayout.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'CullDepthPyramidComputePass.fReductionVulkanDescriptorSetLayout');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,Name+'.fReductionVulkanDescriptorSetLayout');
 
  fReductionPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fReductionPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvInt32));
  fReductionPipelineLayout.AddDescriptorSetLayout(fReductionVulkanDescriptorSetLayout);
  fReductionPipelineLayout.Initialize;
- fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'CullDepthPyramidComputePass.fReductionPipelineLayout');
+ fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,Name+'.fReductionPipelineLayout');
 
  fReductionPipeline:=TpvVulkanComputePipeline.Create(fInstance.Renderer.VulkanDevice,
                                                      fInstance.Renderer.VulkanPipelineCache,
@@ -378,7 +518,7 @@ begin
                                                      0);
  fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'CullDepthPyramidComputePass.fReductionPipeline');
 
- fCountMipMapLevelSets:=Min(((fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-1)+3) shr 2,8);
+ fCountMipMapLevelSets:=Min(((MipmappedArray2DImage.MipMapLevels-1)+3) shr 2,8);
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
   for MipMapLevelSetIndex:=0 to fCountMipMapLevelSets-1 do begin
@@ -390,7 +530,7 @@ begin
                                                                                                1,
                                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                                [TVkDescriptorImageInfo.Create(Sampler.Handle,
-                                                                                                                              fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImageViews[Min(MipMapLevelSetIndex shl 2,fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-1)].Handle,
+                                                                                                                              MipmappedArray2DImage.VulkanImageViews[Min(MipMapLevelSetIndex shl 2,MipmappedArray2DImage.MipMapLevels-1)].Handle,
                                                                                                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                                [],
                                                                                                [],
@@ -401,23 +541,23 @@ begin
                                                                                                4,
                                                                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                                                [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                                              fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+1),fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-1)].Handle,
+                                                                                                                              MipmappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+1),MipmappedArray2DImage.MipMapLevels-1)].Handle,
                                                                                                                               VK_IMAGE_LAYOUT_GENERAL),
                                                                                                 TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                                              fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+2),fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-1)].Handle,
+                                                                                                                              MipmappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+2),MipmappedArray2DImage.MipMapLevels-1)].Handle,
                                                                                                                               VK_IMAGE_LAYOUT_GENERAL),
                                                                                                 TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                                              fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+3),fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-1)].Handle,
+                                                                                                                              MipmappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+3),MipmappedArray2DImage.MipMapLevels-1)].Handle,
                                                                                                                               VK_IMAGE_LAYOUT_GENERAL),
                                                                                                 TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                                              fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+4),fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-1)].Handle,
+                                                                                                                              MipmappedArray2DImage.VulkanImageViews[Min(((MipMapLevelSetIndex shl 2)+4),MipmappedArray2DImage.MipMapLevels-1)].Handle,
                                                                                                                               VK_IMAGE_LAYOUT_GENERAL)],
                                                                                                [],
                                                                                                [],
                                                                                                false
                                                                                               );
    fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex].Flush;
-   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'CullDepthPyramidComputePass.fReductionVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+','+IntToStr(MipMapLevelSetIndex)+']');
+   fInstance.Renderer.VulkanDevice.DebugUtils.SetObjectName(fReductionVulkanDescriptorSets[InFlightFrameIndex,MipMapLevelSetIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,Name+'.fReductionVulkanDescriptorSets['+IntToStr(InFlightFrameIndex)+','+IntToStr(MipMapLevelSetIndex)+']');
   end;
  end;
 
@@ -450,12 +590,26 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesCullDepthPyramidComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var MipMapLevelIndex,MipMapLevelSetIndex:TpvSizeInt;
+var MipMapLevelIndex,MipMapLevelSetIndex,CountViews:TpvSizeInt;
     CountMipMaps:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
+    MipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
+ //////////////////////////
+
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   MipmappedArray2DImage:=fInstance.CascadedShadowMapCullDepthPyramidMipmappedArray2DImage;
+   CountViews:=TpvScene3DRendererInstance.CountCascadedShadowMapCascades;
+  end;
+  else begin
+   MipmappedArray2DImage:=fInstance.CullDepthPyramidMipmappedArray2DImage;
+   CountViews:=fInstance.CountSurfaceViews;
+  end;
+ end;
 
  //////////////////////////
 
@@ -470,12 +624,12 @@ begin
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImage.Handle;
+  ImageMemoryBarrier.image:=MipmappedArray2DImage.VulkanImage.Handle;
   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-  ImageMemoryBarrier.subresourceRange.levelCount:=fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels;
+  ImageMemoryBarrier.subresourceRange.levelCount:=MipmappedArray2DImage.MipMapLevels;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+  ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
   aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
@@ -499,9 +653,9 @@ begin
                                        0,
                                        nil);
 
-  aCommandBuffer.CmdDispatch(Max(1,(fInstance.CullDepthPyramidMipMappedArray2DImage.Width+((1 shl 4)-1)) shr 4),
-                             Max(1,(fInstance.CullDepthPyramidMipMappedArray2DImage.Height+((1 shl 4)-1)) shr 4),
-                             fInstance.CountSurfaceViews);
+  aCommandBuffer.CmdDispatch(Max(1,(MipmappedArray2DImage.Width+((1 shl 4)-1)) shr 4),
+                             Max(1,(MipmappedArray2DImage.Height+((1 shl 4)-1)) shr 4),
+                             CountViews);
 
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -512,12 +666,12 @@ begin
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImage.Handle;
+  ImageMemoryBarrier.image:=MipmappedArray2DImage.VulkanImage.Handle;
   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
   ImageMemoryBarrier.subresourceRange.levelCount:=1;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+  ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
@@ -537,7 +691,7 @@ begin
 
    MipMapLevelIndex:=(MipMapLevelSetIndex shl 2) or 1;
 
-   CountMipMaps:=Min(4,fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels-MipMapLevelIndex);
+   CountMipMaps:=Min(4,MipmappedArray2DImage.MipMapLevels-MipMapLevelIndex);
 
    if CountMipMaps<=0 then begin
     break;
@@ -557,9 +711,9 @@ begin
                                    SizeOf(TpvInt32),
                                    @CountMipMaps);
 
-   aCommandBuffer.CmdDispatch(Max(1,(fInstance.CullDepthPyramidMipMappedArray2DImage.Width+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
-                              Max(1,(fInstance.CullDepthPyramidMipMappedArray2DImage.Height+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
-                              fInstance.CountSurfaceViews);
+   aCommandBuffer.CmdDispatch(Max(1,(MipmappedArray2DImage.Width+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
+                              Max(1,(MipmappedArray2DImage.Height+((1 shl (3+MipMapLevelIndex))-1)) shr (3+MipMapLevelIndex)),
+                              CountViews);
 
    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -570,12 +724,12 @@ begin
    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
    ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
    ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-   ImageMemoryBarrier.image:=fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImage.Handle;
+   ImageMemoryBarrier.image:=MipmappedArray2DImage.VulkanImage.Handle;
    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
    ImageMemoryBarrier.subresourceRange.baseMipLevel:=MipMapLevelIndex;
    ImageMemoryBarrier.subresourceRange.levelCount:=CountMipMaps;
    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-   ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+   ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                      0,
@@ -600,12 +754,12 @@ begin
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fInstance.CullDepthPyramidMipMappedArray2DImage.VulkanImage.Handle;
+  ImageMemoryBarrier.image:=MipmappedArray2DImage.VulkanImage.Handle;
   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
-  ImageMemoryBarrier.subresourceRange.levelCount:=fInstance.CullDepthPyramidMipMappedArray2DImage.MipMapLevels;
+  ImageMemoryBarrier.subresourceRange.levelCount:=MipmappedArray2DImage.MipMapLevels;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+  ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                     0,

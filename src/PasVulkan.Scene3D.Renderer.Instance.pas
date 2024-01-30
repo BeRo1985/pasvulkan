@@ -842,7 +842,6 @@ uses PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.FrustumClusterGridAssignComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapCullDepthResolveComputePass,
-     PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapCullDepthPyramidComputePass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapResolveRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.CascadedShadowMapBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.TopDownSkyOcclusionMapRenderPass,
@@ -939,7 +938,7 @@ type TpvScene3DRendererInstancePasses=class
        fFrustumClusterGridAssignComputePass:TpvScene3DRendererPassesFrustumClusterGridAssignComputePass;
        fCascadedShadowMapRenderPass:TpvScene3DRendererPassesCascadedShadowMapRenderPass;
        fCascadedShadowMapCullDepthResolveComputePass:TpvScene3DRendererPassesCascadedShadowMapCullDepthResolveComputePass;
-       fCascadedShadowMapCullDepthPyramidComputePass:TpvScene3DRendererPassesCascadedShadowMapCullDepthPyramidComputePass;
+       fCascadedShadowMapCullDepthPyramidComputePass:TpvScene3DRendererPassesCullDepthPyramidComputePass;
        fCascadedShadowMapResolveRenderPass:TpvScene3DRendererPassesCascadedShadowMapResolveRenderPass;
        fCascadedShadowMapBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesCascadedShadowMapBlurRenderPass;
        fTopDownSkyOcclusionMapRenderPass:TpvScene3DRendererPassesTopDownSkyOcclusionMapRenderPass;
@@ -2938,7 +2937,7 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fCullDepthResolveComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass);
   end;
 
-  TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass:=TpvScene3DRendererPassesCullDepthPyramidComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass:=TpvScene3DRendererPassesCullDepthPyramidComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
   TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass);
   TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass);
   if Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
@@ -3000,7 +2999,7 @@ begin
     TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthResolveComputePass:=nil;
    end;
 
-   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass:=TpvScene3DRendererPassesCascadedShadowMapCullDepthPyramidComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass:=TpvScene3DRendererPassesCullDepthPyramidComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.CascadedShadowMap);
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthResolveComputePass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthResolveComputePass);
@@ -3027,7 +3026,7 @@ begin
     TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthResolveComputePass:=nil;
    end;
 
-   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass:=TpvScene3DRendererPassesCascadedShadowMapCullDepthPyramidComputePass.Create(fFrameGraph,self);
+   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass:=TpvScene3DRendererPassesCullDepthPyramidComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.CascadedShadowMap);
    TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapRenderPass);
    if assigned(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthResolveComputePass) then begin
     TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapCullDepthResolveComputePass);
