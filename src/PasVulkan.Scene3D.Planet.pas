@@ -619,13 +619,7 @@ type TpvScene3DPlanets=class;
             { TCullPass } // Used by multiple TpvScene3DPlanet instances per renderer instance 
             TCullPass=class
              public
-              type TCullMode=
-                    (
-                     FinalView,
-                     CascadedShadowMap
-                    );
-                   PCullMode=^TCullMode;
-                   TPushConstants=packed record
+              type TPushConstants=packed record
                     ModelMatrix:TpvMatrix4x4;
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
@@ -639,7 +633,7 @@ type TpvScene3DPlanets=class;
                fRenderer:TObject;
                fRendererInstance:TObject;
                fScene3D:TObject;
-               fCullMode:TCullMode;
+               fCullRenderPass:TpvScene3DRendererCullRenderPass;
                fPass:TpvSizeInt;
                fVulkanDevice:TpvVulkanDevice;
                fComputeShaderModule:TpvVulkanShaderModule;
@@ -651,7 +645,7 @@ type TpvScene3DPlanets=class;
                fPipelineLayout:TpvVulkanPipelineLayout;
                fPushConstants:TPushConstants;
               public
-               constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullMode:TCullMode;const aPass:TpvSizeInt); reintroduce;
+               constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullRenderPass:TpvScene3DRendererCullRenderPass;const aPass:TpvSizeInt); reintroduce;
                destructor Destroy; override;               
                procedure AllocateResources;
                procedure ReleaseResources;
@@ -4983,7 +4977,7 @@ end;
 
 { TpvScene3DPlanet.TCullPass }
 
-constructor TpvScene3DPlanet.TCullPass.Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullMode:TCullMode;const aPass:TpvSizeInt);
+constructor TpvScene3DPlanet.TCullPass.Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullRenderPass:TpvScene3DRendererCullRenderPass;const aPass:TpvSizeInt);
 var Stream:TStream;
     InFlightFrameIndex:TpvSizeInt;
 begin
@@ -4996,7 +4990,7 @@ begin
 
  fScene3D:=aScene3D;
 
- fCullMode:=aCullMode;
+ fCullRenderPass:=aCullRenderPass;
 
  fPass:=aPass;
 
@@ -5109,8 +5103,8 @@ begin
                                                            false);
   case fPass of
    1:begin
-    case fCullMode of
-     TCullMode.CascadedShadowMap:begin
+    case fCullRenderPass of
+     TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
       fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
                                                                0,
                                                                1,
@@ -5220,13 +5214,13 @@ begin
 
      end;
 
-     case fCullMode of
-      TCullMode.FinalView:begin
+     case fCullRenderPass of
+      TpvScene3DRendererCullRenderPass.FinalView:begin
        RenderPassIndex:=InFlightFrameState^.ViewRenderPassIndex;
        ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
        CountViews:=InFlightFrameState^.CountFinalViews;
       end;
-      TCullMode.CascadedShadowMap:begin
+      TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
        RenderPassIndex:=InFlightFrameState^.CascadedShadowMapRenderPassIndex;
        ViewBaseIndex:=InFlightFrameState^.CascadedShadowMapViewIndex;
        CountViews:=InFlightFrameState^.CountCascadedShadowMapViews;

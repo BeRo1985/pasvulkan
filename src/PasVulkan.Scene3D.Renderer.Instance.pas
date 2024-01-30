@@ -2925,7 +2925,7 @@ begin
 
  if Renderer.GPUCulling then begin
 
-  TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
 
   TpvScene3DRendererInstancePasses(fPasses).fCullDepthRenderPass:=TpvScene3DRendererPassesCullDepthRenderPass.Create(fFrameGraph,self);
@@ -2945,7 +2945,7 @@ begin
    TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthResolveComputePass);
   end;
 
-  TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass:=TpvScene3DRendererPassesMeshCullPass1ComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass:=TpvScene3DRendererPassesMeshCullPass1ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.FinalView);
   TpvScene3DRendererInstancePasses(fPasses).fMeshCullPass1ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fCullDepthPyramidComputePass);
 
  end else begin

@@ -203,6 +203,16 @@ type TpvScene3DRendererAntialiasingMode=
       );
      PpvScene3DRendererToneMappingMode=^TpvScene3DRendererToneMappingMode;
 
+     TpvScene3DRendererCullRenderPass=
+      (
+       None=0,
+       FinalView=1,
+       CascadedShadowMap=2,
+       First=1,
+       Last=2
+      );
+     PpvScene3DRendererCullRenderPass=^TpvScene3DRendererCullRenderPass;
+
 var pvScene3DShaderVirtualFileSystem:TpvVirtualFileSystem=nil;
 
 implementation
