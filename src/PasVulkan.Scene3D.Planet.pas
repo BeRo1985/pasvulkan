@@ -5309,20 +5309,18 @@ begin
 
         end;
 
-        aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                     0,
-                                     16*SizeOf(TVkUInt32),
-                                     0);
+        if fPass<=0 then begin
+         aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                      0,
+                                      16*SizeOf(TVkUInt32),
+                                      0);
+        end;
 
-        case fPass of
-         0,1:begin
-          aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Handle,
-                                       0,
-                                       RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Size,
-                                       0);
-         end;
-         else begin
-         end;
+        if fPass=0 then begin
+         aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Handle,
+                                      0,
+                                      RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Size,
+                                      0);
         end;
 
         begin

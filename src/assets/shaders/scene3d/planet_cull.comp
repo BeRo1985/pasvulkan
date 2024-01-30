@@ -51,7 +51,7 @@ layout(set = 1, binding = 2, std430) readonly buffer PreviousVisibilityBuffer {
   uint bitmap[];
 } previousVisibilityBuffer;
 
-layout(set = 1, binding = 3, std430) buffer VisibilityBuffer {
+layout(set = 1, binding = 3, std430) volatile buffer VisibilityBuffer {
   uint bitmap[];
 } visibilityBuffer;
 
@@ -358,26 +358,31 @@ void main(){
         tileIndexOffset += (lod0TileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
       }
 
-      outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
-        uvec4(
-          countTileIndices, // indexCount
-          1u, // instanceCount
-          tileIndexOffset, // firstIndex
-          0u  // vertexOffset
-        ),
-        uvec4(
-          0u, // firstInstance
-          0u, // padding/unused
-          0u, // padding/unused
-          0u  // padding/unused
-        ),
-        boundingSphere,
-        uvec4(0u) // padding/unused
-      );
+#if defined(PASS0) || defined(PASS1)  
+      // add to visibility buffer only if not yet existing        
+      uint mask = 1u << (tileMapIndex & 31u);
+      if((atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], mask) & mask) == 0u)
+#endif      
+      { 
 
-#if defined(PASS1)
-      atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], 1u << (tileMapIndex & 31u));
-#endif
+        outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
+          uvec4(
+            countTileIndices, // indexCount
+            1u, // instanceCount
+            tileIndexOffset, // firstIndex
+            0u  // vertexOffset
+          ),
+          uvec4(
+            0u, // firstInstance
+            0u, // padding/unused
+            0u, // padding/unused
+            0u  // padding/unused
+          ),
+          boundingSphere,
+          uvec4(0u) // padding/unused
+        );      
+
+      }
 
     }
     
