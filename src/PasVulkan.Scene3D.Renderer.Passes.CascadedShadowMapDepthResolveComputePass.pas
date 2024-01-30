@@ -142,7 +142,6 @@ begin
   end;
  end;
 
-
 end;
 
 destructor TpvScene3DRendererPassesCascadedShadowMapDepthResolveComputePass.Destroy;
@@ -157,32 +156,16 @@ begin
  inherited AcquirePersistentResources;
 
  if (fInstance.Renderer.ShadowMode=TpvScene3DRendererShadowMode.MSM) and (fInstance.Renderer.ShadowMapSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) then begin
-  if fInstance.ZFar<0.0 then begin
-   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_reversedz_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_reversedz_comp.spv');
-   end;
+  if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_comp.spv');
   end else begin
-   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_comp.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_comp.spv');
   end;
  end else begin
-  if fInstance.ZFar<0.0 then begin
-   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_reversedz_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_reversedz_comp.spv');
-   end;
+  if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_comp.spv');
   end else begin
-   if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_resolve_comp.spv');
-   end;
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_resolve_comp.spv');
   end;
  end;
  try
