@@ -21984,7 +21984,7 @@ procedure TpvScene3D.Prepare(const aInFlightFrameIndex:TpvSizeInt;
                              const aLights:boolean;
                              const aFrustumCulling:boolean;
                              const aPotentiallyVisibleSetCulling:boolean;
-                             const aGPUCulling:boolean=true);
+                             const aGPUCulling:boolean);
 var Index:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
