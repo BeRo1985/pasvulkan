@@ -662,6 +662,7 @@ type TpvScene3DPlanets=class;
                      ShadowMapDisocclusion,
                      ReflectiveShadowMap,
                      DepthPrepass,
+                     DepthPrepassDisocclusion,
                      Opaque
                     );
                    PMode=^TMode;
@@ -5505,7 +5506,7 @@ begin
    Kind:='direct_'+Kind;
   end;
 
-  if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+  if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_vert.spv');
   end else begin 
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'vert.spv');
@@ -5539,7 +5540,7 @@ begin
 
   end else begin
 
-   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_tesc.spv');
    end else begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'tesc.spv');
@@ -5552,7 +5553,7 @@ begin
 
    fVulkanDevice.DebugUtils.SetObjectName(fTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationControlShaderModule');
 
-   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'velocity_tese.spv');
    end else begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+Kind+'tese.spv');
@@ -5571,7 +5572,8 @@ begin
    
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-   TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass:begin     
+   TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,
+   TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion:begin
    
     fFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
 
@@ -6207,7 +6209,7 @@ begin
      fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
      fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
      fPushConstants.TessellationFactor:=TessellationFactor;
-     if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
+     if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
       fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
      end else begin
       fPushConstants.Jitter:=TpvVector2.Null;
@@ -6250,7 +6252,8 @@ begin
           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
                                                      RendererViewInstance) then begin
         case fMode of
-         TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion:begin
+         TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+         TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion:begin
           vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
                                         RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
                                         ((Planet.TileMapResolution*Planet.TileMapResolution)+1)*(16*SizeOf(TVkUInt32)),
