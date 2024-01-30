@@ -133,6 +133,7 @@ type TpvScene3DRenderer=class;
        fCountInFlightFrames:TpvSizeInt;
        fVelocityBufferNeeded:Boolean;
        fGPUCulling:Boolean;
+       fGPUShadowCulling:Boolean;
        fEarlyDepthPrepassNeeded:Boolean;
        fScreenSpaceAmbientOcclusion:Boolean;
        fAntialiasingMode:TpvScene3DRendererAntialiasingMode;
@@ -213,6 +214,7 @@ type TpvScene3DRenderer=class;
        property CountInFlightFrames:TpvSizeInt read fCountInFlightFrames;
        property VelocityBufferNeeded:Boolean read fVelocityBufferNeeded;
        property GPUCulling:Boolean read fGPUCulling;
+       property GPUShadowCulling:Boolean read fGPUShadowCulling;
        property EarlyDepthPrepassNeeded:Boolean read fEarlyDepthPrepassNeeded;
        property ScreenSpaceAmbientOcclusion:Boolean read fScreenSpaceAmbientOcclusion write fScreenSpaceAmbientOcclusion;
        property AntialiasingMode:TpvScene3DRendererAntialiasingMode read fAntialiasingMode write fAntialiasingMode;
@@ -570,6 +572,8 @@ begin
  fVelocityBufferNeeded:=false;
 
  fGPUCulling:=true;
+
+ fGPUShadowCulling:=true;
 
  fEarlyDepthPrepassNeeded:=false;
 

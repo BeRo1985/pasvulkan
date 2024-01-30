@@ -144,7 +144,7 @@ inherited Create(aFrameGraph);
  case fInstance.Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.MSM:begin
    if fInstance.Renderer.ShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    if fInstance.Renderer.GPUCulling then begin
+    if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
      fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_depth',
                                         'resource_cascadedshadowmap_single_depth',
                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -161,7 +161,7 @@ inherited Create(aFrameGraph);
                                        );
     end;
    end else begin
-    if fInstance.Renderer.GPUCulling then begin
+    if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
      fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_msaa_depth',
                                         'resource_cascadedshadowmap_msaa_depth',
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -180,7 +180,7 @@ inherited Create(aFrameGraph);
    end;
   end
   else begin
-   if fInstance.Renderer.GPUCulling then begin
+   if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_data',
                                        'resource_cascadedshadowmap_data_final',
                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -538,7 +538,7 @@ begin
                                    OnSetRenderPassResources,
                                    [TpvScene3D.TMaterial.TAlphaMode.Opaque],
                                    nil,
-                                   fInstance.Renderer.GPUCulling);
+                                   fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling);
 
    fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -553,7 +553,7 @@ begin
                                    OnSetRenderPassResources,
                                    [TpvScene3D.TMaterial.TAlphaMode.Mask],
                                    nil,
-                                   fInstance.Renderer.GPUCulling);
+                                   fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling);
 
  { fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
@@ -566,7 +566,9 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Blend]);}
+                                   [TpvScene3D.TMaterial.TAlphaMode.Blend],
+                                   nil,
+                                   fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling);}
 
   end;
 

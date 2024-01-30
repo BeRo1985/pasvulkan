@@ -2928,7 +2928,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass:=TpvScene3DRendererPassesMeshComputePass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDataTransferPass);
 
- if Renderer.GPUCulling then begin
+ if Renderer.GPUCulling and Renderer.GPUShadowCulling then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass:=TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(fFrameGraph,self,TpvScene3DRendererCullRenderPass.CascadedShadowMap);
   TpvScene3DRendererInstancePasses(fPasses).fCascadedShadowMapMeshCullPass0ComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);
@@ -5909,7 +5909,7 @@ begin
                    false,
                    true,
                    true,
-                   Renderer.GPUCulling);
+                   Renderer.GPUCulling and Renderer.GPUShadowCulling);
  end;
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
