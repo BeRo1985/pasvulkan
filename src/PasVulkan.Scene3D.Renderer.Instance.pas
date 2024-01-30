@@ -5876,7 +5876,7 @@ begin
                    false,
                    true,
                    true,
-                   false);
+                   Renderer.GPUCulling);
  end;
 
  TPasMPInterlocked.Write(InFlightFrameState^.Ready,true);
