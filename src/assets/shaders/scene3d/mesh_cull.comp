@@ -4,6 +4,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_control_flow_attributes : enable
 
 /* clang-format off */
 
@@ -103,6 +104,8 @@ layout(set = 0, binding = 4, std430) buffer OutputVisiblityBuffer {
 
 layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepths[];
 
+#include "frustum.glsl"
+
 #include "projectsphere.glsl"
 
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
@@ -113,7 +116,8 @@ shared mat4 viewMatrices[8];
 shared mat4 projectionMatrices[8];
 shared vec4 inverseProjectionMatrixZData[8];
 shared float zNears[8]; 
-shared vec4 frustums[8];
+shared vec4 fastFrustums[8];
+shared Frustum frustums[8];
 
 #endif
 
@@ -179,10 +183,12 @@ void main(){
 
     mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
 
-    frustums[localInvocationIndex] = vec4(
+    fastFrustums[localInvocationIndex] = vec4(
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
     );
+
+    frustumSetup(frustums[localInvocationIndex], uView.views[viewIndex].projectionMatrix);
       
   }
 
@@ -221,10 +227,14 @@ void main(){
       // Frustum visible check, but without testing the far planes, so it is more projection matrix variant independent (reverse z, 
       // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a 
       // safety check.
+#if 1
+      bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere);
+#else
       vec4 frustum = frustums[viewIndex];
-      bool visible = true;/*(((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
+      bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
                      (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
-                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);*/
+                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);
+#endif
 
       if(visible){
 

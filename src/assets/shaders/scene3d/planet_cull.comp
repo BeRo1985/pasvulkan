@@ -77,75 +77,10 @@ layout(set = 1, binding = 4, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand data[]; // 1-based, since 0 is used for counters and the like
 } outputDrawIndexedIndirectCommands;
 
-const int FrustumLeft = 0;
-const int FrustumRight = 1;
-const int FrustumBottom = 2;
-const int FrustumTop = 3;
-const int FrustumNear = 4;
-const int FrustumFar = 5;
+#include "frustum.glsl"
 
-struct Frustum {
-	vec4 planes[6];
-  int maximumPlaneSide;
-};
-
-void frustumSetup(out Frustum frustum, mat4 m){
-  // Only for 0.0 .. 1.0 depth range projection matrices
-  bool reverseZ = m[2][3] < -1e-7;
-  bool infiniteFarPlane = reverseZ && ((abs(m[2][2]) < 1e-7) && (abs(m[3][2]) > 1e-7));
-  frustum.maximumPlaneSide = infiniteFarPlane ? FrustumNear : FrustumFar; // Avoid far plane culling for infinite far plane frustums
-  mat4 t = transpose(m);
-  frustum.planes[FrustumLeft] = normalize(t[3] + t[0]);
-  frustum.planes[FrustumRight] = normalize(t[3] - t[0]);
-  frustum.planes[FrustumBottom] = normalize(t[3] + t[1]);
-  frustum.planes[FrustumTop] = normalize(t[3] - t[1]);
-  if(reverseZ){
-    frustum.planes[FrustumNear] = normalize(t[3] - t[2]);
-    frustum.planes[FrustumFar] = normalize(/*t[3] +*/ t[2]);
-  }else{
-    frustum.planes[FrustumNear] = normalize(/*t[3] +*/ t[2]);
-    frustum.planes[FrustumFar] = normalize(t[3] - t[2]);
-  } 
-}
-
-bool frustumCullingAABBTest(const in Frustum frustum, vec3 aabbMin, vec3 aabbMax){
-	for(int frustumPlaneIndex = 0; frustumPlaneIndex <= frustum.maximumPlaneSide; frustumPlaneIndex++){
-    if(dot(vec4(mix(aabbMin, aabbMax, vec3(greaterThan(frustum.planes[frustumPlaneIndex].xyz, vec3(0.0)))), 1.0), frustum.planes[frustumPlaneIndex]) < 0.0){
-      return false;
-    }
-	}
-	return true;
-}
-
-void aabbTransform(inout vec3 aabbMin, inout vec3 aabbMax, mat4 m){
-  if((abs(m[0][3]) + abs(m[1][3]) + abs(m[2][3]) + (abs(m[3][3]) - 1.0)) < 1e-6){
-    // Fast path for affine transformations
-    vec3 center = (m * vec4((aabbMin + aabbMax) * 0.5, 1.0)).xyz;
-    vec3 temp = (aabbMax - aabbMin) * 0.5;
-    vec3 extents = vec3(
-      (abs(m[0][0]) * temp.x) + (abs(m[1][0]) * temp.y) + (abs(m[2][0]) * temp.z),
-      (abs(m[0][1]) * temp.x) + (abs(m[1][1]) * temp.y) + (abs(m[2][1]) * temp.z),
-      (abs(m[0][2]) * temp.x) + (abs(m[1][2]) * temp.y) + (abs(m[2][2]) * temp.z)
-    );
-    aabbMin = center - extents;
-    aabbMax = center + extents;
-  }else{
-    // Slow path for non-affine transformations
-    vec2 minMaxX = vec2(aabbMin.x, aabbMax.x), minMaxY = vec2(aabbMin.y, aabbMax.y), minMaxZ = vec2(aabbMin.z, aabbMax.z);
-    vec4 newAABBMin = m * vec4(aabbMin, 1.0);
-    newAABBMin /= newAABBMin.w;
-    vec4 newAABBMax = newAABBMin;
-    [[unroll]] for(int cornerIndex = 1; cornerIndex < 8; cornerIndex++){
-      vec4 corner = m * vec4(minMaxX[cornerIndex & 1u], minMaxY[(cornerIndex >> 1u) & 1u], minMaxZ[(cornerIndex >> 2u) & 1u], 1.0);
-      corner.xyz /= corner.w;
-      newAABBMin.xyz = min(newAABBMin.xyz, corner.xyz);
-      newAABBMax.xyz = max(newAABBMax.xyz, corner.xyz);
-    }
-    aabbMin = newAABBMin.xyz;
-    aabbMax = newAABBMax.xyz;
-  }
-}
-
+#include "aabb.glsl"
+  
 #include "projectsphere.glsl"
 
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
