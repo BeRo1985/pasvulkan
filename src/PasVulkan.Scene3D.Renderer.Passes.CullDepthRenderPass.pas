@@ -132,14 +132,14 @@ begin
  case fCullRenderPass of
   TpvScene3DRendererCullRenderPass.FinalView:begin
    Name:='FinalViewCullDepthRenderPass';
+   MultiviewMask:=fInstance.SurfaceMultiviewMask;
+  end;
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   Name:='CascadedShadowMapCullDepthRenderPass';
    MultiviewMask:=0;
    for Index:=0 to TpvScene3DRendererInstance.CountCascadedShadowMapCascades-1 do begin
     MultiviewMask:=MultiviewMask or (1 shl Index);
    end;
-  end;
-  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
-   Name:='CascadedShadowMapCullDepthRenderPass';
-   MultiviewMask:=fInstance.SurfaceMultiviewMask;
   end;
   else begin
    Name:='CullDepthRenderPass';
