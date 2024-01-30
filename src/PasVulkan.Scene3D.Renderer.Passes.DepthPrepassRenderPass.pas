@@ -241,12 +241,21 @@ begin
  fVulkanPipelineShaderStageMeshDepthMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshDepthMaskedFragmentShaderModule,'main');
  MeshFragmentSpecializationConstants.SetPipelineShaderStage(fVulkanPipelineShaderStageMeshDepthMaskedFragment);
 
- fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                          fInstance,
-                                                          fInstance.Renderer.Scene3D,
-                                                          TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
-                                                          nil,
-                                                          nil);
+ if fInstance.Renderer.GPUCulling then begin
+  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                           fInstance,
+                                                           fInstance.Renderer.Scene3D,
+                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
+                                                           nil,
+                                                           nil);
+ end else begin
+  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                           fInstance,
+                                                           fInstance.Renderer.Scene3D,
+                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
+                                                           nil,
+                                                           nil);
+ end;
 
 end;
 
