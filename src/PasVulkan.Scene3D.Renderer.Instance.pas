@@ -5520,8 +5520,8 @@ begin
    if (DrawChoreographyBatchRange^.CountCommands>0) and
       (DrawChoreographyBatchRange.AlphaMode in aMaterialAlphaModes) then begin
 
-    NewPipeline:=aGraphicsPipelines[DrawChoreographyBatchRange.PrimitiveTopology,
-                                    DrawChoreographyBatchRange.FaceCullingMode];
+    NewPipeline:=aGraphicsPipelines[DrawChoreographyBatchRange^.PrimitiveTopology,
+                                    DrawChoreographyBatchRange^.FaceCullingMode];
 
     if Pipeline<>NewPipeline then begin
      Pipeline:=NewPipeline;

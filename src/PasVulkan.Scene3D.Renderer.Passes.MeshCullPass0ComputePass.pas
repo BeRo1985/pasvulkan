@@ -325,9 +325,13 @@ begin
                                     FirstDrawCallIndex*SizeOf(TVkUInt32),
                                     CountDrawCallIndices*SizeOf(TVkUInt32),
                                     0);
-       CountDrawCallIndices:=0;
+       aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                    (TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+FirstDrawCallIndex)*SizeOf(TVkUInt32),
+                                    CountDrawCallIndices*SizeOf(TVkUInt32),
+                                    0);
       end;
       FirstDrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
+      CountDrawCallIndices:=0;
      end;
 
      inc(CountDrawCallIndices);
@@ -341,10 +345,18 @@ begin
                                  FirstDrawCallIndex*SizeOf(TVkUInt32),
                                  CountDrawCallIndices*SizeOf(TVkUInt32),
                                  0);
-    CountDrawCallIndices:=0;
+    aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                 (TpvScene3DRendererInstance.MaxMultiIndirectDrawCalls+FirstDrawCallIndex)*SizeOf(TVkUInt32),
+                                 CountDrawCallIndices*SizeOf(TVkUInt32),
+                                 0);
    end;
 
   end;
+
+{ aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                               0,
+                               VK_WHOLE_SIZE,
+                               0);}
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

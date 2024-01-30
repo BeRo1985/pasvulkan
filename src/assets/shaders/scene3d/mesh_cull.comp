@@ -230,7 +230,7 @@ void main(){
 #if 1
       bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere);
 #else
-      vec4 frustum = frustums[viewIndex];
+      vec4 frustum = fastFrustums[viewIndex];
       bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
                      (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
                      (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);

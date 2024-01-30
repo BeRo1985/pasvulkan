@@ -573,7 +573,7 @@ begin
 
  fGPUCulling:=true;
 
- fGPUShadowCulling:=true;
+ fGPUShadowCulling:=false;
 
  fEarlyDepthPrepassNeeded:=false;
 
