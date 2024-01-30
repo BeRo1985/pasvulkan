@@ -115,9 +115,23 @@ implementation
 constructor TpvScene3DRendererPassesMeshCullPass0ComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass);
 begin
  inherited Create(aFrameGraph);
+
  fInstance:=aInstance;
+
  fCullRenderPass:=aCullRenderPass;
- Name:='MeshCullPass0ComputePass';
+
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.FinalView:begin
+   Name:='FinalViewMeshCullPass0ComputePass';
+  end;
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   Name:='CascadedShadowMapMeshCullPass0ComputePass';
+  end;
+  else begin
+   Name:='MeshCullPass0ComputePass';
+  end;
+ end;
+
 end;
 
 destructor TpvScene3DRendererPassesMeshCullPass0ComputePass.Destroy;
