@@ -469,12 +469,21 @@ begin
                                           fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);
 
  if fUseDepthPrepass then begin
-  fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                           fInstance,
-                                                           fInstance.Renderer.Scene3D,
-                                                           TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
-                                                           fResourceCascadedShadowMap,
-                                                           fResourceSSAO);
+  if fInstance.Renderer.GPUCulling then begin
+   fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                            fInstance,
+                                                            fInstance.Renderer.Scene3D,
+                                                            TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
+                                                            fResourceCascadedShadowMap,
+                                                            fResourceSSAO);
+  end else begin
+   fPlanetDepthPrePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                            fInstance,
+                                                            fInstance.Renderer.Scene3D,
+                                                            TpvScene3DPlanet.TRenderPass.TMode.DepthPrePass,
+                                                            fResourceCascadedShadowMap,
+                                                            fResourceSSAO);
+  end;
  end;
 
  fPlanetOpaquePass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
