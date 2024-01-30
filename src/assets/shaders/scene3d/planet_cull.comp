@@ -231,8 +231,6 @@ void main(){
 
     if(visible){
 
-      const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
-
 #if defined(PLANET_SCREEN_FILL_SCALE) || defined(TILE_SCREEN_FILL_SCALE)
 
 #if defined(TILE_SCREEN_FILL_SCALE)
@@ -304,6 +302,12 @@ void main(){
 #endif      
       { 
 
+        const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
+
+#if defined(PASS1)  
+        const uint outputDrawIndexedIndirectCommandDisocclusionIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.y, 1u) + 1u; // 1-based, since 0 is used for counters and the like
+        outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandDisocclusionIndex] = 
+#endif
         outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
           uvec4(
             countTileIndices, // indexCount
