@@ -288,7 +288,12 @@ void main(){
         }
       }
     }
-     
+
+#if defined(PASS0) || defined(PASS1)  
+    // add to visibility buffer only if not yet existing        
+    const uint mask = 1u << (tileMapIndex & 31u);
+#endif
+
     if(visible){
 
       const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
@@ -360,7 +365,6 @@ void main(){
 
 #if defined(PASS0) || defined(PASS1)  
       // add to visibility buffer only if not yet existing        
-      uint mask = 1u << (tileMapIndex & 31u);
       if((atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], mask) & mask) == 0u)
 #endif      
       { 
@@ -385,6 +389,13 @@ void main(){
       }
 
     }
+#if defined(PASS0) || defined(PASS1)  
+    else{
+      // If not visible, remove from visibility buffer
+      atomicAnd(visibilityBuffer.bitmap[tileMapIndex >> 5u], ~mask);
+    }
+#endif      
+
     
   }
 
