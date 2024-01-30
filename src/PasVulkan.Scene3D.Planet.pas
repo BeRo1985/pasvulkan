@@ -659,6 +659,7 @@ type TpvScene3DPlanets=class;
               type TMode=
                     (
                      ShadowMap,
+                     ShadowMapDisocclusion,
                      ReflectiveShadowMap,
                      DepthPrepass,
                      Opaque
@@ -5569,6 +5570,7 @@ begin
   case fMode of
    
    TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
    TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass:begin     
    
     fFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
@@ -5949,6 +5951,7 @@ begin
  fPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
  case fMode of
   TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+  TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
    fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
   end;
@@ -6002,6 +6005,7 @@ begin
  fPipeline.DepthStencilState.DepthWriteEnable:=true;
  case fMode of
   TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+  TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
    fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
   end;
@@ -6140,6 +6144,7 @@ begin
 
      case fMode of
       TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+      TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
       TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
        case TpvScene3DPlanet.SourcePrimitiveMode of
         TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
@@ -6244,13 +6249,26 @@ begin
        if assigned(vkCmdDrawIndexedIndirectCount) and
           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
                                                      RendererViewInstance) then begin
-        vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
-                                      RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                      16*SizeOf(TVkUInt32),
-                                      RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                      0,
-                                      Planet.TileMapResolution*Planet.TileMapResolution,
-                                      16*SizeOf(TVkUInt32));
+        case fMode of
+         TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion:begin
+          vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                        ((Planet.TileMapResolution*Planet.TileMapResolution)+1)*(16*SizeOf(TVkUInt32)),
+                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                        SizeOf(TVkUInt32),
+                                        Planet.TileMapResolution*Planet.TileMapResolution,
+                                        16*SizeOf(TVkUInt32));
+         end;
+         else begin
+          vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                        16*SizeOf(TVkUInt32),
+                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                        0,
+                                        Planet.TileMapResolution*Planet.TileMapResolution,
+                                        16*SizeOf(TVkUInt32));
+         end;
+        end;
        end else begin
         aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
                                       1,

@@ -245,12 +245,21 @@ begin
 
  fVulkanPipelineShaderStageMeshMaskedFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fMeshMaskedFragmentShaderModule,'main');
 
- fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
-                                                           fInstance,
-                                                           fInstance.Renderer.Scene3D,
-                                                           TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
-                                                           nil,
-                                                           nil);
+ if fInstance.Renderer.GPUCulling and fInstance.Renderer.GPUShadowCulling then begin
+  fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                            fInstance,
+                                                            fInstance.Renderer.Scene3D,
+                                                            TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+                                                            nil,
+                                                            nil);
+ end else begin
+  fPlanetShadowMapPass:=TpvScene3DPlanet.TRenderPass.Create(fInstance.Renderer,
+                                                            fInstance,
+                                                            fInstance.Renderer.Scene3D,
+                                                            TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+                                                            nil,
+                                                            nil);
+ end;
 
 end;
 
