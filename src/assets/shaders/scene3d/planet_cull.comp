@@ -305,7 +305,7 @@ void main(){
         const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
 
 #if defined(PASS1)  
-        const uint outputDrawIndexedIndirectCommandDisocclusionIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.y, 1u) + 1u; // 1-based, since 0 is used for counters and the like
+        const uint outputDrawIndexedIndirectCommandDisocclusionIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.y, 1u) + tileMapSize + 1u; // 1-based, since 0 is used for counters and the like
         outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandDisocclusionIndex] = 
 #endif
         outputDrawIndexedIndirectCommands.data[outputDrawIndexedIndirectCommandIndex] = DrawIndexedIndirectCommand(
