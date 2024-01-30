@@ -229,6 +229,7 @@ var RenderPassIndex,
     FirstDrawCallIndex,
     CountDrawCallIndices,
     Part:TpvSizeInt;
+    DrawChoreographyBatchRangeIndexDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeIndexDynamicArray;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
@@ -308,11 +309,13 @@ begin
    FirstDrawCallIndex:=0;
    CountDrawCallIndices:=0;
 
-   DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex];
+   DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
-   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeDynamicArray.Count-1 do begin
+   DrawChoreographyBatchRangeIndexDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPassIndex];
 
-    DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
+   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray.Count-1 do begin
+
+    DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndexDynamicArray.Items[DrawChoreographyBatchRangeIndex]];
 
     if DrawChoreographyBatchRange^.CountCommands>0 then begin
 
@@ -369,11 +372,13 @@ begin
 
   if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex] then begin
 
-   DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex];
+   DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
-   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeDynamicArray.Count-1 do begin
+   DrawChoreographyBatchRangeIndexDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPassIndex];
 
-    DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
+   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray.Count-1 do begin
+
+    DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndexDynamicArray.Items[DrawChoreographyBatchRangeIndex]];
 
     if DrawChoreographyBatchRange^.CountCommands>0 then begin
 

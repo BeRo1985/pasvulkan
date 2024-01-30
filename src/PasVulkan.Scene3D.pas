@@ -1460,10 +1460,14 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchRange=^TDrawChoreographyBatchRange;
             TDrawChoreographyBatchRangeDynamicArray=TpvDynamicArray<TDrawChoreographyBatchRange>;
             PDrawChoreographyBatchRangeDynamicArray=^TDrawChoreographyBatchRangeDynamicArray;
-            TDrawChoreographyBatchRangeRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchRangeDynamicArray;
+            TDrawChoreographyBatchRangeIndexDynamicArray=TpvDynamicArray<TpvSizeInt>;
+            PDrawChoreographyBatchRangeIndexDynamicArray=^TDrawChoreographyBatchRangeIndexDynamicArray;
+            TDrawChoreographyBatchRangeRenderPassBuckets=array[0..MaxRenderPassIndices-1] of TDrawChoreographyBatchRangeIndexDynamicArray;
             PDrawChoreographyBatchRangeRenderPassBuckets=^TDrawChoreographyBatchRangeRenderPassBuckets;
-            TDrawChoreographyBatchRangeFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeRenderPassBuckets;
+            TDrawChoreographyBatchRangeFrameBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeDynamicArray;
             PDrawChoreographyBatchRangeFrameBuckets=^TDrawChoreographyBatchRangeFrameBuckets;
+            TDrawChoreographyBatchRangeFrameRenderPassBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeRenderPassBuckets;
+            PDrawChoreographyBatchRangeFrameRenderPassBuckets=^TDrawChoreographyBatchRangeFrameRenderPassBuckets;
             { TVulkanLongTermStaticBufferData }
             TVulkanLongTermStaticBufferData=class
              private

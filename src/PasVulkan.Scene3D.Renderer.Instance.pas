@@ -612,6 +612,7 @@ type { TpvScene3DRendererInstance }
        fPerInFlightFrameGPUCountObjectIndicesArray:TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray;
        fPointerToPerInFlightFrameGPUCulledArray:TpvScene3D.PPerInFlightFrameGPUCulledArray;
        fDrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets;
+       fDrawChoreographyBatchRangeFrameRenderPassBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameRenderPassBuckets;
       private
        fColorGradingSettings:TpvScene3DRendererInstanceColorGradingSettingsArray;
        fPointerToColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray; 
@@ -792,7 +793,8 @@ type { TpvScene3DRendererInstance }
        property PerInFlightFrameGPUCulledArray:TpvScene3D.TPerInFlightFrameGPUCulledArray read fPerInFlightFrameGPUCulledArray;
        property PerInFlightFrameGPUCountObjectIndicesArray:TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray read fPerInFlightFrameGPUCountObjectIndicesArray;
        property DrawChoreographyBatchRangeFrameBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameBuckets read fDrawChoreographyBatchRangeFrameBuckets write fDrawChoreographyBatchRangeFrameBuckets;
-      public 
+       property DrawChoreographyBatchRangeFrameRenderPassBuckets:TpvScene3D.TDrawChoreographyBatchRangeFrameRenderPassBuckets read fDrawChoreographyBatchRangeFrameRenderPassBuckets write fDrawChoreographyBatchRangeFrameRenderPassBuckets;
+      public
        property ColorGradingSettings:PpvScene3DRendererInstanceColorGradingSettingsArray read fPointerToColorGradingSettings; 
        property ColorGradingSettingUniformBuffers:TColorGradingSettingUniformBuffers read fColorGradingSettingUniformBuffers;
       published
@@ -3811,8 +3813,9 @@ begin
  FillChar(fPerInFlightFrameGPUCountObjectIndicesArray,SizeOf(TpvScene3D.TPerInFlightFrameGPUCountObjectIndicesArray),#0);
 
  for InFlightFrameIndex:=0 to fScene3D.CountInFlightFrames-1 do begin
+  fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex].Initialize;
   for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
-   fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex,RenderPassIndex].Initialize;
+   fDrawChoreographyBatchRangeFrameRenderPassBuckets[InFlightFrameIndex,RenderPassIndex].Initialize;
   end;
  end;
 
@@ -3920,8 +3923,10 @@ begin
   FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[InFlightFrameIndex]);
   FreeAndNil(fPerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[InFlightFrameIndex]);
 
+  fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex].Finalize;
+
   for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
-   fDrawChoreographyBatchRangeFrameBuckets[InFlightFrameIndex,RenderPassIndex].Finalize;
+   fDrawChoreographyBatchRangeFrameRenderPassBuckets[InFlightFrameIndex,RenderPassIndex].Finalize;
   end;
 
  end;
@@ -4747,8 +4752,10 @@ begin
 
  fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex].Count:=0;
 
+ fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex].Count:=0;
+
  for RenderPassIndex:=0 to TpvScene3D.MaxRenderPassIndices-1 do begin
-  fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex].Count:=0;
+  fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,RenderPassIndex].Count:=0;
   fPerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex]:=false;
  end;
 
@@ -5343,6 +5350,7 @@ var DrawChoreographyBatchItemIndex,GPUDrawIndexedIndirectCommandIndex,
     DrawChoreographyBatchItem:TpvScene3D.TDrawChoreographyBatchItem;
     GPUDrawIndexedIndirectCommandDynamicArray:TpvScene3D.PGPUDrawIndexedIndirectCommandDynamicArray;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
+    DrawChoreographyBatchRangeIndexDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeIndexDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.TDrawChoreographyBatchRange;
     DrawChoreographyBatchRangeItem:TpvScene3D.PDrawChoreographyBatchRange;
     GPUDrawIndexedIndirectCommand:TpvScene3D.PGPUDrawIndexedIndirectCommand;
@@ -5353,7 +5361,9 @@ begin
 
  GPUDrawIndexedIndirectCommandDynamicArray:=@fPerInFlightFrameGPUDrawIndexedIndirectCommandDynamicArrays[aInFlightFrameIndex];
 
- DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+ DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
+
+ DrawChoreographyBatchRangeIndexDynamicArray:=@fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
  for MaterialAlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to high(TpvScene3D.TMaterial.TAlphaMode) do begin
 
@@ -5419,6 +5429,8 @@ begin
        DrawChoreographyBatchRangeItem^.FirstCommand:=DrawChoreographyBatchRange.FirstCommand;
        DrawChoreographyBatchRangeItem^.CountCommands:=DrawChoreographyBatchRange.CountCommands;
 
+       DrawChoreographyBatchRangeIndexDynamicArray.Add(DrawChoreographyBatchRangeIndex);
+
       end;
 
      end;
@@ -5451,6 +5463,7 @@ var DrawChoreographyBatchRangeIndex:TpvSizeInt;
     First,GPUCulling:boolean;
     VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
+    DrawChoreographyBatchRangeIndexDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeIndexDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     vkCmdDrawIndexedIndirectCount:TvkCmdDrawIndexedIndirectCount;
 begin
@@ -5488,11 +5501,13 @@ begin
    vkCmdDrawIndexedIndirectCount:=nil;
   end;
 
-  DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,aRenderPassIndex];
+  DrawChoreographyBatchRangeDynamicArray:=@fDrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex];
 
-  for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeDynamicArray.Count-1 do begin
+  DrawChoreographyBatchRangeIndexDynamicArray:=@fDrawChoreographyBatchRangeFrameRenderPassBuckets[aInFlightFrameIndex,aRenderPassIndex];
 
-   DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
+  for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeIndexDynamicArray.Count-1 do begin
+
+   DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndexDynamicArray.Items[DrawChoreographyBatchRangeIndex]];
 
    if (DrawChoreographyBatchRange^.CountCommands>0) and
       (DrawChoreographyBatchRange.AlphaMode in aMaterialAlphaModes) then begin
