@@ -536,7 +536,9 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque]);
+                                   [TpvScene3D.TMaterial.TAlphaMode.Opaque],
+                                   nil,
+                                   fInstance.Renderer.GPUCulling);
 
    fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Mask],
@@ -549,7 +551,9 @@ begin
                                    aCommandBuffer,
                                    fVulkanPipelineLayout,
                                    OnSetRenderPassResources,
-                                   [TpvScene3D.TMaterial.TAlphaMode.Mask]);
+                                   [TpvScene3D.TMaterial.TAlphaMode.Mask],
+                                   nil,
+                                   fInstance.Renderer.GPUCulling);
 
  { fInstance.Renderer.Scene3D.Draw(fInstance,
                                    fVulkanGraphicsPipelines[TpvScene3D.TMaterial.TAlphaMode.Blend],
