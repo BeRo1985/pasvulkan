@@ -74,7 +74,8 @@ uses SysUtils,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Renderer.Array2DImage;
 
 type { TpvScene3DRendererPassesCullDepthResolveComputePass }
      TpvScene3DRendererPassesCullDepthResolveComputePass=class(TpvFrameGraph.TComputePass)
@@ -84,6 +85,7 @@ type { TpvScene3DRendererPassesCullDepthResolveComputePass }
             end;
       private
        fInstance:TpvScene3DRendererInstance;
+       fCullRenderPass:TpvScene3DRendererCullRenderPass;
        fFarthest:boolean;
        fResourceInput:TpvFrameGraph.TPass.TUsedImageResource;
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -95,7 +97,7 @@ type { TpvScene3DRendererPassesCullDepthResolveComputePass }
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
       public
-       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
+       constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass); reintroduce;
        destructor Destroy; override;
        procedure AcquirePersistentResources; override;
        procedure ReleasePersistentResources; override;
@@ -109,29 +111,82 @@ implementation
 
 { TpvScene3DRendererPassesCullDepthResolveComputePass  }
 
-constructor TpvScene3DRendererPassesCullDepthResolveComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+constructor TpvScene3DRendererPassesCullDepthResolveComputePass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass);
 begin
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='CullDepthResolveComputePass';
+ fCullRenderPass:=aCullRenderPass;
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.FinalView:begin
+   Name:='FinalViewCullDepthResolveComputePass';
+  end;
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   Name:='CascadedShadowMapCullDepthResolveComputePass';
+  end;
+  else begin
+   Name:='CullDepthResolveComputePass';
+  end;
+ end;
 
-  fResourceInput:=AddImageInput('resourcetype_depth',
-                                'resource_depth_data',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
+ case fCullRenderPass of
 
- end else begin
+  TpvScene3DRendererCullRenderPass.FinalView:begin
 
-  fResourceInput:=AddImageInput('resourcetype_msaa_depth',
-                                'resource_msaa_depth_data',
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                               );
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+
+    fResourceInput:=AddImageInput('resourcetype_depth',
+                                  'resource_depth_data',
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+
+   end else begin
+
+    fResourceInput:=AddImageInput('resourcetype_msaa_depth',
+                                  'resource_msaa_depth_data',
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                 );
+
+   end;
+
+  end;
+
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+
+   case fInstance.Renderer.ShadowMode of
+    TpvScene3DRendererShadowMode.MSM:begin
+     if fInstance.Renderer.ShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+      fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_depth',
+                                    'resource_cascadedshadowmap_single_depth',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+     end else begin
+      fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_msaa_depth',
+                                    'resource_cascadedshadowmap_msaa_depth',
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                   );
+     end;
+    end
+    else begin
+     fResourceInput:=AddImageInput('resourcetype_cascadedshadowmap_data',
+                                   'resource_cascadedshadowmap_data_final',
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                   [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                  );
+    end;
+   end;
+
+  end;
+
+  else begin
+   Assert(false);
+  end;
 
  end;
 
@@ -148,34 +203,64 @@ begin
 
  inherited AcquirePersistentResources;
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  if fInstance.ZFar<0.0 then begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_reversedz_comp.spv');
+ case fCullRenderPass of
+
+  TpvScene3DRendererCullRenderPass.FinalView:begin
+
+   if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+    if fInstance.ZFar<0.0 then begin
+     if fInstance.CountSurfaceViews>1 then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_reversedz_comp.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_reversedz_comp.spv');
+     end;
+    end else begin
+     if fInstance.CountSurfaceViews>1 then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_comp.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_resolve_comp.spv');
+     end;
+    end;
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_reversedz_comp.spv');
+    if fInstance.ZFar<0.0 then begin
+     if fInstance.CountSurfaceViews>1 then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_reversedz_comp.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_reversedz_comp.spv');
+     end;
+    end else begin
+     if fInstance.CountSurfaceViews>1 then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_comp.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_comp.spv');
+     end;
+    end;
    end;
-  end else begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_resolve_comp.spv');
-   end;
+
   end;
- end else begin
-  if fInstance.ZFar<0.0 then begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_reversedz_comp.spv');
+
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+
+   if (fInstance.Renderer.ShadowMode=TpvScene3DRendererShadowMode.MSM) and (fInstance.Renderer.ShadowMapSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT)) then begin
+    if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_comp.spv');
+    end else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_comp.spv');
+    end;
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_reversedz_comp.spv');
+    if TpvScene3DRendererInstance.CountCascadedShadowMapCascades>1 then begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_comp.spv');
+    end else begin
+     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_resolve_comp.spv');
+    end;
    end;
-  end else begin
-   if fInstance.CountSurfaceViews>1 then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_multiview_msaa_comp.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cull_depth_resolve_msaa_comp.spv');
-   end;
+
   end;
+
+  else begin
+   Stream:=nil;
+  end;
+
  end;
  try
   fComputeShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -195,11 +280,23 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesCullDepthResolveComputePass.AcquireVolatileResources;
-var InFlightFrameIndex,MipMapLevelIndex:TpvInt32;
+var InFlightFrameIndex,MipMapLevelIndex,CountViews:TpvInt32;
     ImageViewType:TVkImageViewType;
+    Array2DImage:TpvScene3DRendererArray2DImage;
 begin
 
  inherited AcquireVolatileResources;
+
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   Array2DImage:=fInstance.CascadedShadowMapCullDepthArray2DImage;
+   CountViews:=TpvScene3DRendererInstance.CountCascadedShadowMapCascades;
+  end;
+  else begin
+   Array2DImage:=fInstance.CullDepthArray2DImage;
+   CountViews:=fInstance.CountSurfaceViews;
+  end;
+ end;
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,
                                                        TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -234,7 +331,7 @@ begin
                                                   nil,
                                                   0);
 
- if fInstance.CountSurfaceViews>1 then begin
+ if CountViews>1 then begin
   ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY);
  end else begin
   ImageViewType:=TVkImageViewType(VK_IMAGE_VIEW_TYPE_2D);
@@ -253,7 +350,7 @@ begin
                                                                    0,
                                                                    1,
                                                                    0,
-                                                                   fInstance.CountSurfaceViews
+                                                                   CountViews
                                                                   );
   begin
    fVulkanDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
@@ -274,7 +371,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
                                                                   [TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
-                                                                                                 fInstance.CullDepthArray2DImage.VulkanImageView.Handle,
+                                                                                                 Array2DImage.VulkanImageView.Handle,
                                                                                                  VK_IMAGE_LAYOUT_GENERAL)],
                                                                   [],
                                                                   [],
@@ -306,14 +403,26 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesCullDepthResolveComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var InFlightFrameIndex:TpvInt32;
+var InFlightFrameIndex,CountViews:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
     PushConstants:TpvScene3DRendererPassesCullDepthResolveComputePass.TPushConstants;
+    Array2DImage:TpvScene3DRendererArray2DImage;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
 
  InFlightFrameIndex:=aInFlightFrameIndex;
+
+ case fCullRenderPass of
+  TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+   Array2DImage:=fInstance.CascadedShadowMapCullDepthArray2DImage;
+   CountViews:=TpvScene3DRendererInstance.CountCascadedShadowMapCascades;
+  end;
+  else begin
+   Array2DImage:=fInstance.CullDepthArray2DImage;
+   CountViews:=fInstance.CountSurfaceViews;
+  end;
+ end;
 
  FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
  ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -324,12 +433,12 @@ begin
  ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_GENERAL;
  ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
  ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
- ImageMemoryBarrier.image:=fInstance.CullDepthArray2DImage.VulkanImage.Handle;
+ ImageMemoryBarrier.image:=Array2DImage.VulkanImage.Handle;
  ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
  ImageMemoryBarrier.subresourceRange.levelCount:=1;
  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
- ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+ ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
  aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
@@ -341,7 +450,14 @@ begin
 
   aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
 
-  PushConstants.CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
+  case fCullRenderPass of
+   TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
+    PushConstants.CountSamples:=fInstance.Renderer.CountCascadedShadowMapMSAASamples;
+   end;
+   else begin
+    PushConstants.CountSamples:=fInstance.Renderer.CountSurfaceMSAASamples;
+   end;
+  end;
 
   aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                   TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
@@ -359,7 +475,7 @@ begin
 
   aCommandBuffer.CmdDispatch(Max(1,(fResourceInput.Width+((1 shl 4)-1)) shr 4),
                              Max(1,(fResourceInput.Height+((1 shl 4)-1)) shr 4),
-                             fInstance.CountSurfaceViews);
+                             CountViews);
 
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -370,12 +486,12 @@ begin
   ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
   ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  ImageMemoryBarrier.image:=fInstance.CullDepthArray2DImage.VulkanImage.Handle;
+  ImageMemoryBarrier.image:=Array2DImage.VulkanImage.Handle;
   ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
   ImageMemoryBarrier.subresourceRange.levelCount:=1;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
-  ImageMemoryBarrier.subresourceRange.layerCount:=fInstance.CountSurfaceViews;
+  ImageMemoryBarrier.subresourceRange.layerCount:=CountViews;
   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                     0,
