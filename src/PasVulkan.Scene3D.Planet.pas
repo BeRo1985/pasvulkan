@@ -6390,26 +6390,26 @@ begin
 
  for InFlightFrameIndex:=0 to TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1 do begin
   fVulkanVisiblityBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                         (((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
-                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                         [],
-                                                         0,
-                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                         0,
-                                                         0,
-                                                         0,
-                                                         0,
-                                                         0,
-                                                         0,
-                                                         []
-                                                        );
+                                                                      (((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+31) shr 5)*SizeOf(TpvUInt32),
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                      [],
+                                                                      0,
+                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      []
+                                                                     );
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisiblityBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisiblityBuffers['+IntToStr(InFlightFrameIndex)+']');
  end;
 
  fVulkanDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                                 ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+1)*(SizeOf(TpvUInt32)*16),
+                                                                 ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+1)*(SizeOf(TpvUInt32)*16)*2,
                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                                  TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or
@@ -6429,7 +6429,7 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.DrawIndexedIndirectCommandBuffer');
 
  fDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
-                                                                        TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
+                                                                  TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   fDescriptorSets[InFlightFrameIndex]:=nil;
