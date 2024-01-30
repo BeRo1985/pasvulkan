@@ -86,6 +86,7 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
              DrawCallIndex:TpvUInt32;
              CountObjectIndices:TpvUInt32;
              SkipCulling:TpvUInt32;
+             VisibilityBufferOffset:TpvUInt32;
             end;
             PPushConstants=^TPushConstants;
       private
@@ -226,7 +227,8 @@ var RenderPassIndex,
     DrawChoreographyBatchRangeIndex,
     PreviousInFlightFrameIndex,
     FirstDrawCallIndex,
-    CountDrawCallIndices:TpvSizeInt;
+    CountDrawCallIndices,
+    Part:TpvSizeInt;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
@@ -238,12 +240,15 @@ begin
  case fCullRenderPass of
   TpvScene3DRendererCullRenderPass.FinalView:begin
    RenderPassIndex:=fInstance.InFlightFrameStates[aInFlightFrameIndex].ViewRenderPassIndex;
+   Part:=0;
   end;
   TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
    RenderPassIndex:=fInstance.InFlightFrameStates[aInFlightFrameIndex].CascadedShadowMapRenderPassIndex;
+   Part:=1;
   end;
   else begin
    RenderPassIndex:=-1;
+   Part:=0;
   end;
  end;
 
@@ -379,6 +384,7 @@ begin
      PushConstants.SkipCulling:=IfThen((aFrameIndex=0) or
                                        fInstance.InFlightFrameStates[aInFlightFrameIndex].CameraReset or
                                        (fInstance.PerInFlightFrameGPUCountObjectIndicesArray[PreviousInFlightFrameIndex]=0),1,0);
+     PushConstants.VisibilityBufferOffset:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBufferPartSizes[PreviousInFlightFrameIndex]*TpvUInt32(Part);
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),

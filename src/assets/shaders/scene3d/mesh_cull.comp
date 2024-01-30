@@ -38,6 +38,7 @@ layout(push_constant) uniform PushConstants {
   uint drawCallIndex;
   uint countObjectIndices;
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
+  uint visibilityBufferOffset;  
 } pushConstants;
 
 layout(set = 0, binding = 0, std430) buffer InputDrawIndexedIndirectCommands {
@@ -64,6 +65,7 @@ layout(push_constant) uniform PushConstants {
   uint drawCallIndex;
   uint countObjectIndices;
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
+  uint visibilityBufferOffset;  
   uint baseViewIndex;
   uint countViews;
   uint baseDrawIndexedIndirectCommandIndexForDisocclusions;
@@ -139,7 +141,7 @@ void main(){
                                                      // new drawIndexedIndirectCommands may have been added 
                                                      // with a higher object index than the current 
                                                      // countObjectIndices in contrast to the previous frame
-      ((inputVisibilityBuffer.bitmap[cmd1.y >> 5u] & (1u << (cmd1.y & 31u))) == 0u))){
+      ((inputVisibilityBuffer.bitmap[pushConstants.visibilityBufferOffset + (cmd1.y >> 5u)] & (1u << (cmd1.y & 31u))) == 0u))){
     // Skip, since it was not visible in the previous frame    
     return; 
   }
@@ -284,7 +286,7 @@ void main(){
   }
 
   // Mark as visible in any case, independently of being already added in the previous pass 
-  atomicOr(outputVisiblityBuffer.bitmap[cmd1.y >> 5u], 1u << (cmd1.y & 31u)); 
+  atomicOr(outputVisiblityBuffer.bitmap[pushConstants.visibilityBufferOffset + (cmd1.y >> 5u)], 1u << (cmd1.y & 31u)); 
 
   // Append to the global üart of the output buffer to ensure the forward+ pass renders all visible elements as much as possible, so that false positive 
   // occlusion culls are avoided as much as possible.
