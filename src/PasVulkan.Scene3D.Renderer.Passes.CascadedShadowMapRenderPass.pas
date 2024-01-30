@@ -144,31 +144,58 @@ inherited Create(aFrameGraph);
  case fInstance.Renderer.ShadowMode of
   TpvScene3DRendererShadowMode.MSM:begin
    if fInstance.Renderer.ShadowMapSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-    fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
+    if fInstance.Renderer.GPUCulling then begin
+     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_depth',
                                         'resource_cascadedshadowmap_single_depth',
-                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                        TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                     TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                          TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                        );
+    end else begin
+     fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_depth',
+                                         'resource_cascadedshadowmap_single_depth',
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                      TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );
+    end;
    end else begin
-    fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
+    if fInstance.Renderer.GPUCulling then begin
+     fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_msaa_depth',
                                         'resource_cascadedshadowmap_msaa_depth',
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                         TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                       );
+    end else begin
+     fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_msaa_depth',
+                                         'resource_cascadedshadowmap_msaa_depth',
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
+                                                                      TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
+                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
+                                        );
+    end;
+   end;
+  end
+  else begin
+   if fInstance.Renderer.GPUCulling then begin
+    fResourceDepth:=AddImageDepthInput('resourcetype_cascadedshadowmap_data',
+                                       'resource_cascadedshadowmap_data_final',
+                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment,
+                                        TpvFrameGraph.TResourceTransition.TFlag.ExplicitOutputAttachment]
+                                      );
+   end else begin
+    fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_data',
+                                        'resource_cascadedshadowmap_data_final',
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                         TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                      TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
                                         [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                        );
    end;
-  end
-  else begin
-   fResourceDepth:=AddImageDepthOutput('resourcetype_cascadedshadowmap_data',
-                                       'resource_cascadedshadowmap_data_final',
-                                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                       TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
-                                                                    TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
-                                       [TpvFrameGraph.TResourceTransition.TFlag.Attachment]
-                                      );
   end;
  end;
 
