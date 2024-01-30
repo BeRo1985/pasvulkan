@@ -87,6 +87,7 @@ type { TpvScene3DRendererPassesMeshCullPass1ComputePass }
              CountObjectIndices:TpvUInt32;
              SkipCulling:TpvUInt32;
              VisibilityBufferOffset:TpvUInt32;
+             TextureDepthIndex:TpvUInt32;
              BaseViewIndex:TpvUInt32;
              CountViews:TpvUInt32;
              BaseDrawIndexedIndirectCommandIndexForDisocclusions:TpvUInt32;
@@ -314,8 +315,9 @@ begin
        CountDrawCallIndices:=0;
       end;
       FirstDrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
-      inc(CountDrawCallIndices);
      end;
+
+     inc(CountDrawCallIndices);
 
     end;
 
@@ -388,6 +390,7 @@ begin
      PushConstants.DrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
      PushConstants.SkipCulling:=0;
      PushConstants.VisibilityBufferOffset:=fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBufferPartSizes[aInFlightFrameIndex]*TpvUInt32(Part);
+     PushConstants.TextureDepthIndex:=Part;
      case fCullRenderPass of
       TpvScene3DRendererCullRenderPass.FinalView:begin
        PushConstants.BaseViewIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].FinalViewIndex;

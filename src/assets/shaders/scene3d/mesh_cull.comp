@@ -3,6 +3,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 /* clang-format off */
 
@@ -66,6 +67,7 @@ layout(push_constant) uniform PushConstants {
   uint countObjectIndices;
   uint skipCulling; // 1u if it is the first frame, if there are sudden complete new views, or if the objectIndices are not valid anymore, 0u otherwise
   uint visibilityBufferOffset;  
+  uint textureDepthIndex;
   uint baseViewIndex;
   uint countViews;
   uint baseDrawIndexedIndirectCommandIndexForDisocclusions;
@@ -99,7 +101,7 @@ layout(set = 0, binding = 4, std430) buffer OutputVisiblityBuffer {
   uint bitmap[];
 } outputVisiblityBuffer;
 
-layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepth;
+layout(set = 0, binding = 5) uniform sampler2DArray uTextureDepths[];
 
 #include "projectsphere.glsl"
 
@@ -209,8 +211,8 @@ void main(){
   // the bounding sphere is not valid for all instances.
   if((boundingSphere.w > 0.0) && (pushConstants.skipCulling == 0u) && (cmd0.y == 1u)){
  
-    vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
-    int countLODLevels = textureQueryLevels(uTextureDepth);
+    vec2 viewPortSize = vec2(textureSize(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], 0).xy);
+    int countLODLevels = textureQueryLevels(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)]);
 
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
 
@@ -220,15 +222,15 @@ void main(){
       // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a 
       // safety check.
       vec4 frustum = frustums[viewIndex];
-      bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
+      bool visible = true;/*(((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
                      (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
-                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);
+                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);*/
 
       if(visible){
 
         vec4 aabb;
 
-        if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], projectionMatrices[viewIndex], aabb, true)){
+        if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNears[viewIndex], uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
 
           screenSpaceAABB = aabb;
 
@@ -240,13 +242,13 @@ void main(){
 #ifdef USE_FASTER_DEPTH_CALCULATIONS
           vec2 depthZ = fma(
             inverseProjectionMatrixZData[viewIndex].xy, 
-            textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
+            textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
             inverseProjectionMatrixZData[viewIndex].zw
           );
 #else
           vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
             (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
-            textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
+            textureLod(uTextureDepths[nonuniformEXT(pushConstants.textureDepthIndex)], vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
             1.0
           )).zw;
 #endif

@@ -328,8 +328,9 @@ begin
        CountDrawCallIndices:=0;
       end;
       FirstDrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
-      inc(CountDrawCallIndices);
      end;
+
+     inc(CountDrawCallIndices);
 
     end;
 

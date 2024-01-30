@@ -4530,7 +4530,7 @@ begin
                                                            []);
  fMeshCullPass1ComputeVulkanDescriptorSetLayout.AddBinding(5,
                                                            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                           1,
+                                                           2,
                                                            TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                            []);
  fMeshCullPass1ComputeVulkanDescriptorSetLayout.Initialize;
@@ -4541,7 +4541,7 @@ begin
                                                                                 Renderer.CountInFlightFrames);
  fMeshCullPass1ComputeVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,Renderer.CountInFlightFrames);
  fMeshCullPass1ComputeVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,Renderer.CountInFlightFrames*4);
- fMeshCullPass1ComputeVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames);
+ fMeshCullPass1ComputeVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,Renderer.CountInFlightFrames*2);
  fMeshCullPass1ComputeVulkanDescriptorPool.Initialize;
  Renderer.VulkanDevice.DebugUtils.SetObjectName(fMeshCullPass1ComputeVulkanDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DRendererInstance.fMeshCullPass1ComputeVulkanDescriptorPool');
 
@@ -4596,10 +4596,13 @@ begin
   if fZNear<0.0 then begin
    fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                                       0,
-                                                                                      1,
+                                                                                      2,
                                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                       [TVkDescriptorImageInfo.Create(Renderer.MipMapMinFilterSampler.Handle,
                                                                                                                      fCullDepthPyramidMipmappedArray2DImage.VulkanArrayImageView.Handle,
+                                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                                       TVkDescriptorImageInfo.Create(Renderer.MipMapMaxFilterSampler.Handle,
+                                                                                                                     fCascadedShadowMapCullDepthPyramidMipmappedArray2DImage.VulkanArrayImageView.Handle,
                                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                       [],
                                                                                       [],
@@ -4608,10 +4611,13 @@ begin
   end else begin
    fMeshCullPass1ComputeVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                                       0,
-                                                                                      1,
+                                                                                      2,
                                                                                       TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                                       [TVkDescriptorImageInfo.Create(Renderer.MipMapMaxFilterSampler.Handle,
                                                                                                                      fCullDepthPyramidMipmappedArray2DImage.VulkanArrayImageView.Handle,
+                                                                                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                                       TVkDescriptorImageInfo.Create(Renderer.MipMapMaxFilterSampler.Handle,
+                                                                                                                     fCascadedShadowMapCullDepthPyramidMipmappedArray2DImage.VulkanArrayImageView.Handle,
                                                                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                                       [],
                                                                                       [],
