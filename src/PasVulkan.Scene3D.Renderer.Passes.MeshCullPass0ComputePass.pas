@@ -96,7 +96,7 @@ type { TpvScene3DRendererPassesMeshCullPass0ComputePass }
        fPipelineLayout:TpvVulkanPipelineLayout;
        fPipeline:TpvVulkanComputePipeline;
        fPlanetCullPass:TpvScene3DPlanet.TCullPass;
-       fPlanetCullPass2:TpvScene3DPlanet.TCullPass;
+//     fPlanetCullPass2:TpvScene3DPlanet.TCullPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aCullRenderPass:TpvScene3DRendererCullRenderPass); reintroduce;
        destructor Destroy; override;
@@ -158,21 +158,21 @@ begin
  fPlanetCullPass:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
                                                     fInstance,
                                                     fInstance.Renderer.Scene3D,
-                                                    TpvScene3DRendererCullRenderPass.FinalView,
+                                                    fCullRenderPass,
                                                     0);
 
- fPlanetCullPass2:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
+{fPlanetCullPass2:=TpvScene3DPlanet.TCullPass.Create(fInstance.Renderer,
                                                      fInstance,
                                                      fInstance.Renderer.Scene3D,
                                                      TpvScene3DRendererCullRenderPass.CascadedShadowMap,
-                                                     -1);
+                                                     -1);}
 
 end;
 
 procedure TpvScene3DRendererPassesMeshCullPass0ComputePass.ReleasePersistentResources;
 begin
  FreeAndNil(fPlanetCullPass);
- FreeAndNil(fPlanetCullPass2);
+//FreeAndNil(fPlanetCullPass2);
  FreeAndNil(fVulkanPipelineShaderStageCompute);
  FreeAndNil(fComputeShaderModule);
  inherited ReleasePersistentResources;
@@ -202,7 +202,7 @@ begin
 
  fPlanetCullPass.AllocateResources;
 
- fPlanetCullPass2.AllocateResources;
+//fPlanetCullPass2.AllocateResources;
 
 end;
 
@@ -210,7 +210,7 @@ procedure TpvScene3DRendererPassesMeshCullPass0ComputePass.ReleaseVolatileResour
 var Index:TpvSizeInt;
 begin
  fPlanetCullPass.ReleaseResources;
- fPlanetCullPass2.ReleaseResources;
+//fPlanetCullPass2.ReleaseResources;
  FreeAndNil(fPipeline);
  FreeAndNil(fPipelineLayout);
  inherited ReleaseVolatileResources;
@@ -224,7 +224,9 @@ end;
 procedure TpvScene3DRendererPassesMeshCullPass0ComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var RenderPassIndex,
     DrawChoreographyBatchRangeIndex,
-    PreviousInFlightFrameIndex:TpvSizeInt;
+    PreviousInFlightFrameIndex,
+    FirstDrawCallIndex,
+    CountDrawCallIndices:TpvSizeInt;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
@@ -251,7 +253,7 @@ begin
 
   fPlanetCullPass.Execute(aCommandBuffer,aInFlightFrameIndex);
 
-  fPlanetCullPass2.Execute(aCommandBuffer,aInFlightFrameIndex);
+//fPlanetCullPass2.Execute(aCommandBuffer,aInFlightFrameIndex);
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -296,7 +298,44 @@ begin
                                     4,@BufferMemoryBarriers[0],
                                     0,nil);
 
-  aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+  if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex] then begin
+
+   FirstDrawCallIndex:=0;
+   CountDrawCallIndices:=0;
+
+   DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex];
+
+   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeDynamicArray.Count-1 do begin
+
+    DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
+
+    if DrawChoreographyBatchRange^.CountCommands>0 then begin
+
+     if (CountDrawCallIndices=0) or ((FirstDrawCallIndex+CountDrawCallIndices)<>DrawChoreographyBatchRange^.DrawCallIndex) then begin
+      if CountDrawCallIndices>0 then begin
+       aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                    FirstDrawCallIndex*SizeOf(TVkUInt32),
+                                    CountDrawCallIndices*SizeOf(TVkUInt32),
+                                    0);
+       CountDrawCallIndices:=0;
+      end;
+      FirstDrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
+      inc(CountDrawCallIndices);
+     end;
+
+    end;
+
+   end;
+
+   if CountDrawCallIndices>0 then begin
+    aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                 FirstDrawCallIndex*SizeOf(TVkUInt32),
+                                 CountDrawCallIndices*SizeOf(TVkUInt32),
+                                 0);
+    CountDrawCallIndices:=0;
+   end;
+
+  end;
 
   BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),

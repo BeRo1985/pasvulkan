@@ -216,7 +216,9 @@ end;
 
 procedure TpvScene3DRendererPassesMeshCullPass1ComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var RenderPassIndex,
-    DrawChoreographyBatchRangeIndex:TpvSizeInt;
+    DrawChoreographyBatchRangeIndex,
+    FirstDrawCallIndex,
+    CountDrawCallIndices:TpvSizeInt;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
     BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
@@ -282,7 +284,44 @@ begin
                                     4,@BufferMemoryBarriers[0],
                                     0,nil);
 
-  aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
+  if fInstance.PerInFlightFrameGPUCulledArray[aInFlightFrameIndex,RenderPassIndex] then begin
+
+   FirstDrawCallIndex:=0;
+   CountDrawCallIndices:=0;
+
+   DrawChoreographyBatchRangeDynamicArray:=@fInstance.DrawChoreographyBatchRangeFrameBuckets[aInFlightFrameIndex,RenderPassIndex];
+
+   for DrawChoreographyBatchRangeIndex:=0 to DrawChoreographyBatchRangeDynamicArray.Count-1 do begin
+
+    DrawChoreographyBatchRange:=@DrawChoreographyBatchRangeDynamicArray.Items[DrawChoreographyBatchRangeIndex];
+
+    if DrawChoreographyBatchRange^.CountCommands>0 then begin
+
+     if (CountDrawCallIndices=0) or ((FirstDrawCallIndex+CountDrawCallIndices)<>DrawChoreographyBatchRange^.DrawCallIndex) then begin
+      if CountDrawCallIndices>0 then begin
+       aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                    FirstDrawCallIndex*SizeOf(TVkUInt32),
+                                    CountDrawCallIndices*SizeOf(TVkUInt32),
+                                    0);
+       CountDrawCallIndices:=0;
+      end;
+      FirstDrawCallIndex:=DrawChoreographyBatchRange^.DrawCallIndex;
+      inc(CountDrawCallIndices);
+     end;
+
+    end;
+
+   end;
+
+   if CountDrawCallIndices>0 then begin
+    aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandCounterBuffers[aInFlightFrameIndex].Handle,
+                                 FirstDrawCallIndex*SizeOf(TVkUInt32),
+                                 CountDrawCallIndices*SizeOf(TVkUInt32),
+                                 0);
+    CountDrawCallIndices:=0;
+   end;
+
+  end;
 
   aCommandBuffer.CmdFillBuffer(fInstance.PerInFlightFrameGPUDrawIndexedIndirectCommandVisibilityBuffers[aInFlightFrameIndex].Handle,0,VK_WHOLE_SIZE,0);
 
