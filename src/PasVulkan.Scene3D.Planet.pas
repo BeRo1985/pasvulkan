@@ -799,6 +799,7 @@ type TpvScene3DPlanets=class;
        fHeightMapResolution:TpvInt32;
        fTileMapResolution:TpvInt32;
        fTileMapShift:TpvInt32;
+       fTileMapBits:TpvInt32;
        fVisualTileResolution:TpvInt32;
        fPhysicsTileResolution:TpvInt32;
        fVisualResolution:TpvSizeInt;
@@ -6600,6 +6601,8 @@ begin
 
  fTileMapShift:=IntLog2(fHeightMapResolution)-IntLog2(fTileMapResolution);
 
+ fTileMapBits:=IntLog2(fTileMapResolution);
+
  fVisualTileResolution:=Max(1,RoundUpToPowerOfTwo(Min(aVisualResolution,fHeightMapResolution)) div fTileMapResolution);
 
  fPhysicsTileResolution:=Max(1,RoundUpToPowerOfTwo(Min(aPhysicsResolution,fHeightMapResolution)) div fTileMapResolution);
@@ -7523,13 +7526,13 @@ begin
 
      if aMainViewPort then begin
 
-      Sphere.Center:=TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix.MulHomogen(fPlanetData.ModelMatrix.MulHomogen(TpvVector3.Origin));
+      Sphere.Center:=(fPlanetData.ModelMatrix*TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix).MulHomogen(TpvVector3.Origin);
       Sphere.Radius:=fTopRadius;
 
       if Sphere.Center.Length<Sphere.Radius then begin
        RendererInstance.fMinimumLODLevel:=0;
       end else begin
-       RendererInstance.fMinimumLODLevel:=Ceil(Log2(Sphere.Center.Length/Sphere.Radius));
+       RendererInstance.fMinimumLODLevel:=Ceil(Clamp(Log2(Sphere.Center.Length/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1)));
       end;
 
      end;
