@@ -73,11 +73,11 @@ float hash12(vec2 p){
   return fract((p3.x + p3.y) * p3.z);
 }
 
-vec2 hash22(vec2 p){
-  vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.11369, 0.13787));
-  p3 += dot(p3, p3.yzx+19.19);
-  return fract(vec2((p3.x + p3.y)*p3.z, (p3.x+p3.z)*p3.y));
-}
+  vec2 hash22(vec2 p){
+    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.11369, 0.13787));
+    p3 += dot(p3, p3.yzx+19.19);
+    return fract(vec2((p3.x + p3.y)*p3.z, (p3.x+p3.z)*p3.y));
+  }
 
 vec3 hash33(vec3 p) {
   vec3 p3 = fract(p.xyz * vec3(443.8975, 397.2973, 491.1871));
