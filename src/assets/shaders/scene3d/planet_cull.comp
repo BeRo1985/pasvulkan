@@ -84,6 +84,8 @@ layout(set = 1, binding = 4, std430) buffer OutputDrawIndexedIndirectCommands {
   
 #include "projectsphere.glsl"
 
+#include "octahedral.glsl"
+
 // The following variables are shared between all invocations of this shader for too keep the pre-calculations needed for the culling small, which
 // are valid and the same for all invocations anyway. Other implementations uses CPU pre-calculations for it, but this is a more simple and straight 
 // forward approach in my opinion, so that almost everything is done on the GPU and is in the same place, as long as it don't hurts the performance
@@ -210,6 +212,12 @@ void main(){
 
           if(visible){
 
+            uvec2 tileMapXY;
+            tileMapXY.y = tileMapIndex / pushConstants.tileMapResolution;
+            tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
+
+            vec3 sphereNormal = octPlanetUnsignedDecode((vec2(tileMapXY) + vec2(0.5)) / float(pushConstants.tileMapResolution));
+
             // Based on: https://cesium.com/blog/2013/04/25/horizon-culling/
 
             // V = viewer position
@@ -223,8 +231,7 @@ void main(){
 
             vec3 cv = cameraPosition / pushConstants.bottomRadius;
 
-            vec3 t = (normalize(boundingSphere.xyz - planetPosition.xyz) * (pushConstants.topRadius / pushConstants.bottomRadius)) +
-                     (planetPosition.xyz / pushConstants.bottomRadius);
+            vec3 t = ((sphereNormal * pushConstants.topRadius) + planetPosition.xyz) / pushConstants.bottomRadius;
 //          vec3 t = boundingSphere.xyz / pushConstants.bottomRadius;
 
             float vhMagnitudeSquared = dot(cv, cv) - 1.0;
