@@ -222,14 +222,23 @@ void main(){
             vec3 cameraPosition = uView.views[pushConstants.baseViewIndex + viewIndex].inverseViewMatrix[3].xyz;
 
             vec3 cv = cameraPosition / pushConstants.bottomRadius;
+
+            vec3 t = (normalize(boundingSphere.xyz - planetPosition.xyz) * (pushConstants.topRadius / pushConstants.bottomRadius)) +
+                     (planetPosition.xyz / pushConstants.bottomRadius);
+//          vec3 t = boundingSphere.xyz / pushConstants.bottomRadius;
+
             float vhMagnitudeSquared = dot(cv, cv) - 1.0;
 
-            vec3 vt = (boundingSphere.xyz / pushConstants.bottomRadius) - cv;
+            vec3 vt = t - cv;
             float vtMagnitudeSquared = dot(vt, vt);
 
             float vtDotVc = -dot(vt, cv);
-
-            bool isOccluded = (vtDotVc > vhMagnitudeSquared) && ((vtDotVc * vtDotVc) > (vtMagnitudeSquared * vhMagnitudeSquared));
+            
+            // If vhMagnitudeSquared < 0.0 then we are below the surface of the ellipsoid and in this case, set the culling 
+            // plane to be on V.
+            bool isOccluded = (vhMagnitudeSquared < 0.0) 
+                                ? (vtDotVc > 0.0) 
+                                : (((vtDotVc > vhMagnitudeSquared) && ((vtDotVc * vtDotVc) > (vhMagnitudeSquared * vtMagnitudeSquared))));
 
             visible = !isOccluded;
 
