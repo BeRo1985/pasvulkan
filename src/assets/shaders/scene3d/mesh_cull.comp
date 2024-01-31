@@ -116,7 +116,7 @@ shared mat4 viewMatrices[8];
 shared mat4 projectionMatrices[8];
 shared vec4 inverseProjectionMatrixZData[8];
 shared float zNears[8]; 
-shared vec4 fastFrustums[8];
+//shared vec4 fastFrustums[8];
 shared Frustum frustums[8];
 
 #endif
@@ -183,10 +183,10 @@ void main(){
 
     mat4 transposedProjectionMatrix = transpose(uView.views[viewIndex].projectionMatrix);
 
-    fastFrustums[localInvocationIndex] = vec4(
+/*  fastFrustums[localInvocationIndex] = vec4(
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[0]).xz, 
       normalize(transposedProjectionMatrix[3] + transposedProjectionMatrix[1]).yz
-    );
+    );*/
 
     frustumSetup(frustums[localInvocationIndex], uView.views[viewIndex].projectionMatrix);
       
@@ -227,14 +227,11 @@ void main(){
       // Frustum visible check, but without testing the far planes, so it is more projection matrix variant independent (reverse z, 
       // infinite far plane, and the like). The CPU culling should already have frustum-culled it away anyway, so this is just a 
       // safety check.
-#if 1
       bool visible = frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere);
-#else
-      vec4 frustum = fastFrustums[viewIndex];
+/*    vec4 frustum = fastFrustums[viewIndex];
       bool visible = (((-viewSpaceBoundingSphere.z) + viewSpaceBoundingSphere.w) >= zNears[viewIndex]) &&
                      (((viewSpaceBoundingSphere.z * frustum.y) - (abs(viewSpaceBoundingSphere.x) * frustum.x)) > -viewSpaceBoundingSphere.w) &&
-                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);
-#endif
+                     (((viewSpaceBoundingSphere.z * frustum.w) - (abs(viewSpaceBoundingSphere.y) * frustum.z)) > -viewSpaceBoundingSphere.w);*/
 
       if(visible){
 

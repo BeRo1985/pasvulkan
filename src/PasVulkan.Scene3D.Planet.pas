@@ -625,7 +625,8 @@ type TpvScene3DPlanets=class;
                     CountViews:TpvUInt32;
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
-                    Radius:TpvFloat;
+                    BottomRadius:TpvFloat;
+                    TopRadius:TpvFloat;
                     MinimumLODLevel:TpvUInt32;
                    end;
                    PPushConstants=^TPushConstants;
@@ -5246,7 +5247,8 @@ begin
         fPushConstants.CountViews:=CountViews;
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
         fPushConstants.TileResolution:=Planet.fVisualTileResolution;
-        fPushConstants.Radius:=Planet.fTopRadius;
+        fPushConstants.BottomRadius:=Planet.fBottomRadius;
+        fPushConstants.TopRadius:=Planet.fTopRadius;
         fPushConstants.MinimumLODLevel:=RendererInstance.fMinimumLODLevel;
 
         begin
