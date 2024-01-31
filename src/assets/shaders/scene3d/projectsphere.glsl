@@ -167,7 +167,7 @@ bool projectSphere(vec3 center, const in float radius, const in float zNear, con
       vec4(0.5)
     );
     
-    return all(lessThanEqual(aabb.xy, vec2(1.0))) && all(greaterThanEqual(aabb.zw, vec2(0.0)));
+    return true; //all(lessThanEqual(aabb.xy, vec2(1.0))) && all(greaterThanEqual(aabb.zw, vec2(0.0)));
 
   }
 
