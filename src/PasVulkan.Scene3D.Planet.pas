@@ -7504,6 +7504,7 @@ end;
 procedure TpvScene3DPlanet.Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
 var RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
+    Sphere:TpvSphere;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -7520,7 +7521,18 @@ begin
 
     if assigned(RendererInstance) then begin
 
-     RendererInstance.fMinimumLODLevel:=0;
+     if aMainViewPort then begin
+
+      Sphere.Center:=TpvScene3DRendererInstance(aRendererInstance).InFlightFrameStates[aInFlightFrameIndex].MainViewMatrix.MulHomogen(fPlanetData.ModelMatrix.MulHomogen(TpvVector3.Origin));
+      Sphere.Radius:=fTopRadius;
+
+      if Sphere.Center.Length<Sphere.Radius then begin
+       RendererInstance.fMinimumLODLevel:=0;
+      end else begin
+       RendererInstance.fMinimumLODLevel:=Ceil(Log2(Sphere.Center.Length/Sphere.Radius));
+      end;
+
+     end;
 
     end;
 
