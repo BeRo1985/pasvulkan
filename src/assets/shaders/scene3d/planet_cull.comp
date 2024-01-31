@@ -18,6 +18,8 @@ layout(push_constant) uniform PushConstants {
   mat4 modelMatrix;
   uint baseViewIndex;
   uint countViews;
+  uint additionalViewIndex;
+  uint countAdditionalViews; 
   uint tileMapResolution;
   uint tileResolution;
   float bottomRadius;
@@ -162,7 +164,7 @@ void main(){
     vec3 aabbMin = boundingBoxes.data[(tileMapIndex << 1u) | 0u].xyz;
     vec3 aabbMax = boundingBoxes.data[(tileMapIndex << 1u) | 1u].xyz;
 
-    bool visible = false;
+    bool visible = false;//, notFurtherCull = false;
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
       vec4 viewSpaceBoundingSphere = vec4((viewMatrices[viewIndex] * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 /*    vec4 fastFrustum = fastFrustums[viewIndex];
@@ -249,6 +251,10 @@ void main(){
 
             visible = !isOccluded;
 
+          /*if(visible && (distance(cameraPosition, boundingSphere.xyz) < (boundingSphere.w * 2.0))){
+              notFurtherCull = true;
+            }*/
+
           }
 
           if(visible){
@@ -258,6 +264,25 @@ void main(){
         }
       }
     }
+    
+    // Additional views for example for tightly culled shadow maps to the camera frustum in addition to the shadow frustum
+   /*if(visible && (pushConstants.countAdditionalViews > 0u) && !notFurtherCull){
+      visible = false;
+      for(uint viewIndex = 0u; viewIndex < pushConstants.countAdditionalViews; viewIndex++){
+        mat4 viewMatrix = uView.views[pushConstants.additionalViewIndex + viewIndex].viewMatrix;
+        vec4 viewSpaceBoundingSphere = vec4((viewMatrix * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+        if(frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere)){
+          vec3 viewSpaceAABBMin = aabbMin;
+          vec3 viewSpaceAABBMax = aabbMax;
+          mat4 modelViewMatrix = viewMatrix * pushConstants.modelMatrix;
+          aabbTransform(viewSpaceAABBMin, viewSpaceAABBMax, modelViewMatrix);
+          if(frustumCullingAABBTest(frustums[viewIndex], viewSpaceAABBMin, viewSpaceAABBMax)){
+            visible = true;
+            break;
+          }
+        }
+      }
+    }*/
 
 #if defined(PASS0) || defined(PASS1)  
     // add to visibility buffer only if not yet existing        

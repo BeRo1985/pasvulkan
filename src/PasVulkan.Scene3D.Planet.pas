@@ -621,8 +621,10 @@ type TpvScene3DPlanets=class;
              public
               type TPushConstants=packed record
                     ModelMatrix:TpvMatrix4x4;
-                    ViewBaseIndex:TpvUInt32;
+                    BaseViewIndex:TpvUInt32;
                     CountViews:TpvUInt32;
+                    AdditionalViewIndex:TpvUInt32;
+                    CountAdditionalViews:TpvUInt32;
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
                     BottomRadius:TpvFloat;
@@ -5170,8 +5172,8 @@ begin
 end;
 
 procedure TpvScene3DPlanet.TCullPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
-var PlanetIndex,RenderPassIndex,ViewBaseIndex,CountViews,CountBufferMemoryBarriers,
-    PreviousInFlightFrameIndex:TpvSizeInt;
+var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,CountBufferMemoryBarriers,
+    AdditionalViewIndex,CountAdditionalViews,PreviousInFlightFrameIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     First:Boolean;
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
@@ -5220,22 +5222,31 @@ begin
      case fCullRenderPass of
       TpvScene3DRendererCullRenderPass.FinalView:begin
        RenderPassIndex:=InFlightFrameState^.ViewRenderPassIndex;
-       ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
+       BaseViewIndex:=InFlightFrameState^.FinalViewIndex;
        CountViews:=InFlightFrameState^.CountFinalViews;
+       AdditionalViewIndex:=0;
+       CountAdditionalViews:=0;
       end;
       TpvScene3DRendererCullRenderPass.CascadedShadowMap:begin
        RenderPassIndex:=InFlightFrameState^.CascadedShadowMapRenderPassIndex;
-       ViewBaseIndex:=InFlightFrameState^.CascadedShadowMapViewIndex;
+       BaseViewIndex:=InFlightFrameState^.CascadedShadowMapViewIndex;
        CountViews:=InFlightFrameState^.CountCascadedShadowMapViews;
+       AdditionalViewIndex:=InFlightFrameState^.FinalViewIndex;
+       CountAdditionalViews:=InFlightFrameState^.CountFinalViews;
       end;
       else begin
        Assert(false);
+       RenderPassIndex:=0;
+       BaseViewIndex:=0;
+       CountViews:=0;
+       AdditionalViewIndex:=0;
+       CountAdditionalViews:=0;
       end;
      end;
 
      begin
 
-      if (ViewBaseIndex>=0) and (CountViews>0) then begin
+      if (BaseViewIndex>=0) and (CountViews>0) then begin
 
        if Planet.fRendererInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererInstance.TKey.Create(fRendererInstance),
                                                  RendererInstance) and
@@ -5243,8 +5254,10 @@ begin
                                                      RendererViewInstance) then begin
 
         fPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].ModelMatrix;
-        fPushConstants.ViewBaseIndex:=ViewBaseIndex;
+        fPushConstants.BaseViewIndex:=BaseViewIndex;
         fPushConstants.CountViews:=CountViews;
+        fPushConstants.AdditionalViewIndex:=AdditionalViewIndex;
+        fPushConstants.CountAdditionalViews:=CountAdditionalViews;
         fPushConstants.TileMapResolution:=Planet.fTileMapResolution;
         fPushConstants.TileResolution:=Planet.fVisualTileResolution;
         fPushConstants.BottomRadius:=Planet.fBottomRadius;
