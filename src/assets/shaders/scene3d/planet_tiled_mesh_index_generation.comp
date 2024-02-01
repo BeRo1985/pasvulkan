@@ -71,7 +71,7 @@ void main(){
       tileMapXY.x = tileMapIndex - (tileMapXY.y * pushConstants.tileMapResolution);
 
       uvec2 globalXY = (tileMapXY * uvec2(pushConstants.tileResolution)) + tileQuadXY;
-      globalXY = ((((globalXY.x / tileTotalResolution) ^ (globalXY.y / tileTotalResolution)) & 1u) != 0u) ? (uvec2(tileTotalResolution) - ((globalXY % tileTotalResolution) + uvec2(1u))) : (globalXY % tileTotalResolution);
+      globalXY = ((((globalXY.x / tileTotalResolution) + (globalXY.y / tileTotalResolution)) & 1u) != 0u) ? (uvec2(tileTotalResolution) - ((globalXY % tileTotalResolution) + uvec2(1u))) : (globalXY % tileTotalResolution);
 
       tileMapXY = uvec2(globalXY) / uvec2(pushConstants.tileResolution);
       tileQuadXY = globalXY - (uvec2(tileMapXY) * pushConstants.tileResolution);   
