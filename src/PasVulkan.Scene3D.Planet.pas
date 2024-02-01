@@ -2204,6 +2204,8 @@ var Stream:TStream;
     Version:TpvUInt32;
     Width:TpvUInt32;
     Height:TpvUInt32;
+    InputBottomRadius:TpvFloat;
+    InputTopRadius:TpvFloat;
 begin
   
  inherited Create;
@@ -2232,10 +2234,12 @@ begin
 
   fData.ReadBuffer(Width,SizeOf(TpvUInt32));
   fData.ReadBuffer(Height,SizeOf(TpvUInt32));
-
   if Width<>Height then begin
    raise EpvScene3DPlanet.Create('Invalid height map data width and height');
   end;
+
+  fData.ReadBuffer(InputBottomRadius,SizeOf(TpvFloat));
+  fData.ReadBuffer(InputTopRadius,SizeOf(TpvFloat));
 
   fDataBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                       fData.Size-fData.Position,
@@ -2346,10 +2350,10 @@ begin
                                              nil,
                                              0);
 
+  fPushConstants.InputBottomRadius:=InputBottomRadius;
+  fPushConstants.InputTopRadius:=InputTopRadius;
   fPushConstants.BottomRadius:=fPlanet.BottomRadius;
   fPushConstants.TopRadius:=fPlanet.TopRadius;
-  fPushConstants.InputBottomRadius:=fPlanet.BottomRadius;
-  fPushConstants.InputTopRadius:=fPlanet.TopRadius;
   fPushConstants.InputResolution:=fPlanet.fHeightMapResolution;
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
