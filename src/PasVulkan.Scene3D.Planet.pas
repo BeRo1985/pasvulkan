@@ -908,7 +908,7 @@ type TpvScene3DPlanets=class;
        procedure BeginUpdate;
        procedure EndUpdate;
        procedure FlushUpdate;
-       procedure Initialize(const aPasMPInstance:TPasMP=nil);
+       procedure Initialize(const aPasMPInstance:TPasMP=nil;const aData:TStream=nil;const aDataFreeOnDestroy:boolean=false);
        procedure Flatten(const aVector:TpvVector3;const aInnerRadius,aOuterRadius,aTargetHeight:TpvFloat);
        function RayIntersection(const aRayOrigin,aRayDirection:TpvVector3;out aHitNormal:TpvVector3;out aHitTime:TpvScalar):boolean;
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -2260,9 +2260,9 @@ begin
   fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanComputeQueue,
                                      fPlanet.fVulkanComputeCommandBuffer,
                                      fPlanet.fVulkanComputeFence,
-                                     Pointer(TpvPtrUInt(TpvPtrUInt(fData.Memory)+TpvPtrUInt(fData.Position)))^,
                                      fDataBuffer,
                                      0,
+                                     Pointer(TpvPtrUInt(TpvPtrUInt(fData.Memory)+TpvPtrUInt(fData.Position))),
                                      fData.Size-fData.Position);               
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_data_initialization_comp.spv');
@@ -2354,7 +2354,7 @@ begin
   fPushConstants.InputTopRadius:=InputTopRadius;
   fPushConstants.BottomRadius:=fPlanet.BottomRadius;
   fPushConstants.TopRadius:=fPlanet.TopRadius;
-  fPushConstants.InputResolution:=fPlanet.fHeightMapResolution;
+  fPushConstants.InputResolution:=Width; // = Height
   fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
   fPushConstants.TileMapShift:=fPlanet.fTileMapShift;
 
@@ -7476,27 +7476,49 @@ begin
  end;
 end;
 
-procedure TpvScene3DPlanet.Initialize(const aPasMPInstance:TPasMP);
+procedure TpvScene3DPlanet.Initialize(const aPasMPInstance:TPasMP;const aData:TStream;const aDataFreeOnDestroy:boolean);
 //var ui32:TVkUInt32;
+var HeightMapDataInitialization:TpvScene3DPlanet.THeightMapDataInitialization;
 begin
 
  if not fData.fInitialized then begin
 
   if assigned(fVulkanDevice) then begin
 
-   BeginUpdate;
+   if assigned(fData) then begin
+    HeightMapDataInitialization:=TpvScene3DPlanet.THeightMapDataInitialization.Create(self,fData);
+   end else begin
+    HeightMapDataInitialization:=nil;
+   end;
    try
+     
+    BeginUpdate;
+    try
 
-    fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
+     if assigned(fData) then begin
+      HeightMapDataInitialization.Execute(fVulkanComputeCommandBuffer);
+     end else begin 
+      fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
+     end; 
 
-    fVisualMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+     fVisualMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    fPhysicsMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+     fPhysicsMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-    fTiledMeshBoundingVolumesGeneration.Execute(fVulkanComputeCommandBuffer);
+     fTiledMeshBoundingVolumesGeneration.Execute(fVulkanComputeCommandBuffer);
+
+    finally
+     EndUpdate;
+    end;
 
    finally
-    EndUpdate;
+    try
+     FreeAndNil(HeightMapDataInitialization);
+    finally
+     if aDataFreeOnDestroy then begin
+      aData.Free;
+     end; 
+    end; 
    end;
 
    begin
@@ -7528,7 +7550,7 @@ begin
    end;
 
   end;
-
+ 
   fData.fInitialized:=true;
 
  end;
