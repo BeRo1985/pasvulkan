@@ -7485,7 +7485,7 @@ begin
 
   if assigned(fVulkanDevice) then begin
 
-   if assigned(fData) then begin
+   if assigned(aData) then begin
     HeightMapDataInitialization:=TpvScene3DPlanet.THeightMapDataInitialization.Create(self,aData);
    end else begin
     HeightMapDataInitialization:=nil;
