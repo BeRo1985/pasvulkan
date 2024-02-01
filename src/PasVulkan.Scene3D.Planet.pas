@@ -2260,10 +2260,10 @@ begin
   fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanComputeQueue,
                                      fPlanet.fVulkanComputeCommandBuffer,
                                      fPlanet.fVulkanComputeFence,
+                                     Pointer(TpvPtrUInt(TpvPtrUInt(fData.Memory)+TpvPtrUInt(fData.Position)))^,
                                      fDataBuffer,
                                      0,
-                                     Pointer(TpvPtrUInt(TpvPtrUInt(fData.Memory)+TpvPtrUInt(fData.Position))),
-                                     fData.Size-fData.Position);               
+                                     fData.Size-fData.Position);
 
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_heightmap_data_initialization_comp.spv');
   try
@@ -7486,7 +7486,7 @@ begin
   if assigned(fVulkanDevice) then begin
 
    if assigned(fData) then begin
-    HeightMapDataInitialization:=TpvScene3DPlanet.THeightMapDataInitialization.Create(self,fData);
+    HeightMapDataInitialization:=TpvScene3DPlanet.THeightMapDataInitialization.Create(self,aData);
    end else begin
     HeightMapDataInitialization:=nil;
    end;
