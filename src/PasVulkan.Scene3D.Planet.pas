@@ -7495,7 +7495,7 @@ begin
     BeginUpdate;
     try
 
-     if assigned(fData) then begin
+     if assigned(aData) then begin
       HeightMapDataInitialization.Execute(fVulkanComputeCommandBuffer);
      end else begin 
       fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
