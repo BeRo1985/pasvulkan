@@ -7373,11 +7373,55 @@ procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3
                                                out aCountMeshLODLevels:TpvSizeInt;
                                                out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                                out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
+var TotalResolution,TotalResolutionMask,TotalResolutionBits,
+    TileResolutionMask,TileResolutionBits,
+    TileVertexSize:TpvInt32;
+ function GetVertexIndex(const aX,aY:TpvInt32):TpvUInt32;
+ var x,y,TileMapX,TileMapY,TileQuadX,TileQuadY:TpvInt32;
+ begin
+  if (TotalResolution and TotalResolutionMask)<>0 then begin
+   x:=((aX mod TotalResolution)+TotalResolution) mod TotalResolution;
+   y:=((aY mod TotalResolution)+TotalResolution) mod TotalResolution;
+   if ((((abs(aX) div TotalResolution)+IfThen(aX<0,1,0)) xor ((abs(aY) div TotalResolution)+IfThen(aY<0,1,0))) and 1)<>0 then begin
+    x:=(TotalResolution-(x+1)) mod TotalResolution;
+    y:=(TotalResolution-(y+1)) mod TotalResolution;
+   end;
+  end else begin
+   x:=(aX+TotalResolution) and TotalResolutionMask;
+   y:=(aY+TotalResolution) and TotalResolutionMask;
+   if ((((abs(aX) shr TotalResolutionBits)+IfThen(aX<0,1,0)) xor ((abs(aY) shr TotalResolutionBits)+IfThen(aY<0,1,0))) and 1)<>0 then begin
+    x:=(TotalResolution-(x+1)) and TotalResolutionMask;
+    y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+   end;
+  end;
+  if (aTileResolution and TileResolutionMask)<>0 then begin
+   TileMapX:=x div aTileResolution;
+   TileMapY:=y div aTileResolution;
+  end else begin
+   TileMapX:=x shr TileResolutionBits;
+   TileMapY:=y shr TileResolutionBits;
+  end;
+  TileQuadX:=x-(TileMapX*aTileResolution);
+  TileQuadY:=y-(TileMapY*aTileResolution);
+  result:=(((TileMapY*aTileMapResolution)+TileMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+ end;
 var LODIndex:TpvSizeInt;
-    TileLODResolution,TileMapX,TileMapY,TileX,TileY:TpvInt32;
-    CountIndices:TpvUInt32;
+    TileLODResolution,TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY:TpvInt32;
+    CountIndices,v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
 begin
+
+ TotalResolution:=aTileResolution*aTileMapResolution;
+
+ TotalResolutionMask:=TotalResolution-1;
+
+ TotalResolutionBits:=IntLog2(TotalResolution);
+
+ TileResolutionMask:=aTileResolution-1;
+
+ TileResolutionBits:=IntLog2(aTileResolution);
+
+ TileVertexSize:=aTileResolution*aTileResolution;
 
  aCountMeshIndices:=0;
 
@@ -7388,6 +7432,16 @@ begin
 
  aMeshLODCounts:=nil;
  SetLength(aMeshLODCounts,aCountMeshLODLevels);
+
+ begin
+  aTiledMeshIndices.Clear;
+  CountIndices:=0;
+  for LODIndex:=0 to aCountMeshLODLevels-1 do begin
+   TileLODResolution:=aTileResolution shr LODIndex;
+   inc(CountIndices,aTileMapResolution*aTileMapResolution*(TileLODResolution+1)*(TileLODResolution+1)*6);
+  end;
+  aTiledMeshIndices.Reserve(CountIndices);
+ end;
 
  aTiledMeshIndexGroups.Clear;
  aTiledMeshIndexGroups.Reserve(aTileMapResolution*aTileMapResolution*aCountMeshLODLevels);
@@ -7407,11 +7461,31 @@ begin
     TiledMeshIndexGroup:=aTiledMeshIndexGroups.AddNew;
     TiledMeshIndexGroup^.FirstIndex:=CountIndices;
 
-    for TileY:=0 to TileLODResolution-1 do begin
+    for TileLODY:=0 to TileLODResolution-1 do begin
 
-     for TileX:=0 to TileLODResolution-1 do begin
+     TileY:=TileLODY shl LODIndex;
 
-      inc(CountIndices);
+     for TileLODX:=0 to TileLODResolution-1 do begin
+
+      TileX:=TileLODX shl LODIndex;
+
+      GlobalX:=(TileMapX*aTileMapResolution)+TileX;
+      GlobalY:=(TileMapY*aTileMapResolution)+TileY;
+
+      v0:=GetVertexIndex(GlobalX,GlobalY);
+      v1:=GetVertexIndex(GlobalX+1,GlobalY);
+      v2:=GetVertexIndex(GlobalX+1,GlobalY+1);
+      v3:=GetVertexIndex(GlobalX,GlobalY+1);
+
+      aTiledMeshIndices.Add(v0);
+      aTiledMeshIndices.Add(v1);
+      aTiledMeshIndices.Add(v2);
+
+      aTiledMeshIndices.Add(v0);
+      aTiledMeshIndices.Add(v2);
+      aTiledMeshIndices.Add(v3);
+
+      inc(CountIndices,6);
 
      end;
 
@@ -7426,15 +7500,6 @@ begin
   aMeshLODCounts[LODIndex]:=CountIndices-aMeshLODOffsets[LODIndex];
 
  end;
-
-{for Index:=0 to fCountVisualMeshLODLevels-1 do begin
-  Resolution:=fVisualTileResolution shr Index;
-  fVisualMeshLODOffsets[Index]:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
-  aMeshLODCounts[Index]:=(Resolution*Resolution)*((fTileMapResolution*fTileMapResolution)*6);
-  inc(aCountMeshIndices,Resolution*Resolution);
- end;
-gh fCountVisualMeshIndices:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
- end;                                                                                             }
 
 end;
 
