@@ -180,6 +180,7 @@ type TpvDynamicArray<T>=record
        procedure Clear;
        procedure ClearNoFree;
        procedure Resize(const aCount:TpvSizeInt);
+       procedure Reserve(const aCount:TpvSizeInt);
        procedure Finish;
        procedure FastAssign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>); overload;
        procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArrayList<T>); overload;
@@ -1247,6 +1248,16 @@ end;
 procedure TpvDynamicArrayList<T>.Resize(const aCount:TpvSizeInt);
 begin
  SetCount(aCount);
+end;
+
+procedure TpvDynamicArrayList<T>.Reserve(const aCount:TpvSizeInt);
+var NewAllocated:TpvSizeInt;
+begin
+ NewAllocated:=RoundUpToPowerOfTwoSizeUInt(aCount);
+ if fAllocated<NewAllocated then begin
+  fAllocated:=NewAllocated;
+  SetLength(fItems,fAllocated);
+ end;
 end;
 
 procedure TpvDynamicArrayList<T>.Finish;

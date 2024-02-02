@@ -153,6 +153,12 @@ type TpvScene3DPlanets=class;
             TTileGeneration=TpvUInt64;
             PTileGeneration=^TTileGeneration;
             TTileGenerations=array of TTileGeneration;
+            TTiledMeshIndexGroup=record
+             FirstIndex:TVkUInt32;
+             CountIndices:TVkUInt32;
+            end;
+            PTiledMeshIndexGroup=^TTiledMeshIndexGroup;
+            TTiledMeshIndexGroups=TpvDynamicArrayList<TTiledMeshIndexGroup>;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -850,6 +856,10 @@ type TpvScene3DPlanets=class;
        fVisualMeshLODCounts:TSizeIntArray;
        fPhysicsMeshLODOffsets:TSizeIntArray;
        fPhysicsMeshLODCounts:TSizeIntArray;
+       fTiledVisualMeshIndices:TMeshIndices;
+       fTiledVisualMeshIndexGroups:TTiledMeshIndexGroups;
+       fTiledPhysicsMeshIndices:TMeshIndices;
+       fTiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups;
        fData:TData;
        fInFlightFrameDataList:TInFlightFrameDataList;
        fReleaseFrameCounter:TpvInt32;
@@ -889,6 +899,15 @@ type TpvScene3DPlanets=class;
        fRendererViewInstanceListLock:TPasMPCriticalSection;
        fRendererViewInstances:TRendererViewInstances;
        fRendererViewInstanceHashMap:TRendererViewInstanceHashMap;
+      private
+       procedure GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
+                                     const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
+                                     const aTileResolution:TpvInt32;
+                                     const aTileMapResolution:TpvInt32;
+                                     out aCountMeshIndices:TpvSizeInt;
+                                     out aCountMeshLODLevels:TpvSizeInt;
+                                     out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
+                                     out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
       public
        constructor Create(const aScene3D:TObject;
                           const aHeightMapResolution:TpvInt32=4096;
@@ -6942,6 +6961,14 @@ begin
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
+ fTiledVisualMeshIndices:=TMeshIndices.Create;
+
+ fTiledVisualMeshIndexGroups:=TTiledMeshIndexGroups.Create;
+
+ fTiledPhysicsMeshIndices:=TMeshIndices.Create;
+
+ fTiledPhysicsMeshIndexGroups:=TTiledMeshIndexGroups.Create;
+
  fCountVisualMeshIndices:=0;
  fCountVisualMeshLODLevels:=Max(1,IntLog2(fVisualTileResolution));
  fVisualMeshLODOffsets:=nil;
@@ -7209,6 +7236,14 @@ begin
   FreeAndNil(fPlanetDataVulkanBuffers[InFlightFrameIndex]);
  end;
   
+ FreeAndNil(fTiledVisualMeshIndices);
+
+ FreeAndNil(fTiledVisualMeshIndexGroups);
+
+ FreeAndNil(fTiledPhysicsMeshIndices);
+
+ FreeAndNil(fTiledPhysicsMeshIndexGroups);
+
  FreeAndNil(fRayIntersection);
 
  FreeAndNil(fVulkanMemoryStagingQueue);
@@ -7328,6 +7363,79 @@ begin
  end else begin
   result:=false;
  end; 
+end;
+
+procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3DPlanet.TMeshIndices;
+                                               const aTiledMeshIndexGroups:TpvScene3DPlanet.TTiledMeshIndexGroups;
+                                               const aTileResolution:TpvInt32;
+                                               const aTileMapResolution:TpvInt32;
+                                               out aCountMeshIndices:TpvSizeInt;
+                                               out aCountMeshLODLevels:TpvSizeInt;
+                                               out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
+                                               out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
+var LODIndex:TpvSizeInt;
+    TileLODResolution,TileMapX,TileMapY,TileX,TileY:TpvInt32;
+    CountIndices:TpvUInt32;
+    TiledMeshIndexGroup:PTiledMeshIndexGroup;
+begin
+
+ aCountMeshIndices:=0;
+
+ aCountMeshLODLevels:=Max(1,IntLog2(aTileMapResolution));
+
+ aMeshLODOffsets:=nil;
+ SetLength(aMeshLODOffsets,aCountMeshLODLevels);
+
+ aMeshLODCounts:=nil;
+ SetLength(aMeshLODCounts,aCountMeshLODLevels);
+
+ aTiledMeshIndexGroups.Clear;
+ aTiledMeshIndexGroups.Reserve(aTileMapResolution*aTileMapResolution*aCountMeshLODLevels);
+
+ CountIndices:=0;
+
+ for LODIndex:=0 to aCountMeshLODLevels-1 do begin
+
+  TileLODResolution:=aTileResolution shr LODIndex;
+
+  aMeshLODOffsets[LODIndex]:=CountIndices;
+
+  for TileMapY:=0 to aTileMapResolution-1 do begin
+
+   for TileMapX:=0 to aTileMapResolution-1 do begin
+
+    TiledMeshIndexGroup:=aTiledMeshIndexGroups.AddNew;
+    TiledMeshIndexGroup^.FirstIndex:=CountIndices;
+
+    for TileY:=0 to TileLODResolution-1 do begin
+
+     for TileX:=0 to TileLODResolution-1 do begin
+
+      inc(CountIndices);
+
+     end;
+
+    end;
+
+    TiledMeshIndexGroup^.CountIndices:=CountIndices-TiledMeshIndexGroup^.FirstIndex;
+
+   end;
+
+  end;
+
+  aMeshLODCounts[LODIndex]:=CountIndices-aMeshLODOffsets[LODIndex];
+
+ end;
+
+{for Index:=0 to fCountVisualMeshLODLevels-1 do begin
+  Resolution:=fVisualTileResolution shr Index;
+  fVisualMeshLODOffsets[Index]:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
+  aMeshLODCounts[Index]:=(Resolution*Resolution)*((fTileMapResolution*fTileMapResolution)*6);
+  inc(aCountMeshIndices,Resolution*Resolution);
+ end;
+gh fCountVisualMeshIndices:=fCountVisualMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
+ end;                                                                                             }
+
 end;
 
 class function TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
