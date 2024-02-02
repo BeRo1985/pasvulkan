@@ -7422,13 +7422,13 @@ procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3
                                                out aCountMeshLODLevels:TpvSizeInt;
                                                out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                                out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
-type THashTriangle=array[0..2] of TpvInt32;
-     TTriangleHashMap=TpvHashMap<THashTriangle,Boolean>;
+{type THashTriangle=array[0..2] of TpvInt32;
+     TTriangleHashMap=TpvHashMap<THashTriangle,Boolean>;}
 var TotalResolution,TotalResolutionMask,TotalResolutionBits,
     TileResolutionMask,TileResolutionBits,
     TileVertexSize:TpvInt32;
     CountIndices:TpvUInt32;
-    TriangleHashMap:TTriangleHashMap;
+//  TriangleHashMap:TTriangleHashMap;
  function GetVertexIndex(const aX,aY:TpvInt32):TpvUInt32;
  var x,y,TileMapX,TileMapY,TileQuadX,TileQuadY:TpvInt32;
  begin
@@ -7492,10 +7492,8 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
     end; 
    end;
    if not TriangleHashMap.ExistKey(HashTriangle) then}begin
-//  TriangleHashMap.Add(HashTriangle,true);
-    aTiledMeshIndices.Add(aV0);
-    aTiledMeshIndices.Add(aV1);
-    aTiledMeshIndices.Add(aV2);
+    //TriangleHashMap.Add(HashTriangle,true);
+    aTiledMeshIndices.Add([aV0,aV1,aV2]);
     inc(CountIndices,3);
    end;
   end;
@@ -7542,7 +7540,7 @@ begin
  aTiledMeshIndexGroups.Clear;
  aTiledMeshIndexGroups.Reserve(aTileMapResolution*aTileMapResolution*aCountMeshLODLevels);
 
- TriangleHashMap:=TTriangleHashMap.Create(false);
+//TriangleHashMap:=TTriangleHashMap.Create(false);
  try
 
   CountIndices:=0;
@@ -7551,7 +7549,7 @@ begin
 
    TileLODResolution:=aTileResolution shr LODIndex;
 
-   TriangleHashMap.Clear;
+// TriangleHashMap.Clear;
 
    aMeshLODOffsets[LODIndex]:=CountIndices;
 
@@ -7608,7 +7606,7 @@ begin
   end;
 
  finally
-  FreeAndNil(TriangleHashMap);
+//FreeAndNil(TriangleHashMap);
  end;
 
  aTiledMeshIndices.Finish;
