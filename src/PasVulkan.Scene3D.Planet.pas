@@ -197,6 +197,7 @@ type TpvScene3DPlanets=class;
               fTileDirtyQueueBuffer:TpvVulkanBuffer;
               fTiledMeshBoundingBoxesBuffer:TpvVulkanBuffer;
               fTiledMeshBoundingSpheresBuffer:TpvVulkanBuffer;
+              fTiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer;
               fVisualMeshIndexBuffer:TpvVulkanBuffer;
               fVisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
               fVisualMeshVertexBufferCopies:TVisualMeshVertexBufferCopies;
@@ -252,6 +253,7 @@ type TpvScene3DPlanets=class;
               property TileDirtyQueueBuffer:TpvVulkanBuffer read fTileDirtyQueueBuffer;
               property TiledMeshBoundingBoxesBuffer:TpvVulkanBuffer read fTiledMeshBoundingBoxesBuffer;
               property TiledMeshBoundingSpheresBuffer:TpvVulkanBuffer read fTiledMeshBoundingSpheresBuffer;
+              property TiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer read fTiledVisualMeshIndexGroupsBuffer;
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
              published
@@ -262,7 +264,7 @@ type TpvScene3DPlanets=class;
               property PhysicsMeshIndexBuffer:TpvVulkanBuffer read fPhysicsMeshIndexBuffer;
               property RayIntersectionResultBuffer:TpvVulkanBuffer read fRayIntersectionResultBuffer;
               property MeshVertices:TMeshVertices read fMeshVertices;
-              property MeshIndices:TMeshIndices read fMeshIndices;
+//            property MeshIndices:TMeshIndices read fMeshIndices;
               property TileDirtyQueueItems:TTileDirtyQueueItems read fTileDirtyQueueItems;
               property CountDirtyTiles:TpvUInt32 read fCountDirtyTiles;
              public
@@ -874,8 +876,8 @@ type TpvScene3DPlanets=class;
        fNormalMapGeneration:TNormalMapGeneration;
        fHeightMapMipMapGeneration:THeightMapMipMapGeneration;
        fNormalMapMipMapGeneration:TNormalMapMipMapGeneration;
-       fVisualMeshIndexGeneration:TMeshIndexGeneration;
-       fPhysicsMeshIndexGeneration:TMeshIndexGeneration;
+{      fVisualMeshIndexGeneration:TMeshIndexGeneration;
+       fPhysicsMeshIndexGeneration:TMeshIndexGeneration;}
        fVisualMeshVertexGeneration:TMeshVertexGeneration;
        fPhysicsMeshVertexGeneration:TMeshVertexGeneration;
        fRayIntersection:TRayIntersection;
@@ -962,6 +964,10 @@ type TpvScene3DPlanets=class;
        property VisualMeshLODCounts:TSizeIntArray read fVisualMeshLODCounts;
        property PhysicsMeshLODOffsets:TSizeIntArray read fPhysicsMeshLODOffsets;
        property PhysicsMeshLODCounts:TSizeIntArray read fPhysicsMeshLODCounts;
+       property TiledVisualMeshIndices:TMeshIndices read fTiledVisualMeshIndices;
+       property TiledVisualMeshIndexGroups:TTiledMeshIndexGroups read fTiledVisualMeshIndexGroups;
+       property TiledPhysicsMeshIndices:TMeshIndices read fTiledPhysicsMeshIndices;
+       property TiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups read fTiledPhysicsMeshIndexGroups;
      end;
 
      TpvScene3DPlanets=class(TpvObjectGenericList<TpvScene3DPlanet>)
@@ -1184,6 +1190,8 @@ begin
 
  fTiledMeshBoundingSpheresBuffer:=nil;
 
+ fTiledVisualMeshIndexGroupsBuffer:=nil;
+
  fVisualMeshVertexBuffers[0]:=nil;
  fVisualMeshVertexBuffers[1]:=nil;
 
@@ -1355,6 +1363,23 @@ begin
                                                            []
                                                           );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledMeshBoundingSpheresBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.BoundingSpheresBuffer['+IntToStr(fInFlightFrameIndex)+']');
+
+   fTiledVisualMeshIndexGroupsBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                             fPlanet.fTiledVisualMeshIndexGroups.Count*SizeOf(TTiledMeshIndexGroup),
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                             VK_SHARING_MODE_EXCLUSIVE,
+                                                             [],
+                                                             0,
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             []
+                                                            );
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledVisualMeshIndexGroupsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.MeshIndexGroupsBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
   end;
 
@@ -1577,6 +1602,8 @@ begin
  FreeAndNil(fTiledMeshBoundingBoxesBuffer);
 
  FreeAndNil(fTiledMeshBoundingSpheresBuffer);
+
+ FreeAndNil(fTiledVisualMeshIndexGroupsBuffer);
 
  FreeAndNil(fVisualMeshVertexBuffers[0]);
  FreeAndNil(fVisualMeshVertexBuffers[1]);
@@ -2443,12 +2470,7 @@ begin
                                                         VK_WHOLE_SIZE);
 
  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or 
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or 
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or 
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                    0,
                                    0,nil,
@@ -6876,6 +6898,15 @@ begin
                                                            [],
                                                            false);
 
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                           [],
+                                                           [fPlanet.fData.fTiledVisualMeshIndexGroupsBuffer.DescriptorBufferInfo],
+                                                           [],
+                                                           false);
+
   fDescriptorSets[InFlightFrameIndex].Flush;
 
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
@@ -6969,7 +7000,25 @@ begin
 
  fTiledPhysicsMeshIndexGroups:=TTiledMeshIndexGroups.Create;
 
- fCountVisualMeshIndices:=0;
+ GenerateMeshIndices(fTiledVisualMeshIndices,
+                     fTiledVisualMeshIndexGroups,
+                     fVisualTileResolution,
+                     fTileMapResolution,
+                     fCountVisualMeshIndices,
+                     fCountVisualMeshLODLevels,
+                     fVisualMeshLODOffsets,
+                     fVisualMeshLODCounts);
+
+ GenerateMeshIndices(fTiledPhysicsMeshIndices,
+                     fTiledPhysicsMeshIndexGroups,
+                     fPhysicsTileResolution,
+                     fTileMapResolution,
+                     fCountPhysicsMeshIndices,
+                     fCountPhysicsMeshLODLevels,
+                     fPhysicsMeshLODOffsets,
+                     fPhysicsMeshLODCounts);
+
+{fCountVisualMeshIndices:=0;
  fCountVisualMeshLODLevels:=Max(1,IntLog2(fVisualTileResolution));
  fVisualMeshLODOffsets:=nil;
  fVisualMeshLODCounts:=nil;
@@ -6995,7 +7044,7 @@ begin
   fPhysicsMeshLODCounts[Index]:=(Resolution*Resolution)*((fTileMapResolution*fTileMapResolution)*6);
   inc(fCountPhysicsMeshIndices,Resolution*Resolution);
  end;
- fCountPhysicsMeshIndices:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6);
+ fCountPhysicsMeshIndices:=fCountPhysicsMeshIndices*((fTileMapResolution*fTileMapResolution)*6); }
 
  fBottomRadius:=aBottomRadius;
 
@@ -7088,9 +7137,9 @@ begin
 
  fNormalMapMipMapGeneration:=TNormalMapMipMapGeneration.Create(self);
 
- fVisualMeshIndexGeneration:=TMeshIndexGeneration.Create(self,false);
+{fVisualMeshIndexGeneration:=TMeshIndexGeneration.Create(self,false);
 
- fPhysicsMeshIndexGeneration:=TMeshIndexGeneration.Create(self,true);
+ fPhysicsMeshIndexGeneration:=TMeshIndexGeneration.Create(self,true);}
 
  fVisualMeshVertexGeneration:=TMeshVertexGeneration.Create(self,false);
 
@@ -7252,9 +7301,9 @@ begin
  
  FreeAndNil(fVisualMeshVertexGeneration);
 
- FreeAndNil(fPhysicsMeshIndexGeneration);
+{FreeAndNil(fPhysicsMeshIndexGeneration);
 
- FreeAndNil(fVisualMeshIndexGeneration); 
+ FreeAndNil(fVisualMeshIndexGeneration); }
 
  FreeAndNil(fNormalMapMipMapGeneration);
 
@@ -7410,10 +7459,10 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
   result:=(((TileMapY*aTileMapResolution)+TileMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
  end;
  procedure AddTriangle(const aV0,aV1,aV2:TpvUInt32);
- var HashTriangle:THashTriangle;
+//var HashTriangle:THashTriangle;
  begin
   if (aV0<>aV1) and (aV0<>aV2) and (aV1<>aV2) then begin
-   if aV0<aV1 then begin
+{  if aV0<aV1 then begin
     if aV1<aV2 then begin
      HashTriangle[0]:=aV0;
      HashTriangle[1]:=aV1;
@@ -7442,8 +7491,8 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
      HashTriangle[2]:=aV0;
     end; 
    end;
-   if not TriangleHashMap.ExistKey(HashTriangle) then begin
-    TriangleHashMap.Add(HashTriangle,true);
+   if not TriangleHashMap.ExistKey(HashTriangle) then}begin
+//  TriangleHashMap.Add(HashTriangle,true);
     aTiledMeshIndices.Add(aV0);
     aTiledMeshIndices.Add(aV1);
     aTiledMeshIndices.Add(aV2);
@@ -7452,7 +7501,8 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
   end;
  end;
 var LODIndex:TpvSizeInt;
-    TileLODResolution,TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY:TpvInt32;
+    TileLODResolution,TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY,
+    LODStep:TpvInt32;
     v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
 begin
@@ -7520,23 +7570,25 @@ begin
 
        TileX:=TileLODX shl LODIndex;
 
-       GlobalX:=(TileMapX*aTileMapResolution)+TileX;
-       GlobalY:=(TileMapY*aTileMapResolution)+TileY;
+       LODStep:=1 shl LODIndex;
 
-       {if (GlobalX=0) or (GlobalY=0) then}begin
-        v0:=GetVertexIndex(GlobalX-1,GlobalY-1);
-        v1:=GetVertexIndex(GlobalX,GlobalY-1);
+       GlobalX:=(TileMapX*aTileResolution)+TileX;
+       GlobalY:=(TileMapY*aTileResolution)+TileY;
+
+       if (GlobalX=0) or (GlobalY=0) then begin
+        v0:=GetVertexIndex(GlobalX-LODStep,GlobalY-LODStep);
+        v1:=GetVertexIndex(GlobalX,GlobalY-LODStep);
         v2:=GetVertexIndex(GlobalX,GlobalY);
-        v3:=GetVertexIndex(GlobalX-1,GlobalY);
+        v3:=GetVertexIndex(GlobalX-LODStep,GlobalY);
         AddTriangle(v0,v1,v2);
         AddTriangle(v0,v2,v3);
        end;
 
        begin       
         v0:=GetVertexIndex(GlobalX,GlobalY);
-        v1:=GetVertexIndex(GlobalX+1,GlobalY);
-        v2:=GetVertexIndex(GlobalX+1,GlobalY+1);
-        v3:=GetVertexIndex(GlobalX,GlobalY+1);
+        v1:=GetVertexIndex(GlobalX+LODStep,GlobalY);
+        v2:=GetVertexIndex(GlobalX+LODStep,GlobalY+LODStep);
+        v3:=GetVertexIndex(GlobalX,GlobalY+LODStep);
         AddTriangle(v0,v1,v2);
         AddTriangle(v0,v2,v3);
        end; 
@@ -7562,6 +7614,8 @@ begin
  aTiledMeshIndices.Finish;
 
  aTiledMeshIndexGroups.Finish;
+
+ aCountMeshIndices:=CountIndices;
 
 end;
 
@@ -7642,6 +7696,12 @@ begin
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                    [],
                    0);
+ result.AddBinding(5,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetCullDescriptorSetLayout');
 end;
@@ -7651,7 +7711,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),6*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetCullDescriptorPool');
 end;
@@ -7736,9 +7796,9 @@ begin
       fHeightMapRandomInitialization.Execute(fVulkanComputeCommandBuffer);
      end; 
 
-     fVisualMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+    {fVisualMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
 
-     fPhysicsMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);
+     fPhysicsMeshIndexGeneration.Execute(fVulkanComputeCommandBuffer);}
 
      fTiledMeshBoundingVolumesGeneration.Execute(fVulkanComputeCommandBuffer);
 
@@ -7758,13 +7818,29 @@ begin
 
    begin
 
-    fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
+    fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fTiledVisualMeshIndices.ItemArray[0],
+                                       fData.fVisualMeshIndexBuffer,
+                                       0,
+                                       fTiledVisualMeshIndices.Count*SizeOf(TpvUInt32));
+
+    fVulkanDevice.MemoryStaging.Upload(fVulkanComputeQueue,
+                                       fVulkanComputeCommandBuffer,
+                                       fVulkanComputeFence,
+                                       fTiledVisualMeshIndexGroups.ItemArray[0],
+                                       fData.fTiledVisualMeshIndexGroupsBuffer,
+                                       0,
+                                       fTiledVisualMeshIndexGroups.Count*SizeOf(TTiledMeshIndexGroup));
+
+{   fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                          fVulkanComputeCommandBuffer,
                                          fVulkanComputeFence,
                                          fData.fPhysicsMeshIndexBuffer,
                                          0,
                                          fData.fMeshIndices.ItemArray[0],
-                                         fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));
+                                         fTileMapResolution*fTileMapResolution*fPhysicsTileResolution*fPhysicsTileResolution*6*SizeOf(TpvUInt32));}
 
     fVulkanDevice.MemoryStaging.Download(fVulkanComputeQueue,
                                          fVulkanComputeCommandBuffer,

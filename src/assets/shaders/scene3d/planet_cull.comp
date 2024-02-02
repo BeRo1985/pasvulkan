@@ -77,6 +77,10 @@ layout(set = 1, binding = 4, std430) buffer OutputDrawIndexedIndirectCommands {
   DrawIndexedIndirectCommand data[]; // 1-based, since 0 is used for counters and the like
 } outputDrawIndexedIndirectCommands;
 
+layout(set = 1, binding = 5, std430) readonly buffer TileVertexIndexGroups {
+  uvec2 data[]; // x = first vertex index, y = count of indices, and the data count is the same as the tile map size multiplied by LOD levels    
+} tileVertexIndexGroups;
+
 #include "frustum.glsl"
 
 #include "aabb.glsl"
@@ -272,6 +276,13 @@ void main(){
 
       const uint lod = min(pushConstants.minimumLODLevel, max(1u, countLODLevels) - 1u);
 
+#if 1
+      
+      uvec2 tileIndexOffsetAndCount = tileVertexIndexGroups.data[(lod * tileMapSize) + tileMapIndex];
+      const uint tileIndexOffset = tileIndexOffsetAndCount.x;
+      const uint countTileIndices = tileIndexOffsetAndCount.y;
+
+#else
       const uint tileResolution = pushConstants.tileResolution >> lod;
 
       const uint tileSize = tileResolution * tileResolution;
@@ -283,6 +294,7 @@ void main(){
       for(uint lodCounter = 0u; lodCounter < lod; lodCounter++){
         tileIndexOffset += (lod0TileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
       }
+#endif
 
 #if defined(PASS0) || defined(PASS1)  
       // add to visibility buffer only if not yet existing        
