@@ -7378,6 +7378,8 @@ type THashTriangle=array[0..2] of TpvInt32;
 var TotalResolution,TotalResolutionMask,TotalResolutionBits,
     TileResolutionMask,TileResolutionBits,
     TileVertexSize:TpvInt32;
+    CountIndices:TpvUInt32;
+    TriangleHashMap:TTriangleHashMap;
  function GetVertexIndex(const aX,aY:TpvInt32):TpvUInt32;
  var x,y,TileMapX,TileMapY,TileQuadX,TileQuadY:TpvInt32;
  begin
@@ -7426,12 +7428,27 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
    aHashTriangle[1]:=Temp;
   end; 
  end;
+  procedure AddTriangle(const aV0,aV1,aV2:TpvUInt32);
+  var HashTriangle:THashTriangle;
+  begin
+   if (aV0<>aV1) and (aV0<>aV2) and (aV1<>aV2) then begin
+    HashTriangle[0]:=aV0;
+    HashTriangle[1]:=aV1;
+    HashTriangle[2]:=aV2;
+    SortHashTriangleVertices(HashTriangle);
+    if not TriangleHashMap.ExistKey(HashTriangle) then begin
+     TriangleHashMap.Add(HashTriangle,true);
+     aTiledMeshIndices.Add(aV0);
+     aTiledMeshIndices.Add(aV1);
+     aTiledMeshIndices.Add(aV2);
+     inc(CountIndices,3);
+    end;   
+   end; 
+  end;
 var LODIndex:TpvSizeInt;
     TileLODResolution,TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY:TpvInt32;
-    CountIndices,v0,v1,v2,v3:TpvUInt32;
+    v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
-    TriangleHashMap:TTriangleHashMap;
-    HashTriangle:THashTriangle;
 begin
 
  TotalResolution:=aTileResolution*aTileMapResolution;
@@ -7501,77 +7518,21 @@ begin
        GlobalY:=(TileMapY*aTileMapResolution)+TileY;
 
        {if (GlobalX=0) or (GlobalY=0) then}begin
-
         v0:=GetVertexIndex(GlobalX-1,GlobalY-1);
         v1:=GetVertexIndex(GlobalX,GlobalY-1);
         v2:=GetVertexIndex(GlobalX,GlobalY);
         v3:=GetVertexIndex(GlobalX-1,GlobalY);
-
-        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
-         HashTriangle[0]:=v0;
-         HashTriangle[1]:=v1;
-         HashTriangle[2]:=v2;
-         SortHashTriangleVertices(HashTriangle);
-         if not TriangleHashMap.ExistKey(HashTriangle) then begin
-          TriangleHashMap.Add(HashTriangle,true);
-          aTiledMeshIndices.Add(v0);
-          aTiledMeshIndices.Add(v1);
-          aTiledMeshIndices.Add(v2);
-          inc(CountIndices,3);
-         end;
-        end;
-
-        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
-         HashTriangle[0]:=v0;
-         HashTriangle[1]:=v2;
-         HashTriangle[2]:=v3;
-         SortHashTriangleVertices(HashTriangle);
-         if not TriangleHashMap.ExistKey(HashTriangle) then begin
-          TriangleHashMap.Add(HashTriangle,true);
-          aTiledMeshIndices.Add(v0);
-          aTiledMeshIndices.Add(v2);
-          aTiledMeshIndices.Add(v3);
-          inc(CountIndices,3);
-         end;
-        end;
-
+        AddTriangle(v0,v1,v2);
+        AddTriangle(v0,v2,v3);
        end;
 
-       begin
-       
+       begin       
         v0:=GetVertexIndex(GlobalX,GlobalY);
         v1:=GetVertexIndex(GlobalX+1,GlobalY);
         v2:=GetVertexIndex(GlobalX+1,GlobalY+1);
         v3:=GetVertexIndex(GlobalX,GlobalY+1);
-
-        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
-         HashTriangle[0]:=v0;
-         HashTriangle[1]:=v1;
-         HashTriangle[2]:=v2;
-         SortHashTriangleVertices(HashTriangle);
-         if not TriangleHashMap.ExistKey(HashTriangle) then begin
-          TriangleHashMap.Add(HashTriangle,true);
-          aTiledMeshIndices.Add(v0);
-          aTiledMeshIndices.Add(v1);
-          aTiledMeshIndices.Add(v2);
-          inc(CountIndices,3);
-         end;
-        end;
-
-        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
-         HashTriangle[0]:=v0;
-         HashTriangle[1]:=v2;
-         HashTriangle[2]:=v3;
-         SortHashTriangleVertices(HashTriangle);
-         if not TriangleHashMap.ExistKey(HashTriangle) then begin
-          TriangleHashMap.Add(HashTriangle,true);
-          aTiledMeshIndices.Add(v0);
-          aTiledMeshIndices.Add(v2);
-          aTiledMeshIndices.Add(v3);
-          inc(CountIndices,3);
-         end;
-        end;
-
+        AddTriangle(v0,v1,v2);
+        AddTriangle(v0,v2,v3);
        end; 
 
       end;
