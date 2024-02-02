@@ -7409,33 +7409,39 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
   TileQuadY:=y-(TileMapY*aTileResolution);
   result:=(((TileMapY*aTileMapResolution)+TileMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
  end;
- procedure SortHashTriangleVertices(var aHashTriangle:THashTriangle);
- var Temp:TpvInt32;
- begin
-  if aHashTriangle[0]>aHashTriangle[1] then begin
-   Temp:=aHashTriangle[0];
-   aHashTriangle[0]:=aHashTriangle[1];
-   aHashTriangle[1]:=Temp;
-  end;
-  if aHashTriangle[1]>aHashTriangle[2] then begin
-   Temp:=aHashTriangle[1];
-   aHashTriangle[1]:=aHashTriangle[2];
-   aHashTriangle[2]:=Temp;
-  end;
-  if aHashTriangle[0]>aHashTriangle[1] then begin
-   Temp:=aHashTriangle[0];
-   aHashTriangle[0]:=aHashTriangle[1];
-   aHashTriangle[1]:=Temp;
-  end; 
- end;
  procedure AddTriangle(const aV0,aV1,aV2:TpvUInt32);
  var HashTriangle:THashTriangle;
  begin
   if (aV0<>aV1) and (aV0<>aV2) and (aV1<>aV2) then begin
-   HashTriangle[0]:=aV0;
-   HashTriangle[1]:=aV1;
-   HashTriangle[2]:=aV2;
-   SortHashTriangleVertices(HashTriangle);
+   if aV0<aV1 then begin
+    if aV1<aV2 then begin
+     HashTriangle[0]:=aV0;
+     HashTriangle[1]:=aV1;
+     HashTriangle[2]:=aV2; 
+    end else if aV0<aV2 then begin
+     HashTriangle[0]:=aV0;
+     HashTriangle[1]:=aV2;
+     HashTriangle[2]:=aV1;
+    end else begin
+     HashTriangle[0]:=aV2;
+     HashTriangle[1]:=aV0;
+     HashTriangle[2]:=aV1;
+    end;
+   end else begin
+    if aV0<aV2 then begin
+     HashTriangle[0]:=aV1;
+     HashTriangle[1]:=aV0;
+     HashTriangle[2]:=aV2;
+    end else if aV1<aV2 then begin
+     HashTriangle[0]:=aV1;
+     HashTriangle[1]:=aV2;
+     HashTriangle[2]:=aV0;
+    end else begin
+     HashTriangle[0]:=aV2;
+     HashTriangle[1]:=aV1;
+     HashTriangle[2]:=aV0;
+    end; 
+   end;
    if not TriangleHashMap.ExistKey(HashTriangle) then begin
     TriangleHashMap.Add(HashTriangle,true);
     aTiledMeshIndices.Add(aV0);
