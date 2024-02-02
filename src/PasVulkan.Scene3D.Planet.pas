@@ -7373,6 +7373,8 @@ procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3
                                                out aCountMeshLODLevels:TpvSizeInt;
                                                out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                                out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
+type THashTriangle=array[0..2] of TpvInt32;
+     TTriangleHashMap=TpvHashMap<THashTriangle,Boolean>;
 var TotalResolution,TotalResolutionMask,TotalResolutionBits,
     TileResolutionMask,TileResolutionBits,
     TileVertexSize:TpvInt32;
@@ -7405,10 +7407,31 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
   TileQuadY:=y-(TileMapY*aTileResolution);
   result:=(((TileMapY*aTileMapResolution)+TileMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
  end;
+ procedure SortHashTriangleVertices(var aHashTriangle:THashTriangle);
+ var Temp:TpvInt32;
+ begin
+  if aHashTriangle[0]>aHashTriangle[1] then begin
+   Temp:=aHashTriangle[0];
+   aHashTriangle[0]:=aHashTriangle[1];
+   aHashTriangle[1]:=Temp;
+  end;
+  if aHashTriangle[1]>aHashTriangle[2] then begin
+   Temp:=aHashTriangle[1];
+   aHashTriangle[1]:=aHashTriangle[2];
+   aHashTriangle[2]:=Temp;
+  end;
+  if aHashTriangle[0]>aHashTriangle[1] then begin
+   Temp:=aHashTriangle[0];
+   aHashTriangle[0]:=aHashTriangle[1];
+   aHashTriangle[1]:=Temp;
+  end; 
+ end;
 var LODIndex:TpvSizeInt;
     TileLODResolution,TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY:TpvInt32;
     CountIndices,v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
+    TriangleHashMap:TTriangleHashMap;
+    HashTriangle:THashTriangle;
 begin
 
  TotalResolution:=aTileResolution*aTileMapResolution;
@@ -7446,60 +7469,132 @@ begin
  aTiledMeshIndexGroups.Clear;
  aTiledMeshIndexGroups.Reserve(aTileMapResolution*aTileMapResolution*aCountMeshLODLevels);
 
- CountIndices:=0;
+ TriangleHashMap:=TTriangleHashMap.Create(false);
+ try
 
- for LODIndex:=0 to aCountMeshLODLevels-1 do begin
+  CountIndices:=0;
 
-  TileLODResolution:=aTileResolution shr LODIndex;
+  for LODIndex:=0 to aCountMeshLODLevels-1 do begin
 
-  aMeshLODOffsets[LODIndex]:=CountIndices;
+   TileLODResolution:=aTileResolution shr LODIndex;
 
-  for TileMapY:=0 to aTileMapResolution-1 do begin
+   TriangleHashMap.Clear;
 
-   for TileMapX:=0 to aTileMapResolution-1 do begin
+   aMeshLODOffsets[LODIndex]:=CountIndices;
 
-    TiledMeshIndexGroup:=aTiledMeshIndexGroups.AddNew;
-    TiledMeshIndexGroup^.FirstIndex:=CountIndices;
+   for TileMapY:=0 to aTileMapResolution-1 do begin
 
-    for TileLODY:=0 to TileLODResolution-1 do begin
+    for TileMapX:=0 to aTileMapResolution-1 do begin
 
-     TileY:=TileLODY shl LODIndex;
+     TiledMeshIndexGroup:=aTiledMeshIndexGroups.AddNew;
+     TiledMeshIndexGroup^.FirstIndex:=CountIndices;
 
-     for TileLODX:=0 to TileLODResolution-1 do begin
+     for TileLODY:=0 to TileLODResolution-1 do begin
 
-      TileX:=TileLODX shl LODIndex;
+      TileY:=TileLODY shl LODIndex;
 
-      GlobalX:=(TileMapX*aTileMapResolution)+TileX;
-      GlobalY:=(TileMapY*aTileMapResolution)+TileY;
+      for TileLODX:=0 to TileLODResolution-1 do begin
 
-      v0:=GetVertexIndex(GlobalX,GlobalY);
-      v1:=GetVertexIndex(GlobalX+1,GlobalY);
-      v2:=GetVertexIndex(GlobalX+1,GlobalY+1);
-      v3:=GetVertexIndex(GlobalX,GlobalY+1);
+       TileX:=TileLODX shl LODIndex;
 
-      aTiledMeshIndices.Add(v0);
-      aTiledMeshIndices.Add(v1);
-      aTiledMeshIndices.Add(v2);
+       GlobalX:=(TileMapX*aTileMapResolution)+TileX;
+       GlobalY:=(TileMapY*aTileMapResolution)+TileY;
 
-      aTiledMeshIndices.Add(v0);
-      aTiledMeshIndices.Add(v2);
-      aTiledMeshIndices.Add(v3);
+       {if (GlobalX=0) or (GlobalY=0) then}begin
 
-      inc(CountIndices,6);
+        v0:=GetVertexIndex(GlobalX-1,GlobalY-1);
+        v1:=GetVertexIndex(GlobalX,GlobalY-1);
+        v2:=GetVertexIndex(GlobalX,GlobalY);
+        v3:=GetVertexIndex(GlobalX-1,GlobalY);
+
+        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
+         HashTriangle[0]:=v0;
+         HashTriangle[1]:=v1;
+         HashTriangle[2]:=v2;
+         SortHashTriangleVertices(HashTriangle);
+         if not TriangleHashMap.ExistKey(HashTriangle) then begin
+          TriangleHashMap.Add(HashTriangle,true);
+          aTiledMeshIndices.Add(v0);
+          aTiledMeshIndices.Add(v1);
+          aTiledMeshIndices.Add(v2);
+          inc(CountIndices,3);
+         end;
+        end;
+
+        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
+         HashTriangle[0]:=v0;
+         HashTriangle[1]:=v2;
+         HashTriangle[2]:=v3;
+         SortHashTriangleVertices(HashTriangle);
+         if not TriangleHashMap.ExistKey(HashTriangle) then begin
+          TriangleHashMap.Add(HashTriangle,true);
+          aTiledMeshIndices.Add(v0);
+          aTiledMeshIndices.Add(v2);
+          aTiledMeshIndices.Add(v3);
+          inc(CountIndices,3);
+         end;
+        end;
+
+       end;
+
+       begin
+       
+        v0:=GetVertexIndex(GlobalX,GlobalY);
+        v1:=GetVertexIndex(GlobalX+1,GlobalY);
+        v2:=GetVertexIndex(GlobalX+1,GlobalY+1);
+        v3:=GetVertexIndex(GlobalX,GlobalY+1);
+
+        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
+         HashTriangle[0]:=v0;
+         HashTriangle[1]:=v1;
+         HashTriangle[2]:=v2;
+         SortHashTriangleVertices(HashTriangle);
+         if not TriangleHashMap.ExistKey(HashTriangle) then begin
+          TriangleHashMap.Add(HashTriangle,true);
+          aTiledMeshIndices.Add(v0);
+          aTiledMeshIndices.Add(v1);
+          aTiledMeshIndices.Add(v2);
+          inc(CountIndices,3);
+         end;
+        end;
+
+        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
+         HashTriangle[0]:=v0;
+         HashTriangle[1]:=v2;
+         HashTriangle[2]:=v3;
+         SortHashTriangleVertices(HashTriangle);
+         if not TriangleHashMap.ExistKey(HashTriangle) then begin
+          TriangleHashMap.Add(HashTriangle,true);
+          aTiledMeshIndices.Add(v0);
+          aTiledMeshIndices.Add(v2);
+          aTiledMeshIndices.Add(v3);
+          inc(CountIndices,3);
+         end;
+        end;
+
+       end; 
+
+      end;
 
      end;
 
-    end;
+     TiledMeshIndexGroup^.CountIndices:=CountIndices-TiledMeshIndexGroup^.FirstIndex;
 
-    TiledMeshIndexGroup^.CountIndices:=CountIndices-TiledMeshIndexGroup^.FirstIndex;
+    end;
 
    end;
 
+   aMeshLODCounts[LODIndex]:=CountIndices-aMeshLODOffsets[LODIndex];
+
   end;
 
-  aMeshLODCounts[LODIndex]:=CountIndices-aMeshLODOffsets[LODIndex];
-
+ finally
+  FreeAndNil(TriangleHashMap);
  end;
+
+ aTiledMeshIndices.Finish;
+
+ aTiledMeshIndexGroups.Finish;
 
 end;
 
