@@ -2619,26 +2619,34 @@ type EpvScene3D=class(Exception);
               fMaterialMap:TpvScene3D.TGroup.TMaterialMap;
               fMaterialIDMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap;
               fMaterialNameMapArrayIndexHashMap:TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap;
+              fMaterialNameMapArrayIndexHashMapLowerCase:TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap;
               fMaterialIDMapArrays:TpvScene3D.TGroup.TMaterialIDMapArrays;
               fMaterialIndexHashMap:TpvScene3D.TGroup.TMaterialIndexHashMap;
               fAnimations:TpvScene3D.TGroup.TAnimations;
               fCountInstanceAnimationChannels:TpvSizeInt;
               fAnimationNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fAnimationNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fCameras:TpvScene3D.TGroup.TCameras;
               fCameraNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fCameraNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fMeshes:TpvScene3D.TGroup.TMeshes;
               fMeshNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fMeshNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fMeshContentGeneration:TpvUInt64;
               fUpdatedMeshContentGeneration:TpvUInt64;
               fFrameUpdatedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
               fSkins:TpvScene3D.TGroup.TSkins;
               fSkinNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fSkinNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fLights:TpvScene3D.TGroup.TLights;
               fLightNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fLightNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fNodes:TpvScene3D.TGroup.TNodes;
               fNodeNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fNodeNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fScenes:TpvScene3D.TGroup.TScenes;
               fSceneNameIndexHashMap:TpvScene3D.TGroup.TNameIndexHashMap;
+              fSceneNameIndexHashMapLowerCase:TpvScene3D.TGroup.TNameIndexHashMap;
               fScene:TpvScene3D.TGroup.TScene;
               fVertices:TpvScene3D.TGroup.TGroupVertices;
               fFrameVertices:TpvScene3D.TGroup.TFrameGroupVertices;
@@ -2709,14 +2717,14 @@ type EpvScene3D=class(Exception);
               procedure CleanUp;
               procedure Finish;
              public
-              function GetLightID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetMaterialID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetCameraID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetMeshID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetSkinID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetNodeID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetAnimationID(const aName:TpvUTF8String):TpvSizeInt;
-              function GetSceneID(const aName:TpvUTF8String):TpvSizeInt;
+              function GetLightID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetMaterialID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetCameraID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetMeshID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetSkinID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetNodeID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetAnimationID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
+              function GetSceneID(const aName:TpvUTF8String;const aIgnoreCase:Boolean=false):TpvSizeInt;
              public
               function AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
               function AddImage(const aImage:TpvScene3D.TImage;const aForceNew:Boolean=false):TpvSizeInt;
@@ -3677,7 +3685,11 @@ end;
 function TPOCAScene3DGroup.getLightID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fLightNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fLightNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fLightNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3686,7 +3698,11 @@ end;
 function TPOCAScene3DGroup.getMaterialID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fMaterialNameMapArrayIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fMaterialNameMapArrayIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fMaterialNameMapArrayIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3695,7 +3711,11 @@ end;
 function TPOCAScene3DGroup.getCameraID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fCameraNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fCameraNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fCameraNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3704,7 +3724,11 @@ end;
 function TPOCAScene3DGroup.getMeshID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fMeshNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fMeshNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fMeshNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3713,7 +3737,11 @@ end;
 function TPOCAScene3DGroup.getSkinID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fSkinNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fSkinNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fSkinNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3722,7 +3750,11 @@ end;
 function TPOCAScene3DGroup.getNodeID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fNodeNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fNodeNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fNodeNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3731,7 +3763,11 @@ end;
 function TPOCAScene3DGroup.getAnimationID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fAnimationNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fAnimationNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fAnimationNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -3740,7 +3776,11 @@ end;
 function TPOCAScene3DGroup.getSceneID(const aContext:PPOCAContext;const aThis:TPOCAValue;const aArguments:PPOCAValues;const aCountArguments:TpvInt32):TPOCAValue;
 begin
  if aCountArguments>0 then begin
-  result.Num:=fGroup.fSceneNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  if (aCountArguments<2) or not POCAGetBooleanValue(aContext,aArguments^[1]) then begin
+   result.Num:=fGroup.fSceneNameIndexHashMap[POCAGetStringValue(aContext,aArguments^[0])];
+  end else begin
+   result.Num:=fGroup.fSceneNameIndexHashMapLowerCase[PUCUUTF8LowerCase(POCAGetStringValue(aContext,aArguments^[0]))];
+  end;
  end else begin
   result.Num:=-1;
  end;
@@ -11573,6 +11613,7 @@ begin
  fMaterialIDMapArrayIndexHashMap:=TpvScene3D.TGroup.TMaterialIDMapArrayIndexHashMap.Create(-1);
 
  fMaterialNameMapArrayIndexHashMap:=TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap.Create(-1);
+ fMaterialNameMapArrayIndexHashMapLowerCase:=TpvScene3D.TGroup.TMaterialNameMapArrayIndexHashMap.Create(-1);
 
  fMaterialIndexHashMap:=TpvScene3D.TGroup.TMaterialIndexHashMap.Create(-1);
 
@@ -11583,16 +11624,19 @@ begin
  fAnimations.OwnsObjects:=true;
 
  fAnimationNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
+ fAnimationNameIndexHashMapLowerCase:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fCameras:=TCameras.Create;
  fCameras.OwnsObjects:=true;
 
  fCameraNameIndexHashMap:=TNameIndexHashMap.Create(-1);
+ fCameraNameIndexHashMapLowerCase:=TNameIndexHashMap.Create(-1);
 
  fMeshes:=TMeshes.Create;
  fMeshes.OwnsObjects:=true;
 
  fMeshNameIndexHashMap:=TNameIndexHashMap.Create(-1);
+ fMeshNameIndexHashMapLowerCase:=TNameIndexHashMap.Create(-1);
 
  fMeshContentGeneration:=0;
 
@@ -11606,6 +11650,7 @@ begin
  fSkins.OwnsObjects:=true;
 
  fSkinNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
+ fSkinNameIndexHashMapLowerCase:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fNodes:=TNodes.Create;
  fNodes.OwnsObjects:=true;
@@ -11614,6 +11659,7 @@ begin
  fLights.OwnsObjects:=true;
 
  fLightNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
+ fLightNameIndexHashMapLowerCase:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fScenes:=TScenes.Create;
  fScenes.OwnsObjects:=true;
@@ -11667,8 +11713,10 @@ begin
  fInstances.OwnsObjects:=false;
 
  fNodeNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
+ fNodeNameIndexHashMapLowerCase:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fSceneNameIndexHashMap:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
+ fSceneNameIndexHashMapLowerCase:=TpvScene3D.TGroup.TNameIndexHashMap.Create(-1);
 
  fCameraNodeIndices:=TpvScene3D.TGroup.TCameraNodeIndices.Create;
 
@@ -11747,14 +11795,19 @@ begin
  FreeAndNil(fObjects);
 
  FreeAndNil(fAnimationNameIndexHashMap);
+ FreeAndNil(fAnimationNameIndexHashMapLowerCase);
 
  FreeAndNil(fCameraNameIndexHashMap);
+ FreeAndNil(fCameraNameIndexHashMapLowerCase);
 
  FreeAndNil(fMeshNameIndexHashMap);
+ FreeAndNil(fMeshNameIndexHashMapLowerCase);
 
  FreeAndNil(fSkinNameIndexHashMap);
+ FreeAndNil(fSkinNameIndexHashMapLowerCase);
 
  FreeAndNil(fLightNameIndexHashMap);
+ FreeAndNil(fLightNameIndexHashMapLowerCase);
 
  if not (assigned(fSceneInstance) and ((not assigned(fSceneInstance.fMaterials)) or (fSceneInstance.fMaterials.Count=0))) then begin
   if assigned(fSceneInstance) then begin
@@ -11775,6 +11828,7 @@ begin
  FreeAndNil(fMaterialsToDuplicate);
 
  FreeAndNil(fMaterialNameMapArrayIndexHashMap);
+ FreeAndNil(fMaterialNameMapArrayIndexHashMapLowerCase);
 
  FreeAndNil(fMaterialIndexHashMap);
 
@@ -11809,8 +11863,10 @@ begin
  fCachedVertexBufferMemoryBarriers:=nil;
 
  FreeAndNil(fNodeNameIndexHashMap);
+ FreeAndNil(fNodeNameIndexHashMapLowerCase);
 
  FreeAndNil(fSceneNameIndexHashMap);
+ FreeAndNil(fSceneNameIndexHashMapLowerCase);
 
  FreeAndNil(fCameraNodeIndices);
 
@@ -11865,44 +11921,76 @@ begin
  result:=AsyncLoadState in [TpvResource.TAsyncLoadState.None,TpvResource.TAsyncLoadState.Done];
 end;
 
-function TpvScene3D.TGroup.GetLightID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetLightID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fLightNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fLightNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fLightNameIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetMaterialID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetMaterialID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fMaterialNameMapArrayIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fMaterialNameMapArrayIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fMaterialNameMapArrayIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetCameraID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetCameraID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fCameraNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fCameraNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fCameraNameIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetMeshID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetMeshID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fMeshNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fMeshNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fMeshNameIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetSkinID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetSkinID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fSkinNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fSkinNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fSkinNameIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetNodeID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetNodeID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fNodeNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fNodeNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fNodeNameIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetAnimationID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetAnimationID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fAnimationNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fAnimationNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fAnimationNameIndexHashMap[aName];
+ end;
 end;
 
-function TpvScene3D.TGroup.GetSceneID(const aName:TpvUTF8String):TpvSizeInt;
+function TpvScene3D.TGroup.GetSceneID(const aName:TpvUTF8String;const aIgnoreCase:Boolean):TpvSizeInt;
 begin
- result:=fSceneNameIndexHashMap[aName];
+ if aIgnoreCase then begin
+  result:=fSceneNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aName)];
+ end else begin
+  result:=fSceneNameIndexHashMap[aName];
+ end;
 end;
 
 procedure TpvScene3D.TGroup.LoadData;
@@ -13033,6 +13121,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddLight(const aLight:TpvScene3D.TGroup.TLight):TpvSizeInt;
+var s:TPUCUUTF8String;
 begin
  if assigned(aLight) then begin
   result:=fLights.Add(aLight);
@@ -13041,8 +13130,14 @@ begin
   end else if aLight.Index<>result then begin
    raise EpvScene3D.Create('Light index mismatch');
   end;
-  if (length(trim(aLight.fName))>0) and not fLightNameIndexHashMap.ExistKey(aLight.fName) then begin
-   fLightNameIndexHashMap.Add(aLight.fName,result);
+  if length(trim(aLight.fName))>0 then begin
+   if not fLightNameIndexHashMap.ExistKey(aLight.fName) then begin
+    fLightNameIndexHashMap.Add(aLight.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aLight.fName);
+   if not fLightNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fLightNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
@@ -13186,6 +13281,7 @@ end;
 function TpvScene3D.TGroup.AddMaterial(const aMaterial:TpvScene3D.TMaterial;const aForceNew:Boolean;const aDoubleCheck:Boolean):TpvSizeInt;
 var Material,HashedMaterial:TpvScene3D.TMaterial;
     HashData:TpvScene3D.TMaterial.THashData;
+    s:TPUCUUTF8String;
 begin
  Material:=aMaterial;
  if assigned(Material) then begin
@@ -13213,8 +13309,14 @@ begin
      Material:=nil;
     end;
    end;
-   if (length(trim(aMaterial.fName))>0) and not fMaterialNameMapArrayIndexHashMap.ExistKey(aMaterial.fName) then begin
-    fMaterialNameMapArrayIndexHashMap.Add(aMaterial.fName,result);
+   if length(trim(aMaterial.fName))>0 then begin
+    if not fMaterialNameMapArrayIndexHashMap.ExistKey(aMaterial.fName) then begin
+     fMaterialNameMapArrayIndexHashMap.Add(aMaterial.fName,result);
+    end;
+    s:=PUCUUTF8LowerCase(aMaterial.fName);
+    if not fMaterialNameMapArrayIndexHashMapLowerCase.ExistKey(s) then begin
+     fMaterialNameMapArrayIndexHashMapLowerCase.Add(s,result);
+    end;
    end;
   finally
    FreeAndNil(Material);
@@ -13225,6 +13327,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddMesh(const aMesh:TpvScene3D.TGroup.TMesh):TpvSizeInt;
+var s:TPUCUUTF8String;
 begin
  if assigned(aMesh) then begin
   result:=fMeshes.Add(aMesh);
@@ -13233,8 +13336,14 @@ begin
   end else if aMesh.Index<>result then begin
    raise EpvScene3D.Create('Mesh index mismatch');
   end;
-  if (length(trim(aMesh.fName))>0) and not fMeshNameIndexHashMap.ExistKey(aMesh.fName) then begin
-   fMeshNameIndexHashMap.Add(aMesh.fName,result);
+  if length(trim(aMesh.fName))>0 then begin
+   if not fMeshNameIndexHashMap.ExistKey(aMesh.fName) then begin
+    fMeshNameIndexHashMap.Add(aMesh.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aMesh.fName);
+   if not fMeshNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fMeshNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
@@ -13243,6 +13352,7 @@ end;
 
 function TpvScene3D.TGroup.AddSkin(const aSkin:TpvScene3D.TGroup.TSkin):TpvSizeInt;
 var Skin:TpvScene3D.TGroup.TSkin;
+    s:TPUCUUTF8String;
 begin
  Skin:=aSkin;
  if assigned(Skin) then begin
@@ -13252,8 +13362,14 @@ begin
   end else if aSkin.Index<>result then begin
    raise EpvScene3D.Create('Skin index mismatch');
   end;
-  if (length(trim(aSkin.fName))>0) and not fSkinNameIndexHashMap.ExistKey(aSkin.fName) then begin
-   fSkinNameIndexHashMap.Add(aSkin.fName,result);
+  if length(trim(aSkin.fName))>0 then begin
+   if not fSkinNameIndexHashMap.ExistKey(aSkin.fName) then begin
+    fSkinNameIndexHashMap.Add(aSkin.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aSkin.fName);
+   if not fSkinNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fSkinNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
@@ -13261,6 +13377,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddAnimation(const aAnimation:TpvScene3D.TGroup.TAnimation):TpvSizeInt;
+var s:TPUCUUTF8String;
 begin
  if assigned(aAnimation) then begin
   result:=fAnimations.Add(aAnimation);
@@ -13269,8 +13386,14 @@ begin
   end else if aAnimation.Index<>result then begin
    raise EpvScene3D.Create('Animation index mismatch');
   end;
-  if (length(trim(aAnimation.fName))>0) and not fAnimationNameIndexHashMap.ExistKey(aAnimation.fName) then begin
-   fAnimationNameIndexHashMap.Add(aAnimation.fName,result);
+  if length(trim(aAnimation.fName))>0 then begin
+   if not fAnimationNameIndexHashMap.ExistKey(aAnimation.fName) then begin
+    fAnimationNameIndexHashMap.Add(aAnimation.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aAnimation.fName);
+   if not fAnimationNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fAnimationNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
@@ -13278,6 +13401,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddCamera(const aCamera:TpvScene3D.TGroup.TCamera):TpvSizeInt;
+var s:TPUCUUTF8String;
 begin
  if assigned(aCamera) then begin
   result:=fCameras.Add(aCamera);
@@ -13286,8 +13410,14 @@ begin
   end else if aCamera.Index<>result then begin
    raise EpvScene3D.Create('Camera index mismatch');
   end;
-  if (length(trim(aCamera.fName))>0) and not fCameraNameIndexHashMap.ExistKey(aCamera.fName) then begin
-   fCameraNameIndexHashMap.Add(aCamera.fName,result);
+  if length(trim(aCamera.fName))>0 then begin
+   if not fCameraNameIndexHashMap.ExistKey(aCamera.fName) then begin
+    fCameraNameIndexHashMap.Add(aCamera.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aCamera.fName);
+   if not fCameraNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fCameraNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
@@ -13312,6 +13442,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddScene(const aScene:TpvScene3D.TGroup.TScene):TpvSizeInt;
+var s:TPUCUUTF8String;
 begin
  if assigned(aScene) then begin
   result:=fScenes.Add(aScene);
@@ -13320,8 +13451,14 @@ begin
   end else if aScene.Index<>result then begin
    raise EpvScene3D.Create('Scene index mismatch');
   end;
-  if (length(trim(aScene.fName))>0) and not fSceneNameIndexHashMap.ExistKey(aScene.fName) then begin
-   fSceneNameIndexHashMap.Add(aScene.fName,result);
+  if length(trim(aScene.fName))>0 then begin
+   if not fSceneNameIndexHashMap.ExistKey(aScene.fName) then begin
+    fSceneNameIndexHashMap.Add(aScene.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aScene.fName);
+   if not fSceneNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fSceneNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
@@ -13402,6 +13539,7 @@ procedure TpvScene3D.TGroup.FinalizeMaterials(const aDoLock:Boolean);
 var Index,MaterialIDMapArrayIndex:TpvSizeInt;
     Material:TpvScene3D.TMaterial;
     MaterialIDMapArray:TMaterialIDMapArray;
+    s:TPUCUUTF8String;
 begin
 
  if length(fMaterialMap)=0 then begin
@@ -13422,8 +13560,14 @@ begin
 
      fMaterialMap[Index+1]:=Material.fID;
 
-     if (length(trim(Material.fName))>0) and not fMaterialNameMapArrayIndexHashMap.ExistKey(Material.fName) then begin
-      fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Index);
+     if length(trim(Material.fName))>0 then begin
+      if not fMaterialNameMapArrayIndexHashMap.ExistKey(Material.fName) then begin
+       fMaterialNameMapArrayIndexHashMap.Add(Material.fName,Index);
+      end;
+      s:=PUCUUTF8LowerCase(Material.fName);
+      if not fMaterialNameMapArrayIndexHashMapLowerCase.ExistKey(s) then begin
+       fMaterialNameMapArrayIndexHashMapLowerCase.Add(s,Index);
+      end;
      end;
 
      MaterialIDMapArrayIndex:=fMaterialIDMapArrayIndexHashMap[Material.fID];
