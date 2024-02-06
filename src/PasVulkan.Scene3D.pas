@@ -2692,7 +2692,9 @@ type EpvScene3D=class(Exception);
               procedure ConstructSkipLists;
               procedure UpdateCachedVertices(const aInFlightFrameIndex:TpvSizeInt);
               function GetNodeIndexByName(const aNodeName:TpvUTF8String):TpvSizeInt;
+              function GetNodeIndexByIgnoreCaseName(const aNodeName:TpvUTF8String):TpvSizeInt;
               function GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
+              function GetNodeByIgnoreCaseName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
               function AssetGetURI(const aURI:TPasGLTFUTF8String):TStream;
              public
               constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil); override;
@@ -2760,7 +2762,9 @@ type EpvScene3D=class(Exception);
               property MorphTargetVertices:TpvScene3D.TMorphTargetVertexDynamicArrayList read fMorphTargetVertices;
              public
               property NodeIndexByName[const aNodeName:TpvUTF8String]:TpvSizeInt read GetNodeIndexByName;
+              property NodeIndexByIgnoreCaseName[const aNodeName:TpvUTF8String]:TpvSizeInt read GetNodeIndexByIgnoreCaseName;
               property NodeByName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByName;
+              property NodeByIgnoreCaseName[const aNodeName:TpvUTF8String]:TpvScene3D.TGroup.TNode read GetNodeByIgnoreCaseName;
               property CameraNodeIndices:TpvScene3D.TGroup.TCameraNodeIndices read fCameraNodeIndices;
              published
               property Culling:boolean read fCulling write fCulling;
@@ -14113,10 +14117,26 @@ begin
  result:=fNodeNameIndexHashMap[aNodeName];
 end;
 
+function TpvScene3D.TGroup.GetNodeIndexByIgnoreCaseName(const aNodeName:TpvUTF8String):TpvSizeInt;
+begin
+ result:=fNodeNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aNodeName)];
+end;
+
 function TpvScene3D.TGroup.GetNodeByName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
 var NodeIndex:TpvSizeInt;
 begin
  NodeIndex:=fNodeNameIndexHashMap[aNodeName];
+ if NodeIndex>=0 then begin
+  result:=fNodes[NodeIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvScene3D.TGroup.GetNodeByIgnoreCaseName(const aNodeName:TpvUTF8String):TpvScene3D.TGroup.TNode;
+var NodeIndex:TpvSizeInt;
+begin
+ NodeIndex:=fNodeNameIndexHashMapLowerCase[PUCUUTF8LowerCase(aNodeName)];
  if NodeIndex>=0 then begin
   result:=fNodes[NodeIndex];
  end else begin
