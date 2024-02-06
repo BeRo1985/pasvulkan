@@ -13429,6 +13429,7 @@ begin
 end;
 
 function TpvScene3D.TGroup.AddNode(const aNode:TpvScene3D.TGroup.TNode):TpvSizeInt;
+var s:TPUCUUTF8String;
 begin
  if assigned(aNode) then begin
   result:=fNodes.Add(aNode);
@@ -13437,8 +13438,14 @@ begin
   end else if aNode.Index<>result then begin
    raise EpvScene3D.Create('Node index mismatch');
   end;
-  if (length(trim(aNode.fName))>0) and not fNodeNameIndexHashMap.ExistKey(aNode.fName) then begin
-   fNodeNameIndexHashMap.Add(aNode.fName,result);
+  if length(trim(aNode.fName))>0 then begin
+   if not fNodeNameIndexHashMap.ExistKey(aNode.fName) then begin
+    fNodeNameIndexHashMap.Add(aNode.fName,result);
+   end;
+   s:=PUCUUTF8LowerCase(aNode.fName);
+   if not fNodeNameIndexHashMapLowerCase.ExistKey(s) then begin
+    fNodeNameIndexHashMapLowerCase.Add(s,result);
+   end;
   end;
  end else begin
   result:=-1;
