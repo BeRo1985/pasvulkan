@@ -17617,7 +17617,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
  end;
  procedure ProcessNode(const aNodeIndex:TpvSizeInt;const aMatrix:TpvMatrix4x4;aDirty:boolean);
  var Index,OtherIndex,RotationCounter:TpvSizeInt;
-     Matrix:TpvMatrix4x4;
+     Matrix,LightMatrix:TpvMatrix4x4;
      InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
      Node:TpvScene3D.TGroup.TNode;
      Translation,Scale:TpvVector3;
@@ -17807,13 +17807,14 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   Dirty:=Dirty or (assigned(Node.fSkin) or (Node.fWeights.Count>0));
   if aInFlightFrameIndex>=0 then begin
    if assigned(Node.fLight) then begin
+    LightMatrix:=Matrix*fModelMatrix;
     InstanceLight:=fLights[Node.fLight.fIndex];
     if assigned(InstanceNode^.Light) then begin
      Light:=InstanceNode^.Light;
-     if (Light.fMatrix<>Matrix) or
+     if (Light.fMatrix<>LightMatrix) or
         (Light.fDataPointer<>InstanceLight.fEffectiveData) or
         (Light.fGeneration<>InstanceLight.fEffectiveData.fGeneration) then begin
-      Light.fMatrix:=Matrix;
+      Light.fMatrix:=LightMatrix;
       Light.fDataPointer:=InstanceLight.fEffectiveData;
       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
       Light.Update;
@@ -17826,7 +17827,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       Light.fData:=Node.fLight.fData;
       Light.fDataPointer:=InstanceLight.fEffectiveData;
       Light.fGeneration:=InstanceLight.fEffectiveData.fGeneration;
-      Light.fMatrix:=Matrix;
+      Light.fMatrix:=LightMatrix;
       Light.Update;
      finally
       InstanceNode^.Light:=Light;
