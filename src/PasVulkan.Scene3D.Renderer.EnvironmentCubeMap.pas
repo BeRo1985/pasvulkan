@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.SkyCubeMap;
+unit PasVulkan.Scene3D.Renderer.EnvironmentCubeMap;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -73,8 +73,8 @@ uses SysUtils,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals;
 
-type { TpvScene3DRendererSkyCubeMap }
-     TpvScene3DRendererSkyCubeMap=class
+type { TpvScene3DRendererEnvironmentCubeMap }
+     TpvScene3DRendererEnvironmentCubeMap=class
       public
       private
        fComputeShaderModule:TpvVulkanShaderModule;
@@ -115,9 +115,9 @@ type { TpvScene3DRendererSkyCubeMap }
 
 implementation
 
-{ TpvScene3DRendererSkyCubeMap }
+{ TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererSkyCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -1003,7 +1003,7 @@ begin
 
 end;
 
-destructor TpvScene3DRendererSkyCubeMap.Destroy;
+destructor TpvScene3DRendererEnvironmentCubeMap.Destroy;
 begin
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);

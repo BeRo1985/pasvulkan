@@ -1153,7 +1153,7 @@ begin
  end;
 
  fLightForwardVector:=-Renderer.Scene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
-//fLightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
+//fLightForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
  fLightSideVector:=fLightForwardVector.Perpendicular;
 {fLightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
                                                -fViews.Items[0].ViewMatrix.RawComponents[1,2],
@@ -5188,7 +5188,7 @@ begin
  Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
 
  TopDownForwardVector:=TpvVector3.InlineableCreate(0.0,-1.0,0.0);
-//TopDownForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
+//TopDownForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
  TopDownSideVector:=TopDownForwardVector.Perpendicular;
 {TopDownSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
                                               -fViews.Items[0].ViewMatrix.RawComponents[1,2],
@@ -5275,7 +5275,7 @@ begin
  Origin:=(BoundingBox.Min+BoundingBox.Max)*0.5;
 
  LightForwardVector:=-fScene3D.PrimaryShadowMapLightDirection.xyz.Normalize;
-//LightForwardVector:=-Renderer.SkyCubeMap.LightDirection.xyz.Normalize;
+//LightForwardVector:=-Renderer.EnvironmentCubeMap.LightDirection.xyz.Normalize;
  LightSideVector:=LightForwardVector.Perpendicular;
 {LightSideVector:=TpvVector3.InlineableCreate(-fViews.Items[0].ViewMatrix.RawComponents[0,2],
                                               -fViews.Items[0].ViewMatrix.RawComponents[1,2],

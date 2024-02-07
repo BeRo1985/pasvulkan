@@ -6287,7 +6287,7 @@ begin
                                                            1,
                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                            [],
-                                                           [TpvScene3DRendererInstance(fRendererInstance).Renderer.SkySphericalHarmonicsMetaDataBuffer.DescriptorBufferInfo],
+                                                           [TpvScene3DRendererInstance(fRendererInstance).Renderer.EnvironmentSphericalHarmonicsMetaDataBuffer.DescriptorBufferInfo],
                                                            [],
                                                            false);
   fDescriptorSets[InFlightFrameIndex].Flush;

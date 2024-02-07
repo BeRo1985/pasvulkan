@@ -80,7 +80,7 @@ uses Classes,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.SMAAData,
-     PasVulkan.Scene3D.Renderer.SkyCubeMap,
+     PasVulkan.Scene3D.Renderer.EnvironmentCubeMap,
      PasVulkan.Scene3D.Renderer.MipmappedArray2DImage,
      PasVulkan.Scene3D.Renderer.ImageBasedLighting.EnvMapCubeMaps,
      PasVulkan.Scene3D.Renderer.ImageBasedLighting.SphericalHarmonics,
@@ -170,10 +170,10 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationVoxelCountCascades:TpvInt32;
        fGlobalIlluminationVoxelCountBounces:TpvInt32;
       private
-       fSkyCubeMap:TpvScene3DRendererSkyCubeMap;
-       fSkySphericalHarmonicsBuffer:TpvVulkanBuffer;
-       fSkySphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
-       fSkySphericalHarmonics:TpvScene3DRendererImageBasedLightingSphericalHarmonics;
+       fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
+       fEnvironmentSphericalHarmonicsBuffer:TpvVulkanBuffer;
+       fEnvironmentSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
+       fEnvironmentSphericalHarmonics:TpvScene3DRendererImageBasedLightingSphericalHarmonics;
        fGGXBRDF:TpvScene3DRendererGGXBRDF;
        fCharlieBRDF:TpvScene3DRendererCharlieBRDF;
        fSheenEBRDF:TpvScene3DRendererSheenEBRDF;
@@ -251,9 +251,9 @@ type TpvScene3DRenderer=class;
        property GlobalIlluminationVoxelCountCascades:TpvInt32 read fGlobalIlluminationVoxelCountCascades write SetGlobalIlluminationVoxelCountCascades;
        property GlobalIlluminationVoxelCountBounces:TpvInt32 read fGlobalIlluminationVoxelCountBounces write SetGlobalIlluminationVoxelCountBounces;
       published
-       property SkyCubeMap:TpvScene3DRendererSkyCubeMap read fSkyCubeMap;
-       property SkySphericalHarmonicsBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsBuffer;
-       property SkySphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer read fSkySphericalHarmonicsMetaDataBuffer;
+       property EnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap read fEnvironmentCubeMap;
+       property EnvironmentSphericalHarmonicsBuffer:TpvVulkanBuffer read fEnvironmentSphericalHarmonicsBuffer;
+       property EnvironmentSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer read fEnvironmentSphericalHarmonicsMetaDataBuffer;
        property GGXBRDF:TpvScene3DRendererGGXBRDF read fGGXBRDF;
        property CharlieBRDF:TpvScene3DRendererCharlieBRDF read fCharlieBRDF;
        property SheenEBRDF:TpvScene3DRendererSheenEBRDF read fSheenEBRDF;
@@ -1022,15 +1022,15 @@ begin
   SkyTexture:=nil;
  end;
 
- fSkyCubeMap:=TpvScene3DRendererSkyCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedCubeMapFormat,SkyTexture,fScene3D.SkyBoxEnvironmentMode);
- fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyCubeMap.Image');
- fVulkanDevice.DebugUtils.SetObjectName(fSkyCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyCubeMap.ImageView');
+ fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedCubeMapFormat,SkyTexture,fScene3D.SkyBoxEnvironmentMode);
+ fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEnvironmentCubeMap.Image');
+ fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEnvironmentCubeMap.ImageView');
 
  if assigned(fScene3D) and assigned(fScene3D.SkyTextureImage) then begin
   fScene3D.SkyTextureImage.Unload;
  end;
 
- fSkySphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+ fEnvironmentSphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                       SizeOf(TSphericalHarmonicsBufferData),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -1045,9 +1045,9 @@ begin
                                                       0,
                                                       []
                                                      );
- fVulkanDevice.DebugUtils.SetObjectName(fSkySphericalHarmonicsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer');
+ fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentSphericalHarmonicsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer');
 
- fSkySphericalHarmonicsMetaDataBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+ fEnvironmentSphericalHarmonicsMetaDataBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                               SizeOf(TSphericalHarmonicsMetaDataBufferData),
                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -1062,9 +1062,9 @@ begin
                                                               0,
                                                               []
                                                              );
- fVulkanDevice.DebugUtils.SetObjectName(fSkySphericalHarmonicsMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsMetaDataBuffer');
+ fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentSphericalHarmonicsMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsMetaDataBuffer');
 
- fSkySphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fSkySphericalHarmonicsBuffer,fSkySphericalHarmonicsMetaDataBuffer,fSkyCubeMap.Width,fSkyCubeMap.Height,true);
+ fEnvironmentSphericalHarmonics:=TpvScene3DRendererImageBasedLightingSphericalHarmonics.Create(fVulkanDevice,fVulkanPipelineCache,fEnvironmentCubeMap.DescriptorImageInfo,fEnvironmentSphericalHarmonicsBuffer,fEnvironmentSphericalHarmonicsMetaDataBuffer,fEnvironmentCubeMap.Width,fEnvironmentCubeMap.Height,true);
 
  fGGXBRDF:=TpvScene3DRendererGGXBRDF.Create(fVulkanDevice,fVulkanPipelineCache);
  fVulkanDevice.DebugUtils.SetObjectName(fGGXBRDF.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fGGXBRDF.Image');
@@ -1090,7 +1090,7 @@ begin
  fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fLensStar.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fLensStar.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fLensStar.ImageView');
 
- fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fSkyCubeMap.DescriptorImageInfo,fOptimizedCubeMapFormat);
+ fImageBasedLightingEnvMapCubeMaps:=TpvScene3DRendererImageBasedLightingEnvMapCubeMaps.Create(fVulkanDevice,fVulkanPipelineCache,fEnvironmentCubeMap.DescriptorImageInfo,fOptimizedCubeMapFormat);
 
  case fShadowMode of
 
@@ -1572,13 +1572,13 @@ begin
 
  FreeAndNil(fImageBasedLightingEnvMapCubeMaps);
 
- FreeAndNil(fSkySphericalHarmonics);
+ FreeAndNil(fEnvironmentSphericalHarmonics);
 
- FreeAndNil(fSkySphericalHarmonicsBuffer);
+ FreeAndNil(fEnvironmentSphericalHarmonicsBuffer);
 
- FreeAndNil(fSkySphericalHarmonicsMetaDataBuffer);
+ FreeAndNil(fEnvironmentSphericalHarmonicsMetaDataBuffer);
 
- FreeAndNil(fSkyCubeMap);
+ FreeAndNil(fEnvironmentCubeMap);
 
 end;
 

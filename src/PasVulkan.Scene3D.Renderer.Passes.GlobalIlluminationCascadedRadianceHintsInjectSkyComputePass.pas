@@ -320,7 +320,7 @@ begin
                                                                   1,
                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                                                   [],
-                                                                  [fInstance.Renderer.SkySphericalHarmonicsBuffer.DescriptorBufferInfo],
+                                                                  [fInstance.Renderer.EnvironmentSphericalHarmonicsBuffer.DescriptorBufferInfo],
                                                                   [],
                                                                   false
                                                                  );
