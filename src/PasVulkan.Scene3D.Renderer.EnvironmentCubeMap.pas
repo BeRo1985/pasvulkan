@@ -89,7 +89,7 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxMode=TpvScene3DSkyBoxMode.Sky);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
 
        destructor Destroy; override;
 
@@ -117,7 +117,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxMode);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -198,7 +198,7 @@ begin
   end;
  end;
 
- if assigned(aTexture) then begin
+ if (aEnvironmentMode=TpvScene3DEnvironmentMode.Texture) and assigned(aTexture) then begin
   if aTexture.CountFaces=6 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_cubemap_'+FormatVariant+'comp.spv');
    fWidth:=RoundDownToPowerOfTwo(aTexture.Width);
@@ -209,8 +209,8 @@ begin
    fHeight:=fWidth;
   end;
  end else begin
-  case aSkyBoxEnvironmentMode of
-   TpvScene3DSkyBoxMode.Starlight:begin
+  case aEnvironmentMode of
+   TpvScene3DEnvironmentMode.Starlight:begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_'+FormatVariant+'comp.spv');
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
      TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
