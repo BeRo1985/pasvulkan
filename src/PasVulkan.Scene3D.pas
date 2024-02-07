@@ -96,14 +96,6 @@ uses {$ifdef Windows}
 
 type EpvScene3D=class(Exception);
 
-     TpvScene3DSkyBoxMode=
-      (
-       Texture,
-       Sky,
-       Starlight
-      );
-     PpvScene3DSkyBoxEnvironmentMode=^TpvScene3DSkyBoxMode;
-
      TpvScene3DEnvironmentMode=
       (
        Texture,
@@ -2983,7 +2975,7 @@ type EpvScene3D=class(Exception);
        fPlanets:TpvScene3DPlanets;
       private
        fSkyBoxTextureImage:TpvScene3D.TImage;
-       fSkyBoxMode:TpvScene3DSkyBoxMode;
+       fSkyBoxMode:TpvScene3DEnvironmentMode;
        fEnvironmentTextureImage:TpvScene3D.TImage;
        fEnvironmentMode:TpvScene3DEnvironmentMode;
       private
@@ -3166,7 +3158,7 @@ type EpvScene3D=class(Exception);
        property Planets:TpvScene3DPlanets read fPlanets;
       published
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
-       property SkyBoxMode:TpvScene3DSkyBoxMode read fSkyBoxMode write fSkyBoxMode;
+       property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
        property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
        property EnvironmentMode:TpvScene3DEnvironmentMode read fEnvironmentMode write fEnvironmentMode;
       published
@@ -19775,7 +19767,7 @@ begin
 
  fSkyBoxTextureImage:=nil;
 
- fSkyBoxMode:=TpvScene3DSkyBoxMode.Sky;
+ fSkyBoxMode:=TpvScene3DEnvironmentMode.Sky;
 
  fEnvironmentTextureImage:=nil;
 

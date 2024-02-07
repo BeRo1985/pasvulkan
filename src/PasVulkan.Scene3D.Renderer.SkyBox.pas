@@ -322,11 +322,11 @@ begin
  PushConstants.SkyBoxBrightnessFactor:=fScene3D.SkyBoxBrightnessFactor;
  PushConstants.WidthHeight:=(fWidth and $ffff) or (fHeight shl 16);
 
- if assigned(fScene3D.SkyBoxTextureImage) then begin
+ if (fScene3D.SkyBoxMode=TpvScene3DEnvironmentMode.Texture) and assigned(fScene3D.SkyBoxTextureImage) then begin
   PushConstants.Mode:=0;
  end else begin
   case fScene3D.SkyBoxMode of
-   TpvScene3DSkyBoxMode.Starlight:begin
+   TpvScene3DEnvironmentMode.Starlight:begin
     PushConstants.Mode:=1;
    end;
    else begin

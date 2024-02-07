@@ -170,6 +170,7 @@ type TpvScene3DRenderer=class;
        fGlobalIlluminationVoxelCountCascades:TpvInt32;
        fGlobalIlluminationVoxelCountBounces:TpvInt32;
       private
+       fSkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap;
        fEnvironmentSphericalHarmonicsBuffer:TpvVulkanBuffer;
        fEnvironmentSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer;
@@ -251,6 +252,7 @@ type TpvScene3DRenderer=class;
        property GlobalIlluminationVoxelCountCascades:TpvInt32 read fGlobalIlluminationVoxelCountCascades write SetGlobalIlluminationVoxelCountCascades;
        property GlobalIlluminationVoxelCountBounces:TpvInt32 read fGlobalIlluminationVoxelCountBounces write SetGlobalIlluminationVoxelCountBounces;
       published
+       property SkyBoxCubeMap:TpvScene3DRendererEnvironmentCubeMap read fSkyBoxCubeMap;
        property EnvironmentCubeMap:TpvScene3DRendererEnvironmentCubeMap read fEnvironmentCubeMap;
        property EnvironmentSphericalHarmonicsBuffer:TpvVulkanBuffer read fEnvironmentSphericalHarmonicsBuffer;
        property EnvironmentSphericalHarmonicsMetaDataBuffer:TpvVulkanBuffer read fEnvironmentSphericalHarmonicsMetaDataBuffer;
@@ -1012,7 +1014,7 @@ var Stream:TStream;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
     EmptySSAOCubeMapTextureData:TpvUInt8DynamicArray;
-    EnvironmentTexture:TpvVulkanTexture;
+    SkyBoxTexture,EnvironmentTexture:TpvVulkanTexture;
 begin
 
  if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
@@ -1028,6 +1030,30 @@ begin
 
  if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
   fScene3D.EnvironmentTextureImage.Unload;
+ end;
+
+ if (fScene3D.SkyBoxTextureImage=fScene3D.EnvironmentTextureImage) and
+    (fScene3D.SkyBoxMode=fScene3D.EnvironmentMode) then begin
+
+  fSkyBoxCubeMap:=fEnvironmentCubeMap;
+
+ end else begin
+
+  if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
+   fScene3D.SkyBoxTextureImage.Upload;
+   SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
+  end else begin
+   SkyBoxTexture:=nil;
+  end;
+
+  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode);
+  fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyBoxCubeMap.Image');
+  fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyBoxCubeMap.ImageView');
+
+  if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
+   fScene3D.SkyBoxTextureImage.Unload;
+  end;
+
  end;
 
  fEnvironmentSphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
@@ -1577,6 +1603,12 @@ begin
  FreeAndNil(fEnvironmentSphericalHarmonicsBuffer);
 
  FreeAndNil(fEnvironmentSphericalHarmonicsMetaDataBuffer);
+
+ if assigned(fSkyBoxCubeMap) and (fSkyBoxCubeMap<>fEnvironmentCubeMap) then begin
+  FreeAndNil(fSkyBoxCubeMap);
+ end else begin
+  fSkyBoxCubeMap:=nil;
+ end;
 
  FreeAndNil(fEnvironmentCubeMap);
 
