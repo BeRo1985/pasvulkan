@@ -180,7 +180,8 @@
                     lightAttenuation *= 1.0 / (currentDistance * currentDistance);
                     if (light.positionRange.w > 0.0) {
                       float distanceByRange = currentDistance / light.positionRange.w;
-                      lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange * distanceByRange * distanceByRange), 0.0, 1.0);
+                      distanceByRange *= distanceByRange;
+                      lightAttenuation *= clamp(1.0 - (distanceByRange * distanceByRange), 0.0, 1.0);
                     }
                   }
                 }
