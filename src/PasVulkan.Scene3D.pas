@@ -96,12 +96,21 @@ uses {$ifdef Windows}
 
 type EpvScene3D=class(Exception);
 
-     TpvScene3DSkyBoxEnvironmentMode=
+     TpvScene3DSkyBoxMode=
       (
+       Texture,
        Sky,
        Starlight
       );
-     PpvScene3DSkyBoxEnvironmentMode=^TpvScene3DSkyBoxEnvironmentMode;
+     PpvScene3DSkyBoxEnvironmentMode=^TpvScene3DSkyBoxMode;
+
+     TpvScene3DEnvironmentMode=
+      (
+       Texture,
+       Sky,
+       Starlight
+      );
+     PpvScene3DEnvironmentMode=^TpvScene3DEnvironmentMode;
 
      { TpvScene3D }
 
@@ -2973,9 +2982,10 @@ type EpvScene3D=class(Exception);
       private
        fPlanets:TpvScene3DPlanets;
       private
-       fSkyTextureImage:TpvScene3D.TImage;
+       fSkyBoxTextureImage:TpvScene3D.TImage;
+       fSkyBoxMode:TpvScene3DSkyBoxMode;
        fEnvironmentTextureImage:TpvScene3D.TImage;
-       fSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode;
+       fEnvironmentMode:TpvScene3DEnvironmentMode;
       private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
@@ -3155,9 +3165,10 @@ type EpvScene3D=class(Exception);
       public
        property Planets:TpvScene3DPlanets read fPlanets;
       published
-       property SkyTextureImage:TpvScene3D.TImage read fSkyTextureImage write fSkyTextureImage;
+       property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
+       property SkyBoxMode:TpvScene3DSkyBoxMode read fSkyBoxMode write fSkyBoxMode;
        property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
-       property SkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode read fSkyBoxEnvironmentMode write fSkyBoxEnvironmentMode;
+       property EnvironmentMode:TpvScene3DEnvironmentMode read fEnvironmentMode write fEnvironmentMode;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -19762,11 +19773,13 @@ begin
 
  FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
 
- fSkyTextureImage:=nil;
+ fSkyBoxTextureImage:=nil;
+
+ fSkyBoxMode:=TpvScene3DSkyBoxMode.Sky;
 
  fEnvironmentTextureImage:=nil;
 
- fSkyBoxEnvironmentMode:=TpvScene3DSkyBoxEnvironmentMode.Sky;
+ fEnvironmentMode:=TpvScene3DEnvironmentMode.Sky;
 
  fDefaultSampler:=TSampler.Create(ResourceManager,self);
  fDefaultSampler.AssignFromDefault;
@@ -20154,7 +20167,7 @@ begin
 
  FreeAndNil(fEnvironmentTextureImage);
 
- FreeAndNil(fSkyTextureImage);
+ FreeAndNil(fSkyBoxTextureImage);
 
  while fImages.Count>0 do begin
   fImages[fImages.Count-1].Free;

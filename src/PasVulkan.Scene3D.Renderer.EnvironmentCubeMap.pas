@@ -89,7 +89,7 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode=TpvScene3DSkyBoxEnvironmentMode.Sky);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxMode=TpvScene3DSkyBoxMode.Sky);
 
        destructor Destroy; override;
 
@@ -117,7 +117,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aSkyBoxEnvironmentMode:TpvScene3DSkyBoxMode);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -210,7 +210,7 @@ begin
   end;
  end else begin
   case aSkyBoxEnvironmentMode of
-   TpvScene3DSkyBoxEnvironmentMode.Starlight:begin
+   TpvScene3DSkyBoxMode.Starlight:begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('cubemap_starlight_'+FormatVariant+'comp.spv');
     case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
      TVkUInt32(TpvVulkanVendorID.NVIDIA),TVkUInt32(TpvVulkanVendorID.AMD):begin
