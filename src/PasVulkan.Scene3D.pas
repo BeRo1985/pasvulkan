@@ -2974,7 +2974,7 @@ type EpvScene3D=class(Exception);
        fPlanets:TpvScene3DPlanets;
       private
        fSkyTextureImage:TpvScene3D.TImage;
-       fEnvironmentMapTextureImage:TpvScene3D.TImage;
+       fEnvironmentTextureImage:TpvScene3D.TImage;
        fSkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode;
       private
        fCachedVertexRanges:TCachedVertexRanges;
@@ -3156,7 +3156,7 @@ type EpvScene3D=class(Exception);
        property Planets:TpvScene3DPlanets read fPlanets;
       published
        property SkyTextureImage:TpvScene3D.TImage read fSkyTextureImage write fSkyTextureImage;
-       property EnvironmentMapTextureImage:TpvScene3D.TImage read fEnvironmentMapTextureImage write fEnvironmentMapTextureImage;
+       property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
        property SkyBoxEnvironmentMode:TpvScene3DSkyBoxEnvironmentMode read fSkyBoxEnvironmentMode write fSkyBoxEnvironmentMode;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
@@ -19764,7 +19764,7 @@ begin
 
  fSkyTextureImage:=nil;
 
- fEnvironmentMapTextureImage:=nil;
+ fEnvironmentTextureImage:=nil;
 
  fSkyBoxEnvironmentMode:=TpvScene3DSkyBoxEnvironmentMode.Sky;
 
@@ -20152,7 +20152,7 @@ begin
 
  FreeAndNil(fDefaultParticleImage);
 
- FreeAndNil(fEnvironmentMapTextureImage);
+ FreeAndNil(fEnvironmentTextureImage);
 
  FreeAndNil(fSkyTextureImage);
 

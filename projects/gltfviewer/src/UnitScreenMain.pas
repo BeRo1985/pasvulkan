@@ -40,7 +40,7 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Renderer.SkyCubeMap;
+     PasVulkan.Scene3D.Renderer.EnvironmentCubeMap;
 
 type { TScreenMain }
      TScreenMain=class(TpvApplicationScreen)
