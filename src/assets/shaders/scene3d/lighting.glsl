@@ -154,8 +154,10 @@
                 // Just for as reference
                 float innerConeCosinus = uintBitsToFloat(light.metaData.z);
                 float outerConeCosinus = uintBitsToFloat(light.metaData.w);
-                float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);
-                float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
+                float actualCosinus = dot(normalize(light.directionZFar.xyz), -normalizedLightVector);                
+                float angularAttenuation = (actualCosinus > outerConeCosinus) ? 0.0 : ((actualCosinus < innerConeCosinus) ? ((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus))) : 1.0;
+//              float angularAttenuation = mix(0.0, mix((actualCosinus - outerConeCosinus) / (innerConeCosinus - outerConeCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
+//              float angularAttenuation = mix(0.0, mix(smoothstep(outerConeCosinus, innerConeCosinus, actualCosinus), 1.0, step(innerConeCosinus, actualCosinus)), step(outerConeCosinus, actualCosinus));
 #endif
                 lightAttenuation *= angularAttenuation * angularAttenuation;
                 lightDirection = normalizedLightVector;
