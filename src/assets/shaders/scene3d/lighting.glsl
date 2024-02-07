@@ -1,6 +1,7 @@
 #if defined(LIGHTING_GLOBALS)
 
 
+
 #elif defined(LIGHTING_IMPLEMENTATION)
 
 #ifdef LIGHTS
