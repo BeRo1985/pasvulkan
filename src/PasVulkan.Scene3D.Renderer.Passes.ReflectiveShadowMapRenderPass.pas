@@ -292,7 +292,7 @@ begin
 
 {fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer,
                                           fInstance.Renderer.Scene3D,
-                                          fInstance.Renderer.EnvironmentCubeMap.DescriptorImageInfo);//}
+                                          fInstance.Renderer.SkyCubeMap.DescriptorImageInfo);//}
 
 end;
 
