@@ -240,6 +240,9 @@ begin
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,1*fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,1*fInstance.Renderer.CountInFlightFrames);
  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1*fInstance.Renderer.CountInFlightFrames);
+ if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,1*fInstance.Renderer.CountInFlightFrames);
+ end;
  fVulkanDescriptorPool.Initialize;
 
  fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fInstance.Renderer.VulkanDevice);
@@ -268,6 +271,13 @@ begin
                                        1,
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        []);
+ if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  fVulkanDescriptorSetLayout.AddBinding(5,
+                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                        1,
+                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                        []);
+ end;
  fVulkanDescriptorSetLayout.Initialize;
 
  for InFlightFrameIndex:=0 to FrameGraph.CountInFlightFrames-1 do begin
@@ -322,6 +332,17 @@ begin
                                                                  [],
                                                                  false
                                                                 );
+  if fInstance.Renderer.SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   fVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                  0,
+                                                                  1,
+                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                  [],
+                                                                  [fInstance.LuminanceVulkanBuffers[(InFlightFrameIndex+(FrameGraph.CountInFlightFrames-1)) mod FrameGraph.CountInFlightFrames].DescriptorBufferInfo],
+                                                                  [],
+                                                                  false
+                                                                 );
+  end;
   fVulkanDescriptorSets[InFlightFrameIndex].Flush;
  end;
 

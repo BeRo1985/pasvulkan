@@ -24,6 +24,12 @@ layout(set = 0, binding = 3, rg32ui) uniform readonly uimageBuffer uOITImgABuffe
 
 #if defined(MSAA)
 layout(set = 0, binding = 4, r32ui) uniform readonly uimageBuffer uOITImgSBuffer;
+
+layout(set = 0, binding = 5, std430) buffer HistogramLuminanceBuffer {
+  float histogramLuminance;
+  float luminanceFactor; 
+} histogramLuminanceBuffer;
+
 #endif
 
 /* clang-format on */
@@ -112,10 +118,10 @@ void main() {
       }
 #endif
     }
-    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {  //
-      color += ApplyToneMapping(oitMSAAColors[oitMSAASampleIndex]);                         //
+    for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {                     //
+      color += ApplyToneMapping(oitMSAAColors[oitMSAASampleIndex] * histogramLuminanceBuffer.luminanceFactor); //
     }
-    color = ApplyInverseToneMapping(color / oitMSAA);
+    color = ApplyInverseToneMapping(color / oitMSAA) / histogramLuminanceBuffer.luminanceFactor;
 #else
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
       vec4 sampleColor = vec4(0.0);
@@ -126,9 +132,9 @@ void main() {
           blend(sampleColor, fragmentColor);                                                                                      //
         }
       }
-      color += ApplyToneMapping(sampleColor);
+      color += ApplyToneMapping(sampleColor * histogramLuminanceBuffer.luminanceFactor);
     }
-    color = ApplyInverseToneMapping(color / float(oitMSAA));
+    color = ApplyInverseToneMapping(color / float(oitMSAA)) / histogramLuminanceBuffer.luminanceFactor;
 #endif
 #else
     for (int oitFragmentIndex = 0; oitFragmentIndex < oitCountFragments; oitFragmentIndex++) {                                //
@@ -145,9 +151,9 @@ void main() {
   {
     vec4 sampleColor = vec4(0.0);  
     for (int oitMSAASampleIndex = 0; oitMSAASampleIndex < oitMSAA; oitMSAASampleIndex++) {
-      sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputTransparent, oitMSAASampleIndex));
+      sampleColor += ApplyToneMapping(subpassLoad(uSubpassInputTransparent, oitMSAASampleIndex) * histogramLuminanceBuffer.luminanceFactor);
     }
-    blend(color, ApplyInverseToneMapping(sampleColor / oitMSAA));   
+    blend(color, ApplyInverseToneMapping(sampleColor / float(oitMSAA)) / histogramLuminanceBuffer.luminanceFactor);   
   }
 #else
   blend(color, subpassLoad(uSubpassInputTransparent));
