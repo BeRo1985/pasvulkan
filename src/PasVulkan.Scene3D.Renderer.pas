@@ -407,9 +407,9 @@ begin
 
  fToneMappingMode:=TpvScene3DRendererToneMappingMode.Auto;
 
- fMinLogLuminance:=-7.5;
+ fMinLogLuminance:=-8.0;
 
- fMaxLogLuminance:=9.0;
+ fMaxLogLuminance:=8.0;
 
  fMaxMSAA:=0;
 
