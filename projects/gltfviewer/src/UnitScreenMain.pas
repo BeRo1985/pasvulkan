@@ -214,7 +214,7 @@ begin
 
  fRendererInstance.UseDebugBlit:=false;
 
- fRendererInstance.LuminanceFactor:=4.0;
+ fRendererInstance.LuminanceFactor:=2.0;
 
  fRendererInstance.Prepare;
 
