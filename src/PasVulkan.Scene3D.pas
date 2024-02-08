@@ -21344,6 +21344,7 @@ var StackItem:PStackItem;
     LightMetaInfo:TpvScene3D.PLightMetaInfo;
     InnerConeAngleCosinus,OuterConeAngleCosinus:TpvScalar;
     Stack:TStack;
+    Intensity:TpvFloat;
 begin
  aLightItemArray.Count:=0;
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
@@ -21368,7 +21369,36 @@ begin
        LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
        LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
        LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-       LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Light.fDataPointer^.fIntensity*0.5); // *0.5 because bi-luxs instead lux
+       case Light.fDataPointer^.Type_ of
+        TpvScene3D.TLightData.TType.Directional,
+        TpvScene3D.TLightData.TType.PrimaryDirectional:begin
+         // It is already in lux, nothing to do.
+         Intensity:=Light.fDataPointer^.fIntensity;
+        end;
+        TpvScene3D.TLightData.TType.Point:begin
+         // Intensity specified directly in candela, no conversion needed
+         Intensity:=Light.fDataPointer^.fIntensity;
+         // When the input value would be in lux:
+         // Intensity:=Light.fDataPointer^.fIntensity*(OneOverPI*0.25);
+        end;
+        TpvScene3D.TLightData.TType.Spot:begin
+         // Intensity specified directly in candela, no conversion needed
+         Intensity:=Light.fDataPointer^.fIntensity;
+         // When the input value would be in lux:
+         // Intensity:=Light.fDataPointer^.fIntensity*OneOverPI;
+        end;
+        else begin
+         // Turning unknown light types off in the end effect
+         Intensity:=0.0;
+        end;
+       end;
+       begin
+        // Scale the color to fit into the range of 16-bit floating point numbers,
+        // by converting to bi-lux (factor 0.5), so that the sun can be represented
+        // as 64000 "bi-lux" instead of 120000 lux.
+        Intensity:=Intensity*0.5;
+       end;
+       LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
        LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
        LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);
        LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;
