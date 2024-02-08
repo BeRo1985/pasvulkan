@@ -1028,10 +1028,6 @@ begin
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEnvironmentCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEnvironmentCubeMap.ImageView');
 
- if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
-  fScene3D.EnvironmentTextureImage.Unload;
- end;
-
  if (fScene3D.SkyBoxTextureImage=fScene3D.EnvironmentTextureImage) and
     (fScene3D.SkyBoxMode=fScene3D.EnvironmentMode) then begin
 
@@ -1042,6 +1038,8 @@ begin
   if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
    fScene3D.SkyBoxTextureImage.Upload;
    SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
+  end else if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
+   SkyBoxTexture:=fScene3D.EnvironmentTextureImage.Texture;
   end else begin
    SkyBoxTexture:=nil;
   end;
@@ -1054,6 +1052,10 @@ begin
    fScene3D.SkyBoxTextureImage.Unload;
   end;
 
+ end;
+
+ if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
+  fScene3D.EnvironmentTextureImage.Unload;
  end;
 
  fEnvironmentSphericalHarmonicsBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
