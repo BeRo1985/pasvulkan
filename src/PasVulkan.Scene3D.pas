@@ -21394,8 +21394,8 @@ begin
        end;
        begin
         // Scale the color to fit into the range of 16-bit floating point numbers,
-        // by converting to bi-lux (factor 0.5), so that the sun can be represented
-        // as 64000 "bi-lux" instead of 120000 lux.
+        // by halfing the value, so that the sun can be represented as 64000 "bi-lux"
+        // instead of 120000 lux.
         Intensity:=Intensity*0.5;
        end;
        LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
