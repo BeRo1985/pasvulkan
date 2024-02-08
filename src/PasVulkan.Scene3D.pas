@@ -7410,7 +7410,7 @@ begin
      Radius:=Data^.fRange;
     end else begin
      // lightAttenuation *= 1.0 / (currentDistance * currentDistance);
-     Luminance:=Data^.Color.Dot(LinearRGBLuminance);
+     Luminance:=Data^.fColor.Dot(LinearRGBLuminance)*Data^.fIntensity;
      if Luminance>1e-7 then begin
       Radius:=Threshold/Luminance;
       if Radius>1e-7 then begin
@@ -21368,7 +21368,7 @@ begin
        LightItem^.OuterConeCosinus:=OuterConeAngleCosinus;}
        LightItem^.LightAngleScale:=1.0/Max(1e-5,InnerConeAngleCosinus-OuterConeAngleCosinus);
        LightItem^.LightAngleOffset:=-(OuterConeAngleCosinus*LightItem^.LightAngleScale);
-       LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Light.fDataPointer^.fIntensity);
+       LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Light.fDataPointer^.fIntensity*0.5); // *0.5 because bi-luxs instead lux
        LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
        LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);
        LightItem^.ShadowMapMatrix:=TpvMatrix4x4.Identity;

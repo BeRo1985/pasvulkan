@@ -38,11 +38,11 @@ void main() {
         acos(direction.y) / 3.1415926535897932384626433832795
       ), 
       0
-    );
+    ) * vec2(0.5, 1.0).xxxy; // Scale the color to fit into the range of 16-bit floating point numbers, by converting to half lux, so that the sun can be represented as 64000 "bi-lux" instead of 120000 lux.
 #ifdef USE_RGB9E5
     imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(c.xyz)));
 #else    
-    imageStore(uDestinationTexture, uvw, c);
+    imageStore(uDestinationTexture, uvw, clamp(c, vec4(-65504.0), vec4(65504.0))); // Clamp to the range of 16-bit floating point numbers.
 #endif
   }
 }

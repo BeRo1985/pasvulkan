@@ -143,7 +143,7 @@ vec4 atmosphereGet(const in vec3 rayOrigin, const in vec3 rayDirection, out vec3
   return vec4(totalInscattering * atmosphereBrightness, dot(minimumTransmittance, vec3(1.0 / 3.0)));           
 }
 #else
-const float luxScale = 0.5;//1e-4;
+const float luxScale = 1.0;//1e-4;
 const float planetScale = 1e0;
 const float planetInverseScale = 1.0 / planetScale;
 const float cameraScale = 1e-0 * planetScale;
@@ -437,12 +437,12 @@ void main() {
       }
     }
 
-    vec4 outputColor = vec4(inscattering, 1.0);
+    vec4 outputColor = vec4(inscattering * 0.5, 1.0); // scale down to "bi-lux" for the 16-bit floating point format, where a bi-lux is 2 lux 
 
 #ifdef USE_RGB9E5
     imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(outputColor.xyz)));
 #else    
-    imageStore(uDestinationTexture, uvw, outputColor);
+    imageStore(uDestinationTexture, uvw, clamp(outputColor, vec4(-65504.0), vec4(65504.0))); // Clamp to the range of 16-bit floating point numbers.
 #endif
 
   }
