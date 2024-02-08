@@ -409,7 +409,7 @@ begin
 
  fMinLogLuminance:=-8.0;
 
- fMaxLogLuminance:=7.5;
+ fMaxLogLuminance:=7.0;
 
  fMaxMSAA:=0;
 
