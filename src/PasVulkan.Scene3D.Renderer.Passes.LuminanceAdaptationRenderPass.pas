@@ -78,10 +78,6 @@ uses SysUtils,
 
 type { TpvScene3DRendererPassesLuminanceAdaptationRenderPass }
      TpvScene3DRendererPassesLuminanceAdaptationRenderPass=class(TpvFrameGraph.TRenderPass)
-      public
-       type TPushConstants=record
-             MinMaxLuminanceFactorExponent:TpvVector4;
-            end;
       private
        fInstance:TpvScene3DRendererInstance;
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -286,7 +282,6 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesLuminanceAdaptationRenderPass.TPushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -384,23 +379,13 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesLuminanceAdaptationRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
-var PushConstants:TpvScene3DRendererPassesLuminanceAdaptationRenderPass.TPushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- PushConstants.MinMaxLuminanceFactorExponent.x:=fInstance.MinimumLuminance;
- PushConstants.MinMaxLuminanceFactorExponent.y:=fInstance.MaximumLuminance;
- PushConstants.MinMaxLuminanceFactorExponent.z:=fInstance.LuminanceFactor;
- PushConstants.MinMaxLuminanceFactorExponent.w:=fInstance.LuminanceExponent;
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,
                                       0,
                                       1,
                                       @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
- aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
-                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
-                                  0,
-                                  SizeOf(TpvScene3DRendererPassesLuminanceAdaptationRenderPass.TPushConstants),
-                                  @PushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);
 end;

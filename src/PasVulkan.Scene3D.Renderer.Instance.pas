@@ -237,7 +237,13 @@ type { TpvScene3DRendererInstance }
             TOrderIndependentTransparencyBuffers=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyBuffer;
             TOrderIndependentTransparencyImages=array[0..MaxInFlightFrames-1] of TpvScene3DRendererOrderIndependentTransparencyImage;
             TLuminanceVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
-            TLuminancePushConstants=record
+            TLuminanceBuffer=packed record
+             HistogramLuminance:TpvFloat;
+             LuminanceFactor:TpvFloat;
+            end;
+            PLuminanceBuffer=^TLuminanceBuffer;
+            TLuminancePushConstants=packed record
+             MinMaxLuminanceFactorExponent:TpvVector4;
              MinLogLuminance:TpvFloat;
              LogLuminanceRange:TpvFloat;
              InverseLogLuminanceRange:TpvFloat;
@@ -3954,6 +3960,7 @@ var InFlightFrameIndex,Index:TpvSizeInt;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
+    LuminanceBuffer:TLuminanceBuffer;
 begin
 
  if assigned(fVirtualReality) then begin
@@ -4428,7 +4435,7 @@ begin
                                                                      TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
 
       fLuminanceVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(Renderer.VulkanDevice,
-                                                                          SizeOf(TpvFloat),
+                                                                          SizeOf(TLuminanceBuffer),
                                                                           TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                                           TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                           [],
@@ -4442,12 +4449,15 @@ begin
                                                                           0,
                                                                           []);
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fLuminanceVulkanBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fLuminanceVulkanBuffers['+IntToStr(InFlightFrameIndex)+']');
-      fLuminanceVulkanBuffers[InFlightFrameIndex].ClearData(Renderer.VulkanDevice.UniversalQueue,
-                                                            UniversalCommandBuffer,
-                                                            UniversalFence,
-                                                            0,
-                                                            SizeOf(TpvFloat),
-                                                            TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
+      LuminanceBuffer.HistogramLuminance:=1.0/9.6;
+      LuminanceBuffer.LuminanceFactor:=1.0;
+      Renderer.VulkanDevice.MemoryStaging.Upload(Renderer.VulkanDevice.UniversalQueue,
+                                                 UniversalCommandBuffer,
+                                                 UniversalFence,
+                                                 LuminanceBuffer,
+                                                 fLuminanceVulkanBuffers[InFlightFrameIndex],
+                                                 0,
+                                                 SizeOf(TLuminanceBuffer));
 
       fLuminanceEvents[InFlightFrameIndex]:=TpvVulkanEvent.Create(Renderer.VulkanDevice);
       fLuminanceEventReady[InFlightFrameIndex]:=false;
@@ -6280,6 +6290,10 @@ begin
                                             0,
                                             SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants));
 
+ fLuminancePushConstants.MinMaxLuminanceFactorExponent.x:=fMinimumLuminance;
+ fLuminancePushConstants.MinMaxLuminanceFactorExponent.y:=fMaximumLuminance;
+ fLuminancePushConstants.MinMaxLuminanceFactorExponent.z:=fLuminanceFactor;
+ fLuminancePushConstants.MinMaxLuminanceFactorExponent.w:=fLuminanceExponent;
  fLuminancePushConstants.MinLogLuminance:=Renderer.MinLogLuminance;
  fLuminancePushConstants.LogLuminanceRange:=Renderer.MaxLogLuminance-Renderer.MinLogLuminance;
  fLuminancePushConstants.InverseLogLuminanceRange:=1.0/fLuminancePushConstants.LogLuminanceRange;

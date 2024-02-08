@@ -18,7 +18,9 @@
 #define BIDIRECTIONAL_TONEMAPPING_VARIANT_JIM_HEJL_RICHARD_BURGESS_DAWSON 4 // http://filmicworlds.com/blog/filmic-tonemapping-operators/ - Also a good tonemapping operator, but it costs also more than the others in terms of calculations for the inverse tonemapping, since it has a square root in it.
 #define BIDIRECTIONAL_TONEMAPPING_VARIANT_UNCHARTED2 5 // http://filmicworlds.com/blog/filmic-tonemapping-operators/ - Also a good tonemapping operator, but it costs also more than the others in terms of calculations for the inverse tonemapping, since it has a square root in it. 
 
-#define BIDIRECTIONAL_TONEMAPPING_VARIANT BIDIRECTIONAL_TONEMAPPING_VARIANT_AMD
+// AMD has black-artefacts at too bright values at MSAA resolving, so it's not used here.
+
+#define BIDIRECTIONAL_TONEMAPPING_VARIANT BIDIRECTIONAL_TONEMAPPING_VARIANT_BRIAN_KARIS 
 
 vec3 ApplyToneMapping(vec3 color){
 #if BIDIRECTIONAL_TONEMAPPING_VARIANT == BIDIRECTIONAL_TONEMAPPING_VARIANT_ACES

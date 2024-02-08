@@ -16,22 +16,29 @@ layout (set = 0, binding = 0, std430) buffer HistogramBuffer {
   uint histogramBuffer[];
 };
 
-layout (set = 0, binding = 1, std430) readonly buffer LastHistogramLuminance {
-  float lastHistogramLuminance;
-};
-
-layout (set = 0, binding = 2, std430) buffer HistogramLuminance {
+layout (set = 0, binding = 1, std430) readonly buffer LastHistogramLuminanceBuffer {
   float histogramLuminance;
-};
+  float luminanceFactor; 
+} lastHistogramLuminanceBuffer;
+
+layout (set = 0, binding = 2, std430) buffer HistogramLuminanceBuffer {
+  float histogramLuminance;
+  float luminanceFactor; 
+} histogramLuminanceBuffer;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
+  
+  vec4 minMaxLuminanceFactorExponent;
+
   float minLogLuminance;
   float logLuminanceRange;
   float inverseLogLuminanceRange;
   float timeCoefficient;
+  
   float minLuminance;
   float maxLuminance;   
   uint countPixels;
+
 } pushConstants;
 
 /* clang-format on */
@@ -73,10 +80,27 @@ void main() {
     newHistogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
 
     // Interpolate between the last and the new histogram luminance over time for smooth transitions
-    newHistogramLuminance = mix(lastHistogramLuminance, newHistogramLuminance, pushConstants.timeCoefficient);
+    newHistogramLuminance = mix(lastHistogramLuminanceBuffer.histogramLuminance, newHistogramLuminance, pushConstants.timeCoefficient);
 
     // again to avoid Infinities and NaNs just for safety                                       
-    histogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
+    float histogramLuminance = histogramLuminanceBuffer.histogramLuminance = (isnan(newHistogramLuminance) || isinf(newHistogramLuminance)) ? 1.0 : newHistogramLuminance;
+
+#if 1
+    float Lmax = 9.6 * histogramLuminance; // optimized from (78 / (0.65 * 100)) * pow(2, log2(histogramLuminance * (100 / 12.5)));
+#else
+    float S = 100.0;
+    float K = 12.5;  
+    float q = 0.65;
+    float EV100 = log2(histogramLuminance * (S / K));
+    float Lmax = (78.0 / (q * S)) * pow(2.0, EV100);
+#endif
+
+    histogramLuminanceBuffer.luminanceFactor = clamp(
+      pow(1.0 / max(1e-4, Lmax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z, 
+      pushConstants.minMaxLuminanceFactorExponent.x, 
+      pushConstants.minMaxLuminanceFactorExponent.y
+    );
+
   }
 
 }
