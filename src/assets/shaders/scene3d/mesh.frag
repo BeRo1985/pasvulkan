@@ -1038,10 +1038,10 @@ void main() {
   vec4 finalColor = vec4(color.xyz * inColor0.xyz, outputAlpha);
 #if !(defined(WBOIT) || defined(MBOIT) || defined(VOXELIZATION))
 #ifndef BLEND 
-  outFragColor = finalColor;
+  outFragColor = vec4(clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0)), finalColor.w);
 #endif
 #ifdef EXTRAEMISSIONOUTPUT
-  outFragEmission = vec4(emissionColor.xyz * inColor0.xyz, outputAlpha);
+  outFragEmission = vec4(clamp(emissionColor.xyz * inColor0.xyz, vec3(-65504.0), vec3(65504.0)), outputAlpha);
 #endif
 #endif
 #endif

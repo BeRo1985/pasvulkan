@@ -134,7 +134,7 @@ void main() {
   float alpha = finalColor.w;
 #if !(defined(WBOIT) || defined(MBOIT))
 #ifndef BLEND 
-  outFragColor = finalColor;
+  outFragColor = vec4(clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0)), finalColor.w);
 #endif
 #endif
 #endif

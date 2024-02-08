@@ -46,7 +46,7 @@ void main() {
     color = vec4((total_transmittance * opaque.xyz) + (((1.0 - total_transmittance) / transparent.w) * vec3(transparent.xyz)), 0.0);
   }
 
-  outColor = color;
+  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), color.w); // Clamp to avoid infinities in the 16-bit floating point
 
 #ifdef MSAA
   // In case of MSAA, a extra resolve pass will generate the final color, together with tone mapping and inverse tone mapping for correct HDR handling,

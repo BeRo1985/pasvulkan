@@ -43,7 +43,7 @@ void main() {
     color = vec4(mix(opaque.xyz, transparent.xyz, transparent.w), (transparent.w < 1e-4) ? 1.0 : 0.0);
   }
 
-  outColor = color;
+  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), color.w);
 
 #ifdef MSAA
   // In case of MSAA, a extra resolve pass will generate the final color, together with tone mapping and inverse tone mapping for correct HDR handling,

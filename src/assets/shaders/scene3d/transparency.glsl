@@ -252,8 +252,9 @@
   if(!additiveBlending){
     finalColor.xyz *= finalColor.w;
   }
+  finalColor.xyz = clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0));
   float weight = min(1.0, fma(max(max(finalColor.x, finalColor.y), max(finalColor.z, finalColor.w)), 40.0, 0.01)) * clamp(depth, 1e-2, 3e3); //clamp(0.03 / (1e-5 + pow(abs(inViewSpacePosition.z) / 200.0, 4.0)), 1e-2, 3e3);
-  outFragWBOITAccumulation = finalColor * weight; 
+  outFragWBOITAccumulation = clamp(finalColor * weight, vec4(-65504.0), vec4(65504.0));
   outFragWBOITRevealage = vec4(finalColor.w);
 
 #elif defined(MBOIT)
@@ -294,9 +295,10 @@
     if(isinf(transmittance_at_depth) || isnan(transmittance_at_depth)){
       transmittance_at_depth = 1.0;
     }
-    outFragColor = additiveBlending ? 
+    vec4 fragColor = additiveBlending ? 
                      (vec4(finalColor.xyz, finalColor.w) * transmittance_at_depth) :         // Additive blending
                      (vec4(finalColor.xyz, 1.0) * (finalColor.w * transmittance_at_depth));  // Premultiplied alpha blending
+    outFragColor = vec4(clamp(fragColor.xyz, vec3(-65504.0), vec3(65504.0)), fragColor.w);
   } 
 #endif
 
@@ -338,6 +340,8 @@
      if(!additiveBlending){
        finalColor.xyz *= finalColor.w;
      }
+
+     finalColor.xyz = clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0));
 
 #ifdef SPINLOCK
     bool oitDone = /*gl_HelperInvocation ||*/ (oitStoreMask == 0);
@@ -455,6 +459,8 @@
     if(!additiveBlending){
       finalColor.xyz *= finalColor.w;
     }
+
+    finalColor.xyz = clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0));
 
 #ifndef IGNORELOCKOIT
     const int oitViewSize = int(uOIT.oitViewPort.z);
@@ -649,6 +655,8 @@
         finalColor.xyz *= finalColor.w;
       }
 
+      finalColor.xyz = clamp(finalColor.xyz, vec3(-65504.0), vec3(65504.0));
+
 #ifdef USE_SPECIALIZATION_CONSTANTS
       float oitTempDepth = imageLoad(uOITImgZBuffer, oitBufferBaseIndex + (oitCountLayers - 1)).x;
 #endif      
@@ -719,7 +727,7 @@
 
 #elif defined(BLEND)
 
-  outFragColor = vec4(finalColor.xyz * (additiveBlending ? 1.0 : finalColor.w), finalColor.w);
+  outFragColor = vec4(clamp(finalColor.xyz * (additiveBlending ? 1.0 : finalColor.w), vec3(-65504.0), vec3(65504.0)), finalColor.w);
 
 #endif
 

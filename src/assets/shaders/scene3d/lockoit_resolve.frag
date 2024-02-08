@@ -184,6 +184,6 @@ void main() {
   temporary.xyz *= temporary.w; // Premultiply alpha for opaque fragments
   blend(color, temporary);
 
-  outColor = vec4(color.xyz, (oitCountFragments == 0) ? 1.0 : 0.0);
+  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), (oitCountFragments == 0) ? 1.0 : 0.0);
   
 }

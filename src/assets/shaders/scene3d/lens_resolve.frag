@@ -90,7 +90,7 @@ void main(){
     lensStar = getLensStar(lensStarTexCoord);
   }
   vec4 lensDirt = getLensDirt(inTexCoord);
-  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(0.0), vec4(65504.0)), 
+  outFragColor = mix(clamp(subpassLoad(uSubpassScene), vec4(-65504.0), vec4(65504.0)), 
                      (
                       ((bloom * lensDirt) * pushConstants.bloomFactor) + 
                       ((lensflares * (lensDirt + lensStar)) * pushConstants.lensflaresFactor)

@@ -50,6 +50,6 @@ void main(){
    color = mix(color, mix(mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), smoothstep(0.5 * inverseInputTextureSize.y, 1.0 * inverseInputTextureSize.y, CoC)), vec3(0.0, 0.0, 1.0), smoothstep(0.5 * inverseInputTextureSize.y, 1.0 * inverseInputTextureSize.y, -CoC)), 0.125);
   }
   
-  outFragColor = vec4(color, 1.0);                                                                                     
+  outFragColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), 1.0);                                                                                     
 
 }

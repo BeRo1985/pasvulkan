@@ -65,5 +65,6 @@ vec4 atmosphereGet(vec3 rayOrigin, vec3 rayDirection){
 }
 
 void main(){
-   outFragColor = atmosphereGet(vec3(0.0), normalize(inPosition));
+   vec4 color = atmosphereGet(vec3(0.0), normalize(inPosition));
+   outFragColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), color.w);
 }

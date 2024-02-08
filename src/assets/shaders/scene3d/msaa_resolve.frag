@@ -38,5 +38,6 @@ void main() {
   for (int i = 0; i < samples; i++) {
     color += ApplyToneMapping(subpassLoad(uSubPassInputMSAA, i) * luminanceFactor);
   }
-  outColor = ApplyInverseToneMapping(color / float(samples)) / luminanceFactor;   
+  color = ApplyInverseToneMapping(color / float(samples)) / luminanceFactor;   
+  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), color.w);
 }

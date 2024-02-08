@@ -60,5 +60,5 @@ void main() {
 
   blend(color, subpassLoad(uSubpassInputOpaque));
 
-  outColor = vec4(color.xyz, hasTransparency ? 0.0 : 1.0);
+  outColor = vec4(clamp(color.xyz, vec3(-65504.0), vec3(65504.0)), hasTransparency ? 0.0 : 1.0);
 }

@@ -288,7 +288,7 @@ void main(){
   } 
 #endif
    
-  outFragColor = c;
+  outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 
 #ifdef VELOCITY
   outVelocity = (inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);
