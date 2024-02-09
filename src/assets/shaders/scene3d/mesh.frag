@@ -324,10 +324,10 @@ vec3 parallaxCorrectedReflection(vec3 reflectionDirection){
 
 #if defined(TRANSMISSION)
 float transmissionFactor = 0.0;
-
 float volumeThickness = 0.0;
-vec3 volumeAttenuationColor = vec3(1.0); 
 float volumeAttenuationDistance = 1.0 / 0.0; // +INF
+vec3 volumeAttenuationColor = vec3(1.0); 
+float volumeDispersion = 0.0;
 #endif
 
 #define ENABLE_ANISOTROPIC
@@ -522,7 +522,7 @@ vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
   return transmittedLight;
 }
 
-vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 f0, vec3 f90, vec3 position, float ior, float thickness, vec3 attenuationColor, float attenuationDistance) {
+vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 f0, vec3 f90, vec3 position, float ior, float thickness, vec3 attenuationColor, float attenuationDistance, float dispersion) {
   vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior);
   vec3 refractedRayExit = position + transmissionRay;
 
@@ -531,7 +531,18 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
   vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
   
   // Sample framebuffer to get pixel the refracted ray hits.
-  vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+  vec3 transmittedLight;
+  if(abs(dispersion) > 1e-7){
+    float realIOR = 1.0 / ior;
+    float iorDispersionSpread = 0.04 * dispersion * (realIOR - 1.0);
+    transmittedLight = vec3(
+      getTransmissionSample(refractionCoords, perceptualRoughness, 1.0 / (realIOR - iorDispersionSpread)).x,
+      getTransmissionSample(refractionCoords, perceptualRoughness, ior).y,
+      getTransmissionSample(refractionCoords, perceptualRoughness, 1.0 / (realIOR + iorDispersionSpread)).z
+    );
+  }else{
+    transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+  }
 
   vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
 
@@ -822,11 +833,14 @@ void main() {
 #if defined(TRANSMISSION)
       if ((flags & (1u << 11u)) != 0u) {
         transmissionFactor = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.y * (((textureFlags.x & (1 << 14)) != 0) ? textureFetch(14, vec4(1.0), false).x : 1.0);  
-      }
-      if ((flags & (1u << 12u)) != 0u) {
-        volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 15)) != 0) ? textureFetch(15, vec4(1.0), false).y : 1.0);  
-        volumeAttenuationDistance = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.w;        
-        volumeAttenuationColor = uintBitsToFloat(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.xyz);        
+        if ((flags & (1u << 12u)) != 0u) {
+          volumeThickness = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.z * (((textureFlags.x & (1 << 15)) != 0) ? textureFetch(15, vec4(1.0), false).y : 1.0);  
+          volumeAttenuationDistance = material.iridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance.w;        
+          volumeAttenuationColor = uintBitsToFloat(material.volumeAttenuationColorAnisotropyStrengthAnisotropyRotation.xyz);        
+        }
+        if((flags & (1u << 14u)) != 0u){
+          volumeDispersion = uintBitsToFloat(material.dispersionUnused.x);
+        }
       }
 #endif
 
@@ -993,7 +1007,8 @@ void main() {
                                                      ior, 
                                                      volumeThickness, 
                                                      volumeAttenuationColor, 
-                                                     volumeAttenuationDistance);        
+                                                     volumeAttenuationDistance,
+                                                     volumeDispersion);        
       }
 #endif
 #endif

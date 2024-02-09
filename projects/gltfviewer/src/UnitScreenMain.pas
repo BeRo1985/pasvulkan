@@ -154,6 +154,8 @@ var Center,Bounds:TpvVector3;
 begin
  inherited Create;
 
+///writeln(SizeOf(TpvScene3D.TMaterial.TShaderData));
+
  fCountInFlightFrames:=pvApplication.CountInFlightFrames;
 
  fOldFPS:=-1;

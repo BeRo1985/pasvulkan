@@ -983,6 +983,10 @@ type EpvScene3D=class(Exception);
                     AnisotropyRotation:TpvFloat;
                     AnisotropyTexture:TTextureReference;
                    end;
+                   TDispersion=record
+                    Active:boolean;
+                    Dispersion:TpvFloat;
+                   end;
                    TShaderData=packed record
                     case boolean of
                      false:(
@@ -996,9 +1000,15 @@ type EpvScene3D=class(Exception);
                       IridescenceThicknessMaximumTransmissionFactorVolumeThicknessFactorVolumeAttenuationDistance:TpvVector4;
                       // uvec4 Begin
                        VolumeAttenuationColor:TpvVector3;
-                       AnisotropyStrength:TpvUInt16;
-                       AnisotropyRotation:TpvUInt16;
+                       AnisotropyStrength:TpvUInt16; // Half float
+                       AnisotropyRotation:TpvUInt16; // Half float
                       // uvec4 End
+                      // uvec4 Dispersion
+                       Dispersion:TpvFloat;
+                       Unused0:TpvUInt32;
+                       Unused1:TpvUInt32;
+                       Unused2:TpvUInt32;
+                      // uvec4 Dispersion End
                       // uvec4 AlphaCutOffFlags begin
                        AlphaCutOff:TpvFloat; // for with uintBitsToFloat on GLSL code side
                        Flags:TpvUInt32;
@@ -1036,6 +1046,7 @@ type EpvScene3D=class(Exception);
                      Transmission:TTransmission;
                      Volume:TVolume;
                      Anisotropy:TAnisotropy;
+                     Dispersion:TDispersion;
                      AnimatedTextureMask:TpvUInt64;
                      function GetTextureTransform(const aTextureIndex:TpvScene3D.TTextureIndex):TpvScene3D.TMaterial.TTextureReference.PTransform;
                    end;
@@ -1117,6 +1128,10 @@ type EpvScene3D=class(Exception);
                       AnisotropyRotation:0.0;
                       AnisotropyTexture:(Texture:nil;TexCoord:0;Transform:(Active:false;Offset:(x:0.0;y:0.0);Rotation:0.0;Scale:(x:1.0;y:1.0)));
                      );
+                     Dispersion:(
+                      Active:false;
+                      Dispersion:0.0;
+                     );
                      AnimatedTextureMask:0;
                     );
                    DefaultShaderData:TShaderData=
@@ -1132,6 +1147,10 @@ type EpvScene3D=class(Exception);
                      VolumeAttenuationColor:(x:1.0;y:1.0;z:1.0);
                      AnisotropyStrength:0;
                      AnisotropyRotation:0;
+                     Dispersion:0.0;
+                     Unused0:0;
+                     Unused1:0;
+                     Unused2:0;
                      AlphaCutOff:1.0;
                      Flags:0;
                      Textures0:0;
@@ -1643,6 +1662,7 @@ type EpvScene3D=class(Exception);
                                    PointerMaterialPBRVolumeAttenuationColor,
                                    PointerMaterialPBRAnisotropyStrength,
                                    PointerMaterialPBRAnisotropyRotation,
+                                   PointerMaterialPBRDispersion,
                                    PointerTextureOffset,
                                    PointerTextureRotation,
                                    PointerTextureScale
@@ -1681,6 +1701,7 @@ type EpvScene3D=class(Exception);
                                     TTarget.PointerMaterialPBRVolumeAttenuationColor,
                                     TTarget.PointerMaterialPBRAnisotropyStrength,
                                     TTarget.PointerMaterialPBRAnisotropyRotation,
+                                    TTarget.PointerMaterialPBRDispersion,
                                     TTarget.PointerTextureOffset,
                                     TTarget.PointerTextureRotation,
                                     TTarget.PointerTextureScale
@@ -2260,6 +2281,7 @@ type EpvScene3D=class(Exception);
                                    DefaultMaterialPBRVolumeAttenuationColor,
                                    DefaultMaterialPBRAnisotropyStrength,
                                    DefaultMaterialPBRAnisotropyRotation,
+                                   DefaultMaterialPBRDispersion,
                                    DefaultTextureOffset,
                                    DefaultTextureRotation,
                                    DefaultTextureScale,
@@ -2288,6 +2310,7 @@ type EpvScene3D=class(Exception);
                                    MaterialPBRVolumeAttenuationColor,
                                    MaterialPBRAnisotropyStrength,
                                    MaterialPBRAnisotropyRotation,
+                                   MaterialPBRDispersion,
                                    TextureOffset,
                                    TextureRotation,
                                    TextureScale
@@ -2324,6 +2347,7 @@ type EpvScene3D=class(Exception);
                                      MaterialPBRVolumeAttenuationColor:TpvVector3;
                                      MaterialPBRAnisotropyStrength:TpvFloat;
                                      MaterialPBRAnisotropyRotation:TpvFloat;
+                                     MaterialPBRDispersion:TpvFloat;
                                     );
                                     0:(
                                      TextureOffset:TpvVector2;
@@ -7117,6 +7141,15 @@ begin
    end;
   end;
 
+  begin
+   JSONItem:=aSourceMaterial.Extensions.Properties['KHR_materials_dispersion'];
+   if assigned(JSONItem) and (JSONItem is TPasJSONItemObject) then begin
+    JSONObject:=TPasJSONItemObject(JSONItem);
+    fData.Dispersion.Active:=true;
+    fData.Dispersion.Dispersion:=TPasJSON.GetNumber(JSONObject.Properties['dispersion'],0.0);
+   end;
+  end;
+
  finally
   fSceneInstance.fTextureListLock.Release;
  end;
@@ -7334,6 +7367,11 @@ begin
    fShaderData.Textures[16]:=(fData.Anisotropy.AnisotropyTexture.Texture.ID and $ffff) or ((fData.Anisotropy.AnisotropyTexture.TexCoord and $f) shl 16);
    fShaderData.TextureTransforms[16]:=fData.Anisotropy.AnisotropyTexture.Transform.ToAlignedMatrix3x2;
   end;
+ end;
+
+ if fData.Dispersion.Active then begin
+  fShaderData.Flags:=fShaderData.Flags or (1 shl 14);
+  fShaderData.Dispersion:=fData.Dispersion.Dispersion;
  end;
 
  TPasMPInterlocked.Increment(fGeneration);
@@ -9099,6 +9137,12 @@ begin
            fTarget:=TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation;
           end;
          end;
+        end else if TargetPointerStrings[3]='KHR_materials_dispersion' then begin
+         if length(TargetPointerStrings)>4 then begin
+          if TargetPointerStrings[4]='dispersion' then begin
+           fTarget:=TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion;
+          end;
+         end;
         end;
        end;
       end;
@@ -9316,7 +9360,8 @@ begin
     TAnimation.TChannel.TTarget.PointerPunctualLightSpotInnerConeAngle,
     TAnimation.TChannel.TTarget.PointerPunctualLightSpotOuterConeAngle,
     TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
-    TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
+    TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+    TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
      OutputScalarArray:=aSourceDocument.Accessors[SourceAnimationSampler.Output].DecodeAsFloatArray(false);
      try
       SetLength(DestinationAnimationChannel.fOutputScalarArray,length(OutputScalarArray));
@@ -12275,6 +12320,7 @@ begin
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+         TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
          TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -14472,6 +14518,7 @@ var Index,AnimatedTextureIndex:TpvSizeInt;
     MaterialPBRVolumeAttenuationColorSum:TpvScene3D.TVector3Sum;
     MaterialPBRAnisotropyStrengthSum:TpvScene3D.TScalarSum;
     MaterialPBRAnisotropyRotationSum:TpvScene3D.TScalarSum;
+    MaterialPBRDispersionSum:TpvScene3D.TScalarSum;
     AnimatedTextureMask:TpvUInt64;
     TextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
     WorkTextureTransform:TpvScene3D.TMaterial.TTextureReference.PTransform;
@@ -14511,6 +14558,7 @@ begin
   MaterialPBRVolumeAttenuationColorSum.Clear;
   MaterialPBRAnisotropyStrengthSum.Clear;
   MaterialPBRAnisotropyRotationSum.Clear;
+  MaterialPBRDispersionSum.Clear;
   begin
    AnimatedTextureMask:=fData.AnimatedTextureMask;
    while AnimatedTextureMask<>0 do begin
@@ -14554,6 +14602,7 @@ begin
       MaterialPBRVolumeAttenuationDistanceSum.Add(fData.Volume.AttenuationDistance,Factor,Additive);
       MaterialPBRAnisotropyStrengthSum.Add(fData.Anisotropy.AnisotropyStrength,Factor,Additive);
       MaterialPBRAnisotropyRotationSum.Add(fData.Anisotropy.AnisotropyRotation,Factor,Additive);
+      MaterialPBRDispersionSum.Add(fData.Dispersion.Dispersion,Factor,Additive);
      end else begin
       // Texture
       TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
@@ -14741,6 +14790,13 @@ begin
         MaterialPBRAnisotropyRotationSum.Add(Overwrite^.MaterialPBRAnisotropyRotation,Factor,Additive);
        end;
       end;
+      if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion in Overwrite^.Flags then begin
+       if TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDispersion in Overwrite^.Flags then begin
+        MaterialPBRDispersionSum.Add(fData.Dispersion.Dispersion,Factor,Additive);
+       end else begin
+        MaterialPBRDispersionSum.Add(Overwrite^.MaterialPBRDispersion,Factor,Additive);
+       end;
+      end;
      end else begin
       // Texture
       TextureTransform:=fData.GetTextureTransform(TpvScene3D.TTextureIndex(Overwrite^.SubIndex));
@@ -14796,6 +14852,7 @@ begin
   fWorkData.Volume.AttenuationDistance:=MaterialPBRVolumeAttenuationDistanceSum.Get(fData.Volume.AttenuationDistance);
   fWorkData.Anisotropy.AnisotropyStrength:=MaterialPBRAnisotropyStrengthSum.Get(fWorkData.Anisotropy.AnisotropyStrength);
   fWorkData.Anisotropy.AnisotropyRotation:=MaterialPBRAnisotropyRotationSum.Get(fWorkData.Anisotropy.AnisotropyRotation);
+  fWorkData.Dispersion.Dispersion:=MaterialPBRDispersionSum.Get(fWorkData.Dispersion.Dispersion);
   begin
    AnimatedTextureMask:=fData.AnimatedTextureMask;
    while AnimatedTextureMask<>0 do begin
@@ -16977,6 +17034,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -17145,13 +17203,18 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyStrength);
              MaterialOverwrite^.MaterialPBRAnisotropyStrength:=Scalar;
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
              ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
-             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.TextureRotation);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation);
              MaterialOverwrite^.MaterialPBRAnisotropyRotation:=Scalar;
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
+             ProcessScalar(Scalar,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
+             Include(MaterialOverwrite^.Flags,TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion);
+             MaterialOverwrite^.MaterialPBRDispersion:=Scalar;
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
              ProcessVector2(Vector2,AnimationChannel,TimeIndices[0],TimeIndices[1],KeyDelta,Factor);
@@ -17444,6 +17507,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+      TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
       TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
@@ -17581,6 +17645,10 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRAnisotropyRotation,
                                                                  TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRAnisotropyRotation];
+            end;
+            TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion:begin
+             MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultMaterialPBRDispersion,
+                                                                 TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.MaterialPBRDispersion];
             end;
             TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset:begin
              MaterialOverwrite^.Flags:=MaterialOverwrite^.Flags+[TpvScene3D.TGroup.TInstance.TMaterial.TMaterialOverwriteFlag.DefaultTextureOffset,
@@ -22777,6 +22845,7 @@ begin
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRVolumeAttenuationColor,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyStrength,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRAnisotropyRotation,
+   TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerMaterialPBRDispersion,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureOffset,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureRotation,
    TpvScene3D.TGroup.TAnimation.TChannel.TTarget.PointerTextureScale:begin
