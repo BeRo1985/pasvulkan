@@ -96,9 +96,10 @@ vec4 atmosphereGet(const in vec3 rayOrigin, const in vec3 rayDirection, out vec3
   const float atmosphereClarity = 8.0;
   const float atmosphereSunDiskSize = 2.0;
   const float atmosphereSunDiskPower = 8.0;
-  const float atmosphereSunDiskBrightness = 10.0;
+  const float atmosphereSunDiskBrightness = 30000.0;
   const float earthRadius = 6371e3; // meters
   const float earthAtmosphereHeight = 100e3; // meters
+  const float dayBrightness = 30000.0;
   const float nightBrightness = 0.015625;        
   const float planetRadius = earthRadius * atmospherePlanetSize; 
   const float planetAtmosphereRadius = planetRadius + (earthAtmosphereHeight * atmosphereHeight);
@@ -115,7 +116,7 @@ vec4 atmosphereGet(const in vec3 rayOrigin, const in vec3 rayDirection, out vec3
   const float sunDiskParameterX = 1.0 / (1.0 + sunDiskParameterY1);  
   const vec4 sunDiskParameters = vec4(sunDiskParameterX, sunDiskParameterX * sunDiskParameterY1, atmosphereSunDiskPower, atmosphereSunDiskBrightness); 
   vec3 totalInscattering = vec3(0.0), maximumExtiniction = vec3(0.0);
-  vec2 passData = vec2(1.0, 1.0);
+  vec2 passData = vec2(dayBrightness, 1.0);
   for(int i = 0; i < 2; i++){
     vec3 lightDirection = (i == 0) ? sunDirection : moonDirection; 
     float a = atmosphereRadius.x * max(rayDirection.y, min(-lightDirection.y, 0.0));
@@ -160,7 +161,7 @@ const float heightScaleOzone = 8.0 * planetScale;
 const float heightScaleAbsorption = 8.0 * planetScale;
 const float planetToSunDistance = 149597870.61 * planetScale;
 const float sunRadius = 696342.0 * planetScale;
-const float sunIntensity = 120000.0 * luxScale;
+const float sunIntensity = 30000.0 * luxScale; // midday sun, otherwise 120000.0 * luxScale when the sun is at the brightest spot
 const float moonRadius = 1737.0 * planetScale;
 const float moonIntensity = 0.3 * luxScale;
 const vec3 scatteringCoefficientRayleigh = vec3(5.8e-3, 1.35e-2, 3.31e-2) * planetInverseScale;
