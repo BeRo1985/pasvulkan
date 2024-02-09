@@ -523,29 +523,47 @@ vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
 }
 
 vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 f0, vec3 f90, vec3 position, float ior, float thickness, vec3 attenuationColor, float attenuationDistance, float dispersion) {
-  vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior);
-  vec3 refractedRayExit = position + transmissionRay;
-
-  // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
-  vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * uView.views[inViewIndex].viewMatrix * vec4(refractedRayExit, 1.0);
-  vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
   
+  vec3 attenuatedColor;
+
   // Sample framebuffer to get pixel the refracted ray hits.
-  vec3 transmittedLight;
   if(abs(dispersion) > 1e-7){
+    
     float realIOR = 1.0 / ior;
+    
     float iorDispersionSpread = 0.04 * dispersion * (realIOR - 1.0);
-    transmittedLight = vec3(
-      getTransmissionSample(refractionCoords, perceptualRoughness, 1.0 / (realIOR - iorDispersionSpread)).x,
-      getTransmissionSample(refractionCoords, perceptualRoughness, ior).y,
-      getTransmissionSample(refractionCoords, perceptualRoughness, 1.0 / (realIOR + iorDispersionSpread)).z
-    );
+    
+    vec3 iorValues = vec3(1.0 / (realIOR - iorDispersionSpread), ior, 1.0 / (realIOR + iorDispersionSpread));
+    
+    for(int i = 0; i < 3; i++){
+      vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, iorValues[i]);
+      vec3 refractedRayExit = position + transmissionRay;
+
+      // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
+      vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * uView.views[inViewIndex].viewMatrix * vec4(refractedRayExit, 1.0);
+      vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
+
+      vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, iorValues[i]);
+
+      attenuatedColor[i] = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance)[i];    
+
+    }
+
   }else{
-    transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+
+    vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior);
+    vec3 refractedRayExit = position + transmissionRay;
+
+    // Project refracted vector on the framebuffer, while mapping to normalized device coordinates.
+    vec4 ndcPos = uView.views[inViewIndex].projectionMatrix * uView.views[inViewIndex].viewMatrix * vec4(refractedRayExit, 1.0);
+    vec2 refractionCoords = fma(ndcPos.xy / ndcPos.w, vec2(0.5), vec2(0.5));
+
+    vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+
+    attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);  
+      
   }
-
-  vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
-
+  
   // Sample GGX LUT to get the specular component.
   float NdotV = clamp(dot(n, v), 0.0, 1.0);
   vec2 brdfSamplePoint = clamp(vec2(NdotV, perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
