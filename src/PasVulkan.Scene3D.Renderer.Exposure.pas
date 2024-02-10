@@ -84,13 +84,16 @@ type TpvScene3DRendererExposure=record
        procedure SetLuminance(const aLuminance:TpvFloat);
        procedure SetIlluminace(const aIlluminace:TpvFloat);
       public
-       procedure SetFromCamera(const aAperture,aShutterSpeed,Sensitivity:TpvFloat);
+       procedure SetFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
+       procedure SetFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
       public 
        property Exposure:TpvFloat read fExposure write SetExposure;
        property EV100:TpvFloat read fEV100 write SetEV100;
        property Luminance:TpvFloat read fLuminance write SetLuminance;
        property Illuminace:TpvFloat read fIlluminace write SetIlluminace;
      end;
+     
+     PpvScene3DRendererExposure=^TpvScene3DRendererExposure;
 
 implementation
 
@@ -234,14 +237,22 @@ begin
  fIlluminace:=aIlluminace;
 end;
 
-procedure TpvScene3DRendererExposure.SetFromCamera(const aAperture,aShutterSpeed,Sensitivity:TpvFloat);
+procedure TpvScene3DRendererExposure.SetFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
 var e:TpvFloat;
 begin
- e:=(((aAperture*aAperture)/aShutterSpeed)*100.0)/Sensitivity;
+ e:=(sqr(aAperture)*100.0)/(aShutterSpeed*aISOSensitivity);
  fExposure:=1.0/(1.2*e);
  fEV100:=Log2(e);
  fLuminance:=e*0.125;
  fIlluminace:=e*2.5;
+end;
+
+procedure TpvScene3DRendererExposure.SetFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
+begin
+ fExposure:=((aFlangeFocalDistance/aFocalLength)*aFNumber)/(PI*4.0);
+ fEV100:=Log2(1.0/(1.2*fExposure));
+ fLuminance:=0.1041666666667/fExposure;
+ fIlluminace:=2.08333333333333/fExposure;
 end;
 
 end.

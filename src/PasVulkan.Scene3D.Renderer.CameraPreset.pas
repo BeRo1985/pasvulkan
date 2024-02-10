@@ -71,7 +71,8 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.VirtualReality,
-     PasVulkan.VirtualFileSystem;
+     PasVulkan.VirtualFileSystem,
+     PasVulkan.Scene3D.Renderer.Exposure;
 
 type { TpvScene3DRendererCameraPreset }
      TpvScene3DRendererCameraPreset=class
