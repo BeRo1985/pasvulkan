@@ -250,6 +250,7 @@ type { TpvScene3DRendererInstance }
              TimeCoefficient:TpvFloat;
              MinLuminance:TpvFloat;
              MaxLuminance:TpvFloat;
+             ManualLMax:TpvFloat;
              CountPixels:TpvUInt32;
             end;
             PLuminancePushConstants=^TLuminancePushConstants;
@@ -6264,7 +6265,10 @@ const MinDeltaTime=1.0/480.0; // 480 Hz
       MaxDeltaTime=1.0/1.0; // 1 Hz
       LN2=0.6931471805599453;
 var t:TpvDouble;
+    CameraPreset:TpvScene3DRendererCameraPreset;
 begin
+
+ CameraPreset:=CameraPresets[aInFlightFrameIndex];
 
  FillChar(fFrustumClusterGridPushConstants,SizeOf(TpvScene3DRendererInstance.TFrustumClusterGridPushConstants),#0);
  fFrustumClusterGridPushConstants.TileSizeX:=fFrustumClusterGridTileSizeX;
@@ -6306,6 +6310,18 @@ begin
  fLuminancePushConstants.TimeCoefficient:=Clamp(1.0-exp(t*(-TwoPI)),0.025,1.0);
  fLuminancePushConstants.MinLuminance:=exp(LN2*Renderer.MinLogLuminance);
  fLuminancePushConstants.MaxLuminance:=exp(LN2*Renderer.MaxLogLuminance);
+ case CameraPreset.ExposureMode of
+  TpvScene3DRendererCameraPreset.TExposureMode.Camera:begin
+   CameraPreset.UpdateExposure;
+   fLuminancePushConstants.ManualLMax:=CameraPreset.Exposure.LMax;
+  end;
+  TpvScene3DRendererCameraPreset.TExposureMode.Manual:begin
+   fLuminancePushConstants.ManualLMax:=CameraPreset.Exposure.LMax;
+  end;
+  else{TpvScene3DRendererCameraPreset.TExposureMode.Auto:}begin
+   fLuminancePushConstants.ManualLMax:=-1.0;
+  end;
+ end;
  fLuminancePushConstants.CountPixels:=fScaledWidth*fScaledHeight*fCountSurfaceViews;
 
  case Renderer.GlobalIlluminationMode of

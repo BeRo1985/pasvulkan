@@ -36,7 +36,8 @@ layout(push_constant, std140, row_major) uniform PushConstants {
   float timeCoefficient;
   
   float minLuminance;
-  float maxLuminance;   
+  float maxLuminance; 
+  float manualLMax;  
   uint countPixels;
 
 } pushConstants;
@@ -156,7 +157,7 @@ void main() {
 #endif
 
     histogramLuminanceBuffer.luminanceFactor = clamp(
-      pow(1.0 / max(1e-4, Lmax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z, 
+      pow(1.0 / max(1e-6, (pushConstants.manualLMax < 0.0) ? Lmax : pushConstants.manualLMax), pushConstants.minMaxLuminanceFactorExponent.w) * pushConstants.minMaxLuminanceFactorExponent.z, 
       pushConstants.minMaxLuminanceFactorExponent.x, 
       pushConstants.minMaxLuminanceFactorExponent.y
     );
