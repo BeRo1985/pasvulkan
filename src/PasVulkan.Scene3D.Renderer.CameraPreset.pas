@@ -115,6 +115,7 @@ type { TpvScene3DRendererCameraPreset }
        fBokehChromaticAberration:TpvFloat;
        fAutoFocus:boolean;
        fExposureMode:TExposureMode;
+       fExposure:TpvScene3DRendererExposure;
        fReset:boolean;
        function GetFieldOfViewAngleRadians:TpvFloat;
        function GetAspectRatio:TpvFloat;
@@ -179,6 +180,9 @@ type { TpvScene3DRendererCameraPreset }
        // Exposure mode
        property ExposureMode:TExposureMode read fExposureMode write fExposureMode;
 
+       // Exposure
+       property Exposure:TpvScene3DRendererExposure read fExposure;
+
        // Reset, when completely new view
        property Reset:boolean read fReset write fReset;
 
@@ -210,12 +214,14 @@ begin
  fBokehChromaticAberration:=0.7;
  fAutoFocus:=true;
  fExposureMode:=TExposureMode.Auto;
+ fExposure:=TpvScene3DRendererExposure.Create;
  fReset:=false;
 end;
 
 destructor TpvScene3DRendererCameraPreset.Destroy;
 begin
  FreeAndNil(fSensorSizeProperty);
+ FreeAndNil(fExposure);
  inherited Destroy;
 end;
 
@@ -237,6 +243,7 @@ begin
  fBokehChromaticAberration:=aFrom.fBokehChromaticAberration;
  fAutoFocus:=aFrom.fAutoFocus;
  fExposureMode:=aFrom.fExposureMode;
+ fExposure.Assign(aFrom.fExposure);
  fReset:=aFrom.fReset;
 end;
 

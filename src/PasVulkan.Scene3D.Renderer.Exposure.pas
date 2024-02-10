@@ -73,7 +73,7 @@ uses SysUtils,
      PasVulkan.VirtualReality,
      PasVulkan.VirtualFileSystem;
 
-type TpvScene3DRendererExposure=record
+type TpvScene3DRendererExposure=class
       private
        fExposure:TpvFloat;
        fEV100:TpvFloat;
@@ -84,6 +84,11 @@ type TpvScene3DRendererExposure=record
        procedure SetLuminance(const aLuminance:TpvFloat);
        procedure SetIlluminace(const aIlluminace:TpvFloat);
       public
+       constructor Create; reintroduce;
+       constructor CreateFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
+       constructor CreateFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
+       destructor Destroy; override;
+       procedure Assign(const aFrom:TpvScene3DRendererExposure);
        procedure SetFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
        procedure SetFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
       public 
@@ -205,6 +210,40 @@ implementation
 //      - Normalizing incident luminance with Lmax for rendering: Pixel Value = L / Lmax
 //
     
+constructor TpvScene3DRendererExposure.Create;
+begin
+ inherited Create;
+ fExposure:=1.0;
+ fEV100:=0.0;
+ fLuminance:=0.0;
+ fIlluminace:=0.0;
+end;
+
+constructor TpvScene3DRendererExposure.CreateFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
+begin
+ inherited Create;
+ SetFromCameraProperties(aAperture,aShutterSpeed,aISOSensitivity);
+end;
+
+constructor TpvScene3DRendererExposure.CreateFromCamera(const aFlangeFocalDistance,aFocalLength,aFNumber:TpvFloat);
+begin
+ inherited Create;
+ SetFromCamera(aFlangeFocalDistance,aFocalLength,aFNumber);
+end;
+
+destructor TpvScene3DRendererExposure.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvScene3DRendererExposure.Assign(const aFrom:TpvScene3DRendererExposure);
+begin
+ fExposure:=aFrom.fExposure;
+ fEV100:=aFrom.fEV100;
+ fLuminance:=aFrom.fLuminance;
+ fIlluminace:=aFrom.fIlluminace;
+end;
+
 procedure TpvScene3DRendererExposure.SetExposure(const aExposure:TpvFloat);
 begin
  fExposure:=aExposure;
