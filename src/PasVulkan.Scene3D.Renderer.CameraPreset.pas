@@ -119,11 +119,11 @@ type { TpvScene3DRendererCameraPreset }
        fReset:boolean;
        function GetFieldOfViewAngleRadians:TpvFloat;
        function GetAspectRatio:TpvFloat;
-       function GetCameraExposure:TpvFloat;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Assign(const aFrom:TpvScene3DRendererCameraPreset);
+       procedure UpdateExposure;
       published
 
        // Field of view, > 0.0 = horizontal and < 0.0 = vertical
@@ -185,8 +185,6 @@ type { TpvScene3DRendererCameraPreset }
 
        // Reset, when completely new view
        property Reset:boolean read fReset write fReset;
-
-       property CameraExposure:TpvFloat read GetCameraExposure;
 
     end;
 
@@ -257,9 +255,9 @@ begin
  result:=fSensorSize.x/fSensorSize.y;
 end;
 
-function TpvScene3DRendererCameraPreset.GetCameraExposure:TpvFloat;
+procedure TpvScene3DRendererCameraPreset.UpdateExposure;
 begin
- result:=((fFlangeFocalDistance/fFocalLength)*fFNumber)/(PI*4.0);
+ fExposure.SetFromCamera(fFlangeFocalDistance,fFocalLength,fFNumber); 
 end;
 
 initialization
