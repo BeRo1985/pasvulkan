@@ -151,6 +151,7 @@ uses PasGLTF,
 constructor TScreenMain.Create;
 var Center,Bounds:TpvVector3;
     CameraRotationX,CameraRotationY:TpvScalar;
+    Stream:TStream;
 begin
  inherited Create;
 
@@ -182,6 +183,43 @@ begin
  fUpdateLock:=TPasMPCriticalSection.Create;
 
  fScene3D:=TpvScene3D.Create(pvApplication.ResourceManager,nil,nil,pvApplication.VulkanDevice,TpvScene3DRenderer.CheckBufferDeviceAddress(pvApplication.VulkanDevice) and false,fCountInFlightFrames);
+
+ fScene3D.EnvironmentMode:=TpvScene3DEnvironmentMode.Texture;
+
+ if pvApplication.Assets.ExistAsset('envmap.hdr') then begin
+  fScene3D.EnvironmentTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,fScene3D);
+  Stream:=pvApplication.Assets.GetAssetStream('envmap.hdr');
+  if assigned(Stream) then begin
+   try
+    fScene3D.EnvironmentTextureImage.AssignFromStream('$envmap$',Stream);
+   finally
+    FreeAndNil(Stream);
+   end;
+  end else begin
+   fScene3D.EnvironmentTextureImage.AssignFromWhiteTexture;
+  end;
+  fScene3D.EnvironmentTextureImage.IncRef;
+  fScene3D.EnvironmentTextureImage.Upload;
+
+  fScene3D.SkyBoxMode:=TpvScene3DEnvironmentMode.Texture;
+
+  if pvApplication.Assets.ExistAsset('skybox.hdr') then begin
+   fScene3D.SkyBoxTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,fScene3D);
+   Stream:=pvApplication.Assets.GetAssetStream('skybox.hdr');
+   if assigned(Stream) then begin
+    try
+     fScene3D.SkyBoxTextureImage.AssignFromStream('$envmap$',Stream);
+    finally
+     FreeAndNil(Stream);
+    end;
+   end else begin
+    fScene3D.SkyBoxTextureImage.AssignFromWhiteTexture;
+   end;
+   fScene3D.SkyBoxTextureImage.IncRef;
+   fScene3D.SkyBoxTextureImage.Upload;
+  end;
+
+ end;
 
  fPrimaryDirectionalLight:=TpvScene3D.TLight.Create(fScene3D);
  fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.PrimaryDirectional;
