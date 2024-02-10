@@ -76,7 +76,13 @@ uses SysUtils,
 type { TpvScene3DRendererCameraPreset }
      TpvScene3DRendererCameraPreset=class
       public
-       type TShaderData=packed record
+       type TExposureMode=
+             (
+              Auto,
+              Camera,
+              Manual
+             );
+            TShaderData=packed record
              SensorSize:TpvVector2;
              FocalLength:TpvFloat;
              FlangeFocalDistance:TpvFloat;
@@ -107,9 +113,11 @@ type { TpvScene3DRendererCameraPreset }
        fHighlightGain:TpvFloat;
        fBokehChromaticAberration:TpvFloat;
        fAutoFocus:boolean;
+       fExposureMode:TExposureMode;
        fReset:boolean;
        function GetFieldOfViewAngleRadians:TpvFloat;
        function GetAspectRatio:TpvFloat;
+       function GetCameraExposure:TpvFloat;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -164,11 +172,16 @@ type { TpvScene3DRendererCameraPreset }
        // Aspect ratio
        property AspectRatio:TpvFloat read GetAspectRatio;
 
-       // AutoFocus
+       // Auto-Focus
        property AutoFocus:boolean read fAutoFocus write fAutoFocus;
+
+       // Exposure mode
+       property ExposureMode:TExposureMode read fExposureMode write fExposureMode;
 
        // Reset, when completely new view
        property Reset:boolean read fReset write fReset;
+
+       property CameraExposure:TpvFloat read GetCameraExposure;
 
     end;
 
@@ -195,6 +208,7 @@ begin
  fHighlightGain:=1.0;
  fBokehChromaticAberration:=0.7;
  fAutoFocus:=true;
+ fExposureMode:=TExposureMode.Auto;
  fReset:=false;
 end;
 
@@ -221,6 +235,7 @@ begin
  fHighlightGain:=aFrom.fHighlightGain;
  fBokehChromaticAberration:=aFrom.fBokehChromaticAberration;
  fAutoFocus:=aFrom.fAutoFocus;
+ fExposureMode:=aFrom.fExposureMode;
  fReset:=aFrom.fReset;
 end;
 
@@ -232,6 +247,11 @@ end;
 function TpvScene3DRendererCameraPreset.GetAspectRatio:TpvFloat;
 begin
  result:=fSensorSize.x/fSensorSize.y;
+end;
+
+function TpvScene3DRendererCameraPreset.GetCameraExposure:TpvFloat;
+begin
+ result:=((fFlangeFocalDistance/fFocalLength)*fFNumber)/(PI*4.0);
 end;
 
 initialization

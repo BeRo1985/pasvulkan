@@ -23,13 +23,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\hamster.glb&quot; --antialiasing-mode msaasmaa"/>
+        <CommandLineParams Value="&quot;\home\bero\Downloads\DispersionIorTest_v2.glb&quot; --antialiasing-mode msaasmaa --depth-of-field-mode none"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="&quot;\home\bero\Projects\GLTF\hamster.glb&quot; --antialiasing-mode msaasmaa"/>
+            <CommandLineParams Value="&quot;\home\bero\Downloads\DispersionIorTest_v2.glb&quot; --antialiasing-mode msaasmaa --depth-of-field-mode none"/>
           </local>
         </Mode0>
       </Modes>
