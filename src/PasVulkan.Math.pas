@@ -16132,7 +16132,8 @@ end;
 
 function Exp2(const aValue:TpvDouble):TpvDouble;
 begin
- result:=Exp(aValue*LN2);
+ result:=Power(2.0,aValue);
+//result:=Exp(aValue*LN2);
 end;
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
