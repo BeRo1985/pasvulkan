@@ -83,6 +83,7 @@ type TpvScene3DRendererExposure=class
        procedure SetEV100(const aEV100:TpvFloat);
        procedure SetLuminance(const aLuminance:TpvFloat);
        procedure SetIlluminace(const aIlluminace:TpvFloat);
+       function GetLMax:TpvFloat;
       public
        constructor Create; reintroduce;
        constructor CreateFromCameraProperties(const aAperture,aShutterSpeed,aISOSensitivity:TpvFloat);
@@ -96,6 +97,7 @@ type TpvScene3DRendererExposure=class
        property EV100:TpvFloat read fEV100 write SetEV100;
        property Luminance:TpvFloat read fLuminance write SetLuminance;
        property Illuminace:TpvFloat read fIlluminace write SetIlluminace;
+       property LMax:TpvFloat read GetLMax;
      end;
      
      PpvScene3DRendererExposure=^TpvScene3DRendererExposure;
@@ -292,6 +294,11 @@ begin
  fEV100:=Log2(1.0/(1.2*fExposure));
  fLuminance:=0.1041666666667/fExposure;
  fIlluminace:=2.08333333333333/fExposure;
+end;
+
+function TpvScene3DRendererExposure.GetLMax:TpvFloat;
+begin
+ result:=1.2*Power(2.0,fEV100);
 end;
 
 end.
