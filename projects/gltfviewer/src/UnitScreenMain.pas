@@ -208,7 +208,7 @@ begin
    Stream:=pvApplication.Assets.GetAssetStream('skybox.hdr');
    if assigned(Stream) then begin
     try
-     fScene3D.SkyBoxTextureImage.AssignFromStream('$envmap$',Stream);
+     fScene3D.SkyBoxTextureImage.AssignFromStream('$skybox$',Stream);
     finally
      FreeAndNil(Stream);
     end;
