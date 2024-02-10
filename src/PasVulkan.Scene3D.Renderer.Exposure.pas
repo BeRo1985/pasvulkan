@@ -258,8 +258,8 @@ procedure TpvScene3DRendererExposure.SetEV100(const aEV100:TpvFloat);
 begin
  fExposure:=1.0/(1.2*Power(2.0,aEV100));
  fEV100:=aEV100; 
- fLuminance:=Power(2.0,fEV100-3.0);
- fIlluminace:=2.5*Power(2.0,fEV100);
+ fLuminance:=Exp2(fEV100-3.0);
+ fIlluminace:=2.5*Exp2(fEV100);
 end;
 
 procedure TpvScene3DRendererExposure.SetLuminance(const aLuminance:TpvFloat);
@@ -298,7 +298,7 @@ end;
 
 function TpvScene3DRendererExposure.GetLMax:TpvFloat;
 begin
- result:=1.2*Power(2.0,fEV100);
+ result:=1.2*Exp2(fEV100);
 end;
 
 end.

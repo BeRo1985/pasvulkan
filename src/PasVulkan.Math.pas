@@ -104,6 +104,8 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
       DEG2RAD=PI/180.0;
       RAD2DEG=180.0/PI;
 
+      LN2=0.6931471805599453;
+
       OnePI=PI;
 
       HalfPI=PI*0.5;
@@ -1548,6 +1550,8 @@ function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
 
 function FloatLerp(const aV1,aV2,aTime:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function DoubleLerp(const aV1,aV2,aTime:TpvDouble):TpvDouble; {$ifdef CAN_INLINE}inline;{$endif}
+
+function Exp2(const aValue:TpvDouble):TpvDouble; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function Cross(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -16124,6 +16128,11 @@ end;
 procedure TpvRect.SetSize(const aSize:TpvVector2);
 begin
  Max:=Min+aSize;
+end;
+
+function Exp2(const aValue:TpvDouble):TpvDouble;
+begin
+ result:=Exp(aValue*LN2);
 end;
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
