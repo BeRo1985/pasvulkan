@@ -467,6 +467,7 @@ type { TpvScene3DRendererInstance }
        fPointerToInFlightFrameStates:PInFlightFrameStates;
        fMeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants;
        fCameraPresets:array[0..MaxInFlightFrames-1] of TpvScene3DRendererCameraPreset;
+       fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
       private
        fVertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray;
@@ -688,6 +689,7 @@ type { TpvScene3DRendererInstance }
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
       published
        property CameraPresets[const aInFlightFrameIndex:TpvInt32]:TpvScene3DRendererCameraPreset read GetCameraPreset;
+       property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
        property InFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps read fInFlightFrameMustRenderGIMaps;
       public
@@ -1566,6 +1568,8 @@ begin
   fCameraPresets[InFlightFrameIndex]:=TpvScene3DRendererCameraPreset.Create;
  end;
 
+ fCameraPreset:=TpvScene3DRendererCameraPreset.Create;
+
  fUseDebugBlit:=false;
 
  fFrustumClusterGridSizeX:=16;
@@ -1577,6 +1581,8 @@ begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
    fCameraPresets[InFlightFrameIndex].FieldOfView:=fVirtualReality.FOV;
   end;
+
+  fCameraPreset.FieldOfView:=fVirtualReality.FOV;
 
   fZNear:=fVirtualReality.ZNear;
 
@@ -1591,6 +1597,8 @@ begin
   for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
    fCameraPresets[InFlightFrameIndex].FieldOfView:=53.13010235415598;
   end;
+
+  fCameraPreset.FieldOfView:=53.13010235415598;
 
   fZNear:=-0.01;
 
@@ -2009,6 +2017,8 @@ begin
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   FreeAndNil(fCameraPresets[InFlightFrameIndex]);
  end;
+
+ FreeAndNil(fCameraPreset);
 
  fScene3D.RendererInstanceIDManager.FreeID(fID+1);
 
@@ -3995,6 +4005,8 @@ begin
   fCameraPresets[InFlightFrameIndex].MaxCoC:=((fCameraPresets[InFlightFrameIndex].BlurKernelSize*4.0)+6.0)/fScaledHeight;
  end;
 
+ fCameraPreset.MaxCoC:=((fCameraPresets[InFlightFrameIndex].BlurKernelSize*4.0)+6.0)/fScaledHeight;
+
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
  fFrameGraph.SetSwapChain(pvApplication.VulkanSwapChain,
@@ -5604,6 +5616,8 @@ var Index:TpvSizeInt;
     ViewMatrix:TpvMatrix4x4;
     FieldOfView:TpvFloat;
 begin
+
+ fCameraPresets[aInFlightFrameIndex].Assign(fCameraPreset);
 
  InFlightFrameState:=@fInFlightFrameStates[aInFlightFrameIndex];
 
