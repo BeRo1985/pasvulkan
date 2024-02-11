@@ -2969,6 +2969,7 @@ type EpvScene3D=class(Exception);
        fCountInFlightFrameParticleVertices:array[0..MaxInFlightFrames-1] of TpvUInt32;
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
+       fLightIntensityFactor:TpvScalar;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -3159,6 +3160,7 @@ type EpvScene3D=class(Exception);
        property DebugPrimitiveVertexDynamicArrays:TpvScene3D.TDebugPrimitiveVertexDynamicArrays read fDebugPrimitiveVertexDynamicArrays;
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
+       property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
       public
        property DefaultSampler:TSampler read fDefaultSampler;
        property DefaultMipMapSampler:TSampler read fDefaultMipMapSampler;
@@ -19772,6 +19774,8 @@ begin
 
  fSkyBoxBrightnessFactor:=1.0;
 
+ fLightIntensityFactor:=1.0;
+
  fTechniques:=TpvTechniques.Create;
 
  fCullObjectIDLock:=TPasMPSlimReaderWriterLock.Create;
@@ -21459,6 +21463,9 @@ begin
          // Turning unknown light types off in the end effect
          Intensity:=0.0;
         end;
+       end;
+       begin
+        Intensity:=Intensity*fLightIntensityFactor;
        end;
        begin
         // Scale the color to fit into the range of 16-bit floating point numbers,
