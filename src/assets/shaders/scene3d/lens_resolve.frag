@@ -85,7 +85,9 @@ void main(){
   vec4 lensStar = vec4(0.0);
   vec2 texCoord = ((inTexCoord - vec2(0.5)) * vec2(pushConstants.aspectRatio, 1.0) * 0.5) + vec2(0.5);
   if(pushConstants.lensflaresFactor > 1e-7){
-    vec2 lensStarTexCoord = (mat2(cos(pushConstants.lensStarRotationAngle), -sin(pushConstants.lensStarRotationAngle), sin(pushConstants.lensStarRotationAngle), cos(pushConstants.lensStarRotationAngle)) * (texCoord - vec2(0.5))) + vec2(0.5);
+//  vec2 lensStarTexCoord = (mat2(cos(pushConstants.lensStarRotationAngle), -sin(pushConstants.lensStarRotationAngle), sin(pushConstants.lensStarRotationAngle), cos(pushConstants.lensStarRotationAngle)) * (texCoord - vec2(0.5))) + vec2(0.5);
+    vec2 sinCos = sin(vec2(pushConstants.lensStarRotationAngle) + vec2(0.0, 1.5707963267948966));
+    vec2 lensStarTexCoord = (mat2(sinCos.y, -sinCos.x, sinCos.x, sinCos.y) * (texCoord - vec2(0.5))) + vec2(0.5);
     lensflares = getLensFlare();
     lensStar = getLensStar(lensStarTexCoord);
   }
