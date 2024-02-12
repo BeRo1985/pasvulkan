@@ -6,12 +6,7 @@
 
 layout(location = 0) in vec2 inTexCoord;
 
-#ifdef PASS1
-layout(location = 0) out vec4 outFragColor0;
-layout(location = 1) out vec4 outFragColor1;
-#else
 layout(location = 0) out vec4 outFragColor;
-#endif
 
 layout(push_constant) uniform PushConstants {
   float bokehChromaticAberration;
