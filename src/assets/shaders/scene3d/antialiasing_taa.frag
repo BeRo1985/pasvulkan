@@ -143,7 +143,7 @@ void main() {
         // Variance clipping ("An Excursion in Temporal Supersampling")
         vec4 m0 = currentSamples[0],
             m1 = currentSamples[0] * currentSamples[0];   
-        for(int i = 1; i < 9; ++i) {
+        for(int i = 1; i < 9; i++) {
           vec4 currentSample = currentSamples[i]; 
           m0 += currentSample;
           m1 += currentSample * currentSample;
