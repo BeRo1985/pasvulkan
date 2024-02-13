@@ -924,7 +924,7 @@ uses PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass1RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldGatherPass2RenderPass,
      PasVulkan.Scene3D.Renderer.Passes.DepthOfFieldResolveRenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.UpsamplingRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.ResamplingRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.LensDownsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensUpsampleComputePass,
      PasVulkan.Scene3D.Renderer.Passes.LensResolveRenderPass,
@@ -1026,7 +1026,7 @@ type TpvScene3DRendererInstancePasses=class
        fDepthOfFieldGatherPass1RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass1RenderPass;
        fDepthOfFieldGatherPass2RenderPass:TpvScene3DRendererPassesDepthOfFieldGatherPass2RenderPass;
        fDepthOfFieldResolveRenderPass:TpvScene3DRendererPassesDepthOfFieldResolveRenderPass;
-       fUpsamplingRenderPass:TpvScene3DRendererPassesUpsamplingRenderPass;
+       fResamplingRenderPass:TpvScene3DRendererPassesResamplingRenderPass;
        fLensDownsampleComputePass:TpvScene3DRendererPassesLensDownsampleComputePass;
        fLensUpsampleComputePass:TpvScene3DRendererPassesLensUpsampleComputePass;
        fLensResolveRenderPass:TpvScene3DRendererPassesLensResolveRenderPass;
@@ -3579,7 +3579,7 @@ begin
  end; //*)
 
  if not SameValue(fSizeFactor,1.0) then begin
-  TpvScene3DRendererInstancePasses(fPasses).fUpsamplingRenderPass:=TpvScene3DRendererPassesUpsamplingRenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fResamplingRenderPass:=TpvScene3DRendererPassesResamplingRenderPass.Create(fFrameGraph,self);
  end;
 
  if not assigned(VirtualReality) then begin
