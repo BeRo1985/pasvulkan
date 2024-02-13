@@ -176,7 +176,7 @@ void main() {
                   mix(historySample, current, mix(pushConstants.translucentCoefficient, pushConstants.opaqueCoefficient, clamp(currentSamples[4].w, 0.0, 1.0))), 
                   clamp(pushConstants.mixCoefficient, 0.0, 1.0)); 
 
-      color = clamp(Untonemap(YCoCgToRGB(color)), vec4(0.0), vec4(65536.0));    
+      color = clamp(Untonemap(YCoCgToRGB(color)), vec4(0.0), vec4(65504.0));    
 
     }
 
