@@ -21,9 +21,6 @@ const mat3 LinearSRGBToLinearRec2020Matrix = mat3(
 	0.6275074, 0.069107726, 0.01639648,
 	0.32927772, 0.91950446, 0.08802433,
 	0.043303847, 0.011359092, 0.8955135
-/*0.6274045, 0.069097506, 0.016391103, // AI-hallucinated values, amazing how close they are to the real values above.
-	0.3292821, 0.9194877, 0.08821737,
-	0.0433134, 0.011610948, 0.8956056*/
 #else
   // From https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-BT.2407-2017-PDF-E.pdf
 	vec3(0.6274, 0.0691, 0.0164),
