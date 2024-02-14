@@ -2970,6 +2970,7 @@ type EpvScene3D=class(Exception);
        fVulkanParticleVertexBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fSkyBoxBrightnessFactor:TpvScalar;
        fLightIntensityFactor:TpvScalar;
+       fEmissiveIntensityFactor:TpvScalar;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -3161,6 +3162,7 @@ type EpvScene3D=class(Exception);
        property Particles:PParticles read fPointerToParticles;
        property SkyBoxBrightnessFactor:TpvScalar read fSkyBoxBrightnessFactor write fSkyBoxBrightnessFactor;
        property LightIntensityFactor:TpvScalar read fLightIntensityFactor write fLightIntensityFactor;
+       property EmissiveIntensityFactor:TpvScalar read fEmissiveIntensityFactor write fEmissiveIntensityFactor;
       public
        property DefaultSampler:TSampler read fDefaultSampler;
        property DefaultMipMapSampler:TSampler read fDefaultMipMapSampler;
@@ -7275,7 +7277,7 @@ begin
  fShaderData.EmissiveFactor[0]:=fData.EmissiveFactor[0];
  fShaderData.EmissiveFactor[1]:=fData.EmissiveFactor[1];
  fShaderData.EmissiveFactor[2]:=fData.EmissiveFactor[2];
- fShaderData.EmissiveFactor[3]:=fData.EmissiveFactor[3];
+ fShaderData.EmissiveFactor[3]:=fData.EmissiveFactor[3]*fSceneInstance.fEmissiveIntensityFactor;
 
  if fData.PBRSheen.Active then begin
   fShaderData.Flags:=fShaderData.Flags or (1 shl 7);
@@ -19775,6 +19777,8 @@ begin
  fSkyBoxBrightnessFactor:=1.0;
 
  fLightIntensityFactor:=1.0;
+
+ fEmissiveIntensityFactor:=1.0;
 
  fTechniques:=TpvTechniques.Create;
 
