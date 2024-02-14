@@ -110,7 +110,7 @@
                     // This gives better results than fading by view depth, which is used often elsewhere, where each 
                     // cascaded shadow map slice has a different depth range.
                     vec3 edgeFactor = clamp((clamp(abs(shadowUVW), vec3(0.0), vec3(1.0)) - vec3(0.8)) * 5.0, vec3(0.0), vec3(1.0)); 
-                    float factor = max(edgeFactor.x, max(edgeFactor.y, edgeFactor.z));
+                    float factor = clamp(max(edgeFactor.x, max(edgeFactor.y, edgeFactor.z)) * 1.05, 0.0, 1.0); // 5% over the edgeFactor for reducing the shadow map transition artefacts at the cascaded shadow map slice borders.
                     if(factor > 0.0){
                       // The current fragment is inside of the current cascaded shadow map slice, but also inside of the next one.
                       // So fade between the two shadow map slices. But notice that nextShadow can also -1.0, when the current fragment
@@ -125,7 +125,7 @@
                     shadow = 1.0; // The current fragment is outside of the cascaded shadow map range, so use no shadow then instead.
                   } 
 
-                  lightAttenuation *= shadow;
+                  lightAttenuation *= clamp(shadow, 0.0, 1.0); // Clamp just for safety, should not be necessary, but don't hurt either.
                   break;
                 }
               }
