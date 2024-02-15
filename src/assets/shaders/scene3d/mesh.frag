@@ -759,6 +759,7 @@ void main() {
 
 #undef UseGeometryRoughness
 #ifdef UseGeometryRoughness
+
       const float minimumRoughness = 0.0525;
       float geometryRoughness;
       {
@@ -767,7 +768,9 @@ void main() {
       }
 
       perceptualRoughness = min(max(perceptualRoughness, minimumRoughness) + geometryRoughness, 1.0);
-#else        
+
+#else 
+
       // Vlachos 2015, "Advanced VR Rendering"
       // Kaplanyan 2016, "Stable specular highlights"
       // Tokuyoshi 2017, "Error Reduction and Simplification for Shading Anti-Aliasing"
@@ -784,8 +787,10 @@ void main() {
         const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
         vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
         kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
-        perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
       }
+
+      perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
+
 #endif
 
       float alphaRoughness = perceptualRoughness * perceptualRoughness;
@@ -879,24 +884,7 @@ void main() {
 #ifdef UseGeometryRoughness
         sheenRoughness = min(max(sheenRoughness, minimumRoughness) + geometryRoughness, 1.0);
 #else        
-        // Vlachos 2015, "Advanced VR Rendering"
-        // Kaplanyan 2016, "Stable specular highlights"
-        // Tokuyoshi 2017, "Error Reduction and Simplification for Shading Anti-Aliasing"
-        // Tokuyoshi and Kaplanyan 2019, "Improved Geometric Specular Antialiasing"
-        // Tokuyoshi and Kaplanyan 2021, "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
-        // ===========================================================================================================
-        // In the original paper, this implementation is intended for deferred rendering, but here it is also used 
-        // for forward rendering (as described in Tokuyoshi and Kaplanyan 2019 and 2021). This is mainly because 
-        // the forward version requires an expensive transformation of the half-vector by the tangent frame for each
-        // light. Thus, this is an approximation based on world-space normals, but it works well enough for what is 
-        // needed and is an clearly improvement over the implementation based on Vlachos 2015.
-        float kernelRoughness;
-        {
-          const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
-          vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
-          kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
-          sheenRoughness = sqrt(clamp((sheenRoughness * sheenRoughness) + kernelRoughness, 0.0, 1.0));
-        }
+        sheenRoughness = sqrt(clamp((sheenRoughness * sheenRoughness) + kernelRoughness, 0.0, 1.0));
 #endif
         sheenRoughness = max(sheenRoughness, 1e-7);
       }
@@ -925,9 +913,7 @@ void main() {
 #ifdef UseGeometryRoughness        
         clearcoatRoughness = min(max(clearcoatRoughness, minimumRoughness) + geometryRoughness, 1.0);
 #else
-        {
-          clearcoatRoughness = sqrt(clamp((clearcoatRoughness * clearcoatRoughness) + kernelRoughness, 0.0, 1.0));
-        }
+        clearcoatRoughness = sqrt(clamp((clearcoatRoughness * clearcoatRoughness) + kernelRoughness, 0.0, 1.0));
 #endif
       }
 
