@@ -26,9 +26,11 @@ layout(set = 0, binding = 1) uniform sampler2DArray uPredicationTexture;
 float colorEdgeMetric(vec3 a, vec3 b){
 #if 0
   // Weighted color edge detection, idea from CMAA2, which needs to be converted to sRGB space first for better human perception
-  return dot(abs(convertLinearRGBToSRGB(a) - convertLinearRGBToSRGB(b)), vec3(0.229, 0.587, 0.114)); 
+  #define ConvertColorSpace(x) convertLinearRGBToSRGB(x) // Convert to sRGB space outside this function for better performance
+  return dot(abs(a - b), vec3(0.229, 0.587, 0.114)); 
 #else
   // Original SMAA color edge detection with max(R, G, B)
+  #define ConvertColorSpace(x) (x) // No color space conversion in this case, as in the original SMAA
   vec3 t = abs(a - b);
   return max(t.x, max(t.y, t.z));
 #endif  
@@ -77,10 +79,10 @@ void main() {
     outFragOutput = edges * step(max(maxDelta.x, maxDelta.y), SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * delta);
   }
 #else
-  vec3 c = ApplyToneMapping(textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0).xyz);
+  vec3 c = ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inTexCoord, float(gl_ViewIndex)), 0.0).xyz));
   vec2 delta = vec2(
-    colorEdgeMetric(c, ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.xy, float(gl_ViewIndex)), 0.0).xyz)),
-    colorEdgeMetric(c, ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.zw, float(gl_ViewIndex)), 0.0).xyz))
+    colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.xy, float(gl_ViewIndex)), 0.0).xyz))),
+    colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset0.zw, float(gl_ViewIndex)), 0.0).xyz)))
   );
   vec2 edges = step(threshold, delta.xy);
   if (dot(edges, vec2(1.0, 1.0)) == 0.0) {
@@ -90,12 +92,12 @@ void main() {
       delta, 
       max(
         vec2(
-          colorEdgeMetric(c, ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.xy, float(gl_ViewIndex)), 0.0).xyz)),
-          colorEdgeMetric(c, ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.zw, float(gl_ViewIndex)), 0.0).xyz))
+          colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.xy, float(gl_ViewIndex)), 0.0).xyz))),
+          colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset1.zw, float(gl_ViewIndex)), 0.0).xyz)))
         ),
         vec2(
-          colorEdgeMetric(c, ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.xy, float(gl_ViewIndex)), 0.0).xyz)),
-          colorEdgeMetric(c, ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.zw, float(gl_ViewIndex)), 0.0).xyz))
+          colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.xy, float(gl_ViewIndex)), 0.0).xyz))),
+          colorEdgeMetric(c, ConvertColorSpace(ApplyToneMapping(textureLod(uColorTexture, vec3(inOffset2.zw, float(gl_ViewIndex)), 0.0).xyz)))
         )
       )
     );
