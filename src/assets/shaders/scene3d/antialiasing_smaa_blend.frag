@@ -17,6 +17,8 @@ layout(push_constant) uniform PushConstants {
   vec4 metrics;  //
 } pushConstants;
 
+#include "antialiasing_smaa.glsl"
+
 #include "antialiasing_srgb.glsl"
 
 vec4 SMAA_RT_METRICS = pushConstants.metrics;

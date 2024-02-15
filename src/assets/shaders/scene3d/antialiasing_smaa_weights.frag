@@ -5,19 +5,8 @@
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#ifndef SMAA_THRESHOLD
-#define SMAA_THRESHOLD 0.1
-#endif
-#ifndef SMAA_MAX_SEARCH_STEPS
-#define SMAA_MAX_SEARCH_STEPS 16
-#endif
-#ifndef SMAA_MAX_SEARCH_STEPS_DIAG
-#define SMAA_MAX_SEARCH_STEPS_DIAG 8
-#endif
-#ifndef SMAA_CORNER_ROUNDING
-#define SMAA_CORNER_ROUNDING 25
-#endif
-
+#include "antialiasing_smaa.glsl"
+ 
 // Non-Configurable Defines
 #define SMAA_AREATEX_MAX_DISTANCE 16
 #define SMAA_AREATEX_MAX_DISTANCE_DIAG 20
