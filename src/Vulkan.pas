@@ -20573,10 +20573,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       public
 {$endif}
        transform:TVkTransformMatrixKHR;
-       instanceCustomIndex:TVkUInt32;
-       mask:TVkUInt32;
-       instanceShaderBindingTableRecordOffset:TVkUInt32;
-       flags:TVkGeometryInstanceFlagsKHR;
+       instanceCustomIndexMask:TVkUInt32; // 24 bits of instance custom index, 8 bits of mask
+       instanceShaderBindingTableRecordOffsetFlags:TVkUInt32; // 24 bits of instance shader binding table record offset, 8 bits of flags
        accelerationStructureReference:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aTransform:TVkTransformMatrixKHR;
@@ -20585,6 +20583,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                           const aFlags:TVkGeometryInstanceFlagsKHR;
                           const aAccelerationStructureReference:TVkUInt64);
+      private
+       function GetInstanceCustomIndex:TVkUInt32;
+       procedure SetInstanceCustomIndex(const aValue:TVkUInt32);
+       function GetMask:TVkUInt32;
+       procedure SetMask(const aValue:TVkUInt32);
+       function GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
+       procedure SetInstanceShaderBindingTableRecordOffset(const aValue:TVkUInt32);
+       function GetFlags:TVkGeometryInstanceFlagsKHR;
+       procedure SetFlags(const aValue:TVkGeometryInstanceFlagsKHR);
+      public
+       property instanceCustomIndex:TVkUInt32 read GetInstanceCustomIndex write SetInstanceCustomIndex;
+       property mask:TVkUInt32 read GetMask write SetMask;
+       property instanceShaderBindingTableRecordOffset:TVkUInt32 read GetInstanceShaderBindingTableRecordOffset write SetInstanceShaderBindingTableRecordOffset;
+       property flags:TVkGeometryInstanceFlagsKHR read GetFlags write SetFlags;
 {$endif}
      end;
 
@@ -24982,10 +24994,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        transformT0:TVkSRTDataNV;
        transformT1:TVkSRTDataNV;
-       instanceCustomIndex:TVkUInt32;
-       mask:TVkUInt32;
-       instanceShaderBindingTableRecordOffset:TVkUInt32;
-       flags:TVkGeometryInstanceFlagsKHR;
+       instanceCustomIndexMask:TVkUInt32; // 24 bits of instance custom index, 8 bits of mask
+       instanceShaderBindingTableRecordOffsetFlags:TVkUInt32; // 24 bits of instance shader binding table record offset, 8 bits of flags
        accelerationStructureReference:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aTransformT0:TVkSRTDataNV;
@@ -24995,6 +25005,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                           const aFlags:TVkGeometryInstanceFlagsKHR;
                           const aAccelerationStructureReference:TVkUInt64);
+      private
+       function GetInstanceCustomIndex:TVkUInt32;
+       procedure SetInstanceCustomIndex(const aValue:TVkUInt32);
+       function GetMask:TVkUInt32;
+       procedure SetMask(const aValue:TVkUInt32);
+       function GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
+       procedure SetInstanceShaderBindingTableRecordOffset(const aValue:TVkUInt32);
+       function GetFlags:TVkGeometryInstanceFlagsKHR;
+       procedure SetFlags(const aValue:TVkGeometryInstanceFlagsKHR);
+      public
+       property instanceCustomIndex:TVkUInt32 read GetInstanceCustomIndex write SetInstanceCustomIndex;
+       property mask:TVkUInt32 read GetMask write SetMask;
+       property instanceShaderBindingTableRecordOffset:TVkUInt32 read GetInstanceShaderBindingTableRecordOffset write SetInstanceShaderBindingTableRecordOffset;
+       property flags:TVkGeometryInstanceFlagsKHR read GetFlags write SetFlags;
 {$endif}
      end;
 
@@ -25006,10 +25030,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        transformT0:TVkTransformMatrixKHR;
        transformT1:TVkTransformMatrixKHR;
-       instanceCustomIndex:TVkUInt32;
-       mask:TVkUInt32;
-       instanceShaderBindingTableRecordOffset:TVkUInt32;
-       flags:TVkGeometryInstanceFlagsKHR;
+       instanceCustomIndexMask:TVkUInt32; // 24 bits of instance custom index, 8 bits of mask
+       instanceShaderBindingTableRecordOffsetFlags:TVkUInt32; // 24 bits of instance shader binding table record offset, 8 bits of flags
        accelerationStructureReference:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aTransformT0:TVkTransformMatrixKHR;
@@ -25019,6 +25041,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
                           const aFlags:TVkGeometryInstanceFlagsKHR;
                           const aAccelerationStructureReference:TVkUInt64);
+      private
+       function GetInstanceCustomIndex:TVkUInt32;
+       procedure SetInstanceCustomIndex(const aValue:TVkUInt32);
+       function GetMask:TVkUInt32;
+       procedure SetMask(const aValue:TVkUInt32);
+       function GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
+       procedure SetInstanceShaderBindingTableRecordOffset(const aValue:TVkUInt32);
+       function GetFlags:TVkGeometryInstanceFlagsKHR;
+       procedure SetFlags(const aValue:TVkGeometryInstanceFlagsKHR);
+      public
+       property instanceCustomIndex:TVkUInt32 read GetInstanceCustomIndex write SetInstanceCustomIndex;
+       property mask:TVkUInt32 read GetMask write SetMask;
+       property instanceShaderBindingTableRecordOffset:TVkUInt32 read GetInstanceShaderBindingTableRecordOffset write SetInstanceShaderBindingTableRecordOffset;
+       property flags:TVkGeometryInstanceFlagsKHR read GetFlags write SetFlags;
 {$endif}
      end;
 
@@ -46888,11 +46924,49 @@ constructor TVkAccelerationStructureInstanceKHR.Create(const aTransform:TVkTrans
                                                        const aAccelerationStructureReference:TVkUInt64);
 begin
  transform:=aTransform;
- instanceCustomIndex:=aInstanceCustomIndex;
- mask:=aMask;
- instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
- flags:=aFlags;
+ instanceCustomIndexMask:=(aInstanceCustomIndex and TVkUInt32($00ffffff)) or ((aMask and TVkUInt32($000000ff)) shl 24);
+ instanceShaderBindingTableRecordOffsetFlags:=(aInstanceShaderBindingTableRecordOffset and TVkUInt32($00ffffff)) or ((TVkUInt32(aFlags) and TVkUInt32($000000ff)) shl 24);
  accelerationStructureReference:=aAccelerationStructureReference;
+end;
+
+function TVkAccelerationStructureInstanceKHR.GetInstanceCustomIndex:TVkUInt32;
+begin
+ result:=instanceCustomIndexMask and TVkUInt32($00ffffff);
+end;
+
+procedure TVkAccelerationStructureInstanceKHR.SetInstanceCustomIndex(const aValue:TVkUInt32);
+begin
+ instanceCustomIndexMask:=(instanceCustomIndexMask and TVkUInt32($ff000000)) or (aValue and TVkUInt32($00ffffff));
+end;
+
+function TVkAccelerationStructureInstanceKHR.GetMask:TVkUInt32;
+begin
+ result:=instanceCustomIndexMask shr 24;
+end;
+
+procedure TVkAccelerationStructureInstanceKHR.SetMask(const aValue:TVkUInt32);
+begin
+ instanceCustomIndexMask:=(instanceCustomIndexMask and TVkUInt32($00ffffff)) or ((aValue and TVkUInt32($000000ff)) shl 24);
+end;
+
+function TVkAccelerationStructureInstanceKHR.GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
+begin
+ result:=instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($00ffffff);
+end;
+
+procedure TVkAccelerationStructureInstanceKHR.SetInstanceShaderBindingTableRecordOffset(const aValue:TVkUInt32);
+begin
+ instanceShaderBindingTableRecordOffsetFlags:=(instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($ff000000)) or (aValue and TVkUInt32($00ffffff));
+end;
+
+function TVkAccelerationStructureInstanceKHR.GetFlags:TVkGeometryInstanceFlagsKHR;
+begin
+ result:=TVkGeometryInstanceFlagsKHR(TVkUInt32(instanceShaderBindingTableRecordOffsetFlags shr 24));
+end;
+
+procedure TVkAccelerationStructureInstanceKHR.SetFlags(const aValue:TVkGeometryInstanceFlagsKHR);
+begin
+ instanceShaderBindingTableRecordOffsetFlags:=(instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($00ffffff)) or ((TVkUInt32(aValue) and TVkUInt32($000000ff)) shl 24);
 end;
 
 constructor TVkAccelerationStructureDeviceAddressInfoKHR.Create(const aAccelerationStructure:TVkAccelerationStructureKHR);
@@ -49750,11 +49824,49 @@ constructor TVkAccelerationStructureSRTMotionInstanceNV.Create(const aTransformT
 begin
  transformT0:=aTransformT0;
  transformT1:=aTransformT1;
- instanceCustomIndex:=aInstanceCustomIndex;
- mask:=aMask;
- instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
- flags:=aFlags;
+ instanceCustomIndexMask:=(aInstanceCustomIndex and TVkUInt32($00ffffff)) or ((aMask and TVkUInt32($000000ff)) shl 24);
+ instanceShaderBindingTableRecordOffsetFlags:=(aInstanceShaderBindingTableRecordOffset and TVkUInt32($00ffffff)) or ((TVkUInt32(aFlags) and TVkUInt32($000000ff)) shl 24);
  accelerationStructureReference:=aAccelerationStructureReference;
+end;
+
+function TVkAccelerationStructureSRTMotionInstanceNV.GetInstanceCustomIndex:TVkUInt32;
+begin
+ result:=instanceCustomIndexMask and TVkUInt32($00ffffff);
+end;
+
+procedure TVkAccelerationStructureSRTMotionInstanceNV.SetInstanceCustomIndex(const aValue:TVkUInt32);
+begin
+ instanceCustomIndexMask:=(instanceCustomIndexMask and TVkUInt32($ff000000)) or (aValue and TVkUInt32($00ffffff));
+end;
+
+function TVkAccelerationStructureSRTMotionInstanceNV.GetMask:TVkUInt32;
+begin
+ result:=instanceCustomIndexMask shr 24;
+end;
+
+procedure TVkAccelerationStructureSRTMotionInstanceNV.SetMask(const aValue:TVkUInt32);
+begin
+ instanceCustomIndexMask:=(instanceCustomIndexMask and TVkUInt32($00ffffff)) or ((aValue and TVkUInt32($000000ff)) shl 24);
+end;
+
+function TVkAccelerationStructureSRTMotionInstanceNV.GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
+begin
+ result:=instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($00ffffff);
+end;
+
+procedure TVkAccelerationStructureSRTMotionInstanceNV.SetInstanceShaderBindingTableRecordOffset(const aValue:TVkUInt32);
+begin
+ instanceShaderBindingTableRecordOffsetFlags:=(instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($ff000000)) or (aValue and TVkUInt32($00ffffff));
+end;
+
+function TVkAccelerationStructureSRTMotionInstanceNV.GetFlags:TVkGeometryInstanceFlagsKHR;
+begin
+ result:=TVkGeometryInstanceFlagsKHR(TVkUInt32(instanceShaderBindingTableRecordOffsetFlags shr 24));
+end;
+
+procedure TVkAccelerationStructureSRTMotionInstanceNV.SetFlags(const aValue:TVkGeometryInstanceFlagsKHR);
+begin
+ instanceShaderBindingTableRecordOffsetFlags:=(instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($00ffffff)) or ((TVkUInt32(aValue) and TVkUInt32($000000ff)) shl 24);
 end;
 
 constructor TVkAccelerationStructureMatrixMotionInstanceNV.Create(const aTransformT0:TVkTransformMatrixKHR;
@@ -49767,11 +49879,49 @@ constructor TVkAccelerationStructureMatrixMotionInstanceNV.Create(const aTransfo
 begin
  transformT0:=aTransformT0;
  transformT1:=aTransformT1;
- instanceCustomIndex:=aInstanceCustomIndex;
- mask:=aMask;
- instanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
- flags:=aFlags;
+ instanceCustomIndexMask:=(aInstanceCustomIndex and TVkUInt32($00ffffff)) or ((aMask and TVkUInt32($000000ff)) shl 24);
+ instanceShaderBindingTableRecordOffsetFlags:=(aInstanceShaderBindingTableRecordOffset and TVkUInt32($00ffffff)) or ((TVkUInt32(aFlags) and TVkUInt32($000000ff)) shl 24);
  accelerationStructureReference:=aAccelerationStructureReference;
+end;
+
+function TVkAccelerationStructureMatrixMotionInstanceNV.GetInstanceCustomIndex:TVkUInt32;
+begin
+ result:=instanceCustomIndexMask and TVkUInt32($00ffffff);
+end;
+
+procedure TVkAccelerationStructureMatrixMotionInstanceNV.SetInstanceCustomIndex(const aValue:TVkUInt32);
+begin
+ instanceCustomIndexMask:=(instanceCustomIndexMask and TVkUInt32($ff000000)) or (aValue and TVkUInt32($00ffffff));
+end;
+
+function TVkAccelerationStructureMatrixMotionInstanceNV.GetMask:TVkUInt32;
+begin
+ result:=instanceCustomIndexMask shr 24;
+end;
+
+procedure TVkAccelerationStructureMatrixMotionInstanceNV.SetMask(const aValue:TVkUInt32);
+begin
+ instanceCustomIndexMask:=(instanceCustomIndexMask and TVkUInt32($00ffffff)) or ((aValue and TVkUInt32($000000ff)) shl 24);
+end;
+
+function TVkAccelerationStructureMatrixMotionInstanceNV.GetInstanceShaderBindingTableRecordOffset:TVkUInt32;
+begin
+ result:=instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($00ffffff);
+end;
+
+procedure TVkAccelerationStructureMatrixMotionInstanceNV.SetInstanceShaderBindingTableRecordOffset(const aValue:TVkUInt32);
+begin
+ instanceShaderBindingTableRecordOffsetFlags:=(instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($ff000000)) or (aValue and TVkUInt32($00ffffff));
+end;
+
+function TVkAccelerationStructureMatrixMotionInstanceNV.GetFlags:TVkGeometryInstanceFlagsKHR;
+begin
+ result:=TVkGeometryInstanceFlagsKHR(TVkUInt32(instanceShaderBindingTableRecordOffsetFlags shr 24));
+end;
+
+procedure TVkAccelerationStructureMatrixMotionInstanceNV.SetFlags(const aValue:TVkGeometryInstanceFlagsKHR);
+begin
+ instanceShaderBindingTableRecordOffsetFlags:=(instanceShaderBindingTableRecordOffsetFlags and TVkUInt32($00ffffff)) or ((TVkUInt32(aValue) and TVkUInt32($000000ff)) shl 24);
 end;
 
 constructor TVkAccelerationStructureMotionInstanceNV.Create(const aType_:TVkAccelerationStructureMotionInstanceTypeNV;
