@@ -71,122 +71,144 @@ uses SysUtils,
 
 type EpvRaytracing=class(Exception);
 
-     { TpvRaytracingProperties }
-     TpvRaytracingProperties=class
-      private
-       fDevice:TpvVulkanDevice;
-       fAccelerationStructureProperties:PVkPhysicalDeviceAccelerationStructurePropertiesKHR;
-       fRayTracingPipelineProperties:PVkPhysicalDeviceRayTracingPipelinePropertiesKHR;
-       function GetMaxDescriptorSetAccelerationStructures:TVkUInt32;
-       function GetMaxGeometryCount:TVkUInt64;
-       function GetMaxInstanceCount:TVkUInt64;
-       function GetMaxPrimitiveCount:TVkUInt64;
-       function GetMaxRayRecursionDepth:TVkUInt32;
-       function GetMaxShaderGroupStride:TVkUInt32;
-       function GetMinAccelerationStructureScratchOffsetAlignment:TVkUInt32;
-       function GetShaderGroupBaseAlignment:TVkUInt32;
-       function GetShaderGroupHandleCaptureReplaySize:TVkUInt32;
-       function GetShaderGroupHandleSize:TVkUInt32;
-      public
-       constructor Create(const aDevice:TpvVulkanDevice);
-       destructor Destroy; override;
-      published
-       property Device:TpvVulkanDevice read fDevice;
-      public 
-       property AccelerationStructureProperties:PVkPhysicalDeviceAccelerationStructurePropertiesKHR read fAccelerationStructureProperties;
-       property RayTracingPipelineProperties:PVkPhysicalDeviceRayTracingPipelinePropertiesKHR read fRayTracingPipelineProperties;
-      published
-       property MaxDescriptorSetAccelerationStructures:TVkUInt32 read GetMaxDescriptorSetAccelerationStructures;
-       property MaxGeometryCount:TVkUInt64 read GetMaxGeometryCount;
-       property MaxInstanceCount:TVkUInt64 read GetMaxInstanceCount;
-       property MaxPrimitiveCount:TVkUInt64 read GetMaxPrimitiveCount;
-       property MaxRayRecursionDepth:TVkUInt32 read GetMaxRayRecursionDepth;
-       property MaxShaderGroupStride:TVkUInt32 read GetMaxShaderGroupStride;
-       property MinAccelerationStructureScratchOffsetAlignment:TVkUInt32 read GetMinAccelerationStructureScratchOffsetAlignment;
-       property ShaderGroupBaseAlignment:TVkUInt32 read GetShaderGroupBaseAlignment;
-       property ShaderGroupHandleCaptureReplaySize:TVkUInt32 read GetShaderGroupHandleCaptureReplaySize;
-       property ShaderGroupHandleSize:TVkUInt32 read GetShaderGroupHandleSize; 
-     end;
-
      { TpvRaytracingAccelerationStructure }
      TpvRaytracingAccelerationStructure=class
       private
        fDevice:TpvVulkanDevice;
-       fRaytracingProperties:TpvRaytracingProperties;
        fFlags:TVkBuildAccelerationStructureFlagsKHR;
        fBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
        fBuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR;
        fType:TVkAccelerationStructureTypeKHR;
        fHandle:TVkAccelerationStructureKHR;
       public
-       
+       constructor Create(const aDevice:TpvVulkanDevice;
+                          const aFlags:TVkBuildAccelerationStructureFlagsKHR=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);                          
+                          const aType:TVkAccelerationStructureTypeKHR=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR)); overload;
+       constructor Create(const aFrom:TpvRaytracingAccelerationStructure); overload;
+       destructor Destroy; override;
+       function GetBuildSizes(const aMaxPrimitiveCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR; overload;
+       function GetBuildSizes(const aMaxPrimitiveCounts:array of TVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR; overload;
+       procedure CreateAccelerationStructure(const aResultBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
+       procedure MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);    
      end;
 
 implementation
 
-{ TpvRaytracingProperties }
+{ TpvRaytracingAccelerationStructure }
 
-constructor TpvRaytracingProperties.Create(const aDevice:TpvVulkanDevice);
+constructor TpvRaytracingAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
+                                                      const aFlags:TVkBuildAccelerationStructureFlagsKHR;
+                                                      const aType:TVkAccelerationStructureTypeKHR);
 begin
+
  inherited Create;
+
  fDevice:=aDevice;
- fAccelerationStructureProperties:=@fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR;
- fRayTracingPipelineProperties:=@fDevice.PhysicalDevice.RayTracingPipelinePropertiesKHR;
+
+ fFlags:=aFlags;
+
+ fType:=aType;
+
+ FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
+
+ fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+ fBuildGeometryInfo.pNext:=nil;
+ fBuildGeometryInfo.type_:=fType;
+ fBuildGeometryInfo.flags:=fFlags;
+ fBuildGeometryInfo.mode:=VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+ fBuildGeometryInfo.srcAccelerationStructure:=VK_NULL_HANDLE;
+ fBuildGeometryInfo.dstAccelerationStructure:=VK_NULL_HANDLE;
+ fBuildGeometryInfo.geometryCount:=0;
+ fBuildGeometryInfo.pGeometries:=nil;
+ fBuildGeometryInfo.ppGeometries:=nil;
+ fBuildGeometryInfo.scratchData.deviceAddress:=0;
+
+ FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+
+ fHandle:=VK_NULL_HANDLE;
+
 end;
 
-destructor TpvRaytracingProperties.Destroy;
+constructor TpvRaytracingAccelerationStructure.Create(const aFrom:TpvRaytracingAccelerationStructure);
 begin
+ inherited Create;
+ fDevice:=aFrom.fDevice;
+ fFlags:=aFrom.fFlags;
+ fBuildGeometryInfo:=aFrom.fBuildGeometryInfo;
+ fBuildSizesInfo:=aFrom.fBuildSizesInfo;
+ fType:=aFrom.fType;
+ fHandle:=aFrom.fHandle;
+end;
+
+destructor TpvRaytracingAccelerationStructure.Destroy;
+begin
+ if fHandle<>VK_NULL_HANDLE then begin
+  fDevice.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,fHandle,nil);
+  fHandle:=VK_NULL_HANDLE;
+ end;
  inherited Destroy;
 end;
 
-function TpvRaytracingProperties.GetMaxDescriptorSetAccelerationStructures:TVkUInt32;
+function TpvRaytracingAccelerationStructure.GetBuildSizes(const aMaxPrimitiveCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
+const AccelerationStructureAlignment=TpvUInt64(256);
+var ScratchAlignment:TpvUInt64;
 begin
- result:=fAccelerationStructureProperties^.maxDescriptorSetAccelerationStructures;
+
+ FillChar(result,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+ result.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+
+ fDevice.Commands.GetAccelerationStructureBuildSizesKHR(fDevice.Handle,
+                                                        VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                                                        @fBuildGeometryInfo,
+                                                        Pointer(aMaxPrimitiveCounts),
+                                                        @result);
+
+ ScratchAlignment:=fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR.minAccelerationStructureScratchOffsetAlignment;
+
+ result.accelerationStructureSize:=(result.accelerationStructureSize+(AccelerationStructureAlignment-1)) and not (AccelerationStructureAlignment-1);
+ result.buildScratchSize:=(result.buildScratchSize+(ScratchAlignment-1)) and not (ScratchAlignment-1);
+
 end;
 
-function TpvRaytracingProperties.GetMaxGeometryCount:TVkUInt64;
+function TpvRaytracingAccelerationStructure.GetBuildSizes(const aMaxPrimitiveCounts:array of TVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
 begin
- result:=fAccelerationStructureProperties^.maxGeometryCount;
+ result:=GetBuildSizes(@aMaxPrimitiveCounts[0]);
 end;
 
-function TpvRaytracingProperties.GetMaxInstanceCount:TVkUInt64;
+procedure TpvRaytracingAccelerationStructure.CreateAccelerationStructure(const aResultBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
+var CreateInfo:TVkAccelerationStructureCreateInfoKHR;
 begin
- result:=fAccelerationStructureProperties^.maxInstanceCount;
+
+ FillChar(CreateInfo,SizeOf(TVkAccelerationStructureCreateInfoKHR),#0);
+ CreateInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+ CreateInfo.pNext:=nil;
+ CreateInfo.type_:=fBuildGeometryInfo.type_;
+ CreateInfo.deviceAddress:=0;
+ CreateInfo.size:=fBuildSizesInfo.accelerationStructureSize;
+ CreateInfo.buffer:=aResultBuffer.Handle;
+ CreateInfo.offset:=aResultOffset;
+
+ VulkanCheckResult(fDevice.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@CreateInfo,nil,@fHandle));
+
 end;
 
-function TpvRaytracingProperties.GetMaxPrimitiveCount:TVkUInt64;
+procedure TpvRaytracingAccelerationStructure.MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
+var MemoryBarrier:TVkMemoryBarrier;
 begin
- result:=fAccelerationStructureProperties^.maxPrimitiveCount;
-end;
 
-function TpvRaytracingProperties.GetMaxRayRecursionDepth:TVkUInt32;
-begin
- result:=fRayTracingPipelineProperties^.maxRayRecursionDepth;
-end;
+ FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+ MemoryBarrier.pNext:=nil;
+ MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+ MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
 
-function TpvRaytracingProperties.GetMaxShaderGroupStride:TVkUInt32;
-begin
- result:=fRayTracingPipelineProperties^.maxShaderGroupStride;
-end;
+ aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                   0,
+                                   1,@MemoryBarrier,
+                                   0,nil,
+                                   0,nil);
 
-function TpvRaytracingProperties.GetMinAccelerationStructureScratchOffsetAlignment:TVkUInt32;
-begin
- result:=fAccelerationStructureProperties^.minAccelerationStructureScratchOffsetAlignment;
-end;
-
-function TpvRaytracingProperties.GetShaderGroupBaseAlignment:TVkUInt32;
-begin
- result:=fRayTracingPipelineProperties^.shaderGroupBaseAlignment;
-end;
-
-function TpvRaytracingProperties.GetShaderGroupHandleCaptureReplaySize:TVkUInt32;
-begin
- result:=fRayTracingPipelineProperties^.shaderGroupHandleCaptureReplaySize;
-end;
-
-function TpvRaytracingProperties.GetShaderGroupHandleSize:TVkUInt32;
-begin
- result:=fRayTracingPipelineProperties^.shaderGroupHandleSize;
 end;
 
 end.
