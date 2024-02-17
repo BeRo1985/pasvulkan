@@ -1528,6 +1528,10 @@ function RoundNearestToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CA
 function RoundNearestToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundNearestToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
+function RoundUp(x,y:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUp64(x,y:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUpSizeUInt(x,y:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+
 function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function IntLog264(x:TpvUInt64):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
@@ -1902,6 +1906,39 @@ begin
   result:=a;
  end else begin
   result:=b;
+ end;
+end;
+
+function RoundUp(x,y:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+var m:TpvUInt32;
+begin
+ m:=y-1;
+ if (y and m)=0 then begin
+  result:=(x+m) and not TpvUInt32(m);
+ end else begin
+  result:=((x+m) div y)*y;
+ end;
+end;
+
+function RoundUp64(x,y:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+var m:TpvUInt64;
+begin
+ m:=y-1;
+ if (y and m)=0 then begin
+  result:=(x+m) and not TpvUInt64(m);
+ end else begin
+  result:=((x+m) div y)*y;
+ end;
+end;
+
+function RoundUpSizeUInt(x,y:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+var m:TpvSizeUInt;
+begin
+ m:=y-1;
+ if (y and m)=0 then begin
+  result:=(x+m) and not TpvSizeUInt(m);
+ end else begin
+  result:=((x+m) div y)*y;
  end;
 end;
 
@@ -17607,7 +17644,7 @@ begin
  pc.y:=p.y-c.y;
  pc.z:=p.z-c.z;
 
- // Determine the parametric position s for the projection of P onto AB (i.e. P’ = A+s*AB, where
+ // Determine the parametric position s for the projection of P onto AB (i.e. Pï¿½ = A+s*AB, where
  // s = snom/(snom+sdenom), and then parametric position t for P projected onto AC
  snom:=(ab.x*pa.x)+(ab.y*pa.y)+(ab.z*pa.z);
  sdenom:=(pb.x*(a.x-b.x))+(pb.y*(a.y-b.y))+(pb.z*(a.z-b.z));
