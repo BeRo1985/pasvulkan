@@ -76,6 +76,7 @@ type EpvRaytracing=class(Exception);
       private
        fDevice:TpvVulkanDevice;
        fFlags:TVkBuildAccelerationStructureFlagsKHR;
+       fAccelerationStructure:TVkAccelerationStructureKHR;
        fBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
        fBuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR;
        fType:TVkAccelerationStructureTypeKHR;
@@ -94,6 +95,7 @@ type EpvRaytracing=class(Exception);
        property Device:TpvVulkanDevice read fDevice;
       public 
        property Flags:TVkBuildAccelerationStructureFlagsKHR read fFlags;
+       property AccelerationStructure:TVkAccelerationStructureKHR read fAccelerationStructure;
        property BuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR read fBuildGeometryInfo;
        property BuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR read fBuildSizesInfo;
        property Type_:TVkAccelerationStructureTypeKHR read fType;

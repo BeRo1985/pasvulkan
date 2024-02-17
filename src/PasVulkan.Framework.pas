@@ -1297,11 +1297,11 @@ type EpvVulkanException=class(Exception);
                           const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                           const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
-                          const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
+                          const aBufferFlags:TpvVulkanBufferFlags=[];
+                          const aAlignment:TVkDeviceSize=0); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aSize:TVkDeviceSize;
-                          const aUsage:TVkBufferUsageFlags;
-                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE); reintroduce; overload;
+                          const aUsage:TVkBufferUsageFlags); reintroduce; overload;
        destructor Destroy; override;
        procedure ClearData(const aTransferQueue:TpvVulkanQueue;
                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
@@ -13027,7 +13027,8 @@ constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
                                    const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                    const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                    const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
-                                   const aBufferFlags:TpvVulkanBufferFlags);
+                                   const aBufferFlags:TpvVulkanBufferFlags;
+                                   const aAlignment:TVkDeviceSize);
 var Index:TpvInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
@@ -13105,7 +13106,7 @@ begin
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                            fMemoryRequirements.Size,
-                                                           fMemoryRequirements.Alignment,
+                                                           Max(fMemoryRequirements.Alignment,aAlignment),
                                                            fMemoryRequirements.memoryTypeBits,
                                                            aMemoryRequiredPropertyFlags,
                                                            aMemoryPreferredPropertyFlags,
@@ -13159,13 +13160,12 @@ end;
 
 constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
                                    const aSize:TVkDeviceSize;
-                                   const aUsage:TVkBufferUsageFlags;
-                                   const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE);
+                                   const aUsage:TVkBufferUsageFlags);
 begin
  Create(aDevice,
         aSize,
         aUsage,
-        aSharingMode,
+        VK_SHARING_MODE_EXCLUSIVE,
         []);
 end;
 
