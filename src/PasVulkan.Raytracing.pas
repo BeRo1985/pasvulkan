@@ -75,259 +75,170 @@ type EpvRaytracing=class(Exception);
      TpvRaytracingAccelerationStructure=class
       private
        fDevice:TpvVulkanDevice;
-       fFlags:TVkBuildAccelerationStructureFlagsKHR;
        fAccelerationStructure:TVkAccelerationStructureKHR;
-       fBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
-       fBuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR;
-       fType:TVkAccelerationStructureTypeKHR;
-       fHandle:TVkAccelerationStructureKHR;
+       fAccelerationStructureBuffer:TpvVulkanBuffer;
       public
-       constructor Create(const aDevice:TpvVulkanDevice;
-                          const aFlags:TVkBuildAccelerationStructureFlagsKHR=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);                          
-                          const aType:TVkAccelerationStructureTypeKHR=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR)); overload;
-       constructor Create(const aFrom:TpvRaytracingAccelerationStructure); overload;
+       constructor Create(const aDevice:TpvVulkanDevice;const aAccelerationStructureSize:TVkDeviceSize;const aAccelerationStructureType:TVkAccelerationStructureTypeKHR); reintroduce;
        destructor Destroy; override;
-       function GetBuildSizes(const aMaxPrimitiveCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR; overload;
-       function GetBuildSizes(const aMaxPrimitiveCounts:array of TVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR; overload;
-       procedure CreateAccelerationStructure(const aResultBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
-       procedure MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);    
+       procedure Clone(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
       published
        property Device:TpvVulkanDevice read fDevice;
-      public 
-       property Flags:TVkBuildAccelerationStructureFlagsKHR read fFlags;
        property AccelerationStructure:TVkAccelerationStructureKHR read fAccelerationStructure;
-       property BuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR read fBuildGeometryInfo;
-       property BuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR read fBuildSizesInfo;
-       property Type_:TVkAccelerationStructureTypeKHR read fType;
-       property Handle:TVkAccelerationStructureKHR read fHandle; 
+     end;
+
+     { TpvRaytracingAccelerationStructureScratch }
+     TpvRaytracingAccelerationStructureScratch=class
+      private
+       fDevice:TpvVulkanDevice;
+       fAccelerationStructureScratchBuffer:TpvVulkanBuffer;
+       fDeviceAddress:TVkDeviceAddress;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice;const aAccelerationStructureScratchSize:TVkDeviceSize); reintroduce;
+       destructor Destroy; override;
+      published
+       property Device:TpvVulkanDevice read fDevice;
+       property AccelerationStructureScratchBuffer:TpvVulkanBuffer read fAccelerationStructureScratchBuffer;
+       property DeviceAddress:TVkDeviceAddress read fDeviceAddress;
      end;
      
-     TpvRaytracingBottomLevelAccelerationStructure=class
-     end;
-
-     { TpvRaytracingTopLevelAccelerationStructure }
-     TpvRaytracingTopLevelAccelerationStructure=class(TpvRaytracingAccelerationStructure)
-      private
-       fCountInstances:TVkUInt32;
-       fGeometryInstancesData:TVkAccelerationStructureGeometryInstancesDataKHR;
-       fGeometry:TVkAccelerationStructureGeometryKHR;
-      public
-       constructor Create(const aDevice:TpvVulkanDevice;
-                          const aInstanceAddress:TVkDeviceAddress;
-                          const aCountInstances:TVkUInt32); overload;
-       constructor Create(const aFrom:TpvRaytracingTopLevelAccelerationStructure); overload;
-       destructor Destroy; override;
-       procedure Generate(const aCommandBuffer:TpvVulkanCommandBuffer;
-                          const aScratchBuffer:TpvVulkanBuffer;
-                          const aScratchOffset:TVkDeviceSize;
-                          const aResultBuffer:TpvVulkanBuffer;
-                          const aResultOffset:TVkDeviceSize);
-       class function CreateInstance(const aBottomLevelAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
-                                     const aTransform:TpvMatrix4x4;
-                                     const aInstanceID:TVkUInt32;
-                                     const aHitGroupID:TVkUInt32):TVkAccelerationStructureInstanceKHR; static;
-      published
-       property CountInstances:TVkUInt32 read fCountInstances;
-      public 
-       property GeometryInstancesData:TVkAccelerationStructureGeometryInstancesDataKHR read fGeometryInstancesData;
-       property Geometry:TVkAccelerationStructureGeometryKHR read fGeometry; 
-     end;
-
 implementation
 
 { TpvRaytracingAccelerationStructure }
 
-constructor TpvRaytracingAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
-                                                      const aFlags:TVkBuildAccelerationStructureFlagsKHR;
-                                                      const aType:TVkAccelerationStructureTypeKHR);
+constructor TpvRaytracingAccelerationStructure.Create(const aDevice:TpvVulkanDevice;const aAccelerationStructureSize:TVkDeviceSize;const aAccelerationStructureType:TVkAccelerationStructureTypeKHR);
+var AccelerationStructureCreateInfo:TVkAccelerationStructureCreateInfoKHR;
+    AccelerationStructure:TVkAccelerationStructureKHR;
+    AccelerationStructureBuffer:TpvVulkanBuffer;
+    ResultValue:TVkResult;
 begin
 
  inherited Create;
 
  fDevice:=aDevice;
 
- fFlags:=aFlags;
+ fAccelerationStructure:=VK_NULL_HANDLE;
 
- fType:=aType;
+ fAccelerationStructureBuffer:=nil;
 
- FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
+ AccelerationStructureBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                                     aAccelerationStructureSize,
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     256);
 
- fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
- fBuildGeometryInfo.pNext:=nil;
- fBuildGeometryInfo.type_:=fType;
- fBuildGeometryInfo.flags:=fFlags;
- fBuildGeometryInfo.mode:=VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
- fBuildGeometryInfo.srcAccelerationStructure:=VK_NULL_HANDLE;
- fBuildGeometryInfo.dstAccelerationStructure:=VK_NULL_HANDLE;
- fBuildGeometryInfo.geometryCount:=0;
- fBuildGeometryInfo.pGeometries:=nil;
- fBuildGeometryInfo.ppGeometries:=nil;
- fBuildGeometryInfo.scratchData.deviceAddress:=0;
+ AccelerationStructureCreateInfo:=TVkAccelerationStructureCreateInfoKHR.Create(0,
+                                                                               fAccelerationStructureBuffer.Handle,
+                                                                               0,
+                                                                               aAccelerationStructureSize,
+                                                                               aAccelerationStructureType,
+                                                                               0);
 
- FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+ ResultValue:=fDevice.Commands.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@AccelerationStructureCreateInfo,nil,@AccelerationStructure);
 
- fHandle:=VK_NULL_HANDLE;
+ if ResultValue=VK_SUCCESS then begin
 
-end;
+  FreeAndNil(fAccelerationStructureBuffer);
 
-constructor TpvRaytracingAccelerationStructure.Create(const aFrom:TpvRaytracingAccelerationStructure);
-begin
- inherited Create;
- fDevice:=aFrom.fDevice;
- fFlags:=aFrom.fFlags;
- fBuildGeometryInfo:=aFrom.fBuildGeometryInfo;
- fBuildSizesInfo:=aFrom.fBuildSizesInfo;
- fType:=aFrom.fType;
- fHandle:=aFrom.fHandle;
+  fAccelerationStructure:=AccelerationStructure;
+
+  fAccelerationStructureBuffer:=AccelerationStructureBuffer;
+
+ end else begin
+
+  FreeAndNil(fAccelerationStructureBuffer);
+
+  VulkanCheckResult(ResultValue);
+
+  raise EpvRaytracing.Create('TpvRaytracingAccelerationStructure.Create');
+
+ end;
+
 end;
 
 destructor TpvRaytracingAccelerationStructure.Destroy;
 begin
- if fHandle<>VK_NULL_HANDLE then begin
-  fDevice.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,fHandle,nil);
-  fHandle:=VK_NULL_HANDLE;
+ if fAccelerationStructure<>VK_NULL_HANDLE then begin
+  fDevice.Commands.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,fAccelerationStructure,nil);
+  fAccelerationStructure:=VK_NULL_HANDLE;
  end;
+ FreeAndNil(fAccelerationStructureBuffer);
  inherited Destroy;
 end;
 
-function TpvRaytracingAccelerationStructure.GetBuildSizes(const aMaxPrimitiveCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
-const AccelerationStructureAlignment=TpvUInt64(256);
-var ScratchAlignment:TpvUInt64;
+procedure TpvRaytracingAccelerationStructure.Clone(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
+var CopyAccelerationStructureInfo:TVkCopyAccelerationStructureInfoKHR;
 begin
 
- FillChar(result,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
- result.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+ Assert(aCommandBuffer<>nil);
+ Assert(aSourceAccelerationStructure<>nil);
+ Assert(aSourceAccelerationStructure.fDevice=aCommandBuffer.Device);
+ Assert(fDevice=aCommandBuffer.Device);
+ Assert(aSourceAccelerationStructure.fAccelerationStructure<>VK_NULL_HANDLE);
+ Assert(fAccelerationStructure<>VK_NULL_HANDLE);
 
- fDevice.Commands.GetAccelerationStructureBuildSizesKHR(fDevice.Handle,
-                                                        VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-                                                        @fBuildGeometryInfo,
-                                                        Pointer(aMaxPrimitiveCounts),
-                                                        @result);
+ FillChar(CopyAccelerationStructureInfo,SizeOf(TVkCopyAccelerationStructureInfoKHR),#0);
+ CopyAccelerationStructureInfo.sType:=VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR;
+ CopyAccelerationStructureInfo.pNext:=nil;
+ CopyAccelerationStructureInfo.src:=aSourceAccelerationStructure.AccelerationStructure;
+ CopyAccelerationStructureInfo.dst:=fAccelerationStructure;
+ CopyAccelerationStructureInfo.mode:=VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
 
- ScratchAlignment:=fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR.minAccelerationStructureScratchOffsetAlignment;
+ fDevice.Commands.Commands.CmdCopyAccelerationStructureKHR(aCommandBuffer.Handle,@CopyAccelerationStructureInfo);
+ 
+end;
 
- result.accelerationStructureSize:=(result.accelerationStructureSize+(AccelerationStructureAlignment-1)) and not (AccelerationStructureAlignment-1);
- result.buildScratchSize:=(result.buildScratchSize+(ScratchAlignment-1)) and not (ScratchAlignment-1);
+{ TpvRaytracingAccelerationStructureScratch }
+
+constructor TpvRaytracingAccelerationStructureScratch.Create(const aDevice:TpvVulkanDevice;const aAccelerationStructureScratchSize:TVkDeviceSize);
+var BufferDeviceAddressInfo:TVkBufferDeviceAddressInfoKHR;
+begin
+
+ inherited Create;
+
+ fDevice:=aDevice;
+
+ fAccelerationStructureScratchBuffer:=nil;
+
+ fDeviceAddress:=0;
+
+ fAccelerationStructureScratchBuffer:=TpvVulkanBuffer.Create(fDevice,
+                                                             aAccelerationStructureScratchSize,
+                                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                             [],
+                                                             0,
+                                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             0,
+                                                             [],
+                                                             256);
+
+ BufferDeviceAddressInfo:=TVkBufferDeviceAddressInfoKHR.Create(fAccelerationStructureScratchBuffer.Handle);
+
+ fDeviceAddress:=fDevice.Commands.Commands.GetBufferDeviceAddressKHR(fDevice.Handle,
+                                                                     @BufferDeviceAddressInfo);
 
 end;
 
-function TpvRaytracingAccelerationStructure.GetBuildSizes(const aMaxPrimitiveCounts:array of TVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
+destructor TpvRaytracingAccelerationStructureScratch.Destroy;
 begin
- result:=GetBuildSizes(@aMaxPrimitiveCounts[0]);
-end;
-
-procedure TpvRaytracingAccelerationStructure.CreateAccelerationStructure(const aResultBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
-var CreateInfo:TVkAccelerationStructureCreateInfoKHR;
-begin
-
- FillChar(CreateInfo,SizeOf(TVkAccelerationStructureCreateInfoKHR),#0);
- CreateInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
- CreateInfo.pNext:=nil;
- CreateInfo.type_:=fBuildGeometryInfo.type_;
- CreateInfo.deviceAddress:=0;
- CreateInfo.size:=fBuildSizesInfo.accelerationStructureSize;
- CreateInfo.buffer:=aResultBuffer.Handle;
- CreateInfo.offset:=aResultOffset;
-
- VulkanCheckResult(fDevice.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@CreateInfo,nil,@fHandle));
-
-end;
-
-procedure TpvRaytracingAccelerationStructure.MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
-var MemoryBarrier:TVkMemoryBarrier;
-begin
-
- FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
- MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
- MemoryBarrier.pNext:=nil;
- MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
- MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) or TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
-
- aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
-                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
-                                   0,
-                                   1,@MemoryBarrier,
-                                   0,nil,
-                                   0,nil);
-
-end;
-
-{ TpvRaytracingTopLevelAccelerationStructure }
-
-constructor TpvRaytracingTopLevelAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
-                                                              const aInstanceAddress:TVkDeviceAddress;
-                                                              const aCountInstances:TVkUInt32);
-begin
-
- inherited Create(aDevice,
-                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
-                  TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR));
-
- fCountInstances:=aCountInstances;
-
- FillChar(fGeometryInstancesData,SizeOf(TVkAccelerationStructureGeometryInstancesDataKHR),#0);
- fGeometryInstancesData.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
- fGeometryInstancesData.pNext:=nil;
- fGeometryInstancesData.arrayOfPointers:=VK_FALSE;
- fGeometryInstancesData.data.deviceAddress:=aInstanceAddress;
-
- FillChar(fGeometry,SizeOf(TVkAccelerationStructureGeometryKHR),#0);
- fGeometry.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
- fGeometry.pNext:=nil;
- fGeometry.geometryType:=TVkGeometryTypeKHR(VK_GEOMETRY_TYPE_INSTANCES_KHR);
- fGeometry.geometry.instances:=fGeometryInstancesData;
-
- FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
- fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
- fBuildGeometryInfo.pNext:=nil;
- fBuildGeometryInfo.type_:=fType;
- fBuildGeometryInfo.flags:=fFlags;
- fBuildGeometryInfo.mode:=VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
- fBuildGeometryInfo.geometryCount:=1;
- fBuildGeometryInfo.pGeometries:=@fGeometry;
- fBuildGeometryInfo.srcAccelerationStructure:=VK_NULL_HANDLE;
-
- fBuildSizesInfo:=GetBuildSizes(@fCountInstances);
-
-end;
-
-constructor TpvRaytracingTopLevelAccelerationStructure.Create(const aFrom:TpvRaytracingTopLevelAccelerationStructure);
-begin
- inherited Create(aFrom);
- fCountInstances:=aFrom.fCountInstances;
- fGeometryInstancesData:=aFrom.fGeometryInstancesData;
- fGeometry:=aFrom.fGeometry;
-end;
-
-destructor TpvRaytracingTopLevelAccelerationStructure.Destroy;
-begin
+ FreeAndNil(fAccelerationStructureScratchBuffer);
+ fDeviceAddress:=0;
  inherited Destroy;
-end;
-
-procedure TpvRaytracingTopLevelAccelerationStructure.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                              const aScratchBuffer:TpvVulkanBuffer;
-                                                              const aScratchOffset:TVkDeviceSize;
-                                                              const aResultBuffer:TpvVulkanBuffer;
-                                                              const aResultOffset:TVkDeviceSize);
-var ScratchAddress:TVkDeviceAddress;
-begin
- 
- CreateAccelerationStructure(aResultBuffer,aResultOffset);
- 
- {ScratchAddress:=aScratchBuffer.DeviceAddress+aScratchOffset;
-
- fBuildGeometryInfo.dstAccelerationStructure:=fHandle;
- fBuildGeometryInfo.scratchData.deviceAddress:=ScratchAddress;
-
- aCommandBuffer.CmdBuildAccelerationStructuresKHR(1,@fBuildGeometryInfo);}
-
-end;
-
-class function TpvRaytracingTopLevelAccelerationStructure.CreateInstance(const aBottomLevelAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
-                                                                         const aTransform:TpvMatrix4x4;
-                                                                         const aInstanceID:TVkUInt32;
-                                                                         const aHitGroupID:TVkUInt32):TVkAccelerationStructureInstanceKHR;
-begin
 end;
 
 end.
