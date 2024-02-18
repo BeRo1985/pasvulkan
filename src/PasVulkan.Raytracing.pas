@@ -150,24 +150,35 @@ type EpvRaytracing=class(Exception);
      { TpvRaytracingBottomLevelAccelerationStructureInstance }
      TpvRaytracingBottomLevelAccelerationStructureInstance=class
       private
+       fDevice:TpvVulkanDevice;
        fTransform:TVkTransformMatrixKHR;
        fInstanceCustomIndex:TVkUInt32;
+       fMask:TVkUInt32;
        fInstanceShaderBindingTableRecordOffset:TVkUInt32;
+       fFlags:TVkGeometryInstanceFlagsKHR;
        fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
+       fAccelerationStructureDeviceAddress:TVkDeviceAddress;
        function GetTransform:TpvMatrix4x4;
        procedure SetTransform(const aTransform:TpvMatrix4x4);
       public
-       constructor Create(const aTransform:TpvMatrix4x4;
+       constructor Create(const aDevice:TpvVulkanDevice;
+                          const aTransform:TpvMatrix4x4;
                           const aInstanceCustomIndex:TVkUInt32;
+                          const aMask:TVkUInt32;
                           const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                          const aFlags:TVkGeometryInstanceFlagsKHR;
                           const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure); reintroduce;
        destructor Destroy; override;
       public
        property Transform:TpvMatrix4x4 read GetTransform write SetTransform;
       published
+       property Device:TpvVulkanDevice read fDevice;
        property InstanceCustomIndex:TVkUInt32 read fInstanceCustomIndex write fInstanceCustomIndex;
+       property Mask:TVkUInt32 read fMask write fMask;
        property InstanceShaderBindingTableRecordOffset:TVkUInt32 read fInstanceShaderBindingTableRecordOffset write fInstanceShaderBindingTableRecordOffset;
+       property Flags:TVkGeometryInstanceFlagsKHR read fFlags write fFlags;
        property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
+       property AccelerationStructureDeviceAddress:TVkDeviceAddress read fAccelerationStructureDeviceAddress write fAccelerationStructureDeviceAddress;
      end;
 
 (*   { TpvRaytracingTopLevelAccelerationStructure }
@@ -487,21 +498,38 @@ end;
 
 { TpvRaytracingBottomLevelAccelerationStructureInstance }
 
-constructor TpvRaytracingBottomLevelAccelerationStructureInstance.Create(const aTransform:TpvMatrix4x4;
+constructor TpvRaytracingBottomLevelAccelerationStructureInstance.Create(const aDevice:TpvVulkanDevice;
+                                                                         const aTransform:TpvMatrix4x4;
                                                                          const aInstanceCustomIndex:TVkUInt32;
+                                                                         const aMask:TVkUInt32;
                                                                          const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                                                                         const aFlags:TVkGeometryInstanceFlagsKHR;
                                                                          const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
+var AddressInfo:TVkAccelerationStructureDeviceAddressInfoKHR;
 begin
 
  inherited Create;
+
+ fDevice:=aDevice;
 
  SetTransform(aTransform);
 
  fInstanceCustomIndex:=aInstanceCustomIndex;
 
+ fMask:=aMask;
+
  fInstanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
 
+ fFlags:=aFlags;
+
  fAccelerationStructure:=aAccelerationStructure;
+
+ FillChar(AddressInfo,SizeOf(TVkAccelerationStructureDeviceAddressInfoKHR),#0);
+ AddressInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+ AddressInfo.pNext:=nil;
+ AddressInfo.accelerationStructure:=fAccelerationStructure.AccelerationStructure;
+
+ fAccelerationStructureDeviceAddress:=fDevice.Commands.Commands.GetAccelerationStructureDeviceAddressKHR(fDevice.Handle,@AddressInfo);
 
 end;
 
