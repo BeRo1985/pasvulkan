@@ -3443,6 +3443,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
       Values:ansistring;
       ArraySizeInt:longint;
       ArraySizeStr:ansistring;
+      OtherArraySizeInt:longint;
       Comment:ansistring;
       TypeDefinitionIndex:longint;
       Ptr:longint;
@@ -3464,10 +3465,11 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
      end;
      TTypeDefinitions=array of TTypeDefinition;
      TPTypeDefinitions=array of PTypeDefinition;
-var i,j,k,ArraySize,CountTypeDefinitions,VersionVariant,VersionMajor,VersionMinor,VersionPatch:longint;
+var i,j,k,ArraySize,OtherArraySize,CountTypeDefinitions,VersionVariant,VersionMajor,VersionMinor,
+    VersionPatch:longint;
     ChildItem,ChildChildItem,NextChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    Category,Type_,Name,Text,NextText,ArraySizeStr,Comment,ParameterLine,ParameterName,CodeParameterLine,
+    Category,Type_,Name,Text,Text2,NextText,ArraySizeStr,Comment,ParameterLine,ParameterName,CodeParameterLine,
     Alias,Define:ansistring;
     TypeDefinitions:TTypeDefinitions;
     SortedTypeDefinitions:TPTypeDefinitions;
@@ -3934,6 +3936,7 @@ begin
              TypeDefinitionMember^.Name:=Text;
              TypeDefinitionMember^.ArraySizeInt:=0;
              TypeDefinitionMember^.ArraySizeStr:='';
+             TypeDefinitionMember^.OtherArraySizeInt:=0;
              TypeDefinitionMember^.Comment:='';
              Type_:='';
             end;
@@ -4013,12 +4016,24 @@ begin
            ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'),['']);
            k:=pos('[',Name);
            ArraySize:=-1;
+           OtherArraySize:=-1;
            if k>0 then begin
             Text:=copy(Name,k+1,length(Name)-k);
             Name:=copy(Name,1,k-1);
             k:=pos(']',Text);
             if k>0 then begin
              ArraySize:=StrToIntDef(copy(Text,1,k-1),1);
+             if ((k+1)<length(Name)) and (Name[k+1]='[') then begin
+              k:=k+1;
+              if k>0 then begin
+               Text:=copy(Name,k+1,length(Name)-k);
+               Name:=copy(Name,1,k-1);
+               k:=pos(']',Text);
+               if k>0 then begin
+                OtherArraySize:=StrToIntDef(copy(Text,1,k-1),1);
+               end;
+              end;
+             end;
             end;
            end;
            if ArraySize<0 then begin
@@ -4028,10 +4043,20 @@ begin
              Delete(Text,1,k);
              k:=pos(']',Text);
              if k>0 then begin
-              Text:=trim(copy(Text,1,k-1));
-              ArraySize:=StrToIntDef(Text,-1);
+              Text2:=trim(copy(Text,1,k-1));
+              ArraySize:=StrToIntDef(Text2,-1);
               if ArraySize<0 then begin
-               ArraySizeStr:=Text;
+               ArraySizeStr:=Text2;
+              end;
+              if ((k+1)<length(Text)) and (Text[k+1]='[') then begin
+               k:=k+1;
+               if k>0 then begin
+                Text2:=copy(Text,k+1,length(Text)-k);
+                k:=pos(']',Text2);
+                if k>0 then begin
+                 OtherArraySize:=StrToIntDef(copy(Text2,1,k-1),1);
+                end;
+               end;
               end;
              end;
             end;
@@ -4061,6 +4086,7 @@ begin
            TypeDefinitionMember^.Type_:=Type_;
            TypeDefinitionMember^.Values:=ChildChildTag.GetParameter('values');
            TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
+           TypeDefinitionMember^.OtherArraySizeInt:=OtherArraySize;
            TypeDefinitionMember^.Comment:=trim(ChildChildTag.GetParameter('comment')+' '+Comment);
  {         k:=0;
            while k<ValidityStringList.Count do begin
@@ -4455,7 +4481,11 @@ begin
           ParameterLine:=ParameterLine+'array of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr);
          end;
         end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
-         TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+         if TypeDefinition^.Members[j].OtherArraySizeInt>0 then begin
+          TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+',0..'+IntToStr(TypeDefinition^.Members[j].OtherArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+         end else begin
+          TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+         end;
          if TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)='TVkChar' then begin
           ParameterLine:=ParameterLine+'TVkCharString';
          end else begin
@@ -4584,7 +4614,11 @@ begin
        if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
         TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
        end else if TypeDefinition^.Members[j].ArraySizeInt>=0 then begin
-        TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+        if TypeDefinition^.Members[j].OtherArraySizeInt>=0 then begin
+         TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+',0..'+IntToStr(TypeDefinition^.Members[j].OtherArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+        end else begin
+         TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':array[0..'+IntToStr(TypeDefinition^.Members[j].ArraySizeInt-1)+'] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
+        end;
        end else begin
         TypeDefinitionTypes.Add('        '+TypeDefinition^.Members[j].Name+':'+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
        end;
@@ -4939,7 +4973,7 @@ begin
 end;
 
 procedure ParseCommandsTag(Tag:TXMLTag);
-var i,j,k,ArraySize,CountTypeDefinitions:longint;
+var i,j,k,CountTypeDefinitions:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
     ProtoName,ProtoType,ParamName,ParamType,Text,Line,Parameters,Define,Alias,AliasName:ansistring;
