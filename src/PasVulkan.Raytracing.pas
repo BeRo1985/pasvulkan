@@ -65,6 +65,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Collections,
@@ -191,7 +192,7 @@ type EpvRaytracing=class(Exception);
      TpvRaytracingTopLevelAccelerationStructure=class(TpvRaytracingAccelerationStructure)
       private
        fBottomLevelAccelerationStructureInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
-       fDirty:Boolean;
+       fDirty:TPasMPBool32;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -560,6 +561,10 @@ begin
  result.Components[2,1]:=fTransform.matrix[2,1];
  result.Components[2,2]:=fTransform.matrix[2,2];
  result.Components[2,3]:=fTransform.matrix[2,3];
+ result.Components[3,0]:=0.0;
+ result.Components[3,1]:=0.0;
+ result.Components[3,2]:=0.0;
+ result.Components[3,3]:=1.0;
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetTransform(const aTransform:TpvMatrix4x4);
