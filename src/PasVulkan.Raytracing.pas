@@ -158,6 +158,7 @@ type EpvRaytracing=class(Exception);
        fFlags:TVkGeometryInstanceFlagsKHR;
        fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
        fAccelerationStructureDeviceAddress:TVkDeviceAddress;
+       fAccelerationStructureInstance:TVkAccelerationStructureInstanceKHR;
        function GetTransform:TpvMatrix4x4;
        procedure SetTransform(const aTransform:TpvMatrix4x4);
       public
@@ -169,6 +170,7 @@ type EpvRaytracing=class(Exception);
                           const aFlags:TVkGeometryInstanceFlagsKHR;
                           const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure); reintroduce;
        destructor Destroy; override;
+       procedure Update;
       public
        property Transform:TpvMatrix4x4 read GetTransform write SetTransform;
       published
@@ -179,23 +181,27 @@ type EpvRaytracing=class(Exception);
        property Flags:TVkGeometryInstanceFlagsKHR read fFlags write fFlags;
        property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
        property AccelerationStructureDeviceAddress:TVkDeviceAddress read fAccelerationStructureDeviceAddress write fAccelerationStructureDeviceAddress;
+      public
+       property AccelerationStructureInstance:TVkAccelerationStructureInstanceKHR read fAccelerationStructureInstance write fAccelerationStructureInstance; 
      end;
 
-(*   { TpvRaytracingTopLevelAccelerationStructure }
+     TpvRaytracingBottomLevelAccelerationStructureInstanceList=TpvObjectGenericList<TpvRaytracingBottomLevelAccelerationStructureInstance>;
+
+     { TpvRaytracingTopLevelAccelerationStructure }
      TpvRaytracingTopLevelAccelerationStructure=class(TpvRaytracingAccelerationStructure)
       private
-       fInstances:TVkAccelerationStructureGeometryInstancesDataKHR;
-       fGeometry:TVkAccelerationStructureGeometryKHR;       
-       fCountInstances:TVkUInt32;
+       fBottomLevelAccelerationStructureInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
+       fDirty:Boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
+       procedure MarkDirty;
+       procedure AddBottomLevelAccelerationStructureInstance(const aInstance:TpvRaytracingBottomLevelAccelerationStructureInstance);
+       procedure RemoveBottomLevelAccelerationStructureInstance(const aInstance:TpvRaytracingBottomLevelAccelerationStructureInstance);
       public
-       property Instances:TVkAccelerationStructureGeometryInstancesDataKHR read fInstances;
-       property Geometry:TVkAccelerationStructureGeometryKHR read fGeometry;
       published
-       property CountInstances:TVkUInt32 read fCountInstances;
-     end;*)
+       property BottomLevelAccelerationStructureInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBottomLevelAccelerationStructureInstances;
+     end;
 
 implementation
 
@@ -531,6 +537,8 @@ begin
 
  fAccelerationStructureDeviceAddress:=fDevice.Commands.Commands.GetAccelerationStructureDeviceAddressKHR(fDevice.Handle,@AddressInfo);
 
+ Update;
+
 end;
 
 destructor TpvRaytracingBottomLevelAccelerationStructureInstance.Destroy;
@@ -568,6 +576,59 @@ begin
  fTransform.matrix[2,1]:=aTransform.Components[2,1];
  fTransform.matrix[2,2]:=aTransform.Components[2,2];
  fTransform.matrix[2,3]:=aTransform.Components[2,3];
+end;
+
+procedure TpvRaytracingBottomLevelAccelerationStructureInstance.Update;
+begin
+ FillChar(fAccelerationStructureInstance,SizeOf(TVkAccelerationStructureInstanceKHR),#0);
+ fAccelerationStructureInstance.transform:=fTransform;
+ fAccelerationStructureInstance.instanceCustomIndex:=fInstanceCustomIndex;
+ fAccelerationStructureInstance.mask:=fMask;
+ fAccelerationStructureInstance.instanceShaderBindingTableRecordOffset:=fInstanceShaderBindingTableRecordOffset;
+ fAccelerationStructureInstance.flags:=fFlags;
+ fAccelerationStructureInstance.accelerationStructureReference:=fAccelerationStructureDeviceAddress;
+end;
+
+{ TpvRaytracingTopLevelAccelerationStructure }
+
+constructor TpvRaytracingTopLevelAccelerationStructure.Create(const aDevice:TpvVulkanDevice);
+begin
+
+ inherited Create(aDevice,TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR));
+
+ fBottomLevelAccelerationStructureInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
+
+ fDirty:=false;
+
+end;
+
+destructor TpvRaytracingTopLevelAccelerationStructure.Destroy;
+begin
+ FreeAndNil(fBottomLevelAccelerationStructureInstances);
+ inherited Destroy;
+end;
+
+procedure TpvRaytracingTopLevelAccelerationStructure.MarkDirty;
+begin
+ fDirty:=true;
+end;
+
+procedure TpvRaytracingTopLevelAccelerationStructure.AddBottomLevelAccelerationStructureInstance(const aInstance:TpvRaytracingBottomLevelAccelerationStructureInstance);
+begin
+ if fBottomLevelAccelerationStructureInstances.IndexOf(aInstance)<0 then begin
+  fBottomLevelAccelerationStructureInstances.Add(aInstance);
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvRaytracingTopLevelAccelerationStructure.RemoveBottomLevelAccelerationStructureInstance(const aInstance:TpvRaytracingBottomLevelAccelerationStructureInstance);
+var Index:TpvSizeInt;
+begin
+ Index:=fBottomLevelAccelerationStructureInstances.IndexOf(aInstance);
+ if Index>=0 then begin
+  fBottomLevelAccelerationStructureInstances.Delete(Index);
+  fDirty:=true;
+ end;
 end;
 
 end.
