@@ -350,21 +350,11 @@ begin
 
  try
 
-  case fUpdateMode of
-   TUpdateMode.NotUpdateable:begin
-    TargetAccelerationStructure:=TpvRaytracingAccelerationStructure.Create(fDevice,BuildSizesInfo.accelerationStructureSize,fType);
-   end;
-   TUpdateMode.InPlace:begin
-    TargetAccelerationStructure:=TpvRaytracingAccelerationStructure.Create(fDevice,BuildSizesInfo.accelerationStructureSize,fType);
-   end;
-   TUpdateMode.PingPong:begin
-    SourceAccelerationStructure:=TpvRaytracingAccelerationStructure.Create(fDevice,BuildSizesInfo.accelerationStructureSize,fType);
-    TargetAccelerationStructure:=TpvRaytracingAccelerationStructure.Create(fDevice,BuildSizesInfo.accelerationStructureSize,fType);
-   end;
-   else begin
-    raise EpvRaytracing.Create('TpvRaytracingAccelerationStructureUpdateable.Create');
-   end;
+  if fUpdateMode=TUpdateMode.PingPong then begin
+   SourceAccelerationStructure:=TpvRaytracingAccelerationStructure.Create(fDevice,BuildSizesInfo.accelerationStructureSize,fType);
   end;
+
+  TargetAccelerationStructure:=TpvRaytracingAccelerationStructure.Create(fDevice,BuildSizesInfo.accelerationStructureSize,fType);
 
   fBuildScratchSize:=BuildSizesInfo.buildScratchSize;
 
