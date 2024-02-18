@@ -20556,7 +20556,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       matrix:array[0..2] of TVkFloat;
+       matrix:array[0..2] of array[0..3] of TVkFloat;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aMatrix:array of TVkFloat);
 {$endif}

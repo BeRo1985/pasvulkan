@@ -147,7 +147,44 @@ type EpvRaytracing=class(Exception);
        property DynamicGeometry:Boolean read fDynamicGeometry;
      end;
 
-     { TpvRaytracingTopLevelAccelerationStructure }
+     { TpvRaytracingBottomLevelAccelerationStructureInstance }
+     TpvRaytracingBottomLevelAccelerationStructureInstance=class
+      private
+       fTransform:TVkTransformMatrixKHR;
+       fInstanceCustomIndex:TVkUInt32;
+       fInstanceShaderBindingTableRecordOffset:TVkUInt32;
+       fAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure;
+       function GetTransform:TpvMatrix4x4;
+       procedure SetTransform(const aTransform:TpvMatrix4x4);
+      public
+       constructor Create(const aTransform:TpvMatrix4x4;
+                          const aInstanceCustomIndex:TVkUInt32;
+                          const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                          const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure); reintroduce;
+       destructor Destroy; override;
+      public
+       property Transform:TpvMatrix4x4 read GetTransform write SetTransform;
+      published
+       property InstanceCustomIndex:TVkUInt32 read fInstanceCustomIndex write fInstanceCustomIndex;
+       property InstanceShaderBindingTableRecordOffset:TVkUInt32 read fInstanceShaderBindingTableRecordOffset write fInstanceShaderBindingTableRecordOffset;
+       property AccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure read fAccelerationStructure write fAccelerationStructure;
+     end;
+
+(*   { TpvRaytracingTopLevelAccelerationStructure }
+     TpvRaytracingTopLevelAccelerationStructure=class(TpvRaytracingAccelerationStructure)
+      private
+       fInstances:TVkAccelerationStructureGeometryInstancesDataKHR;
+       fGeometry:TVkAccelerationStructureGeometryKHR;       
+       fCountInstances:TVkUInt32;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+      public
+       property Instances:TVkAccelerationStructureGeometryInstancesDataKHR read fInstances;
+       property Geometry:TVkAccelerationStructureGeometryKHR read fGeometry;
+      published
+       property CountInstances:TVkUInt32 read fCountInstances;
+     end;*)
 
 implementation
 
@@ -362,7 +399,7 @@ end;
 constructor TpvRaytracingBottomLevelAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
                                                                  const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                                                                  const aDynamicGeometry:Boolean);
-var Index,Count:TVkUInt32;
+var Index:TpvSizeInt;
     MaxPrimCount:TpvUInt32DynamicArray;
 begin
 
@@ -448,10 +485,61 @@ begin
   
 end;                                                               
 
-{ TpvRaytracingTopLevelAccelerationStructure }
+{ TpvRaytracingBottomLevelAccelerationStructureInstance }
 
+constructor TpvRaytracingBottomLevelAccelerationStructureInstance.Create(const aTransform:TpvMatrix4x4;
+                                                                         const aInstanceCustomIndex:TVkUInt32;
+                                                                         const aInstanceShaderBindingTableRecordOffset:TVkUInt32;
+                                                                         const aAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
+begin
 
+ inherited Create;
 
+ SetTransform(aTransform);
 
+ fInstanceCustomIndex:=aInstanceCustomIndex;
+
+ fInstanceShaderBindingTableRecordOffset:=aInstanceShaderBindingTableRecordOffset;
+
+ fAccelerationStructure:=aAccelerationStructure;
+
+end;
+
+destructor TpvRaytracingBottomLevelAccelerationStructureInstance.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvRaytracingBottomLevelAccelerationStructureInstance.GetTransform:TpvMatrix4x4;
+begin
+ result.Components[0,0]:=fTransform.matrix[0,0];
+ result.Components[0,1]:=fTransform.matrix[0,1];
+ result.Components[0,2]:=fTransform.matrix[0,2];
+ result.Components[0,3]:=fTransform.matrix[0,3];
+ result.Components[1,0]:=fTransform.matrix[1,0];
+ result.Components[1,1]:=fTransform.matrix[1,1];
+ result.Components[1,2]:=fTransform.matrix[1,2];
+ result.Components[1,3]:=fTransform.matrix[1,3];
+ result.Components[2,0]:=fTransform.matrix[2,0];
+ result.Components[2,1]:=fTransform.matrix[2,1];
+ result.Components[2,2]:=fTransform.matrix[2,2];
+ result.Components[2,3]:=fTransform.matrix[2,3];
+end;
+
+procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetTransform(const aTransform:TpvMatrix4x4);
+begin
+ fTransform.matrix[0,0]:=aTransform.Components[0,0];
+ fTransform.matrix[0,1]:=aTransform.Components[0,1];
+ fTransform.matrix[0,2]:=aTransform.Components[0,2];
+ fTransform.matrix[0,3]:=aTransform.Components[0,3];
+ fTransform.matrix[1,0]:=aTransform.Components[1,0];
+ fTransform.matrix[1,1]:=aTransform.Components[1,1];
+ fTransform.matrix[1,2]:=aTransform.Components[1,2];
+ fTransform.matrix[1,3]:=aTransform.Components[1,3];
+ fTransform.matrix[2,0]:=aTransform.Components[2,0];
+ fTransform.matrix[2,1]:=aTransform.Components[2,1];
+ fTransform.matrix[2,2]:=aTransform.Components[2,2];
+ fTransform.matrix[2,3]:=aTransform.Components[2,3];
+end;
 
 end.
