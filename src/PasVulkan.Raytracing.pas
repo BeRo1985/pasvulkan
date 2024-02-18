@@ -268,6 +268,7 @@ var Index:TpvSizeInt;
     Current:TpvRaytracingAccelerationStructure;
 begin
  
+ FillChar(result,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
  result.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
  result.pNext:=nil;
  result.accelerationStructureSize:=0;
@@ -288,6 +289,7 @@ end;
 function TpvRaytracingAccelerationStructure.GetMemorySizes(const aCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
 begin
 
+ FillChar(result,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
  result.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
  result.pNext:=nil;
  result.accelerationStructureSize:=0;
@@ -436,6 +438,7 @@ begin
 
  fDynamicGeometry:=aDynamicGeometry;
 
+ FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
  fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
  fBuildGeometryInfo.pNext:=nil;
  if fDynamicGeometry then begin
