@@ -128,17 +128,17 @@ type EpvRaytracing=class(Exception);
                           const aMaxPrimitiveCounts:array of TVkUInt32); reintroduce;
        destructor Destroy; override;
        function Valid:boolean; 
-       procedure BuildAccelerationStructuresCmd(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                const aGeometries:array of TVkAccelerationStructureGeometryKHR;
-                                                const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
-                                                const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
-       procedure PrepareUpdateAccelerationStructuresCmd(var aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
-                                                        const aGeometries:array of TVkAccelerationStructureGeometryKHR;
-                                                        const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
-       procedure UpdateAccelerationStructuresCmd(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                 const aGeometries:array of TVkAccelerationStructureGeometryKHR;
-                                                 const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
-                                                 const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
+       procedure BuildAccelerationStructures(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aGeometries:array of TVkAccelerationStructureGeometryKHR;
+                                             const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
+                                             const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
+       procedure PrepareUpdateAccelerationStructures(var aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
+                                                     const aGeometries:array of TVkAccelerationStructureGeometryKHR;
+                                                     const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
+       procedure UpdateAccelerationStructures(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                              const aGeometries:array of TVkAccelerationStructureGeometryKHR;
+                                              const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
+                                              const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
       published
        property Device:TpvVulkanDevice read fDevice;
        property Type_:TVkAccelerationStructureTypeKHR read fType;
@@ -394,10 +394,10 @@ begin
  result:=assigned(fSourceAccelerationStructure);
 end;
 
-procedure TpvRaytracingAccelerationStructureUpdateable.BuildAccelerationStructuresCmd(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                                      const aGeometries:array of TVkAccelerationStructureGeometryKHR;
-                                                                                      const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
-                                                                                      const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
+procedure TpvRaytracingAccelerationStructureUpdateable.BuildAccelerationStructures(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                                   const aGeometries:array of TVkAccelerationStructureGeometryKHR;
+                                                                                   const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
+                                                                                   const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
 var BuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
     pAsBuildRangeInfo:PVkAccelerationStructureBuildRangeInfoKHR;
     MemoryBarrier:TVkMemoryBarrier;
@@ -445,9 +445,9 @@ begin
 
 end;
 
-procedure TpvRaytracingAccelerationStructureUpdateable.PrepareUpdateAccelerationStructuresCmd(var aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
-                                                                                              const aGeometries:array of TVkAccelerationStructureGeometryKHR;
-                                                                                              const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
+procedure TpvRaytracingAccelerationStructureUpdateable.PrepareUpdateAccelerationStructures(var aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
+                                                                                           const aGeometries:array of TVkAccelerationStructureGeometryKHR;
+                                                                                           const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
 var Source:TVkAccelerationStructureKHR;
 begin
 
@@ -473,16 +473,16 @@ begin
 
 end;
 
-procedure TpvRaytracingAccelerationStructureUpdateable.UpdateAccelerationStructuresCmd(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                                       const aGeometries:array of TVkAccelerationStructureGeometryKHR;
-                                                                                       const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
-                                                                                       const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
+procedure TpvRaytracingAccelerationStructureUpdateable.UpdateAccelerationStructures(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                                    const aGeometries:array of TVkAccelerationStructureGeometryKHR;
+                                                                                    const aBuildRangeInfo:array of TVkAccelerationStructureBuildRangeInfoKHR;
+                                                                                    const aScratchBuffer:TpvRaytracingAccelerationStructureScratch);
 var BuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
     pAsBuildRangeInfo:PVkAccelerationStructureBuildRangeInfoKHR;
     MemoryBarrier:TVkMemoryBarrier;
 begin
 
- PrepareUpdateAccelerationStructuresCmd(BuildGeometryInfo,aGeometries,aScratchBuffer);
+ PrepareUpdateAccelerationStructures(BuildGeometryInfo,aGeometries,aScratchBuffer);
 
  pAsBuildRangeInfo:=nil;
  if length(aBuildRangeInfo)>0 then begin
