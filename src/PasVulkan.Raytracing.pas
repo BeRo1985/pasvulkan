@@ -142,7 +142,8 @@ type EpvRaytracing=class(Exception);
                           const aResultBufferOffset:TVkDeviceSize); 
        procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                         const aScratchBuffer:TpvVulkanBuffer;
-                        const aScratchBufferOffset:TVkDeviceSize);
+                        const aScratchBufferOffset:TVkDeviceSize;
+                        const aSourceAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure=nil);
       published
        property Geometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fGeometry;
        property DynamicGeometry:Boolean read fDynamicGeometry;
@@ -208,7 +209,8 @@ type EpvRaytracing=class(Exception);
                           const aResultBufferOffset:TVkDeviceSize);
        procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                         const aScratchBuffer:TpvVulkanBuffer;
-                        const aScratchBufferOffset:TVkDeviceSize);
+                        const aScratchBufferOffset:TVkDeviceSize;
+                        const aSourceAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure=nil);
       public
       published
      end;
@@ -499,13 +501,19 @@ end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructure.Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                const aScratchBuffer:TpvVulkanBuffer;
-                                                               const aScratchBufferOffset:TVkDeviceSize);
+                                                               const aScratchBufferOffset:TVkDeviceSize;
+                                                               const aSourceAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
 var BuildOffsetInfo:PVkAccelerationStructureBuildRangeInfoKHR;
 begin
 
  BuildOffsetInfo:=@fGeometry.fBuildOffsets.ItemArray[0];
 
  fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR);
+ if assigned(aSourceAccelerationStructure) then begin
+  fBuildGeometryInfo.srcAccelerationStructure:=aSourceAccelerationStructure.fAccelerationStructure; // Update from another acceleration structure as source
+ end else begin
+  fBuildGeometryInfo.srcAccelerationStructure:=fAccelerationStructure; // In-place update
+ end;
  fBuildGeometryInfo.dstAccelerationStructure:=fAccelerationStructure;
  fBuildGeometryInfo.scratchData.deviceAddress:=aScratchBuffer.DeviceAddress+aScratchBufferOffset;
 
@@ -684,7 +692,8 @@ end;
 
 procedure TpvRaytracingTopLevelAccelerationStructure.Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                             const aScratchBuffer:TpvVulkanBuffer;
-                                                            const aScratchBufferOffset:TVkDeviceSize);
+                                                            const aScratchBufferOffset:TVkDeviceSize;
+                                                            const aSourceAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure);
 var BuildOffsetInfo:TVkAccelerationStructureBuildRangeInfoKHR;
     BuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR;
 begin
@@ -697,6 +706,11 @@ begin
  BuildOffsetInfoPtr:=@BuildOffsetInfo;
 
  fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR);
+ if assigned(aSourceAccelerationStructure) then begin
+  fBuildGeometryInfo.srcAccelerationStructure:=aSourceAccelerationStructure.fAccelerationStructure; // Update from another acceleration structure as source
+ end else begin
+  fBuildGeometryInfo.srcAccelerationStructure:=fAccelerationStructure; // In-place update
+ end;
  fBuildGeometryInfo.dstAccelerationStructure:=fAccelerationStructure;
  fBuildGeometryInfo.scratchData.deviceAddress:=aScratchBuffer.DeviceAddress+aScratchBufferOffset;
 
