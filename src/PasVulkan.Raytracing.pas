@@ -437,8 +437,8 @@ begin
   // Build acceleration structure directly as single command
 
   fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
-                                                             1,@fBuildGeometryInfo,                                                             
-                                                             @fBuildOffsetInfoPtr);
+                                                              1,@fBuildGeometryInfo,                                                             
+                                                              @fBuildOffsetInfoPtr);
 
  end;
 
