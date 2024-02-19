@@ -263,6 +263,7 @@ begin
  Assert(assigned(aCommandBuffer));
  Assert(fDevice=aCommandBuffer.Device);
  if fBuildGeometryInfos.Count>0 then begin
+  Assert(fBuildGeometryInfos.Count=fBuildOffsetInfoPtrs.Count);
   fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
                                                               fBuildGeometryInfos.Count,
                                                               @fBuildGeometryInfos.ItemArray[0],
