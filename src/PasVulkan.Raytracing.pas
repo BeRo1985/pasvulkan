@@ -98,7 +98,9 @@ type EpvRaytracing=class(Exception);
                        const aScratchBufferOffset:TVkDeviceSize;
                        const aUpdate:Boolean=false;   
                        const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure=nil);
-       procedure Clone(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
+       procedure CopyFrom(const aCommandBuffer:TpvVulkanCommandBuffer;
+                          const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure;
+                          const aCompact:Boolean=false);
        procedure MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -321,6 +323,13 @@ procedure TpvRaytracingAccelerationStructure.Build(const aCommandBuffer:TpvVulka
                                                    const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
 begin
 
+ Assert(assigned(aCommandBuffer));
+ Assert(fDevice=aCommandBuffer.Device);
+ Assert(fAccelerationStructure<>VK_NULL_HANDLE);
+ Assert(aScratchBuffer.Handle<>VK_NULL_HANDLE);
+ Assert((not assigned(aSourceAccelerationStructure)) or (aSourceAccelerationStructure.fDevice=aCommandBuffer.Device));
+ Assert((not assigned(aSourceAccelerationStructure)) or (aSourceAccelerationStructure.fAccelerationStructure<>VK_NULL_HANDLE));
+ 
  if aUpdate then begin
 
   // Update acceleration structure, either in-place or from another acceleration structure as source
@@ -353,12 +362,14 @@ begin
   
 end;
 
-procedure TpvRaytracingAccelerationStructure.Clone(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
+procedure TpvRaytracingAccelerationStructure.CopyFrom(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                      const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure;
+                                                      const aCompact:Boolean);
 var CopyAccelerationStructureInfo:TVkCopyAccelerationStructureInfoKHR;
 begin
 
- Assert(aCommandBuffer<>nil);
- Assert(aSourceAccelerationStructure<>nil);
+ Assert(assigned(aCommandBuffer));
+ Assert(assigned(aSourceAccelerationStructure));
  Assert(aSourceAccelerationStructure.fDevice=aCommandBuffer.Device);
  Assert(fDevice=aCommandBuffer.Device);
  Assert(aSourceAccelerationStructure.fAccelerationStructure<>VK_NULL_HANDLE);
@@ -369,7 +380,11 @@ begin
  CopyAccelerationStructureInfo.pNext:=nil;
  CopyAccelerationStructureInfo.src:=aSourceAccelerationStructure.AccelerationStructure;
  CopyAccelerationStructureInfo.dst:=fAccelerationStructure;
- CopyAccelerationStructureInfo.mode:=VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
+ if aCompact then begin
+  CopyAccelerationStructureInfo.mode:=VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
+ end else begin
+  CopyAccelerationStructureInfo.mode:=VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
+ end; 
 
  fDevice.Commands.Commands.CmdCopyAccelerationStructureKHR(aCommandBuffer.Handle,@CopyAccelerationStructureInfo);
 
