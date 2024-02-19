@@ -73,6 +73,26 @@ uses SysUtils,
 
 type EpvRaytracing=class(Exception);
 
+     { TpvRaytracingAccelerationStructureBuildQueue }
+     TpvRaytracingAccelerationStructureBuildQueue=class      
+      public
+       type TBuildGeometryInfos=TpvDynamicArrayList<TVkAccelerationStructureBuildGeometryInfoKHR>;
+            TBuildOffsetInfoPtrs=TpvDynamicArrayList<PVkAccelerationStructureBuildRangeInfoKHR>;
+      private 
+       fDevice:TpvVulkanDevice;
+       fBuildGeometryInfos:TBuildGeometryInfos;
+       fBuildOffsetInfoPtrs:TBuildOffsetInfoPtrs;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+       procedure Clear;
+       procedure Add(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
+                     const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR); 
+       procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+      published
+       property Device:TpvVulkanDevice read fDevice;
+     end;
+
      TpvRaytracingAccelerationStructure=class;
 
      TpvRaytracingAccelerationStructureList=TpvObjectGenericList<TpvRaytracingAccelerationStructure>;
@@ -207,6 +227,48 @@ type EpvRaytracing=class(Exception);
      end;
 
 implementation
+
+{ TpvRaytracingAccelerationStructureBuildQueue }
+
+constructor TpvRaytracingAccelerationStructureBuildQueue.Create(const aDevice:TpvVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=aDevice;
+ fBuildGeometryInfos:=TBuildGeometryInfos.Create;
+ fBuildOffsetInfoPtrs:=TBuildOffsetInfoPtrs.Create;
+end;
+
+destructor TpvRaytracingAccelerationStructureBuildQueue.Destroy;
+begin
+ FreeAndNil(fBuildGeometryInfos);
+ FreeAndNil(fBuildOffsetInfoPtrs);
+ inherited Destroy;
+end;
+
+procedure TpvRaytracingAccelerationStructureBuildQueue.Clear;
+begin
+ fBuildGeometryInfos.ClearNoFree;
+ fBuildOffsetInfoPtrs.ClearNoFree;
+end;
+
+procedure TpvRaytracingAccelerationStructureBuildQueue.Add(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
+                                                           const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR);
+begin
+ fBuildGeometryInfos.Add(aBuildGeometryInfo);
+ fBuildOffsetInfoPtrs.Add(aBuildOffsetInfoPtr);
+end;
+
+procedure TpvRaytracingAccelerationStructureBuildQueue.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+ Assert(assigned(aCommandBuffer));
+ Assert(fDevice=aCommandBuffer.Device);
+ if fBuildGeometryInfos.Count>0 then begin
+  fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
+                                                              fBuildGeometryInfos.Count,
+                                                              @fBuildGeometryInfos.ItemArray[0],
+                                                              @fBuildOffsetInfoPtrs.ItemArray[0]);
+ end;
+end;
 
 { TpvRaytracingAccelerationStructure }
 
