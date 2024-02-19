@@ -92,6 +92,15 @@ type EpvRaytracing=class(Exception);
        class function Reduce(const aStructures:TpvRaytracingAccelerationStructureList):TVkAccelerationStructureBuildSizesInfoKHR; static;
        function GetMemorySizes(const aCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
        procedure Initialize(const aBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
+       procedure Generate(const aCommandBuffer:TpvVulkanCommandBuffer;
+                          const aScratchBuffer:TpvVulkanBuffer;
+                          const aScratchBufferOffset:TVkDeviceSize;
+                          const aResultBuffer:TpvVulkanBuffer;
+                          const aResultBufferOffset:TVkDeviceSize); virtual;
+       procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;
+                        const aScratchBuffer:TpvVulkanBuffer;
+                        const aScratchBufferOffset:TVkDeviceSize;
+                        const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure=nil); virtual;
        procedure Clone(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
        procedure MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
       published
@@ -139,11 +148,11 @@ type EpvRaytracing=class(Exception);
                           const aScratchBuffer:TpvVulkanBuffer;
                           const aScratchBufferOffset:TVkDeviceSize;
                           const aResultBuffer:TpvVulkanBuffer;
-                          const aResultBufferOffset:TVkDeviceSize); 
+                          const aResultBufferOffset:TVkDeviceSize); override; 
        procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                         const aScratchBuffer:TpvVulkanBuffer;
                         const aScratchBufferOffset:TVkDeviceSize;
-                        const aSourceAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure=nil);
+                        const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure=nil); override;
       published
        property Geometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fGeometry;
        property DynamicGeometry:Boolean read fDynamicGeometry;
@@ -206,11 +215,11 @@ type EpvRaytracing=class(Exception);
                           const aScratchBuffer:TpvVulkanBuffer;
                           const aScratchBufferOffset:TVkDeviceSize;
                           const aResultBuffer:TpvVulkanBuffer;
-                          const aResultBufferOffset:TVkDeviceSize);
+                          const aResultBufferOffset:TVkDeviceSize); override;
        procedure Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                         const aScratchBuffer:TpvVulkanBuffer;
                         const aScratchBufferOffset:TVkDeviceSize;
-                        const aSourceAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure=nil);
+                        const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure=nil); override;
       public
       published
      end;
@@ -323,6 +332,23 @@ begin
   
  VulkanCheckResult(fDevice.Commands.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@CreateInfo,nil,@fAccelerationStructure));
   
+end;
+
+procedure TpvRaytracingAccelerationStructure.Generate(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                      const aScratchBuffer:TpvVulkanBuffer;
+                                                      const aScratchBufferOffset:TVkDeviceSize;
+                                                      const aResultBuffer:TpvVulkanBuffer;
+                                                      const aResultBufferOffset:TVkDeviceSize);
+begin
+ Assert(false);
+end;
+
+procedure TpvRaytracingAccelerationStructure.Update(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                    const aScratchBuffer:TpvVulkanBuffer;
+                                                    const aScratchBufferOffset:TVkDeviceSize;
+                                                    const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
+begin
+ Assert(false);
 end;
 
 procedure TpvRaytracingAccelerationStructure.Clone(const aCommandBuffer:TpvVulkanCommandBuffer;const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
@@ -502,7 +528,7 @@ end;
 procedure TpvRaytracingBottomLevelAccelerationStructure.Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                                const aScratchBuffer:TpvVulkanBuffer;
                                                                const aScratchBufferOffset:TVkDeviceSize;
-                                                               const aSourceAccelerationStructure:TpvRaytracingBottomLevelAccelerationStructure);
+                                                               const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
 var BuildOffsetInfo:PVkAccelerationStructureBuildRangeInfoKHR;
 begin
 
@@ -693,7 +719,7 @@ end;
 procedure TpvRaytracingTopLevelAccelerationStructure.Update(const aCommandBuffer:TpvVulkanCommandBuffer;
                                                             const aScratchBuffer:TpvVulkanBuffer;
                                                             const aScratchBufferOffset:TVkDeviceSize;
-                                                            const aSourceAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure);
+                                                            const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
 var BuildOffsetInfo:TVkAccelerationStructureBuildRangeInfoKHR;
     BuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR;
 begin
