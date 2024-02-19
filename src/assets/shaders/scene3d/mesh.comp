@@ -26,8 +26,8 @@ struct OutPackedVertex {
 
 #ifdef RAYTRACING
 struct OutRayTracingVertex {
-  uvec4 position; // w=unused
-};
+  uvec4 position; // w = vertex index for inside ray tracing shaders for simplifying the code for looking up the absolute vertex index in a fast and simple way, instead of using a separate buffer for that, for offsetting relative vertex indices in the ray shaders to absolute vertex indices.
+};  
 #endif
 
 struct MorphTargetVertex {
@@ -253,7 +253,7 @@ void main() {
         vec4 p = nodeMatrix * vec4(position.xyz, 1.0);
         position = p.xyz / p.w;
         OutRayTracingVertex outRayTracingVertex;
-        outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(position.xyz)), 0u);
+        outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(position.xyz)), uint(vertexIndex));
         outRayTracingVertices[vertexIndex] = outRayTracingVertex;
       }
 #endif
