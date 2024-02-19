@@ -112,7 +112,8 @@ type EpvRaytracing=class(Exception);
        destructor Destroy; override;
        class function Reduce(const aStructures:TpvRaytracingAccelerationStructureList):TVkAccelerationStructureBuildSizesInfoKHR; static;
        function GetMemorySizes(const aCounts:PVkUInt32):TVkAccelerationStructureBuildSizesInfoKHR;
-       procedure Initialize(const aBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
+       procedure Initialize(const aResultBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
+       procedure Finalize;
        procedure Build(const aCommandBuffer:TpvVulkanCommandBuffer;
                        const aScratchBuffer:TpvVulkanBuffer;
                        const aScratchBufferOffset:TVkDeviceSize;
@@ -314,13 +315,7 @@ end;
 
 destructor TpvRaytracingAccelerationStructure.Destroy;
 begin
- if fAccelerationStructure<>VK_NULL_HANDLE then begin
-  try
-   fDevice.Commands.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,fAccelerationStructure,nil);
-  finally
-   fAccelerationStructure:=VK_NULL_HANDLE;
-  end;
- end;
+ Finalize;
  inherited Destroy;
 end;
 
@@ -364,24 +359,40 @@ begin
                                                                  @result);
 
  result.accelerationStructureSize:=RoundUp64(result.accelerationStructureSize,256);                                                                
+ result.updateScratchSize:=RoundUp64(result.updateScratchSize,TVkDeviceSize(fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR.minAccelerationStructureScratchOffsetAlignment));
  result.buildScratchSize:=RoundUp64(result.buildScratchSize,TVkDeviceSize(fDevice.PhysicalDevice.AccelerationStructurePropertiesKHR.minAccelerationStructureScratchOffsetAlignment));
 
 end;
 
-procedure TpvRaytracingAccelerationStructure.Initialize(const aBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
+procedure TpvRaytracingAccelerationStructure.Initialize(const aResultBuffer:TpvVulkanBuffer;const aResultOffset:TVkDeviceSize);
 var CreateInfo:TVkAccelerationStructureCreateInfoKHR;
 begin
- 
- FillChar(CreateInfo,SizeOf(TVkAccelerationStructureCreateInfoKHR),#0);
- CreateInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
- CreateInfo.pNext:=nil;
- CreateInfo.type_:=fBuildGeometryInfo.type_;
- CreateInfo.size:=fBuildSizesInfo.accelerationStructureSize;
- CreateInfo.buffer:=aBuffer.Handle;
- CreateInfo.offset:=aResultOffset;
-  
- VulkanCheckResult(fDevice.Commands.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@CreateInfo,nil,@fAccelerationStructure));
-  
+
+ if fAccelerationStructure=VK_NULL_HANDLE then begin
+
+  FillChar(CreateInfo,SizeOf(TVkAccelerationStructureCreateInfoKHR),#0);
+  CreateInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+  CreateInfo.pNext:=nil;
+  CreateInfo.type_:=fBuildGeometryInfo.type_;
+  CreateInfo.size:=fBuildSizesInfo.accelerationStructureSize;
+  CreateInfo.buffer:=aResultBuffer.Handle;
+  CreateInfo.offset:=aResultOffset;
+
+  VulkanCheckResult(fDevice.Commands.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@CreateInfo,nil,@fAccelerationStructure));
+
+ end;
+
+end;
+
+procedure TpvRaytracingAccelerationStructure.Finalize;
+begin
+ if fAccelerationStructure<>VK_NULL_HANDLE then begin
+  try
+   fDevice.Commands.Commands.DestroyAccelerationStructureKHR(fDevice.Handle,fAccelerationStructure,nil);
+  finally
+   fAccelerationStructure:=VK_NULL_HANDLE;
+  end;
+ end;
 end;
 
 procedure TpvRaytracingAccelerationStructure.Build(const aCommandBuffer:TpvVulkanCommandBuffer;
