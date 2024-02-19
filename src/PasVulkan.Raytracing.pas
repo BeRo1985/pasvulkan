@@ -540,7 +540,7 @@ begin
  end;
 
  FillChar(BuildOffsetInfo,SizeOf(TVkAccelerationStructureBuildRangeInfoKHR),#0);
- BuildOffsetInfo.firstVertex:=aVertexOffset div aVertexStride;
+ BuildOffsetInfo.firstVertex:=aVertexOffset;
  BuildOffsetInfo.primitiveOffset:=aIndexOffset;
  BuildOffsetInfo.primitiveCount:=aIndexCount div 3;
  BuildOffsetInfo.transformOffset:=0;
