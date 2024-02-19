@@ -86,8 +86,8 @@ type EpvRaytracing=class(Exception);
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure Clear;
-       procedure Add(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
-                     const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR); 
+       procedure Enqueue(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
+                         const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR); 
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -117,7 +117,8 @@ type EpvRaytracing=class(Exception);
                        const aScratchBuffer:TpvVulkanBuffer;
                        const aScratchBufferOffset:TVkDeviceSize;
                        const aUpdate:Boolean=false;   
-                       const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure=nil);
+                       const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure=nil;
+                       const aQueue:TpvRaytracingAccelerationStructureBuildQueue=nil);
        procedure CopyFrom(const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure;
                           const aCompact:Boolean=false);
@@ -251,8 +252,8 @@ begin
  fBuildOffsetInfoPtrs.ClearNoFree;
 end;
 
-procedure TpvRaytracingAccelerationStructureBuildQueue.Add(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
-                                                           const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR);
+procedure TpvRaytracingAccelerationStructureBuildQueue.Enqueue(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
+                                                               const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR);
 begin
  fBuildGeometryInfos.Add(aBuildGeometryInfo);
  fBuildOffsetInfoPtrs.Add(aBuildOffsetInfoPtr);
@@ -264,10 +265,14 @@ begin
  Assert(fDevice=aCommandBuffer.Device);
  if fBuildGeometryInfos.Count>0 then begin
   Assert(fBuildGeometryInfos.Count=fBuildOffsetInfoPtrs.Count);
-  fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
-                                                              fBuildGeometryInfos.Count,
-                                                              @fBuildGeometryInfos.ItemArray[0],
-                                                              @fBuildOffsetInfoPtrs.ItemArray[0]);
+  try
+   fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
+                                                               fBuildGeometryInfos.Count,
+                                                               @fBuildGeometryInfos.ItemArray[0],
+                                                               @fBuildOffsetInfoPtrs.ItemArray[0]);
+  finally
+   Clear;
+  end; 
  end;
 end;
 
@@ -383,7 +388,8 @@ procedure TpvRaytracingAccelerationStructure.Build(const aCommandBuffer:TpvVulka
                                                    const aScratchBuffer:TpvVulkanBuffer;
                                                    const aScratchBufferOffset:TVkDeviceSize;
                                                    const aUpdate:Boolean;   
-                                                   const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure);
+                                                   const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure;
+                                                   const aQueue:TpvRaytracingAccelerationStructureBuildQueue);
 begin
 
  Assert(assigned(aCommandBuffer));
@@ -419,10 +425,23 @@ begin
  
  fBuildGeometryInfo.scratchData.deviceAddress:=aScratchBuffer.DeviceAddress+aScratchBufferOffset;
 
- fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
-                                                             1,@fBuildGeometryInfo,
+ if assigned(aQueue) then begin
+
+  // Enqueue build acceleration structure command to queue for parallel building
+
+  aQueue.Enqueue(fBuildGeometryInfo,
+                 fBuildOffsetInfoPtr);
+
+ end else begin
+
+  // Build acceleration structure directly as single command
+
+  fDevice.Commands.Commands.CmdBuildAccelerationStructuresKHR(aCommandBuffer.Handle,
+                                                             1,@fBuildGeometryInfo,                                                             
                                                              @fBuildOffsetInfoPtr);
-  
+
+ end;
+
 end;
 
 procedure TpvRaytracingAccelerationStructure.CopyFrom(const aCommandBuffer:TpvVulkanCommandBuffer;
