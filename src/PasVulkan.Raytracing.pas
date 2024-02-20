@@ -131,6 +131,9 @@ type EpvRaytracing=class(Exception);
       public
        property BuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR read fBuildGeometryInfo;
        property BuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR read fBuildSizesInfo;
+       property AccelerationStructureSize:TVkDeviceSize read fBuildSizesInfo.accelerationStructureSize;
+       property UpdateScratchSize:TVkDeviceSize read fBuildSizesInfo.updateScratchSize;
+       property BuildScratchSize:TVkDeviceSize read fBuildSizesInfo.buildScratchSize;
      end;
 
      { TpvRaytracingBottomLevelAccelerationStructureGeometry }
