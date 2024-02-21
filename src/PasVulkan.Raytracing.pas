@@ -783,6 +783,7 @@ begin
  FillChar(fInstances,SizeOf(TVkAccelerationStructureGeometryInstancesDataKHR),#0);
  fInstances.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR; 
  fInstances.pNext:=nil;
+ fInstances.arrayOfPointers:=VK_FALSE;
  fInstances.Data.deviceAddress:=aInstanceAddress;
 
  FillChar(fBuildOffsetInfo,SizeOf(TVkAccelerationStructureBuildRangeInfoKHR),#0);
