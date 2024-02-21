@@ -20508,6 +20508,7 @@ begin
                                                                              0,
                                                                              0,
                                                                              [TpvVulkanBufferFlag.PersistentMapped]);
+           fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceMatrixBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceMatrixBuffers['+IntToStr(Index)+']');
           end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
@@ -20525,6 +20526,7 @@ begin
                                                                              0,
                                                                              0,
                                                                              [TpvVulkanBufferFlag.PersistentMapped]);
+           fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(Index)+']');
           end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
@@ -20542,6 +20544,7 @@ begin
                                                                        0,
                                                                        0,
                                                                        [TpvVulkanBufferFlag.PersistentMapped]);
+           fVulkanDevice.DebugUtils.SetObjectName(fVulkanParticleVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanParticleVertexBuffers['+IntToStr(Index)+']');
           end;
 
          end;
@@ -20633,6 +20636,7 @@ begin
                                                                              0,
                                                                              0,
                                                                              []);
+           fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceMatrixBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceMatrixBuffers['+IntToStr(Index)+']');
           end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
@@ -20650,6 +20654,7 @@ begin
                                                                              0,
                                                                              0,
                                                                              []);
+           fVulkanDevice.DebugUtils.SetObjectName(fVulkanDebugPrimitiveVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanDebugPrimitiveVertexBuffers['+IntToStr(Index)+']');
           end;
 
           for Index:=0 to fCountInFlightFrames-1 do begin
@@ -20667,6 +20672,7 @@ begin
                                                                        0,
                                                                        0,
                                                                        []);
+           fVulkanDevice.DebugUtils.SetObjectName(fVulkanParticleVertexBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanParticleVertexBuffers['+IntToStr(Index)+']');
           end;
 
          end;
@@ -20817,6 +20823,8 @@ begin
                                                                          0,
                                                                          [TpvVulkanBufferFlag.PersistentMapped]);
 
+                fVulkanDevice.DebugUtils.SetObjectName(fVulkanMaterialDataBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanMaterialDataBuffers['+IntToStr(Index)+']');
+
                 fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                    UniversalCommandBuffer,
                                                    UniversalFence,
@@ -20854,6 +20862,8 @@ begin
                                                                          0,
                                                                          []);
 
+                fVulkanDevice.DebugUtils.SetObjectName(fVulkanMaterialDataBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanMaterialDataBuffers['+IntToStr(Index)+']');
+
                 fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                    UniversalCommandBuffer,
                                                    UniversalFence,
@@ -20888,6 +20898,7 @@ begin
                                                                            0,
                                                                            0,
                                                                            []);
+              fVulkanDevice.DebugUtils.SetObjectName(fVulkanMaterialUniformBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fVulkanMaterialUniformBuffers['+IntToStr(Index)+']');
               fVulkanDevice.MemoryStaging.Upload(UniversalQueue,
                                                  UniversalCommandBuffer,
                                                  UniversalFence,
@@ -21966,6 +21977,7 @@ begin
                                                                                        0,
                                                                                        0,
                                                                                        [TpvVulkanBufferFlag.PersistentMapped]);
+       fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceMatrixBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceMatrixBuffers['+IntToStr(Index)+']');
       end;
 
       TBufferStreamingMode.Staging:begin
@@ -21983,6 +21995,7 @@ begin
                                                                                        0,
                                                                                        0,
                                                                                        []);
+       fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanInstanceMatrixBuffers[Index].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fGlobalVulkanInstanceMatrixBuffers['+IntToStr(Index)+']');
       end;
 
       else begin
