@@ -26977,7 +26977,11 @@ begin
 
    finally
     if DoFreeStagingBuffer then begin
-     FreeAndNil(StagingBuffer);
+     try
+      FreeAndNil(StagingBuffer);
+     finally
+      fStagingBuffer:=nil;
+     end;
     end;
    end;
 
