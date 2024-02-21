@@ -165,7 +165,9 @@ type EpvRaytracing=class(Exception);
                               const aIndexBuffer:TpvVulkanBuffer;
                               const aIndexOffset:TVkUInt32;
                               const aIndexCount:TVkUInt32;
-                              const aOpaque:Boolean);
+                              const aOpaque:Boolean;
+                              const aTransformBuffer:TpvVulkanBuffer=nil;
+                              const aTransformOffset:TVkDeviceSize=0);
      end;
      
      { TpvRaytracingBottomLevelAccelerationStructure }
@@ -539,7 +541,9 @@ procedure TpvRaytracingBottomLevelAccelerationStructureGeometry.AddTriangles(con
                                                                              const aIndexBuffer:TpvVulkanBuffer;
                                                                              const aIndexOffset:TVkUInt32;
                                                                              const aIndexCount:TVkUInt32;
-                                                                             const aOpaque:Boolean);
+                                                                             const aOpaque:Boolean;
+                                                                             const aTransformBuffer:TpvVulkanBuffer;
+                                                                             const aTransformOffset:TVkDeviceSize);
 var Geometry:TVkAccelerationStructureGeometryKHR;
     BuildOffsetInfo:TVkAccelerationStructureBuildRangeInfoKHR;
 begin
@@ -556,8 +560,11 @@ begin
  Geometry.geometry.triangles.vertexFormat:=VK_FORMAT_R32G32B32_SFLOAT;
  Geometry.geometry.triangles.indexData.deviceAddress:=aIndexBuffer.DeviceAddress;
  Geometry.geometry.triangles.indexType:=TVkIndexType(VK_INDEX_TYPE_UINT32);
- Geometry.geometry.triangles.transformData.deviceAddress:=0;
- Geometry.geometry.triangles.transformData.hostAddress:=nil;
+ if assigned(aTransformBuffer) then begin
+  Geometry.geometry.triangles.transformData.deviceAddress:=aTransformBuffer.DeviceAddress;
+ end else begin
+  Geometry.geometry.triangles.transformData.deviceAddress:=0;
+ end;
  Geometry.flags:=TVkGeometryFlagsKHR(0);
  if aOpaque then begin
   Geometry.flags:=Geometry.flags or TVkGeometryFlagsKHR(VK_GEOMETRY_OPAQUE_BIT_KHR);
@@ -567,7 +574,11 @@ begin
  BuildOffsetInfo.firstVertex:=aVertexOffset;
  BuildOffsetInfo.primitiveOffset:=aIndexOffset;
  BuildOffsetInfo.primitiveCount:=aIndexCount div 3;
- BuildOffsetInfo.transformOffset:=0;
+ if assigned(aTransformBuffer) then begin
+  BuildOffsetInfo.transformOffset:=aTransformOffset;
+ end else begin
+  BuildOffsetInfo.transformOffset:=0;
+ end;
 
  fTriangles.Add(Geometry);
  fBuildOffsets.Add(BuildOffsetInfo);
