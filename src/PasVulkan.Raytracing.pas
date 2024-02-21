@@ -168,6 +168,11 @@ type EpvRaytracing=class(Exception);
                               const aOpaque:Boolean;
                               const aTransformBuffer:TpvVulkanBuffer=nil;
                               const aTransformOffset:TVkDeviceSize=0);
+       procedure AddAABBs(const aAABBBuffer:TpvVulkanBuffer;
+                          const aOffset:TVkDeviceSize;
+                          const aCount:TVkUInt32;
+                          const aOpaque:Boolean;
+                          const aStride:TVkDeviceSize=SizeOf(TVkAabbPositionsKHR));
      end;
      
      { TpvRaytracingBottomLevelAccelerationStructure }
@@ -579,6 +584,39 @@ begin
  end else begin
   BuildOffsetInfo.transformOffset:=0;
  end;
+
+ fTriangles.Add(Geometry);
+ fBuildOffsets.Add(BuildOffsetInfo);
+
+end;
+
+procedure TpvRaytracingBottomLevelAccelerationStructureGeometry.AddAABBs(const aAABBBuffer:TpvVulkanBuffer;
+                                                                         const aOffset:TVkDeviceSize;
+                                                                         const aCount:TVkUInt32;
+                                                                         const aOpaque:Boolean;
+                                                                         const aStride:TVkDeviceSize);
+var Geometry:TVkAccelerationStructureGeometryKHR;
+    BuildOffsetInfo:TVkAccelerationStructureBuildRangeInfoKHR;
+begin
+
+ FillChar(Geometry,SizeOf(TVkAccelerationStructureGeometryKHR),#0);
+ Geometry.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+ Geometry.pNext:=nil;
+ Geometry.geometryType:=TVkGeometryTypeKHR(VK_GEOMETRY_TYPE_AABBS_KHR);
+ Geometry.geometry.aabbs.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+ Geometry.geometry.aabbs.pNext:=nil;
+ Geometry.geometry.aabbs.data.deviceAddress:=aAABBBuffer.DeviceAddress;
+ Geometry.geometry.aabbs.stride:=aStride;
+ Geometry.flags:=TVkGeometryFlagsKHR(0);
+ if aOpaque then begin
+  Geometry.flags:=Geometry.flags or TVkGeometryFlagsKHR(VK_GEOMETRY_OPAQUE_BIT_KHR);
+ end;
+
+ FillChar(BuildOffsetInfo,SizeOf(TVkAccelerationStructureBuildRangeInfoKHR),#0);
+ BuildOffsetInfo.firstVertex:=0;
+ BuildOffsetInfo.primitiveOffset:=aOffset;
+ BuildOffsetInfo.primitiveCount:=aCount;
+ BuildOffsetInfo.transformOffset:=0;
 
  fTriangles.Add(Geometry);
  fBuildOffsets.Add(BuildOffsetInfo);
