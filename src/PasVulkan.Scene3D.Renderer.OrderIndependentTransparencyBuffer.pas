@@ -114,6 +114,8 @@ begin
                                        0,
                                        []);
 
+ aDevice.DebugUtils.SetObjectName(fVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.OITBuffer');
+
  if (aBufferUsage and (TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) or
                        TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)))<>0 then begin
   fVulkanBufferView:=TpvVulkanBufferView.Create(aDevice,
