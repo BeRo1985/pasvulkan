@@ -26977,7 +26977,7 @@ begin
 
    finally
     if DoFreeStagingBuffer then begin
-     FreeAndNil(fStagingBuffer);
+     FreeAndNil(StagingBuffer);
     end;
    end;
 
