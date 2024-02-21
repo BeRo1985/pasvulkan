@@ -13250,6 +13250,8 @@ begin
                                          TpvVulkanBufferFlag.DedicatedAllocation]);
   try
 
+   fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanBuffer.ClearData.StagingBuffer');
+
    p:=StagingBuffer.Memory.MapMemory;
    try
     if assigned(p) then begin
@@ -13272,7 +13274,7 @@ begin
    aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
   finally
-   StagingBuffer.Free;
+   FreeAndNil(StagingBuffer);
   end;
 
  end else begin
@@ -13517,6 +13519,8 @@ begin
                                          TpvVulkanBufferFlag.DedicatedAllocation]);
   try
 
+   fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanBuffer.UploadData.StagingBuffer');
+
    p:=StagingBuffer.Memory.MapMemory;
    try
     if assigned(p) then begin
@@ -13539,7 +13543,7 @@ begin
    aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
   finally
-   StagingBuffer.Free;
+   FreeAndNil(StagingBuffer);
   end;
 
  end else begin
@@ -13621,6 +13625,8 @@ begin
                                          TpvVulkanBufferFlag.DedicatedAllocation]);
   try
 
+   fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanBuffer.DownloadData.StagingBuffer');
+
    VkBufferCopy.srcOffset:=aDataOffset;
    VkBufferCopy.dstOffset:=0;
    VkBufferCopy.size:=aDataSize;
@@ -13644,7 +13650,7 @@ begin
    end;
 
   finally
-   StagingBuffer.Free;
+   FreeAndNil(StagingBuffer);
   end;
 
  end else begin
@@ -13984,6 +13990,9 @@ begin
                                   0,
                                   0,
                                   BufferFlags);
+
+  fDevice.DebugUtils.SetObjectName(fBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanDeviceMemoryStaging.fBuffer');
+
  end;
 
 end;
@@ -26593,6 +26602,7 @@ begin
                                             0,
                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
                                              TpvVulkanBufferFlag.DedicatedAllocation]);
+      fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanTexture.Upload.StagingBuffer');
       if fStreaming then begin
        fStagingBuffer:=StagingBuffer;
       end;
