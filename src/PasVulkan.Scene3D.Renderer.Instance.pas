@@ -1827,6 +1827,7 @@ begin
                                                                                 0,
                                                                                 0,
                                                                                 [TpvVulkanBufferFlag.PersistentMapped]);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanViewUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fVulkanViewUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
    end;
 
   end;
@@ -1848,6 +1849,7 @@ begin
                                                                                 0,
                                                                                 0,
                                                                                 []);
+    Renderer.VulkanDevice.DebugUtils.SetObjectName(fVulkanViewUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fVulkanViewUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
    end;
 
   end;
@@ -1873,6 +1875,7 @@ begin
                                                                                  0,
                                                                                  0,
                                                                                  [TpvVulkanBufferFlag.PersistentMappedIfPossibe]);
+  Renderer.VulkanDevice.DebugUtils.SetObjectName(fColorGradingSettingUniformBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRendererInstance.fColorGradingSettingUniformBuffers['+IntToStr(InFlightFrameIndex)+']');
  end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
