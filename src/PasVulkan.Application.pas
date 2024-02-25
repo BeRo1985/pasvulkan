@@ -1872,7 +1872,7 @@ type EpvApplication=class(Exception)
 
        function IsReadyForDrawOfInFlightFrameIndex(const aInFlightFrameIndex:TpvInt32):boolean; virtual;
 
-       function WaitForPreviousFrame(const aBlocking:Boolean):Boolean; virtual;
+       function WaitForPreviousFrame(const aBlocking:Boolean=true):Boolean; virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
