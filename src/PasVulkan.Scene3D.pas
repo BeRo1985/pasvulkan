@@ -91,6 +91,7 @@ uses {$ifdef Windows}
      PasVulkan.Frustum,
      PasVulkan.BufferRangeAllocator,
      PasVulkan.TransferQueue,
+     PasVulkan.Raytracing,
      PasVulkan.Scene3D.Planet,
      POCA;
 
@@ -2981,6 +2982,7 @@ type EpvScene3D=class(Exception);
        fVkMultiDrawIndexedInfoEXTDynamicArray:TVkMultiDrawIndexedInfoEXTDynamicArray;
        fVkMultiDrawIndexedInfoEXTFirstInstance:TpvSizeInt;
        fVkMultiDrawIndexedInfoEXTInstancesCount:TpvSizeInt;
+       fTopLevelAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure;
       public
        fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TMatricesDynamicArray;
       private
