@@ -182,9 +182,11 @@ type EpvRaytracing=class(Exception);
        fDynamicGeometry:Boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
-                          const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                          const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry=nil;
                           const aDynamicGeometry:Boolean=false); reintroduce;
        destructor Destroy; override;
+       procedure Update(const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                        const aDynamicGeometry:Boolean=false); reintroduce;
       published
        property Geometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fGeometry;
        property DynamicGeometry:Boolean read fDynamicGeometry;
@@ -240,10 +242,13 @@ type EpvRaytracing=class(Exception);
        fDynamicGeometry:Boolean;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
-                          const aInstanceAddress:TVkDeviceAddress;
-                          const aInstanceCount:TVkUInt32;
-                          const aDynamicGeometry:Boolean); reintroduce;
+                          const aInstanceAddress:TVkDeviceAddress=0;
+                          const aInstanceCount:TVkUInt32=0;
+                          const aDynamicGeometry:Boolean=false); reintroduce;
        destructor Destroy; override;
+       procedure Update(const aInstanceAddress:TVkDeviceAddress;
+                        const aInstanceCount:TVkUInt32;
+                        const aDynamicGeometry:Boolean=false);
       public
       published
      end;
@@ -647,34 +652,112 @@ begin
  end else begin
   fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
  end;
- fBuildGeometryInfo.geometryCount:=fGeometry.fTriangles.Count;
- fBuildGeometryInfo.pGeometries:=@fGeometry.fTriangles.ItemArray[0];
+ if assigned(fGeometry) then begin
+  fBuildGeometryInfo.geometryCount:=fGeometry.fTriangles.Count;
+  fBuildGeometryInfo.pGeometries:=@fGeometry.fTriangles.ItemArray[0];
+ end; 
  fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR);
  fBuildGeometryInfo.type_:=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
  fBuildGeometryInfo.srcAccelerationStructure:=VK_NULL_HANDLE; 
 
- MaxPrimCount:=nil;
- try
-   
-  SetLength(MaxPrimCount,fGeometry.fBuildOffsets.Count);
+ if assigned(fGeometry) then begin
 
-  for Index:=0 to fGeometry.fBuildOffsets.Count-1 do begin
-   MaxPrimCount[Index]:=fGeometry.fBuildOffsets.Items[Index].primitiveCount;
+  MaxPrimCount:=nil;
+  try
+   
+   SetLength(MaxPrimCount,fGeometry.fBuildOffsets.Count);
+
+   for Index:=0 to fGeometry.fBuildOffsets.Count-1 do begin
+    MaxPrimCount[Index]:=fGeometry.fBuildOffsets.Items[Index].primitiveCount;
+   end;
+
+   fBuildSizesInfo:=GetMemorySizes(@MaxPrimCount[0]);
+
+  finally
+   MaxPrimCount:=nil;  
   end;
 
-  fBuildSizesInfo:=GetMemorySizes(@MaxPrimCount[0]);
+  fBuildOffsetInfoPtr:=@fGeometry.fBuildOffsets.ItemArray[0];
 
- finally
-  MaxPrimCount:=nil;  
- end;
+ end else begin
 
- fBuildOffsetInfoPtr:=@fGeometry.fBuildOffsets.ItemArray[0];
+  FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+  fBuildSizesInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+  fBuildSizesInfo.pNext:=nil;
+  fBuildSizesInfo.accelerationStructureSize:=0;
+  fBuildSizesInfo.updateScratchSize:=0;
+  fBuildSizesInfo.buildScratchSize:=0;
+
+  fBuildOffsetInfoPtr:=nil;
+
+ end; 
 
 end;
 
 destructor TpvRaytracingBottomLevelAccelerationStructure.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvRaytracingBottomLevelAccelerationStructure.Update(const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                                                               const aDynamicGeometry:Boolean);
+var Index:TpvSizeInt;
+    MaxPrimCount:TpvUInt32DynamicArray;
+begin
+
+ fGeometry:=aGeometry;
+
+ fDynamicGeometry:=aDynamicGeometry;
+
+ FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
+ fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+ fBuildGeometryInfo.pNext:=nil;
+ if fDynamicGeometry then begin
+  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
+                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);                            
+ end else begin
+  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+ end;
+ if assigned(fGeometry) then begin
+  fBuildGeometryInfo.geometryCount:=fGeometry.fTriangles.Count;
+  fBuildGeometryInfo.pGeometries:=@fGeometry.fTriangles.ItemArray[0];
+ end;
+ fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR);
+ fBuildGeometryInfo.type_:=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
+ fBuildGeometryInfo.srcAccelerationStructure:=VK_NULL_HANDLE;
+
+ if assigned(fGeometry) then begin
+
+  MaxPrimCount:=nil;
+  try
+   
+   SetLength(MaxPrimCount,fGeometry.fBuildOffsets.Count);
+
+   for Index:=0 to fGeometry.fBuildOffsets.Count-1 do begin
+    MaxPrimCount[Index]:=fGeometry.fBuildOffsets.Items[Index].primitiveCount;
+   end;
+
+   fBuildSizesInfo:=GetMemorySizes(@MaxPrimCount[0]);
+
+  finally
+   MaxPrimCount:=nil;  
+  end;
+
+  fBuildOffsetInfoPtr:=@fGeometry.fBuildOffsets.ItemArray[0];
+
+ end else begin
+
+  FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+  fBuildSizesInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+  fBuildSizesInfo.pNext:=nil;
+  fBuildSizesInfo.accelerationStructureSize:=0;
+  fBuildSizesInfo.updateScratchSize:=0;
+  fBuildSizesInfo.buildScratchSize:=0;
+
+  fBuildOffsetInfoPtr:=nil;
+
+ end;
+
 end;
 
 { TpvRaytracingBottomLevelAccelerationStructureInstance }
@@ -815,7 +898,20 @@ begin
 
  fCountInstances:=aInstanceCount;
 
- fBuildSizesInfo:=GetMemorySizes(@fCountInstances);
+ if fCountInstances>0 then begin
+
+  fBuildSizesInfo:=GetMemorySizes(@fCountInstances);
+
+ end else begin
+  
+  FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+  fBuildSizesInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+  fBuildSizesInfo.pNext:=nil;
+  fBuildSizesInfo.accelerationStructureSize:=0;
+  fBuildSizesInfo.updateScratchSize:=0;
+  fBuildSizesInfo.buildScratchSize:=0;
+  
+ end; 
 
 end;
 
@@ -823,5 +919,59 @@ destructor TpvRaytracingTopLevelAccelerationStructure.Destroy;
 begin
  inherited Destroy;
 end;
+
+procedure TpvRaytracingTopLevelAccelerationStructure.Update(const aInstanceAddress:TVkDeviceAddress;
+                                                            const aInstanceCount:TVkUInt32;
+                                                            const aDynamicGeometry:Boolean);
+begin
+
+ fDynamicGeometry:=aDynamicGeometry;
+
+ FillChar(fInstances,SizeOf(TVkAccelerationStructureGeometryInstancesDataKHR),#0);
+ fInstances.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+ fInstances.pNext:=nil;
+ fInstances.arrayOfPointers:=VK_FALSE;
+ fInstances.Data.deviceAddress:=aInstanceAddress;
+
+ FillChar(fBuildOffsetInfo,SizeOf(TVkAccelerationStructureBuildRangeInfoKHR),#0);
+ fBuildOffsetInfo.firstVertex:=0;
+ fBuildOffsetInfo.primitiveOffset:=0;
+ fBuildOffsetInfo.primitiveCount:=fCountInstances;
+
+ fBuildOffsetInfoPtr:=@fBuildOffsetInfo;
+
+ FillChar(fGeometry,SizeOf(TVkAccelerationStructureGeometryKHR),#0);
+ fGeometry.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+ fGeometry.pNext:=nil;
+ fGeometry.geometryType:=TVkGeometryTypeKHR(VK_GEOMETRY_TYPE_INSTANCES_KHR);
+ fGeometry.geometry.instances:=fInstances;
+
+ fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+ fBuildGeometryInfo.pNext:=nil;
+ if fDynamicGeometry then begin
+  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
+                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);                            
+ end else begin
+  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+ end;
+ fBuildGeometryInfo.geometryCount:=1;
+
+ if fCountInstances>0 then begin
+
+  fBuildSizesInfo:=GetMemorySizes(@fCountInstances);
+
+ end else begin
+  
+  FillChar(fBuildSizesInfo,SizeOf(TVkAccelerationStructureBuildSizesInfoKHR),#0);
+  fBuildSizesInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+  fBuildSizesInfo.pNext:=nil;
+  fBuildSizesInfo.accelerationStructureSize:=0;
+  fBuildSizesInfo.updateScratchSize:=0;
+  fBuildSizesInfo.buildScratchSize:=0;
+  
+ end; 
+
+end;
+
 
 end.
