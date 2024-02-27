@@ -83,8 +83,40 @@ type EpvRaytracing=class(Exception);
 
      TpvRaytracingGeometryBufferItemList=TpvDynamicArrayList<TpvRaytracingGeometryBufferItem>;
 
+     { TpvRaytracingInstanceShaderBindingTableRecordOffsets }
+     TpvRaytracingInstanceShaderBindingTableRecordOffsets=class
+      public
+       const Mesh=0;
+             Planet=1;
+     end;
+
+     { TpvRaytracingInstanceCustomIndexManager }
+     TpvRaytracingInstanceCustomIndexManager=class
+      public
+       type TItem=record
+             Index:TpvInt32;
+             Data:TpvPtrUInt;
+            end;
+            PItem=^TItem;
+            TItemList=TpvDynamicArrayList<TItem>;
+            TItemHashMap=TpvHashMap<TpvPtrUInt,TpvInt32>;
+            TFreeList=TpvDynamicStack<TpvInt32>;
+      private
+       fItems:TItemList;
+       fItemHashMap:TItemHashMap;
+       fFreeList:TFreeList;
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       function Add(const aData:TpvPtrUInt):TpvInt32;
+       function RemoveData(const aData:TpvPtrUInt):boolean;
+       function RemoveIndex(const aIndex:TpvInt32):boolean;
+       function GetData(const aIndex:TpvInt32):TpvPtrUInt;
+       function GetIndex(const aData:TpvPtrUInt):TpvInt32;
+     end;
+
      { TpvRaytracingAccelerationStructureBuildQueue }
-     TpvRaytracingAccelerationStructureBuildQueue=class      
+     TpvRaytracingAccelerationStructureBuildQueue=class
       public
        type TBuildGeometryInfos=TpvDynamicArrayList<TVkAccelerationStructureBuildGeometryInfoKHR>;
             TBuildOffsetInfoPtrs=TpvDynamicArrayList<PVkAccelerationStructureBuildRangeInfoKHR>;
@@ -133,7 +165,7 @@ type EpvRaytracing=class(Exception);
        procedure CopyFrom(const aCommandBuffer:TpvVulkanCommandBuffer;
                           const aSourceAccelerationStructure:TpvRaytracingAccelerationStructure;
                           const aCompact:Boolean=false);
-       procedure MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
+       class procedure MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer); static;
       published
        property Device:TpvVulkanDevice read fDevice;
        property AccelerationStructure:TVkAccelerationStructureKHR read fAccelerationStructure;
@@ -254,6 +286,127 @@ type EpvRaytracing=class(Exception);
      end;
 
 implementation
+
+{ TpvRaytracingInstanceCustomIndexManager }
+
+constructor TpvRaytracingInstanceCustomIndexManager.Create;
+begin
+ 
+ inherited Create;
+ 
+ fItems:=TItemList.Create;
+
+ fItemHashMap:=TItemHashMap.Create(-1);
+ 
+ fFreeList.Initialize;
+  
+end;
+
+destructor TpvRaytracingInstanceCustomIndexManager.Destroy;
+begin
+
+ FreeAndNil(fItems);
+
+ FreeAndNil(fItemHashMap);
+
+ fFreeList.Finalize;
+
+ inherited Destroy;
+
+end;
+
+function TpvRaytracingInstanceCustomIndexManager.Add(const aData:TpvPtrUInt):TpvInt32;
+var Index:TpvSizeInt;
+    Item:PItem;
+begin
+
+ if aData>0 then begin
+
+  if not fFreeList.Pop(result) then begin
+   result:=fItems.AddNewIndex;
+  end;
+
+  if result>=(1 shl 24) then begin
+   raise EpvRaytracing.Create('Instance custom index overflow, Vulkan raytracing instance custom index is limited to 24 bits');
+  end;
+
+  Item:=@fItems.ItemArray[result];
+  Item^.Index:=result;
+  Item^.Data:=aData;  
+  
+  fItemHashMap.Add(aData,result);
+
+ end else begin
+   
+  result:=-1;
+
+ end;
+
+end;
+
+function TpvRaytracingInstanceCustomIndexManager.RemoveData(const aData:TpvPtrUInt):boolean;
+var Index:TpvSizeInt;
+    Item:PItem;
+begin
+
+ result:=false;
+
+ if aData>0 then begin
+
+  Index:=fItemHashMap[aData];
+  if Index>=0 then begin
+   
+   Item:=@fItems.ItemArray[Index];
+   if Item^.Data=aData then begin
+   
+    Item^.Data:=0;
+    fItemHashMap.Delete(aData);
+    fFreeList.Push(Index);
+    result:=true;
+
+   end;
+
+  end;
+
+ end;
+
+end;
+
+function TpvRaytracingInstanceCustomIndexManager.RemoveIndex(const aIndex:TpvInt32):boolean;
+var Item:PItem;
+begin
+
+ result:=false;
+
+ if (aIndex>=0) and (aIndex<fItems.Count) then begin
+
+  Item:=@fItems.ItemArray[aIndex];
+  if Item^.Data>0 then begin
+
+   fItemHashMap.Delete(Item^.Data);
+   Item^.Data:=0;
+   fFreeList.Push(aIndex);
+   result:=true;
+
+  end;
+
+ end;
+
+end;
+
+function TpvRaytracingInstanceCustomIndexManager.GetData(const aIndex:TpvInt32):TpvPtrUInt;
+begin
+ if (aIndex>=0) and (aIndex<fItems.Count) then begin
+  result:=fItems.ItemArray[aIndex].Data;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvRaytracingInstanceCustomIndexManager.GetIndex(const aData:TpvPtrUInt):TpvInt32;
+begin
+ result:=fItemHashMap[aData];
+end;
 
 { TpvRaytracingAccelerationStructureBuildQueue }
 
@@ -508,7 +661,7 @@ begin
 
 end;
 
-procedure TpvRaytracingAccelerationStructure.MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
+class procedure TpvRaytracingAccelerationStructure.MemoryBarrier(const aCommandBuffer:TpvVulkanCommandBuffer);
 var MemoryBarrier:TVkMemoryBarrier;
 begin
  
