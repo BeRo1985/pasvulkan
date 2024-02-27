@@ -3091,6 +3091,8 @@ type EpvScene3D=class(Exception);
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
+       procedure UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
+                                  const aCommandBuffer:TpvVulkanCommandBuffer);
        procedure DrawDebugPrimitives(const aRendererInstance:TObject;
                                      const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                      const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -22621,6 +22623,19 @@ begin
   end;
 
  end;
+end;
+
+procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
+                                      const aCommandBuffer:TpvVulkanCommandBuffer);
+var MustWaitForPreviousFrame:Boolean;
+begin
+
+ MustWaitForPreviousFrame:=false;
+
+ if MustWaitForPreviousFrame and assigned(pvApplication) then begin
+  pvApplication.WaitForPreviousFrame(true);
+ end;
+
 end;
 
 procedure TpvScene3D.DrawDebugPrimitives(const aRendererInstance:TObject;
