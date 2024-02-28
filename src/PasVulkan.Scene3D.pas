@@ -2839,6 +2839,61 @@ type EpvScene3D=class(Exception);
             TCachedVertexRanges=TpvDynamicArray<TCachedVertexRange>;
             TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
             TSetGlobalResourcesDone=array[0..MaxRenderPassIndices-1] of boolean;
+            { TRaytracingGroupInstanceNode }
+            TRaytracingGroupInstanceNode=class
+             private
+              fSceneInstance:TpvScene3D;
+              fPrevious:TRaytracingGroupInstanceNode;
+              fNext:TRaytracingGroupInstanceNode;
+              fGroup:TpvScene3D.TGroup;
+              fInstance:TpvScene3D.TGroup.TInstance;
+              fNode:TpvScene3D.TGroup.TNode;
+              fInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+              fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+              fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
+              fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+              fCacheVerticesGeneration:TpvUInt64;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D;
+                                 const aGroup:TpvScene3D.TGroup;
+                                 const aInstance:TpvScene3D.TGroup.TInstance;
+                                 const aNode:TpvScene3D.TGroup.TNode;
+                                 const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode); reintroduce;
+              destructor Destroy; override;
+             published
+              property SceneInstance:TpvScene3D read fSceneInstance;
+              property Previous:TRaytracingGroupInstanceNode read fPrevious;
+              property Next:TRaytracingGroupInstanceNode read fNext; 
+              property Group:TpvScene3D.TGroup read fGroup;
+              property Instance:TpvScene3D.TGroup.TInstance read fInstance;
+              property Node:TpvScene3D.TGroup.TNode read fNode;
+             public
+              property InstanceNode:TpvScene3D.TGroup.TInstance.PNode read fInstanceNode;
+             published
+              property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
+              property BLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBLASInstances;
+              property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
+              property CacheVerticesGeneration:TpvUInt64 read fCacheVerticesGeneration;
+            end;
+            { TRaytracingGroupInstanceNodeList }
+            TRaytracingGroupInstanceNodeList=class
+             private
+              fSceneInstance:TpvScene3D;
+              fFirst:TRaytracingGroupInstanceNode;
+              fLast:TRaytracingGroupInstanceNode;
+             public
+              constructor Create(const aSceneInstance:TpvScene3D); reintroduce;
+              destructor Destroy; override;
+              procedure Clear(const aFree:Boolean);
+              procedure Add(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
+              procedure Remove(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
+             published
+              property SceneInstance:TpvScene3D read fSceneInstance;
+              property First:TRaytracingGroupInstanceNode read fFirst;
+              property Last:TRaytracingGroupInstanceNode read fLast; 
+            end;  
+            { TRaytracingGroupInstanceNodeHashMap }
+            TRaytracingGroupInstanceNodeHashMap=TpvHashMap<TpvScene3D.TGroup.TInstance.PNode,TRaytracingGroupInstanceNode>;
             { TRaytracingGroupInstanceNodeQueueItem }
             TRaytracingGroupInstanceNodeQueueItem=record
              private
@@ -2987,6 +3042,8 @@ type EpvScene3D=class(Exception);
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
        fRaytracingLock:TPasMPCriticalSection;
+       fRaytracingGroupInstanceNodeList:TRaytracingGroupInstanceNodeList;
+       fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;            
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingGroupInstanceNodeRemoveQueue:TRaytracingGroupInstanceNodeQueue;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
@@ -5010,6 +5067,112 @@ begin
    end;
   end;
  end;
+end;
+
+{ TpvScene3D.TRaytracingGroupInstanceNode }
+            
+constructor TpvScene3D.TRaytracingGroupInstanceNode.Create(const aSceneInstance:TpvScene3D;
+                                                           const aGroup:TpvScene3D.TGroup;
+                                                           const aInstance:TpvScene3D.TGroup.TInstance;
+                                                           const aNode:TpvScene3D.TGroup.TNode;
+                                                           const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
+begin
+
+ inherited Create;
+
+ fSceneInstance:=aSceneInstance;
+
+ fGroup:=aGroup;
+
+ fInstance:=aInstance;
+
+ fNode:=aNode;
+
+ fInstanceNode:=aInstanceNode;
+
+ fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
+
+ fBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
+
+ fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice);
+
+ fCacheVerticesGeneration:=High(TpvUInt64);
+
+end;
+
+destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
+begin
+ FreeAndNil(fBLAS);
+ FreeAndNil(fBLASInstances);
+ FreeAndNil(fBLASGeometry);
+ inherited Destroy;
+end;
+
+{ TpvScene3D.TRaytracingGroupInstanceNodeList }
+
+constructor TpvScene3D.TRaytracingGroupInstanceNodeList.Create(const aSceneInstance:TpvScene3D);
+begin
+ inherited Create;
+ fSceneInstance:=aSceneInstance;
+ fFirst:=nil;
+ fLast:=nil;
+end;
+
+destructor TpvScene3D.TRaytracingGroupInstanceNodeList.Destroy;
+begin
+ Clear(true);
+ inherited Destroy;
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNodeList.Clear(const aFree:Boolean);
+var Current,Next:TpvScene3D.TRaytracingGroupInstanceNode;
+begin
+
+ Current:=fFirst;
+ while assigned(Current) do begin
+  Next:=Current.fNext;
+  if aFree then begin
+   FreeAndNil(Current);
+  end else begin
+   Current.fPrevious:=nil;
+   Current.fNext:=nil;
+  end;
+  Current:=Next;
+ end;
+
+ fFirst:=nil;
+ fLast:=nil;
+
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNodeList.Add(const aRaytracingGroupInstanceNode:TpvScene3D.TRaytracingGroupInstanceNode);
+begin
+ if assigned(fLast) then begin
+  aRaytracingGroupInstanceNode.fPrevious:=fLast;
+  fLast.fNext:=aRaytracingGroupInstanceNode;
+  fLast:=aRaytracingGroupInstanceNode;
+ end else begin
+  fFirst:=aRaytracingGroupInstanceNode;
+  fLast:=aRaytracingGroupInstanceNode;
+  aRaytracingGroupInstanceNode.fPrevious:=nil;
+ end;
+ aRaytracingGroupInstanceNode.fNext:=nil;
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNodeList.Remove(const aRaytracingGroupInstanceNode:TpvScene3D.TRaytracingGroupInstanceNode);
+begin
+ if assigned(aRaytracingGroupInstanceNode.fPrevious) then begin
+  aRaytracingGroupInstanceNode.fPrevious.fNext:=aRaytracingGroupInstanceNode.fNext;
+ end else if fFirst=aRaytracingGroupInstanceNode then begin
+  fFirst:=aRaytracingGroupInstanceNode.fNext;
+ end;
+ if assigned(aRaytracingGroupInstanceNode.fNext) then begin
+  aRaytracingGroupInstanceNode.fNext.fPrevious:=aRaytracingGroupInstanceNode.fPrevious;
+ end else if fLast=aRaytracingGroupInstanceNode then begin
+  fLast:=aRaytracingGroupInstanceNode.fPrevious;
+ end;
+ aRaytracingGroupInstanceNode.fPrevious:=nil;
+ aRaytracingGroupInstanceNode.fNext:=nil;
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNodeQueueItem }
@@ -19802,6 +19965,10 @@ begin
 
  fRaytracingLock:=TPasMPCriticalSection.Create;
 
+ fRaytracingGroupInstanceNodeList:=TRaytracingGroupInstanceNodeList.Create(self);
+
+ fRaytracingGroupInstanceNodeHashMap:=TRaytracingGroupInstanceNodeHashMap.Create(nil);
+
  fRaytracingGroupInstanceNodeAddQueue.Initialize;
 
  fRaytracingGroupInstanceNodeRemoveQueue.Initialize;
@@ -20435,6 +20602,10 @@ begin
  fRaytracingGroupInstanceNodeAddQueue.Finalize;
 
  fRaytracingGroupInstanceNodeRemoveQueue.Finalize;
+
+ FreeAndNil(fRaytracingGroupInstanceNodeHashMap);
+
+ FreeAndNil(fRaytracingGroupInstanceNodeList);
 
  FreeAndNil(fRaytracingLock);
 
@@ -22737,6 +22908,7 @@ procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer);
 var MustWaitForPreviousFrame,BLASListChanged:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
+    RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
 begin
 
  if fHardwareRaytracingSupport then begin
@@ -22759,11 +22931,32 @@ begin
    BLASListChanged:=false;
 
    while fRaytracingGroupInstanceNodeRemoveQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
-    BLASListChanged:=true;
+    RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeHashMap[RaytracingGroupInstanceNodeQueueItem.fInstanceNode];
+    if assigned(RaytracingGroupInstanceNode) then begin
+     try
+      fRaytracingGroupInstanceNodeHashMap.Delete(RaytracingGroupInstanceNodeQueueItem.fInstanceNode);
+      fRaytracingGroupInstanceNodeList.Remove(RaytracingGroupInstanceNode);
+     finally
+      FreeAndNil(RaytracingGroupInstanceNode);
+     end;
+     BLASListChanged:=true;
+    end;
    end;
 
    while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
-    BLASListChanged:=true;
+    if not fRaytracingGroupInstanceNodeHashMap.ExistKey(RaytracingGroupInstanceNodeQueueItem.fInstanceNode) then begin
+     RaytracingGroupInstanceNode:=TRaytracingGroupInstanceNode.Create(self,
+                                                                      RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup,
+                                                                      RaytracingGroupInstanceNodeQueueItem.fInstance,
+                                                                      RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup.fNodes[RaytracingGroupInstanceNodeQueueItem.fNode],
+                                                                      RaytracingGroupInstanceNodeQueueItem.fInstanceNode);
+     try
+      fRaytracingGroupInstanceNodeHashMap.Add(RaytracingGroupInstanceNodeQueueItem.fInstanceNode,RaytracingGroupInstanceNode);
+      BLASListChanged:=true;
+     finally
+      fRaytracingGroupInstanceNodeList.Add(RaytracingGroupInstanceNode);
+     end;
+    end;
    end;
 
   finally
