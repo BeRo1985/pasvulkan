@@ -5563,14 +5563,14 @@ begin
 
  InFlightFrameState:=@TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex];
 
- TpvScene3D(fScene3D).Planets.Lock.Acquire;
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
  try
 
   First:=true;
 
-  for PlanetIndex:=0 to TpvScene3D(fScene3D).Planets.Count-1 do begin
+  for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
 
-   Planet:=TpvScene3D(fScene3D).Planets[PlanetIndex];
+   Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
 
    if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
 
@@ -5820,7 +5820,7 @@ begin
   end;
 
  finally
-  TpvScene3D(fScene3D).Planets.Lock.Release;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
  end;
 
 end;
@@ -6470,14 +6470,14 @@ begin
   vkCmdDrawIndexedIndirectCount:=nil;
  end;
 
- TpvScene3D(fScene3D).Planets.Lock.Acquire;
+ TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
  try
 
   First:=true;
 
-  for PlanetIndex:=0 to TpvScene3D(fScene3D).Planets.Count-1 do begin
+  for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
 
-   Planet:=TpvScene3D(fScene3D).Planets[PlanetIndex];
+   Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
 
    if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
 
@@ -6686,7 +6686,7 @@ begin
   end;    
    
  finally
-  TpvScene3D(fScene3D).Planets.Lock.Release;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
  end;
 
 end;
@@ -7368,11 +7368,11 @@ procedure TpvScene3DPlanet.AfterConstruction;
 begin
  inherited AfterConstruction;
  if assigned(fScene3D) then begin
-  TpvScene3D(fScene3D).Planets.Lock.Acquire;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
   try  
-   TpvScene3D(fScene3D).Planets.Add(self); 
+   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Add(self); 
   finally 
-   TpvScene3D(fScene3D).Planets.Lock.Release;
+   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
   end; 
  end;
 end;
@@ -7381,14 +7381,14 @@ procedure TpvScene3DPlanet.BeforeDestruction;
 var Index:TpvSizeInt;
 begin
  if assigned(fScene3D) then begin
-  TpvScene3D(fScene3D).Planets.Lock.Acquire;
+  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
   try  
-   Index:=TpvScene3D(fScene3D).Planets.IndexOf(self);
+   Index:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).IndexOf(self);
    if Index>=0 then begin
-    TpvScene3D(fScene3D).Planets.Extract(Index); // not delete or remove, since we don't want to free ourself here already.
+    TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Extract(Index); // not delete or remove, since we don't want to free ourself here already.
    end;
   finally 
-   TpvScene3D(fScene3D).Planets.Lock.Release;
+   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
   end; 
  end; 
  inherited BeforeDestruction;

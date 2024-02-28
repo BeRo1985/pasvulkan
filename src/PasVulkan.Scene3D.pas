@@ -92,7 +92,6 @@ uses {$ifdef Windows}
      PasVulkan.BufferRangeAllocator,
      PasVulkan.TransferQueue,
      PasVulkan.Raytracing,
-     PasVulkan.Scene3D.Planet,
      POCA;
 
 type EpvScene3D=class(Exception);
@@ -2972,6 +2971,7 @@ type EpvScene3D=class(Exception);
        fSkyBoxBrightnessFactor:TpvScalar;
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
+       fRaytracingLock:TPasMPCriticalSection;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -3000,7 +3000,7 @@ type EpvScene3D=class(Exception);
       private
        fInFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues;
       private
-       fPlanets:TpvScene3DPlanets;
+       fPlanets:TObject;
       private
        fSkyBoxTextureImage:TpvScene3D.TImage;
        fSkyBoxMode:TpvScene3DEnvironmentMode;
@@ -3187,7 +3187,7 @@ type EpvScene3D=class(Exception);
       public
        property InFlightFrameDataTransferQueues:TpvInFlightFrameTransferQueues read fInFlightFrameDataTransferQueues;
       public
-       property Planets:TpvScene3DPlanets read fPlanets;
+       property Planets:TObject read fPlanets;
       published
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
@@ -3216,7 +3216,8 @@ type EpvScene3D=class(Exception);
 
 implementation
 
-uses PasVulkan.Scene3D.Renderer.Instance;
+uses PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Planet;
 
 const FlushUpdateData=false;
 
@@ -15048,6 +15049,7 @@ constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourc
 var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
+    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     Animation:TpvScene3D.TGroup.TAnimation;
     Light:TpvScene3D.TGroup.TInstance.TLight;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
@@ -15443,6 +15445,35 @@ begin
    fSceneInstance.fBufferRangeAllocatorLock.Release;
   end;
 
+  if fSceneInstance.fHardwareRaytracingSupport then begin
+
+   fSceneInstance.fRaytracingLock.Acquire;
+   try
+
+    for Index:=0 to fGroup.fNodes.Count-1 do begin
+
+     Node:=fGroup.fNodes[Index];
+
+     InstanceNode:=@fNodes[Index];
+
+     if assigned(Node.Mesh) then begin
+
+      for OtherIndex:=0 to Node.Mesh.fPrimitives.Count-1 do begin
+
+       MeshPrimitive:=Node.Mesh.fPrimitives[OtherIndex];
+
+      end;
+
+     end;
+
+    end;
+
+   finally
+    fSceneInstance.fRaytracingLock.Release;
+   end;
+
+  end;
+
  end else begin
 
   fVulkanVertexBufferOffset:=-1;
@@ -15528,6 +15559,7 @@ begin
  end;
 
  if assigned(fSceneInstance) and not fHeadless then begin
+
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
    fSceneInstance.fVulkanVertexBufferRangeAllocator.Release(fVulkanVertexBufferOffset);
@@ -15540,6 +15572,7 @@ begin
   finally
    fSceneInstance.fBufferRangeAllocatorLock.Release;
   end;
+
   fVulkanVertexBufferOffset:=-1;
   fVulkanDrawIndexBufferOffset:=-1;
   fVulkanDrawUniqueIndexBufferOffset:=-1;
@@ -15554,6 +15587,18 @@ begin
   fVulkanJointBlockBufferCount:=0;
   fVulkanNodeMatricesBufferCount:=0;
   fVulkanMorphTargetVertexWeightsBufferCount:=0;
+
+  if fSceneInstance.fHardwareRaytracingSupport then begin
+
+   fSceneInstance.fRaytracingLock.Acquire;
+   try
+
+   finally
+    fSceneInstance.fRaytracingLock.Release;
+   end;
+
+  end;
+
  end;
 
  if fAABBTreeProxy>=0 then begin
@@ -19704,6 +19749,8 @@ begin
  fNewInstances:=TpvScene3D.TGroup.TInstances.Create;
  fNewInstances.OwnsObjects:=false;
 
+ fRaytracingLock:=TPasMPCriticalSection.Create;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -20329,6 +20376,8 @@ begin
  FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
+
+ FreeAndNil(fRaytracingLock);
 
  FreeAndNil(fRendererInstanceIDManager);
 
@@ -21192,16 +21241,16 @@ begin
 
  fCountLights[aInFlightFrameIndex]:=0;
 
- fPlanets.Lock.Acquire;
+ TpvScene3DPlanets(fPlanets).Lock.Acquire;
  try
-  for Index:=0 to fPlanets.Count-1 do begin
-   Planet:=fPlanets[Index];
+  for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+   Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
    if Planet.Ready then begin
     Planet.Update(aInFlightFrameIndex);
    end;
   end;
  finally
-  fPlanets.Lock.Release;
+  TpvScene3DPlanets(fPlanets).Lock.Release;
  end;
 
  fGroupListLock.Acquire;
@@ -21314,10 +21363,10 @@ begin
    end;
   end;
 
-  fPlanets.Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
   try
-   for Index:=0 to fPlanets.Count-1 do begin
-    Planet:=fPlanets[Index];
+   for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
     if Planet.Ready then begin
      Sphere:=TpvSphere.Create(Planet.Data.ModelMatrix.MulHomogen(TpvVector3.Origin),Planet.TopRadius);
      if First then begin
@@ -21329,7 +21378,7 @@ begin
     end;
    end;
   finally
-   fPlanets.Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
   if First or IsZero(fBoundingBox.Radius) then begin
@@ -21540,16 +21589,16 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  fPlanets.Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
   try
-   for Index:=0 to fPlanets.Count-1 do begin
-    Planet:=fPlanets[Index];
+   for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
     if Planet.Ready then begin
      Planet.FrameUpdate(aInFlightFrameIndex);
     end;
    end;
   finally
-   fPlanets.Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
   for Group in fGroups do begin
@@ -21673,16 +21722,16 @@ begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
   end;
 
-  fPlanets.Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
   try
-   for PlanetIndex:=0 to fPlanets.Count-1 do begin
-    Planet:=fPlanets[PlanetIndex];
+   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
     if Planet.Ready then begin
      Planet.BeginFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
     end;
    end;
   finally
-   fPlanets.Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
   if assigned(aWaitFence) then begin
@@ -21728,16 +21777,16 @@ begin
    fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
   end;
 
-  fPlanets.Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
   try
-   for PlanetIndex:=0 to fPlanets.Count-1 do begin
-    Planet:=fPlanets[PlanetIndex];
+   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
     if Planet.Ready then begin
      Planet.EndFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
     end;
    end;
   finally
-   fPlanets.Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
   if assigned(aWaitFence) then begin
@@ -21784,16 +21833,16 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  fPlanets.Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
   try
-   for PlanetIndex:=0 to fPlanets.Count-1 do begin
-    Planet:=fPlanets[PlanetIndex];
+   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
     if Planet.Ready then begin
      Planet.UploadFrame(aInFlightFrameIndex);
     end;
    end;
   finally
-   fPlanets.Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
   for Group in fGroups do begin
@@ -22387,16 +22436,16 @@ begin
    Frustums:=nil;
   end;
 
-  fPlanets.Lock.Acquire;
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
   try
-   for Index:=0 to fPlanets.Count-1 do begin
-    Planet:=fPlanets[Index];
+   for Index:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[Index];
     if Planet.Ready then begin
      Planet.Prepare(aInFlightFrameIndex,aRendererInstance,aRenderPassIndex,aViewPortWidth,aViewPortHeight,aMainViewPort);
     end;
    end;
   finally
-   fPlanets.Lock.Release;
+   TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
  end;
@@ -22630,10 +22679,14 @@ procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
 var MustWaitForPreviousFrame:Boolean;
 begin
 
- MustWaitForPreviousFrame:=false;
+ if fHardwareRaytracingSupport then begin
 
- if MustWaitForPreviousFrame and assigned(pvApplication) then begin
-  pvApplication.WaitForPreviousFrame(true);
+  MustWaitForPreviousFrame:=false;
+
+  if MustWaitForPreviousFrame and assigned(pvApplication) then begin
+   pvApplication.WaitForPreviousFrame(true);
+  end;
+
  end;
 
 end;
