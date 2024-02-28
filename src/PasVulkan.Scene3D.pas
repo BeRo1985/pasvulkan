@@ -2846,6 +2846,30 @@ type EpvScene3D=class(Exception);
             TSetGlobalResourcesDone=array[0..MaxRenderPassIndices-1] of boolean;
             { TRaytracingGroupInstanceNode }
             TRaytracingGroupInstanceNode=class
+             public
+              type TBLASGroupVariant=
+                    (
+                     SingleSided,
+                     DoubleSided
+                    );
+                   PBLASGroupVariant=^TBLASGroupVariant;
+                   { TBLASGroup }
+                   TBLASGroup=record
+                    private
+                     fRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
+                     fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                     fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+                     fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
+                    public
+                     procedure Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
+                     procedure Finalize;
+                    public
+                     property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
+                     property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
+                     property BLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBLASInstances;
+                   end;
+                   PBLASGroup=^TBLASGroup;
+                   TBLASGroups=array[TBLASGroupVariant] of TBLASGroup;
              private
               fSceneInstance:TpvScene3D;
               fPrevious:TRaytracingGroupInstanceNode;
@@ -2855,9 +2879,7 @@ type EpvScene3D=class(Exception);
               fInstance:TpvScene3D.TGroup.TInstance;
               fNode:TpvScene3D.TGroup.TNode;
               fInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
-              fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
-              fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
-              fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+              fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
@@ -2866,6 +2888,7 @@ type EpvScene3D=class(Exception);
                                  const aNode:TpvScene3D.TGroup.TNode;
                                  const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode); reintroduce;
               destructor Destroy; override;
+              procedure UpdateStructures;
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
               property Previous:TRaytracingGroupInstanceNode read fPrevious;
@@ -2876,9 +2899,6 @@ type EpvScene3D=class(Exception);
              public
               property InstanceNode:TpvScene3D.TGroup.TInstance.PNode read fInstanceNode;
              published
-              property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
-              property BLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBLASInstances;
-              property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
               property CacheVerticesGeneration:TpvUInt64 read fCacheVerticesGeneration;
             end;
             { TRaytracingGroupInstanceNodeList }
@@ -5079,6 +5099,32 @@ begin
  end;
 end;
 
+{ TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup }
+
+procedure TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup.Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
+begin
+
+ fRaytracingGroupInstanceNode:=aRaytracingGroupInstanceNode;
+
+ fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fRaytracingGroupInstanceNode.fSceneInstance.fVulkanDevice);
+
+ fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fRaytracingGroupInstanceNode.fSceneInstance.fVulkanDevice);
+
+ fBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
+
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup.Finalize;
+begin
+
+ FreeAndNil(fBLASInstances);
+
+ FreeAndNil(fBLAS);
+
+ FreeAndNil(fBLASGeometry);
+
+end;
+
 { TpvScene3D.TRaytracingGroupInstanceNode }
             
 constructor TpvScene3D.TRaytracingGroupInstanceNode.Create(const aSceneInstance:TpvScene3D;
@@ -5086,6 +5132,7 @@ constructor TpvScene3D.TRaytracingGroupInstanceNode.Create(const aSceneInstance:
                                                            const aInstance:TpvScene3D.TGroup.TInstance;
                                                            const aNode:TpvScene3D.TGroup.TNode;
                                                            const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode);
+var BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
 begin
 
  inherited Create;
@@ -5100,22 +5147,69 @@ begin
 
  fInstanceNode:=aInstanceNode;
 
- fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
-
- fBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
-
- fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice);
+ for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+  fBLASGroups[BLASGroupVariant].Initialize(self);
+ end;
 
  fCacheVerticesGeneration:=High(TpvUInt64);
 
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
+var BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
 begin
- FreeAndNil(fBLAS);
- FreeAndNil(fBLASInstances);
- FreeAndNil(fBLASGeometry);
+ for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+  fBLASGroups[BLASGroupVariant].Finalize;
+ end;
  inherited Destroy;
+end;
+
+procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures;
+var CountRenderInstances:TpvSizeInt;
+    BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
+    BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
+    RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+    GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
+begin
+
+ for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+
+  BLASGroup:=@fBLASGroups[BLASGroupVariant];
+
+  GeometryInstanceFlags:=0;
+
+  case BLASGroupVariant of
+   TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.SingleSided:begin
+    GeometryInstanceFlags:=GeometryInstanceFlags and not TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
+   end;
+   else {TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.DoubleSided:}begin
+    GeometryInstanceFlags:=GeometryInstanceFlags or TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
+   end;
+  end;
+
+  if fInstance.fUseRenderInstances then begin
+   CountRenderInstances:=fInstance.fRenderInstances.Count;
+  end else begin
+   CountRenderInstances:=1;
+  end;
+
+  while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
+   BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
+  end;
+
+  while BLASGroup^.fBLASInstances.Count<CountRenderInstances do begin
+    RaytracingBottomLevelAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fSceneInstance.fVulkanDevice,
+                                                                                                                     fInstance.ModelMatrix,
+                                                                                                                     GeometryInstanceFlags,
+                                                                                                                     $ff,
+                                                                                                                     0,
+                                                                                                                     0,
+                                                                                                                     BLASGroup^.fBLAS);
+    BLASGroup^.fBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
+  end;
+
+ end;
+
 end;
 
 { TpvScene3D.TRaytracingGroupInstanceNodeList }
@@ -22983,37 +23077,8 @@ begin
 
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
-
-     if RaytracingGroupInstanceNode.Instance.fUseRenderInstances then begin
-
-      for RenderInstanceIndex:=0 to RaytracingGroupInstanceNode.Instance.fRenderInstances.Count-1 do begin
-
-      end;
-
-     end else begin
-
-      while RaytracingGroupInstanceNode.BLASInstances.Count>1 do begin
-       RaytracingGroupInstanceNode.BLASInstances.Delete(RaytracingGroupInstanceNode.BLASInstances.Count-1);
-      end;
-
-      if RaytracingGroupInstanceNode.BLASInstances.Count=0 then begin
-
-       RaytracingBottomLevelAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fVulkanDevice,
-                                                                                                                        RaytracingGroupInstanceNode.Instance.ModelMatrix,
-                                                                                                                        TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR),
-                                                                                                                        $ff,
-                                                                                                                        0,
-                                                                                                                        0,
-                                                                                                                        RaytracingGroupInstanceNode.fBLAS);
-
-       RaytracingGroupInstanceNode.BLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
-
-      end;
-
-     end;
-
+     RaytracingGroupInstanceNode.UpdateStructures;
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
-
     end;
 
    end;
