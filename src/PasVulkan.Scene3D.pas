@@ -22969,7 +22969,7 @@ begin
                                                                       RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup,
                                                                       RaytracingGroupInstanceNodeQueueItem.fInstance,
                                                                       RaytracingGroupInstanceNodeQueueItem.fInstance.fGroup.fNodes[RaytracingGroupInstanceNodeQueueItem.fNode],
-                                                                      RaytracingGroupInstanceNodeQueueItem.fInstanceNode);
+                                                                      @RaytracingGroupInstanceNodeQueueItem.fInstance.fNodes[RaytracingGroupInstanceNodeQueueItem.fNode]);
      try
       fRaytracingGroupInstanceNodeHashMap.Add(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID,RaytracingGroupInstanceNode);
       BLASListChanged:=true;
