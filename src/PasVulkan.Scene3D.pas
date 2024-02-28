@@ -2839,6 +2839,21 @@ type EpvScene3D=class(Exception);
             TCachedVertexRanges=TpvDynamicArray<TCachedVertexRange>;
             TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
             TSetGlobalResourcesDone=array[0..MaxRenderPassIndices-1] of boolean;
+            { TRaytracingGroupInstanceNodeQueueItem }
+            TRaytracingGroupInstanceNodeQueueItem=record
+             private
+              fInstance:TpvScene3D.TGroup.TInstance;
+              fNode:TpvSizeInt;
+              fInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
+             public
+              constructor Create(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvSizeInt);
+             public
+              property Instance:TpvScene3D.TGroup.TInstance read fInstance write fInstance;
+              property Node:TpvSizeInt read fNode write fNode;
+              property InstanceNode:TpvScene3D.TGroup.TInstance.PNode read fInstanceNode;
+            end;
+            PRaytracingGroupInstanceNodeQueueItem=^TRaytracingGroupInstanceNodeQueueItem;
+            TRaytracingGroupInstanceNodeQueue=TpvDynamicQueue<TRaytracingGroupInstanceNodeQueueItem>;
       public
        const DoubleSidedFaceCullingModes:array[TDoubleSided,TFrontFacesInversed] of TFaceCullingMode=
               (
@@ -2972,6 +2987,8 @@ type EpvScene3D=class(Exception);
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
        fRaytracingLock:TPasMPCriticalSection;
+       fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
+       fRaytracingGroupInstanceNodeRemoveQueue:TRaytracingGroupInstanceNodeQueue;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -4993,6 +5010,15 @@ begin
    end;
   end;
  end;
+end;
+
+{ TpvScene3D.TRaytracingGroupInstanceNodeQueueItem }
+
+constructor TpvScene3D.TRaytracingGroupInstanceNodeQueueItem.Create(const aInstance:TpvScene3D.TGroup.TInstance;const aNode:TpvSizeInt);
+begin
+ fInstance:=aInstance;
+ fNode:=aNode;
+ fInstanceNode:=@fInstance.fNodes[fNode];
 end;
 
 { TpvScene3D.TImage }
@@ -14987,6 +15013,7 @@ begin
  Free;
 end;
 
+
 { TpvScene3D.TGroup.TInstances }
 
 procedure TpvScene3D.TGroup.TInstances.Sort;
@@ -15049,7 +15076,7 @@ constructor TpvScene3D.TGroup.TInstance.Create(const aResourceManager:TpvResourc
 var Index,OtherIndex,MaterialIndex,MaterialIDMapArrayIndex:TpvSizeInt;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     Node:TpvScene3D.TGroup.TNode;
-    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    //MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     Animation:TpvScene3D.TGroup.TAnimation;
     Light:TpvScene3D.TGroup.TInstance.TLight;
     Camera:TpvScene3D.TGroup.TInstance.TCamera;
@@ -15458,11 +15485,13 @@ begin
 
      if assigned(Node.Mesh) then begin
 
-      for OtherIndex:=0 to Node.Mesh.fPrimitives.Count-1 do begin
+      fSceneInstance.fRaytracingGroupInstanceNodeAddQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index));
+
+{     for OtherIndex:=0 to Node.Mesh.fPrimitives.Count-1 do begin
 
        MeshPrimitive:=Node.Mesh.fPrimitives[OtherIndex];
 
-      end;
+      end;}
 
      end;
 
@@ -15531,10 +15560,10 @@ begin
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
-var Index,OtherIndex:TPasGLTFSizeInt;
+var Index{,OtherIndex}:TPasGLTFSizeInt;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
     Node:TpvScene3D.TGroup.TNode;
-    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    //MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
 
@@ -15603,11 +15632,13 @@ begin
 
      if assigned(Node.Mesh) then begin
 
-      for OtherIndex:=0 to Node.Mesh.fPrimitives.Count-1 do begin
+      fSceneInstance.fRaytracingGroupInstanceNodeRemoveQueue.Enqueue(TRaytracingGroupInstanceNodeQueueItem.Create(self,Index));
+
+{     for OtherIndex:=0 to Node.Mesh.fPrimitives.Count-1 do begin
 
        MeshPrimitive:=Node.Mesh.fPrimitives[OtherIndex];
 
-      end;
+      end;}
 
      end;
 
@@ -19771,6 +19802,10 @@ begin
 
  fRaytracingLock:=TPasMPCriticalSection.Create;
 
+ fRaytracingGroupInstanceNodeAddQueue.Initialize;
+
+ fRaytracingGroupInstanceNodeRemoveQueue.Initialize;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -20396,6 +20431,10 @@ begin
  FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
+
+ fRaytracingGroupInstanceNodeAddQueue.Finalize;
+
+ fRaytracingGroupInstanceNodeRemoveQueue.Finalize;
 
  FreeAndNil(fRaytracingLock);
 
@@ -22697,14 +22736,32 @@ end;
 procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer);
 var MustWaitForPreviousFrame:Boolean;
+    RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
 begin
 
  if fHardwareRaytracingSupport then begin
 
-  MustWaitForPreviousFrame:=false;
+  fRaytracingLock.Acquire;
+  try
 
-  if MustWaitForPreviousFrame and assigned(pvApplication) then begin
-   pvApplication.WaitForPreviousFrame(true);
+   MustWaitForPreviousFrame:=false;
+
+   if not (fRaytracingGroupInstanceNodeAddQueue.IsEmpty and fRaytracingGroupInstanceNodeRemoveQueue.IsEmpty) then begin
+    MustWaitForPreviousFrame:=true;
+   end;
+
+   if MustWaitForPreviousFrame and assigned(pvApplication) then begin
+    pvApplication.WaitForPreviousFrame(true);
+   end;
+
+   while fRaytracingGroupInstanceNodeRemoveQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
+   end;
+
+   while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
+   end;
+
+  finally
+   fRaytracingLock.Release;
   end;
 
  end;
