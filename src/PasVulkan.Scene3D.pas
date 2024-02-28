@@ -22735,7 +22735,7 @@ end;
 
 procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer);
-var MustWaitForPreviousFrame:Boolean;
+var MustWaitForPreviousFrame,BLASListChanged:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
 begin
 
@@ -22751,13 +22751,19 @@ begin
    end;
 
    if MustWaitForPreviousFrame and assigned(pvApplication) then begin
+    // Wait for previous frame, when there are changes in the BLAS list, since it is necessary at Vulkan, that buffers are not in use,
+    // when they are destroyed. Therefore we should wait for the previous frame for to be sure, that the buffers are not in use anymore. 
     pvApplication.WaitForPreviousFrame(true);
    end;
 
+   BLASListChanged:=false;
+
    while fRaytracingGroupInstanceNodeRemoveQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
+    BLASListChanged:=true;
    end;
 
    while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
+    BLASListChanged:=true;
    end;
 
   finally
