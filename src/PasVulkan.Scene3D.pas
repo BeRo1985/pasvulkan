@@ -15531,8 +15531,10 @@ begin
 end;
 
 destructor TpvScene3D.TGroup.TInstance.Destroy;
-var Index:TPasGLTFSizeInt;
+var Index,OtherIndex:TPasGLTFSizeInt;
     RenderInstance:TpvScene3D.TGroup.TInstance.TRenderInstance;
+    Node:TpvScene3D.TGroup.TNode;
+    MeshPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
     InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
 begin
 
@@ -15592,6 +15594,24 @@ begin
 
    fSceneInstance.fRaytracingLock.Acquire;
    try
+
+    for Index:=0 to fGroup.fNodes.Count-1 do begin
+
+     Node:=fGroup.fNodes[Index];
+
+     InstanceNode:=@fNodes[Index];
+
+     if assigned(Node.Mesh) then begin
+
+      for OtherIndex:=0 to Node.Mesh.fPrimitives.Count-1 do begin
+
+       MeshPrimitive:=Node.Mesh.fPrimitives[OtherIndex];
+
+      end;
+
+     end;
+
+    end;
 
    finally
     fSceneInstance.fRaytracingLock.Release;
