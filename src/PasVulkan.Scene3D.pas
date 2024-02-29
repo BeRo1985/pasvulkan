@@ -2893,7 +2893,7 @@ type EpvScene3D=class(Exception);
                                  const aNode:TpvScene3D.TGroup.TNode;
                                  const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode); reintroduce;
               destructor Destroy; override;
-              procedure UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean);
+              function UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
               property Previous:TRaytracingGroupInstanceNode read fPrevious;
@@ -5177,7 +5177,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean);
+function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
@@ -5190,6 +5190,8 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
 begin
+
+ result:=false;
 
  DynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
 
@@ -5320,6 +5322,7 @@ begin
 
    while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
     BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
+    result:=true;
    end;
 
    while BLASGroup^.fBLASInstances.Count<CountRenderInstances do begin
@@ -5331,6 +5334,7 @@ begin
                                                                                                                      GeometryInstanceFlags,
                                                                                                                      BLASGroup^.fBLAS);
     BLASGroup^.fBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
+    result:=true;
    end;
 
    if CountRenderInstances>0 then begin
@@ -23172,11 +23176,13 @@ end;
 
 procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer);
-var RenderInstanceIndex:TpvSizeInt;
+var Index,CountBLASInstances,CountBLASGeometries:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+    BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
+    BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
 begin
 
  if fHardwareRaytracingSupport then begin
@@ -23229,8 +23235,28 @@ begin
 
    RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
    while assigned(RaytracingGroupInstanceNode) do begin
-    RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,BLASListChanged);
+    if RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,false) then begin
+     BLASListChanged:=true;
+    end;
     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+   end;
+
+   if BLASListChanged then begin
+
+    CountBLASInstances:=0;
+    CountBLASGeometries:=0;
+    RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
+    while assigned(RaytracingGroupInstanceNode) do begin
+     for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+      BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+      if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) then begin
+       inc(CountBLASInstances,BLASGroup^.fBLASInstances.Count);
+       inc(CountBLASGeometries,BLASGroup^.fBLASInstances.Count*BLASGroup^.fBLASGeometry.Geometries.Count);
+      end;
+     end;
+     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+    end;
+
    end;
 
   finally
