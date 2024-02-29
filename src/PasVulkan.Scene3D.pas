@@ -2881,6 +2881,7 @@ type EpvScene3D=class(Exception);
               fInstanceNode:TpvScene3D.TGroup.TInstance.PNode;
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
+              fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -5153,6 +5154,8 @@ begin
 
  fCacheVerticesGeneration:=High(TpvUInt64);
 
+ fVulkanLongTermStaticBufferData:=nil;
+
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
@@ -5171,9 +5174,10 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex:TpvSizeInt;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided,DynamicGeometry:Boolean;
+    DoubleSided,DynamicGeometry,MustUpdate,MustUpdateAll:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
+    AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
 begin
 
  DynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
@@ -5181,6 +5185,13 @@ begin
  VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.BufferData;
 
  VulkanLongTermStaticBufferData:=fSceneInstance.fVulkanLongTermStaticBuffers.BufferData;
+
+ if fVulkanLongTermStaticBufferData<>VulkanLongTermStaticBufferData then begin
+  fVulkanLongTermStaticBufferData:=VulkanLongTermStaticBufferData;
+  MustUpdateAll:=true;
+ end else begin
+  MustUpdateAll:=false;
+ end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
@@ -5223,12 +5234,21 @@ begin
 
    if assigned(BLASGroup^.fBLASGeometry) then begin
 
+    MustUpdate:=MustUpdateAll;
+
     if DynamicGeometry then begin
+     if fCacheVerticesGeneration<>fInstanceNode^.CacheVerticesGeneration then begin
+      fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGeneration;
+      MustUpdate:=true;
+     end;
+    end;
+
+    if MustUpdate then begin
 
      for RaytracingPrimitiveIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
-
-      BLASGroup^.fBLASGeometry.Geometries.ItemArray[RaytracingPrimitiveIndex].geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
-
+      AccelerationStructureGeometry:=@BLASGroup^.fBLASGeometry.Geometries.ItemArray[RaytracingPrimitiveIndex];
+      AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
+      AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
      end;
 
     end;
