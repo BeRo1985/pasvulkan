@@ -73,23 +73,20 @@ uses SysUtils,
 
 type EpvRaytracing=class(Exception);
 
-     TpvRaytracingGeometryBufferItem=packed record // per gl_InstanceCustomIndexEXT or gl_InstanceID wise, depending on the usage      
+     TpvRaytracingBLASGeometryInfoBufferItem=packed record // per gl_InstanceCustomIndexEXT or gl_InstanceID wise, depending on the usage
       Type_:TVkUInt32; // 0 = mesh object, 1 = planet object, etc.
       ObjectIndex:TVkUInt32; // Index of object, especially for planet objects important, because it's the index of the planet in the planet list, and not for the mesh objects, since mesh objects uses the same unique vertex and index buffers.
       MaterialIndex:TVkUInt32; 
       IndexOffset:TVkUInt32;
      end;
-     PpvRaytracingGeometryBufferItem=^TpvRaytracingGeometryBufferItem; 
+     PpvRaytracingBLASGeometryInfoBufferItem=^TpvRaytracingBLASGeometryInfoBufferItem;
 
-     TpvRaytracingGeometryBufferItemList=TpvDynamicArrayList<TpvRaytracingGeometryBufferItem>;
+     TpvRaytracingBLASGeometryInfoBufferItemList=TpvDynamicArrayList<TpvRaytracingBLASGeometryInfoBufferItem>;
 
-     TpvRaytracingBLASMetaInfoBufferItem=packed record 
-      Offset:TVkUInt32; // Offset index for geometry buffer item
-      Count:TVkUInt32; // Count of geometry buffer items in this BLAS
-     end;
-     PpvRaytracingBLASMetaInfoBufferItem=^TpvRaytracingBLASMetaInfoBufferItem;
+     TpvRaytracingBLASGeometryInfoOffsetBufferItem=TVkUInt32; // Instance offset index for first geometry buffer item per BLAS instance
+     PpvRaytracingBLASGeometryInfoOffsetBufferItem=^TpvRaytracingBLASGeometryInfoOffsetBufferItem;
 
-     TpvRaytracingBLASMetaInfoBufferItemList=TpvDynamicArrayList<TpvRaytracingBLASMetaInfoBufferItem>;
+     TpvRaytracingBLASGeometryInfoOffsetBufferItemList=TpvDynamicArrayList<TpvRaytracingBLASGeometryInfoOffsetBufferItem>;
 
      { TpvRaytracingInstanceShaderBindingTableRecordOffsets }
      TpvRaytracingInstanceShaderBindingTableRecordOffsets=class
