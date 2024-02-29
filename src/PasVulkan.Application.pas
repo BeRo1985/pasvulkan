@@ -2142,6 +2142,12 @@ procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedStat
 
 {$ifend}
 
+{$if defined(Windows)}
+function IsDebuggerPresent:LongBool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
+{$else}
+function IsDebuggerPresent:LongBool;
+{$endif}
+
 implementation
 
 uses PasVulkan.Utils,PasDblStrUtils;
@@ -2505,6 +2511,31 @@ begin
    result:=result+s;
   end;
  end;
+end;
+{$ifend}
+
+{$if defined(Linux)}
+function IsDebuggerPresent:LongBool;
+var StatFile:TextFile;
+    CurrentLine,Info:String;
+begin
+ AssignFile(StatFile,'/proc/self/status');
+ Reset(StatFile);
+ while not EOF(StatFile) do begin
+  ReadLn(StatFile,CurrentLine);
+  if Pos('TRACERPID:',UpperCase(CurrentLine))>0 then begin
+   Info:=trim(Copy(CurrentLine,Pos(':',CurrentLine)+1,length(CurrentLine)));
+   result:=Info<>'0';
+   exit;
+  end;
+ end;
+ CloseFile(StatFile);
+ result:=false;
+end;
+{$elseif not defined(Windows)}
+function IsDebuggerPresent:LongBool;
+begin
+ result:=false;
 end;
 {$ifend}
 
