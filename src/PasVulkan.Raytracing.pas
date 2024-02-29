@@ -189,11 +189,11 @@ type EpvRaytracing=class(Exception);
      { TpvRaytracingBottomLevelAccelerationStructureGeometry }
      TpvRaytracingBottomLevelAccelerationStructureGeometry=class
       public
-       type TTriangles=TpvDynamicArrayList<TVkAccelerationStructureGeometryKHR>;
+       type TGeometries=TpvDynamicArrayList<TVkAccelerationStructureGeometryKHR>;
             TBuildOffsets=TpvDynamicArrayList<TVkAccelerationStructureBuildRangeInfoKHR>;
       private
        fDevice:TpvVulkanDevice;
-       fTriangles:TTriangles;
+       fGeometries:TGeometries;
        fBuildOffsets:TBuildOffsets;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
@@ -213,6 +213,9 @@ type EpvRaytracing=class(Exception);
                           const aCount:TVkUInt32;
                           const aOpaque:Boolean;
                           const aStride:TVkDeviceSize=SizeOf(TVkAabbPositionsKHR));
+      published
+       property Geometries:TGeometries read fGeometries;
+       property BuildOffsets:TBuildOffsets read fBuildOffsets;
      end;
      
      { TpvRaytracingBottomLevelAccelerationStructure }
@@ -694,13 +697,13 @@ constructor TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(const a
 begin
  inherited Create;
  fDevice:=aDevice;
- fTriangles:=TTriangles.Create;
+ fGeometries:=TGeometries.Create;
  fBuildOffsets:=TBuildOffsets.Create;
 end;
 
 destructor TpvRaytracingBottomLevelAccelerationStructureGeometry.Destroy;
 begin
- FreeAndNil(fTriangles);
+ FreeAndNil(fGeometries);
  FreeAndNil(fBuildOffsets);
  inherited Destroy;
 end;
@@ -751,7 +754,7 @@ begin
   BuildOffsetInfo.transformOffset:=0;
  end;
 
- fTriangles.Add(Geometry);
+ fGeometries.Add(Geometry);
  fBuildOffsets.Add(BuildOffsetInfo);
 
 end;
@@ -784,7 +787,7 @@ begin
  BuildOffsetInfo.primitiveCount:=aCount;
  BuildOffsetInfo.transformOffset:=0;
 
- fTriangles.Add(Geometry);
+ fGeometries.Add(Geometry);
  fBuildOffsets.Add(BuildOffsetInfo);
 
 end;
@@ -814,8 +817,8 @@ begin
   fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
  end;
  if assigned(fGeometry) then begin
-  fBuildGeometryInfo.geometryCount:=fGeometry.fTriangles.Count;
-  fBuildGeometryInfo.pGeometries:=@fGeometry.fTriangles.ItemArray[0];
+  fBuildGeometryInfo.geometryCount:=fGeometry.fGeometries.Count;
+  fBuildGeometryInfo.pGeometries:=@fGeometry.fGeometries.ItemArray[0];
  end; 
  fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR);
  fBuildGeometryInfo.type_:=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
@@ -880,8 +883,8 @@ begin
   fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
  end;
  if assigned(fGeometry) then begin
-  fBuildGeometryInfo.geometryCount:=fGeometry.fTriangles.Count;
-  fBuildGeometryInfo.pGeometries:=@fGeometry.fTriangles.ItemArray[0];
+  fBuildGeometryInfo.geometryCount:=fGeometry.fGeometries.Count;
+  fBuildGeometryInfo.pGeometries:=@fGeometry.fGeometries.ItemArray[0];
  end;
  fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR);
  fBuildGeometryInfo.type_:=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);

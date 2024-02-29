@@ -5171,8 +5171,16 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex:TpvSizeInt;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided:Boolean;
+    DoubleSided,DynamicGeometry:Boolean;
+    VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
+    VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
 begin
+
+ DynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
+
+ VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.BufferData;
+
+ VulkanLongTermStaticBufferData:=fSceneInstance.fVulkanLongTermStaticBuffers.BufferData;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
 
@@ -5213,7 +5221,19 @@ begin
 
   if CountPrimitives>0 then begin
 
-   if not assigned(BLASGroup^.fBLASGeometry) then begin
+   if assigned(BLASGroup^.fBLASGeometry) then begin
+
+    if DynamicGeometry then begin
+
+     for RaytracingPrimitiveIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
+
+      BLASGroup^.fBLASGeometry.Geometries.ItemArray[RaytracingPrimitiveIndex].geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
+
+     end;
+
+    end;
+
+   end else begin
 
     BLASGroup^.fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
 
@@ -5222,14 +5242,13 @@ begin
      RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
      if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
 
-      // TODO
-      BLASGroup^.fBLASGeometry.AddTriangles(nil,
+      BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,
                                             0,
-                                            0,
-                                            0,
-                                            nil,
-                                            0,
-                                            0,
+                                            fInstance.fVulkanVertexBufferOffset+RaytracingPrimitive.fStartBufferVertexOffset+RaytracingPrimitive.fCountVertices,
+                                            SizeOf(TGPUCachedRaytracingVertex),
+                                            VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
+                                            (RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset)*SizeOf(TpvUInt32),
+                                            RaytracingPrimitive.fCountIndices,
                                             RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque,
                                             nil,
                                             0);
@@ -5243,7 +5262,7 @@ begin
    if not assigned(BLASGroup^.fBLAS) then begin
     BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
                                                                            BLASGroup^.fBLASGeometry,
-                                                                           ([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[]);
+                                                                           DynamicGeometry);
    end;
 
    if not assigned(BLASGroup^.fBLASInstances) then begin
