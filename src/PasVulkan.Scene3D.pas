@@ -3082,6 +3082,7 @@ type EpvScene3D=class(Exception);
        fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;            
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingGroupInstanceNodeRemoveQueue:TRaytracingGroupInstanceNodeQueue;
+       fRaytracingBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
        fRaytracingBLASGeometryInfoBufferItems:TpvRaytracingBLASGeometryInfoBufferItems;
        fRaytracingBLASGeometryInfoOffsetBufferItems:TpvRaytracingBLASGeometryInfoOffsetBufferItems;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
@@ -20254,6 +20255,8 @@ begin
 
  fRaytracingGroupInstanceNodeRemoveQueue.Initialize;
 
+ fRaytracingBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(false);
+
  fRaytracingBLASGeometryInfoBufferItems:=nil;
 
  fRaytracingBLASGeometryInfoOffsetBufferItems:=nil;
@@ -20883,6 +20886,8 @@ begin
  FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
+
+ FreeAndNil(fRaytracingBLASInstances);
 
  fRaytracingBLASGeometryInfoBufferItems:=nil;
 
@@ -23264,6 +23269,8 @@ begin
 
    if BLASListChanged then begin
 
+    fRaytracingBLASInstances.ClearNoFree;
+
     CountBLASInstances:=0;
     CountBLASGeometries:=0;
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
@@ -23294,6 +23301,7 @@ begin
       BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) then begin
        for InstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
+        fRaytracingBLASInstances.Add(BLASGroup^.fBLASInstances.Items[InstanceIndex]);
         fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
         inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
         for GeometryIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
