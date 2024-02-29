@@ -2855,11 +2855,14 @@ type EpvScene3D=class(Exception);
                    PBLASGroupVariant=^TBLASGroupVariant;
                    { TBLASGroup }
                    TBLASGroup=record
+                    public
+                     type TOffsets=TpvDynamicArray<TpvUInt32>;
                     private
                      fRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
                      fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                      fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
                      fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
+                     fIndexOffsets:TOffsets;
                     public
                      procedure Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
                      procedure Finalize;
@@ -5114,10 +5117,14 @@ begin
 
  fBLASInstances:=nil;
 
+ fIndexOffsets.Initialize;
+
 end;
 
 procedure TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup.Finalize;
 begin
+
+ fIndexOffsets.Finalize;
 
  FreeAndNil(fBLASInstances);
 
@@ -5253,6 +5260,8 @@ begin
 
     BLASGroup^.fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
 
+    BLASGroup^.fIndexOffsets.Clear;
+
     for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
 
      RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
@@ -5268,6 +5277,8 @@ begin
                                             RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque,
                                             nil,
                                             0);
+
+      BLASGroup^.fIndexOffsets.Add(RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset);
 
      end;
 
@@ -5314,10 +5325,10 @@ begin
    while BLASGroup^.fBLASInstances.Count<CountRenderInstances do begin
     RaytracingBottomLevelAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fSceneInstance.fVulkanDevice,
                                                                                                                      fInstance.ModelMatrix,
-                                                                                                                     GeometryInstanceFlags,
+                                                                                                                     0,
                                                                                                                      $ff,
                                                                                                                      0,
-                                                                                                                     0,
+                                                                                                                     GeometryInstanceFlags,
                                                                                                                      BLASGroup^.fBLAS);
     BLASGroup^.fBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
    end;
