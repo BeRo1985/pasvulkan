@@ -2882,6 +2882,7 @@ type EpvScene3D=class(Exception);
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
+              fDirty:TPasMPBool32;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -5156,6 +5157,8 @@ begin
 
  fVulkanLongTermStaticBufferData:=nil;
 
+ fDirty:=false;
+
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
@@ -5251,6 +5254,8 @@ begin
       AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
      end;
 
+     fDirty:=true;
+
     end;
 
    end else begin
@@ -5277,12 +5282,15 @@ begin
 
     end;
 
+    fDirty:=true;
+
    end;
 
    if not assigned(BLASGroup^.fBLAS) then begin
     BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
                                                                            BLASGroup^.fBLASGeometry,
                                                                            DynamicGeometry);
+    fDirty:=true;
    end;
 
    if not assigned(BLASGroup^.fBLASInstances) then begin
