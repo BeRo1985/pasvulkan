@@ -5106,11 +5106,11 @@ begin
 
  fRaytracingGroupInstanceNode:=aRaytracingGroupInstanceNode;
 
- fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fRaytracingGroupInstanceNode.fSceneInstance.fVulkanDevice);
+ fBLASGeometry:=nil;
 
- fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fRaytracingGroupInstanceNode.fSceneInstance.fVulkanDevice);
+ fBLAS:=nil;
 
- fBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
+ fBLASInstances:=nil;
 
 end;
 
@@ -5165,11 +5165,13 @@ begin
 end;
 
 procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures;
-var CountRenderInstances:TpvSizeInt;
+var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
+    RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
+    DoubleSided:Boolean;
 begin
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
@@ -5181,23 +5183,78 @@ begin
   case BLASGroupVariant of
    TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.SingleSided:begin
     GeometryInstanceFlags:=GeometryInstanceFlags and not TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
+    DoubleSided:=false;
    end;
    else {TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant.DoubleSided:}begin
     GeometryInstanceFlags:=GeometryInstanceFlags or TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR);
+    DoubleSided:=true;
    end;
   end;
 
-  if fInstance.fUseRenderInstances then begin
-   CountRenderInstances:=fInstance.fRenderInstances.Count;
+  CountPrimitives:=0;
+  if assigned(fNode.Mesh) then begin
+   for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
+    RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
+    if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
+     inc(CountPrimitives);
+    end;
+   end;
+  end;
+
+  if CountPrimitives>0 then begin
+   if fInstance.fUseRenderInstances then begin
+    CountRenderInstances:=fInstance.fRenderInstances.Count;
+   end else begin
+    CountRenderInstances:=1;
+   end;
   end else begin
-   CountRenderInstances:=1;
+   CountRenderInstances:=0;
   end;
 
-  while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
-   BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
-  end;
+  if CountPrimitives>0 then begin
 
-  while BLASGroup^.fBLASInstances.Count<CountRenderInstances do begin
+   if not assigned(BLASGroup^.fBLASGeometry) then begin
+
+    BLASGroup^.fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
+
+    for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
+
+     RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
+     if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
+
+      // TODO
+      BLASGroup^.fBLASGeometry.AddTriangles(nil,
+                                            0,
+                                            0,
+                                            0,
+                                            nil,
+                                            0,
+                                            0,
+                                            RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque,
+                                            nil,
+                                            0);
+
+     end;
+
+    end;
+
+   end;
+
+   if not assigned(BLASGroup^.fBLAS) then begin
+    BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
+                                                                           BLASGroup^.fBLASGeometry,
+                                                                           ([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[]);
+   end;
+
+   if not assigned(BLASGroup^.fBLASInstances) then begin
+    BLASGroup^.fBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
+   end;
+
+   while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
+    BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
+   end;
+
+   while BLASGroup^.fBLASInstances.Count<CountRenderInstances do begin
     RaytracingBottomLevelAccelerationStructureInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fSceneInstance.fVulkanDevice,
                                                                                                                      fInstance.ModelMatrix,
                                                                                                                      GeometryInstanceFlags,
@@ -5206,6 +5263,14 @@ begin
                                                                                                                      0,
                                                                                                                      BLASGroup^.fBLAS);
     BLASGroup^.fBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
+   end;
+
+  end else begin
+
+   FreeAndNil(BLASGroup^.fBLASInstances);
+   FreeAndNil(BLASGroup^.fBLAS);
+   FreeAndNil(BLASGroup^.fBLASGeometry);
+
   end;
 
  end;
