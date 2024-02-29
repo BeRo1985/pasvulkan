@@ -73,18 +73,34 @@ uses SysUtils,
 
 type EpvRaytracing=class(Exception);
 
+     { TpvRaytracingBLASGeometryInfoBufferItem } 
      TpvRaytracingBLASGeometryInfoBufferItem=packed record // per gl_InstanceCustomIndexEXT or gl_InstanceID wise, depending on the usage
-      Type_:TVkUInt32; // 0 = mesh object, 1 = planet object, etc.
-      ObjectIndex:TVkUInt32; // Index of object, especially for planet objects important, because it's the index of the planet in the planet list, and not for the mesh objects, since mesh objects uses the same unique vertex and index buffers.
-      MaterialIndex:TVkUInt32; 
-      IndexOffset:TVkUInt32;
+      private
+       fType_:TVkUInt32; // 0 = mesh object, 1 = planet object, etc.
+       fObjectIndex:TVkUInt32; // Index of object, especially for planet objects important, because it's the index of the planet in the planet list, and not for the mesh objects, since mesh objects uses the same unique vertex and index buffers.
+       fMaterialIndex:TVkUInt32;
+       fIndexOffset:TVkUInt32;
+      public 
+       constructor Create(const aType_:TVkUInt32;
+                          const aObjectIndex:TVkUInt32;
+                          const aMaterialIndex:TVkUInt32;
+                          const aIndexOffset:TVkUInt32);
+      public
+       property Type_:TVkUInt32 read fType_ write fType_;
+       property ObjectIndex:TVkUInt32 read fObjectIndex write fObjectIndex;
+       property MaterialIndex:TVkUInt32 read fMaterialIndex write fMaterialIndex;
+       property IndexOffset:TVkUInt32 read fIndexOffset write fIndexOffset;
      end;
      PpvRaytracingBLASGeometryInfoBufferItem=^TpvRaytracingBLASGeometryInfoBufferItem;
+
+     TpvRaytracingBLASGeometryInfoBufferItems=array of TpvRaytracingBLASGeometryInfoBufferItem;
 
      TpvRaytracingBLASGeometryInfoBufferItemList=TpvDynamicArrayList<TpvRaytracingBLASGeometryInfoBufferItem>;
 
      TpvRaytracingBLASGeometryInfoOffsetBufferItem=TVkUInt32; // Instance offset index for first geometry buffer item per BLAS instance
      PpvRaytracingBLASGeometryInfoOffsetBufferItem=^TpvRaytracingBLASGeometryInfoOffsetBufferItem;
+
+     TpvRaytracingBLASGeometryInfoOffsetBufferItems=array of TpvRaytracingBLASGeometryInfoOffsetBufferItem;
 
      TpvRaytracingBLASGeometryInfoOffsetBufferItemList=TpvDynamicArrayList<TpvRaytracingBLASGeometryInfoOffsetBufferItem>;
 
@@ -294,6 +310,19 @@ type EpvRaytracing=class(Exception);
      end;
 
 implementation
+
+{ TpvRaytracingBLASGeometryInfoBufferItem }
+
+constructor TpvRaytracingBLASGeometryInfoBufferItem.Create(const aType_:TVkUInt32;
+                                                           const aObjectIndex:TVkUInt32;
+                                                           const aMaterialIndex:TVkUInt32;
+                                                           const aIndexOffset:TVkUInt32);
+begin
+ fType_:=aType_;
+ fObjectIndex:=aObjectIndex;
+ fMaterialIndex:=aMaterialIndex;
+ fIndexOffset:=aIndexOffset;
+end;
 
 { TpvRaytracingInstanceCustomIndexManager }
 

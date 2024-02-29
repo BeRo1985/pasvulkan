@@ -3081,6 +3081,8 @@ type EpvScene3D=class(Exception);
        fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;            
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingGroupInstanceNodeRemoveQueue:TRaytracingGroupInstanceNodeQueue;
+       fRaytracingBLASGeometryInfoBufferItems:TpvRaytracingBLASGeometryInfoBufferItems;
+       fRaytracingBLASGeometryInfoOffsetBufferItems:TpvRaytracingBLASGeometryInfoOffsetBufferItems;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -20243,6 +20245,10 @@ begin
 
  fRaytracingGroupInstanceNodeRemoveQueue.Initialize;
 
+ fRaytracingBLASGeometryInfoBufferItems:=nil;
+
+ fRaytracingBLASGeometryInfoOffsetBufferItems:=nil;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -20868,6 +20874,10 @@ begin
  FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
+
+ fRaytracingBLASGeometryInfoBufferItems:=nil;
+
+ fRaytracingBLASGeometryInfoOffsetBufferItems:=nil;
 
  fRaytracingGroupInstanceNodeAddQueue.Finalize;
 
@@ -23176,7 +23186,9 @@ end;
 
 procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer);
-var Index,CountBLASInstances,CountBLASGeometries:TpvSizeInt;
+var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
+    RaytracingBLASGeometryInfoBufferItemIndex,
+    RaytracingBLASGeometryInfoOffsetBufferItemIndex:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
@@ -23252,6 +23264,37 @@ begin
       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) then begin
        inc(CountBLASInstances,BLASGroup^.fBLASInstances.Count);
        inc(CountBLASGeometries,BLASGroup^.fBLASInstances.Count*BLASGroup^.fBLASGeometry.Geometries.Count);
+      end;
+     end;
+     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+    end;
+
+    if length(fRaytracingBLASGeometryInfoBufferItems)<CountBLASGeometries then begin
+     SetLength(fRaytracingBLASGeometryInfoBufferItems,CountBLASGeometries*2);
+    end;
+
+    if length(fRaytracingBLASGeometryInfoOffsetBufferItems)<CountBLASInstances then begin
+     SetLength(fRaytracingBLASGeometryInfoOffsetBufferItems,CountBLASInstances*2);
+    end;
+
+    RaytracingBLASGeometryInfoBufferItemIndex:=0;
+    RaytracingBLASGeometryInfoOffsetBufferItemIndex:=0;
+    RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
+    while assigned(RaytracingGroupInstanceNode) do begin
+     for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+      BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+      if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) then begin
+       for InstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
+        fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
+        inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+        for GeometryIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
+         fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(0,
+                                                                                                                                           0,
+                                                                                                                                           0,
+                                                                                                                                           BLASGroup^.fIndexOffsets.ItemArray[GeometryIndex]);
+         inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+        end;
+       end;
       end;
      end;
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
