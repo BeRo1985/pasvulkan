@@ -2856,13 +2856,14 @@ type EpvScene3D=class(Exception);
                    { TBLASGroup }
                    TBLASGroup=record
                     public
-                     type TOffsets=TpvDynamicArray<TpvUInt32>;
+                     type TUInt32Array=TpvDynamicArray<TpvUInt32>;
                     private
                      fRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
                      fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                      fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
                      fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
-                     fIndexOffsets:TOffsets;
+                     fMaterialIDs:TUInt32Array;
+                     fIndexOffsets:TUInt32Array;
                     public
                      procedure Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
                      procedure Finalize;
@@ -5119,6 +5120,8 @@ begin
 
  fBLASInstances:=nil;
 
+ fMaterialIDs.Initialize;
+
  fIndexOffsets.Initialize;
 
 end;
@@ -5127,6 +5130,8 @@ procedure TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup.Finalize;
 begin
 
  fIndexOffsets.Finalize;
+
+ fMaterialIDs.Finalize;
 
  FreeAndNil(fBLASInstances);
 
@@ -5264,6 +5269,8 @@ begin
 
     BLASGroup^.fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
 
+    BLASGroup^.fMaterialIDs.Clear;
+
     BLASGroup^.fIndexOffsets.Clear;
 
     for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
@@ -5281,6 +5288,8 @@ begin
                                             RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque,
                                             nil,
                                             0);
+
+      BLASGroup^.fMaterialIDs.Add(RaytracingPrimitive.Material.ID);
 
       BLASGroup^.fIndexOffsets.Add(RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset);
 
@@ -23290,7 +23299,7 @@ begin
         for GeometryIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(0,
                                                                                                                                            0,
-                                                                                                                                           0,
+                                                                                                                                           BLASGroup^.fMaterialIDs.ItemArray[GeometryIndex],
                                                                                                                                            BLASGroup^.fIndexOffsets.ItemArray[GeometryIndex]);
          inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
         end;
