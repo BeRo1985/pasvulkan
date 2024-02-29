@@ -5224,7 +5224,7 @@ begin
   end;
 
   if CountPrimitives>0 then begin
-   if fInstance.fActives[aInFlightFrameIndex] {and fInstanceNode^.} then begin
+   if fInstance.fActives[aInFlightFrameIndex] and fInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
     if fInstance.fUseRenderInstances then begin
      CountRenderInstances:=fInstance.fRenderInstances.Count;
     end else begin
