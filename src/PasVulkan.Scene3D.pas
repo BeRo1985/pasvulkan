@@ -5171,7 +5171,8 @@ begin
 end;
 
 procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt);
-var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex:TpvSizeInt;
+var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
+    BLASInstanceIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -5221,20 +5222,6 @@ begin
      inc(CountPrimitives);
     end;
    end;
-  end;
-
-  if CountPrimitives>0 then begin
-   if fInstance.fActives[aInFlightFrameIndex] and fInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
-    if fInstance.fUseRenderInstances then begin
-     CountRenderInstances:=fInstance.fRenderInstances.Count;
-    end else begin
-     CountRenderInstances:=1;
-    end;
-   end else begin
-    CountRenderInstances:=0;
-   end;
-  end else begin
-   CountRenderInstances:=0;
   end;
 
   if CountPrimitives>0 then begin
@@ -5301,6 +5288,25 @@ begin
     BLASGroup^.fBLASInstances:=TpvRaytracingBottomLevelAccelerationStructureInstanceList.Create(true);
    end;
 
+   if CountPrimitives>0 then begin
+    if fInstance.fActives[aInFlightFrameIndex] and fInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex] then begin
+     if fInstance.fUseRenderInstances then begin
+      CountRenderInstances:=0;
+      for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
+       if fInstance.fRenderInstances[RendererInstanceIndex].fActive then begin
+        inc(CountRenderInstances);
+       end;
+      end;
+     end else begin
+      CountRenderInstances:=1;
+     end;
+    end else begin
+     CountRenderInstances:=0;
+    end;
+   end else begin
+    CountRenderInstances:=0;
+   end;
+
    while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
     BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
    end;
@@ -5314,6 +5320,27 @@ begin
                                                                                                                      0,
                                                                                                                      BLASGroup^.fBLAS);
     BLASGroup^.fBLASInstances.Add(RaytracingBottomLevelAccelerationStructureInstance);
+   end;
+
+   if CountRenderInstances>0 then begin
+
+    if fInstance.fUseRenderInstances then begin
+
+     BLASInstanceIndex:=0;
+
+     for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
+      if fInstance.fRenderInstances[RendererInstanceIndex].Active then begin
+       BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=fInstance.ModelMatrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrix;
+       inc(BLASInstanceIndex);
+      end;
+     end;
+
+    end else begin
+
+     BLASGroup^.fBLASInstances[0].Transform:=fInstance.ModelMatrix;
+
+    end;
+
    end;
 
   end else begin
