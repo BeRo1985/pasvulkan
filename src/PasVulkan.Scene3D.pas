@@ -2890,7 +2890,7 @@ type EpvScene3D=class(Exception);
                                  const aNode:TpvScene3D.TGroup.TNode;
                                  const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode); reintroduce;
               destructor Destroy; override;
-              procedure UpdateStructures;
+              procedure UpdateStructures(const aInFlightFrameIndex:TpvSizeInt);
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
               property Previous:TRaytracingGroupInstanceNode read fPrevious;
@@ -5170,7 +5170,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures;
+procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt);
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
@@ -5224,10 +5224,14 @@ begin
   end;
 
   if CountPrimitives>0 then begin
-   if fInstance.fUseRenderInstances then begin
-    CountRenderInstances:=fInstance.fRenderInstances.Count;
+   if fInstance.fActives[aInFlightFrameIndex] {and fInstanceNode^.} then begin
+    if fInstance.fUseRenderInstances then begin
+     CountRenderInstances:=fInstance.fRenderInstances.Count;
+    end else begin
+     CountRenderInstances:=1;
+    end;
    end else begin
-    CountRenderInstances:=1;
+    CountRenderInstances:=0;
    end;
   end else begin
    CountRenderInstances:=0;
@@ -23189,7 +23193,7 @@ begin
 
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
-     RaytracingGroupInstanceNode.UpdateStructures;
+     RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex);
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
     end;
 
