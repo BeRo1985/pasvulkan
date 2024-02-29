@@ -2890,7 +2890,7 @@ type EpvScene3D=class(Exception);
                                  const aNode:TpvScene3D.TGroup.TNode;
                                  const aInstanceNode:TpvScene3D.TGroup.TInstance.PNode); reintroduce;
               destructor Destroy; override;
-              procedure UpdateStructures(const aInFlightFrameIndex:TpvSizeInt);
+              procedure UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean);
              published
               property SceneInstance:TpvScene3D read fSceneInstance;
               property Previous:TRaytracingGroupInstanceNode read fPrevious;
@@ -5170,7 +5170,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean);
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
@@ -23216,14 +23216,10 @@ begin
     end;
    end;
 
-   if BLASListChanged then begin
-
-    RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
-    while assigned(RaytracingGroupInstanceNode) do begin
-     RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex);
-     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
-    end;
-
+   RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
+   while assigned(RaytracingGroupInstanceNode) do begin
+    RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,BLASListChanged);
+    RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
    end;
 
   finally
