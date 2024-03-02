@@ -3093,6 +3093,7 @@ type EpvScene3D=class(Exception);
        fRaytracingBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
        fRaytracingBLASGeometryInfoBufferItems:TpvRaytracingBLASGeometryInfoBufferItems;
        fRaytracingBLASGeometryInfoOffsetBufferItems:TpvRaytracingBLASGeometryInfoOffsetBufferItems;
+       fRaytracingVulkanBLASScratchBuffer:TpvVulkanBuffer;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -20282,6 +20283,8 @@ begin
 
  fRaytracingBLASGeometryInfoOffsetBufferItems:=nil;
 
+ fRaytracingVulkanBLASScratchBuffer:=nil;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -20907,6 +20910,8 @@ begin
  FreeAndNil(fVulkanLongTermStaticBuffers);
 
  FreeAndNil(fBufferRangeAllocatorLock);
+
+ FreeAndNil(fRaytracingVulkanBLASScratchBuffer);
 
  FreeAndNil(fRaytracingBLASInstances);
 
@@ -23388,6 +23393,38 @@ begin
     end;
 
    end;
+
+   if (not assigned(fRaytracingVulkanBLASScratchBuffer)) or // Allocate when there is no allocated scratch buffer then
+      (fRaytracingVulkanBLASScratchBuffer.Size<BLASScratchSize) or // Grow when it would be needed
+      ((BLASScratchSize>0) and (BLASScratchSize<(fRaytracingVulkanBLASScratchBuffer.Size shr 1))) then begin // Shrink when it would be useful (when it could be smaller by at least than the half)
+
+    if assigned(pvApplication) then begin
+     pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+    end;
+
+    FreeAndNil(fRaytracingVulkanBLASScratchBuffer);
+
+    fRaytracingVulkanBLASScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                               BLASScratchSize,
+                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                               [],
+                                                               0,
+                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               0,
+                                                               []
+                                                              );
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanBLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanScratchBuffer');
+
+   end;
+
+
+
 
   finally
    fRaytracingLock.Release;
