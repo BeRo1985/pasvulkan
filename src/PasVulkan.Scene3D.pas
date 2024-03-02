@@ -2866,6 +2866,7 @@ type EpvScene3D=class(Exception);
                      fIndexOffsets:TUInt32Array;
                      fAccelerationStructureOffset:TVkDeviceSize;
                      fScratchOffset:TVkDeviceSize;
+                     fScratchPass:TpvUInt64;
                     public
                      procedure Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
                      procedure Finalize;
@@ -5137,6 +5138,8 @@ begin
  fAccelerationStructureOffset:=High(TVkDeviceSize);
 
  fScratchOffset:=High(TVkDeviceSize);
+
+ fScratchPass:=0;
 
 end;
 
@@ -23239,7 +23242,8 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     BLASAccelerationStructureSize:TVkDeviceSize;
-    BLASScratchSize:TVkDeviceSize;
+    BLASScratchSize,BLASScratchPassSize:TVkDeviceSize;
+    BLASScratchPass:TpvUInt64;
 begin
 
  if fHardwareRaytracingSupport then begin
@@ -23360,7 +23364,11 @@ begin
 
     BLASAccelerationStructureSize:=0;
 
-    BLASScratchSize:=0;
+    BLASScratchSize:=TpvUInt64(64) shl 20;
+
+    BLASScratchPassSize:=0;
+
+    BLASScratchPass:=0;
 
     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
 
@@ -23377,11 +23385,19 @@ begin
         BLASGroup^.fAccelerationStructureOffset:=BLASAccelerationStructureSize;
         inc(BLASAccelerationStructureSize,BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize);
 
-        BLASGroup^.fScratchOffset:=BLASScratchSize;
+        BLASGroup^.fScratchOffset:=BLASScratchPassSize;
+        BLASGroup^.fScratchPass:=BLASScratchPass;
         if RaytracingGroupInstanceNode.fUpdateDirty then begin
-         inc(BLASScratchSize,BLASGroup^.fBLAS.BuildSizesInfo.updateScratchSize);
+         inc(BLASScratchPassSize,BLASGroup^.fBLAS.BuildSizesInfo.updateScratchSize);
         end else begin
-         inc(BLASScratchSize,BLASGroup^.fBLAS.BuildSizesInfo.buildScratchSize);
+         inc(BLASScratchPassSize,BLASGroup^.fBLAS.BuildSizesInfo.buildScratchSize);
+        end;
+        if BLASScratchSize<BLASScratchPassSize then begin
+         BLASScratchSize:=BLASScratchPassSize;
+        end;
+        if BLASScratchPassSize>=(TpvUInt64(64) shl 20) then begin
+         BLASScratchPassSize:=0;
+         inc(BLASScratchPass);
         end;
 
        end;
