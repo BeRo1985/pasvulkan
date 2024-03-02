@@ -2864,6 +2864,8 @@ type EpvScene3D=class(Exception);
                      fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
                      fMaterialIDs:TUInt32Array;
                      fIndexOffsets:TUInt32Array;
+                     fAccelerationStructureOffset:TVkDeviceSize;
+                     fScratchOffset:TVkDeviceSize;
                     public
                      procedure Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
                      procedure Finalize;
@@ -2871,6 +2873,8 @@ type EpvScene3D=class(Exception);
                      property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
                      property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
                      property BLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBLASInstances;
+                     property AccelerationStructureOffset:TVkDeviceSize read fAccelerationStructureOffset;
+                     property ScratchOffset:TVkDeviceSize read fScratchOffset;
                    end;
                    PBLASGroup=^TBLASGroup;
                    TBLASGroups=array[TBLASGroupVariant] of TBLASGroup;
@@ -2887,6 +2891,7 @@ type EpvScene3D=class(Exception);
               fCacheVerticesGeneration:TpvUInt64;
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
               fDirty:TPasMPBool32;
+              fUpdateDirty:TPasMPBool32;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -5128,6 +5133,10 @@ begin
 
  fIndexOffsets.Initialize;
 
+ fAccelerationStructureOffset:=High(TVkDeviceSize);
+
+ fScratchOffset:=High(TVkDeviceSize);
+
 end;
 
 procedure TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroup.Finalize;
@@ -5176,6 +5185,8 @@ begin
  fVulkanLongTermStaticBufferData:=nil;
 
  fDirty:=false;
+
+ fUpdateDirty:=false;
 
 end;
 
@@ -5267,6 +5278,8 @@ begin
 
      fDirty:=true;
 
+     fUpdateDirty:=true;
+
     end;
 
    end else begin
@@ -5303,6 +5316,8 @@ begin
 
     fDirty:=true;
 
+    fUpdateDirty:=false;
+
    end;
 
    if not assigned(BLASGroup^.fBLAS) then begin
@@ -5310,6 +5325,7 @@ begin
                                                                            BLASGroup^.fBLASGeometry,
                                                                            DynamicGeometry);
     fDirty:=true;
+    fUpdateDirty:=false;
    end;
 
    if not assigned(BLASGroup^.fBLASInstances) then begin
@@ -23217,6 +23233,8 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
+    BLASAccelerationStructureSize:TVkDeviceSize;
+    BLASScratchSize:TVkDeviceSize;
 begin
 
  if fHardwareRaytracingSupport then begin
@@ -23335,12 +23353,35 @@ begin
 
    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
+    BLASAccelerationStructureSize:=0;
+
+    BLASScratchSize:=0;
+
     for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
 
      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
 
      if assigned(RaytracingGroupInstanceNode) then begin
 
+      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+
+       BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+
+       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) then begin
+
+        BLASGroup^.fAccelerationStructureOffset:=BLASAccelerationStructureSize;
+        inc(BLASAccelerationStructureSize,BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize);
+
+        BLASGroup^.fScratchOffset:=BLASScratchSize;
+        if RaytracingGroupInstanceNode.fUpdateDirty then begin
+         inc(BLASScratchSize,BLASGroup^.fBLAS.BuildSizesInfo.updateScratchSize);
+        end else begin
+         inc(BLASScratchSize,BLASGroup^.fBLAS.BuildSizesInfo.buildScratchSize);
+        end;
+
+       end;
+
+      end;
 
      end;
 
