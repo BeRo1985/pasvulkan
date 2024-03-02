@@ -2923,7 +2923,9 @@ type EpvScene3D=class(Exception);
               property SceneInstance:TpvScene3D read fSceneInstance;
               property First:TRaytracingGroupInstanceNode read fFirst;
               property Last:TRaytracingGroupInstanceNode read fLast; 
-            end;  
+            end;
+            { TRaytracingGroupInstanceNodeArrayList }
+            TRaytracingGroupInstanceNodeArrayList=TpvObjectGenericList<TRaytracingGroupInstanceNode>;
             { TRaytracingGroupInstanceNodeHashMap }
             TRaytracingGroupInstanceNodeHashMap=TpvHashMap<TpvUInt64,TRaytracingGroupInstanceNode>;
             { TRaytracingGroupInstanceNodeQueueItem }
@@ -3079,7 +3081,8 @@ type EpvScene3D=class(Exception);
        fRaytracingPrimitiveIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeList:TRaytracingGroupInstanceNodeList;
-       fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;            
+       fRaytracingGroupInstanceNodeDirtyArrayList:TRaytracingGroupInstanceNodeArrayList;
+       fRaytracingGroupInstanceNodeHashMap:TRaytracingGroupInstanceNodeHashMap;
        fRaytracingGroupInstanceNodeAddQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingGroupInstanceNodeRemoveQueue:TRaytracingGroupInstanceNodeQueue;
        fRaytracingBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
@@ -20249,6 +20252,8 @@ begin
 
  fRaytracingGroupInstanceNodeList:=TRaytracingGroupInstanceNodeList.Create(self);
 
+ fRaytracingGroupInstanceNodeDirtyArrayList:=TRaytracingGroupInstanceNodeArrayList.Create(false);
+
  fRaytracingGroupInstanceNodeHashMap:=TRaytracingGroupInstanceNodeHashMap.Create(nil);
 
  fRaytracingGroupInstanceNodeAddQueue.Initialize;
@@ -20898,6 +20903,8 @@ begin
  fRaytracingGroupInstanceNodeRemoveQueue.Finalize;
 
  FreeAndNil(fRaytracingGroupInstanceNodeHashMap);
+
+ FreeAndNil(fRaytracingGroupInstanceNodeDirtyArrayList);
 
  FreeAndNil(fRaytracingGroupInstanceNodeList);
 
@@ -23202,7 +23209,8 @@ procedure TpvScene3D.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer);
 var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoBufferItemIndex,
-    RaytracingBLASGeometryInfoOffsetBufferItemIndex:TpvSizeInt;
+    RaytracingBLASGeometryInfoOffsetBufferItemIndex,
+    RaytracingGroupInstanceNodeIndex:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
@@ -23227,6 +23235,8 @@ begin
     // when they are destroyed. Therefore we should wait for the previous frame for to be sure, that the buffers are not in use anymore. 
     pvApplication.WaitForPreviousFrame(true);
    end;
+
+   fRaytracingGroupInstanceNodeDirtyArrayList.ClearNoFree;
 
    BLASListChanged:=false;
 
@@ -23263,6 +23273,10 @@ begin
    while assigned(RaytracingGroupInstanceNode) do begin
     if RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,false) then begin
      BLASListChanged:=true;
+    end;
+    if RaytracingGroupInstanceNode.fDirty then begin
+     RaytracingGroupInstanceNode.fDirty:=false;
+     fRaytracingGroupInstanceNodeDirtyArrayList.Add(RaytracingGroupInstanceNode);
     end;
     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
    end;
@@ -23315,6 +23329,21 @@ begin
       end;
      end;
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+    end;
+
+   end;
+
+   if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
+
+    for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
+
+     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
+
+     if assigned(RaytracingGroupInstanceNode) then begin
+
+
+     end;
+
     end;
 
    end;
