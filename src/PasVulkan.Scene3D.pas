@@ -23260,6 +23260,13 @@ begin
   fRaytracingLock.Acquire;
   try
 
+   /////////////////////////////////////////////////////////////////////////////
+   // Wait for previous frame, when there are changes in the BLAS list, since //
+   // it is necessary at Vulkan, that buffers are not in use, when they are   //
+   // destroyed. Therefore we should wait for the previous frame for to be    //
+   // sure, that the buffers are not in use anymore.                          //
+   /////////////////////////////////////////////////////////////////////////////
+
    MustWaitForPreviousFrame:=false;
 
    if not (fRaytracingGroupInstanceNodeAddQueue.IsEmpty and fRaytracingGroupInstanceNodeRemoveQueue.IsEmpty) then begin
@@ -23272,9 +23279,13 @@ begin
     pvApplication.WaitForPreviousFrame(true);
    end;
 
-   fRaytracingGroupInstanceNodeDirtyArrayList.ClearNoFree;
+   fRaytracingGroupInstanceNodeDirtyArrayList.ClearNoFree; // Clear the dirty array list
 
-   BLASListChanged:=false;
+   BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
+
+   //////////////////////////////////////////////////////////////////////////////
+   // Remove old raytracing group instance nodes                               //
+   //////////////////////////////////////////////////////////////////////////////
 
    while fRaytracingGroupInstanceNodeRemoveQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeHashMap[RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID];
@@ -23288,6 +23299,10 @@ begin
      BLASListChanged:=true;
     end;
    end;
+
+   //////////////////////////////////////////////////////////////////////////////
+   // Add new raytracing group instance nodes                                  //
+   //////////////////////////////////////////////////////////////////////////////
 
    while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
     if not fRaytracingGroupInstanceNodeHashMap.ExistKey(RaytracingGroupInstanceNodeQueueItem.fRaytracingGroupInstanceNodeID) then begin
@@ -23305,6 +23320,10 @@ begin
     end;
    end;
 
+   //////////////////////////////////////////////////////////////////////////////
+   // Update structures of all raytracing group instance nodes                 //
+   //////////////////////////////////////////////////////////////////////////////
+
    RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
    while assigned(RaytracingGroupInstanceNode) do begin
     if RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,false) then begin
@@ -23316,6 +23335,12 @@ begin
     end;
     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
    end;
+
+   //////////////////////////////////////////////////////////////////////////////
+   // At BLAS list changed, we have to rebuild the BLAS instances and the      //
+   // BLAS geometry info buffer items and the BLAS geometry info offset buffer //
+   // items.                                                                   //
+   //////////////////////////////////////////////////////////////////////////////
 
    if BLASListChanged then begin
 
@@ -23369,6 +23394,10 @@ begin
 
    end;
 
+   //////////////////////////////////////////////////////////////////////////////
+   // Collect and calculate sizes for acceleration structures                  //
+   //////////////////////////////////////////////////////////////////////////////
+
    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
     BLASAccelerationStructureSize:=0;
@@ -23419,6 +23448,10 @@ begin
 
    end;
 
+   //////////////////////////////////////////////////////////////////////////////
+   // Allocate or grow or shrink scratch buffer                                //
+   //////////////////////////////////////////////////////////////////////////////
+
    if (not assigned(fRaytracingVulkanScratchBuffer)) or // Allocate when there is no allocated scratch buffer then
       (fRaytracingVulkanScratchBuffer.Size<ScratchSize) or // Grow when it would be needed
       ((ScratchSize>0) and (ScratchSize<(fRaytracingVulkanScratchBuffer.Size shr 1))) then begin // Shrink when it would be useful (when it could be smaller by at least than the half)
@@ -23447,6 +23480,16 @@ begin
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanScratchBuffer');
 
    end;
+
+   /////////////////////////////////////////////////////////////////////////////
+   // Initialize acceleration structure buffers when nessesary                //
+   /////////////////////////////////////////////////////////////////////////////
+
+   
+
+   /////////////////////////////////////////////////////////////////////////////
+   // Enqueue build acceleration structure commands                           //
+   /////////////////////////////////////////////////////////////////////////////
 
    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
