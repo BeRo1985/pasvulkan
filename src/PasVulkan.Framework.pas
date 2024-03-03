@@ -871,6 +871,8 @@ type EpvVulkanException=class(Exception);
        property OwnsResource:boolean read fOwnsResource write fOwnsResource;
      end;
 
+     TpvVulkanFence=class;
+
      PpvVulkanDeviceMemoryAllocationType=^TpvVulkanDeviceMemoryAllocationType;
      TpvVulkanDeviceMemoryAllocationType=
       (
@@ -1021,7 +1023,9 @@ type EpvVulkanException=class(Exception);
        fMemoryMustBeAwareOfNonCoherentAtomSize:boolean;
        fMemory:PVkVoid;
        procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
-       procedure Defragment;
+       procedure DefragmentInplace(const aQueue:TpvVulkanQueue=nil;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer=nil;
+                                   const aFence:TpvVulkanFence=nil);
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList); overload;
@@ -1093,7 +1097,10 @@ type EpvVulkanException=class(Exception);
      PpvVulkanDeviceMemoryBlockFlags=^TpvVulkanDeviceMemoryBlockFlags;
      TpvVulkanDeviceMemoryBlockFlags=set of TpvVulkanDeviceMemoryBlockFlag;
 
-     TpvVulkanDeviceMemoryBlockOnDefragmented=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
+     TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace=procedure(const aQueue:TpvVulkanQueue;
+                                                                        const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                                        const aFence:TpvVulkanFence;
+                                                                        const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
      TpvVulkanDeviceMemoryBlock=class(TpvVulkanObject)
       private
@@ -1105,7 +1112,8 @@ type EpvVulkanException=class(Exception);
        fPreviousMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fNextMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fAssociatedObject:TObject;
-       fOnDefragmented:TpvVulkanDeviceMemoryBlockOnDefragmented;
+       fOnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
+       fOnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
@@ -1127,7 +1135,8 @@ type EpvVulkanException=class(Exception);
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
        property AssociatedObject:TObject read fAssociatedObject write fAssociatedObject;
-       property OnDefragmented:TpvVulkanDeviceMemoryBlockOnDefragmented read fOnDefragmented write fOnDefragmented;
+       property OnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnBeforeDefragmentInplace write fOnBeforeDefragmentInplace;
+       property OnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace read fOnAfterDefragmentInplace write fOnAfterDefragmentInplace;
      end;
 
      TpvVulkanDeviceMemoryManagerChunkList=record
@@ -1210,7 +1219,9 @@ type EpvVulkanException=class(Exception);
        ** And only host visible memory chunks are defragmentable with this function!
        **
        **)
-       procedure Defragment;
+       procedure DefragmentInplace(const aQueue:TpvVulkanQueue=nil;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer=nil;
+                                   const aFence:TpvVulkanFence=nil);
 
       published
 
@@ -1231,8 +1242,6 @@ type EpvVulkanException=class(Exception);
      end;
 
      TpvVulkanQueueFamilyIndices=array of TpvUInt32;
-
-     TpvVulkanFence=class;
 
      TpvVulkanBufferUseTemporaryStagingBufferMode=
       (
@@ -11127,9 +11136,9 @@ end;
 
 function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
 begin
- result:=((fMemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) and
-         assigned(fMemoryBlock) and
-         assigned(fMemoryBlock.fOnDefragmented);
+ result:=assigned(fMemoryBlock) and
+         assigned(fMemoryBlock.fOnBeforeDefragmentInplace) and
+         assigned(fMemoryBlock.fOnAfterDefragmentInplace);
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -12079,7 +12088,9 @@ begin
  end;
 end;
 
-procedure TpvVulkanDeviceMemoryChunk.Defragment;
+procedure TpvVulkanDeviceMemoryChunk.DefragmentInplace(const aQueue:TpvVulkanQueue;
+                                                       const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                       const aFence:TpvVulkanFence);
 var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     ChunkBlocks,DefragmentedChunkBlocks,FreeChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
     Node,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
@@ -12088,32 +12099,66 @@ var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
     BufferImageGranularity,BufferImageGranularityInvertedMask,
     Alignment:TVkDeviceSize;
     Memory:TvkPointer;
-    DoNeedUnmapMemory:boolean;
+    DoNeedUnmapMemory,UseGPU:boolean;
     LastAllocationType:TpvVulkanDeviceMemoryAllocationType;
+    TemporaryBuffer:TVkBuffer;
+    BufferCreateInfo:TVkBufferCreateInfo;
+    Device:TpvVulkanDevice;
+    BufferCopy:TVkBufferCopy;
+    FillSize:TVkDeviceSize;
+    SubmitInfo:TVkSubmitInfo;
 begin
 
- // Defragmenting works only on host visible chunks, check for it
- if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0 then begin
-  exit;
- end;
+ Device:=fMemoryManager.fDevice;
 
- Memory:=fMemory;
+ UseGPU:=assigned(aQueue) and assigned(aCommandBuffer) and assigned(aFence) and
+         not (assigned(fMemory) and
+              ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0));
 
- // Map the mapped memory, if needed (if it is not mapped, yet)
+ if UseGPU then begin
 
- if not assigned(Memory) then begin
+  Memory:=nil;
 
-  Memory:=MapMemory(0,fSize);
+  DoNeedUnmapMemory:=false;
 
-  if assigned(Memory) then begin
-   DoNeedUnmapMemory:=true;
-  end else begin
-   exit;
-  end;
+  FillChar(BufferCreateInfo,SizeOf(TVkBufferCreateInfo),#0);
+  BufferCreateInfo.sType:=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  BufferCreateInfo.size:=fSize;
+  BufferCreateInfo.usage:=TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  BufferCreateInfo.sharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+
+  VulkanCheckResult(Device.Commands.CreateBuffer(Device.fDeviceHandle,@BufferCreateInfo,Device.fAllocationCallbacks,@TemporaryBuffer));
+
+  VulkanCheckResult(Device.Commands.BindBufferMemory(Device.fDeviceHandle,TemporaryBuffer,fMemoryHandle,0));
 
  end else begin
 
-  DoNeedUnmapMemory:=false;
+  // Defragmenting works only on host visible chunks, check for it
+  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0 then begin
+   exit;
+  end;
+
+  Memory:=fMemory;
+
+  // Map the mapped memory, if needed (if it is not mapped, yet)
+
+  if not assigned(Memory) then begin
+
+   Memory:=MapMemory(0,fSize);
+
+   if assigned(Memory) then begin
+    DoNeedUnmapMemory:=true;
+   end else begin
+    exit;
+   end;
+
+  end else begin
+
+   DoNeedUnmapMemory:=false;
+
+  end;
+
+  TemporaryBuffer:=VK_NULL_HANDLE;
 
  end;
 
@@ -12235,6 +12280,12 @@ begin
 
         if ToOffset<FromOffset then begin
 
+         // Trigger OnBeforeDefragment event hook, if there are any
+         if assigned(ChunkBlock.fMemoryBlock) and
+            assigned(ChunkBlock.fMemoryBlock.fOnBeforeDefragmentInplace) then begin
+          ChunkBlock.fMemoryBlock.fOnBeforeDefragmentInplace(aQueue,aCommandBuffer,aFence,ChunkBlock.fMemoryBlock);
+         end;
+
          // Delete (old) chunk blocks
          if length(FreeChunkBlocks)>0 then begin
           try
@@ -12251,14 +12302,48 @@ begin
 
          try
 
-          Move(PpvUInt8Array(Memory)^[FromOffset],
-               PpvUInt8Array(Memory)^[ToOffset],
-               ChunkBlock.fSize);
+          if UseGPU then begin
 
-          if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-           FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
-                    FromOffset-(ToOffset+ChunkBlock.fSize),
-                    #0);
+           aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+           aCommandBuffer.BeginRecording;
+
+           BufferCopy:=TVkBufferCopy.Create(FromOffset,ToOffset,ChunkBlock.fSize);
+
+           aCommandBuffer.CmdCopyBuffer(TemporaryBuffer,
+                                        fMemoryHandle,
+                                        1,
+                                        @BufferCopy);
+
+           if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+            FillSize:=(FromOffset-(ToOffset+ChunkBlock.fSize)) and TpvUInt64($fffffffffffffffc); // 4-byte aligned
+            if FillSize>0 then begin 
+             aCommandBuffer.CmdFillBuffer(TemporaryBuffer,
+                                          ToOffset+ChunkBlock.fSize,
+                                          FillSize,
+                                          0);
+            end;
+           end;
+
+           aCommandBuffer.EndRecording;
+
+           FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+           SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+           SubmitInfo.commandBufferCount:=1;
+           SubmitInfo.pCommandBuffers:=@aCommandBuffer.Handle;
+
+           aQueue.Submit(1,@SubmitInfo,aFence);
+
+          end else begin
+
+           Move(PpvUInt8Array(Memory)^[FromOffset],
+                PpvUInt8Array(Memory)^[ToOffset],
+                ChunkBlock.fSize);
+
+           if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+            FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                     FromOffset-(ToOffset+ChunkBlock.fSize),
+                     #0);
+           end;
 
           end;
 
@@ -12345,12 +12430,12 @@ begin
       FlushMappedMemory;
      end;
 
-     // Trigger OnDefragmented event hooks, if there are any
+     // Trigger OnAfterDefragment event hooks, if there are any
      for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
       ChunkBlock:=DefragmentedChunkBlocks[Index];
       if assigned(ChunkBlock.fMemoryBlock) and
-         assigned(ChunkBlock.fMemoryBlock.fOnDefragmented) then begin
-       ChunkBlock.fMemoryBlock.fOnDefragmented(ChunkBlock.fMemoryBlock);
+         assigned(ChunkBlock.fMemoryBlock.fOnAfterDefragmentInplace) then begin
+       ChunkBlock.fMemoryBlock.fOnAfterDefragmentInplace(aQueue,aCommandBuffer,aFence,ChunkBlock.fMemoryBlock);
       end;
      end;
 
@@ -12365,6 +12450,14 @@ begin
   end;
 
  finally
+
+  if TemporaryBuffer<>VK_NULL_HANDLE then begin
+   try
+    Device.Commands.DestroyBuffer(Device.fDeviceHandle,TemporaryBuffer,Device.fAllocationCallbacks);
+   finally
+    TemporaryBuffer:=VK_NULL_HANDLE;
+   end;
+  end;
 
   // Unmap the mapped memory, if needed
   if DoNeedUnmapMemory then begin
@@ -12384,7 +12477,9 @@ begin
 
  inherited Create;
 
- fOnDefragmented:=nil;
+ fOnBeforeDefragmentInplace:=nil;
+
+ fOnAfterDefragmentInplace:=nil;
 
  fAssociatedObject:=nil;
 
@@ -13000,13 +13095,15 @@ begin
  end;
 end;
 
-procedure TpvVulkanDeviceMemoryManager.Defragment;
+procedure TpvVulkanDeviceMemoryManager.DefragmentInplace(const aQueue:TpvVulkanQueue;
+                                                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                         const aFence:TpvVulkanFence);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
 begin
  MemoryChunk:=fMemoryChunkList.First;
  while assigned(MemoryChunk) do begin
   try
-   MemoryChunk.Defragment;
+   MemoryChunk.DefragmentInplace(aQueue,aCommandBuffer,aFence);
   finally
    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
   end;
