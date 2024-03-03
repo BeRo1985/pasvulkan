@@ -2891,6 +2891,7 @@ type EpvScene3D=class(Exception);
               fBLASGroups:TBLASGroups;
               fCacheVerticesGeneration:TpvUInt64;
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
+              fDynamicGeometry:Boolean;
               fDirty:TPasMPBool32;
               fUpdateDirty:TPasMPBool32;
              public
@@ -2912,6 +2913,9 @@ type EpvScene3D=class(Exception);
               property InstanceNode:TpvScene3D.TGroup.TInstance.PNode read fInstanceNode;
              published
               property CacheVerticesGeneration:TpvUInt64 read fCacheVerticesGeneration;
+              property DynamicGeometry:Boolean read fDynamicGeometry;
+              property Dirty:TPasMPBool32 read fDirty;
+              property UpdateDirty:TPasMPBool32 read fUpdateDirty;
             end;
             { TRaytracingGroupInstanceNodeList }
             TRaytracingGroupInstanceNodeList=class
@@ -5212,7 +5216,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided,DynamicGeometry,MustUpdate,MustUpdateAll:Boolean;
+    DoubleSided,MustUpdate,MustUpdateAll:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
@@ -5220,7 +5224,7 @@ begin
 
  result:=false;
 
- DynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
+ fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
 
  VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.BufferData;
 
@@ -5266,7 +5270,7 @@ begin
 
     MustUpdate:=MustUpdateAll;
 
-    if DynamicGeometry then begin
+    if fDynamicGeometry then begin
      if fCacheVerticesGeneration<>fInstanceNode^.CacheVerticesGeneration then begin
       fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGeneration;
       MustUpdate:=true;
@@ -5328,7 +5332,7 @@ begin
    if not assigned(BLASGroup^.fBLAS) then begin
     BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
                                                                            BLASGroup^.fBLASGeometry,
-                                                                           DynamicGeometry);
+                                                                           fDynamicGeometry);
     fDirty:=true;
     fUpdateDirty:=false;
    end;
@@ -23425,10 +23429,11 @@ begin
 
         BLASGroup^.fScratchOffset:=ScratchPassSize;
         BLASGroup^.fScratchPass:=ScratchPass;
-        if RaytracingGroupInstanceNode.fUpdateDirty then begin
-         inc(ScratchPassSize,BLASGroup^.fBLAS.BuildSizesInfo.updateScratchSize);
+        if RaytracingGroupInstanceNode.fDynamicGeometry and // Only when dynamic geometry, check also for update scratch size and use the bigger one 
+           (BLASGroup^.fBLAS.BuildSizesInfo.buildScratchSize<BLASGroup^.fBLAS.BuildSizesInfo.updateScratchSize) then begin
+         inc(ScratchPassSize,BLASGroup^.fBLAS.BuildSizesInfo.updateScratchSize); // Update scratch size is bigger than build scratch size
         end else begin
-         inc(ScratchPassSize,BLASGroup^.fBLAS.BuildSizesInfo.buildScratchSize);
+         inc(ScratchPassSize,BLASGroup^.fBLAS.BuildSizesInfo.buildScratchSize); // Build scratch size is bigger than update scratch size
         end;
         if ScratchSize<ScratchPassSize then begin
          ScratchSize:=ScratchPassSize;
@@ -23485,6 +23490,9 @@ begin
    // Initialize acceleration structure buffers when nessesary                //
    /////////////////////////////////////////////////////////////////////////////
 
+   if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
+
+   end;
 
 
    /////////////////////////////////////////////////////////////////////////////
