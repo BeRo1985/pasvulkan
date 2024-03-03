@@ -23485,10 +23485,13 @@ begin
    // Initialize acceleration structure buffers when nessesary                //
    /////////////////////////////////////////////////////////////////////////////
 
-   
+
 
    /////////////////////////////////////////////////////////////////////////////
-   // Enqueue build acceleration structure commands                           //
+   // Enqueue build acceleration structure commands and execute them in       //
+   // batches, so that we can build the acceleration structures in parallel   //
+   // but also in a way, that we can avoid that the scratch buffer may be     //
+   // too large. Therefore this process is divided into multiple pass splits. //
    /////////////////////////////////////////////////////////////////////////////
 
    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
