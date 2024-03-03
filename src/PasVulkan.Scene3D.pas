@@ -3094,6 +3094,7 @@ type EpvScene3D=class(Exception);
        fRaytracingBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
        fRaytracingBLASGeometryInfoBufferItems:TpvRaytracingBLASGeometryInfoBufferItems;
        fRaytracingBLASGeometryInfoOffsetBufferItems:TpvRaytracingBLASGeometryInfoOffsetBufferItems;
+       fRaytracingAccelerationStructureBuildQueue:TpvRaytracingAccelerationStructureBuildQueue;
        fRaytracingVulkanScratchBuffer:TpvVulkanBuffer;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
@@ -20286,6 +20287,12 @@ begin
 
  fRaytracingBLASGeometryInfoOffsetBufferItems:=nil;
 
+ if assigned(fVulkanDevice) then begin
+  fRaytracingAccelerationStructureBuildQueue:=TpvRaytracingAccelerationStructureBuildQueue.Create(fVulkanDevice);
+ end else begin
+  fRaytracingAccelerationStructureBuildQueue:=nil;
+ end;
+
  fRaytracingVulkanScratchBuffer:=nil;
 
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
@@ -20915,6 +20922,8 @@ begin
  FreeAndNil(fBufferRangeAllocatorLock);
 
  FreeAndNil(fRaytracingVulkanScratchBuffer);
+
+ FreeAndNil(fRaytracingAccelerationStructureBuildQueue);
 
  FreeAndNil(fRaytracingBLASInstances);
 
@@ -23439,8 +23448,44 @@ begin
 
    end;
 
+   if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
+    fRaytracingAccelerationStructureBuildQueue.Clear;
 
+    ScratchPass:=0;
+
+    for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
+     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
+     if assigned(RaytracingGroupInstanceNode) then begin
+      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+       BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) then begin
+        if ScratchPass<>BLASGroup^.fScratchPass then begin
+         if not fRaytracingAccelerationStructureBuildQueue.Empty then begin
+          fRaytracingAccelerationStructureBuildQueue.Execute(aCommandBuffer);
+          TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
+          fRaytracingAccelerationStructureBuildQueue.Clear;
+         end;
+         ScratchPass:=BLASGroup^.fScratchPass;
+        end;
+        BLASGroup^.fBLAS.Build(aCommandBuffer,
+                               fRaytracingVulkanScratchBuffer,
+                               BLASGroup^.fScratchOffset,
+                               RaytracingGroupInstanceNode.fUpdateDirty,
+                               nil,
+                               fRaytracingAccelerationStructureBuildQueue);
+       end;
+      end;
+     end;
+    end;
+
+    if not fRaytracingAccelerationStructureBuildQueue.Empty then begin
+     fRaytracingAccelerationStructureBuildQueue.Execute(aCommandBuffer);
+     TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
+     fRaytracingAccelerationStructureBuildQueue.Clear;
+    end;
+
+   end;
 
   finally
    fRaytracingLock.Release;

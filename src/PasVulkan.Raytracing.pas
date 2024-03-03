@@ -149,6 +149,7 @@ type EpvRaytracing=class(Exception);
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure Clear;
+       function Empty:Boolean;
        procedure Enqueue(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
                          const aBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR); 
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
@@ -466,6 +467,11 @@ procedure TpvRaytracingAccelerationStructureBuildQueue.Clear;
 begin
  fBuildGeometryInfos.ClearNoFree;
  fBuildOffsetInfoPtrs.ClearNoFree;
+end;
+
+function TpvRaytracingAccelerationStructureBuildQueue.Empty:Boolean;
+begin
+ result:=fBuildGeometryInfos.Count=0;
 end;
 
 procedure TpvRaytracingAccelerationStructureBuildQueue.Enqueue(const aBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
