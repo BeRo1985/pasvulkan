@@ -1221,7 +1221,8 @@ begin
                                                           VK_SAMPLE_COUNT_1_BIT,
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                           ImageSharingMode,
-                                                          ImageQueueFamilyIndices);
+                                                          ImageQueueFamilyIndices,
+                                                          pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fHeightMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fHeightMapImage.ImageView');
 
@@ -1233,7 +1234,8 @@ begin
                                                           VK_SAMPLE_COUNT_1_BIT,
                                                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                           ImageSharingMode,
-                                                          ImageQueueFamilyIndices);
+                                                          ImageQueueFamilyIndices,
+                                                          pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fNormalMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fNormalMapImage.ImageView');
 
@@ -1245,7 +1247,8 @@ begin
                                                    VK_SAMPLE_COUNT_1_BIT,
                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                    ImageSharingMode,
-                                                   ImageQueueFamilyIndices);
+                                                   ImageQueueFamilyIndices,
+                                                   pvAllocationGroupIDScene3DPlanetStatic);
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.Image');
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBlendMapImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fBlendMapImage.ImageView');
 
@@ -1274,7 +1277,9 @@ begin
                                                0,
                                                0,
                                                0,
-                                               [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                               [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                               0,
+                                               pvAllocationGroupIDScene3DPlanetStatic
                                               );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileDirtyMapBuffer');
    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
@@ -1297,7 +1302,9 @@ begin
                                                        0,
                                                        0,
                                                        0,
-                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                       [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                       0,
+                                                       pvAllocationGroupIDScene3DPlanetStatic
                                                       );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileExpandedDirtyMapBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.TData['+IntToStr(fInFlightFrameIndex)+'].fTileExpandedDirtyMapBuffer');
    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
@@ -1320,7 +1327,9 @@ begin
                                                  0,
                                                  0,
                                                  0,
-                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                 [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                 0,
+                                                 pvAllocationGroupIDScene3DPlanetStatic
                                                 );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTileDirtyQueueBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.fTileDirtyQueueBuffer['+IntToStr(fInFlightFrameIndex)+']');
    fPlanet.fVulkanDevice.MemoryStaging.Zero(fPlanet.fVulkanComputeQueue,
@@ -1343,7 +1352,9 @@ begin
                                                          0,
                                                          0,
                                                          0,
-                                                         []
+                                                         [],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DPlanetStatic
                                                         );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledMeshBoundingBoxesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.BoundingBoxesBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -1360,7 +1371,9 @@ begin
                                                            0,
                                                            0,
                                                            0,
-                                                           []
+                                                           [],
+                                                           0,
+                                                           pvAllocationGroupIDScene3DPlanetStatic
                                                           );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledMeshBoundingSpheresBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.BoundingSpheresBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -1377,7 +1390,9 @@ begin
                                                              0,
                                                              0,
                                                              0,
-                                                             []
+                                                             [],
+                                                             0,
+                                                             pvAllocationGroupIDScene3DPlanetStatic
                                                             );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fTiledVisualMeshIndexGroupsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.MeshIndexGroupsBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -1402,7 +1417,9 @@ begin
                                                         0,
                                                         0,
                                                         0,
-                                                        []
+                                                        [],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DPlanetStatic
                                                        );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffers[0].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshVertexBuffer['+IntToStr(fInFlightFrameIndex)+'][0]');
 
@@ -1419,7 +1436,9 @@ begin
                                                         0,
                                                         0,
                                                         0,
-                                                        []
+                                                        [],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DPlanetStatic
                                                        );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshVertexBuffer['+IntToStr(fInFlightFrameIndex)+'][1]');
 
@@ -1442,7 +1461,9 @@ begin
                                                    0,
                                                    0,
                                                    0,
-                                                   []
+                                                   [],
+                                                   0,
+                                                   pvAllocationGroupIDScene3DPlanetStatic
                                                   );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshIndexBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -1465,7 +1486,9 @@ begin
                                                     0,
                                                     0,
                                                     0,
-                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                    [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                    0,
+                                                    pvAllocationGroupIDScene3DPlanetStatic
                                                    );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.PhysicsMeshVertexBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -1482,7 +1505,9 @@ begin
                                                    0,
                                                    0,
                                                    0,
-                                                   []
+                                                   [],
+                                                   0,
+                                                   pvAllocationGroupIDScene3DPlanetStatic
                                                   );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPhysicsMeshIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.PhysicsMeshIndexBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -1503,7 +1528,9 @@ begin
                                                         0,
                                                         0,
                                                         0,
-                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DPlanetStatic
                                                        );
    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fRayIntersectionResultBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.RayIntersectionResultBuffer['+IntToStr(fInFlightFrameIndex)+']');
 
@@ -2301,7 +2328,9 @@ begin
                                       0,
                                       0,
                                       0,
-                                      []
+                                      [],
+                                      0,
+                                      pvAllocationGroupIDScene3DPlanetStatic
                                      );       
   fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanComputeQueue,
                                      fPlanet.fVulkanComputeCommandBuffer,
@@ -6812,7 +6841,9 @@ begin
                                                                       0,
                                                                       0,
                                                                       0,
-                                                                      []
+                                                                      [],
+                                                                      0,
+                                                                      pvAllocationGroupIDScene3DPlanetStatic
                                                                      );
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisiblityBuffers[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisiblityBuffers['+IntToStr(InFlightFrameIndex)+']');
  end;
@@ -6833,7 +6864,9 @@ begin
                                                                  0,
                                                                  0,
                                                                  0,
-                                                                 []
+                                                                 [],
+                                                                 0,
+                                                                 pvAllocationGroupIDScene3DPlanetStatic
                                                                 );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.DrawIndexedIndirectCommandBuffer');
 
@@ -7174,7 +7207,9 @@ begin
                                                                         0,
                                                                         0,
                                                                         0,
-                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe]
+                                                                        [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                        0,
+                                                                        pvAllocationGroupIDScene3DPlanetStatic
                                                                        );
   end; 
 

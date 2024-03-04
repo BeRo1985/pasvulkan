@@ -125,6 +125,8 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       pvAllocationGroupIDScene3DDynamic=TpvUInt64($000000000000000b) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDScene3DSurface=TpvUInt64($000000000000000c) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDScene3DTexture=TpvUInt64($000000000000000d) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DPlanetStatic=TpvUInt64($000000000000000e) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DPlanetDynamic=TpvUInt64($000000000000000f) or pvAllocationGroupIDInternalMask;
 
 type EpvVulkanException=class(Exception);
 
