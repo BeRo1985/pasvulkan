@@ -1071,7 +1071,9 @@ begin
                                                               0,
                                                               0,
                                                               0,
-                                                              []
+                                                              [],
+                                                              0,
+                                                              pvAllocationGroupIDScene3DStatic
                                                              );
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentSphericalHarmonicsBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsBuffer');
 
@@ -1088,7 +1090,9 @@ begin
                                                                       0,
                                                                       0,
                                                                       0,
-                                                                      []
+                                                                      [],
+                                                                      0,
+                                                                      pvAllocationGroupIDScene3DStatic
                                                                      );
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentSphericalHarmonicsMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DRenderer.fSkySphericalHarmonicsMetaDataBuffer');
 

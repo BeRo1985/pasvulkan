@@ -295,7 +295,8 @@ begin
                                                                             0,
                                                                             0,
                                                                             TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
-                                                                            @fVulkanImage.Handle);
+                                                                            @fVulkanImage.Handle,
+                                                                            pvAllocationGroupIDScene3DTexture);
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
