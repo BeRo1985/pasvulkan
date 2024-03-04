@@ -13072,7 +13072,7 @@ begin
       try
        try
         if MemoryChunk.TryCreate(MemoryChunkFlags,
-                                 VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
+                                 VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize)),
                                  true,
                                  aMemoryTypeBits,
                                  aMemoryRequiredPropertyFlags,
@@ -13119,36 +13119,38 @@ begin
    if not assigned(result) then begin
 
     // Try to allocate a new chunk when the existing chunks are not suitable
-    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList,aAllocationGroupID);
-    try
+    if aMemoryBlockSize<VulkanMinimumMemoryChunkSize then begin
+     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList,aAllocationGroupID);
      try
-      if MemoryChunk.TryCreate(MemoryChunkFlags,
-                               VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
-                               true,
-                               aMemoryTypeBits,
-                               aMemoryRequiredPropertyFlags,
-                               aMemoryPreferredPropertyFlags,
-                               aMemoryAvoidPropertyFlags,
-                               aMemoryPreferredNotPropertyFlags,
-                               aMemoryRequiredHeapFlags,
-                               aMemoryPreferredHeapFlags,
-                               aMemoryAvoidHeapFlags,
-                               aMemoryPreferredNotHeapFlags,
-                               nil,
-                               false,
-                               nil) then begin
-       if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
-        result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
+      try
+       if MemoryChunk.TryCreate(MemoryChunkFlags,
+                                VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize)),
+                                true,
+                                aMemoryTypeBits,
+                                aMemoryRequiredPropertyFlags,
+                                aMemoryPreferredPropertyFlags,
+                                aMemoryAvoidPropertyFlags,
+                                aMemoryPreferredNotPropertyFlags,
+                                aMemoryRequiredHeapFlags,
+                                aMemoryPreferredHeapFlags,
+                                aMemoryAvoidHeapFlags,
+                                aMemoryPreferredNotHeapFlags,
+                                nil,
+                                false,
+                                nil) then begin
+        if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
+         result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
+        end;
+       end;
+      except
+       on E:EpvVulkanMemoryAllocationException do begin
+        result:=nil;
        end;
       end;
-     except
-      on E:EpvVulkanMemoryAllocationException do begin
-       result:=nil;
+     finally
+      if not assigned(result) then begin
+       FreeAndNil(MemoryChunk);
       end;
-     end;
-    finally
-     if not assigned(result) then begin
-      FreeAndNil(MemoryChunk);
      end;
     end;
 
@@ -13178,7 +13180,7 @@ begin
 
 {   MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
                                                    MemoryChunkFlags,
-                                                   VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
+                                                   VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize)),
                                                    true,
                                                    aMemoryTypeBits,
                                                    aMemoryRequiredPropertyFlags,
