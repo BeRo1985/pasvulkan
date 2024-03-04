@@ -112,17 +112,19 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
       pvAllocationGroupIDInternalMask=TpvUInt64($8000000000000000);
-      pvAllocationGroupIDFrameBuffer=TpvUInt64($0000000000000001) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDCanvas=TpvUInt64($0000000000000002) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDSpriteAtlas=TpvUInt64($0000000000000003) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDFrameGraphSurfaceImage=TpvUInt64($0000000000000004) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDFrameGraphImage=TpvUInt64($0000000000000005) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDFrameGraphBuffer=TpvUInt64($0000000000000006) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDScreenShot=TpvUInt64($0000000000000007) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDScene3DStatic=TpvUInt64($0000000000000008) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDScene3DDynamic=TpvUInt64($0000000000000009) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDScene3DSurface=TpvUInt64($000000000000000a) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDScene3DTexture=TpvUInt64($000000000000000b) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDGlobalStaging=TpvUInt64($0000000000000001) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDTemporaryStaging=TpvUInt64($0000000000000002) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameBuffer=TpvUInt64($0000000000000003) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDCanvas=TpvUInt64($0000000000000004) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDSpriteAtlas=TpvUInt64($0000000000000005) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphSurfaceImage=TpvUInt64($0000000000000006) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphImage=TpvUInt64($0000000000000007) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphBuffer=TpvUInt64($0000000000000008) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScreenShot=TpvUInt64($0000000000000009) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DStatic=TpvUInt64($000000000000000a) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DDynamic=TpvUInt64($000000000000000b) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DSurface=TpvUInt64($000000000000000c) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DTexture=TpvUInt64($000000000000000d) or pvAllocationGroupIDInternalMask;
 
 type EpvVulkanException=class(Exception);
 
@@ -13500,7 +13502,9 @@ begin
                                         0,
                                         0,
                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                         TpvVulkanBufferFlag.DedicatedAllocation]);
+                                         TpvVulkanBufferFlag.DedicatedAllocation],
+                                        0,
+                                        pvAllocationGroupIDTemporaryStaging);
   try
 
    fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanBuffer.ClearData.StagingBuffer');
@@ -13769,7 +13773,9 @@ begin
                                         0,
                                         0,
                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                         TpvVulkanBufferFlag.DedicatedAllocation]);
+                                         TpvVulkanBufferFlag.DedicatedAllocation],
+                                        0,
+                                        pvAllocationGroupIDTemporaryStaging);
   try
 
    fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanBuffer.UploadData.StagingBuffer');
@@ -13875,7 +13881,9 @@ begin
                                         0,
                                         0,
                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                         TpvVulkanBufferFlag.DedicatedAllocation]);
+                                         TpvVulkanBufferFlag.DedicatedAllocation],
+                                        0,
+                                        pvAllocationGroupIDTemporaryStaging);
   try
 
    fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanBuffer.DownloadData.StagingBuffer');
@@ -14242,7 +14250,9 @@ begin
                                   0,
                                   0,
                                   0,
-                                  BufferFlags);
+                                  BufferFlags,
+                                  0,
+                                  pvAllocationGroupIDGlobalStaging);
 
   fDevice.DebugUtils.SetObjectName(fBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanDeviceMemoryStaging.fBuffer');
 
@@ -26912,7 +26922,9 @@ begin
                                             0,
                                             0,
                                             [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
-                                             TpvVulkanBufferFlag.DedicatedAllocation]);
+                                             TpvVulkanBufferFlag.DedicatedAllocation],
+                                            0,
+                                            pvAllocationGroupIDTemporaryStaging);
       fDevice.DebugUtils.SetObjectName(StagingBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvVulkanTexture.Upload.StagingBuffer');
       if fStreaming then begin
        fStagingBuffer:=StagingBuffer;
