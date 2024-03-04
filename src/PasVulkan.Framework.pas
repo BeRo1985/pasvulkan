@@ -1022,13 +1022,15 @@ type EpvVulkanException=class(Exception);
        fMemoryMinimumAlignment:TVkDeviceSize;
        fMemoryMustBeAwareOfNonCoherentAtomSize:boolean;
        fMemory:PVkVoid;
+       fAllocationGroupID:TpvUInt64;
        procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
        procedure DefragmentInplace(const aQueue:TpvVulkanQueue=nil;
                                    const aCommandBuffer:TpvVulkanCommandBuffer=nil;
                                    const aFence:TpvVulkanFence=nil);
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
-                          const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList); overload;
+                          const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
+                          const aAllocationGroupID:TpvUInt64=0); overload;
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
                           const aSize:TVkDeviceSize;
@@ -1043,7 +1045,8 @@ type EpvVulkanException=class(Exception);
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                           const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                           const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
-                          const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR); overload;
+                          const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR;
+                          const aAllocationGroupID:TpvUInt64=0); overload;
        destructor Destroy; override;
        function TryCreate(const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
                           const aSize:TVkDeviceSize;
@@ -1070,7 +1073,9 @@ type EpvVulkanException=class(Exception);
        procedure FlushMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
        procedure InvalidateMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
+      public
        property Memory:PVkVoid read fMemory;
+       property AllocationGroupID:TpvUInt64 read fAllocationGroupID;
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property Size:TVkDeviceSize read fSize;
@@ -1196,7 +1201,8 @@ type EpvVulkanException=class(Exception);
                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
-                                    const aMemoryDedicatedAllocationDataHandle:TpvPointer=nil):TpvVulkanDeviceMemoryBlock;
+                                    const aMemoryDedicatedAllocationDataHandle:TpvPointer=nil;
+                                    const aAllocationGroupID:TpvUInt64=0):TpvVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean;
 
        (* Warning! This function is not correct according to Vulkan specification, therefore use it
@@ -1307,10 +1313,12 @@ type EpvVulkanException=class(Exception);
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                           const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags=0;
                           const aBufferFlags:TpvVulkanBufferFlags=[];
-                          const aAlignment:TVkDeviceSize=0); reintroduce; overload;
+                          const aAlignment:TVkDeviceSize=0;
+                          const aAllocationGroupID:TpvUInt64=0); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aSize:TVkDeviceSize;
-                          const aUsage:TVkBufferUsageFlags); reintroduce; overload;
+                          const aUsage:TVkBufferUsageFlags;
+                          const aAllocationGroupID:TpvUInt64=0); reintroduce; overload;
        destructor Destroy; override;
        procedure ClearData(const aTransferQueue:TpvVulkanQueue;
                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
@@ -11142,7 +11150,8 @@ begin
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
-                                              const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList);
+                                              const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
+                                              const aAllocationGroupID:TpvUInt64);
 begin
 
  inherited Create;
@@ -11162,6 +11171,8 @@ begin
  fMemoryChunkList:=aMemoryChunkList;
 
  fMemoryHandle:=VK_NULL_HANDLE;
+
+ fAllocationGroupID:=aAllocationGroupID;
 
 end;
 
@@ -11179,7 +11190,8 @@ constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDevi
                                               const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                               const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                                               const aMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
-                                              const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR);
+                                              const aMemoryDedicatedAllocateInfo:PVkMemoryDedicatedAllocateInfoKHR;
+                                              const aAllocationGroupID:TpvUInt64);
 begin
  inherited Create;
 
@@ -11198,6 +11210,8 @@ begin
  fMemoryChunkList:=aMemoryChunkList;
 
  fMemoryHandle:=VK_NULL_HANDLE;
+
+ fAllocationGroupID:=aAllocationGroupID;
 
  TryCreate(aMemoryChunkFlags,
            aSize,
@@ -12842,7 +12856,8 @@ function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlag
                                                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
-                                                          const aMemoryDedicatedAllocationDataHandle:TpvPointer):TpvVulkanDeviceMemoryBlock;
+                                                          const aMemoryDedicatedAllocationDataHandle:TpvPointer;
+                                                          const aAllocationGroupID:TpvUInt64):TpvVulkanDeviceMemoryBlock;
 var CurrentCost,BestCost:TpvUInt32;
     MemoryChunk,BestMemoryChunk:TpvVulkanDeviceMemoryChunk;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
@@ -12934,7 +12949,8 @@ begin
                                                   aMemoryAvoidHeapFlags,
                                                   aMemoryPreferredNotHeapFlags,
                                                   @fMemoryChunkList,
-                                                  MemoryDedicatedAllocateInfoKHRPointer);
+                                                  MemoryDedicatedAllocateInfoKHRPointer,
+                                                  aAllocationGroupID);
    if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
     result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
    end;
@@ -12966,7 +12982,8 @@ begin
 
     while assigned(MemoryChunk) do begin
 
-     if ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
+     if (MemoryChunk.fAllocationGroupID=aAllocationGroupID) and
+        ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
         ((aMemoryRequiredPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags)) and
         ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
         ((aMemoryRequiredHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryRequiredHeapFlags)=aMemoryRequiredHeapFlags)) and
@@ -13013,7 +13030,7 @@ begin
 
      if BestCost>0 then begin
       // Then in a case of a positive best-found, compare it to a fresh new allocation
-      MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
+      MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList,aAllocationGroupID);
       try
        try
         if MemoryChunk.TryCreate(MemoryChunkFlags,
@@ -13064,7 +13081,7 @@ begin
    if not assigned(result) then begin
 
     // Try to allocate a new chunk when the existing chunks are not suitable
-    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
+    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList,aAllocationGroupID);
     try
      try
       if MemoryChunk.TryCreate(MemoryChunkFlags,
@@ -13114,7 +13131,8 @@ begin
                                                     aMemoryAvoidHeapFlags,
                                                     aMemoryPreferredNotHeapFlags,
                                                     @fMemoryChunkList,
-                                                    nil);
+                                                    nil,
+                                                    aAllocationGroupID);
      if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
       result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
      end;
@@ -13134,7 +13152,8 @@ begin
                                                    aMemoryAvoidHeapFlags,
                                                    aMemoryPreferredNotHeapFlags,
                                                    @fMemoryChunkList,
-                                                   nil);
+                                                   nil,
+                                                   aAllocationGroupID);
     if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
      result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
     end;//}
@@ -13211,7 +13230,8 @@ constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
                                    const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                    const aMemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
                                    const aBufferFlags:TpvVulkanBufferFlags;
-                                   const aAlignment:TVkDeviceSize);
+                                   const aAlignment:TVkDeviceSize;
+                                   const aAllocationGroupID:TpvUInt64=0);
 var Index:TpvInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
@@ -13300,7 +13320,8 @@ begin
                                                            aMemoryAvoidHeapFlags,
                                                            aMemoryPreferredNotHeapFlags,
                                                            TpvVulkanDeviceMemoryAllocationType.Buffer,
-                                                           @fBufferHandle);
+                                                           @fBufferHandle,
+                                                           aAllocationGroupID);
 
   fMemoryBlock.fAssociatedObject:=self;
 
@@ -13343,13 +13364,25 @@ end;
 
 constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
                                    const aSize:TVkDeviceSize;
-                                   const aUsage:TVkBufferUsageFlags);
+                                   const aUsage:TVkBufferUsageFlags;
+                                   const aAllocationGroupID:TpvUInt64=0);
 begin
  Create(aDevice,
         aSize,
         aUsage,
         VK_SHARING_MODE_EXCLUSIVE,
-        []);
+        [],
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        [],
+        0,
+        aAllocationGroupID);
 end;
 
 destructor TpvVulkanBuffer.Destroy;
