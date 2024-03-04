@@ -13268,7 +13268,7 @@ begin
  MemoryChunk:=fMemoryChunkList.First;
  while assigned(MemoryChunk) do begin
   try
-   writeln('Memory chunk #',TpvPtrUInt(MemoryChunk),' - AllocationGroupID: ',IntToHex(MemoryChunk.fAllocationGroupID),' - Size: ',MemoryChunk.Size);
+   writeln('Memory chunk #',TpvPtrUInt(MemoryChunk),' - AllocationGroupID: ',IntToHex(MemoryChunk.fAllocationGroupID),' - Size: ',MemoryChunk.Size,' - Used: ',MemoryChunk.fUsed);
   finally
    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
   end;
