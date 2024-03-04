@@ -231,7 +231,8 @@ begin
                                                                 0,
                                                                 0,
                                                                 TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
-                                                                @fFirstImage.Handle);
+                                                                @fFirstImage.Handle,
+                                                                pvAllocationGroupIDScreenShot);
   end else begin
    fFirstMemoryBlock:=fDevice.MemoryManager.AllocateMemoryBlock([TpvVulkanDeviceMemoryBlockFlag.PersistentMapped]+MemoryBlockFlags,
                                                                 fMemoryRequirements.size,
@@ -246,7 +247,8 @@ begin
                                                                 0,
                                                                 0,
                                                                 TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-                                                                @fFirstImage.Handle);
+                                                                @fFirstImage.Handle,
+                                                                pvAllocationGroupIDScreenShot);
   end;
 
   if not assigned(fFirstMemoryBlock) then begin
@@ -300,7 +302,8 @@ begin
                                                                  0,
                                                                  0,
                                                                  TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-                                                                 @fSecondImage.Handle);
+                                                                 @fSecondImage.Handle,
+                                                                 pvAllocationGroupIDScreenShot);
 
   end else begin
 

@@ -1986,6 +1986,7 @@ var InFlightFrameIndex,SwapChainImageIndex:TpvSizeInt;
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+    AllocationGroupID:TpvUInt64;
 begin
 
  inherited AcquireVolatileResources;
@@ -1999,28 +2000,34 @@ begin
    fExtent.width:=Max(1,round(ImageResourceType.fImageSize.Size.x));
    fExtent.height:=Max(1,round(ImageResourceType.fImageSize.Size.y));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphImage;
   end;
   TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
    fExtent.width:=Max(1,round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth));
    fExtent.height:=Max(1,round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphSurfaceImage;
   end;
   TpvFrameGraph.TImageSize.TKind.SurfaceDependentPreviousPowerOfTwo:begin
    fExtent.width:=Max(1,RoundDownToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
    fExtent.height:=Max(1,RoundDownToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphSurfaceImage;
   end;
   TpvFrameGraph.TImageSize.TKind.SurfaceDependentNextPowerOfTwo:begin
    fExtent.width:=Max(1,RoundUpToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
    fExtent.height:=Max(1,RoundUpToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphSurfaceImage;
   end;
   TpvFrameGraph.TImageSize.TKind.SurfaceDependentNearestPowerOfTwo:begin
    fExtent.width:=Max(1,RoundNearestToPowerOfTwo(round(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth)));
    fExtent.height:=Max(1,RoundNearestToPowerOfTwo(round(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight)));
    fExtent.depth:=Max(1,round(ImageResourceType.fImageSize.Size.z));
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphSurfaceImage;
   end;
   else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
+   AllocationGroupID:=pvAllocationGroupIDFrameGraphImage;
   end;
  end;
 
@@ -2177,7 +2184,8 @@ begin
                                                                                                          0,
                                                                                                          0,
                                                                                                          MemoryAllocationType,
-                                                                                                         @fVulkanImages[InFlightFrameIndex].Handle);
+                                                                                                         @fVulkanImages[InFlightFrameIndex].Handle,
+                                                                                                         AllocationGroupID);
     if not assigned(fVulkanMemoryBlocks[InFlightFrameIndex]) then begin
      raise EpvVulkanMemoryAllocationException.Create('Memory for image resource couldn''t be allocated!');
     end;
@@ -2424,7 +2432,9 @@ begin
                                                                fMemoryPreferredHeapFlags,
                                                                fMemoryAvoidHeapFlags,
                                                                fMemoryPreferredNotHeapFlags,
-                                                               fBufferFlags);
+                                                               fBufferFlags,
+                                                               0,
+                                                               pvAllocationGroupIDFrameGraphBuffer);
     fFrameGraph.fVulkanDevice.DebugUtils.SetObjectName(fVulkanBuffers[InFlightFrameIndex].Handle,TVkObjectType.VK_OBJECT_TYPE_BUFFER,fResourceType.Name+'['+IntToStr(InFlightFrameIndex)+']');
    end;
   end;

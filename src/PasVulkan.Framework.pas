@@ -95,6 +95,8 @@ var VulkanDefaultHeapAlignChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 5; // 32 
 
     VulkanDefaultSmallHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 25; // 32 MB memory chunk size at small-sized heaps
 
+    VulkanDefaultGroupHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 25; // 32 MB memory chunk size at group heaps
+
     VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 28; // 256 MB memory chunk size at large-sized heaps
 
 const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
@@ -110,11 +112,17 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
       pvAllocationGroupIDInternalMask=TpvUInt64($8000000000000000);
-      pvAllocationGroupIDCanvas=TpvUInt64($0000000000000001) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDSpriteAtlas=TpvUInt64($0000000000000002) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDFrameGraphSurfaceImage=TpvUInt64($0000000000000003) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDFrameGraphImage=TpvUInt64($0000000000000004) or pvAllocationGroupIDInternalMask;
-      pvAllocationGroupIDFrameGraphBuffer=TpvUInt64($0000000000000005) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameBuffer=TpvUInt64($0000000000000001) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDCanvas=TpvUInt64($0000000000000002) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDSpriteAtlas=TpvUInt64($0000000000000003) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphSurfaceImage=TpvUInt64($0000000000000004) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphImage=TpvUInt64($0000000000000005) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphBuffer=TpvUInt64($0000000000000006) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScreenShot=TpvUInt64($0000000000000007) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DStatic=TpvUInt64($0000000000000008) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DDynamic=TpvUInt64($0000000000000009) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DSurface=TpvUInt64($000000000000000a) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDScene3DTexture=TpvUInt64($000000000000000b) or pvAllocationGroupIDInternalMask;
 
 type EpvVulkanException=class(Exception);
 
@@ -1970,7 +1978,8 @@ type EpvVulkanException=class(Exception);
                           const aFormat:TVkFormat;
                           const aUsage:TVkBufferUsageFlags;
                           const aSharingMode:TVkSharingMode;
-                          const aQueueFamilyIndices:array of TVkUInt32); reintroduce; overload;
+                          const aQueueFamilyIndices:array of TVkUInt32;
+                          const aAllocationGroupID:TpvUInt64=0); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aGraphicsQueue:TpvVulkanQueue;
                           const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -1979,7 +1988,8 @@ type EpvVulkanException=class(Exception);
                           const aHeight:TpvUInt32;
                           const aFormat:TVkFormat;
                           const aUsage:TVkBufferUsageFlags;
-                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE); reintroduce; overload;
+                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const aAllocationGroupID:TpvUInt64=0); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aImage:TpvVulkanImage;
                           const aImageView:TpvVulkanImageView;
@@ -11402,8 +11412,10 @@ begin
          end;
         end;
        end else begin
-        if aSize<VulkanDefaultLargeHeapChunkSize then begin
+        if (fAllocationGroupID=0) and (aSize<VulkanDefaultLargeHeapChunkSize) then begin
          CurrentWantedChunkSize:=VulkanDefaultLargeHeapChunkSize;
+        end else if (fAllocationGroupID<>0) and (aSize<VulkanDefaultGroupHeapChunkSize) then begin
+         CurrentWantedChunkSize:=VulkanDefaultGroupHeapChunkSize;
         end else begin
          CurrentWantedChunkSize:=aSize;
         end;
@@ -16909,7 +16921,8 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
                                                   const aFormat:TVkFormat;
                                                   const aUsage:TVkBufferUsageFlags;
                                                   const aSharingMode:TVkSharingMode;
-                                                  const aQueueFamilyIndices:array of TVkUInt32);
+                                                  const aQueueFamilyIndices:array of TVkUInt32;
+                                                  const aAllocationGroupID:TpvUInt64);
 var MemoryRequirements:TVkMemoryRequirements;
     AspectMask:TVkImageAspectFlags;
     ImageLayout:TVkImageLayout;
@@ -17003,7 +17016,8 @@ begin
                                                            0,
                                                            0,
                                                            TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
-                                                           @fImage.fImageHandle);
+                                                           @fImage.fImageHandle,
+                                                           aAllocationGroupID);
   if not assigned(fMemoryBlock) then begin
    raise EpvVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
   end;
@@ -17105,7 +17119,8 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
                                                   const aHeight:TpvUInt32;
                                                   const aFormat:TVkFormat;
                                                   const aUsage:TVkBufferUsageFlags;
-                                                  const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE);
+                                                  const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                                  const aAllocationGroupID:TpvUInt64=0);
 begin
  Create(aDevice,
         aGraphicsQueue,
@@ -17116,7 +17131,8 @@ begin
         aFormat,
         aUsage,
         aSharingMode,
-        []);
+        [],
+        aAllocationGroupID);
 end;
 
 constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
@@ -17997,7 +18013,8 @@ begin
                                                                 0,
                                                                 0,
                                                                 TpvVulkanDeviceMemoryAllocationType.ImageOptimal,
-                                                                @FirstImage.fImageHandle);
+                                                                @FirstImage.fImageHandle,
+                                                                pvAllocationGroupIDScreenShot);
   end else begin
    FirstMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([TpvVulkanDeviceMemoryBlockFlag.PersistentMapped]+MemoryBlockFlags,
                                                                 MemoryRequirements.size,
@@ -18012,7 +18029,8 @@ begin
                                                                 0,
                                                                 0,
                                                                 TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-                                                                @FirstImage.fImageHandle);
+                                                                @FirstImage.fImageHandle,
+                                                                pvAllocationGroupIDScreenShot);
   end;
 
   try
@@ -18070,7 +18088,8 @@ begin
                                                                    0,
                                                                    0,
                                                                    TpvVulkanDeviceMemoryAllocationType.ImageLinear,
-                                                                   @SecondImage.fImageHandle);
+                                                                   @SecondImage.fImageHandle,
+                                                                   pvAllocationGroupIDScreenShot);
 
     end else begin
 
@@ -18666,7 +18685,9 @@ begin
                                                                      fSwapChain.Width,
                                                                      fSwapChain.Height,
                                                                      fDepthImageFormat,
-                                                                     TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
+                                                                     TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
+                                                                     VK_SHARING_MODE_EXCLUSIVE,
+                                                                     pvAllocationGroupIDFrameBuffer);
 
   SetLength(fFrameBuffers,fSwapChain.CountImages);
   for Index:=0 to fSwapChain.CountImages-1 do begin

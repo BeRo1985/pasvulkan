@@ -112,7 +112,9 @@ begin
                                        0,
                                        0,
                                        0,
-                                       []);
+                                       [],
+                                       0,
+                                       pvAllocationGroupIDScene3DSurface);
 
  aDevice.DebugUtils.SetObjectName(fVulkanBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.OITBuffer');
 
