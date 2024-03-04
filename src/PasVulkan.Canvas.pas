@@ -4162,7 +4162,7 @@ begin
      if assigned(CurrentTexture) then begin
       Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                                1);
+                                                                 1);
       Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
       Descriptor.fDescriptorPool.Initialize;
       Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
