@@ -13063,7 +13063,7 @@ begin
    // Otherwise when everything else fails, then allocate a block inside a new chunk in any case
    if not assigned(result) then begin
 
-   // Try to allocate a new chunk when the existing chunks are not suitable
+    // Try to allocate a new chunk when the existing chunks are not suitable
     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList);
     try
      try
