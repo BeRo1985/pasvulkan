@@ -268,6 +268,10 @@ begin
     SetLength(VulkanImageViews,fMipMapLevels);
 
     for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
+     VulkanImageViews[MipMapLevelIndex]:=nil;
+    end;
+
+    for MipMapLevelIndex:=0 to fMipMapLevels-1 do begin
      VulkanImageViews[MipMapLevelIndex]:=TpvVulkanImageView.Create(aDevice,
                                                                    fVulkanImage,
                                                                    ImageViewType,
