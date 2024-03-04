@@ -109,6 +109,13 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VulkanHostVisibleCoherentMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) or
                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
+      pvAllocationGroupIDInternalMask=TpvUInt64($8000000000000000);
+      pvAllocationGroupIDCanvas=TpvUInt64($0000000000000001) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDSpriteAtlas=TpvUInt64($0000000000000002) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphSurfaceImage=TpvUInt64($0000000000000003) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphImage=TpvUInt64($0000000000000004) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDFrameGraphBuffer=TpvUInt64($0000000000000005) or pvAllocationGroupIDInternalMask;
+
 type EpvVulkanException=class(Exception);
 
      EpvVulkanMemoryAllocationException=class(EpvVulkanException);
@@ -3367,6 +3374,7 @@ type EpvVulkanException=class(Exception);
        fDataSize:TpvSizeInt;
        fDoFreeDataAfterFinish:boolean;
        fKTXTexture:pointer;
+       fAllocationGroupID:TpvUInt64;
        procedure UpdateSRGBFormat;
        procedure SetSampler(const aSampler:TpvVulkanSampler);
       public
@@ -3395,7 +3403,8 @@ type EpvVulkanException=class(Exception);
                                     const aSwapEndiannessTexels:TpvInt32;
                                     const aDDSStructure:boolean=true;
                                     const aAdditionalSRGB:boolean=false;
-                                    const aStreaming:boolean=false);
+                                    const aStreaming:boolean=false;
+                                    const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3418,7 +3427,8 @@ type EpvVulkanException=class(Exception);
                                     const aSwapEndiannessTexels:TpvInt32;
                                     const aDDSStructure:boolean=true;
                                     const aAdditionalSRGB:boolean=false;
-                                    const aStreaming:boolean=false);
+                                    const aStreaming:boolean=false;
+                                    const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromKTX(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3427,7 +3437,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromKTX2(const aDevice:TpvVulkanDevice;
                                   const aGraphicsQueue:TpvVulkanQueue;
                                   const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3436,7 +3447,8 @@ type EpvVulkanException=class(Exception);
                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                   const aTransferFence:TpvVulkanFence;
                                   const aStream:TStream;
-                                  const aAdditionalSRGB:boolean=false);
+                                  const aAdditionalSRGB:boolean=false;
+                                  const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromDDS(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3445,7 +3457,8 @@ type EpvVulkanException=class(Exception);
                                  const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                  const aTransferFence:TpvVulkanFence;
                                  const aStream:TStream;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromHDR(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3457,7 +3470,8 @@ type EpvVulkanException=class(Exception);
                                  const aMipMaps:boolean;
                                  const aSRGB:boolean;
                                  const aAdditionalSRGB:boolean=false;
-                                 const aDestinationFormat:TVkFormat=VK_FORMAT_R32G32B32A32_SFLOAT);
+                                 const aDestinationFormat:TVkFormat=VK_FORMAT_R32G32B32A32_SFLOAT;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromTGA(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3468,7 +3482,8 @@ type EpvVulkanException=class(Exception);
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
                                  const aSRGB:boolean;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromQOI(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3479,7 +3494,8 @@ type EpvVulkanException=class(Exception);
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
                                  const aSRGB:boolean;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromPNG(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3490,7 +3506,8 @@ type EpvVulkanException=class(Exception);
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
                                  const aSRGB:boolean;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromJPEG(const aDevice:TpvVulkanDevice;
                                   const aGraphicsQueue:TpvVulkanQueue;
                                   const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3501,7 +3518,8 @@ type EpvVulkanException=class(Exception);
                                   const aStream:TStream;
                                   const aMipMaps:boolean;
                                   const aSRGB:boolean;
-                                  const aAdditionalSRGB:boolean=false);
+                                  const aAdditionalSRGB:boolean=false;
+                                  const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromBMP(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3512,7 +3530,8 @@ type EpvVulkanException=class(Exception);
                                  const aStream:TStream;
                                  const aMipMaps:boolean;
                                  const aSRGB:boolean;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        constructor CreateFromImage(const aDevice:TpvVulkanDevice;
                                    const aGraphicsQueue:TpvVulkanQueue;
                                    const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3523,7 +3542,8 @@ type EpvVulkanException=class(Exception);
                                    const aStream:TStream;
                                    const aMipMaps:boolean;
                                    const aSRGB:boolean;
-                                   const aAdditionalSRGB:boolean=false);
+                                   const aAdditionalSRGB:boolean=false;
+                                   const aAllocationGroupID:TpvUInt64=0);
        constructor CreateDefault(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -3540,7 +3560,8 @@ type EpvVulkanException=class(Exception);
                                  const aMipmaps:boolean;
                                  const aBorder:boolean;
                                  const aSRGB:boolean;
-                                 const aAdditionalSRGB:boolean=false);
+                                 const aAdditionalSRGB:boolean=false;
+                                 const aAllocationGroupID:TpvUInt64=0);
        destructor Destroy; override;
        procedure Unload;
        class procedure GetMipMapSize(const aFormat:TVkFormat;const aMipMapWidth,aMipMapHeight:TpvInt32;out aMipMapSize:TVkUInt32;out aCompressed:boolean); static;
@@ -3580,7 +3601,8 @@ type EpvVulkanException=class(Exception);
                                 const aSwapEndiannessTexels:TpvInt32;
                                 const aDDSStructure:boolean=true;
                                 const aAdditionalSRGB:boolean=false;
-                                const aStreaming:boolean=false);
+                                const aStreaming:boolean=false;
+                                const aAllocationGroupID:TpvUInt64=0);
        procedure LoadFromStream(const aFormat:TVkFormat;
                                 const aSampleCount:TVkSampleCountFlagBits;
                                 const aWidth:TpvInt32;
@@ -3596,17 +3618,18 @@ type EpvVulkanException=class(Exception);
                                 const aSwapEndiannessTexels:TpvInt32;
                                 const aDDSStructure:boolean=true;
                                 const aAdditionalSRGB:boolean=false;
-                                const aStreaming:boolean=false);
-       procedure LoadFromKTX(const aStream:TStream;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromDDS(const aStream:TStream;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aDestinationFormat:TVkFormat=VK_FORMAT_R32G32B32A32_SFLOAT);
-       procedure LoadFromTGA(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromQOI(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromPNG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromJPEG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromBMP(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
-       procedure LoadFromImage(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+                                const aStreaming:boolean=false;
+                                const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromKTX(const aStream:TStream;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromDDS(const aStream:TStream;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aDestinationFormat:TVkFormat=VK_FORMAT_R32G32B32A32_SFLOAT;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromTGA(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromQOI(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromPNG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromJPEG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromBMP(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
+       procedure LoadFromImage(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false;const aAllocationGroupID:TpvUInt64=0);
        procedure LoadDefault(const aDefaultType:TpvVulkanTextureDefaultType;
                              const aWidth:TpvInt32;
                              const aHeight:TpvInt32;
@@ -3616,7 +3639,8 @@ type EpvVulkanException=class(Exception);
                              const aMipmaps:boolean;
                              const aBorder:boolean;
                              const aSRGB:boolean;
-                             const aAdditionalSRGB:boolean=false);
+                             const aAdditionalSRGB:boolean=false;
+                             const aAllocationGroupID:TpvUInt64=0);
        procedure Upload(const aGraphicsQueue:TpvVulkanQueue;
                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
                         const aGraphicsFence:TpvVulkanFence;
@@ -22810,7 +22834,8 @@ constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
                                               const aSwapEndiannessTexels:TpvInt32;
                                               const aDDSStructure:boolean;
                                               const aAdditionalSRGB:boolean;
-                                              const aStreaming:boolean);
+                                              const aStreaming:boolean;
+                                              const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
  LoadFromMemory(aFormat,
@@ -22829,7 +22854,8 @@ begin
                 aSwapEndiannessTexels,
                 aDDSStructure,
                 aAdditionalSRGB,
-                aStreaming);
+                aStreaming,
+                aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22855,7 +22881,8 @@ constructor TpvVulkanTexture.CreateFromStream(const aDevice:TpvVulkanDevice;
                                               const aSwapEndiannessTexels:TpvInt32;
                                               const aDDSStructure:boolean;
                                               const aAdditionalSRGB:boolean;
-                                              const aStreaming:boolean);
+                                              const aStreaming:boolean;
+                                              const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
  LoadFromStream(aFormat,
@@ -22873,7 +22900,8 @@ begin
                 aSwapEndiannessTexels,
                 aDDSStructure,
                 aAdditionalSRGB,
-                aStreaming);
+                aStreaming,
+                aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22885,10 +22913,11 @@ constructor TpvVulkanTexture.CreateFromKTX(const aDevice:TpvVulkanDevice;
                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                            const aTransferFence:TpvVulkanFence;
                                            const aStream:TStream;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromKTX(aStream,aAdditionalSRGB);
+ LoadFromKTX(aStream,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22900,10 +22929,11 @@ constructor TpvVulkanTexture.CreateFromKTX2(const aDevice:TpvVulkanDevice;
                                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                             const aTransferFence:TpvVulkanFence;
                                             const aStream:TStream;
-                                            const aAdditionalSRGB:boolean);
+                                            const aAdditionalSRGB:boolean;
+                                            const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromKTX2(aStream,aAdditionalSRGB);
+ LoadFromKTX2(aStream,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22915,10 +22945,11 @@ constructor TpvVulkanTexture.CreateFromDDS(const aDevice:TpvVulkanDevice;
                                            const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                            const aTransferFence:TpvVulkanFence;
                                            const aStream:TStream;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromDDS(aStream,aAdditionalSRGB);
+ LoadFromDDS(aStream,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22933,10 +22964,11 @@ constructor TpvVulkanTexture.CreateFromHDR(const aDevice:TpvVulkanDevice;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean;
                                            const aAdditionalSRGB:boolean;
-                                           const aDestinationFormat:TVkFormat);
+                                           const aDestinationFormat:TVkFormat;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromHDR(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aDestinationFormat);
+ LoadFromHDR(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aDestinationFormat,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22950,10 +22982,11 @@ constructor TpvVulkanTexture.CreateFromTGA(const aDevice:TpvVulkanDevice;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromTGA(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromTGA(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22967,10 +23000,11 @@ constructor TpvVulkanTexture.CreateFromQOI(const aDevice:TpvVulkanDevice;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromQOI(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromQOI(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -22984,10 +23018,11 @@ constructor TpvVulkanTexture.CreateFromPNG(const aDevice:TpvVulkanDevice;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromPNG(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromPNG(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -23001,10 +23036,11 @@ constructor TpvVulkanTexture.CreateFromJPEG(const aDevice:TpvVulkanDevice;
                                             const aStream:TStream;
                                             const aMipMaps:boolean;
                                             const aSRGB:boolean;
-                                            const aAdditionalSRGB:boolean);
+                                            const aAdditionalSRGB:boolean;
+                                            const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromJPEG(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromJPEG(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -23018,10 +23054,11 @@ constructor TpvVulkanTexture.CreateFromBMP(const aDevice:TpvVulkanDevice;
                                            const aStream:TStream;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromBMP(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromBMP(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -23035,10 +23072,11 @@ constructor TpvVulkanTexture.CreateFromImage(const aDevice:TpvVulkanDevice;
                                              const aStream:TStream;
                                              const aMipMaps:boolean;
                                              const aSRGB:boolean;
-                                             const aAdditionalSRGB:boolean);
+                                             const aAdditionalSRGB:boolean;
+                                             const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadFromImage(aStream,aMipMaps,aSRGB,aAdditionalSRGB);
+ LoadFromImage(aStream,aMipMaps,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -23058,10 +23096,11 @@ constructor TpvVulkanTexture.CreateDefault(const aDevice:TpvVulkanDevice;
                                            const aMipmaps:boolean;
                                            const aBorder:boolean;
                                            const aSRGB:boolean;
-                                           const aAdditionalSRGB:boolean);
+                                           const aAdditionalSRGB:boolean;
+                                           const aAllocationGroupID:TpvUInt64);
 begin
  Create(aDevice);
- LoadDefault(aDefaultType,aWidth,aHeight,aDepth,aCountArrayLayers,aCountFaces,aMipmaps,aBorder,aSRGB,aAdditionalSRGB);
+ LoadDefault(aDefaultType,aWidth,aHeight,aDepth,aCountArrayLayers,aCountFaces,aMipmaps,aBorder,aSRGB,aAdditionalSRGB,aAllocationGroupID);
  Finish(aGraphicsQueue,aGraphicsCommandBuffer,aGraphicsFence,aTransferQueue,aTransferCommandBuffer,aTransferFence);
 end;
 
@@ -24269,9 +24308,10 @@ procedure TpvVulkanTexture.LoadFromMemory(const aFormat:TVkFormat;
                                           const aMipMapSizeStored:boolean;
                                           const aSwapEndianness:boolean;
                                           const aSwapEndiannessTexels:TpvInt32;
-                                          const aDDSStructure:boolean=true;
-                                          const aAdditionalSRGB:boolean=false;
-                                          const aStreaming:boolean=false);
+                                          const aDDSStructure:boolean;
+                                          const aAdditionalSRGB:boolean;
+                                          const aStreaming:boolean;
+                                          const aAllocationGroupID:TpvUInt64);
 begin
 
  fFormat:=aFormat;
@@ -24319,6 +24359,8 @@ begin
 
  fStreaming:=aStreaming;
 
+ fAllocationGroupID:=aAllocationGroupID;
+
 end;
 
 procedure TpvVulkanTexture.LoadFromStream(const aFormat:TVkFormat;
@@ -24334,9 +24376,10 @@ procedure TpvVulkanTexture.LoadFromStream(const aFormat:TVkFormat;
                                           const aMipMapSizeStored:boolean;
                                           const aSwapEndianness:boolean;
                                           const aSwapEndiannessTexels:TpvInt32;
-                                          const aDDSStructure:boolean=true;
-                                          const aAdditionalSRGB:boolean=false;
-                                          const aStreaming:boolean=false);
+                                          const aDDSStructure:boolean;
+                                          const aAdditionalSRGB:boolean;
+                                          const aStreaming:boolean;
+                                          const aAllocationGroupID:TpvUInt64);
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
@@ -24362,13 +24405,14 @@ begin
                  aSwapEndiannessTexels,
                  aDDSStructure,
                  aAdditionalSRGB,
-                 aStreaming);
+                 aStreaming,
+                 aAllocationGroupID);
  finally
   FreeMem(Data);
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromKTX(const aStream:TStream;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromKTX(const aStream:TStream;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 type PKTXIdentifier=^TKTXIdentifier;
      TKTXIdentifier=array[0..11] of TpvUInt8;
      PKTXHeader=^TKTXHeader;
@@ -24493,14 +24537,16 @@ begin
                  MustSwap,
                  KTXHeader.GLTypeSize,
                  false,
-                 aAdditionalSRGB);
+                 aAdditionalSRGB,
+                 false,
+                 aAllocationGroupID);
  finally
   FreeMem(Data);
  end;
 
 end;
 
-procedure TpvVulkanTexture.LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromKTX2(const aStream:TStream;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 const	SUPERCOMPRESSION_NONE=0;
       SUPERCOMPRESSION_CRN=1;
       SUPERCOMPRESSION_ZSTD=2;
@@ -24679,7 +24725,9 @@ begin
                    {$ifdef BIG_ENDIAN}true{$else}false{$endif},
                    KTX2Header.TypeSize,
                    false,
-                   aAdditionalSRGB);
+                   aAdditionalSRGB,
+                   false,
+                   aAllocationGroupID);
    end else begin
     raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
    end;
@@ -24785,9 +24833,7 @@ begin
       if KTX2Header.sgdByteLength>0 then begin
        SGDChunkSystem:=TpvChunkStream.Create(aStream,BasePosition+KTX2Header.sgdByteOffset,KTX2Header.sgdByteLength,false);
        try
-
-
-
+        // ...
        finally
         FreeAndNil(SGDChunkSystem);
        end;
@@ -24885,7 +24931,9 @@ begin
                         {$ifdef BIG_ENDIAN}true{$else}false{$endif},
                         KTX2Header.TypeSize,
                         false,
-                        aAdditionalSRGB);
+                        aAdditionalSRGB,
+                        false,
+                        aAllocationGroupID);
         finally
          AllData:=nil;
         end;
@@ -24917,7 +24965,7 @@ begin
 
 end;
 
-procedure TpvVulkanTexture.LoadFromDDS(const aStream:TStream;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromDDS(const aStream:TStream;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_HEIGHT=$00000002;
@@ -25732,13 +25780,15 @@ begin
                  false,
                  1,
                  true,
-                 aAdditionalSRGB);
+                 aAdditionalSRGB,
+                 false,
+                 aAllocationGroupID);
  finally
   FreeMem(Data);
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aDestinationFormat:TVkFormat);
+procedure TpvVulkanTexture.LoadFromHDR(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aDestinationFormat:TVkFormat;const aAllocationGroupID:TpvUInt64);
 const RGBE_DATA_RED=0;
       RGBE_DATA_GREEN=1;
       RGBE_DATA_BLUE=2;
@@ -26129,7 +26179,9 @@ begin
                   false,
                   1,
                   true,
-                  aAdditionalSRGB);
+                  aAdditionalSRGB,
+                  false,
+                  aAllocationGroupID);
   end else begin
    raise EpvVulkanTextureException.Create('Invalid HDR stream');
   end;
@@ -26140,7 +26192,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromTGA(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromTGA(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -26170,7 +26222,9 @@ begin
                    false,
                    1,
                    true,
-                   aAdditionalSRGB);
+                   aAdditionalSRGB,
+                   false,
+                   aAllocationGroupID);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid TGA stream');
    end;
@@ -26184,7 +26238,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromQOI(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromQOI(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel,x,y,Index:TpvInt32;
     sRGB:boolean;
@@ -26261,7 +26315,9 @@ begin
                    false,
                    1,
                    true,
-                   aAdditionalSRGB);
+                   aAdditionalSRGB,
+                   false,
+                   aAllocationGroupID);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid QOI stream');
    end;
@@ -26275,7 +26331,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromPNG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromPNG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel,x,y,Index:TpvInt32;
     PNGPixelFormat:TpvPNGPixelFormat;
@@ -26346,7 +26402,9 @@ begin
                    false,
                    1,
                    true,
-                   aAdditionalSRGB);
+                   aAdditionalSRGB,
+                   false,
+                   aAllocationGroupID);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid PNG stream');
    end;
@@ -26360,7 +26418,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromJPEG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromJPEG(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -26390,7 +26448,9 @@ begin
                    false,
                    1,
                    true,
-                   aAdditionalSRGB);
+                   aAdditionalSRGB,
+                   false,
+                   aAllocationGroupID);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid JPEG stream');
    end;
@@ -26404,7 +26464,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromBMP(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromBMP(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 var Data,ImageData:TpvPointer;
     DataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -26434,7 +26494,9 @@ begin
                    false,
                    1,
                    true,
-                   aAdditionalSRGB);
+                   aAdditionalSRGB,
+                   false,
+                   aAllocationGroupID);
    end else begin
     raise EpvVulkanTextureException.Create('Invalid BMP stream');
    end;
@@ -26448,7 +26510,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanTexture.LoadFromImage(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean=false);
+procedure TpvVulkanTexture.LoadFromImage(const aStream:TStream;const aMipMaps,aSRGB:boolean;const aAdditionalSRGB:boolean;const aAllocationGroupID:TpvUInt64);
 const DDS_MAGIC=$20534444;
       DDSD_CAPS=$00000001;
       DDSD_PIXELFORMAT=$00001000;
@@ -26503,18 +26565,21 @@ begin
   LoadFromQOI(aStream,
               aMipMaps,
               aSRGB,
-              aAdditionalSRGB);
+              aAdditionalSRGB,
+              aAllocationGroupID);
   end else if (FirstBytes[0]=$89) and (FirstBytes[1]=$50) and (FirstBytes[2]=$4e) and (FirstBytes[3]=$47) and (FirstBytes[4]=$0d) and (FirstBytes[5]=$0a) and (FirstBytes[6]=$1a) and (FirstBytes[7]=$0a) then begin
   LoadFromPNG(aStream,
               aMipMaps,
               aSRGB,
-              aAdditionalSRGB);
+              aAdditionalSRGB,
+              aAllocationGroupID);
  end else if ((PDDSHeader(TpvPointer(@FirstBytes))^.dwMagic=DDS_MAGIC) and
               (PDDSHeader(TpvPointer(@FirstBytes))^.dwSize=124){ and not
               (((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_PIXELFORMAT)=0) or
                ((PDDSHeader(TpvPointer(@FirstBytes))^.dwFlags and DDSD_CAPS)=0))}) then begin
   LoadFromDDS(aStream,
-              aAdditionalSRGB);
+              aAdditionalSRGB,
+              aAllocationGroupID);
  end else if (FirstBytes[0]=TpvUInt8(AnsiChar('B'))) and (FirstBytes[1]=TpvUInt8(AnsiChar('M'))) then begin
   LoadFromBMP(aStream,
               aMipMaps,
@@ -26524,17 +26589,21 @@ begin
   LoadFromHDR(aStream,
               aMipMaps,
               aSRGB,
-              aAdditionalSRGB);
+              aAdditionalSRGB,
+              VK_FORMAT_R32G32B32A32_SFLOAT,
+              aAllocationGroupID);
  end else if ((FirstBytes[0] xor $ff) or (FirstBytes[1] xor $d8))=0 then begin
   LoadFromJPEG(aStream,
                aMipMaps,
                aSRGB,
-               aAdditionalSRGB);
+               aAdditionalSRGB,
+               aAllocationGroupID);
  end else begin
   LoadFromTGA(aStream,
               aMipMaps,
               aSRGB,
-              aAdditionalSRGB);
+              aAdditionalSRGB,
+              aAllocationGroupID);
  end;
 end;
 
@@ -26547,7 +26616,8 @@ procedure TpvVulkanTexture.LoadDefault(const aDefaultType:TpvVulkanTextureDefaul
                                        const aMipmaps:boolean;
                                        const aBorder:boolean;
                                        const aSRGB:boolean;
-                                       const aAdditionalSRGB:boolean=false);
+                                       const aAdditionalSRGB:boolean;
+                                       const aAllocationGroupID:TpvUInt64);
 const TexelSize=4;
       BlockShift=5;
       BlockSize=1 shl BlockShift;
@@ -26721,7 +26791,9 @@ begin
                  false,
                  1,
                  false,
-                 aAdditionalSRGB);
+                 aAdditionalSRGB,
+                 false,
+                 aAllocationGroupID);
 
  finally
   SetLength(Data,0);

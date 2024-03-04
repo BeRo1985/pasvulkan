@@ -545,7 +545,10 @@ begin
                                                false,
                                                false,
                                                1,
-                                               true);
+                                               true,
+                                               false,
+                                               false,
+                                               pvAllocationGroupIDSpriteAtlas);
    fTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
    fTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
    fTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
@@ -760,7 +763,10 @@ begin
                                                false,
                                                false,
                                                1,
-                                               true);
+                                               true,
+                                               false,
+                                               false,
+                                               pvAllocationGroupIDSpriteAtlas);
 
    fTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
    fTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;

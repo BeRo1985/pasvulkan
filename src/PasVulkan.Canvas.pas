@@ -4363,7 +4363,9 @@ begin
                                              0,
                                              0,
                                              0,
-                                             [TpvVulkanBufferFlag.PersistentMapped]
+                                             [TpvVulkanBufferFlag.PersistentMapped],
+                                             0,
+                                             pvAllocationGroupIDCanvas
                                             );
        end else begin
         VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -4379,7 +4381,9 @@ begin
                                              0,
                                              0,
                                              0,
-                                             []
+                                             [],
+                                             0,
+                                             pvAllocationGroupIDCanvas
                                             );
        end;
        CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
@@ -4421,7 +4425,9 @@ begin
                                              0,
                                              0,
                                              0,
-                                             [TpvVulkanBufferFlag.PersistentMapped]
+                                             [TpvVulkanBufferFlag.PersistentMapped],
+                                             0,
+                                             pvAllocationGroupIDCanvas
                                             );
        end else begin
         VulkanBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -4437,7 +4443,9 @@ begin
                                              0,
                                              0,
                                              0,
-                                             []
+                                             [],
+                                             0,
+                                             pvAllocationGroupIDCanvas
                                             );
        end;
        CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
