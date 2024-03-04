@@ -11709,10 +11709,26 @@ begin
 
      MemoryChunkBlockEndOffset:=MemoryChunkBlockBeginOffset+MemoryChunkBlock.Size;
 
+{$if true}
+
+     // Prefer to allocate from the end of the memory chunk block
+     PayloadBeginOffset:=MemoryChunkBlockEndOffset-aSize;
+     if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
+      dec(PayloadBeginOffset,PayloadBeginOffset and (Alignment-1));
+      if PayloadBeginOffset<MemoryChunkBlockBeginOffset then begin
+       PayloadBeginOffset:=MemoryChunkBlockBeginOffset; // For just to be sure
+      end;
+     end;
+
+{$else}
+
+     // Prefer to allocate from the beginning of the memory chunk block
      PayloadBeginOffset:=MemoryChunkBlockBeginOffset;
      if (Alignment>1) and ((PayloadBeginOffset and (Alignment-1))<>0) then begin
       inc(PayloadBeginOffset,Alignment-(PayloadBeginOffset and (Alignment-1)));
      end;
+
+{$ifend}
 
      PayloadEndOffset:=PayloadBeginOffset+aSize;
 
