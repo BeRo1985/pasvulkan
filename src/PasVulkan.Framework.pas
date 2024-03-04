@@ -127,6 +127,7 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       pvAllocationGroupIDScene3DTexture=TpvUInt64($000000000000000d) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDScene3DPlanetStatic=TpvUInt64($000000000000000e) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDScene3DPlanetDynamic=TpvUInt64($000000000000000f) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDDebug=TpvUInt64($0fffffffffffffff) or pvAllocationGroupIDInternalMask;
 
 type EpvVulkanException=class(Exception);
 
@@ -1126,6 +1127,8 @@ type EpvVulkanException=class(Exception);
                                                                         const aFence:TpvVulkanFence;
                                                                         const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
 
+     { TpvVulkanDeviceMemoryBlock }
+
      TpvVulkanDeviceMemoryBlock=class(TpvVulkanObject)
       private
        fMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -1138,6 +1141,7 @@ type EpvVulkanException=class(Exception);
        fAssociatedObject:TObject;
        fOnBeforeDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
        fOnAfterDefragmentInplace:TpvVulkanDeviceMemoryBlockOnBeforeAfterDefragmentInplace;
+       fInUse:Boolean;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
@@ -1152,6 +1156,8 @@ type EpvVulkanException=class(Exception);
        procedure InvalidateMappedMemory;
        procedure InvalidateMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
        function Fill(const aData:PVkVoid;const aSize:TVkDeviceSize):TVkDeviceSize;
+       procedure FreeMemory;
+       class procedure FreeMemoryAndNil(var aMemoryBlock:TpvVulkanDeviceMemoryBlock); static;
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property MemoryChunk:TpvVulkanDeviceMemoryChunk read fMemoryChunk;
@@ -1224,7 +1230,7 @@ type EpvVulkanException=class(Exception);
                                     const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
                                     const aMemoryDedicatedAllocationDataHandle:TpvPointer=nil;
                                     const aAllocationGroupID:TpvUInt64=0):TpvVulkanDeviceMemoryBlock;
-       function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean;
+       function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock;const aDoFree:Boolean=true):boolean;
 
        (* Warning! This function is not correct according to Vulkan specification, therefore use it
        ** at your own risk. The reason for this is that Vulkan does not guarantee that the memory
@@ -12587,10 +12593,19 @@ begin
  fMemoryManager.fLastMemoryBlock:=self;
  fNextMemoryBlock:=nil;
 
+ fInUse:=true;
+
 end;
 
 destructor TpvVulkanDeviceMemoryBlock.Destroy;
 begin
+ if fInUse then begin
+  try
+   fMemoryManager.FreeMemoryBlock(self,false);
+  finally
+   fInUse:=false;
+  end;
+ end;
  if assigned(fPreviousMemoryBlock) then begin
   fPreviousMemoryBlock.fNextMemoryBlock:=fNextMemoryBlock;
  end else if fMemoryManager.fFirstMemoryBlock=self then begin
@@ -12664,6 +12679,32 @@ begin
  end;
 end;
 
+procedure TpvVulkanDeviceMemoryBlock.FreeMemory;
+begin
+ if assigned(self) then begin
+  if not MemoryManager.FreeMemoryBlock(self) then begin
+   Free;
+  end;
+ end;
+end;
+
+class procedure TpvVulkanDeviceMemoryBlock.FreeMemoryAndNil(var aMemoryBlock:TpvVulkanDeviceMemoryBlock);
+begin
+ if assigned(aMemoryBlock) then begin
+  try
+   if not aMemoryBlock.MemoryManager.FreeMemoryBlock(aMemoryBlock) then begin
+    try
+     aMemoryBlock.fInUse:=false;
+    finally
+     aMemoryBlock.Free;
+    end;
+   end;
+  finally
+   aMemoryBlock:=nil;
+  end;
+ end;
+end;
+
 constructor TpvVulkanDeviceMemoryManager.Create(const aDevice:TpvVulkanDevice);
 begin
  inherited Create;
@@ -12689,7 +12730,11 @@ destructor TpvVulkanDeviceMemoryManager.Destroy;
 var Index:TpvInt32;
 begin
  while assigned(fFirstMemoryBlock) do begin
-  fFirstMemoryBlock.Free;
+  try
+   fFirstMemoryBlock.fInUse:=false;
+  finally
+   fFirstMemoryBlock.Free;
+  end;
  end;
  while assigned(fMemoryChunkList.First) do begin
   fMemoryChunkList.First.Free;
@@ -13219,7 +13264,7 @@ begin
 
 end;
 
-function TpvVulkanDeviceMemoryManager.FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean;
+function TpvVulkanDeviceMemoryManager.FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock;const aDoFree:Boolean=true):boolean;
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
 begin
  result:=assigned(aMemoryBlock);
@@ -13229,7 +13274,13 @@ begin
    MemoryChunk:=aMemoryBlock.fMemoryChunk;
    result:=MemoryChunk.FreeMemory(aMemoryBlock.fOffset);
    if result then begin
-    aMemoryBlock.Free;
+    if aDoFree then begin
+     try
+      aMemoryBlock.fInUse:=false;
+     finally
+      aMemoryBlock.Free;
+     end;
+    end;
     if (TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk in MemoryChunk.fMemoryChunkFlags) or
        (assigned(MemoryChunk.fOffsetRedBlackTree.fRoot) and
         (MemoryChunk.fOffsetRedBlackTree.fRoot.fValue.fOffset=0) and

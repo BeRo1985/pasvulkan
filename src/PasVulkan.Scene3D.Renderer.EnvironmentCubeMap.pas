@@ -1006,6 +1006,9 @@ end;
 
 destructor TpvScene3DRendererEnvironmentCubeMap.Destroy;
 begin
+ if assigned(fMemoryBlock) and assigned(fMemoryBlock.MemoryManager) then begin
+  fMemoryBlock.MemoryManager.FreeMemoryBlock(fMemoryBlock);
+ end;
  FreeAndNil(fMemoryBlock);
  FreeAndNil(fVulkanImageView);
  FreeAndNil(fVulkanSampler);
