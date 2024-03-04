@@ -95,7 +95,7 @@ var VulkanDefaultHeapAlignChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 5; // 32 
 
     VulkanDefaultSmallHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 25; // 32 MB memory chunk size at small-sized heaps
 
-    VulkanDefaultGroupHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 27; // 128 MB memory chunk size at group heaps
+    VulkanDefaultGroupHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 26; // 64 MB memory chunk size at group heaps
 
     VulkanDefaultLargeHeapChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 28; // 256 MB memory chunk size at large-sized heaps
 
