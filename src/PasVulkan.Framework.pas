@@ -1170,6 +1170,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryManagerChunkLists=array[0..31] of TpvVulkanDeviceMemoryManagerChunkList;
 
+     { TpvVulkanDeviceMemoryManager }
+
      TpvVulkanDeviceMemoryManager=class(TpvVulkanObject)
       private
        type TDedicatedAllocationSupport=
@@ -1247,6 +1249,8 @@ type EpvVulkanException=class(Exception);
        procedure DefragmentInplace(const aQueue:TpvVulkanQueue=nil;
                                    const aCommandBuffer:TpvVulkanCommandBuffer=nil;
                                    const aFence:TpvVulkanFence=nil);
+
+       procedure Dump;
 
       published
 
@@ -13252,6 +13256,19 @@ begin
  while assigned(MemoryChunk) do begin
   try
    MemoryChunk.DefragmentInplace(aQueue,aCommandBuffer,aFence);
+  finally
+   MemoryChunk:=MemoryChunk.fNextMemoryChunk;
+  end;
+ end;
+end;
+
+procedure TpvVulkanDeviceMemoryManager.Dump;
+var MemoryChunk:TpvVulkanDeviceMemoryChunk;
+begin
+ MemoryChunk:=fMemoryChunkList.First;
+ while assigned(MemoryChunk) do begin
+  try
+   writeln('Memory chunk #',TpvPtrUInt(MemoryChunk),' - AllocationGroupID: ',IntToHex(MemoryChunk.fAllocationGroupID),' - Size: ',MemoryChunk.Size);
   finally
    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
   end;
