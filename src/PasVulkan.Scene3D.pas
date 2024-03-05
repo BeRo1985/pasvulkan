@@ -2862,9 +2862,11 @@ type EpvScene3D=class(Exception);
                      fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
                      fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
                      fBLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList;
+                     fBLASBuffer:TpvVulkanBuffer;
                      fMaterialIDs:TUInt32Array;
                      fIndexOffsets:TUInt32Array;
                      fAccelerationStructureOffset:TVkDeviceSize;
+                     fAccelerationStructureSize:TVkDeviceSize;
                      fScratchOffset:TVkDeviceSize;
                      fScratchPass:TpvUInt64;
                     public
@@ -5136,11 +5138,15 @@ begin
 
  fBLASInstances:=nil;
 
+ fBLASBuffer:=nil;
+
  fMaterialIDs.Initialize;
 
  fIndexOffsets.Initialize;
 
  fAccelerationStructureOffset:=High(TVkDeviceSize);
+
+ fAccelerationStructureSize:=0;
 
  fScratchOffset:=High(TVkDeviceSize);
 
@@ -5160,6 +5166,8 @@ begin
  FreeAndNil(fBLAS);
 
  FreeAndNil(fBLASGeometry);
+
+ FreeAndNil(fBLASBuffer);
 
 end;
 
@@ -23333,7 +23341,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     BLASAccelerationStructureSize:TVkDeviceSize;
     ScratchSize,ScratchPassSize:TVkDeviceSize;
-    ScratchPass:TpvUInt64;
+    ScratchPass,AllocationGroupID:TpvUInt64;
 begin
 
  if fHardwareRaytracingSupport then begin
@@ -23502,7 +23510,8 @@ begin
        if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) then begin
 
         BLASGroup^.fAccelerationStructureOffset:=BLASAccelerationStructureSize;
-        inc(BLASAccelerationStructureSize,BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize);
+        BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
+        inc(BLASAccelerationStructureSize,BLASGroup^.fAccelerationStructureSize);
 
         BLASGroup^.fScratchOffset:=ScratchPassSize;
         BLASGroup^.fScratchPass:=ScratchPass;
@@ -23571,8 +23580,66 @@ begin
 
    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
-   end;
+    for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
 
+     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
+     if assigned(RaytracingGroupInstanceNode) then begin
+
+      if RaytracingGroupInstanceNode.fDynamicGeometry then begin
+       AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASDynamic;
+      end else begin
+       AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
+      end;
+
+      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+
+       BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) then begin
+
+        if ((not assigned(BLASGroup^.fBLASBuffer)) or
+            (BLASGroup^.fBLASBuffer.Size<BLASGroup^.fAccelerationStructureSize)) and
+           (BLASGroup^.fAccelerationStructureSize>0) then begin
+
+         if assigned(pvApplication) then begin
+          pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+         end;
+
+         BLASGroup^.fBLAS.Finalize;
+
+         FreeAndNil(BLASGroup^.fBLASBuffer);
+
+         BLASGroup^.fBLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                        BLASGroup^.fAccelerationStructureSize,
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [],
+                                                        0,
+                                                        AllocationGroupID
+                                                       );
+         fVulkanDevice.DebugUtils.SetObjectName(BLASGroup^.fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanBLASBuffer');
+
+         BLASGroup^.fBLAS.Initialize(BLASGroup^.fBLASBuffer,0);
+
+        end;
+
+       end;
+
+      end;
+
+     end;
+
+    end;
+
+   end;
 
    /////////////////////////////////////////////////////////////////////////////
    // Enqueue build acceleration structure commands and execute them in       //
