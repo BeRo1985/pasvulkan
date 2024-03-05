@@ -3714,6 +3714,10 @@ type EpvVulkanException=class(Exception);
        property DoFreeDataAfterFinish:boolean read fDoFreeDataAfterFinish write fDoFreeDataAfterFinish;
      end;
 
+     TpvVulkanDefaultGroupHeapChunkSizes=TpvHashMap<TpvUInt64,TVkDeviceSize>;
+
+var VulkanDefaultGroupHeapChunkSizes:TpvVulkanDefaultGroupHeapChunkSizes=nil;
+
 const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling=
        (
         VK_IMAGE_TILING_LINEAR,  // VK_IMAGE_VIEW_TYPE_1D
@@ -11352,7 +11356,7 @@ var Index,HeapIndex,CountBlacklistedHeaps,BlacklistedHeapIndex:TpvInt32;
     MemoryAllocateInfo:TVkMemoryAllocateInfo;
     MemoryAllocateFlagsInfoKHR:TVkMemoryAllocateFlagsInfoKHR;
     PhysicalDevice:TpvVulkanPhysicalDevice;
-    CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize:TVkDeviceSize;
+    CurrentSize,BestSize,CurrentWantedChunkSize,BestWantedChunkSize,ChunkSize:TVkDeviceSize;
     Found,OK:boolean;
     ResultCode,LastResultCode:TVkResult;
     PropertyFlags:TVkMemoryPropertyFlags;
@@ -11428,8 +11432,13 @@ begin
        end else begin
         if (fAllocationGroupID=0) and (aSize<VulkanDefaultLargeHeapChunkSize) then begin
          CurrentWantedChunkSize:=VulkanDefaultLargeHeapChunkSize;
-        end else if (fAllocationGroupID<>0) and (aSize<VulkanDefaultGroupHeapChunkSize) then begin
-         CurrentWantedChunkSize:=VulkanDefaultGroupHeapChunkSize;
+        end else if fAllocationGroupID<>0 then begin
+         ChunkSize:=VulkanDefaultGroupHeapChunkSizes[fAllocationGroupID];
+         if aSize<ChunkSize then begin
+          CurrentWantedChunkSize:=ChunkSize;
+         end else begin
+          CurrentWantedChunkSize:=aSize;
+         end;
         end else begin
          CurrentWantedChunkSize:=aSize;
         end;
@@ -27555,9 +27564,32 @@ begin
  end;
 end;
 
+procedure InitializeVulkanDefaultGroupHeapChunkSizes;
+begin
+ VulkanDefaultGroupHeapChunkSizes:=TpvVulkanDefaultGroupHeapChunkSizes.Create(VulkanDefaultGroupHeapChunkSize);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDGlobalStaging,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDTemporaryStaging,TVkDeviceSize(16) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDFrameBuffer,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDCanvas,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDSpriteAtlas,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDFrameGraphSurfaceImage,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDFrameGraphImage,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDFrameGraphBuffer,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScreenShot,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DStatic,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DDynamic,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DSurface,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DTexture,TVkDeviceSize(32) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetStatic,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetDynamic,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDDebug,TVkDeviceSize(32) shl 20);
+end;
+
 initialization
  LoadKTXLibrary;
+ InitializeVulkanDefaultGroupHeapChunkSizes;
 finalization
+ FreeAndNil(VulkanDefaultGroupHeapChunkSizes);
 end.
 
 
