@@ -23580,7 +23580,7 @@ begin
     FreeAndNil(fRaytracingVulkanScratchBuffer);
 
     fRaytracingVulkanScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                           ScratchSize,
+                                                           RoundDownToPowerOfTwo64(ScratchSize),
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                            [],
@@ -23730,7 +23730,7 @@ begin
     FreeAndNil(fRaytracingVulkanTLASBLASInstancesBuffer);
 
     fRaytracingVulkanTLASBLASInstancesBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                     Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR),
+                                                                     RoundDownToPowerOfTwo64(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR)),
                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                      [],
@@ -23782,10 +23782,12 @@ begin
      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
     end;
 
+    fRaytracingTLAS.Finalize;
+
     FreeAndNil(fRaytracingVulkanTLASBuffer);
 
     fRaytracingVulkanTLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                        Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize),
+                                                        RoundDownToPowerOfTwo64(Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                         [],
@@ -23803,10 +23805,12 @@ begin
                                                        );
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanTLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBuffer');
 
+    fRaytracingTLAS.Initialize(fRaytracingVulkanTLASBuffer,0);
+
    end;
 
    if (not assigned(fRaytracingVulkanTLASScratchBuffer)) or
-      (fRaytracingVulkanTLASScratchBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.buildScratchSize)) then begin
+      (fRaytracingVulkanTLASScratchBuffer.Size<Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))) then begin
 
     if assigned(pvApplication) then begin
      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
@@ -23815,7 +23819,7 @@ begin
     FreeAndNil(fRaytracingVulkanTLASScratchBuffer);
 
     fRaytracingVulkanTLASScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                               Max(1,fRaytracingTLAS.BuildSizesInfo.buildScratchSize),
+                                                               RoundDownToPowerOfTwo64(Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))),
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                [],
@@ -23834,6 +23838,14 @@ begin
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanTLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASScratchBuffer');
 
    end;
+
+   fRaytracingTLAS.Build(aCommandBuffer,
+                         fRaytracingVulkanTLASScratchBuffer,
+                         0,
+                         false,
+                         nil);
+
+   TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
 
   finally
    fRaytracingLock.Release;
