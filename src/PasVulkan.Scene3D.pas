@@ -23559,7 +23559,7 @@ begin
                                                            0,
                                                            [],
                                                            0,
-                                                           pvAllocationGroupIDScene3DDynamic
+                                                           pvAllocationGroupIDScene3DRaytracingScratch
                                                           );
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanScratchBuffer');
 
