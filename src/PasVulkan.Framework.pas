@@ -9511,22 +9511,22 @@ begin
   FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
   DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
   DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
-  if length(aColor)<1 then begin
+  if length(aColor)>0 then begin
    DebugUtilsLabelEXT.color[0]:=aColor[0];
   end else begin
    DebugUtilsLabelEXT.color[0]:=1.0;
   end;
-  if length(aColor)<2 then begin
+  if length(aColor)>1 then begin
    DebugUtilsLabelEXT.color[1]:=aColor[1];
   end else begin
    DebugUtilsLabelEXT.color[1]:=1.0;
   end;
-  if length(aColor)<3 then begin
+  if length(aColor)>2 then begin
    DebugUtilsLabelEXT.color[2]:=aColor[2];
   end else begin
    DebugUtilsLabelEXT.color[2]:=1.0;
   end;
-  if length(aColor)<4 then begin
+  if length(aColor)>3 then begin
    DebugUtilsLabelEXT.color[3]:=aColor[3];
   end else begin
    DebugUtilsLabelEXT.color[3]:=1.0;
@@ -9544,22 +9544,22 @@ begin
   FillChar(DebugUtilsLabelEXT,SizeOf(TVkDebugUtilsLabelEXT),#0);
   DebugUtilsLabelEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
   DebugUtilsLabelEXT.pLabelName:=PAnsiChar(aLabelName);
-  if length(aColor)<1 then begin
+  if length(aColor)>0 then begin
    DebugUtilsLabelEXT.color[0]:=aColor[0];
   end else begin
    DebugUtilsLabelEXT.color[0]:=1.0;
   end;
-  if length(aColor)<2 then begin
+  if length(aColor)>1 then begin
    DebugUtilsLabelEXT.color[1]:=aColor[1];
   end else begin
    DebugUtilsLabelEXT.color[1]:=1.0;
   end;
-  if length(aColor)<3 then begin
+  if length(aColor)>2 then begin
    DebugUtilsLabelEXT.color[2]:=aColor[2];
   end else begin
    DebugUtilsLabelEXT.color[2]:=1.0;
   end;
-  if length(aColor)<4 then begin
+  if length(aColor)>3 then begin
    DebugUtilsLabelEXT.color[3]:=aColor[3];
   end else begin
    DebugUtilsLabelEXT.color[3]:=1.0;
