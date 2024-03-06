@@ -2969,6 +2969,7 @@ type EpvScene3D=class(Exception);
        fLoadLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
        fVulkanPipelineCache:TpvVulkanPipelineCache;
+       fMeshCompute:TObject;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
        fRendererInstanceIDManager:TRendererInstanceIDManager;
@@ -20764,6 +20765,12 @@ begin
   fGlobalVulkanDescriptorSetLayout.Initialize;
   fVulkanDevice.DebugUtils.SetObjectName(fGlobalVulkanDescriptorSetLayout.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3D.fGlobalVulkanDescriptorSetLayout');
 
+  fMeshCompute:=TpvScene3DMeshCompute.Create(self);
+
+ end else begin
+
+  fMeshCompute:=nil;
+
  end;
 
  if assigned(fVulkanDevice) then begin
@@ -20810,6 +20817,8 @@ var Index,InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
     FaceCullingMode:TFaceCullingMode;
     CurrentObject:TObject;
 begin
+
+ FreeAndNil(fMeshCompute);
 
  for Index:=0 to fFreeQueue.Count-1 do begin
   FreeAndNil(fFreeQueue.ItemArray[Index].Data);

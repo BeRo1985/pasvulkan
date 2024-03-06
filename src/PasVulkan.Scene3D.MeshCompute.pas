@@ -85,8 +85,6 @@ type { TpvScene3DMeshCompute }
       public
        constructor Create(const aSceneInstance:TpvObject); reintroduce;
        destructor Destroy; override;
-       procedure AcquireResources;
-       procedure ReleaseResources;
        procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
      end;
 
@@ -97,20 +95,13 @@ uses PasVulkan.Scene3D;
 { TpvScene3DMeshCompute }
 
 constructor TpvScene3DMeshCompute.Create(const aSceneInstance:TpvObject);
-begin
- inherited Create;
- fSceneInstance:=aSceneInstance;
-end;
-
-destructor TpvScene3DMeshCompute.Destroy;
-begin
- inherited Destroy;
-end;
-
-procedure TpvScene3DMeshCompute.AcquireResources;
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
+
+ inherited Create;
+
+ fSceneInstance:=aSceneInstance;
 
  if TpvScene3D(fSceneInstance).HardwareRaytracingSupport then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_comp.spv');
@@ -151,7 +142,7 @@ begin
 
 end;
 
-procedure TpvScene3DMeshCompute.ReleaseResources;
+destructor TpvScene3DMeshCompute.Destroy;
 var Index:TpvSizeInt;
 begin
 
@@ -166,6 +157,8 @@ begin
  FreeAndNil(fVulkanPipelineShaderStageCompute);
 
  FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
 
 end;
 
