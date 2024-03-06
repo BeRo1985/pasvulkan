@@ -2968,6 +2968,7 @@ type EpvScene3D=class(Exception);
        fLock:TPasMPSpinLock;
        fLoadLock:TPasMPSpinLock;
        fVulkanDevice:TpvVulkanDevice;
+       fVulkanPipelineCache:TpvVulkanPipelineCache;
        fUploaded:TPasMPBool32;
        fInUpload:TPasMPBool32;
        fRendererInstanceIDManager:TRendererInstanceIDManager;
@@ -3199,7 +3200,7 @@ type EpvScene3D=class(Exception);
                                        out aPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                                        out aFaceCullingMode:TpvScene3D.TFaceCullingMode); static;
       public
-       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames); reintroduce;
+       constructor Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource=nil;const aMetaResource:TpvMetaResource=nil;const aVulkanDevice:TpvVulkanDevice=nil;const aUseBufferDeviceAddress:boolean=true;const aCountInFlightFrames:TpvSizeInt=MaxInFlightFrames;const aVulkanPipelineCache:TpvVulkanPipelineCache=nil); reintroduce;
        destructor Destroy; override;
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure Upload;
@@ -3344,6 +3345,7 @@ type EpvScene3D=class(Exception);
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
        property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
        property PlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetCullDescriptorSetLayout;
@@ -3364,7 +3366,8 @@ type EpvScene3D=class(Exception);
 implementation
 
 uses PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Scene3D.Planet;
+     PasVulkan.Scene3D.Planet,
+     PasVulkan.Scene3D.MeshCompute;
 
 const FlushUpdateData=false;
 
@@ -20265,7 +20268,7 @@ end;
 
 { TpvScene3D }
 
-constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt);
+constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache);
 var Index,InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TPrimitiveTopology;
@@ -20282,6 +20285,14 @@ begin
   fVulkanDevice:=pvApplication.VulkanDevice;
  end else begin
   fVulkanDevice:=nil;
+ end;
+
+ if assigned(aVulkanPipelineCache) then begin
+  fVulkanPipelineCache:=aVulkanPipelineCache;
+ end else if assigned(pvApplication) then begin
+  fVulkanPipelineCache:=pvApplication.VulkanPipelineCache;
+ end else begin
+  fVulkanPipelineCache:=nil;
  end;
 
  fRendererInstanceIDManager:=TRendererInstanceIDManager.Create;
