@@ -2895,6 +2895,7 @@ type EpvScene3D=class(Exception);
               fDynamicGeometry:Boolean;
               fGeometryChanged:Boolean;
               fDirty:TPasMPBool32;
+              fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
@@ -5229,6 +5230,8 @@ begin
 
  fDirty:=false;
 
+ fUpdateCounter:=0;
+
  fUpdateDirty:=false;
 
 end;
@@ -5331,7 +5334,10 @@ begin
 
      fDirty:=true;
 
-     fUpdateDirty:=true;
+     // Do a full rebuild every 64 updates, to avoid too many rebuilds, but with a little bit of fake randomness on base of the 
+     // pointer address to avoid all BLASes being updated at the same time, which would cause a performance hit.
+     inc(fUpdateCounter);
+     fUpdateDirty:=((fUpdateCounter+(TpvPtrUInt(self)*39157)) and 63)<>0;
 
     end;
 
