@@ -3107,12 +3107,15 @@ type EpvScene3D=class(Exception);
        fRaytracingBLASGeometryInfoBufferItems:TpvRaytracingBLASGeometryInfoBufferItems;
        fRaytracingBLASGeometryInfoOffsetBufferItems:TpvRaytracingBLASGeometryInfoOffsetBufferItems;
        fRaytracingAccelerationStructureBuildQueue:TpvRaytracingAccelerationStructureBuildQueue;
-       fRaytracingVulkanEmptyVertexBuffer:TpvVulkanBuffer;
-       fRaytracingVulkanEmptyIndexBuffer:TpvVulkanBuffer;
-       fRaytracingVulkanScratchBuffer:TpvVulkanBuffer;
-       fRaytracingVulkanTLASScratchBuffer:TpvVulkanBuffer;
-       fRaytracingVulkanTLASBLASInstancesBuffer:TpvVulkanBuffer;
-       fRaytracingVulkanTLASBuffer:TpvVulkanBuffer;
+       fRaytracingEmptyVertexBuffer:TpvVulkanBuffer;
+       fRaytracingEmptyIndexBuffer:TpvVulkanBuffer;
+       fRaytracingEmptyBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+       fRaytracingEmptyBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+       fRaytracingEmptyBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+       fRaytracingBLASScratchBuffer:TpvVulkanBuffer;
+       fRaytracingTLASScratchBuffer:TpvVulkanBuffer;
+       fRaytracingTLASBLASInstancesBuffer:TpvVulkanBuffer;
+       fRaytracingTLASBuffer:TpvVulkanBuffer;
        fRaytracingTLAS:TpvRaytracingTopLevelAccelerationStructure;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
@@ -20364,17 +20367,23 @@ begin
   fRaytracingAccelerationStructureBuildQueue:=nil;
  end;
 
- fRaytracingVulkanEmptyVertexBuffer:=nil;
+ fRaytracingEmptyVertexBuffer:=nil;
 
- fRaytracingVulkanEmptyIndexBuffer:=nil;
+ fRaytracingEmptyIndexBuffer:=nil;
 
- fRaytracingVulkanScratchBuffer:=nil;
+ fRaytracingEmptyBLASGeometry:=nil;
 
- fRaytracingVulkanTLASScratchBuffer:=nil;
+ fRaytracingEmptyBLAS:=nil;
 
- fRaytracingVulkanTLASBLASInstancesBuffer:=nil;
+ fRaytracingEmptyBLASInstance:=nil;
 
- fRaytracingVulkanTLASBuffer:=nil;
+ fRaytracingBLASScratchBuffer:=nil;
+
+ fRaytracingTLASScratchBuffer:=nil;
+
+ fRaytracingTLASBLASInstancesBuffer:=nil;
+
+ fRaytracingTLASBuffer:=nil;
 
  fRaytracingTLAS:=nil;
 
@@ -21006,17 +21015,23 @@ begin
 
  FreeAndNil(fRaytracingTLAS);
 
- FreeAndNil(fRaytracingVulkanTLASScratchBuffer);
+ FreeAndNil(fRaytracingTLASScratchBuffer);
 
- FreeAndNil(fRaytracingVulkanTLASBLASInstancesBuffer);
+ FreeAndNil(fRaytracingTLASBLASInstancesBuffer);
 
- FreeAndNil(fRaytracingVulkanTLASBuffer);
+ FreeAndNil(fRaytracingTLASBuffer);
 
- FreeAndNil(fRaytracingVulkanScratchBuffer);
+ FreeAndNil(fRaytracingBLASScratchBuffer);
 
- FreeAndNil(fRaytracingVulkanEmptyVertexBuffer);
+ FreeAndNil(fRaytracingEmptyBLASInstance);
 
- FreeAndNil(fRaytracingVulkanEmptyIndexBuffer);
+ FreeAndNil(fRaytracingEmptyBLAS);
+
+ FreeAndNil(fRaytracingEmptyBLASGeometry);
+
+ FreeAndNil(fRaytracingEmptyVertexBuffer);
+
+ FreeAndNil(fRaytracingEmptyIndexBuffer);
 
  FreeAndNil(fRaytracingAccelerationStructureBuildQueue);
 
@@ -23436,67 +23451,109 @@ begin
    // no raytracing group instance nodes.                                      //
    //////////////////////////////////////////////////////////////////////////////
 
-   if not assigned(fRaytracingVulkanEmptyVertexBuffer) then begin
+   if not assigned(fRaytracingEmptyVertexBuffer) then begin
 
-    fRaytracingVulkanEmptyVertexBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                               SizeOf(EmptyVertex),
-                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                               [],
-                                                               0,
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               [],
-                                                               0,
-                                                               pvAllocationGroupIDScene3DRaytracing
-                                                              );
-    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanEmptyVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanEmptyVertexBuffer');
+    fRaytracingEmptyVertexBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                         SizeOf(EmptyVertex),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         0,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DRaytracing
+                                                        );
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingEmptyVertexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanEmptyVertexBuffer');
 
     fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
                                        fVulkanFrameGraphStagingCommandBuffer,
                                        fVulkanFrameGraphStagingFence,
                                        EmptyVertex,
-                                       fRaytracingVulkanEmptyVertexBuffer,
+                                       fRaytracingEmptyVertexBuffer,
                                        0,
                                        SizeOf(EmptyVertex));
 
    end;
 
-   if not assigned(fRaytracingVulkanEmptyIndexBuffer) then begin
+   if not assigned(fRaytracingEmptyIndexBuffer) then begin
 
-    fRaytracingVulkanEmptyIndexBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                               SizeOf(EmptyIndices),
-                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
-                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                               [],
-                                                               0,
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               [],
-                                                               0,
-                                                               pvAllocationGroupIDScene3DRaytracing
-                                                              );
-    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanEmptyIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanEmptyIndexBuffer');
+    fRaytracingEmptyIndexBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                        SizeOf(EmptyIndices),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DRaytracing
+                                                       );
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingEmptyIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanEmptyIndexBuffer');
 
     fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
                                        fVulkanFrameGraphStagingCommandBuffer,
                                        fVulkanFrameGraphStagingFence,
                                        EmptyIndices,
-                                       fRaytracingVulkanEmptyIndexBuffer,
+                                       fRaytracingEmptyIndexBuffer,
                                        0,
                                        SizeOf(EmptyIndices));
 
    end;
+
+   {
+    fRaytracingEmptyBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+    fRaytracingEmptyBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+    fRaytracingEmptyBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+   }
+
+   if not assigned(fRaytracingEmptyBLASGeometry) then begin
+
+    fRaytracingEmptyBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fVulkanDevice);
+    fRaytracingEmptyBLASGeometry.AddTriangles(fRaytracingEmptyVertexBuffer,
+                                              0,
+                                              3,
+                                              SizeOf(TpvVector4),
+                                              fRaytracingEmptyIndexBuffer,
+                                              0,
+                                              3,
+                                              true,
+                                              nil,
+                                              0);
+
+   end;
+
+   if not assigned(fRaytracingEmptyBLAS) then begin
+
+    fRaytracingEmptyBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fVulkanDevice,
+                                                                               fRaytracingEmptyBLASGeometry,
+                                                                               false);
+   end;
+
+   if not assigned(fRaytracingEmptyBLASInstance) then begin
+
+    fRaytracingEmptyBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fVulkanDevice,
+                                                                                               TpvMatrix4x4.Identity,
+                                                                                               0,
+                                                                                               $ff,
+                                                                                               0,
+                                                                                               0,
+                                                                                               fRaytracingEmptyBLAS);
+
+   end;
+
 
    //////////////////////////////////////////////////////////////////////////////
    // Remove old raytracing group instance nodes                               //
@@ -23669,17 +23726,17 @@ begin
    // Allocate or grow or shrink scratch buffer                                //
    //////////////////////////////////////////////////////////////////////////////
 
-   if (not assigned(fRaytracingVulkanScratchBuffer)) or // Allocate when there is no allocated scratch buffer then
-      (fRaytracingVulkanScratchBuffer.Size<ScratchSize) or // Grow when it would be needed
-      ((ScratchSize>0) and (ScratchSize<(fRaytracingVulkanScratchBuffer.Size shr 1))) then begin // Shrink when it would be useful (when it could be smaller by at least than the half)
+   if (not assigned(fRaytracingBLASScratchBuffer)) or // Allocate when there is no allocated scratch buffer then
+      (fRaytracingBLASScratchBuffer.Size<ScratchSize) or // Grow when it would be needed
+      ((ScratchSize>0) and (ScratchSize<(fRaytracingBLASScratchBuffer.Size shr 1))) then begin // Shrink when it would be useful (when it could be smaller by at least than the half)
 
     if assigned(pvApplication) then begin
      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
     end;
 
-    FreeAndNil(fRaytracingVulkanScratchBuffer);
+    FreeAndNil(fRaytracingBLASScratchBuffer);
 
-    fRaytracingVulkanScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+    fRaytracingBLASScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                            RoundDownToPowerOfTwo64(ScratchSize),
                                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -23696,7 +23753,7 @@ begin
                                                            0,
                                                            pvAllocationGroupIDScene3DRaytracingScratch
                                                           );
-    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanScratchBuffer');
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingBLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanScratchBuffer');
 
    end;
 
@@ -23795,7 +23852,7 @@ begin
          ScratchPass:=BLASGroup^.fScratchPass;
         end;
         BLASGroup^.fBLAS.Build(aCommandBuffer,
-                               fRaytracingVulkanScratchBuffer,
+                               fRaytracingBLASScratchBuffer,
                                BLASGroup^.fScratchOffset,
                                RaytracingGroupInstanceNode.fUpdateDirty,
                                nil,
@@ -23822,16 +23879,16 @@ begin
     fRaytracingAccelerationStructureInstanceList.Add(fRaytracingBLASInstances[InstanceIndex].AccelerationStructureInstance);
    end;
 
-   if (not assigned(fRaytracingVulkanTLASBLASInstancesBuffer)) or
-      (fRaytracingVulkanTLASBLASInstancesBuffer.Size<(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR))) then begin
+   if (not assigned(fRaytracingTLASBLASInstancesBuffer)) or
+      (fRaytracingTLASBLASInstancesBuffer.Size<(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR))) then begin
 
     if assigned(pvApplication) then begin
      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
     end;
 
-    FreeAndNil(fRaytracingVulkanTLASBLASInstancesBuffer);
+    FreeAndNil(fRaytracingTLASBLASInstancesBuffer);
 
-    fRaytracingVulkanTLASBLASInstancesBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+    fRaytracingTLASBLASInstancesBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                      RoundDownToPowerOfTwo64(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR)),
                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -23848,7 +23905,7 @@ begin
                                                                      0,
                                                                      pvAllocationGroupIDScene3DRaytracingScratch
                                                                     );
-    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanTLASBLASInstancesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBLASInstancesBuffer');
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBLASInstancesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBLASInstancesBuffer');
 
    end;
 
@@ -23857,7 +23914,7 @@ begin
                                        fVulkanFrameGraphStagingCommandBuffer,
                                        fVulkanFrameGraphStagingFence,
                                        fRaytracingAccelerationStructureInstanceList.ItemArray[0],
-                                       fRaytracingVulkanTLASBLASInstancesBuffer,
+                                       fRaytracingTLASBLASInstancesBuffer,
                                        0,
                                        fRaytracingAccelerationStructureInstanceList.Count*SizeOf(TVkAccelerationStructureInstanceKHR));
    end;
@@ -23868,14 +23925,14 @@ begin
 
    if assigned(fRaytracingTLAS) then begin
 
-    fRaytracingTLAS.Update(fRaytracingVulkanTLASBLASInstancesBuffer.DeviceAddress,
+    fRaytracingTLAS.Update(fRaytracingTLASBLASInstancesBuffer.DeviceAddress,
                            fRaytracingAccelerationStructureInstanceList.Count,
                            false);
 
    end else begin
 
     fRaytracingTLAS:=TpvRaytracingTopLevelAccelerationStructure.Create(fVulkanDevice,
-                                                                       fRaytracingVulkanTLASBLASInstancesBuffer.DeviceAddress,
+                                                                       fRaytracingTLASBLASInstancesBuffer.DeviceAddress,
                                                                        fRaytracingAccelerationStructureInstanceList.Count,
                                                                        false);
 
@@ -23885,8 +23942,8 @@ begin
    // Allocate or grow TLAS buffer                                            //
    /////////////////////////////////////////////////////////////////////////////
 
-   if (not assigned(fRaytracingVulkanTLASBuffer)) or
-      (fRaytracingVulkanTLASBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)) then begin
+   if (not assigned(fRaytracingTLASBuffer)) or
+      (fRaytracingTLASBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)) then begin
 
     if assigned(pvApplication) then begin
      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
@@ -23894,9 +23951,9 @@ begin
 
     fRaytracingTLAS.Finalize;
 
-    FreeAndNil(fRaytracingVulkanTLASBuffer);
+    FreeAndNil(fRaytracingTLASBuffer);
 
-    fRaytracingVulkanTLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+    fRaytracingTLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                         RoundDownToPowerOfTwo64(Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -23913,9 +23970,9 @@ begin
                                                         0,
                                                         pvAllocationGroupIDScene3DRaytracingTLAS
                                                        );
-    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanTLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBuffer');
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBuffer');
 
-    fRaytracingTLAS.Initialize(fRaytracingVulkanTLASBuffer,0);
+    fRaytracingTLAS.Initialize(fRaytracingTLASBuffer,0);
 
    end;
 
@@ -23923,16 +23980,16 @@ begin
    // Allocate or grow TLAS scratch buffer                                    //
    /////////////////////////////////////////////////////////////////////////////
 
-   if (not assigned(fRaytracingVulkanTLASScratchBuffer)) or
-      (fRaytracingVulkanTLASScratchBuffer.Size<Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))) then begin
+   if (not assigned(fRaytracingTLASScratchBuffer)) or
+      (fRaytracingTLASScratchBuffer.Size<Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))) then begin
 
     if assigned(pvApplication) then begin
      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
     end;
 
-    FreeAndNil(fRaytracingVulkanTLASScratchBuffer);
+    FreeAndNil(fRaytracingTLASScratchBuffer);
 
-    fRaytracingVulkanTLASScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+    fRaytracingTLASScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                RoundDownToPowerOfTwo64(Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))),
                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -23949,7 +24006,7 @@ begin
                                                                0,
                                                                pvAllocationGroupIDScene3DRaytracingScratch
                                                               );
-    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanTLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASScratchBuffer');
+    fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASScratchBuffer');
 
    end;
 
@@ -23958,7 +24015,7 @@ begin
    /////////////////////////////////////////////////////////////////////////////
 
    fRaytracingTLAS.Build(aCommandBuffer,
-                         fRaytracingVulkanTLASScratchBuffer,
+                         fRaytracingTLASScratchBuffer,
                          0,
                          false,
                          nil);
