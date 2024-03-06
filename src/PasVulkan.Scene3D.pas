@@ -23446,6 +23446,16 @@ begin
     MustWaitForPreviousFrame:=true;
    end;
 
+   if not (assigned(fRaytracingEmptyVertexBuffer) and
+           assigned(fRaytracingEmptyIndexBuffer) and
+           assigned(fRaytracingEmptyBLASScratchBuffer) and
+           assigned(fRaytracingEmptyBLASBuffer) and
+           assigned(fRaytracingEmptyBLASGeometry) and
+           assigned(fRaytracingEmptyBLAS) and
+           assigned(fRaytracingEmptyBLASInstance)) then begin
+    MustWaitForPreviousFrame:=true;
+   end;
+
    if MustWaitForPreviousFrame and assigned(pvApplication) then begin
     // Wait for previous frame, when there are changes in the BLAS list, since it is necessary at Vulkan, that buffers are not in use,
     // when they are destroyed. Therefore we should wait for the previous frame for to be sure, that the buffers are not in use anymore. 
@@ -23548,6 +23558,8 @@ begin
 
    if not assigned(fRaytracingEmptyBLASInstance) then begin
 
+    BLASListChanged:=true;
+
     fRaytracingEmptyBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fVulkanDevice,
                                                                                                TpvMatrix4x4.Identity,
                                                                                                0,
@@ -23612,6 +23624,14 @@ begin
 
     fRaytracingEmptyBLAS.Initialize(fRaytracingEmptyBLASBuffer,
                                     0);
+
+    fRaytracingEmptyBLAS.Build(aCommandBuffer,
+                               fRaytracingEmptyBLASScratchBuffer,
+                               0,
+                               false,
+                               nil);
+
+    TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
 
    end;
 
@@ -23680,6 +23700,12 @@ begin
 
     CountBLASInstances:=0;
     CountBLASGeometries:=0;
+
+    if assigned(fRaytracingEmptyBLASInstance) then begin
+     inc(CountBLASInstances);
+     inc(CountBLASGeometries);
+    end;
+
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
@@ -23702,6 +23728,22 @@ begin
 
     RaytracingBLASGeometryInfoBufferItemIndex:=0;
     RaytracingBLASGeometryInfoOffsetBufferItemIndex:=0;
+
+    if assigned(fRaytracingEmptyBLASInstance) then begin
+
+     fRaytracingBLASInstances.Add(fRaytracingEmptyBLASInstance);
+
+     fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
+     inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+
+     fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TVkUInt32($ffffffff),
+                                                                                                                                       0,
+                                                                                                                                       0,
+                                                                                                                                       0);
+     inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+
+    end;
+
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
