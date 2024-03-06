@@ -638,6 +638,8 @@ begin
 
  fScene3D.UploadFrame(InFlightFrameIndex);
 
+ fScene3D.ProcessFrame(InFlightFrameIndex,aWaitSemaphore,nil);
+
  fRendererInstance.DrawFrame(pvApplication.SwapChainImageIndex,
                              pvApplication.DrawInFlightFrameIndex,
                              pvApplication.DrawFrameCounter,

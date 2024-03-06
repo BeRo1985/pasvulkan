@@ -3014,7 +3014,11 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets;
+       fVulkanProcessFrameQueue:TpvVulkanQueue;
+       fVulkanProcessFrameCommandPool:TpvVulkanCommandPool;
+       fVulkanProcessFrameCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
        fVulkanBeginFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
+       fVulkanProcessFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
        fVulkanEndFrameSemaphores:array[0..MaxInFlightFrames-1] of TpvVulkanSemaphore;
 {      fVulkanLightItemsStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fVulkanLightTreeStagingBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
@@ -3211,6 +3215,7 @@ type EpvScene3D=class(Exception);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
+       procedure ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
@@ -20774,10 +20779,20 @@ begin
  end;
 
  if assigned(fVulkanDevice) then begin
+
   for Index:=0 to fCountInFlightFrames-1 do begin
    fVulkanBeginFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+   fVulkanProcessFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
    fVulkanEndFrameSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
   end;
+
+  fVulkanProcessFrameQueue:=fVulkanDevice.UniversalQueue;
+
+  fVulkanProcessFrameCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,fVulkanDevice.UniversalQueue.QueueFamilyIndex,TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   fVulkanProcessFrameCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanProcessFrameCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  end;
+
  end;
 
  fLightAABBTree:=TpvBVHDynamicAABBTree.Create;
@@ -20835,8 +20850,16 @@ begin
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fVulkanBeginFrameSemaphores[Index]);
+  FreeAndNil(fVulkanProcessFrameSemaphores[Index]);
   FreeAndNil(fVulkanEndFrameSemaphores[Index]);
  end;
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fVulkanProcessFrameCommandBuffers[Index]);
+ end;
+
+ FreeAndNil(fVulkanProcessFrameCommandPool);
+
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
@@ -22485,7 +22508,7 @@ begin
    TpvScene3DPlanets(fPlanets).Lock.Release;
   end;
 
-  if assigned(aWaitFence) then begin
+ if assigned(aWaitFence) then begin
 
    FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
    SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -22508,6 +22531,75 @@ begin
    fVulkanDevice.UniversalQueue.Submit(1,@SubmitInfo,aWaitFence);
 
    aWaitSemaphore:=fVulkanBeginFrameSemaphores[aInFlightFrameIndex];
+
+  end;
+
+ end;
+
+end;
+
+procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
+var PlanetIndex:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    SubmitInfo:TVkSubmitInfo;
+    WaitDstStageFlags:TVkPipelineStageFlags;
+    CommandBuffer:TpvVulkanCommandBuffer;
+    CommandBufferHandle:TVkCommandBuffer;
+begin
+
+ if assigned(fVulkanDevice) then begin
+
+  if assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
+   fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Reset;
+  end;
+
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  try
+   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+    if Planet.Ready then begin
+     //Planet.ProcessFrame(aInFlightFrameIndex,aWaitSemaphore,nil);
+    end;
+   end;
+  finally
+   TpvScene3DPlanets(fPlanets).Lock.Release;
+  end;
+
+  begin
+
+   CommandBuffer:=fVulkanProcessFrameCommandBuffers[aInFlightFrameIndex];
+
+   CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+   TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex);
+
+   CommandBuffer.EndRecording;
+
+   CommandBufferHandle:=CommandBuffer.Handle;
+
+   FillChar(SubmitInfo,SizeOf(TVkSubmitInfo),#0);
+   SubmitInfo.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   SubmitInfo.pNext:=nil;
+   if assigned(aWaitSemaphore) then begin
+    WaitDstStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) or
+                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    SubmitInfo.waitSemaphoreCount:=1;
+    SubmitInfo.pWaitSemaphores:=@aWaitSemaphore.Handle;
+    SubmitInfo.pWaitDstStageMask:=@WaitDstStageFlags;
+   end else begin
+    SubmitInfo.waitSemaphoreCount:=0;
+    SubmitInfo.pWaitSemaphores:=nil;
+    SubmitInfo.pWaitDstStageMask:=nil;
+   end;
+   SubmitInfo.commandBufferCount:=1;
+   SubmitInfo.pCommandBuffers:=@CommandBufferHandle;
+   SubmitInfo.signalSemaphoreCount:=1;
+   SubmitInfo.pSignalSemaphores:=@fVulkanProcessFrameSemaphores[aInFlightFrameIndex].Handle;
+
+   fVulkanDevice.UniversalQueue.Submit(1,@SubmitInfo,aWaitFence);
+
+   aWaitSemaphore:=fVulkanProcessFrameSemaphores[aInFlightFrameIndex];
 
   end;
 
