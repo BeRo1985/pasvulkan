@@ -23813,6 +23813,8 @@ begin
    end;
 
    /////////////////////////////////////////////////////////////////////////////
+   // Update BLAS instances for TLAS                                          //
+   /////////////////////////////////////////////////////////////////////////////
 
    fRaytracingAccelerationStructureInstanceList.ClearNoFree;
    for InstanceIndex:=0 to fRaytracingBLASInstances.Count-1 do begin
@@ -23859,6 +23861,10 @@ begin
                                        fRaytracingAccelerationStructureInstanceList.Count*SizeOf(TVkAccelerationStructureInstanceKHR));
    end;
 
+   /////////////////////////////////////////////////////////////////////////////
+   // Create or update TLAS                                                   //
+   /////////////////////////////////////////////////////////////////////////////
+
    if assigned(fRaytracingTLAS) then begin
 
     fRaytracingTLAS.Update(fRaytracingVulkanTLASBLASInstancesBuffer.DeviceAddress,
@@ -23873,6 +23879,10 @@ begin
                                                                        false);
 
    end;
+
+   /////////////////////////////////////////////////////////////////////////////
+   // Allocate or grow TLAS buffer                                            //
+   /////////////////////////////////////////////////////////////////////////////
 
    if (not assigned(fRaytracingVulkanTLASBuffer)) or
       (fRaytracingVulkanTLASBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)) then begin
@@ -23908,6 +23918,10 @@ begin
 
    end;
 
+   /////////////////////////////////////////////////////////////////////////////
+   // Allocate or grow TLAS scratch buffer                                    //
+   /////////////////////////////////////////////////////////////////////////////
+
    if (not assigned(fRaytracingVulkanTLASScratchBuffer)) or
       (fRaytracingVulkanTLASScratchBuffer.Size<Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))) then begin
 
@@ -23937,6 +23951,10 @@ begin
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingVulkanTLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASScratchBuffer');
 
    end;
+
+   /////////////////////////////////////////////////////////////////////////////
+   // Build TLAS                                                              //
+   /////////////////////////////////////////////////////////////////////////////
 
    fRaytracingTLAS.Build(aCommandBuffer,
                          fRaytracingVulkanTLASScratchBuffer,
