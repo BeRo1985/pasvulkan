@@ -2866,7 +2866,6 @@ type EpvScene3D=class(Exception);
                      fBLASBuffer:TpvVulkanBuffer;
                      fMaterialIDs:TUInt32Array;
                      fIndexOffsets:TUInt32Array;
-                     fAccelerationStructureOffset:TVkDeviceSize;
                      fAccelerationStructureSize:TVkDeviceSize;
                      fScratchOffset:TVkDeviceSize;
                      fScratchPass:TpvUInt64;
@@ -2877,7 +2876,6 @@ type EpvScene3D=class(Exception);
                      property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
                      property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
                      property BLASInstances:TpvRaytracingBottomLevelAccelerationStructureInstanceList read fBLASInstances;
-                     property AccelerationStructureOffset:TVkDeviceSize read fAccelerationStructureOffset;
                      property ScratchOffset:TVkDeviceSize read fScratchOffset;
                    end;
                    PBLASGroup=^TBLASGroup;
@@ -5172,7 +5170,7 @@ begin
 
  fIndexOffsets.Initialize;
 
- fAccelerationStructureOffset:=High(TVkDeviceSize);
+//AccelerationStructureOffset:=High(TVkDeviceSize);
 
  fAccelerationStructureSize:=0;
 
@@ -5256,6 +5254,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
+    AllocationGroupID:TpvUInt64;
 begin
 
  result:=false;
@@ -5273,6 +5272,12 @@ begin
   MustUpdateAll:=true;
  end else begin
   MustUpdateAll:=false;
+ end;
+
+ if fDynamicGeometry then begin
+  AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASDynamic;
+ end else begin
+  AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
  end;
 
  for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
@@ -5372,8 +5377,44 @@ begin
     BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
                                                                            BLASGroup^.fBLASGeometry,
                                                                            fDynamicGeometry);
+    BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
     fDirty:=true;
     fUpdateDirty:=false;
+   end;
+
+   if ((not assigned(BLASGroup^.fBLASBuffer)) or
+       (BLASGroup^.fBLASBuffer.Size<BLASGroup^.fAccelerationStructureSize)) and
+      (BLASGroup^.fAccelerationStructureSize>0) then begin
+
+    if assigned(pvApplication) then begin
+     pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+    end;
+
+    BLASGroup^.fBLAS.Finalize;
+
+    FreeAndNil(BLASGroup^.fBLASBuffer);
+
+    BLASGroup^.fBLASBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                   BLASGroup^.fAccelerationStructureSize,
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                   [],
+                                                   0,
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   [],
+                                                   256,
+                                                   AllocationGroupID
+                                                  );
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(BLASGroup^.fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanBLASBuffer');
+
+    BLASGroup^.fBLAS.Initialize(BLASGroup^.fBLASBuffer,0);
+
    end;
 
    if not assigned(BLASGroup^.fBLASInstances) then begin
@@ -22580,7 +22621,7 @@ begin
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex);
 
    if fHardwareRaytracingSupport then begin
-    //UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
+    UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
    end;
 
    CommandBuffer.EndRecording;
@@ -23541,12 +23582,11 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
-    RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+//  RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
-    BLASAccelerationStructureSize:TVkDeviceSize;
     ScratchSize,ScratchPassSize:TVkDeviceSize;
-    ScratchPass,AllocationGroupID:TpvUInt64;
+    ScratchPass:TpvUInt64;
 begin
 
  if fHardwareRaytracingSupport then begin
@@ -23918,7 +23958,7 @@ begin
 
    if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
-    BLASAccelerationStructureSize:=0;
+//  BLASAccelerationStructureSize:=0;
 
     ScratchPassSize:=0;
 
@@ -23935,10 +23975,6 @@ begin
        BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
 
        if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) then begin
-
-        BLASGroup^.fAccelerationStructureOffset:=BLASAccelerationStructureSize;
-        BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
-        inc(BLASAccelerationStructureSize,BLASGroup^.fAccelerationStructureSize);
 
         BLASGroup^.fScratchOffset:=ScratchPassSize;
         BLASGroup^.fScratchPass:=ScratchPass;
@@ -23998,73 +24034,6 @@ begin
                                                          pvAllocationGroupIDScene3DRaytracingScratch
                                                         );
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingBLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanScratchBuffer');
-
-   end;
-
-   /////////////////////////////////////////////////////////////////////////////
-   // Initialize acceleration structure buffers when nessesary                //
-   /////////////////////////////////////////////////////////////////////////////
-
-   if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
-
-    for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
-
-     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
-     if assigned(RaytracingGroupInstanceNode) then begin
-
-      if RaytracingGroupInstanceNode.fDynamicGeometry then begin
-       AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASDynamic;
-      end else begin
-       AllocationGroupID:=pvAllocationGroupIDScene3DRaytracingBLASStatic;
-      end;
-
-      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
-
-       BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
-       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) then begin
-
-        if ((not assigned(BLASGroup^.fBLASBuffer)) or
-            (BLASGroup^.fBLASBuffer.Size<BLASGroup^.fAccelerationStructureSize)) and
-           (BLASGroup^.fAccelerationStructureSize>0) then begin
-
-         if assigned(pvApplication) then begin
-          pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
-         end;
-
-         BLASGroup^.fBLAS.Finalize;
-
-         FreeAndNil(BLASGroup^.fBLASBuffer);
-
-         BLASGroup^.fBLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                        BLASGroup^.fAccelerationStructureSize,
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                        [],
-                                                        0,
-                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        0,
-                                                        [],
-                                                        256,
-                                                        AllocationGroupID
-                                                       );
-         fVulkanDevice.DebugUtils.SetObjectName(BLASGroup^.fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanBLASBuffer');
-
-         BLASGroup^.fBLAS.Initialize(BLASGroup^.fBLASBuffer,0);
-
-        end;
-
-       end;
-
-      end;
-
-     end;
-
-    end;
 
    end;
 
