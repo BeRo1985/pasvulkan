@@ -24092,22 +24092,22 @@ begin
     FreeAndNil(fRaytracingTLASScratchBuffer);
 
     fRaytracingTLASScratchBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                               RoundDownToPowerOfTwo64(Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))),
-                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                               [],
-                                                               0,
-                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               0,
-                                                               [],
-                                                               0,
-                                                               pvAllocationGroupIDScene3DRaytracingScratch
-                                                              );
+                                                         RoundDownToPowerOfTwo64(Max(1,Max(fRaytracingTLAS.BuildSizesInfo.buildScratchSize,fRaytracingTLAS.BuildSizesInfo.updateScratchSize))),
+                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                         [],
+                                                         0,
+                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         [],
+                                                         0,
+                                                         pvAllocationGroupIDScene3DRaytracingScratch
+                                                        );
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASScratchBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASScratchBuffer');
 
    end;
