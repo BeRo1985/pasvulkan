@@ -22580,7 +22580,7 @@ begin
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex);
 
    if fHardwareRaytracingSupport then begin
-    UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
+    //UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
    end;
 
    CommandBuffer.EndRecording;
