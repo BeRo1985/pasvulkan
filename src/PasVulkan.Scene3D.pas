@@ -23432,7 +23432,8 @@ begin
    BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
 
    //////////////////////////////////////////////////////////////////////////////
-   // Create empty blas if needed                                              //
+   // Create empty blas with invalid geometry for empty TLAS, when there are   //
+   // no raytracing group instance nodes.                                      //
    //////////////////////////////////////////////////////////////////////////////
 
    if not assigned(fRaytracingVulkanEmptyVertexBuffer) then begin
