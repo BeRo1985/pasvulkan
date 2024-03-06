@@ -59,6 +59,7 @@ unit PasVulkan.Scene3D;
  {$endif}
 {$endif}
 {$m+}
+// - {$rangechecks on}
 
 interface
 
@@ -2894,6 +2895,7 @@ type EpvScene3D=class(Exception);
               fCacheVerticesGeneration:TpvUInt64;
               fVulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
               fDynamicGeometry:Boolean;
+              fGeometryChanged:Boolean;
               fDirty:TPasMPBool32;
               fUpdateDirty:TPasMPBool32;
              public
@@ -5260,6 +5262,8 @@ begin
 
  fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
 
+ fGeometryChanged:=false;
+
  VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.BufferData;
 
  VulkanLongTermStaticBufferData:=fSceneInstance.fVulkanLongTermStaticBuffers.BufferData;
@@ -5304,9 +5308,10 @@ begin
 
     MustUpdate:=MustUpdateAll;
 
-    if fDynamicGeometry then begin
-     if fCacheVerticesGeneration<>fInstanceNode^.CacheVerticesGeneration then begin
-      fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGeneration;
+    if fCacheVerticesGeneration<>fInstanceNode^.CacheVerticesGeneration then begin
+     fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGeneration;
+     fGeometryChanged:=true;
+     if fDynamicGeometry then begin
       MustUpdate:=true;
      end;
     end;
@@ -22575,7 +22580,7 @@ begin
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex);
 
    if fHardwareRaytracingSupport then begin
-//    UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
+    UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
    end;
 
    CommandBuffer.EndRecording;
@@ -23533,7 +23538,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoBufferItemIndex,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
     RaytracingGroupInstanceNodeIndex:TpvSizeInt;
-    MustWaitForPreviousFrame,BLASListChanged:Boolean;
+    MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -23581,6 +23586,8 @@ begin
    fRaytracingGroupInstanceNodeDirtyArrayList.ClearNoFree; // Clear the dirty array list
 
    BLASListChanged:=false; // Assume, that the BLAS list has not changed yet
+
+   MustUpdateTLAS:=false;
 
    //////////////////////////////////////////////////////////////////////////////
    // Create empty blas with invalid geometry for empty TLAS, when there are   //
@@ -23801,6 +23808,9 @@ begin
      RaytracingGroupInstanceNode.fDirty:=false;
      fRaytracingGroupInstanceNodeDirtyArrayList.Add(RaytracingGroupInstanceNode);
     end;
+    if RaytracingGroupInstanceNode.fGeometryChanged then begin
+     MustUpdateTLAS:=true;
+    end;
     RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
    end;
 
@@ -23849,37 +23859,53 @@ begin
 
      fRaytracingBLASInstances.Add(fRaytracingEmptyBLASInstance);
 
+     Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
      fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
      inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
 
+     Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
      fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TVkUInt32($ffffffff),
                                                                                                                                        0,
                                                                                                                                        0,
                                                                                                                                        0);
-     inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+     inc(RaytracingBLASGeometryInfoBufferItemIndex);
 
     end;
 
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
+
      for BLASGroupVariant:=Low(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) to High(TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant) do begin
+
       BLASGroup:=@RaytracingGroupInstanceNode.fBLASGroups[BLASGroupVariant];
+
       if assigned(BLASGroup^.fBLASGeometry) and assigned(BLASGroup^.fBLAS) and assigned(BLASGroup^.fBLASInstances) then begin
+
        for InstanceIndex:=0 to BLASGroup^.fBLASInstances.Count-1 do begin
+
         fRaytracingBLASInstances.Add(BLASGroup^.fBLASInstances.Items[InstanceIndex]);
+
+        Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
         fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
         inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+
         for GeometryIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
+         Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(0,
                                                                                                                                            0,
                                                                                                                                            BLASGroup^.fMaterialIDs.ItemArray[GeometryIndex],
                                                                                                                                            BLASGroup^.fIndexOffsets.ItemArray[GeometryIndex]);
-         inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+         inc(RaytracingBLASGeometryInfoBufferItemIndex);
         end;
+
        end;
+
       end;
+
      end;
+
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+
     end;
 
    end;
@@ -24125,6 +24151,8 @@ begin
                                                               );
     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBLASInstancesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBLASInstancesBuffer');
 
+    MustUpdateTLAS:=true;
+
    end;
 
    if fRaytracingAccelerationStructureInstanceList.Count>0 then begin
@@ -24232,13 +24260,17 @@ begin
    // Build TLAS                                                              //
    /////////////////////////////////////////////////////////////////////////////
 
-   fRaytracingTLAS.Build(aCommandBuffer,
+   if MustUpdateTLAS or BLASListChanged then begin
+
+    fRaytracingTLAS.Build(aCommandBuffer,
                          fRaytracingTLASScratchBuffer,
                          0,
                          false,
                          nil);
 
-   TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
+    TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
+
+   end;
 
   finally
    fRaytracingLock.Release;
