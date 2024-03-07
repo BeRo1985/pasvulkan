@@ -1391,6 +1391,7 @@ type EpvScene3D=class(Exception);
             TIndicesDynamicArray=TpvDynamicArray<TVkUInt32>;
             TJointBlocksDynamicArray=TpvDynamicArray<TJointBlock>;
             TMatricesDynamicArray=TpvDynamicArray<TpvMatrix4x4>;
+            PMatricesDynamicArray=^TMatricesDynamicArray;
             TFloatsDynamicArray=TpvDynamicArray<TpvFloat>;
             TVkMultiDrawIndexedInfoEXTDynamicArray=TpvDynamicArray<TVkMultiDrawIndexedInfoEXT>;
             { TDrawChoreographyBatchItem }
@@ -2118,7 +2119,7 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                             Light:TpvScene3D.TLight;
-                            WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+//                          WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -2869,6 +2870,7 @@ type EpvScene3D=class(Exception);
                      fAccelerationStructureSize:TVkDeviceSize;
                      fScratchOffset:TVkDeviceSize;
                      fScratchPass:TpvUInt64;
+                     fAllOpaque:Boolean;
                     public
                      procedure Initialize(const aRaytracingGroupInstanceNode:TRaytracingGroupInstanceNode);
                      procedure Finalize;
@@ -5258,15 +5260,18 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided,MustUpdate,MustUpdateAll:Boolean;
+    DoubleSided,MustUpdate,MustUpdateAll,Opaque:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
     Matrix:TpvMatrix4x4;
+    MatricesDynamicArray:PMatricesDynamicArray;
 begin
 
  result:=false;
+
+ MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
  fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
 
@@ -5305,6 +5310,8 @@ begin
     DoubleSided:=true;
    end;
   end;
+
+  BLASGroup^.fAllOpaque:=true;
 
   CountPrimitives:=0;
   if assigned(fNode.Mesh) then begin
@@ -5360,6 +5367,16 @@ begin
      RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
      if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
 
+      Opaque:=(RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque) or
+              ((RaytracingPrimitive.Material.Data.ShadingModel in [TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness,TpvScene3D.TMaterial.TShadingModel.Unlit]) and
+               ((RaytracingPrimitive.Material.Data.PBRMetallicRoughness.BaseColorFactor.w=1.0) and
+                not assigned(RaytracingPrimitive.Material.Data.PBRMetallicRoughness.BaseColorTexture.Texture))) or
+              ((RaytracingPrimitive.Material.Data.ShadingModel=TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness) and
+               ((RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseFactor.w=1.0) and
+                not assigned(RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseTexture.Texture)));
+
+      BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
+
       BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,
                                             0,
                                             fInstance.fVulkanVertexBufferOffset+RaytracingPrimitive.fStartBufferVertexOffset+RaytracingPrimitive.fCountVertices,
@@ -5367,7 +5384,7 @@ begin
                                             VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
                                             (RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset)*SizeOf(TpvUInt32),
                                             RaytracingPrimitive.fCountIndices,
-                                            RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque,
+                                            Opaque,
                                             nil,
                                             0);
 
@@ -5453,6 +5470,10 @@ begin
     CountRenderInstances:=0;
    end;
 
+   if BLASGroup^.fAllOpaque then begin
+    GeometryInstanceFlags:=GeometryInstanceFlags or TVkGeometryInstanceFlagsKHR(VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR);
+   end;
+
    while BLASGroup^.fBLASInstances.Count>CountRenderInstances do begin
     BLASGroup^.fBLASInstances.Delete(BLASGroup^.fBLASInstances.Count-1);
     result:=true;
@@ -5472,7 +5493,10 @@ begin
 
    if CountRenderInstances>0 then begin
 
-    Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
+//  Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
+
+    Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
+            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
 
     if fInstance.fUseRenderInstances then begin
 
@@ -18575,7 +18599,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   end;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
-  InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
+//InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
   if assigned(Node.fMesh) then begin
    if Matrix.Determinant<0.0 then begin
     Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
