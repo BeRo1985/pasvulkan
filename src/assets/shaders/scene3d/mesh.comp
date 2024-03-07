@@ -225,7 +225,6 @@ void main() {
 
       // Transform position
       vec4 p = modelNodeMatrix * vec4(position.xyz, 1.0);
-      position = p.xyz / p.w;
 
       // Write out vertex data
       {
@@ -238,9 +237,11 @@ void main() {
 
         vec3 modelScale = vec3(length(modelNodeMatrix[0].xyz), length(modelNodeMatrix[1].xyz), length(modelNodeMatrix[2].xyz));
 
+        vec3 finalPosition = p.xyz / p.w;
+
         outVertices[vertexIndex] = OutPackedVertex(
           /*outPackedVertex.positionNormalXY =*/ uvec4(
-            uvec3(floatBitsToUint(position.xyz)), 
+            uvec3(floatBitsToUint(finalPosition.xyz)), 
             packSnorm2x16(normal.xy)
           ),
           /* outPackedVertex.normalZSignTangentXYZModelScaleXYZ = */uvec4(
@@ -261,9 +262,9 @@ void main() {
         // so we can't transform them again with modelNodeMatrix or modelMatrix, which includes also the world space model transform,
         // raytracingNodeMatrix is without that, so we use that here.
         vec4 p = raytracingNodeMatrix * vec4(position.xyz, 1.0);
-        position = p.xyz / p.w;
+        vec3 finalPosition = p.xyz / p.w;
         OutRayTracingVertex outRayTracingVertex;
-        outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(position.xyz)), uint(vertexIndex));
+        outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(finalPosition.xyz)), uint(vertexIndex));
         outRayTracingVertices[vertexIndex] = outRayTracingVertex;
       }
 #endif
