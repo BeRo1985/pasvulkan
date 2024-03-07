@@ -223,9 +223,6 @@ void main() {
       // Transform tangent space
       tangentSpace = normalMatrix * tangentSpace;
 
-      // Transform position
-      vec4 p = modelNodeMatrix * vec4(position.xyz, 1.0);
-
       // Write out vertex data
       {
 	  
@@ -237,6 +234,10 @@ void main() {
 
         vec3 modelScale = vec3(length(modelNodeMatrix[0].xyz), length(modelNodeMatrix[1].xyz), length(modelNodeMatrix[2].xyz));
 
+         // Transform position
+        vec4 p = modelNodeMatrix * vec4(position.xyz, 1.0);
+
+        // Perspective divide
         vec3 finalPosition = p.xyz / p.w;
 
         outVertices[vertexIndex] = OutPackedVertex(
