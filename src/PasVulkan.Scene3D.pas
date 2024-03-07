@@ -2118,7 +2118,7 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                             Light:TpvScene3D.TLight;
-                            WorkMatrices:array[0..MaxInFlightFrames-1] of TpvMatrix4x4;
+                            WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -5263,6 +5263,7 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
+    Matrix:TpvMatrix4x4;
 begin
 
  result:=false;
@@ -5470,20 +5471,22 @@ begin
 
    if CountRenderInstances>0 then begin
 
+    Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.ModelMatrix;
+
     if fInstance.fUseRenderInstances then begin
 
      BLASInstanceIndex:=0;
 
      for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
       if fInstance.fRenderInstances[RendererInstanceIndex].Active then begin
-       BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=fInstance.ModelMatrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrix;
+       BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrix;
        inc(BLASInstanceIndex);
       end;
      end;
 
     end else begin
 
-     BLASGroup^.fBLASInstances[0].Transform:=fInstance.ModelMatrix;
+     BLASGroup^.fBLASInstances[0].Transform:=Matrix;
 
     end;
 
@@ -18571,6 +18574,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   end;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
+  InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
   if assigned(Node.fMesh) then begin
    if Matrix.Determinant<0.0 then begin
     Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
