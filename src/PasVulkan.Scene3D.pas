@@ -22608,6 +22608,8 @@ var PlanetIndex:TpvSizeInt;
     CommandBufferHandle:TVkCommandBuffer;
 begin
 
+ exit;
+
  if assigned(fVulkanDevice) then begin
 
   if assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
