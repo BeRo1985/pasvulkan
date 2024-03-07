@@ -5253,6 +5253,7 @@ begin
 end;
 
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
+{$define UsePretransformedVerticesForRaytracing}
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
@@ -5273,9 +5274,15 @@ begin
 
 //MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
- fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,
-                     TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated,
-                     TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated]*fNode.fFlags)<>[];
+{$ifdef UsePretransformedVerticesForRaytracing}
+ fDynamicGeometry:=true;
+{$else}
+ fDynamicGeometry:=(TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
+                   (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fNode.fFlags){ or
+                   (TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fNode.fFlags) or
+                   assigned(fInstance.OnNodeMatrixPost) or
+                   assigned(fInstance.OnNodeMatrixPre)};
+{$endif}
 
  fGeometryChanged:=false;
 
@@ -5379,10 +5386,18 @@ begin
 
       BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
 
-      BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,//VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer,
+      BLASGroup^.fBLASGeometry.AddTriangles({$ifdef UsePretransformedVerticesForRaytracing}
+                                             VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer,
+                                            {$else}
+                                             VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,
+                                            {$endif}
                                             0,
                                             fInstance.fVulkanVertexBufferOffset+RaytracingPrimitive.fStartBufferVertexOffset+RaytracingPrimitive.fCountVertices,
-                                            SizeOf(TGPUCachedRaytracingVertex),//SizeOf(TGPUCachedVertex),
+                                            {$ifdef UsePretransformedVerticesForRaytracing}
+                                             SizeOf(TGPUCachedVertex),
+                                            {$else}
+                                             SizeOf(TGPUCachedRaytracingVertex),
+                                            {$endif}
                                             VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
                                             (RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset)*SizeOf(TpvUInt32),
                                             RaytracingPrimitive.fCountIndices,
@@ -5495,12 +5510,17 @@ begin
 
    if CountRenderInstances>0 then begin
 
-//  Matrix:=TpvMatrix4x4.Identity;
+{$ifdef UsePretransformedVerticesForRaytracing}
+    Matrix:=TpvMatrix4x4.Identity; // In this case, it doesn't matter, if it is column-order or Row-order, since it is the same in both cases here then.
+{$else}
     Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
 //  Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
 
 {   Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
             MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];}
+
+    Matrix:=Matrix.Transpose; // Column-order to row-order
+{$endif}
 
     if fInstance.fUseRenderInstances then begin
 

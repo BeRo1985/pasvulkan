@@ -999,7 +999,12 @@ end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetTransform:TpvMatrix4x4;
 begin
- result.RawComponents[0,0]:=fAccelerationStructureInstance.transform.matrix[0,0];
+ PVkTransformMatrixKHR(Pointer(@result))^:=fAccelerationStructureInstance.transform;
+ result.RawComponents[3,0]:=0.0;
+ result.RawComponents[3,1]:=0.0;
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+{result.RawComponents[0,0]:=fAccelerationStructureInstance.transform.matrix[0,0];
  result.RawComponents[0,1]:=fAccelerationStructureInstance.transform.matrix[1,0];
  result.RawComponents[0,2]:=fAccelerationStructureInstance.transform.matrix[2,0];
  result.RawComponents[0,3]:=0.0;
@@ -1014,12 +1019,13 @@ begin
  result.RawComponents[3,0]:=fAccelerationStructureInstance.transform.matrix[0,3];
  result.RawComponents[3,1]:=fAccelerationStructureInstance.transform.matrix[1,3];
  result.RawComponents[3,2]:=fAccelerationStructureInstance.transform.matrix[2,3];
- result.RawComponents[3,3]:=1.0;
+ result.RawComponents[3,3]:=1.0;}
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructureInstance.SetTransform(const aTransform:TpvMatrix4x4);
 begin
- fAccelerationStructureInstance.transform.matrix[0,0]:=aTransform.RawComponents[0,0];
+ fAccelerationStructureInstance.transform:=PVkTransformMatrixKHR(Pointer(@aTransform))^;
+{fAccelerationStructureInstance.transform.matrix[0,0]:=aTransform.RawComponents[0,0];
  fAccelerationStructureInstance.transform.matrix[0,1]:=aTransform.RawComponents[1,0];
  fAccelerationStructureInstance.transform.matrix[0,2]:=aTransform.RawComponents[2,0];
  fAccelerationStructureInstance.transform.matrix[0,3]:=aTransform.RawComponents[3,0];
@@ -1030,7 +1036,7 @@ begin
  fAccelerationStructureInstance.transform.matrix[2,0]:=aTransform.RawComponents[0,2];
  fAccelerationStructureInstance.transform.matrix[2,1]:=aTransform.RawComponents[1,2];
  fAccelerationStructureInstance.transform.matrix[2,2]:=aTransform.RawComponents[2,2];
- fAccelerationStructureInstance.transform.matrix[2,3]:=aTransform.RawComponents[3,2];
+ fAccelerationStructureInstance.transform.matrix[2,3]:=aTransform.RawComponents[3,2];}
 end;
 
 function TpvRaytracingBottomLevelAccelerationStructureInstance.GetInstanceCustomIndex:TVkUInt32;
