@@ -5273,7 +5273,9 @@ begin
 
 //MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
- fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
+ fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,
+                     TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated,
+                     TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated]*fNode.fFlags)<>[];
 
  fGeometryChanged:=false;
 
@@ -5377,10 +5379,10 @@ begin
 
       BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
 
-      BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,
+      BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,//VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer,
                                             0,
                                             fInstance.fVulkanVertexBufferOffset+RaytracingPrimitive.fStartBufferVertexOffset+RaytracingPrimitive.fCountVertices,
-                                            SizeOf(TGPUCachedRaytracingVertex),
+                                            SizeOf(TGPUCachedRaytracingVertex),//SizeOf(TGPUCachedVertex),
                                             VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
                                             (RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset)*SizeOf(TpvUInt32),
                                             RaytracingPrimitive.fCountIndices,
@@ -5493,6 +5495,7 @@ begin
 
    if CountRenderInstances>0 then begin
 
+//  Matrix:=TpvMatrix4x4.Identity;
     Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
 //  Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
 

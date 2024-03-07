@@ -167,7 +167,7 @@ void main() {
       
       // Get model node matrix and multiply it with the node matrix
       mat4 modelNodeMatrix = nodeMatrices[inRootNode] * nodeMatrix;
-	  
+
       vec3 position = inPosition;
 
       // Decode tangent space
