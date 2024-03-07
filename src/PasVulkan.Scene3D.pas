@@ -5426,6 +5426,7 @@ begin
     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(BLASGroup^.fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanBLASBuffer');
 
     BLASGroup^.fBLAS.Initialize(BLASGroup^.fBLASBuffer,0);
+    fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(BLASGroup^.fBLAS.AccelerationStructure,VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR,'BLASGroup.fBLAS');
 
    end;
 
@@ -5471,7 +5472,7 @@ begin
 
    if CountRenderInstances>0 then begin
 
-    Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.ModelMatrix;
+    Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
 
     if fInstance.fUseRenderInstances then begin
 
@@ -24219,6 +24220,7 @@ begin
      fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBuffer');
 
      fRaytracingTLAS.Initialize(fRaytracingTLASBuffer,0);
+     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLAS.AccelerationStructure,VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR,'TpvScene3D.fRaytracingTLAS');
 
     end;
 
