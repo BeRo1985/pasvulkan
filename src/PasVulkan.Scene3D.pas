@@ -5350,7 +5350,11 @@ begin
 
      for RaytracingPrimitiveIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
       AccelerationStructureGeometry:=@BLASGroup^.fBLASGeometry.Geometries.ItemArray[RaytracingPrimitiveIndex];
+{$ifdef UsePretransformedVerticesForRaytracing}
+      AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer.DeviceAddress;
+{$else}
       AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
+{$endif}
       AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
      end;
 
