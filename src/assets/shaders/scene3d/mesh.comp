@@ -153,9 +153,18 @@ void main() {
       const uint inFlags = inPackedVertex.normalTangentFlagsGeneration.z;
       const uint inGeneration = inPackedVertex.normalTangentFlagsGeneration.w;
 
+#ifdef RAYTRACING
+      mat4 raytracingNodeMatrix = mat4(
+        1.0, 0.0, 0.0, 0.0,  
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+      );
+#endif
+
       // Get node matrix
       mat4 nodeMatrix = nodeMatrices[inNodeIndex];
-
+      
       // Get model node matrix and multiply it with the node matrix
       mat4 modelNodeMatrix = nodeMatrices[inRootNode] * nodeMatrix;
 	  
@@ -192,7 +201,7 @@ void main() {
       // Process joints (an array list of joint blocks with 4 joints and 4 weights each)  
       if (inCountJointBlocks > 0u) {
         mat4 inverseNodeMatrix = inverse(nodeMatrix);
-        mat4 skinMatrix = mat4(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        mat4 skinMatrix = mat4(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         for (uint jointBlockBaseIndex = inJointBlockBaseIndex, endJointBlockBaseIndex = jointBlockBaseIndex + inCountJointBlocks;  //
              jointBlockBaseIndex < endJointBlockBaseIndex;                                                                         //
              jointBlockBaseIndex++) {
@@ -203,7 +212,7 @@ void main() {
                         ((inverseNodeMatrix * nodeMatrices[jointBlock.joints.w]) * jointBlock.weights.w);
         }
 #ifdef RAYTRACING
-        nodeMatrix *= skinMatrix;
+        raytracingNodeMatrix *= skinMatrix;
 #endif
         modelNodeMatrix *= skinMatrix;
       }
@@ -248,9 +257,10 @@ void main() {
 
 #ifdef RAYTRACING
       {
-        // For ray tracing we need the position in model space, not world space, since BLAS references have transform matrices already, so
-        // we can't transform them again with modelNodeMatrix, which includes also the world space model transform, nodeMatrix is without that.
-        vec4 p = nodeMatrix * vec4(position.xyz, 1.0);
+        // For ray tracing we need the position in node space, not world nor model space, since BLAS references have transform matrices already,
+        // so we can't transform them again with modelNodeMatrix or modelMatrix, which includes also the world space model transform,
+        // raytracingNodeMatrix is without that, so we use that here.
+        vec4 p = raytracingNodeMatrix * vec4(position.xyz, 1.0);
         position = p.xyz / p.w;
         OutRayTracingVertex outRayTracingVertex;
         outRayTracingVertex.position = uvec4(uvec3(floatBitsToUint(position.xyz)), uint(vertexIndex));
