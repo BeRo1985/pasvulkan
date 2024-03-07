@@ -66,6 +66,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -85,7 +86,7 @@ type { TpvScene3DMeshCompute }
       public
        constructor Create(const aSceneInstance:TpvObject); reintroduce;
        destructor Destroy; override;
-       procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+       procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aLabels:Boolean);
      end;
 
 implementation
@@ -162,74 +163,85 @@ begin
 
 end;
 
-procedure TpvScene3DMeshCompute.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
+procedure TpvScene3DMeshCompute.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt;const aLabels:Boolean);
 var PreviousInFlightFrameIndex:TpvSizeInt;
     MemoryBarrier:TVkMemoryBarrier;
+    FrameDoneMask:TPasMPUInt32;
 begin
 
- TpvScene3D(fSceneInstance).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'MeshCompute',[0.25,0.25,1.0,1.0]);
+ FrameDoneMask:=TpvUInt32(1) shl aInFlightFrameIndex;
 
- aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
- TpvScene3D(fSceneInstance).UpdateCachedVertices(fPipeline,
-                                                 aInFlightFrameIndex,
-                                                 aCommandBuffer,
-                                                 fPipelineLayout);
- if aInFlightFrameIndex=0 then begin
-  PreviousInFlightFrameIndex:=TpvScene3D(fSceneInstance).CountInFlightFrames-1;
- end else begin
-  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
+ if (TPasMPInterlocked.ExchangeBitwiseOr(TpvScene3D(fSceneInstance).fMeshComputeFrameDoneMask,FrameDoneMask) and FrameDoneMask)=0 then begin
+
+  if aLabels then begin
+   TpvScene3D(fSceneInstance).VulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'MeshCompute',[0.25,0.25,1.0,1.0]);
+  end;
+
+  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+  TpvScene3D(fSceneInstance).UpdateCachedVertices(fPipeline,
+                                                  aInFlightFrameIndex,
+                                                  aCommandBuffer,
+                                                  fPipelineLayout);
+  if aInFlightFrameIndex=0 then begin
+   PreviousInFlightFrameIndex:=TpvScene3D(fSceneInstance).CountInFlightFrames-1;
+  end else begin
+   PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
+  end;
+
+  if fEventReady[aInFlightFrameIndex] then begin
+   Assert(false);
+  end;
+  aCommandBuffer.CmdSetEvent(fEvents[aInFlightFrameIndex].Handle,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)});
+  fEventReady[aInFlightFrameIndex]:=true;
+
+  if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fEventReady[PreviousInFlightFrameIndex] then begin
+   fEventReady[PreviousInFlightFrameIndex]:=false;
+   FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   aCommandBuffer.CmdWaitEvents(1,
+                                @fEvents[PreviousInFlightFrameIndex].Handle,
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)},
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)},
+                                1,@MemoryBarrier,
+                                0,nil,
+                                0,nil);
+   aCommandBuffer.CmdResetEvent(fEvents[PreviousInFlightFrameIndex].Handle,
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)});
+  end else begin
+   FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+   MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+   aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                     0,
+                                     1,@MemoryBarrier,
+                                     0,nil,
+                                     0,nil);
+  end;
+
+  if aLabels then begin
+   TpvScene3D(fSceneInstance).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+  end;
+
  end;
-
- if fEventReady[aInFlightFrameIndex] then begin
-  Assert(false);
- end;
- aCommandBuffer.CmdSetEvent(fEvents[aInFlightFrameIndex].Handle,
-                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
-                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)});
- fEventReady[aInFlightFrameIndex]:=true;
-
- if (aInFlightFrameIndex<>PreviousInFlightFrameIndex) and fEventReady[PreviousInFlightFrameIndex] then begin
-  fEventReady[PreviousInFlightFrameIndex]:=false;
-  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
-  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  aCommandBuffer.CmdWaitEvents(1,
-                               @fEvents[PreviousInFlightFrameIndex].Handle,
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)},
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)},
-                               1,@MemoryBarrier,
-                               0,nil,
-                               0,nil);
-  aCommandBuffer.CmdResetEvent(fEvents[PreviousInFlightFrameIndex].Handle,
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)});
- end else begin
-  FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
-  MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-  MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                    0,
-                                    1,@MemoryBarrier,
-                                    0,nil,
-                                    0,nil);
- end;
-
- TpvScene3D(fSceneInstance).VulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
 end;
 
