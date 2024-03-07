@@ -3249,7 +3249,8 @@ type EpvScene3D=class(Exception);
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
        procedure UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                  const aInFlightFrameIndex:TpvSizeInt);
+                                  const aInFlightFrameIndex:TpvSizeInt;
+                                  const aLabels:Boolean);
        procedure DrawDebugPrimitives(const aRendererInstance:TObject;
                                      const aGraphicsPipeline:TpvVulkanGraphicsPipeline;
                                      const aPreviousInFlightFrameIndex:TpvSizeInt;
@@ -22635,7 +22636,7 @@ begin
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
 
    if fHardwareRaytracingSupport then begin
-    UpdateRaytracing(CommandBuffer,aInFlightFrameIndex);
+    UpdateRaytracing(CommandBuffer,aInFlightFrameIndex,true);
    end;
 
    CommandBuffer.EndRecording;
@@ -23586,7 +23587,8 @@ begin
 end;
 
 procedure TpvScene3D.UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                      const aInFlightFrameIndex:TpvSizeInt);
+                                      const aInFlightFrameIndex:TpvSizeInt;
+                                      const aLabels:Boolean);
 const EmptyVertex:array[0..3] of TpvUInt32=($7fc00000,$7fc00000,$7fc00000,$7fc00000); // 4x NaNs
       EmptyIndices:array[0..2] of TpvUInt32=(0,0,0); // Simple as that, only one NaN triangle with three vertices with the same NaN vertex
 var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
@@ -23612,6 +23614,10 @@ begin
 
    fRaytracingLock.Acquire;
    try
+
+    if aLabels then begin
+     fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'RaytracingBuildUpdate',[1.0,0.5,0.25,1.0]);
+    end;
 
     /////////////////////////////////////////////////////////////////////////////
     // Wait for previous frame, when there are changes in the BLAS list, since //
@@ -24258,6 +24264,10 @@ begin
 
      TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
 
+    end;
+
+    if aLabels then begin
+     fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
     end;
 
    finally
