@@ -5266,12 +5266,12 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
     Matrix:TpvMatrix4x4;
-    MatricesDynamicArray:PMatricesDynamicArray;
+//  MatricesDynamicArray:PMatricesDynamicArray;
 begin
 
  result:=false;
 
- MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
+//MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
  fDynamicGeometry:=([TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated,TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated]*fNode.fFlags)<>[];
 
@@ -5493,10 +5493,11 @@ begin
 
    if CountRenderInstances>0 then begin
 
+    Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
 //  Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
 
-    Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
-            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
+{   Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
+            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];}
 
     if fInstance.fUseRenderInstances then begin
 
