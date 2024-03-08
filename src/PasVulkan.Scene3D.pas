@@ -2409,6 +2409,7 @@ type EpvScene3D=class(Exception);
                             fPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
                             fModelMatrix:TpvMatrix4x4;
                             fPreviousModelMatrix:TpvMatrix4x4;
+                            fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             fBoundingBox:TpvAABB;
                            public
                             constructor Create(const aInstance:TpvScene3D.TGroup.TInstance); reintroduce;
@@ -5543,7 +5544,7 @@ begin
 
      for RendererInstanceIndex:=0 to fInstance.fRenderInstances.Count-1 do begin
       if fInstance.fRenderInstances[RendererInstanceIndex].Active then begin
-       BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrix;
+       BLASGroup^.fBLASInstances[BLASInstanceIndex].Transform:=Matrix*fInstance.fRenderInstances[RendererInstanceIndex].fModelMatrices[aInFlightFrameIndex];
        inc(BLASInstanceIndex);
       end;
      end;
@@ -15732,6 +15733,7 @@ end;
 { TpvScene3D.TGroup.TInstance.TRenderInstance }
 
 constructor TpvScene3D.TGroup.TInstance.TRenderInstance.Create(const aInstance:TpvScene3D.TGroup.TInstance);
+var Index:TpvSizeInt;
 begin
  inherited Create;
  fInstance:=aInstance;
@@ -15741,6 +15743,9 @@ begin
  fPotentiallyVisibleSetNodeIndex:=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex;
  fModelMatrix:=TpvMatrix4x4.Identity;
  fPreviousModelMatrix:=TpvMatrix4x4.Identity;
+ for Index:=-1 to MaxInFlightFrames-1 do begin
+  fModelMatrices[Index]:=TpvMatrix4x4.Identity;
+ end;
 end;
 
 destructor TpvScene3D.TGroup.TInstance.TRenderInstance.Destroy;
@@ -19349,6 +19354,7 @@ begin
     for Index:=0 to fRenderInstances.Count-1 do begin
      RenderInstance:=fRenderInstances[Index];
      if RenderInstance.fActive then begin
+      RenderInstance.fModelMatrices[aInFlightFrameIndex]:=RenderInstance.fModelMatrix;
       RenderInstance.fBoundingBox:=fBoundingBox.HomogenTransform(RenderInstance.fModelMatrix);
       if assigned(fGroup.fSceneInstance.fPotentiallyVisibleSet) and
          ((RenderInstance.fPotentiallyVisibleSetNodeIndex=TpvScene3D.TPotentiallyVisibleSet.NoNodeIndex) or
