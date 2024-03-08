@@ -5273,12 +5273,12 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
     AllocationGroupID:TpvUInt64;
     Matrix:TpvMatrix4x4;
-//  MatricesDynamicArray:PMatricesDynamicArray;
+    MatricesDynamicArray:PMatricesDynamicArray;
 begin
 
  result:=false;
 
-//MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
+ MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
 {$ifdef UsePretransformedVerticesForRaytracing}
  // In this case, we always have dynamic geometry since we use pretransformed vertices, which can be changed at any time in this case.
@@ -5523,16 +5523,18 @@ begin
    if CountRenderInstances>0 then begin
 
 {$ifdef UsePretransformedVerticesForRaytracing}
+
     Matrix:=TpvMatrix4x4.Identity; // In this case, it doesn't matter, if it is column-order or Row-order, since it is the same in both cases here then.
+
 {$else}
-    Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
 
-//  Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
+//  Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
 
-{   Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
-            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];}
+    Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
+            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
 
-    Matrix:=Matrix.Transpose; // Column-order to row-order
+    Matrix:=Matrix.Transpose; // Convert column-order to row-order
+
 {$endif}
 
     if fInstance.fUseRenderInstances then begin
