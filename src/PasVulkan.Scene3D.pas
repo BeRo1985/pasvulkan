@@ -1496,7 +1496,7 @@ type EpvScene3D=class(Exception);
               fSceneInstance:TpvScene3D;
               fVulkanDynamicVertexBuffer:TpvVulkanBuffer;
               fVulkanStaticVertexBuffer:TpvVulkanBuffer;
-              fVulkanIndexBuffer:TpvVulkanBuffer;
+//            fVulkanIndexBuffer:TpvVulkanBuffer;
               fVulkanDrawIndexBuffer:TpvVulkanBuffer;
               fVulkanDrawUniqueIndexBuffer:TpvVulkanBuffer;
               fVulkanMorphTargetVertexBuffer:TpvVulkanBuffer;
@@ -1827,15 +1827,18 @@ type EpvScene3D=class(Exception);
                                    fMorphTargetBaseIndex:TpvSizeUInt;
                                    fStartBufferVertexOffset:TpvSizeUInt;
                                    fStartBufferIndexOffset:TpvSizeUInt;
+                                   fStartBufferDrawIndexOffset:TpvSizeUInt;
                                    fGeneration:TpvUInt64;
                                   published
                                    property MorphTargetBaseIndex:TpvSizeUInt read fMorphTargetBaseIndex write fMorphTargetBaseIndex;
                                    property StartBufferVertexOffset:TpvSizeUInt read fStartBufferVertexOffset write fStartBufferVertexOffset;
                                    property StartBufferIndexOffset:TpvSizeUInt read fStartBufferIndexOffset write fStartBufferIndexOffset;
+                                   property StartBufferDrawIndexOffset:TpvSizeUInt read fStartBufferDrawIndexOffset write fStartBufferDrawIndexOffset;
                                  end;
                                  TNodeMeshPrimitiveInstances=TpvObjectGenericList<TNodeMeshPrimitiveInstance>;
                            private
                             fMesh:TMesh;
+                            fPrimitiveIndex:TpvSizeInt;
                             fPrimitiveTopology:TpvScene3D.TPrimitiveTopology;
                             fMaterialID:TpvInt64;
                             fMaterial:TpvScene3D.TMaterial;
@@ -2520,8 +2523,8 @@ type EpvScene3D=class(Exception);
                      fAABBTreeSkipLists:array[-1..MaxInFlightFrames-1] of TAABBTreeSkipList;
                      fVulkanVertexBufferOffset:TpvInt64;
                      fVulkanVertexBufferCount:TpvInt64;
-                     fVulkanIndexBufferOffset:TpvInt64;
-                     fVulkanIndexBufferCount:TpvInt64;
+{                    fVulkanIndexBufferOffset:TpvInt64;
+                     fVulkanIndexBufferCount:TpvInt64;}
                      fVulkanDrawIndexBufferOffset:TpvInt64;
                      fVulkanDrawIndexBufferCount:TpvInt64;
                      fVulkanDrawUniqueIndexBufferOffset:TpvInt64;
@@ -3136,7 +3139,7 @@ type EpvScene3D=class(Exception);
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
-       fVulkanIndexBufferData:TIndicesDynamicArray;
+//     fVulkanIndexBufferData:TIndicesDynamicArray;
        fVulkanDrawIndexBufferData:TIndicesDynamicArray;
        fVulkanDrawUniqueIndexBufferData:TIndicesDynamicArray;
        fVulkanMorphTargetVertexBufferData:TMorphTargetVertexDynamicArray;
@@ -3152,7 +3155,7 @@ type EpvScene3D=class(Exception);
       private
        fVulkanMorphTargetVertexWeightsBufferData:array[0..MaxInFlightFrames-1] of TFloatsDynamicArray;
        fVulkanVertexBufferRangeAllocator:TpvBufferRangeAllocator;
-       fVulkanIndexBufferRangeAllocator:TpvBufferRangeAllocator;
+//     fVulkanIndexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawIndexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanDrawUniqueIndexBufferRangeAllocator:TpvBufferRangeAllocator;
        fVulkanMorphTargetVertexBufferRangeAllocator:TpvBufferRangeAllocator;
@@ -5262,7 +5265,7 @@ end;
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
 {$undef UsePretransformedVerticesForRaytracing}
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
-    BLASInstanceIndex:TpvSizeInt;
+    BLASInstanceIndex,IndexOffset:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
     BLASGroup:TpvScene3D.TRaytracingGroupInstanceNode.PBLASGroup;
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -5329,7 +5332,7 @@ begin
   BLASGroup^.fAllOpaque:=true;
 
   CountPrimitives:=0;
-  if {assigned(fInstance.fGroup.fVulkanIndexBuffer) and} assigned(fNode.Mesh) then begin
+  if assigned(fNode.Mesh) then begin
    for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
     RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
     if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
@@ -5361,7 +5364,7 @@ begin
 {$else}
       AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
 {$endif}
-      AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanIndexBuffer.DeviceAddress;
+      AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
      end;
 
      fDirty:=true;
@@ -5384,7 +5387,11 @@ begin
     for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
 
      RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
-     if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
+
+     if assigned(RaytracingPrimitive.Material) and
+        (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) and
+        (fNode.fNodeMeshInstanceIndex>=0) and
+        (fNode.fNodeMeshInstanceIndex<RaytracingPrimitive.fNodeMeshPrimitiveInstances.Count) then begin
 
       Opaque:=(RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque) or
               ((RaytracingPrimitive.Material.Data.ShadingModel in [TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness,TpvScene3D.TMaterial.TShadingModel.Unlit]) and
@@ -5395,6 +5402,8 @@ begin
                 not assigned(RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseTexture.Texture)));
 
       BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
+
+      IndexOffset:=fInstance.fVulkanDrawIndexBufferOffset+RaytracingPrimitive.fNodeMeshPrimitiveInstances[fNode.fNodeMeshInstanceIndex].fStartBufferDrawIndexOffset;
 
       BLASGroup^.fBLASGeometry.AddTriangles({$ifdef UsePretransformedVerticesForRaytracing}
                                              VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer
@@ -5408,19 +5417,16 @@ begin
                                             {$else}
                                              SizeOf(TGPUCachedRaytracingVertex)
                                             {$endif},
-                                            VulkanLongTermStaticBufferData.fVulkanIndexBuffer,
-                                            (fInstance.fVulkanIndexBufferOffset+RaytracingPrimitive.fStartBufferIndexOffset)*SizeOf(TpvUInt32),
+                                            VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
+                                            IndexOffset*SizeOf(TpvUInt32),
                                             RaytracingPrimitive.fCountIndices,
-{                                           fInstance.fGroup.fVulkanIndexBuffer,
-                                            RaytracingPrimitive.fStartBufferIndexOffset*SizeOf(TpvUInt32),
-                                            RaytracingPrimitive.fCountIndices,}
                                             Opaque,
                                             nil,
                                             0);
 
       BLASGroup^.fMaterialIDs.Add(RaytracingPrimitive.Material.ID);
 
-      BLASGroup^.fIndexOffsets.Add(RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanIndexBufferOffset);
+      BLASGroup^.fIndexOffsets.Add(IndexOffset);
 
      end;
 
@@ -8564,7 +8570,7 @@ begin
  fSceneInstance:=aSceneInstance;
  fVulkanDynamicVertexBuffer:=nil;
  fVulkanStaticVertexBuffer:=nil;
- fVulkanIndexBuffer:=nil;
+//fVulkanIndexBuffer:=nil;
  fVulkanDrawIndexBuffer:=nil;
  fVulkanDrawUniqueIndexBuffer:=nil;
  fVulkanMorphTargetVertexBuffer:=nil;
@@ -8579,7 +8585,7 @@ begin
  FreeAndNil(fVulkanComputeDescriptorPool);
  FreeAndNil(fVulkanDynamicVertexBuffer);
  FreeAndNil(fVulkanStaticVertexBuffer);
- FreeAndNil(fVulkanIndexBuffer);
+//FreeAndNil(fVulkanIndexBuffer);
  FreeAndNil(fVulkanDrawIndexBuffer);
  FreeAndNil(fVulkanDrawUniqueIndexBuffer);
  FreeAndNil(fVulkanMorphTargetVertexBuffer);
@@ -8591,14 +8597,14 @@ function TpvScene3D.TVulkanLongTermStaticBufferData.Check:Boolean;
 begin
  result:=((not assigned(fVulkanDynamicVertexBuffer)) and
           (not assigned(fVulkanStaticVertexBuffer)) and
-          ((not assigned(fVulkanIndexBuffer)) or not fSceneInstance.fHardwareRaytracingSupport) and
+//        ((not assigned(fVulkanIndexBuffer)) or not fSceneInstance.fHardwareRaytracingSupport) and
           (not assigned(fVulkanDrawIndexBuffer)) and
           (not assigned(fVulkanDrawUniqueIndexBuffer)) and
           (not assigned(fVulkanMorphTargetVertexBuffer)) and
           (not assigned(fVulkanJointBlockBuffer))) or
          ((assigned(fVulkanDynamicVertexBuffer) and ((Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))<=fVulkanDynamicVertexBuffer.Size)) and
           (assigned(fVulkanStaticVertexBuffer) and ((Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))<=fVulkanStaticVertexBuffer.Size)) and
-          ((assigned(fVulkanIndexBuffer) and ((Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanIndexBuffer.Size)) or not fSceneInstance.fHardwareRaytracingSupport) and
+//        ((assigned(fVulkanIndexBuffer) and ((Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanIndexBuffer.Size)) or not fSceneInstance.fHardwareRaytracingSupport) and
           (assigned(fVulkanDrawIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawIndexBuffer.Size)) and
           (assigned(fVulkanDrawUniqueIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawUniqueIndexBuffer.Size)) and
           (assigned(fVulkanMorphTargetVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))<=fVulkanMorphTargetVertexBuffer.Size)) and
@@ -8614,7 +8620,7 @@ begin
 
   if ((not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) or
      ((not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) or
-     (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+//   (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
      ((not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
@@ -8688,7 +8694,7 @@ begin
                                                       fSceneInstance.fVulkanStaticVertexBufferData.Count*SizeOf(TGPUStaticVertex));
    end;
 
-   if fSceneInstance.fHardwareRaytracingSupport then begin
+{  if fSceneInstance.fHardwareRaytracingSupport then begin
     if (not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
      FreeAndNil(fVulkanIndexBuffer);
      fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -8719,7 +8725,7 @@ begin
                                                        0,
                                                        fSceneInstance.fVulkanIndexBufferData.Count*SizeOf(TpvUInt32));
     end;
-   end;
+   end;}
 
    if (not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
     FreeAndNil(fVulkanDrawIndexBuffer);
@@ -8951,7 +8957,7 @@ begin
 
        end;
 
-       if fSceneInstance.fHardwareRaytracingSupport and (GroupInstance.fVulkanIndexBufferCount>0) then begin
+{      if fSceneInstance.fHardwareRaytracingSupport and (GroupInstance.fVulkanIndexBufferCount>0) then begin
         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                           fSceneInstance.fVulkanStagingCommandBuffer,
                                                           fSceneInstance.fVulkanStagingFence,
@@ -8959,8 +8965,7 @@ begin
                                                           fVulkanIndexBuffer,
                                                           GroupInstance.fVulkanIndexBufferOffset*SizeOf(TpvUInt32),
                                                           GroupInstance.fVulkanIndexBufferCount*SizeOf(TpvUInt32));
-       end;
-
+       end;}
 
        if GroupInstance.fVulkanDrawIndexBufferCount>0 then begin
         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
@@ -9111,7 +9116,7 @@ begin
    // The buffers are no longer in use by the GPU, so we can free it safely
    FreeAndNil(fVulkanDynamicVertexBuffer);
    FreeAndNil(fVulkanStaticVertexBuffer);
-   FreeAndNil(fVulkanIndexBuffer);
+// FreeAndNil(fVulkanIndexBuffer);
    FreeAndNil(fVulkanDrawIndexBuffer);
    FreeAndNil(fVulkanDrawUniqueIndexBuffer);
    FreeAndNil(fVulkanMorphTargetVertexBuffer);
@@ -10399,7 +10404,7 @@ end;
 function TpvScene3D.TGroup.TMesh.CreatePrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
 begin
  result:=TpvScene3D.TGroup.TMesh.TPrimitive.Create(self);
- fPrimitives.Add(result);
+ result.fPrimitiveIndex:=fPrimitives.Add(result);
 end;
 
 procedure TpvScene3D.TGroup.TMesh.CollectRaytracingPrimitives;
@@ -11202,7 +11207,7 @@ begin
       SourceMeshPrimitive:=aSourceMesh.Primitives.Items[PrimitiveIndex];
 
       DestinationMeshPrimitive:=TMesh.TPrimitive.Create(self);
-      fPrimitives.Add(DestinationMeshPrimitive);
+      DestinationMeshPrimitive.fPrimitiveIndex:=fPrimitives.Add(DestinationMeshPrimitive);
 
       fGroup.fSceneInstance.fMaterialListLock.Acquire;
       try
@@ -13700,7 +13705,7 @@ type TNodeStack=TpvDynamicStack<TpvScene3D.TGroup.TNode>;
 var NodeIndex,PrimitiveIndex,StartIndex,DrawChoreographyBatchItemIndex,
     IndexIndex,VertexIndex,CountIndices:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
-    NodeStack:TNodeStack;
+    //NodeStack:TNodeStack;
     Node:TpvScene3D.TGroup.TNode;
     Mesh:TpvScene3D.TGroup.TMesh;
     Primitive:TpvScene3D.TGroup.TMesh.TPrimitive;
@@ -13776,13 +13781,13 @@ begin
     end;
    end;
 
-   if false then begin
+{  if false then begin
     // Not really needed, because every mesh primitive instance in a node gets a own clone instance.
     for IndexIndex:=DrawChoreographyBatchItem.fStartIndex to (DrawChoreographyBatchItem.fStartIndex+DrawChoreographyBatchItem.fCountIndices)-1 do begin
      VertexIndex:=fDrawChoreographyBatchCondensedIndices.Items[IndexIndex];
      IndexBitmap[VertexIndex shr 5]:=IndexBitmap[VertexIndex shr 5] and not (TpvUInt32(1) shl (VertexIndex and 31));
     end;
-   end;
+   end;//}
 
    CountIndices:=fDrawChoreographyBatchCondensedUniqueIndices.Count-StartIndex;
    if CountIndices>0 then begin
@@ -13823,9 +13828,19 @@ begin
   end;
 
   for DrawChoreographyBatchItemIndex:=0 to fDrawChoreographyBatchItems.Count-1 do begin
-   Node:=TpvScene3D.TGroup.TNode(fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex].fNode);
+   DrawChoreographyBatchItem:=fDrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
+   Node:=TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.fNode);
    if assigned(Node) then begin
     Node.fDrawChoreographyBatchItemIndices.Add(DrawChoreographyBatchItemIndex);
+    if assigned(Node.fMesh) and
+       (DrawChoreographyBatchItem.MeshPrimitive>=0) and
+       (DrawChoreographyBatchItem.MeshPrimitive<Node.fMesh.Primitives.Count) then begin
+     Primitive:=Node.fMesh.fPrimitives[DrawChoreographyBatchItem.MeshPrimitive];
+     if (Node.fNodeMeshInstanceIndex>=0) and
+        (Node.fNodeMeshInstanceIndex<Primitive.fNodeMeshPrimitiveInstances.Count) then begin
+      Primitive.fNodeMeshPrimitiveInstances[Node.fNodeMeshInstanceIndex].fStartBufferDrawIndexOffset:=DrawChoreographyBatchItem.fStartIndex;
+     end;
+    end;
    end;
   end;
 
@@ -16141,13 +16156,13 @@ begin
    fVulkanVertexBufferOffset:=fSceneInstance.fVulkanVertexBufferRangeAllocator.Allocate(fVulkanVertexBufferCount);
 // writeln(fVulkanVertexBufferOffset);
 
-   if fSceneInstance.fHardwareRaytracingSupport then begin
+{  if fSceneInstance.fHardwareRaytracingSupport then begin
     fVulkanIndexBufferCount:=fGroup.fIndices.Count;
     fVulkanIndexBufferOffset:=fSceneInstance.fVulkanIndexBufferRangeAllocator.Allocate(fVulkanIndexBufferCount);
    end else begin
     fVulkanIndexBufferCount:=0;
     fVulkanIndexBufferOffset:=-1;
-   end;
+   end;}
 
    fVulkanDrawIndexBufferCount:=fGroup.fDrawChoreographyBatchCondensedIndices.Count;
    fVulkanDrawIndexBufferOffset:=fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Allocate(fVulkanDrawIndexBufferCount);
@@ -16175,9 +16190,9 @@ begin
     fSceneInstance.fVulkanStaticVertexBufferData.Resize(fVulkanVertexBufferOffset+fVulkanVertexBufferCount);
    end;
 
-   if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) and (fSceneInstance.fVulkanIndexBufferData.Count<(fVulkanIndexBufferOffset+fVulkanIndexBufferCount)) then begin
+{  if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) and (fSceneInstance.fVulkanIndexBufferData.Count<(fVulkanIndexBufferOffset+fVulkanIndexBufferCount)) then begin
     fSceneInstance.fVulkanIndexBufferData.Resize(fVulkanIndexBufferOffset+fVulkanIndexBufferCount);
-   end;
+   end;}
 
    if fSceneInstance.fVulkanDrawIndexBufferData.Count<(fVulkanDrawIndexBufferOffset+fVulkanDrawIndexBufferCount) then begin
     fSceneInstance.fVulkanDrawIndexBufferData.Resize(fVulkanDrawIndexBufferOffset+fVulkanDrawIndexBufferCount);
@@ -16241,11 +16256,11 @@ begin
 
    end;
 
-   if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) then begin
+{  if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) then begin
     for Index:=0 to fGroup.fIndices.Count-1 do begin
      fSceneInstance.fVulkanIndexBufferData.Items[fVulkanIndexBufferOffset+Index]:=fGroup.fIndices.Items[Index]+fVulkanVertexBufferOffset;
     end;
-   end;
+   end;}
 
    for Index:=0 to fGroup.fDrawChoreographyBatchCondensedIndices.Count-1 do begin
     fSceneInstance.fVulkanDrawIndexBufferData.Items[fVulkanDrawIndexBufferOffset+Index]:=fGroup.fDrawChoreographyBatchCondensedIndices.Items[Index]+fVulkanVertexBufferOffset;
@@ -16299,7 +16314,7 @@ begin
  end else begin
 
   fVulkanVertexBufferOffset:=-1;
-  fVulkanIndexBufferOffset:=-1;
+//fVulkanIndexBufferOffset:=-1;
   fVulkanDrawIndexBufferOffset:=-1;
   fVulkanDrawUniqueIndexBufferOffset:=-1;
   fVulkanMorphTargetVertexBufferOffset:=-1;
@@ -16307,7 +16322,7 @@ begin
   fVulkanNodeMatricesBufferOffset:=-1;
   fVulkanMorphTargetVertexWeightsBufferOffset:=-1;
   fVulkanVertexBufferCount:=0;
-  fVulkanIndexBufferCount:=0;
+//fVulkanIndexBufferCount:=0;
   fVulkanDrawIndexBufferCount:=0;
   fVulkanDrawUniqueIndexBufferCount:=0;
   fVulkanMorphTargetVertexBufferCount:=0;
@@ -16389,9 +16404,9 @@ begin
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
    fSceneInstance.fVulkanVertexBufferRangeAllocator.Release(fVulkanVertexBufferOffset);
-   if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) then begin
+{  if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) then begin
     fSceneInstance.fVulkanIndexBufferRangeAllocator.Release(fVulkanIndexBufferOffset);
-   end;
+   end;}
    fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Release(fVulkanDrawIndexBufferOffset);
    fSceneInstance.fVulkanDrawUniqueIndexBufferRangeAllocator.Release(fVulkanDrawUniqueIndexBufferOffset);
    fSceneInstance.fVulkanMorphTargetVertexBufferRangeAllocator.Release(fVulkanMorphTargetVertexBufferOffset);
@@ -16403,7 +16418,7 @@ begin
   end;
 
   fVulkanVertexBufferOffset:=-1;
-  fVulkanIndexBufferOffset:=-1;
+//fVulkanIndexBufferOffset:=-1;
   fVulkanDrawIndexBufferOffset:=-1;
   fVulkanDrawUniqueIndexBufferOffset:=-1;
   fVulkanMorphTargetVertexBufferOffset:=-1;
@@ -16411,7 +16426,7 @@ begin
   fVulkanNodeMatricesBufferOffset:=-1;
   fVulkanMorphTargetVertexWeightsBufferOffset:=-1;
   fVulkanVertexBufferCount:=0;
-  fVulkanIndexBufferCount:=0;
+//fVulkanIndexBufferCount:=0;
   fVulkanDrawIndexBufferCount:=0;
   fVulkanDrawUniqueIndexBufferCount:=0;
   fVulkanMorphTargetVertexBufferCount:=0;
@@ -20665,7 +20680,7 @@ begin
 
  fVulkanDynamicVertexBufferData.Initialize;
  fVulkanStaticVertexBufferData.Initialize;
- fVulkanIndexBufferData.Initialize;
+//fVulkanIndexBufferData.Initialize;
  fVulkanDrawIndexBufferData.Initialize;
  fVulkanDrawUniqueIndexBufferData.Initialize;
  fVulkanMorphTargetVertexBufferData.Initialize;
@@ -20682,7 +20697,7 @@ begin
 
  fVulkanVertexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
- fVulkanIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
+//fVulkanIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
  fVulkanDrawIndexBufferRangeAllocator:=TpvBufferRangeAllocator.Create;
 
@@ -21264,7 +21279,7 @@ begin
 
  fVulkanDynamicVertexBufferData.Finalize;
  fVulkanStaticVertexBufferData.Finalize;
- fVulkanIndexBufferData.Finalize;
+//fVulkanIndexBufferData.Finalize;
  fVulkanDrawIndexBufferData.Finalize;
  fVulkanDrawUniqueIndexBufferData.Finalize;
  fVulkanMorphTargetVertexBufferData.Finalize;
@@ -21285,7 +21300,7 @@ begin
 
  FreeAndNil(fVulkanVertexBufferRangeAllocator);
 
- FreeAndNil(fVulkanIndexBufferRangeAllocator);
+//FreeAndNil(fVulkanIndexBufferRangeAllocator);
 
  FreeAndNil(fVulkanDrawIndexBufferRangeAllocator);
 
