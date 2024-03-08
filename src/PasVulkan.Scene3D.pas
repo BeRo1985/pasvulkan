@@ -2683,6 +2683,7 @@ type EpvScene3D=class(Exception);
               fVertices:TpvScene3D.TGroup.TGroupVertices;
               fFrameVertices:TpvScene3D.TGroup.TFrameGroupVertices;
               fIndices:TpvScene3D.TGroup.TGroupIndices;
+              fVulkanIndexBuffer:TpvVulkanBuffer;
               fDrawChoreographyBatchCondensedIndices:TpvScene3D.TGroup.TGroupIndices;
               fDrawChoreographyBatchCondensedUniqueIndices:TpvScene3D.TGroup.TGroupIndices;
               fJointBlocks:TpvScene3D.TGroup.TGroupJointBlocks;
@@ -5253,7 +5254,7 @@ begin
 end;
 
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
-{$define UsePretransformedVerticesForRaytracing}
+{$undef UsePretransformedVerticesForRaytracing}
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
@@ -5275,13 +5276,12 @@ begin
 //MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
 {$ifdef UsePretransformedVerticesForRaytracing}
- fDynamicGeometry:=true;
+ // In this case, we always have dynamic geometry since we use pretransformed vertices, which can be changed at any time in this case.
+ fDynamicGeometry:=true; 
 {$else}
+ // Check if we have dynamic geometry, which means that we have to update the bottom level acceleration structure if the geometry has changed.
  fDynamicGeometry:=(TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
-                   (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fNode.fFlags){ or
-                   (TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in fNode.fFlags) or
-                   assigned(fInstance.OnNodeMatrixPost) or
-                   assigned(fInstance.OnNodeMatrixPre)};
+                   (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fNode.fFlags);
 {$endif}
 
  fGeometryChanged:=false;
@@ -5323,7 +5323,7 @@ begin
   BLASGroup^.fAllOpaque:=true;
 
   CountPrimitives:=0;
-  if assigned(fNode.Mesh) then begin
+  if assigned(fInstance.fGroup.fVulkanIndexBuffer) and assigned(fNode.Mesh) then begin
    for RaytracingPrimitiveIndex:=0 to fNode.Mesh.fRaytracingPrimitives.Count-1 do begin
     RaytracingPrimitive:=fNode.Mesh.fRaytracingPrimitives[RaytracingPrimitiveIndex];
     if assigned(RaytracingPrimitive.Material) and (RaytracingPrimitive.Material.Data.DoubleSided=DoubleSided) then begin
@@ -5391,19 +5391,19 @@ begin
       BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
 
       BLASGroup^.fBLASGeometry.AddTriangles({$ifdef UsePretransformedVerticesForRaytracing}
-                                             VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer,
+                                             VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer
                                             {$else}
-                                             VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,
-                                            {$endif}
-                                            0,
-                                            fInstance.fVulkanVertexBufferOffset+RaytracingPrimitive.fStartBufferVertexOffset+RaytracingPrimitive.fCountVertices,
+                                             VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer
+                                            {$endif},
+                                            fInstance.fVulkanVertexBufferOffset,
+                                            fInstance.fVulkanVertexBufferCount,
                                             {$ifdef UsePretransformedVerticesForRaytracing}
-                                             SizeOf(TGPUCachedVertex),
+                                             SizeOf(TGPUCachedVertex)
                                             {$else}
-                                             SizeOf(TGPUCachedRaytracingVertex),
-                                            {$endif}
-                                            VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
-                                            (RaytracingPrimitive.fStartBufferIndexOffset+fInstance.fVulkanDrawIndexBufferOffset)*SizeOf(TpvUInt32),
+                                             SizeOf(TGPUCachedRaytracingVertex)
+                                            {$endif},
+                                            fInstance.fGroup.fVulkanIndexBuffer,
+                                            RaytracingPrimitive.fStartBufferIndexOffset*SizeOf(TpvUInt32),
                                             RaytracingPrimitive.fCountIndices,
                                             Opaque,
                                             nil,
@@ -5518,6 +5518,7 @@ begin
     Matrix:=TpvMatrix4x4.Identity; // In this case, it doesn't matter, if it is column-order or Row-order, since it is the same in both cases here then.
 {$else}
     Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
+
 //  Matrix:=InstanceNode^.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrix;
 
 {   Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
@@ -12452,6 +12453,8 @@ begin
 
  fIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
+ fVulkanIndexBuffer:=nil;
+
  fDrawChoreographyBatchCondensedIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
 
  fDrawChoreographyBatchCondensedUniqueIndices:=TpvScene3D.TGroup.TGroupIndices.Create;
@@ -12621,6 +12624,8 @@ begin
  FreeAndNil(fDrawChoreographyBatchCondensedIndices);
 
  FreeAndNil(fDrawChoreographyBatchCondensedUniqueIndices);
+
+ FreeAndNil(fVulkanIndexBuffer);
 
  FreeAndNil(fIndices);
 
@@ -12825,6 +12830,36 @@ begin
         fMorphTargetVertices.Finish;
         fJointBlocks.Finish;
 
+        if (Indices.Count>0) and fSceneInstance.fHardwareRaytracingSupport then begin
+         fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
+                                                    fIndices.Count*SizeOf(TpvUInt32),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
+                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                    [],
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    [],
+                                                    0,
+                                                    pvAllocationGroupIDScene3DIndexBuffer
+                                                   );
+         fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanIndexBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TGroup.fVulkanIndexBuffer');
+         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
+                                                           fSceneInstance.fVulkanStagingCommandBuffer,
+                                                           fSceneInstance.fVulkanStagingFence,
+                                                           fIndices.ItemArray[0],
+                                                           fVulkanIndexBuffer,
+                                                           0,
+                                                           fIndices.Count*SizeOf(TpvUInt32));
+        end else begin
+         fVulkanIndexBuffer:=nil;
+        end;
+
         for Node in fNodes do begin
          Mesh:=Node.Mesh;
          if assigned(Mesh) then begin
@@ -12891,6 +12926,7 @@ begin
    if fUploaded then begin
     try
      if not fHeadless then begin
+      FreeAndNil(fVulkanIndexBuffer);
      end;
     finally
      fUploaded:=false;
