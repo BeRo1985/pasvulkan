@@ -5525,16 +5525,12 @@ begin
 
 {$ifdef UsePretransformedVerticesForRaytracing}
 
-    Matrix:=TpvMatrix4x4.Identity; // In this case, it doesn't matter, if it is column-order or Row-order, since it is the same in both cases here then.
+    Matrix:=TpvMatrix4x4.Identity;
 
 {$else}
 
-//  Matrix:=InstanceNode^.WorkMatrix*fInstance.fModelMatrix;
-
     Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
             MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
-
-    Matrix:=Matrix.Transpose; // Convert column-order to row-order
 
 {$endif}
 
