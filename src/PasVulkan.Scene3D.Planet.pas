@@ -633,6 +633,16 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPushConstants read fPushConstants write fPushConstants;
             end;
+            { TRaytracingTile }
+            TRaytracingTile=class
+             public
+              fPlanet:TpvScene3DPlanet;
+              fTileIndex:TpvSizeInt;
+             private
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
+              destructor Destroy; override;
+            end;
             { TRayIntersection }
             TRayIntersection=class
              public 
@@ -5188,6 +5198,23 @@ begin
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
+end;
+
+{ TpvScene3DPlanet.TRaytracingTile }
+
+constructor TpvScene3DPlanet.TRaytracingTile.Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
+begin
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fTileIndex:=aTileIndex;
+
+end;
+
+destructor TpvScene3DPlanet.TRaytracingTile.Destroy;
+begin
+ inherited Destroy;
 end;
 
 { TpvScene3DPlanet.TRayIntersection }
