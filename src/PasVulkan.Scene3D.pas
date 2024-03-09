@@ -2993,6 +2993,7 @@ type EpvScene3D=class(Exception);
        fMultiDrawSupport:Boolean;
        fMaxMultiDrawCount:TpvUInt32;
        fHardwareRaytracingSupport:Boolean;
+       fRaytracingActive:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
        fDefaultSampler:TSampler;
        fDefaultMipMapSampler:TSampler;
@@ -3383,6 +3384,7 @@ type EpvScene3D=class(Exception);
        property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
+       property RaytracingActive:Boolean read fRaytracingActive;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
        property OnNodeFilter:TpvScene3D.TGroup.TInstance.TOnNodeFilter read fOnNodeFilter write fOnNodeFilter;
      end;
@@ -8597,14 +8599,14 @@ function TpvScene3D.TVulkanLongTermStaticBufferData.Check:Boolean;
 begin
  result:=((not assigned(fVulkanDynamicVertexBuffer)) and
           (not assigned(fVulkanStaticVertexBuffer)) and
-//        ((not assigned(fVulkanIndexBuffer)) or not fSceneInstance.fHardwareRaytracingSupport) and
+//        ((not assigned(fVulkanIndexBuffer)) or not fSceneInstance.fRaytracingActive) and
           (not assigned(fVulkanDrawIndexBuffer)) and
           (not assigned(fVulkanDrawUniqueIndexBuffer)) and
           (not assigned(fVulkanMorphTargetVertexBuffer)) and
           (not assigned(fVulkanJointBlockBuffer))) or
          ((assigned(fVulkanDynamicVertexBuffer) and ((Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex))<=fVulkanDynamicVertexBuffer.Size)) and
           (assigned(fVulkanStaticVertexBuffer) and ((Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex))<=fVulkanStaticVertexBuffer.Size)) and
-//        ((assigned(fVulkanIndexBuffer) and ((Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanIndexBuffer.Size)) or not fSceneInstance.fHardwareRaytracingSupport) and
+//        ((assigned(fVulkanIndexBuffer) and ((Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanIndexBuffer.Size)) or not fSceneInstance.fRaytracingActive) and
           (assigned(fVulkanDrawIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawIndexBuffer.Size)) and
           (assigned(fVulkanDrawUniqueIndexBuffer) and ((Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32))<=fVulkanDrawUniqueIndexBuffer.Size)) and
           (assigned(fVulkanMorphTargetVertexBuffer) and ((Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex))<=fVulkanMorphTargetVertexBuffer.Size)) and
@@ -8620,7 +8622,7 @@ begin
 
   if ((not assigned(fVulkanDynamicVertexBuffer)) or (fVulkanDynamicVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUDynamicVertex)))) or
      ((not assigned(fVulkanStaticVertexBuffer)) or (fVulkanStaticVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanStaticVertexBufferData.Count)*SizeOf(TGPUStaticVertex)))) or
-//   (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
+//   (fSceneInstance.fRaytracingActive and ((not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))))) or
      ((not assigned(fVulkanDrawIndexBuffer)) or (fVulkanDrawIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanDrawUniqueIndexBuffer)) or (fVulkanDrawUniqueIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanDrawUniqueIndexBufferData.Count)*SizeOf(TpvUInt32)))) or
      ((not assigned(fVulkanMorphTargetVertexBuffer)) or (fVulkanMorphTargetVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexBufferData.Count)*SizeOf(TMorphTargetVertex)))) or
@@ -8694,7 +8696,7 @@ begin
                                                       fSceneInstance.fVulkanStaticVertexBufferData.Count*SizeOf(TGPUStaticVertex));
    end;
 
-{  if fSceneInstance.fHardwareRaytracingSupport then begin
+{  if fSceneInstance.fRaytracingActive then begin
     if (not assigned(fVulkanIndexBuffer)) or (fVulkanIndexBuffer.Size<(Max(1,fSceneInstance.fVulkanIndexBufferData.Count)*SizeOf(TpvUInt32))) then begin
      FreeAndNil(fVulkanIndexBuffer);
      fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
@@ -8957,7 +8959,7 @@ begin
 
        end;
 
-{      if fSceneInstance.fHardwareRaytracingSupport and (GroupInstance.fVulkanIndexBufferCount>0) then begin
+{      if fSceneInstance.fRaytracingActive and (GroupInstance.fVulkanIndexBufferCount>0) then begin
         fSceneInstance.fVulkanDevice.MemoryStaging.Upload(fSceneInstance.fVulkanStagingQueue,
                                                           fSceneInstance.fVulkanStagingCommandBuffer,
                                                           fSceneInstance.fVulkanStagingFence,
@@ -9205,7 +9207,7 @@ begin
 
   if ((not assigned(fVulkanCachedVertexBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertex)))) or
      ((not assigned(fVulkanCachedVertexGenerationBuffer)) or (fVulkanCachedVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedVertexGeneration)))) or
-     (fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex))))) or
+     (fSceneInstance.fRaytracingActive and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex))))) or
      ((not assigned(fVulkanNodeMatricesBuffer)) or (fVulkanNodeMatricesBuffer.Size<(Max(1,fSceneInstance.fVulkanNodeMatricesBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvMatrix4x4)))) or
      ((not assigned(fVulkanMorphTargetVertexWeightsBuffer)) or (fVulkanMorphTargetVertexWeightsBuffer.Size<(Max(1,fSceneInstance.fVulkanMorphTargetVertexWeightsBufferData[fInFlightFrameIndex].Count)*SizeOf(TpvFloat)))) then begin
 
@@ -9272,7 +9274,7 @@ begin
     fSceneInstance.fVulkanDevice.DebugUtils.SetObjectName(fVulkanCachedVertexGenerationBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.TVulkanShortTermDynamicBufferData.fVulkanCachedVertexBufferGeneration');
    end;
 
-   if fSceneInstance.fHardwareRaytracingSupport and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex)))) then begin
+   if fSceneInstance.fRaytracingActive and ((not assigned(fVulkanCachedRaytracingVertexBuffer)) or (fVulkanCachedRaytracingVertexBuffer.Size<(Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex)))) then begin
     FreeAndNil(fVulkanCachedRaytracingVertexBuffer);
     fVulkanCachedRaytracingVertexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                                 Max(1,fSceneInstance.fVulkanDynamicVertexBufferData.Count)*SizeOf(TGPUCachedRaytracingVertex),
@@ -9415,7 +9417,7 @@ begin
     fVulkanComputeDescriptorPool:=TpvVulkanDescriptorPool.Create(fSceneInstance.fVulkanDevice,
                                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                  1);
-    if fSceneInstance.fHardwareRaytracingSupport then begin
+    if fSceneInstance.fRaytracingActive then begin
      fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,5);
     end else begin
      fVulkanComputeDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,4);
@@ -9458,7 +9460,7 @@ begin
                                                       [fVulkanMorphTargetVertexWeightsBuffer.DescriptorBufferInfo],
                                                       [],
                                                       false);
-     if fSceneInstance.fHardwareRaytracingSupport then begin
+     if fSceneInstance.fRaytracingActive then begin
       fVulkanComputeDescriptorSet.WriteToDescriptorSet(4,
                                                        0,
                                                        1,
@@ -12892,7 +12894,7 @@ begin
         fMorphTargetVertices.Finish;
         fJointBlocks.Finish;
 
-{       if (Indices.Count>0) and fSceneInstance.fHardwareRaytracingSupport then begin
+{       if (Indices.Count>0) and fSceneInstance.fRaytracingActive then begin
          fVulkanIndexBuffer:=TpvVulkanBuffer.Create(fSceneInstance.fVulkanDevice,
                                                     fIndices.Count*SizeOf(TpvUInt32),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or fSceneInstance.fAccelerationStructureInputBufferUsageFlags,
@@ -16156,7 +16158,7 @@ begin
    fVulkanVertexBufferOffset:=fSceneInstance.fVulkanVertexBufferRangeAllocator.Allocate(fVulkanVertexBufferCount);
 // writeln(fVulkanVertexBufferOffset);
 
-{  if fSceneInstance.fHardwareRaytracingSupport then begin
+{  if fSceneInstance.fRaytracingActive then begin
     fVulkanIndexBufferCount:=fGroup.fIndices.Count;
     fVulkanIndexBufferOffset:=fSceneInstance.fVulkanIndexBufferRangeAllocator.Allocate(fVulkanIndexBufferCount);
    end else begin
@@ -16190,7 +16192,7 @@ begin
     fSceneInstance.fVulkanStaticVertexBufferData.Resize(fVulkanVertexBufferOffset+fVulkanVertexBufferCount);
    end;
 
-{  if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) and (fSceneInstance.fVulkanIndexBufferData.Count<(fVulkanIndexBufferOffset+fVulkanIndexBufferCount)) then begin
+{  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferOffset>=0) and (fSceneInstance.fVulkanIndexBufferData.Count<(fVulkanIndexBufferOffset+fVulkanIndexBufferCount)) then begin
     fSceneInstance.fVulkanIndexBufferData.Resize(fVulkanIndexBufferOffset+fVulkanIndexBufferCount);
    end;}
 
@@ -16256,7 +16258,7 @@ begin
 
    end;
 
-{  if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) then begin
+{  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferOffset>=0) then begin
     for Index:=0 to fGroup.fIndices.Count-1 do begin
      fSceneInstance.fVulkanIndexBufferData.Items[fVulkanIndexBufferOffset+Index]:=fGroup.fIndices.Items[Index]+fVulkanVertexBufferOffset;
     end;
@@ -16294,7 +16296,7 @@ begin
    fSceneInstance.fBufferRangeAllocatorLock.Release;
   end;
 
-  if fSceneInstance.fHardwareRaytracingSupport then begin
+  if fSceneInstance.fRaytracingActive then begin
    fSceneInstance.fRaytracingLock.Acquire;
    try
     for Index:=0 to fGroup.fNodes.Count-1 do begin
@@ -16404,7 +16406,7 @@ begin
   fSceneInstance.fBufferRangeAllocatorLock.Acquire;
   try
    fSceneInstance.fVulkanVertexBufferRangeAllocator.Release(fVulkanVertexBufferOffset);
-{  if fSceneInstance.fHardwareRaytracingSupport and (fVulkanIndexBufferOffset>=0) then begin
+{  if fSceneInstance.fRaytracingActive and (fVulkanIndexBufferOffset>=0) then begin
     fSceneInstance.fVulkanIndexBufferRangeAllocator.Release(fVulkanIndexBufferOffset);
    end;}
    fSceneInstance.fVulkanDrawIndexBufferRangeAllocator.Release(fVulkanDrawIndexBufferOffset);
@@ -16434,7 +16436,7 @@ begin
   fVulkanNodeMatricesBufferCount:=0;
   fVulkanMorphTargetVertexWeightsBufferCount:=0;
 
-  if fSceneInstance.fHardwareRaytracingSupport then begin
+  if fSceneInstance.fRaytracingActive then begin
    fSceneInstance.fRaytracingLock.Acquire;
    try
     for Index:=0 to length(fNodes)-1 do begin
@@ -20589,7 +20591,9 @@ begin
  fHardwareRaytracingSupport:=(fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
 
- if fHardwareRaytracingSupport then begin
+ fRaytracingActive:=fHardwareRaytracingSupport;
+
+ if fRaytracingActive then begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or
                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
  end else begin
@@ -20968,8 +20972,8 @@ begin
                                                     TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                     []);
 
-  if fHardwareRaytracingSupport then begin
-   // Group - Cached raytracing vertices
+  if fRaytracingActive then begin
+   // Group - Cached RaytracingActive vertices
    fMeshComputeVulkanDescriptorSet1Layout.AddBinding(4,
                                                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                                      1,
@@ -22838,7 +22842,7 @@ begin
 
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
 
-   if fHardwareRaytracingSupport then begin
+   if fRaytracingActive then begin
     UpdateRaytracing(CommandBuffer,aInFlightFrameIndex,true);
    end;
 
@@ -23758,7 +23762,7 @@ begin
    BufferMemoryBarriers[1].size:=VK_WHOLE_SIZE;
    Count:=2;
 
-   if fHardwareRaytracingSupport then begin
+   if fRaytracingActive then begin
 
     FillChar(BufferMemoryBarriers[2],SizeOf(TVkBufferMemoryBarrier),#0);
     BufferMemoryBarriers[2].sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -23778,7 +23782,7 @@ begin
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                     IfThen(fHardwareRaytracingSupport,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),0),
+                                     IfThen(fRaytracingActive,TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),0),
                                      0,
                                      0,nil,
                                      Count,@BufferMemoryBarriers[0],
@@ -23813,7 +23817,7 @@ begin
 
  if (TPasMPInterlocked.ExchangeBitwiseOr(fUpdateRaytracingFrameDoneMask,FrameDoneMask) and FrameDoneMask)=0 then begin
 
-  if fHardwareRaytracingSupport then begin
+  if fRaytracingActive then begin
 
    fRaytracingLock.Acquire;
    try
@@ -23859,7 +23863,7 @@ begin
 
     //////////////////////////////////////////////////////////////////////////////
     // Create empty blas with invalid geometry for empty TLAS, when there are   //
-    // no raytracing group instance nodes.                                      //
+    // no RaytracingActive group instance nodes.                                      //
     //////////////////////////////////////////////////////////////////////////////
 
     if not assigned(fRaytracingEmptyVertexBuffer) then begin
@@ -24027,7 +24031,7 @@ begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
-    // Remove old raytracing group instance nodes                               //
+    // Remove old RaytracingActive group instance nodes                               //
     //////////////////////////////////////////////////////////////////////////////
 
     while fRaytracingGroupInstanceNodeRemoveQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
@@ -24044,7 +24048,7 @@ begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
-    // Add new raytracing group instance nodes                                  //
+    // Add new RaytracingActive group instance nodes                                  //
     //////////////////////////////////////////////////////////////////////////////
 
     while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
@@ -24064,7 +24068,7 @@ begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
-    // Update structures of all raytracing group instance nodes                 //
+    // Update structures of all RaytracingActive group instance nodes                 //
     //////////////////////////////////////////////////////////////////////////////
 
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;

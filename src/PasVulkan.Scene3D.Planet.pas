@@ -79,6 +79,7 @@ uses Classes,
      PasVulkan.Collections,
      PasVulkan.CircularDoublyLinkedList,
      PasVulkan.VirtualReality,
+     PasVulkan.Raytracing,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.MipmapImage2D;
