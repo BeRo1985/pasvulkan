@@ -638,10 +638,23 @@ type TpvScene3DPlanets=class;
              public
               fPlanet:TpvScene3DPlanet;
               fTileIndex:TpvSizeInt;
+              fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+              fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+              fBLASBuffer:TpvVulkanBuffer;
+              fBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+              fDirty:TPasMPBool32;
              private
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
               destructor Destroy; override;
+             public
+              property Planet:TpvScene3DPlanet read fPlanet;
+              property TileIndex:TpvSizeInt read fTileIndex;
+              property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
+              property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
+              property BLASBuffer:TpvVulkanBuffer read fBLASBuffer;
+              property BLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fBLASInstance;
+              property Dirty:TPasMPBool32 read fDirty write fDirty; 
             end;
             { TRayIntersection }
             TRayIntersection=class
@@ -5210,11 +5223,31 @@ begin
 
  fTileIndex:=aTileIndex;
 
+ fBLASGeometry:=nil;
+
+ fBLAS:=nil;
+ 
+ fBLASBuffer:=nil;
+
+ fBLASInstance:=nil;
+
+ fDirty:=false;
+
 end;
 
 destructor TpvScene3DPlanet.TRaytracingTile.Destroy;
 begin
+ 
+ FreeAndNil(fBLASInstance);
+
+ FreeAndNil(fBLAS);
+
+ FreeAndNil(fBLASBuffer);
+
+ FreeAndNil(fBLASGeometry);
+
  inherited Destroy;
+
 end;
 
 { TpvScene3DPlanet.TRayIntersection }
