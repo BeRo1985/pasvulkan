@@ -642,7 +642,8 @@ type TpvScene3DPlanets=class;
               fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
               fBLASBuffer:TpvVulkanBuffer;
               fBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
-              fDirty:TPasMPBool32;
+              fGeneration:TpvUInt64;
+              fLastGeneration:TpvUInt64;
              private
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
@@ -654,8 +655,13 @@ type TpvScene3DPlanets=class;
               property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
               property BLASBuffer:TpvVulkanBuffer read fBLASBuffer;
               property BLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fBLASInstance;
-              property Dirty:TPasMPBool32 read fDirty write fDirty; 
+              property Generation:TpvUInt64 read fGeneration write fGeneration;
+              property LastGeneration:TpvUInt64 read fLastGeneration write fLastGeneration;
             end;
+            { TRaytracingTiles }
+            TRaytracingTiles=TpvObjectGenericList<TRaytracingTile>;
+            { TRaytracingTileQueue }
+             TRaytracingTileQueue=TpvDynamicQueue<TRaytracingTile>;
             { TRayIntersection }
             TRayIntersection=class
              public 
@@ -5231,7 +5237,9 @@ begin
 
  fBLASInstance:=nil;
 
- fDirty:=false;
+ fGeneration:=High(TpvUInt64);
+
+ fLastGeneration:=High(TpvUInt64)-1;
 
 end;
 
