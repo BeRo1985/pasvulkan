@@ -642,12 +642,13 @@ type TpvScene3DPlanets=class;
               fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
               fBLASBuffer:TpvVulkanBuffer;
               fBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
+              fNewGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
               fGeneration:TpvUInt64;
-              fLastGeneration:TpvUInt64;
              private
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
               destructor Destroy; override;
+              function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
              public
               property Planet:TpvScene3DPlanet read fPlanet;
               property TileIndex:TpvSizeInt read fTileIndex;
@@ -656,7 +657,6 @@ type TpvScene3DPlanets=class;
               property BLASBuffer:TpvVulkanBuffer read fBLASBuffer;
               property BLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fBLASInstance;
               property Generation:TpvUInt64 read fGeneration write fGeneration;
-              property LastGeneration:TpvUInt64 read fLastGeneration write fLastGeneration;
             end;
             { TRaytracingTiles }
             TRaytracingTiles=TpvObjectGenericList<TRaytracingTile>;
@@ -5242,7 +5242,7 @@ begin
 
  fGeneration:=High(TpvUInt64);
 
- fLastGeneration:=High(TpvUInt64)-1;
+ FillChar(fNewGenerations,SizeOf(fNewGenerations),#$ff);
 
 end;
 
@@ -5259,6 +5259,23 @@ begin
 
  inherited Destroy;
 
+end;
+
+function TpvScene3DPlanet.TRaytracingTile.CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+var NewGeneration:TpvUInt64;
+begin
+ NewGeneration:=fNewGenerations[aInFlightFrameIndex];
+ if NewGeneration<>High(TpvUInt64) then begin
+  fNewGenerations[aInFlightFrameIndex]:=High(TpvUInt64);
+  if fGeneration<>NewGeneration then begin
+   fGeneration:=NewGeneration;
+   result:=true;
+  end else begin
+   result:=false;
+  end;
+ end else begin
+  result:=false;
+ end;
 end;
 
 { TpvScene3DPlanet.TRayIntersection }
@@ -8467,9 +8484,6 @@ begin
 
   if assigned(fRaytracingTiles) then begin
    while fRaytracingTileQueues[aInFlightFrameIndex].Dequeue(RaytracingTile) do begin
-    if RaytracingTile.fLastGeneration<>RaytracingTile.fGeneration then begin
-     RaytracingTile.fLastGeneration:=RaytracingTile.fGeneration;
-    end;
    end;
   end;
 
