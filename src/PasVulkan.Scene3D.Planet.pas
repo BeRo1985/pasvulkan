@@ -661,7 +661,7 @@ type TpvScene3DPlanets=class;
             { TRaytracingTiles }
             TRaytracingTiles=TpvObjectGenericList<TRaytracingTile>;
             { TRaytracingTileQueue }
-             TRaytracingTileQueue=TpvDynamicQueue<TRaytracingTile>;
+            TRaytracingTileQueue=TpvDynamicQueue<TRaytracingTile>;
             { TRayIntersection }
             TRayIntersection=class
              public 
@@ -925,6 +925,9 @@ type TpvScene3DPlanets=class;
        fPointerToMaterials:PMaterials;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+       fRaytracingLock:TPasMPCriticalSection;
+       fRaytracingTiles:TRaytracingTiles;
+       fRaytracingTileQueues:array[0..MaxInFlightFrames-1] of TRaytracingTileQueue;
        fRendererInstanceListLock:TPasMPCriticalSection;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
@@ -7341,6 +7344,28 @@ begin
 
  fRendererViewInstanceHashMap:=TRendererViewInstanceHashMap.Create(nil);
 
+ if assigned(fVulkanDevice) and TpvScene3D(fScene3D).RaytracingActive then begin
+
+  fRaytracingLock:=TPasMPCriticalSection.Create;
+
+  fRaytracingTiles:=TRaytracingTiles.Create(true);
+
+  for Index:=0 to (fTileMapResolution*fTileMapResolution)-1 do begin
+   fRaytracingTiles.Add(TRaytracingTile.Create(self,Index));
+  end;
+
+ end else begin
+
+  fRaytracingLock:=nil;
+
+  fRaytracingTiles:=nil;
+
+ end;
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+  fRaytracingTileQueues[InFlightFrameIndex].Initialize;
+ end;
+
  fReady:=true;
 
 end;
@@ -7348,6 +7373,22 @@ end;
 destructor TpvScene3DPlanet.Destroy;
 var InFlightFrameIndex:TpvSizeInt;
 begin
+
+ if assigned(fRaytracingTiles) then begin
+  try
+   if assigned(pvApplication) then begin
+    pvApplication.WaitForPreviousFrame(true);
+   end;
+  finally
+   FreeAndNil(fRaytracingTiles);
+  end;
+ end;
+
+ for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
+  fRaytracingTileQueues[InFlightFrameIndex].Finalize;
+ end;
+
+ FreeAndNil(fRaytracingLock);
 
  fRendererViewInstanceListLock.Acquire;
  try
@@ -8049,6 +8090,7 @@ var QueueTileIndex:TpvSizeInt;
     TileIndex:TpvUInt32;
     Source:Pointer;
     UpdateRenderIndex:Boolean;
+    RaytracingTile:TRaytracingTile;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -8145,6 +8187,11 @@ begin
     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
      TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
      inc(fData.fTileGenerations[TileIndex]);
+     if assigned(fRaytracingTiles) then begin
+      RaytracingTile:=fRaytracingTiles[QueueTileIndex];
+      RaytracingTile.Generation:=fData.fTileGenerations[TileIndex];
+      fRaytracingTileQueues[aInFlightFrameIndex].Enqueue(RaytracingTile);
+     end;
      if UpdateRenderIndex and (fData.fCountDirtyTiles<>(fTileMapResolution*fTileMapResolution)) then begin
       fData.fVisualMeshVertexBufferCopies.Add(TVkBufferCopy.Create(TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
                                                                    TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
@@ -8386,6 +8433,7 @@ end;
 procedure TpvScene3DPlanet.BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var InFlightFrameData:TData;
     CommandBuffer:TpvVulkanCommandBuffer;
+    RaytracingTile:TRaytracingTile;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -8415,6 +8463,14 @@ begin
 
    aWaitSemaphore:=fVulkanUniversalAcquireSemaphores[aInFlightFrameIndex];
 
+  end;
+
+  if assigned(fRaytracingTiles) then begin
+   while fRaytracingTileQueues[aInFlightFrameIndex].Dequeue(RaytracingTile) do begin
+    if RaytracingTile.fLastGeneration<>RaytracingTile.fGeneration then begin
+     RaytracingTile.fLastGeneration:=RaytracingTile.fGeneration;
+    end;
+   end;
   end;
 
  end;
