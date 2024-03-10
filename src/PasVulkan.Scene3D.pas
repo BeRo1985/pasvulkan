@@ -23801,7 +23801,8 @@ const EmptyVertex:array[0..3] of TpvUInt32=($7fc00000,$7fc00000,$7fc00000,$7fc00
 var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoBufferItemIndex,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
-    RaytracingGroupInstanceNodeIndex:TpvSizeInt;
+    RaytracingGroupInstanceNodeIndex,
+    PlanetIndex:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
@@ -23811,6 +23812,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     ScratchSize,ScratchPassSize:TVkDeviceSize;
     ScratchPass:TpvUInt64;
     FrameDoneMask:TPasMPUInt32;
+    Planet:TpvScene3DPlanet;
 begin
 
  FrameDoneMask:=TpvUInt32(1) shl aInFlightFrameIndex;
@@ -24031,7 +24033,7 @@ begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
-    // Remove old RaytracingActive group instance nodes                               //
+    // Remove old RaytracingActive group instance nodes                         //
     //////////////////////////////////////////////////////////////////////////////
 
     while fRaytracingGroupInstanceNodeRemoveQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
@@ -24048,7 +24050,7 @@ begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
-    // Add new RaytracingActive group instance nodes                                  //
+    // Add new RaytracingActive group instance nodes                            //
     //////////////////////////////////////////////////////////////////////////////
 
     while fRaytracingGroupInstanceNodeAddQueue.Dequeue(RaytracingGroupInstanceNodeQueueItem) do begin
@@ -24068,7 +24070,7 @@ begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
-    // Update structures of all RaytracingActive group instance nodes                 //
+    // Update structures of all RaytracingActive group instance nodes           //
     //////////////////////////////////////////////////////////////////////////////
 
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
@@ -24084,6 +24086,24 @@ begin
       MustUpdateTLAS:=true;
      end;
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+    end;
+
+    //////////////////////////////////////////////////////////////////////////////
+    // Update structures of all planets                                         //
+    //////////////////////////////////////////////////////////////////////////////
+
+    TpvScene3DPlanets(fPlanets).Lock.Acquire;
+    try
+
+     for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+      Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+      if assigned(Planet) and Planet.Ready then begin
+       Planet.UpdateRaytracing(aInFlightFrameIndex);
+      end;
+     end;
+
+    finally
+     TpvScene3DPlanets(fPlanets).Lock.Release;
     end;
 
     //////////////////////////////////////////////////////////////////////////////

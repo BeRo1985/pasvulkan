@@ -640,6 +640,7 @@ type TpvScene3DPlanets=class;
               fTileIndex:TpvSizeInt;
               fBLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
               fBLAS:TpvRaytracingBottomLevelAccelerationStructure;
+              fBLASScratchSize:TVkDeviceSize;
               fBLASBuffer:TpvVulkanBuffer;
               fBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
               fNewGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
@@ -649,11 +650,13 @@ type TpvScene3DPlanets=class;
               constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
               destructor Destroy; override;
               function CheckAndUpdateGeneration(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+              function Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
              public
               property Planet:TpvScene3DPlanet read fPlanet;
               property TileIndex:TpvSizeInt read fTileIndex;
               property BLASGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fBLASGeometry;
               property BLAS:TpvRaytracingBottomLevelAccelerationStructure read fBLAS;
+              property BLASScratchSize:TVkDeviceSize read fBLASScratchSize;
               property BLASBuffer:TpvVulkanBuffer read fBLASBuffer;
               property BLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fBLASInstance;
               property Generation:TpvUInt64 read fGeneration write fGeneration;
@@ -970,6 +973,7 @@ type TpvScene3DPlanets=class;
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+       function UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
        procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
@@ -5278,6 +5282,63 @@ begin
  end;
 end;
 
+function TpvScene3DPlanet.TRaytracingTile.Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+var MustUpdate:Boolean;
+begin
+
+ result:=false;
+
+ MustUpdate:=false;
+
+ if not (assigned(fBLASGeometry) and assigned(fBLAS) and assigned(fBLASBuffer) and assigned(fBLASInstance)) then begin
+
+  MustUpdate:=true;
+
+  if not assigned(fBLASGeometry) then begin
+
+   fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fPlanet.fVulkanDevice);
+   fBLASGeometry.AddTriangles(fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1],
+                              0,
+                              fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution,
+                              SizeOf(TpvScene3DPlanet.TMeshVertex),
+                              fPlanet.fData.fVisualMeshIndexBuffer,
+                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].FirstIndex,
+                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].CountIndices,
+                              true,
+                              nil,
+                              0);
+
+  end;
+
+  if not assigned(fBLAS) then begin
+   fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fPlanet.fVulkanDevice,
+                                                               fBLASGeometry,
+                                                               true);
+  end;
+
+
+ end;
+
+ if assigned(fBLASGeometry) then begin
+  if fBLASGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress<>fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress then begin
+   fBLASGeometry.Geometries.ItemArray[0].geometry.triangles.vertexData.deviceAddress:=fPlanet.fData.fVisualMeshVertexBuffers[fPlanet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].DeviceAddress;
+   //fBLAS.Update(fBLASGeometry,true);
+  end;
+ end;
+
+ fBLASScratchSize:=Max(1,Max(fBLAS.BuildSizesInfo.buildScratchSize,fBLAS.BuildSizesInfo.updateScratchSize));
+
+ if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
+  MustUpdate:=true;
+ end;
+
+ if MustUpdate then begin
+
+ end;
+
+
+end;
+
 { TpvScene3DPlanet.TRayIntersection }
 
 constructor TpvScene3DPlanet.TRayIntersection.Create(const aPlanet:TpvScene3DPlanet);
@@ -8450,7 +8511,6 @@ end;
 procedure TpvScene3DPlanet.BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 var InFlightFrameData:TData;
     CommandBuffer:TpvVulkanCommandBuffer;
-    RaytracingTile:TRaytracingTile;
 begin
 
  if assigned(fVulkanDevice) and (aInFlightFrameIndex>=0) then begin
@@ -8483,10 +8543,22 @@ begin
   end;
 
   if assigned(fRaytracingTiles) then begin
-   while fRaytracingTileQueues[aInFlightFrameIndex].Dequeue(RaytracingTile) do begin
-   end;
   end;
 
+ end;
+
+end;
+
+function TpvScene3DPlanet.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt):Boolean;
+var RaytracingTile:TRaytracingTile;
+begin
+
+ result:=false;
+
+ while fRaytracingTileQueues[aInFlightFrameIndex].Dequeue(RaytracingTile) do begin
+  if RaytracingTile.Update(aInFlightFrameIndex) then begin
+   result:=true;
+  end;
  end;
 
 end;
