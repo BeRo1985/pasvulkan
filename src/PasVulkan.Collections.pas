@@ -256,6 +256,7 @@ type TpvDynamicArray<T>=record
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
        fOwnsObjects:boolean;
+       fGeneration:TpvUInt64;
        procedure SetCount(const pNewCount:TpvSizeInt);
        function GetItem(const pIndex:TpvSizeInt):T;
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
@@ -281,6 +282,7 @@ type TpvDynamicArray<T>=record
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
        property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
        property PointerToItems:pointer read GetPointerToItems;
+       property Generation:TpvUInt64 read fGeneration;
      end;
 
      TpvObjectList=TpvObjectGenericList<TObject>;
@@ -1902,6 +1904,7 @@ begin
  fCount:=0;
  fAllocated:=0;
  fOwnsObjects:=aOwnsObjects;
+ fGeneration:=0;
 end;
 
 destructor TpvObjectGenericList<T>.Destroy;
@@ -1921,6 +1924,7 @@ begin
  fItems:=nil;
  fCount:=0;
  fAllocated:=0;
+ inc(fGeneration);
 end;
 
 procedure TpvObjectGenericList<T>.ClearNoFree;
@@ -1932,6 +1936,7 @@ begin
   end;
  end;
  fCount:=0;
+ inc(fGeneration);
 end;
 
 procedure TpvObjectGenericList<T>.SetCount(const pNewCount:TpvSizeInt);
@@ -1947,6 +1952,7 @@ begin
   end;
   FillChar(fItems[fCount],(pNewCount-fCount)*SizeOf(T),#0);
   fCount:=pNewCount;
+  inc(fGeneration);
  end else if fCount>pNewCount then begin
   if fOwnsObjects then begin
    for Index:=fCount-1 downto pNewCount do begin
@@ -1964,6 +1970,7 @@ begin
     fAllocated:=NewAllocated;
    end;
   end;
+  inc(fGeneration);
  end;
 end;
 
@@ -1981,6 +1988,7 @@ begin
   raise ERangeError.Create('Out of index range');
  end;
  fItems[pIndex]:=pItem;
+ inc(fGeneration);
 end;
 
 function TpvObjectGenericList<T>.GetPointerToItems:pointer;
@@ -2021,6 +2029,7 @@ begin
   SetLength(fItems,fAllocated);
  end;
  fItems[result]:=pItem;
+ inc(fGeneration);
 end;
 
 procedure TpvObjectGenericList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
@@ -2045,6 +2054,7 @@ begin
    FillChar(fItems[pIndex],SizeOf(T),#0);
   end;
   fItems[pIndex]:=pItem;
+  inc(fGeneration);
  end;
 end;
 
@@ -2068,6 +2078,7 @@ begin
  if fOwnsObjects then begin
   FreeAndNil(Old);
  end;
+ inc(fGeneration);
 end;
 
 function TpvObjectGenericList<T>.Extract(const pIndex:TpvSizeInt):T;
@@ -2087,6 +2098,7 @@ begin
   fAllocated:=fAllocated shr 1;
   SetLength(fItems,fAllocated);
  end;
+ inc(fGeneration);
  result:=Old;
 end;
 
@@ -2107,6 +2119,7 @@ begin
   fAllocated:=fAllocated shr 1;
   SetLength(fItems,fAllocated);
  end;
+ inc(fGeneration);
  result:=Old;
 end;
 
@@ -2137,6 +2150,7 @@ begin
  Temporary:=fItems[pIndex];
  fItems[pIndex]:=fItems[pWithIndex];
  fItems[pWithIndex]:=Temporary;
+ inc(fGeneration);
 end;
 
 function TpvObjectGenericList<T>.GetEnumerator:TValueEnumerator;
