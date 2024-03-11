@@ -8345,7 +8345,9 @@ begin
 
     CurrentRaytracingTileQueue:=fRaytracingTileQueues[fRaytracingTileQueueUpdateIndex and 1];
 
-    CurrentRaytracingTileQueue.ClearNoFree;
+    if assigned(fRaytracingTiles) and assigned(CurrentRaytracingTileQueue) then begin
+     CurrentRaytracingTileQueue.ClearNoFree;
+    end;
 
     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
      TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
