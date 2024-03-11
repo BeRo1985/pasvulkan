@@ -2979,7 +2979,7 @@ begin
  TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass:=TpvScene3DRendererPassesMeshComputePass.Create(fFrameGraph,self);
  TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDataTransferPass);
 
- if Renderer.Scene3D.HardwareRaytracingSupport then begin
+ if Renderer.Scene3D.RaytracingActive then begin
 
   TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass:=TpvScene3DRendererPassesRaytracingBuildUpdatePass.Create(fFrameGraph,self);
   TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fMeshComputePass);

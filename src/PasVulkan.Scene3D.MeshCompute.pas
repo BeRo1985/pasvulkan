@@ -104,7 +104,7 @@ begin
 
  fSceneInstance:=aSceneInstance;
 
- if TpvScene3D(fSceneInstance).HardwareRaytracingSupport then begin
+ if TpvScene3D(fSceneInstance).RaytracingActive then begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_raytracing_comp.spv');
  end else begin
   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('mesh_comp.spv');
