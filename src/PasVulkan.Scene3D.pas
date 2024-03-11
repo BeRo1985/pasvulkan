@@ -24138,10 +24138,10 @@ begin
       inc(CountBLASGeometries);
      end;
 
-{    if fRaytracingCountPlanetTiles>0 then begin
+     if fRaytracingCountPlanetTiles>0 then begin
       inc(CountBLASInstances,fRaytracingCountPlanetTiles);
       inc(CountBLASGeometries,fRaytracingCountPlanetTiles);
-     end;}
+     end;
 
      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
      while assigned(RaytracingGroupInstanceNode) do begin
@@ -24183,7 +24183,7 @@ begin
 
      end;
 
-{    if fRaytracingCountPlanetTiles>0 then begin
+{}   if fRaytracingCountPlanetTiles>0 then begin
 
       TpvScene3DPlanets(fPlanets).Lock.Acquire;
       try
@@ -24197,6 +24197,7 @@ begin
 
           PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
 
+          Assert(Assigned(PlanetTile.BLASInstance));
           fRaytracingBLASInstances.Add(PlanetTile.BLASInstance);
 
           Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
@@ -24270,7 +24271,7 @@ begin
 
     ScratchPass:=0;
 
-{   if fRaytracingCountPlanetTiles>0 then begin
+{}  if fRaytracingCountPlanetTiles>0 then begin
 
      TpvScene3DPlanets(fPlanets).Lock.Acquire;
      try
@@ -24401,7 +24402,7 @@ begin
 
     ScratchPass:=0;
 
-{   if fRaytracingCountPlanetTiles>0 then begin
+{}  if fRaytracingCountPlanetTiles>0 then begin
 
      TpvScene3DPlanets(fPlanets).Lock.Acquire;
      try
