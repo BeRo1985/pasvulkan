@@ -5444,6 +5444,10 @@ begin
    if not assigned(BLASGroup^.fBLAS) then begin
     BLASGroup^.fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fSceneInstance.fVulkanDevice,
                                                                            BLASGroup^.fBLASGeometry,
+                                                                           IfThen(fDynamicGeometry,
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR)),
                                                                            fDynamicGeometry);
     BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
     fDirty:=true;
@@ -23954,7 +23958,8 @@ begin
 
      fRaytracingEmptyBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fVulkanDevice,
                                                                                 fRaytracingEmptyBLASGeometry,
-                                                                                false);
+                                                                                TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR));
+
     end;
 
     if (not assigned(fRaytracingEmptyBLASScratchBuffer)) or
@@ -24539,6 +24544,7 @@ begin
 
      fRaytracingTLAS.Update(fRaytracingTLASBLASInstancesBuffer.DeviceAddress,
                             fRaytracingAccelerationStructureInstanceList.Count,
+                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
                             false);
 
     end else begin
@@ -24546,6 +24552,7 @@ begin
      fRaytracingTLAS:=TpvRaytracingTopLevelAccelerationStructure.Create(fVulkanDevice,
                                                                         fRaytracingTLASBLASInstancesBuffer.DeviceAddress,
                                                                         fRaytracingAccelerationStructureInstanceList.Count,
+                                                                        TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
                                                                         false);
 
     end;

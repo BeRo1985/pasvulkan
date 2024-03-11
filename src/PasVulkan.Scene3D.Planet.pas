@@ -5328,6 +5328,9 @@ begin
   if not assigned(fBLAS) then begin
    fBLAS:=TpvRaytracingBottomLevelAccelerationStructure.Create(fPlanet.fVulkanDevice,
                                                                fBLASGeometry,
+                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){ or
+                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)} {or
+                                                               TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR)},
                                                                true);
   end;
 

@@ -240,9 +240,11 @@ type EpvRaytracing=class(Exception);
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry=nil;
+                          const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                           const aDynamicGeometry:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Update(const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                        const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                         const aDynamicGeometry:Boolean=false); reintroduce;
       published
        property Geometry:TpvRaytracingBottomLevelAccelerationStructureGeometry read fGeometry;
@@ -306,10 +308,12 @@ type EpvRaytracing=class(Exception);
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aInstanceAddress:TVkDeviceAddress=0;
                           const aInstanceCount:TVkUInt32=0;
+                          const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                           const aDynamicGeometry:Boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Update(const aInstanceAddress:TVkDeviceAddress;
                         const aInstanceCount:TVkUInt32;
+                        const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                         const aDynamicGeometry:Boolean=false);
       public
       published
@@ -833,6 +837,7 @@ end;
 
 constructor TpvRaytracingBottomLevelAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
                                                                  const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                                                                 const aFlags:TVkBuildAccelerationStructureFlagsKHR;
                                                                  const aDynamicGeometry:Boolean);
 var Index:TpvSizeInt;
     MaxPrimCount:TpvUInt32DynamicArray;
@@ -847,12 +852,7 @@ begin
  FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
  fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
  fBuildGeometryInfo.pNext:=nil;
- if fDynamicGeometry then begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
-                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);                            
- end else begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
- end;
+ fBuildGeometryInfo.flags:=aFlags;
  if assigned(fGeometry) then begin
   fBuildGeometryInfo.geometryCount:=fGeometry.fGeometries.Count;
   fBuildGeometryInfo.pGeometries:=@fGeometry.fGeometries.ItemArray[0];
@@ -901,6 +901,7 @@ begin
 end;
 
 procedure TpvRaytracingBottomLevelAccelerationStructure.Update(const aGeometry:TpvRaytracingBottomLevelAccelerationStructureGeometry;
+                                                               const aFlags:TVkBuildAccelerationStructureFlagsKHR;
                                                                const aDynamicGeometry:Boolean);
 var Index:TpvSizeInt;
     MaxPrimCount:TpvUInt32DynamicArray;
@@ -913,12 +914,7 @@ begin
  FillChar(fBuildGeometryInfo,SizeOf(TVkAccelerationStructureBuildGeometryInfoKHR),#0);
  fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
  fBuildGeometryInfo.pNext:=nil;
- if fDynamicGeometry then begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
-                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);                            
- end else begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
- end;
+ fBuildGeometryInfo.flags:=aFlags;
  if assigned(fGeometry) then begin
   fBuildGeometryInfo.geometryCount:=fGeometry.fGeometries.Count;
   fBuildGeometryInfo.pGeometries:=@fGeometry.fGeometries.ItemArray[0];
@@ -1128,6 +1124,7 @@ end;
 constructor TpvRaytracingTopLevelAccelerationStructure.Create(const aDevice:TpvVulkanDevice;
                                                               const aInstanceAddress:TVkDeviceAddress;
                                                               const aInstanceCount:TVkUInt32;
+                                                              const aFlags:TVkBuildAccelerationStructureFlagsKHR;
                                                               const aDynamicGeometry:Boolean);
 begin
 
@@ -1156,12 +1153,7 @@ begin
 
  fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
  fBuildGeometryInfo.pNext:=nil;
- if fDynamicGeometry then begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
-                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);                            
- end else begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
- end;  
+ fBuildGeometryInfo.flags:=aFlags;
  fBuildGeometryInfo.geometryCount:=1;
  fBuildGeometryInfo.pGeometries:=@fGeometry;
  fBuildGeometryInfo.mode:=TVkBuildAccelerationStructureModeKHR(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR);
@@ -1194,6 +1186,7 @@ end;
 
 procedure TpvRaytracingTopLevelAccelerationStructure.Update(const aInstanceAddress:TVkDeviceAddress;
                                                             const aInstanceCount:TVkUInt32;
+                                                            const aFlags:TVkBuildAccelerationStructureFlagsKHR;
                                                             const aDynamicGeometry:Boolean);
 begin
 
@@ -1220,12 +1213,7 @@ begin
 
  fBuildGeometryInfo.sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
  fBuildGeometryInfo.pNext:=nil;
- if fDynamicGeometry then begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
-                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR);                            
- end else begin
-  fBuildGeometryInfo.flags:=TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
- end;
+ fBuildGeometryInfo.flags:=aFlags;
  fBuildGeometryInfo.geometryCount:=1;
 
  if fCountInstances>0 then begin
