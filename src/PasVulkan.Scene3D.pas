@@ -3133,6 +3133,7 @@ type EpvScene3D=class(Exception);
        fRaytracingEmptyBLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingEmptyBLASBuffer:TpvVulkanBuffer;
        fRaytracingCountPlanetTiles:TpvSizeInt;
+       fRaytracingPlanetListGeneration:TpvUInt64;
        fRaytracingBLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingTLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingTLASBLASInstancesBuffer:TpvVulkanBuffer;
@@ -20663,6 +20664,8 @@ begin
 
  fRaytracingCountPlanetTiles:=0;
 
+ fRaytracingPlanetListGeneration:=High(TpvUInt64);
+
  fRaytracingBLASScratchBuffer:=nil;
 
  fRaytracingTLASScratchBuffer:=nil;
@@ -24120,8 +24123,10 @@ begin
      TpvScene3DPlanets(fPlanets).Lock.Release;
     end;
 
-    if fRaytracingCountPlanetTiles<>CountPlanetTiles then begin
+    if (fRaytracingCountPlanetTiles<>CountPlanetTiles) or
+       (fRaytracingPlanetListGeneration<>TpvScene3DPlanets(fPlanets).Generation) then begin
      fRaytracingCountPlanetTiles:=CountPlanetTiles;
+     fRaytracingPlanetListGeneration:=TpvScene3DPlanets(fPlanets).Generation;
      BLASListChanged:=true;
     end;
 
