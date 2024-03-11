@@ -231,6 +231,7 @@ type TpvScene3DPlanets=class;
               fTileGenerations:TTileGenerations;
               fTiledMeshBoundingBoxes:TTiledMeshBoundingBoxes;
               fTiledMeshBoundingSpheres:TTiledMeshBoundingSpheres;
+              fRaytracingTileQueue:Pointer;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aInFlightFrameIndex:TpvInt32); reintroduce;
               destructor Destroy; override; 
@@ -645,6 +646,9 @@ type TpvScene3DPlanets=class;
               fBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
               fNewGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
               fGeneration:TpvUInt64;
+              fMustUpdate:Boolean;
+              fScratchOffset:TVkDeviceSize;
+              fScratchPass:TpvUInt64;
              private
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aTileIndex:TpvSizeInt);
@@ -660,11 +664,14 @@ type TpvScene3DPlanets=class;
               property BLASBuffer:TpvVulkanBuffer read fBLASBuffer;
               property BLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance read fBLASInstance;
               property Generation:TpvUInt64 read fGeneration write fGeneration;
+              property MustUpdate:Boolean read fMustUpdate write fMustUpdate;
+              property ScratchOffset:TVkDeviceSize read fScratchOffset write fScratchOffset;
+              property ScratchPass:TpvUInt64 read fScratchPass write fScratchPass;
             end;
             { TRaytracingTiles }
             TRaytracingTiles=TpvObjectGenericList<TRaytracingTile>;
-            { TRaytracingTileQueue }
-            TRaytracingTileQueue=TpvDynamicQueue<TRaytracingTile>;
+            { TRaytracingTileQueues }
+            TRaytracingTileQueues=array[0..1] of TRaytracingTiles;
             { TRayIntersection }
             TRayIntersection=class
              public 
@@ -930,7 +937,10 @@ type TpvScene3DPlanets=class;
        fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
        fRaytracingLock:TPasMPCriticalSection;
        fRaytracingTiles:TRaytracingTiles;
-       fRaytracingTileQueues:array[0..MaxInFlightFrames-1] of TRaytracingTileQueue;
+       fRaytracingTileQueue:TRaytracingTiles;
+       fRaytracingTileNextQueue:TRaytracingTiles;
+       fRaytracingTileQueues:TRaytracingTileQueues;
+       fRaytracingTileQueueUpdateIndex:TPasMPUInt32;
        fRendererInstanceListLock:TPasMPCriticalSection;
        fRendererInstances:TRendererInstances;
        fRendererInstanceHashMap:TRendererInstanceHashMap;
@@ -973,7 +983,6 @@ type TpvScene3DPlanets=class;
        procedure Prepare(const aInFlightFrameIndex:TpvSizeInt;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aViewPortWidth,aViewPortHeight:TpvInt32;const aMainViewPort:Boolean);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure BeginFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
-       function UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt):Boolean;
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure ExportPhysicsMeshToOBJ(const aStream:TStream); overload;
        procedure ExportPhysicsMeshToOBJ(const aFileName:TpvUTF8String); overload;
@@ -1005,6 +1014,10 @@ type TpvScene3DPlanets=class;
        property TiledVisualMeshIndexGroups:TTiledMeshIndexGroups read fTiledVisualMeshIndexGroups;
        property TiledPhysicsMeshIndices:TMeshIndices read fTiledPhysicsMeshIndices;
        property TiledPhysicsMeshIndexGroups:TTiledMeshIndexGroups read fTiledPhysicsMeshIndexGroups;
+       property RaytracingTiles:TRaytracingTiles read fRaytracingTiles;
+       property RaytracingTileQueue:TRaytracingTiles read fRaytracingTileQueue;
+       property RaytracingTileQueues:TRaytracingTileQueues read fRaytracingTileQueues;
+       property RaytracingTileQueueUpdateIndex:TPasMPUInt32 read fRaytracingTileQueueUpdateIndex;
      end;
 
      TpvScene3DPlanets=class(TpvObjectGenericList<TpvScene3DPlanet>)
@@ -1443,7 +1456,7 @@ begin
 
     fVisualMeshVertexBuffers[0]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshVertex),
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags,
                                                         fPlanet.fGlobalBufferSharingMode,
                                                         fPlanet.fGlobalBufferQueueFamilyIndices,
                                                         0,
@@ -1462,7 +1475,7 @@ begin
 
     fVisualMeshVertexBuffers[1]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshVertex),
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags,
                                                         fPlanet.fGlobalBufferSharingMode,
                                                         fPlanet.fGlobalBufferQueueFamilyIndices,
                                                         0,
@@ -1487,7 +1500,7 @@ begin
 
     fVisualMeshIndexBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                    fPlanet.fCountVisualMeshIndices*SizeOf(TpvUInt32),
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags,
                                                    fPlanet.fGlobalBufferSharingMode,
                                                    fPlanet.fGlobalBufferQueueFamilyIndices,
                                                    0,
@@ -5248,6 +5261,8 @@ begin
 
  FillChar(fNewGenerations,SizeOf(fNewGenerations),#$ff);
 
+ fMustUpdate:=false;
+
 end;
 
 destructor TpvScene3DPlanet.TRaytracingTile.Destroy;
@@ -5283,16 +5298,16 @@ begin
 end;
 
 function TpvScene3DPlanet.TRaytracingTile.Update(const aInFlightFrameIndex:TpvSizeInt):Boolean;
-var MustUpdate:Boolean;
+var MustBeUpdated:Boolean;
 begin
 
  result:=false;
 
- MustUpdate:=false;
+ MustBeUpdated:=false;
 
  if not (assigned(fBLASGeometry) and assigned(fBLAS) and assigned(fBLASBuffer) and assigned(fBLASInstance)) then begin
 
-  MustUpdate:=true;
+  MustBeUpdated:=true;
 
   if not assigned(fBLASGeometry) then begin
 
@@ -5302,7 +5317,7 @@ begin
                               fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution,
                               SizeOf(TpvScene3DPlanet.TMeshVertex),
                               fPlanet.fData.fVisualMeshIndexBuffer,
-                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].FirstIndex,
+                              fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].FirstIndex*SizeOf(TVkUInt32),
                               fPlanet.fTiledVisualMeshIndexGroups[fTileIndex].CountIndices,
                               true,
                               nil,
@@ -5316,6 +5331,48 @@ begin
                                                                true);
   end;
 
+  if (not assigned(fBLASBuffer)) or
+     (fBLASBuffer.Size<fBLAS.AccelerationStructureSize) then begin
+
+   fBLAS.Finalize;
+
+   FreeAndNil(fBLASBuffer);
+
+   fBLASBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                       fBLAS.AccelerationStructureSize,
+                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                       [],
+                                       0,
+                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       [],
+                                       0,
+                                       pvAllocationGroupIDScene3DRaytracing);
+
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fBLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanPlanetBLASBuffer');
+
+   fBLAS.Initialize(fBLASBuffer,
+                    0);
+
+  end;
+
+  if not assigned(fBLASInstance) then begin
+
+   fBLASInstance:=TpvRaytracingBottomLevelAccelerationStructureInstance.Create(fPlanet.fVulkanDevice,
+                                                                               TpvMatrix4x4.Identity,
+                                                                               0,
+                                                                               $ff,
+                                                                               0,
+                                                                               0,
+                                                                               fBLAS);
+
+  end;
 
  end;
 
@@ -5328,13 +5385,13 @@ begin
 
  fBLASScratchSize:=Max(1,Max(fBLAS.BuildSizesInfo.buildScratchSize,fBLAS.BuildSizesInfo.updateScratchSize));
 
+ fBLASInstance.Transform:=fPlanet.fData.ModelMatrix;
+
  if CheckAndUpdateGeneration(aInFlightFrameIndex) then begin
-  MustUpdate:=true;
+  MustBeUpdated:=true;
  end;
 
- if MustUpdate then begin
-
- end;
+ fMustUpdate:=MustBeUpdated;
 
 
 end;
@@ -7432,16 +7489,32 @@ begin
    fRaytracingTiles.Add(TRaytracingTile.Create(self,Index));
   end;
 
+  for Index:=0 to 1 do begin
+   fRaytracingTileQueues[Index]:=TRaytracingTiles.Create(false);
+  end;
+
+  fRaytracingTileQueueUpdateIndex:=0;
+
+  fRaytracingTileQueue:=fRaytracingTileQueues[1];
+
+  fRaytracingTileNextQueue:=fRaytracingTileQueues[1];
+
  end else begin
 
   fRaytracingLock:=nil;
 
   fRaytracingTiles:=nil;
 
- end;
+  for Index:=0 to 1 do begin
+   fRaytracingTileQueues[Index]:=nil;
+  end;
 
- for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
-  fRaytracingTileQueues[InFlightFrameIndex].Initialize;
+  fRaytracingTileQueueUpdateIndex:=0;
+
+  fRaytracingTileQueue:=nil;
+
+  fRaytracingTileNextQueue:=nil;
+
  end;
 
  fReady:=true;
@@ -7449,7 +7522,7 @@ begin
 end;
 
 destructor TpvScene3DPlanet.Destroy;
-var InFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,Index:TpvSizeInt;
 begin
 
  if assigned(fRaytracingTiles) then begin
@@ -7462,8 +7535,12 @@ begin
   end;
  end;
 
- for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
-  fRaytracingTileQueues[InFlightFrameIndex].Finalize;
+ fRaytracingTileQueue:=nil;
+
+ fRaytracingTileNextQueue:=nil;
+
+ for Index:=0 to 1 do begin
+  FreeAndNil(fRaytracingTileQueues[Index]);
  end;
 
  FreeAndNil(fRaytracingLock);
@@ -8169,6 +8246,7 @@ var QueueTileIndex:TpvSizeInt;
     Source:Pointer;
     UpdateRenderIndex:Boolean;
     RaytracingTile:TRaytracingTile;
+    CurrentRaytracingTileQueue:TRaytracingTiles;
 begin
 
  fData.fCountDirtyTiles:=0;
@@ -8262,13 +8340,17 @@ begin
 
     fData.fVisualMeshVertexBufferCopies.ClearNoFree;
 
+    CurrentRaytracingTileQueue:=fRaytracingTileQueues[fRaytracingTileQueueUpdateIndex and 1];
+
+    CurrentRaytracingTileQueue.ClearNoFree;
+
     for QueueTileIndex:=0 to TpvSizeInt(fData.fCountDirtyTiles)-1 do begin
      TileIndex:=fData.fTileDirtyQueueItems.ItemArray[QueueTileIndex];
      inc(fData.fTileGenerations[TileIndex]);
      if assigned(fRaytracingTiles) then begin
-      RaytracingTile:=fRaytracingTiles[QueueTileIndex];
+      RaytracingTile:=fRaytracingTiles[TileIndex];
       RaytracingTile.Generation:=fData.fTileGenerations[TileIndex];
-      fRaytracingTileQueues[aInFlightFrameIndex].Enqueue(RaytracingTile);
+      CurrentRaytracingTileQueue.Add(RaytracingTile);
      end;
      if UpdateRenderIndex and (fData.fCountDirtyTiles<>(fTileMapResolution*fTileMapResolution)) then begin
       fData.fVisualMeshVertexBufferCopies.Add(TVkBufferCopy.Create(TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
@@ -8276,6 +8358,10 @@ begin
                                                                    fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex)));
      end;
     end;
+
+    fRaytracingTileNextQueue:=CurrentRaytracingTileQueue;
+
+    fRaytracingTileQueueUpdateIndex:=(fRaytracingTileQueueUpdateIndex+1) and 1;
 
     if fData.fCountDirtyTiles=(fTileMapResolution*fTileMapResolution) then begin
 
@@ -8352,6 +8438,9 @@ begin
   if aInFlightFrameIndex>=0 then begin
    InFlightFrameData:=fInFlightFrameDataList[aInFlightFrameIndex];
    InFlightFrameData.Assign(fData);
+   if assigned(InFlightFrameData) then begin
+    InFlightFrameData.fRaytracingTileQueue:=fRaytracingTileNextQueue;
+   end;
   end else begin
    InFlightFrameData:=nil;
   end;
@@ -8543,22 +8632,9 @@ begin
   end;
 
   if assigned(fRaytracingTiles) then begin
+   fRaytracingTileQueue:=InFlightFrameData.fRaytracingTileQueue;
   end;
 
- end;
-
-end;
-
-function TpvScene3DPlanet.UpdateRaytracing(const aInFlightFrameIndex:TpvSizeInt):Boolean;
-var RaytracingTile:TRaytracingTile;
-begin
-
- result:=false;
-
- while fRaytracingTileQueues[aInFlightFrameIndex].Dequeue(RaytracingTile) do begin
-  if RaytracingTile.Update(aInFlightFrameIndex) then begin
-   result:=true;
-  end;
  end;
 
 end;

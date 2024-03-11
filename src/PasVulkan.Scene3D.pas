@@ -3132,6 +3132,7 @@ type EpvScene3D=class(Exception);
        fRaytracingEmptyBLASInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
        fRaytracingEmptyBLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingEmptyBLASBuffer:TpvVulkanBuffer;
+       fRaytracingCountPlanetTiles:TpvSizeInt;
        fRaytracingBLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingTLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingTLASBLASInstancesBuffer:TpvVulkanBuffer;
@@ -20656,6 +20657,8 @@ begin
 
  fRaytracingEmptyBLASBuffer:=nil;
 
+ fRaytracingCountPlanetTiles:=0;
+
  fRaytracingBLASScratchBuffer:=nil;
 
  fRaytracingTLASScratchBuffer:=nil;
@@ -23802,7 +23805,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoBufferItemIndex,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
     RaytracingGroupInstanceNodeIndex,
-    PlanetIndex:TpvSizeInt;
+    PlanetIndex,CountPlanetTiles,PlanetTileIndex:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
@@ -23813,6 +23816,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     ScratchPass:TpvUInt64;
     FrameDoneMask:TPasMPUInt32;
     Planet:TpvScene3DPlanet;
+    PlanetTile:TpvScene3DPlanet.TRaytracingTile;
 begin
 
  FrameDoneMask:=TpvUInt32(1) shl aInFlightFrameIndex;
@@ -23865,7 +23869,7 @@ begin
 
     //////////////////////////////////////////////////////////////////////////////
     // Create empty blas with invalid geometry for empty TLAS, when there are   //
-    // no RaytracingActive group instance nodes.                                      //
+    // no RaytracingActive group instance nodes.                                //
     //////////////////////////////////////////////////////////////////////////////
 
     if not assigned(fRaytracingEmptyVertexBuffer) then begin
@@ -24095,15 +24099,25 @@ begin
     TpvScene3DPlanets(fPlanets).Lock.Acquire;
     try
 
+     CountPlanetTiles:=0;
+
      for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
       Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
       if assigned(Planet) and Planet.Ready then begin
-       Planet.UpdateRaytracing(aInFlightFrameIndex);
+       for PlanetTile in Planet.RaytracingTileQueue do begin
+        PlanetTile.Update(aInFlightFrameIndex);
+       end;
+       inc(CountPlanetTiles,Planet.TileMapResolution*Planet.TileMapResolution);
       end;
      end;
 
     finally
      TpvScene3DPlanets(fPlanets).Lock.Release;
+    end;
+
+    if fRaytracingCountPlanetTiles<>CountPlanetTiles then begin
+     fRaytracingCountPlanetTiles:=CountPlanetTiles;
+     BLASListChanged:=true;
     end;
 
     //////////////////////////////////////////////////////////////////////////////
@@ -24123,6 +24137,11 @@ begin
       inc(CountBLASInstances);
       inc(CountBLASGeometries);
      end;
+
+{    if fRaytracingCountPlanetTiles>0 then begin
+      inc(CountBLASInstances,fRaytracingCountPlanetTiles);
+      inc(CountBLASGeometries,fRaytracingCountPlanetTiles);
+     end;}
 
      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
      while assigned(RaytracingGroupInstanceNode) do begin
@@ -24163,6 +24182,45 @@ begin
       inc(RaytracingBLASGeometryInfoBufferItemIndex);
 
      end;
+
+{    if fRaytracingCountPlanetTiles>0 then begin
+
+      TpvScene3DPlanets(fPlanets).Lock.Acquire;
+      try
+
+       for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+
+        Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+        if assigned(Planet) and Planet.Ready then begin
+
+         for PlanetTileIndex:=0 to (Planet.TileMapResolution*Planet.TileMapResolution)-1 do begin
+
+          PlanetTile:=Planet.RaytracingTiles[PlanetTileIndex];
+
+          fRaytracingBLASInstances.Add(PlanetTile.BLASInstance);
+
+          Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
+          fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
+          inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+
+          Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
+          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(1,
+                                                                                                                                            PlanetIndex,
+                                                                                                                                            0,
+                                                                                                                                            Planet.TiledVisualMeshIndexGroups[PlanetTileIndex].FirstIndex);
+          inc(RaytracingBLASGeometryInfoBufferItemIndex);
+
+         end;
+
+        end;
+
+       end;
+
+      finally
+       TpvScene3DPlanets(fPlanets).Lock.Release;
+      end;
+
+     end;//}
 
      RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
      while assigned(RaytracingGroupInstanceNode) do begin
@@ -24208,13 +24266,56 @@ begin
 
     ScratchSize:=TpvUInt64(64) shl 20;
 
+    ScratchPassSize:=0;
+
+    ScratchPass:=0;
+
+{   if fRaytracingCountPlanetTiles>0 then begin
+
+     TpvScene3DPlanets(fPlanets).Lock.Acquire;
+     try
+
+      for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+
+       Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+       if assigned(Planet) and Planet.Ready then begin
+
+        for PlanetTile in Planet.RaytracingTileQueue do begin
+
+         if assigned(PlanetTile.fBLASGeometry) and assigned(PlanetTile.fBLAS) then begin
+
+          PlanetTile.ScratchOffset:=ScratchPassSize;
+          PlanetTile.ScratchPass:=ScratchPass;
+          if PlanetTile.fBLAS.BuildSizesInfo.buildScratchSize<PlanetTile.fBLAS.BuildSizesInfo.updateScratchSize then begin
+           inc(ScratchPassSize,PlanetTile.fBLAS.BuildSizesInfo.updateScratchSize); // Update scratch size is bigger than build scratch size
+          end else begin
+           inc(ScratchPassSize,PlanetTile.fBLAS.BuildSizesInfo.buildScratchSize); // Build scratch size is bigger than update scratch size
+          end;
+          if ScratchSize<ScratchPassSize then begin
+           ScratchSize:=ScratchPassSize;
+          end;
+          if ScratchPassSize>=(TpvUInt64(64) shl 20) then begin
+           ScratchPassSize:=0;
+           inc(ScratchPass);
+          end;
+
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+     finally
+      TpvScene3DPlanets(fPlanets).Lock.Release;
+     end;
+
+    end;   //}
+
     if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
 
  //  BLASAccelerationStructureSize:=0;
-
-     ScratchPassSize:=0;
-
-     ScratchPass:=0;
 
      for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
 
@@ -24296,11 +24397,54 @@ begin
     // too large. Therefore this process is divided into multiple pass splits. //
     /////////////////////////////////////////////////////////////////////////////
 
+    fRaytracingAccelerationStructureBuildQueue.Clear;
+
+    ScratchPass:=0;
+
+{   if fRaytracingCountPlanetTiles>0 then begin
+
+     TpvScene3DPlanets(fPlanets).Lock.Acquire;
+     try
+
+      for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+
+       Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+       if assigned(Planet) and Planet.Ready then begin
+
+        for PlanetTile in Planet.RaytracingTileQueue do begin
+
+         if assigned(PlanetTile.fBLASGeometry) and assigned(PlanetTile.fBLAS) then begin
+
+          if ScratchPass<>PlanetTile.ScratchPass then begin
+           if not fRaytracingAccelerationStructureBuildQueue.Empty then begin
+            fRaytracingAccelerationStructureBuildQueue.Execute(aCommandBuffer);
+            TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
+            fRaytracingAccelerationStructureBuildQueue.Clear;
+           end;
+           ScratchPass:=PlanetTile.fScratchPass;
+          end;
+          PlanetTile.fBLAS.Build(aCommandBuffer,
+                                 fRaytracingBLASScratchBuffer,
+                                 PlanetTile.fScratchOffset,
+                                 false,
+                                 nil,
+                                 fRaytracingAccelerationStructureBuildQueue);
+
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+     finally
+      TpvScene3DPlanets(fPlanets).Lock.Release;
+     end;
+
+    end;//}
+
     if fRaytracingGroupInstanceNodeDirtyArrayList.Count>0 then begin
-
-     fRaytracingAccelerationStructureBuildQueue.Clear;
-
-     ScratchPass:=0;
 
      for RaytracingGroupInstanceNodeIndex:=0 to fRaytracingGroupInstanceNodeDirtyArrayList.Count-1 do begin
       RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeDirtyArrayList[RaytracingGroupInstanceNodeIndex];
@@ -24492,6 +24636,18 @@ begin
 
      TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
 
+    end;
+
+    TpvScene3DPlanets(fPlanets).Lock.Acquire;
+    try
+     for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+      Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+      if assigned(Planet) and Planet.Ready then begin
+       Planet.RaytracingTileQueue.ClearNoFree;
+      end;
+     end;
+    finally
+     TpvScene3DPlanets(fPlanets).Lock.Release;
     end;
 
     if aLabels then begin
