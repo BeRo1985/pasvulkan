@@ -10,9 +10,7 @@
 #endif
 
 #ifdef USE_MATERIAL_BUFFER_REFERENCE
-  #undef NOBUFFERREFERENCE
 #elif defined(USE_MATERIAL_SSBO)
-  #define NOBUFFERREFERENCE
 #endif
 
 #extension GL_EXT_multiview : enable
@@ -29,13 +27,21 @@
 
 #extension GL_EXT_control_flow_attributes : enable
 
-#ifndef NOBUFFERREFERENCE
-  #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
+#if defined(RAYTRACING)
+  #define USE_MATERIAL_BUFFER_REFERENCE // Explicitly enable this, ray tracing needs buffer reference support anyway.
+  #define USE_INT64 // Enable 64-bit integers for on GPU with hardware ray tracing for simplicity. Therefore, GPUs with hardware ray tracing that do not support 64-bit integers are plain and simple not supported for the sake of simplicity. 
+#endif
+
+#if defined(USE_MATERIAL_BUFFER_REFERENCE) 
   #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable 
+  //#extension GL_EXT_buffer_reference : enable 
   #extension GL_EXT_buffer_reference2 : enable 
-  #ifndef USEINT64
+  #ifdef USE_INT64
+    //#extension GL_ARB_gpu_shader_int64 : enable
+  #else
     #extension GL_EXT_buffer_reference_uvec2 : enable 
   #endif
+  #define sizeof(Type) (uint64_t(Type(uint64_t(0))+1))
 #endif
 
 #if defined(LOCKOIT) || defined(DFAOIT)
@@ -578,15 +584,15 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #endif // !defined(DEPTHONLY) || defined(VOXELIZATION) 
 
-#ifdef NOBUFFERREFERENCE
-#define material materials[inMaterialID]
-//Material material = materials[inMaterialID];
-#else
-  #ifdef USEINT64
+#if defined(USE_MATERIAL_BUFFER_REFERENCE)
+  #ifdef USE_INT64
     Material material = uMaterials.materials[inMaterialID];
   #else
     Material material;
   #endif
+#else
+  #define material materials[inMaterialID]
+//Material material = materials[inMaterialID];
 #endif
 
 const uint smPBRMetallicRoughness = 0u,  //
@@ -649,7 +655,7 @@ void main() {
     workBitangent = inBitangent * frontFacingSign;
     workNormal = inNormal * frontFacingSign;
   }
-#if !(defined(NOBUFFERREFERENCE) || defined(USEINT64))
+#if defined(USE_MATERIAL_BUFFER_REFERENCE) && !defined(USE_INT64)
   material = uMaterials.materials;
   {
     uvec2 materialPointer = uvec2(material);  

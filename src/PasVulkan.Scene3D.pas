@@ -511,7 +511,8 @@ type EpvScene3D=class(Exception);
              TextureID:TpvUInt32;           //    4
              Size:TpvVector2;               //    8
              Color:TpvHalfFloatVector4;     //    8
-            end;                            // = 40 bytes per particle vertex
+             Unused:TpvUInt64;              //    8
+            end;                            // = 48 bytes per particle vertex
             PParticleVertex=^TParticleVertex;
             TParticleVertices=array[0..(MaxParticles*3)-1] of TParticleVertex;
             PParticleVertices=^TParticleVertices;

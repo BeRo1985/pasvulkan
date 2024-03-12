@@ -562,8 +562,9 @@ end;
 class function TpvScene3DRenderer.CheckBufferDeviceAddress(const aVulkanDevice:TpvVulkanDevice):boolean;
 begin
  result:=assigned(aVulkanDevice) and
-         ((aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE) and
-          (aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE));
+         ((aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddress<>VK_FALSE){$ifndef Android}and
+          (aVulkanDevice.PhysicalDevice.BufferDeviceAddressFeaturesKHR.bufferDeviceAddressCaptureReplay<>VK_FALSE){$endif}{and
+          (aVulkanDevice.PhysicalDevice.Features.shaderInt64<>VK_FALSE)});
 end;
 
 procedure TpvScene3DRenderer.Prepare;
