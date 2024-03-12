@@ -75,11 +75,20 @@ type EpvRaytracing=class(Exception);
 
      { TpvRaytracingBLASGeometryInfoBufferItem } 
      TpvRaytracingBLASGeometryInfoBufferItem=packed record // per gl_InstanceCustomIndexEXT or gl_InstanceID wise, depending on the usage
+      public
+       const TypeNone=TVkUInt32($ffffffff);
+             TypeMesh=0;
+             TypeParticle=1;
+             TypePlanet=2;
       private
-       fType_:TVkUInt32; // 0 = mesh object, 1 = planet object, etc.
+
+       // uvec4 start
+       fType_:TVkUInt32; // Type of object, 0 = mesh, 1 = particle, 2 = planet, and so on
        fObjectIndex:TVkUInt32; // Index of object, especially for planet objects important, because it's the index of the planet in the planet list, and not for the mesh objects, since mesh objects uses the same unique vertex and index buffers.
-       fMaterialIndex:TVkUInt32;
-       fIndexOffset:TVkUInt32;
+       fMaterialIndex:TVkUInt32; // Index of material
+       fIndexOffset:TVkUInt32; // Offset inside index buffer
+       // uvec4 end
+
       public 
        constructor Create(const aType_:TVkUInt32;
                           const aObjectIndex:TVkUInt32;

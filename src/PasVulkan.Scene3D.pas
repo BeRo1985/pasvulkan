@@ -23824,6 +23824,8 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     FrameDoneMask:TPasMPUInt32;
     Planet:TpvScene3DPlanet;
     PlanetTile:TpvScene3DPlanet.TRaytracingTile;
+{   VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
+    VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;//}
 begin
 
  FrameDoneMask:=TpvUInt32(1) shl aInFlightFrameIndex;
@@ -23838,6 +23840,10 @@ begin
     if aLabels then begin
      fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'RaytracingBuildUpdate',[1.0,0.5,0.25,1.0]);
     end;
+
+{   VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.BufferData;
+
+    VulkanLongTermStaticBufferData:=fVulkanLongTermStaticBuffers.BufferData;//}
 
     /////////////////////////////////////////////////////////////////////////////
     // Wait for previous frame, when there are changes in the BLAS list, since //
@@ -24185,7 +24191,7 @@ begin
       inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
 
       Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
-      fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TVkUInt32($ffffffff),
+      fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypeNone,
                                                                                                                                         0,
                                                                                                                                         0,
                                                                                                                                         0);
@@ -24215,7 +24221,7 @@ begin
           inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
 
           Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
-          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(1,
+          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypePlanet,
                                                                                                                                             PlanetIndex,
                                                                                                                                             0,
                                                                                                                                             Planet.TiledVisualMeshIndexGroups[PlanetTileIndex].FirstIndex);
@@ -24252,7 +24258,7 @@ begin
 
          for GeometryIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
           Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
-          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(0,
+          fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypeMesh,
                                                                                                                                             0,
                                                                                                                                             BLASGroup^.fMaterialIDs.ItemArray[GeometryIndex],
                                                                                                                                             BLASGroup^.fIndexOffsets.ItemArray[GeometryIndex]);
