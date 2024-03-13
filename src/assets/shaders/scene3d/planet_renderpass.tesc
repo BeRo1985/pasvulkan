@@ -9,6 +9,8 @@
 #extension GL_EXT_control_flow_attributes : enable
 #extension GL_GOOGLE_include_directive : enable
 
+#include "bufferreference_definitions.glsl"
+
 #ifdef TRIANGLES
 layout(vertices = 3) out;
 #else

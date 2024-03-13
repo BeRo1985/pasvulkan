@@ -1,6 +1,10 @@
 #ifndef GLOBAL_DESCRIPTOR_SET_GLSL
 #define GLOBAL_DESCRIPTOR_SET_GLSL 
 
+#ifdef RAYTRACING
+#extension GL_EXT_ray_tracing : enable
+#endif
+
 //#ifdef MESHS
 #if !defined(USE_MATERIAL_BUFFER_REFERENCE)
 struct Material {
@@ -181,7 +185,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ra
 
 layout(set = 0, binding = 4) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;
 
-layout(set = 0, binding = 5) uniform buffer RaytracingData {
+layout(set = 0, std140, binding = 5) uniform RaytracingData {
   RaytracingGeometryInstanceOffsets geometryInstanceOffsets;
   RaytracingGeometryItems geometryItems;
   RaytracingMeshStaticVertices meshStaticVertices;

@@ -384,16 +384,48 @@ compileshaderarguments=(
   "-V planet_renderpass.vert -DDIRECT -DICOSAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_direct_icosahedral_triangles_velocity_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_direct_external_vert.spv"
   "-V planet_renderpass.vert -DDIRECT -DEXTERNAL_VERTICES -DVELOCITY -o ${tempPath}/planet_renderpass_direct_external_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_triangles_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DOCTAHEDRAL -o ${tempPath}/planet_renderpass_raytracing_octahedral_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DOCTAHEDRAL -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_octahedral_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DOCTAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_octahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DOCTAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_octahedral_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DICOSAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_icosahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DICOSAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_icosahedral_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_external_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DEXTERNAL_VERTICES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_external_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -o ${tempPath}/planet_renderpass_raytracing_direct_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_direct_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_direct_triangles_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_direct_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DOCTAHEDRAL -o ${tempPath}/planet_renderpass_raytracing_direct_octahedral_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DOCTAHEDRAL -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_direct_octahedral_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DOCTAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_direct_octahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DOCTAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_direct_octahedral_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DICOSAHEDRAL -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_direct_icosahedral_triangles_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DICOSAHEDRAL -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_direct_icosahedral_triangles_velocity_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_direct_external_vert.spv"
+  "-V planet_renderpass.vert -DRAYTRACING -DDIRECT -DEXTERNAL_VERTICES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_direct_external_velocity_vert.spv"
 
   "-V planet_renderpass.tesc -o ${tempPath}/planet_renderpass_tesc.spv"
   "-V planet_renderpass.tesc -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_tesc.spv"
   "-V planet_renderpass.tesc -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_tesc.spv"
   "-V planet_renderpass.tesc -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_triangles_velocity_tesc.spv"
+  "-V planet_renderpass.tesc -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_tesc.spv"
+  "-V planet_renderpass.tesc -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_tesc.spv"
+  "-V planet_renderpass.tesc -DRAYTRACING -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_triangles_tesc.spv"
+  "-V planet_renderpass.tesc -DRAYTRACING -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_triangles_velocity_tesc.spv"
 
   "-V planet_renderpass.tese -o ${tempPath}/planet_renderpass_tese.spv"
   "-V planet_renderpass.tese -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_tese.spv"
   "-V planet_renderpass.tese -DTRIANGLES -o ${tempPath}/planet_renderpass_triangles_tese.spv"
   "-V planet_renderpass.tese -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_triangles_velocity_tese.spv"
+  "-V planet_renderpass.tese -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_tese.spv"
+  "-V planet_renderpass.tese -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_tese.spv"
+  "-V planet_renderpass.tese -DRAYTRACING -DTRIANGLES -o ${tempPath}/planet_renderpass_raytracing_triangles_tese.spv"
+  "-V planet_renderpass.tese -DRAYTRACING -DTRIANGLES -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_triangles_velocity_tese.spv"
 
   "-V planet_renderpass.frag -o ${tempPath}/planet_renderpass_frag.spv"
   "-V planet_renderpass.frag -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_frag.spv"
@@ -402,6 +434,13 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_frag.spv"
   "-V planet_renderpass.frag -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_external_frag.spv"
   "-V planet_renderpass.frag -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_velocity_external_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_velocity_external_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_wireframe_external_frag.spv"
+  "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_external_frag.spv"
   
   # MSM
   "-V planet_renderpass.frag -DMSM -o ${tempPath}/planet_renderpass_msm_frag.spv"
@@ -500,6 +539,8 @@ addParticleFragmentVoxelizationVariants(){
 addParticleFragmentVariants(){
   
   addParticleFragmentZVariants "${1}" "$2"
+
+  addParticleFragmentZVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
 
   addParticleFragmentVoxelizationVariants "${1}" "$2"
   
@@ -699,6 +740,10 @@ addMeshFragmentMaterialSourceVariants(){
   # Material access per buffer references (pointer-like raw access inside shaders) => the more modern way for newer GPUs
   addMeshFragmentZVariants "${1}_matbufref" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE"
 
+  # Material access per buffer references (pointer-like raw access inside shaders) => the more modern way for newer GPUs
+  # with raytracing support
+  addMeshFragmentZVariants "${1}_matbufref_raytracing" "$2 -DUSE_MATERIAL_BUFFER_REFERENCE -DRAYTRACING"
+
 } 
 
 addMeshFragmentMaterialSourceVariants "mesh" ""
@@ -806,6 +851,10 @@ for index in ${!compileshaderarguments[@]}; do
   parameters=${compileshaderarguments[$index]}
   # echo "Processing $parameters . . ."
   (     
+    # If -DRAYTRACING is in the parameters, add --target-env vulkan1.2 to the parameters
+    if [[ $parameters == *"-DRAYTRACING"* ]]; then
+      parameters="$parameters --target-env vulkan1.2"
+    fi
     ${glslangValidatorPath} $parameters #--target-env spirv1.5 >/dev/null
     if [ $? -ne 0 ]; then
       echo "Error encountered. Stopping compilation."

@@ -11,6 +11,8 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_control_flow_attributes : enable
 
+#include "bufferreference_definitions.glsl"
+
 #if defined(LOCKOIT) || defined(DFAOIT)
   #extension GL_ARB_post_depth_coverage : enable
   #ifdef INTERLOCK

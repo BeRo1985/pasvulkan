@@ -15,6 +15,8 @@
 #define LIGHTS 
 #define SHADOWS
 
+#include "bufferreference_definitions.glsl"
+
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;

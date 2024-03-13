@@ -9,6 +9,8 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_control_flow_attributes : enable
 
+#include "bufferreference_definitions.glsl"
+
 #ifdef EXTERNAL_VERTICES
   layout(location = 0) in vec3 inVector;
   layout(location = 1) in vec2 inOctahedralEncodedNormal;
