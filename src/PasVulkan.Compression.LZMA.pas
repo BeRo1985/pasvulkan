@@ -495,6 +495,10 @@ function LZMACompress(const aInData:TpvPointer;const aInLen:TpvUInt64;out aDestD
 
 function LZMADecompress(const aInData:TpvPointer;aInLen:TpvUInt64;var aDestData:TpvPointer;out aDestLen:TpvUInt64;const aOutputSize:TpvInt64=-1;const aWithSize:boolean=true):boolean;
 
+function LZMACompressStream(const aInStream,aOutStream:TStream;const aLevel:TpvLZMALevel):Boolean;
+
+function LZMADecompressStream(const aInStream,aOutStream:TStream):Boolean;
+
 implementation
 
 var CRCTable:array[0..255] of TpvUInt32;
@@ -3666,6 +3670,7 @@ const ISzAlloc:TISzAlloc=(Alloc:_Alloc;Free:_Free);
 {$undef HasLZMADec}
 // => Pure-pascal LZMA decoder
 {$ifend}
+// -{$undef HasLZMADec}
 
 {$ifdef HasLZMADec}
 const LZMA_FINISH_ANY=0;
@@ -3807,6 +3812,173 @@ begin
 {$endif}
  end else begin
   aDestLen:=0;
+  result:=false;
+ end;
+end;
+
+function LZMACompressStream(const aInStream,aOutStream:TStream;const aLevel:TpvLZMALevel):Boolean;
+var Encoder:TLZMAEncoder;
+    i:TpvInt32;
+    u:TpvUInt64;
+    b:TpvUInt8;
+begin
+ Encoder:=TLZMAEncoder.Create;
+ try
+  case aLevel of
+   TpvLZMALevel(0)..TpvLZMALevel(3):begin
+    Encoder.SetAlgorithm(0);
+    Encoder.SetDictionarySize(TpvUInt32(1) shl ((TpvInt32(aLevel)*2)+16));
+    Encoder.SetNumFastBytes(32);
+   end;
+   TpvLZMALevel(4)..TpvLZMALevel(6):begin
+    Encoder.SetAlgorithm(1);
+    Encoder.SetDictionarySize(TpvUInt32(1) shl (TpvInt32(aLevel)+19));
+    Encoder.SetNumFastBytes(32);
+   end;
+   TpvLZMALevel(7):begin
+    Encoder.SetAlgorithm(2);
+    Encoder.SetDictionarySize(TpvUInt32(1) shl 25);
+    Encoder.SetNumFastBytes(64);
+   end;
+   TpvLZMALevel(8):begin
+    Encoder.SetAlgorithm(2);
+    Encoder.SetDictionarySize(TpvUInt32(1) shl 26);
+    Encoder.SetNumFastBytes(64);
+   end;
+   else begin
+    Encoder.SetAlgorithm(2);
+    Encoder.SetDictionarySize(TpvUInt32(1) shl 27);
+    Encoder.SetNumFastBytes(64);
+   end;
+  end;
+  Encoder.SetMatchFinder(EMatchFinderTypeBT4);
+  Encoder.SetWriteEndMarkerMode(false);
+  Encoder.WriteCoderProperties(aOutStream);
+  aInStream.Seek(0,soBeginning);
+  u:=aInStream.Size;
+  for i:=0 to 7 do begin
+   b:=(u shr (i shl 3)) and $ff;
+   aOutStream.WriteBuffer(b,SizeOf(TpvUInt8));
+  end;
+  Encoder.Code(aInStream,aOutStream,-1,-1);
+  result:=true;
+ finally
+  FreeAndNil(Encoder);
+ end;
+end;
+
+function LZMADecompressStream(const aInStream,aOutStream:TStream):Boolean;
+{$ifdef HasLZMADec}
+var SrcLen,
+    DestLen:TpvSizeUInt;
+    LZMASizeArrayOffset:TpvUInt64;
+    LZMASizeArray:PLZMASizeArray;
+    Status:TpvInt32;
+    InMemory,OutMemory:Pointer;
+    InLen,OutLen:TpvUInt64;
+{$else}
+var LZMAProperties:TLZMAProperties;
+    LZMADecoderState:TLZMADecoderState;
+    LZMAProbs:pointer;
+    LZMAProbsSize:TpvUInt32;
+    CompressedDataBytesProcessed,
+    UncompressedDataBytesProcessed,
+    LZMASizeArrayOffset:TpvUInt64;
+    LZMASizeArray:PLZMASizeArray;
+    InMemory,OutMemory:Pointer;
+    InLen,OutLen:TpvUInt64;
+{$endif}
+begin
+ if aInStream.Size>=(SizeOf(TLZMAPropertiesArray)+SizeOf(TLZMASizeArray)) then begin
+{$ifdef HasLZMADec}
+  InLen:=aInStream.Size;
+  GetMem(InMemory,InLen);
+  try
+   aInStream.Seek(0,soBeginning);
+   aInStream.ReadBuffer(InMemory^,InLen);
+   LZMASizeArray:=pointer(TpvPtrUInt(TpvPtrUInt(InMemory)+SizeOf(TLZMAPropertiesArray)));
+   LZMASizeArrayOffset:=SizeOf(TLZMASizeArray);
+   OutLen:=(TpvUInt64(LZMASizeArray^[0]) shl 0) or
+           (TpvUInt64(LZMASizeArray^[1]) shl 8) or
+           (TpvUInt64(LZMASizeArray^[2]) shl 16) or
+           (TpvUInt64(LZMASizeArray^[3]) shl 24) or
+           (TpvUInt64(LZMASizeArray^[4]) shl 32) or
+           (TpvUInt64(LZMASizeArray^[5]) shl 40) or
+           (TpvUInt64(LZMASizeArray^[6]) shl 48) or
+           (TpvUInt64(LZMASizeArray^[7]) shl 56);
+   GetMem(OutMemory,OutLen);
+   try
+    SrcLen:=aInStream.Size-(SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset);
+    DestLen:=OutLen;
+    Status:=0;
+    result:=C_LzmaDecode(OutMemory,
+                         @DestLen,
+                         pointer(TpvPtrUInt(TpvPtrUInt(InMemory)+SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset)),
+                         @SrcLen,
+                         InMemory,
+                         SizeOf(TLZMAPropertiesArray),
+                         LZMA_FINISH_ANY,
+                         @Status,
+                         @ISzAlloc
+                        )=SZ_OK;
+    result:=result and (OutLen=DestLen);
+    if result then begin
+     aOutStream.WriteBuffer(OutMemory^,OutLen);
+    end;
+   finally
+    FreeMem(OutMemory);
+   end; 
+  finally
+   FreeMem(InMemory);
+  end;
+{$else}
+  LZMAProbsSize:=LZMAGetNumProbs(LZMAProperties)*SizeOf(TpvUInt32);
+  GetMem(LZMAProbs,LZMAProbsSize);
+  try
+   InLen:=aInStream.Size;
+   GetMem(InMemory,InLen);
+   try
+    aInStream.Seek(0,soBeginning);
+    aInStream.ReadBuffer(InMemory^,InLen);
+    LZMADecodeProperties(LZMAProperties,InMemory,0);
+    LZMADecoderState.Properties:=LZMAProperties;
+    LZMADecoderState.Probs:=LZMAProbs;
+    LZMASizeArrayOffset:=SizeOf(TLZMASizeArray);
+    LZMASizeArray:=pointer(TpvPtrUInt(TpvPtrUInt(InMemory)+SizeOf(TLZMAPropertiesArray)));
+    OutLen:=(TpvUInt64(LZMASizeArray^[0]) shl 0) or
+            (TpvUInt64(LZMASizeArray^[1]) shl 8) or
+            (TpvUInt64(LZMASizeArray^[2]) shl 16) or
+            (TpvUInt64(LZMASizeArray^[3]) shl 24) or
+            (TpvUInt64(LZMASizeArray^[4]) shl 32) or
+            (TpvUInt64(LZMASizeArray^[5]) shl 40) or
+            (TpvUInt64(LZMASizeArray^[6]) shl 48) or
+            (TpvUInt64(LZMASizeArray^[7]) shl 56);
+    GetMem(OutMemory,OutLen);
+    try
+     CompressedDataBytesProcessed:=0;
+     UncompressedDataBytesProcessed:=0;
+     result:=LZMADecode(LZMADecoderState,
+                        pointer(TpvPtrUInt(TpvPtrUInt(InMemory)+SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset)),
+                        InLen-(SizeOf(TLZMAPropertiesArray)+LZMASizeArrayOffset),
+                        CompressedDataBytesProcessed,
+                        OutMemory,
+                        OutLen,
+                        UncompressedDataBytesProcessed);
+     result:=result and (OutLen=UncompressedDataBytesProcessed);
+     if result then begin
+      aOutStream.WriteBuffer(OutMemory^,OutLen);
+     end;
+    finally
+     FreeMem(OutMemory);
+    end;
+   finally
+    FreeMem(InMemory);
+   end; 
+  finally
+   FreeMem(LZMAProbs);
+  end;
+{$endif}  
+ end else begin
   result:=false;
  end;
 end;
