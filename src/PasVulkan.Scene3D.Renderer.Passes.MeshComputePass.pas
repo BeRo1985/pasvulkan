@@ -119,6 +119,7 @@ end;
 procedure TpvScene3DRendererPassesMeshComputePass.AcquireVolatileResources;
 begin
  inherited AcquireVolatileResources;
+ TpvScene3DMeshCompute(fInstance.Renderer.Scene3D.MeshCompute).Reset;
 end;
 
 procedure TpvScene3DRendererPassesMeshComputePass.ReleaseVolatileResources;
