@@ -4099,7 +4099,7 @@ begin
   fCameraPresets[InFlightFrameIndex].MaxCoC:=((fCameraPresets[InFlightFrameIndex].BlurKernelSize*4.0)+6.0)/fScaledHeight;
  end;
 
- fCameraPreset.MaxCoC:=((fCameraPresets[InFlightFrameIndex].BlurKernelSize*4.0)+6.0)/fScaledHeight;
+//fCameraPreset.MaxCoC:=((fCameraPresets[InFlightFrameIndex].BlurKernelSize*4.0)+6.0)/fScaledHeight;
 
  FillChar(fInFlightFrameStates,SizeOf(TInFlightFrameStates),#0);
 
