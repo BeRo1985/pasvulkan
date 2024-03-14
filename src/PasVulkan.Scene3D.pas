@@ -3231,6 +3231,7 @@ type EpvScene3D=class(Exception);
        procedure AddToFreeQueue(const aObject:TObject;const aFrameDelay:TpvInt32=-1);
        procedure Upload;
        procedure Unload;
+       procedure ResetSurface;
        procedure ResetFrame(const aInFlightFrameIndex:TpvSizeInt);
        procedure Check(const aInFlightFrameIndex:TpvSizeInt);
        procedure Update(const aInFlightFrameIndex:TpvSizeInt);
@@ -22241,6 +22242,13 @@ begin
 
  end;
 
+end;
+
+procedure TpvScene3D.ResetSurface;
+begin
+ if assigned(fMeshCompute) then begin
+  TpvScene3DMeshCompute(fMeshCompute).Reset;
+ end;
 end;
 
 function TpvScene3D.GetLightUserDataIndex(const aUserData:TpvPtrInt):TpvUInt32;

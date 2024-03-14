@@ -378,6 +378,8 @@ begin
 
  fRendererInstance.AcquireVolatileResources;
 
+ fScene3D.ResetSurface;
+
 end;
 
 procedure TScreenMain.BeforeDestroySwapChain;
