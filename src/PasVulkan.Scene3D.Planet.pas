@@ -7860,7 +7860,7 @@ begin
 
     for TileMapX:=0 to aTileMapResolution-1 do begin
 
-     TiledMeshIndexGroup:=aTiledMeshIndexGroups.AddNew;
+     TiledMeshIndexGroup:=Pointer(aTiledMeshIndexGroups.AddNew);
      TiledMeshIndexGroup^.FirstIndex:=CountIndices;
 
      for TileLODY:=0 to TileLODResolution-1 do begin

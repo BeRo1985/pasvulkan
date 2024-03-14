@@ -268,7 +268,7 @@ begin
      ToDo:=SourceRemain;
     end;
 
-    QueueItem:=fQueueItems.AddNew;
+    QueueItem:=Pointer(fQueueItems.AddNew);
     QueueItem^.SourceBlock:=Block;
     QueueItem^.SourceOffset:=fOffset;
     QueueItem^.DestinationBuffer:=aDestinationBuffer;

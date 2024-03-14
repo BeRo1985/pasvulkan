@@ -23139,7 +23139,7 @@ begin
     Size:=Max(1,length(fGlobalVulkanInstanceMatrixDynamicArrays[aInFlightFrameIndex].Items))*SizeOf(TpvMatrix4x4);
     if fGlobalVulkanInstanceMatrixBuffers[aInFlightFrameIndex].Size<Size then begin
 
-     FreeMem(fGlobalVulkanInstanceMatrixBuffers[aInFlightFrameIndex]);
+     FreeAndNil(fGlobalVulkanInstanceMatrixBuffers[aInFlightFrameIndex]);
 
      case fBufferStreamingMode of
 
@@ -23336,7 +23336,7 @@ type TStackItem=record
 var Index,ViewIndex,NodeIndex:TpvSizeInt;
     PotentiallyVisibleSetNodeIndex,
     ViewPotentiallyVisibleSetNodeIndex:TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
-    StackItem:PStackItem;
+    StackItem:TStack.PT;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     Mask:TpvUInt32;
     Stack:TStack;

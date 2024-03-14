@@ -1222,7 +1222,7 @@ begin
                                     InFlightFrameState^.ViewRenderPassIndex,
                                     InFlightFrameState^.FinalViewIndex,
                                     InFlightFrameState^.CountFinalViews,
-                                    fFrameGraph.DrawFrameIndex,
+                                    FrameGraph.DrawFrameIndex,
                                     aCommandBuffer,
                                     fVulkanPipelineLayout,
                                     OnSetRenderPassResources,

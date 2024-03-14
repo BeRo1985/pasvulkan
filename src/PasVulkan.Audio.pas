@@ -4397,7 +4397,7 @@ const SqrtThree=1.7320508075688772;
       InvSqrtThree=0.5773502691896258;
       Minus3dB=0.7071067811865475244008443621048490392848359376884740365883398689;
       OneOverMinus3dB=1.0/Minus3dB;
-      OneOverSqrMinus3dB=1.0/sqr(Minus3dB);
+//    OneOverSqrMinus3dB=1.0/sqr(Minus3dB);
 var i,TableLengthSize:TpvInt32;
     X,TableLength:{$ifdef cpuarm}TpvFloat{$else}TpvDouble{$endif};
 begin

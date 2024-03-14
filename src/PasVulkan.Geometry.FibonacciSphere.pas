@@ -121,7 +121,7 @@ type { TpvFibonacciSphere }
              TexCoord:TpvVector2;
              Index:TpvInt32; // <- For pointing to the original vertex index, since vertices can be duplicated for texture coordinate seam fixing   
             end;
-            PVertex=^TpvFibonacciSphere.TVertex;
+            PVertex=^TVertex;
             TVertices=TpvDynamicArrayList<TpvFibonacciSphere.TVertex>;
             TIndices=TpvDynamicArrayList<TpvUInt32>;
       private
@@ -595,7 +595,7 @@ begin
 
 end;
 
-procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean;const aFixTextureCoordinateSeams:Boolean;const aPasMPInstance:TPasMP=nil);
+procedure TpvFibonacciSphere.Generate(const aUseGoldenRatio:Boolean;const aFixTextureCoordinateSeams:Boolean;const aPasMPInstance:TPasMP);
 begin
  
  fPoints:=nil;
@@ -636,7 +636,7 @@ begin
    fWrappedIndicesLock:=0;
 
    if assigned(aPasMPInstance) then begin
-    aPasMPInstance.Invoke(aPasMPInstance.ParallelFor(nil,0,fCountPoints-1,GenerateIndicesParallelForJob(),1,PasMPDefaultDepth,nil));
+    aPasMPInstance.Invoke(aPasMPInstance.ParallelFor(nil,0,fCountPoints-1,GenerateIndicesParallelForJob,1,PasMPDefaultDepth,nil));
    end else begin
     GenerateIndicesParallelForJob(nil,0,nil,0,fCountPoints-1);
    end;
