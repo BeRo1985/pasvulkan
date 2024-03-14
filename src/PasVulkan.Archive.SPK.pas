@@ -62,27 +62,22 @@ unit PasVulkan.Archive.SPK; // Simple Package
 
 interface
 
-uses SysUtils,
+uses SysUtils, 
      Classes,
      Math,
      PasVulkan.Types,
-     PasVulkan.Collections,
-     PasVulkan.Compression;
+     PasVulkan.Collections;
 
 type EpvArchiveSPK=class(Exception);
 
      TpvArchiveSPK=class
       public
-       type TRawFileItem=packed record
-             Offset:TpvUInt64;
-             Size:TpvUInt64;
-            end;
-            PRawFileItem=^TRawFileItem;
-            { TFileItem }
+       type { TFileItem }
             TFileItem=class
              private
               fFileName:TpvRawByteString;
               fOffset:TpvUInt64;
+              fOffsetOffset:TpvUInt64;
               fSize:TpvUInt64;
               fStream:TMemoryStream;
              public
@@ -129,6 +124,7 @@ type EpvArchiveSPK=class(Exception);
        function FileExists(const aFileName:TpvRawByteString):boolean;
        function FindFile(const aFileName:TpvRawByteString):TFileItem;
        function GetStream(const aFileName:TpvRawByteString):TStream;
+       function GetStreamCopy(const aFileName:TpvRawByteString):TStream;
       public
        property FileName:TpvRawByteString read fFileName write fFileName;
        property CountFiles:TpvSizeInt read GetFileCount;
@@ -258,6 +254,7 @@ begin
  finally
   FreeAndNil(Stream);
  end;
+ fFileName:=aFileName;
 end;
 
 procedure TpvArchiveSPK.SaveToStream(const aStream:TStream);
@@ -277,13 +274,14 @@ begin
 
  for Index:=0 to fFileItemList.Count-1 do begin
   FileItem:=fFileItemList[Index];
-  FileName:=FileItem.FileName;
+  FileName:=FileItem.fFileName;
   FileNameLength:=TpvUInt32(length(FileName));
   aStream.Write(FileNameLength,SizeOf(TpvUInt32));
   if FileNameLength>0 then begin
    aStream.Write(FileName[1],FileNameLength);
-   aStream.Write(FileItem.Offset,SizeOf(TpvUInt64));
-   aStream.Write(FileItem.Size,SizeOf(TpvUInt64));
+   FileItem.fOffsetOffset:=aStream.Position;
+   aStream.Write(FileItem.fOffset,SizeOf(TpvUInt64));
+   aStream.Write(FileItem.fSize,SizeOf(TpvUInt64));
   end else begin
    raise EpvArchiveSPK.Create('Invalid SPK file');
   end;
@@ -292,6 +290,7 @@ begin
  for Index:=0 to fFileItemList.Count-1 do begin
   FileItem:=fFileItemList[Index];
   if assigned(FileItem.Stream) and (FileItem.Stream.Size>0) then begin
+   FileItem.Offset:=aStream.Position;
    if FileItem.Size=FileItem.Stream.Size then begin
     aStream.CopyFrom(FileItem.Stream,0);
    end else begin 
@@ -301,6 +300,22 @@ begin
    raise EpvArchiveSPK.Create('Invalid SPK file');
   end;
  end;
+
+ for Index:=0 to fFileItemList.Count-1 do begin
+  FileItem:=fFileItemList[Index];
+  FileName:=FileItem.fFileName;
+  FileNameLength:=TpvUInt32(length(FileName));
+  if FileNameLength>0 then begin
+   aStream.Seek(FileItem.fOffsetOffset,soBeginning);
+   aStream.Write(FileItem.fOffset,SizeOf(TpvUInt64));
+  end else begin
+   raise EpvArchiveSPK.Create('Invalid SPK file');
+  end;
+ end;
+
+ aStream.Seek(0,soEnd);
+ 
+ fFileName:='';
 
 end;
 
@@ -313,21 +328,23 @@ begin
  finally
   FreeAndNil(Stream);
  end;
+ fFileName:=aFileName;
 end;
 
 function TpvArchiveSPK.AddFile(const aFileName:TpvRawByteString;const aStream:TStream):TFileItem;
-var Index:TpvSizeInt;
+var WorkFileName:TpvRawByteString; 
 begin
  result:=nil;
- if not fFileItemHashMap.TryGet(aFileName,result) then begin
-  result:=TFileItem.Create(aFileName);
+ WorkFileName:=LowerCase(aFileName);
+ if not fFileItemHashMap.TryGet(WorkFileName,result) then begin
+  result:=TFileItem.Create(WorkFileName);
   try
    result.Stream:=TMemoryStream.Create;   
    result.Stream.CopyFrom(aStream,0);
    result.Stream.Position:=0;
    result.Offset:=0;
    result.Size:=result.Stream.Size;
-   fFileItemHashMap.Add(aFileName,result);
+   fFileItemHashMap.Add(WorkFileName,result);
    fFileItemList.Add(result);
   except
    FreeAndNil(result);
@@ -339,17 +356,19 @@ begin
 end;
 
 function TpvArchiveSPK.AddFile(const aFileName:TpvRawByteString;const aData:TpvPointer;const aSize:TpvSizeUInt):TFileItem;
+var WorkFileName:TpvRawByteString; 
 begin
  result:=nil;
- if not fFileItemHashMap.TryGet(aFileName,result) then begin
-  result:=TFileItem.Create(aFileName);
+ WorkFileName:=LowerCase(aFileName);
+ if not fFileItemHashMap.TryGet(WorkFileName,result) then begin
+  result:=TFileItem.Create(WorkFileName);
   try
    result.Stream:=TMemoryStream.Create;
    result.Stream.Write(aData^,aSize);
    result.Stream.Position:=0;
    result.Offset:=0;
    result.Size:=result.Stream.Size;
-   fFileItemHashMap.Add(aFileName,result);
+   fFileItemHashMap.Add(WorkFileName,result);
    fFileItemList.Add(result);
   except
    FreeAndNil(result);
@@ -361,17 +380,19 @@ begin
 end;
 
 function TpvArchiveSPK.AddFile(const aFileName:TpvRawByteString;const aData:TpvRawByteString):TFileItem;
+var WorkFileName:TpvRawByteString; 
 begin
  result:=nil;
- if not fFileItemHashMap.TryGet(aFileName,result) then begin
-  result:=TFileItem.Create(aFileName);
+ WorkFileName:=LowerCase(aFileName);
+ if not fFileItemHashMap.TryGet(WorkFileName,result) then begin
+  result:=TFileItem.Create(WorkFileName);
   try
    result.Stream:=TMemoryStream.Create;
    result.Stream.Write(aData[1],length(aData));
    result.Stream.Position:=0;
    result.Offset:=0;
    result.Size:=result.Stream.Size;
-   fFileItemHashMap.Add(aFileName,result);
+   fFileItemHashMap.Add(WorkFileName,result);
    fFileItemList.Add(result);
   except
    FreeAndNil(result);
@@ -383,17 +404,19 @@ begin
 end;
 
 function TpvArchiveSPK.AddFile(const aFileName:TpvRawByteString;const aData:array of TpvUInt8):TFileItem;
+var WorkFileName:TpvRawByteString; 
 begin
  result:=nil;
- if not fFileItemHashMap.TryGet(aFileName,result) then begin
-  result:=TFileItem.Create(aFileName);
+ WorkFileName:=LowerCase(aFileName);
+ if not fFileItemHashMap.TryGet(WorkFileName,result) then begin
+  result:=TFileItem.Create(WorkFileName);
   try
    result.Stream:=TMemoryStream.Create;
    result.Stream.Write(aData[0],length(aData));
    result.Stream.Position:=0;
    result.Offset:=0;
    result.Size:=result.Stream.Size;
-   fFileItemHashMap.Add(aFileName,result);
+   fFileItemHashMap.Add(WorkFileName,result);
    fFileItemList.Add(result);
   except
    FreeAndNil(result);
@@ -406,11 +429,13 @@ end;
 
 function TpvArchiveSPK.RemoveFile(const aFileName:TpvRawByteString):boolean;
 var FileItem:TFileItem;
+    WorkFileName:TpvRawByteString; 
 begin
- result:=fFileItemHashMap.TryGet(aFileName,FileItem);
+ WorkFileName:=LowerCase(aFileName);
+ result:=fFileItemHashMap.TryGet(WorkFileName,FileItem);
  if result then begin
   try
-   fFileItemHashMap.Delete(aFileName);
+   fFileItemHashMap.Delete(WorkFileName);
    fFileItemList.Remove(FileItem);
   finally
    FreeAndNil(FileItem);
@@ -420,12 +445,12 @@ end;
 
 function TpvArchiveSPK.FileExists(const aFileName:TpvRawByteString):boolean;
 begin
- result:=fFileItemHashMap.ExistKey(aFileName);
+ result:=fFileItemHashMap.ExistKey(LowerCase(aFileName));
 end;
 
 function TpvArchiveSPK.FindFile(const aFileName:TpvRawByteString):TFileItem;
 begin
- if not fFileItemHashMap.TryGet(aFileName,result) then begin
+ if not fFileItemHashMap.TryGet(LowerCase(aFileName),result) then begin
   result:=nil;
  end;
 end;
@@ -433,8 +458,24 @@ end;
 function TpvArchiveSPK.GetStream(const aFileName:TpvRawByteString):TStream;
 var FileItem:TFileItem;
 begin
- if fFileItemHashMap.TryGet(aFileName,FileItem) then begin
+ if fFileItemHashMap.TryGet(LowerCase(aFileName),FileItem) then begin
   result:=FileItem.Stream;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvArchiveSPK.GetStreamCopy(const aFileName:TpvRawByteString):TStream;
+var Stream:TStream;
+begin
+ Stream:=GetStream(aFileName);
+ if assigned(Stream) then begin
+  result:=TMemoryStream.Create;
+  if Stream.Size>0 then begin
+   Stream.Seek(0,soBeginning);
+   result.CopyFrom(Stream,Stream.Size);
+  end;
+  result.Seek(0,soBeginning);
  end else begin
   result:=nil;
  end;

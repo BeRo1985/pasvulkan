@@ -2150,7 +2150,7 @@ function IsDebuggerPresent:LongBool;
 
 implementation
 
-uses PasVulkan.Utils,PasDblStrUtils;
+uses PasVulkan.Utils,PasDblStrUtils,PasVulkan.Compression;
 
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
 
@@ -7109,6 +7109,7 @@ begin
   GlobalPasMPAllWorkerThreadsHaveOwnSystemThreads:=false;
   GlobalPasMPProfiling:=false;
   fPasMPInstance:=TPasMP.GetGlobalInstance;
+  pvCompressionPasMPInstance:=fPasMPInstance;
   fDoDestroyGlobalPasMPInstance:=true;
  end;
 

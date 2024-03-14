@@ -106,8 +106,10 @@ program packscene3dshaders;
 {$endif}
 {$undef UNICODE}
 
-uses SysUtils,
+uses {$ifdef Unix}cthreads,{$endif}
+     SysUtils,
      Classes,
+     Math,
      PasMP in '../externals/pasmp/src/PasMP.pas',
      PUCU in '../externals/pucu/src/PUCU.pas',
      PasDblStrUtils in '../externals/pasdblstrutils/src/PasDblStrUtils.pas',
@@ -116,14 +118,19 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Compression.LZMA,
+     PasVulkan.Compression,
      PasVulkan.Archive.SPK;
 
 var OutputFileName,InputFileListFileName,FileName:String;
     InputFileList:TStringList;
     FileIndex:TpvSizeInt;
     Archive:TpvArchiveSPK;
+    Stream:TMemoryStream;
     TemporaryUncompressedStream,TemporaryCompressedStream:TMemoryStream;
+    PasMPInstance:TPasMP;
 begin
+ 
+ PasMPInstance:=TPasMP.GetGlobalInstance;
 
  OutputFileName:=ParamStr(1);
  InputFileListFileName:=ParamStr(2);
@@ -139,7 +146,12 @@ begin
    for FileIndex:=0 to InputFileList.Count-1 do begin
     FileName:=InputFileList[FileIndex];
     WriteLn('Adding "',FileName,'" . . .');
-    Archive.AddFile(LowerCase(FileName),FileName);
+    Stream:=TMemoryStream.Create;
+    try
+     Stream.LoadFromFile(FileName);
+    finally 
+     Archive.AddFile(LowerCase(FileName),Stream);
+    end; 
    end;
 
    TemporaryUncompressedStream:=TMemoryStream.Create;
@@ -152,10 +164,21 @@ begin
     try
      
      WriteLn('Compressing . . .');
-     LZMACompressStream(TemporaryUncompressedStream,TemporaryCompressedStream,9);
+     //LZMACompressStream(TemporaryUncompressedStream,TemporaryCompressedStream,9);
+     pvCompressionPasMPInstance:=PasMPInstance;
+     TemporaryUncompressedStream.Seek(0,soBeginning);
+     if (ParamCount>=3) and (ParamStr(3)='lzma') then begin
+      // Slower and with 1 thread but much better compression
+      CompressStream(TemporaryUncompressedStream,TemporaryCompressedStream,TpvCompressionMethod.LZMA,9,1);//Min(Max(PasMPInstance.CountJobWorkerThreads,4),8));
+     end else begin
+      // Faster and with 8 threads but worse compression
+      CompressStream(TemporaryUncompressedStream,TemporaryCompressedStream,TpvCompressionMethod.LZBRRC,7,8);//Min(Max(PasMPInstance.CountJobWorkerThreads,4),8));
+     end;
 
      WriteLn('Saving to "',OutputFileName,'" . . .');
      TemporaryCompressedStream.SaveToFile(OutputFileName);
+
+     //TemporaryUncompressedStream.SaveToFile(ChangeFileExt(OutputFileName,'')+'.uncompressed'+ExtractFileExt(OutputFileName));
 
     finally
      FreeAndNil(TemporaryCompressedStream);

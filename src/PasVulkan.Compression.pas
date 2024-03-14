@@ -91,13 +91,15 @@ type TpvCompressionMethod=
        LZBRSX=6
       );
 
+var pvCompressionPasMPInstance:TPasMP=nil;
+
 function CompressStream(const aInStream:TStream;const aOutStream:TStream;const aCompressionMethod:TpvCompressionMethod=TpvCompressionMethod.LZBRRC;const aCompressionLevel:TpvUInt32=5;const aParts:TpvUInt32=0):boolean;
 
 function DecompressStream(const aInStream:TStream;const aOutStream:TStream):boolean;
 
 implementation
 
-uses PasVulkan.Application;
+//uses PasVulkan.Application;
 
 type TCompressedFileSignature=array[0..3] of AnsiChar;
 
@@ -326,9 +328,9 @@ begin
      end;
 
      if FileHeader.Parts>1 then begin
-      if assigned(pvApplication) and assigned(pvApplication.PasMPInstance) then begin
+      if assigned(pvCompressionPasMPInstance) then begin
        // Use multiple threads for multiple parts
-       pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(@CompressionPartJobs[0],0,length(CompressionPartJobs)-1,CompressPartJob,1,PasMPDefaultDepth,nil,0,0));
+       pvCompressionPasMPInstance.Invoke(pvCompressionPasMPInstance.ParallelFor(@CompressionPartJobs[0],0,length(CompressionPartJobs)-1,CompressPartJob,1,PasMPDefaultDepth,nil,0,0));
       end else begin
        for PartIndex:=0 to FileHeader.Parts-1 do begin
         CompressPart(@CompressionPartJobs[PartIndex]);
@@ -563,9 +565,9 @@ begin
          end;
 
          if FileHeader.Parts>1 then begin
-          if assigned(pvApplication) and assigned(pvApplication.PasMPInstance) then begin
+          if assigned(pvCompressionPasMPInstance) then begin
            // Use multiple threads for multiple parts
-           pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(@DecompressionPartJobs[0],0,length(DecompressionPartJobs)-1,DecompressPartJob,1,PasMPDefaultDepth,nil,0,0));
+           pvCompressionPasMPInstance.Invoke(pvCompressionPasMPInstance.ParallelFor(@DecompressionPartJobs[0],0,length(DecompressionPartJobs)-1,DecompressPartJob,1,PasMPDefaultDepth,nil,0,0));
           end else begin
            for PartIndex:=0 to FileHeader.Parts-1 do begin
             DecompressPart(@DecompressionPartJobs[PartIndex]);

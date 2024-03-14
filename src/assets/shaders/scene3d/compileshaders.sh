@@ -890,6 +890,20 @@ echo "Packing . . ."
 #cp -f *.spv ../../../assets/shaders/
 
 rm -f scene3dshaders.zip
+rm -f scene3dshaders.spk
+
+USEZIP=0
+
+cd ../../../
+
+# Build the packscene3dshaders tool if it does not exist
+#rm -f packscene3dshaders
+if [ ! -f "packscene3dshaders" ]; then
+  fpc -Sd -B -gw2 packscene3dshaders.dpr -opackscene3dshaders
+fi
+
+# Copy the packscene3dshaders tool to the temporary directory
+cp packscene3dshaders "${tempPath}/packscene3dshaders"
 
 # Go to the temporary directory
 cd "${tempPath}"
@@ -897,105 +911,183 @@ cd "${tempPath}"
 # Get a sorted list of .spv files and virtualsymlinks.json without their full paths
 toCompressFiles=( $((ls *.spv; echo virtualsymlinks.json) | sort) )
 
-# Check if zipmerge is installed
-if command -v zipmerge &> /dev/null; then
+if [ $USEZIP -eq 1 ]; then
 
-  # Create another temporary directory for the intermediate zip files
-  zip_temp_dir=$(mktemp -d)
-  if [ $? -ne 0 ]; then
-    echo "Error creating temporary directory. Stopping compilation."
-    exit 1
+  # Check if zipmerge is installed
+  if command -v zipmerge &> /dev/null; then
+
+    # Create another temporary directory for the intermediate zip files
+    zip_temp_dir=$(mktemp -d)
+    if [ $? -ne 0 ]; then
+      echo "Error creating temporary directory. Stopping compilation."
+      exit 1
+    fi
+
+    # Parallel compression of each file in toCompressFiles array
+    for file in "${toCompressFiles[@]}"; do
+      ( 
+        zip -9 "${zip_temp_dir}/${file}.zip" "${file}"
+      ) &
+      throttleWait
+    done
+
+    # Wait for all background jobs to complete
+    wait
+
+    # Get a sorted list of .zip files in zip_temp_dir with their full paths
+    zip_files=( $(find "${zip_temp_dir}" -type f -name "*.zip" | sort) )
+
+    # Create the zip archive using the zip files from zip_temp_dir
+    zipmerge "${tempPath}/scene3dshaders.zip" "${zip_files[@]}"
+
+    # Delete the temporary ZIP directory
+    rm -rf "${zip_temp_dir}"
+
+  else
+
+    # Create the zip archive with virtualsymlinks.json as the first entry
+    zip -m9 scene3dshaders.zip "${toCompressFiles[@]}"
+
   fi
-
-  # Parallel compression of each file in toCompressFiles array
-  for file in "${toCompressFiles[@]}"; do
-    ( 
-      zip -9 "${zip_temp_dir}/${file}.zip" "${file}"
-    ) &
-    throttleWait
-  done
-
-  # Wait for all background jobs to complete
-  wait
-
-  # Get a sorted list of .zip files in zip_temp_dir with their full paths
-  zip_files=( $(find "${zip_temp_dir}" -type f -name "*.zip" | sort) )
-
-   # Create the zip archive using the zip files from zip_temp_dir
-  zipmerge "${tempPath}/scene3dshaders.zip" "${zip_files[@]}"
-
-  # Delete the temporary ZIP directory
-  rm -rf "${zip_temp_dir}"
-
+ 
 else
 
-  # Create the zip archive with virtualsymlinks.json as the first entry
-  zip -m9 scene3dshaders.zip "${toCompressFiles[@]}"
+  # Write toCompressFiles to a temporary file line-wise
+  tempListFile=$(mktemp)
+  if [ $? -ne 0 ]; then
+    echo "Error creating temporary file. Stopping compilation."
+    exit 1
+  fi
+  for f in "${toCompressFiles[@]}"; do
+    echo "${f}" >> "${tempListFile}"
+  done
+
+  ./packscene3dshaders "${originalDirectory}/scene3dshaders.spk" "${tempListFile}"
 
 fi
 
 cd "${originalDirectory}"
 
-# Delete the old zip archive if it exists
-if [ -f "${originalDirectory}/scene3dshaders.zip" ]; then
-  rm -f "${originalDirectory}/scene3dshaders.zip"
-fi
+if [ $USEZIP -eq 1 ]; then
 
-# Copy the zip archive to the current directory
-cp -f "${tempPath}/scene3dshaders.zip" "${originalDirectory}/scene3dshaders.zip"
+  # Delete the old zip archive if it exists
+  if [ -f "${originalDirectory}/scene3dshaders.zip" ]; then
+    rm -f "${originalDirectory}/scene3dshaders.zip"
+  fi
+
+  # Copy the zip archive to the current directory
+  cp -f "${tempPath}/scene3dshaders.zip" "${originalDirectory}/scene3dshaders.zip"
+
+fi
 
 # Compile bin2c
 
 clang ./bin2c.c -o "${tempPath}/bin2c"
 
-# Convert the zip archive to a C header file
-"$tempPath/bin2c" scene3dshaders.zip pasvulkan_scene3dshaders_zip "${tempPath}/scene3dshaders_zip.c"
+if [ $USEZIP -eq 1 ]; then
 
-# Compile the C header file for all platforms in parallel
+  # Convert the zip archive to a C header file
+  "$tempPath/bin2c" scene3dshaders.zip pasvulkan_scene3dshaders_zip "${tempPath}/scene3dshaders_zip.c"
 
-# Compile for x86-32 Linux
-clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_linux.o &
-throttleWait
+  # Compile the C header file for all platforms in parallel
 
-# Compile for x86-64 Linux
-clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o & 
-throttleWait
+  # Compile for x86-32 Linux
+  clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_linux.o &
+  throttleWait
 
-# Compile for x86-32 Windows
-clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_windows.o &
-throttleWait
+  # Compile for x86-64 Linux
+  clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_linux.o & 
+  throttleWait
 
-# Compile for x86-64 Windows
-clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_windows.o &
-throttleWait
+  # Compile for x86-32 Windows
+  clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_windows.o &
+  throttleWait
 
-# Compile for AArch64 Windows
-clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_windows.o &
-throttleWait
+  # Compile for x86-64 Windows
+  clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_windows.o &
+  throttleWait
 
-# Compile for ARM32 Linux
-clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_linux.o &
-throttleWait
+  # Compile for AArch64 Windows
+  clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_windows.o &
+  throttleWait
 
-# Compile for AArch64 Linux
-clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_linux.o &
-throttleWait
+  # Compile for ARM32 Linux
+  clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_linux.o &
+  throttleWait
 
-# Compile for x86-32 Android
-clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_android.o &
-throttleWait
+  # Compile for AArch64 Linux
+  clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_linux.o &
+  throttleWait
 
-# Compile for x86-64 Android
-clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_android.o &
-throttleWait
+  # Compile for x86-32 Android
+  clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_32_android.o &
+  throttleWait
 
-# Compile for ARM32 Android
-clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_android.o &
-throttleWait
+  # Compile for x86-64 Android
+  clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_x86_64_android.o &
+  throttleWait
 
-# Compile for AArch64 Android
-clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_android.o &
-throttleWait
+  # Compile for ARM32 Android
+  clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_arm32_android.o &
+  throttleWait
+
+  # Compile for AArch64 Android
+  clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_android.o &
+  throttleWait
+
+
+else
+
+  # Convert the spk archive to a C header file
+  "$tempPath/bin2c" scene3dshaders.spk pasvulkan_scene3dshaders_spk "${tempPath}/scene3dshaders_spk.c"
+
+  # Compile the C header file for all platforms in parallel
+
+  # Compile for x86-32 Linux
+  clang -c -target i386-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_linux.o &
+  throttleWait
+
+  # Compile for x86-64 Linux
+  clang -c -target x86_64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_linux.o & 
+  throttleWait
+
+  # Compile for x86-32 Windows
+  clang -c -target i386-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_windows.o &
+  throttleWait
+
+  # Compile for x86-64 Windows
+  clang -c -target x86_64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_windows.o &
+  throttleWait
+
+  # Compile for AArch64 Windows
+  clang -c -target aarch64-windows -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_windows.o &
+  throttleWait
+
+  # Compile for ARM32 Linux
+  clang -c -target armv7-linux -mfloat-abi=hard -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_arm32_linux.o &
+  throttleWait
+
+  # Compile for AArch64 Linux
+  clang -c -target aarch64-linux -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_linux.o &
+  throttleWait
+
+  # Compile for x86-32 Android
+  clang -c -target i386-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_32_android.o &
+  throttleWait
+
+  # Compile for x86-64 Android
+  clang -c -target x86_64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_x86_64_android.o &
+  throttleWait
+
+  # Compile for ARM32 Android
+  clang -c -target armv7-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_arm32_android.o &
+  throttleWait
+
+  # Compile for AArch64 Android
+  clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_spk.c" -o scene3dshaders_spk_aarch64_android.o &
+  throttleWait
+  
+fi  
 
 # Wait for all compilation jobs to finish
 wait
