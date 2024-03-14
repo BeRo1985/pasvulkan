@@ -2146,7 +2146,7 @@ procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedStat
 function IsDebuggerPresent:LongBool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$else}
 function IsDebuggerPresent:LongBool;
-{$endif}
+{$ifend}
 
 implementation
 
@@ -8049,7 +8049,7 @@ begin
 {$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
   SDL_VERSION(SDL_SysWMinfo.version);
   if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
-     (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then{$endif}begin
+     (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then{$ifend}begin
    fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(fTitle),
                                              Version,
                                              'PasVulkanApplication',

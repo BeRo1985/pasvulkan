@@ -1362,7 +1362,7 @@ begin
  end;
 end;
 
-function TpvDynamicArrayList<T>.Add(const pItems:array of T):TpvSizeInt; overload;
+function TpvDynamicArrayList<T>.Add(const pItems:array of T):TpvSizeInt;
 var Index:TpvSizeInt;
 begin
  result:=fCount;
