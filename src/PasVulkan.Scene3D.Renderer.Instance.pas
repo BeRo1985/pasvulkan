@@ -687,8 +687,9 @@ type { TpvScene3DRendererInstance }
        property InFlightFrameStates:PInFlightFrameStates read fPointerToInFlightFrameStates;
        property Views:TpvScene3DRendererInstance.TViews read fViews;
        property MeshFragmentSpecializationConstants:TMeshFragmentSpecializationConstants read fMeshFragmentSpecializationConstants;
-      published
+      public
        property CameraPresets[const aInFlightFrameIndex:TpvInt32]:TpvScene3DRendererCameraPreset read GetCameraPreset;
+      published
        property CameraPreset:TpvScene3DRendererCameraPreset read fCameraPreset;
       public
        property InFlightFrameMustRenderGIMaps:TInFlightFrameMustRenderGIMaps read fInFlightFrameMustRenderGIMaps;
@@ -5539,7 +5540,7 @@ begin
 
        DrawChoreographyBatchItem:=DrawChoreographyBatchItems[DrawChoreographyBatchItemIndex];
 
-       if (DrawChoreographyBatchItem.fCountIndices>0) and
+       if (DrawChoreographyBatchItem.CountIndices>0) and
           (TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameInstancesCounts[aInFlightFrameIndex,fID,aRenderPassIndex]>0) then begin
 
         GPUDrawIndexedIndirectCommandIndex:=GPUDrawIndexedIndirectCommandDynamicArray^.AddNewIndex;
@@ -5550,7 +5551,7 @@ begin
         GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.vertexOffset:=0;
         GPUDrawIndexedIndirectCommand^.DrawIndexedIndirectCommand.firstInstance:=TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fVulkanPerInFlightFrameFirstInstances[aInFlightFrameIndex,fID,aRenderPassIndex];
         GPUDrawIndexedIndirectCommand^.ObjectIndex:=DrawChoreographyBatchItem.ObjectIndex;
-        BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).fBoundingSpheres[aInFlightFrameIndex];
+        BoundingSphere:=@TpvScene3D.TGroup.TInstance(DrawChoreographyBatchItem.GroupInstance).BoundingSpheres[aInFlightFrameIndex];
         GPUDrawIndexedIndirectCommand^.BoundingSphere:=TpvVector4.InlineableCreate(BoundingSphere^.Center,BoundingSphere^.Radius);
 {       if assigned(DrawChoreographyBatchItem.Node) and
            ((TpvScene3D.TGroup.TNode.TNodeFlag.TransformAnimated in TpvScene3D.TGroup.TNode(DrawChoreographyBatchItem.Node).Flags) or

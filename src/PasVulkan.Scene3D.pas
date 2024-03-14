@@ -2458,6 +2458,7 @@ type EpvScene3D=class(Exception);
                             Count:TpvSizeInt;
                           end;
                           PAABBTreeSkipList=^TAABBTreeSkipList;
+                          TBoundingSpheres=array[0..MaxInFlightFrames-1] of TpvSphere;
                     private
                      fGroup:TGroup;
                      fLock:TPasMPSpinLock;
@@ -2490,7 +2491,7 @@ type EpvScene3D=class(Exception);
                      fLightShadowMapZFarValues:TPasGLTFFloatDynamicArray;
                      fBoundingBox:TpvAABB;
                      fBoundingBoxes:array[0..MaxInFlightFrames-1] of TpvAABB;
-                     fBoundingSpheres:array[0..MaxInFlightFrames-1] of TpvSphere;
+                     fBoundingSpheres:TBoundingSpheres;
                      fUserData:pointer;
                      fOnNodeMatrixPre:TOnNodeMatrix;
                      fOnNodeMatrixPost:TOnNodeMatrix;
@@ -2636,6 +2637,7 @@ type EpvScene3D=class(Exception);
                      property ModelMatrix:TpvMatrix4x4 read fModelMatrix write SetModelMatrix;
                      property RenderInstances:TRenderInstances read fRenderInstances;
                      property BoundingBox:TpvAABB read fBoundingBox;
+                     property BoundingSpheres:TBoundingSpheres read fBoundingSpheres;
                     public
                      property Automations[const aIndex:TPasGLTFSizeInt]:TpvScene3D.TGroup.TInstance.TAnimation read GetAutomation;
                     published
@@ -10311,7 +10313,7 @@ begin
  if not assigned(fTemporaryVertices) then begin
   fTemporaryVertices:=TpvScene3D.TGroup.TGroupVertices.Create;
  end;
- result:=fTemporaryVertices.AddNew;
+ result:=Pointer(fTemporaryVertices.AddNew);
 end;
 
 function TpvScene3D.TGroup.TMesh.TPrimitive.AddVertex(const aVertex:TpvScene3D.TVertex):TpvSizeInt;
@@ -18883,7 +18885,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
    Stack.Initialize;
    try   
     for Index:=aScene.fNodes.Count-1 downto 0 do begin
-     NewStackItem:=Stack.PushIndirect;
+     NewStackItem:=Pointer(Stack.PushIndirect);
      NewStackItem^.NodeIndex:=aScene.fNodes[Index].Index;
      NewStackItem^.Pass:=0;
     end;
@@ -18892,11 +18894,11 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
      case StackItem.Pass of
       0:begin
        if Node.Children.Count>0 then begin 
-        NewStackItem:=Stack.PushIndirect;
+        NewStackItem:=Pointer(Stack.PushIndirect);
         NewStackItem^.NodeIndex:=StackItem.NodeIndex;
         NewStackItem^.Pass:=1;
         for Index:=Node.Children.Count-1 downto 0 do begin
-         NewStackItem:=Stack.PushIndirect;
+         NewStackItem:=Pointer(Stack.PushIndirect);
          NewStackItem^.NodeIndex:=Node.Children[Index].Index;
          NewStackItem^.Pass:=0;
         end; 
@@ -19072,7 +19074,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   try
 
    if fAABBTree.Root>=0 then begin
-    NewStackItem:=Stack.PushIndirect;
+    NewStackItem:=Pointer(Stack.PushIndirect);
     NewStackItem^.NodeIndex:=fAABBTree.Root;
     NewStackItem^.Pass:=0;
     NewStackItem^.Level:=0;
@@ -19109,14 +19111,14 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
        SkipListItem^.Level:=StackItem.Level;
        SkipListItem^.SkipCount:=1;
 
-       NewStackItem:=Stack.PushIndirect;
+       NewStackItem:=Pointer(Stack.PushIndirect);
        NewStackItem^.NodeIndex:=StackItem.NodeIndex;
        NewStackItem^.Pass:=1;
        NewStackItem^.Level:=StackItem.Level;
        NewStackItem^.SkipListItemIndex:=SkipListItemIndex;
 
        if Node^.Children[1]>=0 then begin
-        NewStackItem:=Stack.PushIndirect;
+        NewStackItem:=Pointer(Stack.PushIndirect);
         NewStackItem^.NodeIndex:=Node^.Children[1];
         NewStackItem^.Pass:=0;
         NewStackItem^.Level:=StackItem.Level+1;
@@ -19124,7 +19126,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
        end;
 
        if Node^.Children[0]>=0 then begin
-        NewStackItem:=Stack.PushIndirect;
+        NewStackItem:=Pointer(Stack.PushIndirect);
         NewStackItem^.NodeIndex:=Node^.Children[0];
         NewStackItem^.Pass:=0;
         NewStackItem^.Level:=StackItem.Level+1;
@@ -21433,7 +21435,7 @@ begin
  if assigned(aObject) then begin
   fFreeQueueLock.Acquire;
   try
-   Item:=fFreeQueue.AddNew;
+   Item:=Pointer(fFreeQueue.AddNew);
    if aFrameDelay<0 then begin
     Item^.Counter:=fCountInFlightFrames;
    end else begin
@@ -22450,7 +22452,7 @@ type TStackItem=record
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
 var Index:TpvSizeInt;
-    StackItem:PStackItem;
+    StackItem:TStack.PT;
     Node:TpvSizeInt;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     Mask:TpvUInt32;
@@ -22460,7 +22462,7 @@ begin
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
   Stack.Initialize;
   try
-   StackItem:=Stack.PushIndirect;
+   StackItem:=Pointer(Stack.PushIndirect);
    StackItem^.Node:=aRoot;
    StackItem^.Mask:=$ffffffff;
    while Stack.PopIndirect(StackItem) do begin
@@ -22523,7 +22525,7 @@ type TStackItem=record
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicFastStack<TStackItem>;
-var StackItem:PStackItem;
+var StackItem:TStack.PT;
     Node:TpvSizeInt;
     TreeNode:TpvBVHDynamicAABBTree.PTreeNode;
     Light:TpvScene3D.TLight;
@@ -22537,7 +22539,7 @@ begin
  if (aRoot>=0) and (length(aTreeNodes)>0) then begin
   Stack.Initialize;
   try
-   StackItem:=Stack.PushIndirect;
+   StackItem:=Pointer(Stack.PushIndirect);
    StackItem^.Node:=aRoot;
    while Stack.PopIndirect(StackItem) do begin
     Node:=StackItem^.Node;
@@ -23347,7 +23349,7 @@ begin
   Stack.Initialize;
   try
 
-   StackItem:=Stack.PushIndirect;
+   StackItem:=Pointer(Stack.PushIndirect);
    StackItem^.NodeIndex:=aRoot;
    StackItem^.Mask:=$ffffffff;
 

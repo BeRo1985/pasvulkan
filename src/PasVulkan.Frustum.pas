@@ -380,7 +380,7 @@ begin
  result:=AABBInFrustum(aAABB.Min,aAABB.Max,aMask);
 end;
 
-function TpvFrustum.SphereInFrustum(const aSphereCenter:TpvVector3;const aSphereRadius:TpvScalar;const aRadius:TpvScalar=0.0):TpvInt32; overload;
+function TpvFrustum.SphereInFrustum(const aSphereCenter:TpvVector3;const aSphereRadius:TpvScalar;const aRadius:TpvScalar=0.0):TpvInt32;
 var FrustumSide:TFrustumSide;
     Count:TpvSizeInt;
     Distance,Radius:TpvScalar;
