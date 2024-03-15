@@ -827,8 +827,14 @@ function pwait() {
 
 # Wait until there are less than the number of logical CPU cores jobs running in parallel
 function throttleWait() {
-  # A bit less than the number of logical CPU cores to leave some room for other processes
-  pwait $((${countCPUCores}-1)) 
+  # If there are more than a CPU core
+  if [ ${countCPUCores} -gt 1 ]; then
+    # A bit less than the number of logical CPU cores to leave some room for other processes
+    pwait $((${countCPUCores}-1)) 
+  else
+    # If there is only one logical CPU core, wait just for any job to finish
+    wait
+  fi
 }
 
 #############################################
@@ -981,10 +987,11 @@ if [ $USEZIP -eq 1 ]; then
 fi
 
 # Compile bin2c
-
 clang ./bin2c.c -o "${tempPath}/bin2c"
 
 if [ $USEZIP -eq 1 ]; then
+
+  # ZIP code path
 
   # Convert the zip archive to a C header file
   "$tempPath/bin2c" scene3dshaders.zip pasvulkan_scene3dshaders_zip "${tempPath}/scene3dshaders_zip.c"
@@ -1035,8 +1042,9 @@ if [ $USEZIP -eq 1 ]; then
   clang -c -target aarch64-linux-android -Wno-c++2b-extensions -Wno-return-type -Wno-deprecated -O0 "${tempPath}/scene3dshaders_zip.c" -o scene3dshaders_zip_aarch64_android.o &
   throttleWait
 
-
 else
+
+  # SPK code path
 
   # Convert the spk archive to a C header file
   "$tempPath/bin2c" scene3dshaders.spk pasvulkan_scene3dshaders_spk "${tempPath}/scene3dshaders_spk.c"
