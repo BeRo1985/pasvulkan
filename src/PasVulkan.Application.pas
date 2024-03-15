@@ -2482,7 +2482,7 @@ const DPI_AWARENESS_CONTEXT_UNAWARE=TDPI_AWARENESS_CONTEXT(-1);
 {$ifend}
 
 {$if defined(fpc) and defined(Windows)}
-function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
+//function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$ifend}
 
 {$if defined(fpc)}
@@ -7413,6 +7413,8 @@ begin
  StdOut:=GetStdHandle(Std_Output_Handle);
 //Win32Check(StdOut<>Invalid_Handle_Value);
  if (StdOut<>0) and (StdOut<>Invalid_Handle_Value) then begin
+//TemporaryString:=TemporaryString+#13#10;
+//WriteConsoleW(StdOut,PWideChar(TemporaryString),length(TemporaryString),nil,nil);
   WriteLn(What);
  end;
 {$ifend}

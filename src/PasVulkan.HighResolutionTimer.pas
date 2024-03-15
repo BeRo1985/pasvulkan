@@ -91,10 +91,12 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
      TpvHighResolutionTimer=class
       private
 {$ifdef Windows}
-       fWaitableTimer:THandle;
+//     fWaitableTimer:THandle;
 {$endif}
        fFrequency:TpvInt64;
        fFrequencyShift:TpvInt32;
+       fSleepGranularity:TpvHighResolutionTime;
+       fSleepThreshold:TpvHighResolutionTime;
        fMillisecondInterval:TpvHighResolutionTime;
        fTwoMillisecondsInterval:TpvHighResolutionTime;
        fFourMillisecondsInterval:TpvHighResolutionTime;
@@ -103,10 +105,6 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        fQuarterSecondInterval:TpvHighResolutionTime;
        fMinuteInterval:TpvHighResolutionTime;
        fHourInterval:TpvHighResolutionTime;
-       fSleepEstimate:TpvDouble;
-       fSleepMean:TpvDouble;
-       fSleepM2:TpvDouble;
-       fSleepCount:Int64;
       public
        constructor Create;
        destructor Destroy; override;
@@ -121,6 +119,8 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        function FromMicroseconds(const aTime:TpvInt64):TpvHighResolutionTime;
        function ToNanoseconds(const aTime:TpvHighResolutionTime):TpvInt64;
        function FromNanoseconds(const aTime:TpvInt64):TpvHighResolutionTime;
+       function ToHundredNanoseconds(const aTime:TpvHighResolutionTime):TpvInt64;
+       function FromHundredNanoseconds(const aTime:TpvInt64):TpvHighResolutionTime;
        property Frequency:TpvInt64 read fFrequency;
        property MillisecondInterval:TpvHighResolutionTime read fMillisecondInterval;
        property TwoMillisecondsInterval:TpvHighResolutionTime read fTwoMillisecondsInterval;
@@ -284,18 +284,34 @@ end;
 
 {$if defined(Windows)}
 function CreateWaitableTimerExW(lpTimerAttributes:Pointer;lpTimerName:LPCWSTR;dwFlags,dwDesiredAccess:DWORD):THandle; {$ifdef cpu386}stdcall;{$endif} external 'kernel32.dll' name 'CreateWaitableTimerExW';
-function NtDelayExecution(Alertable:BOOL;var Interval:TLargeInteger):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif} external 'ntdll.dll' name 'NtDelayExecution';
+
+type TNtDelayExecution=function(Alertable:BOOL;var Interval:TLargeInteger):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
+     TNtQueryTimerResolution=function(var MinimumResolution,MaximumResolution,CurrentResolution:ULONG):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
+     TNtSetTimerResolution=function(var DesiredResolution:ULONG;SetResolution:BOOL;var CurrentResolution:ULONG):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
+
+var NTDLLLibHandle:HMODULE=HMODULE(0);
+    NtDelayExecution:TNtDelayExecution=nil;
+    NtQueryTimerResolution:TNtQueryTimerResolution=nil;
+    NtSetTimerResolution:TNtSetTimerResolution=nil;
+
+    MinimumResolution:ULONG=0;
+    MaximumResolution:ULONG=0;
+    CurrentResolution:ULONG=0;
+
+//function NtDelayExecution(Alertable:BOOL;var Interval:TLargeInteger):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif} external 'ntdll.dll' name 'NtDelayExecution';
 {$ifend}
+
+var GlobalSleepGranularity:TpvUInt64=0;
 
 constructor TpvHighResolutionTimer.Create;
 begin
  inherited Create;
  fFrequencyShift:=0;
 {$if defined(Windows)}
- fWaitableTimer:=CreateWaitableTimerExW(nil,nil,$00000002{CREATE_WAITABLE_TIMER_HIGH_RESOLUTION},$1f0003{TIMER_ALL_ACCESS});
+(*fWaitableTimer:=CreateWaitableTimerExW(nil,nil,$00000002{CREATE_WAITABLE_TIMER_HIGH_RESOLUTION},$1f0003{TIMER_ALL_ACCESS});
  if fWaitableTimer=0 then begin
   fWaitableTimer:=CreateWaitableTimer(nil,false,nil);
- end;
+ end;*)
  if QueryPerformanceFrequency(fFrequency) then begin
   while (fFrequency and $ffffffffe0000000)<>0 do begin
    fFrequency:=fFrequency shr 1;
@@ -305,12 +321,19 @@ begin
   fFrequency:=1000;
  end;
 {$elseif defined(linux) or defined(android)}
-  fFrequency:=1000000000;
+ fFrequency:=1000000000;
 {$elseif defined(unix)}
-  fFrequency:=1000000;
+ fFrequency:=1000000;
 {$else}
-  fFrequency:=1000;
+ fFrequency:=1000;
 {$ifend}
+ if fFrequency<>10000000 then begin
+  fSleepGranularity:=((GlobalSleepGranularity*fFrequency)+5000000) div 10000000;
+  fSleepThreshold:=(((GlobalSleepGranularity*4)*fFrequency)+5000000) div 10000000;
+ end else begin
+  fSleepGranularity:=GlobalSleepGranularity;
+  fSleepThreshold:=GlobalSleepGranularity*4;
+ end;
  fMillisecondInterval:=(fFrequency+500) div 1000;
  fTwoMillisecondsInterval:=(fFrequency+250) div 500;
  fFourMillisecondsInterval:=(fFrequency+125) div 250;
@@ -319,18 +342,14 @@ begin
  fQuarterSecondInterval:=(fFrequency+2) div 4;
  fMinuteInterval:=fFrequency*60;
  fHourInterval:=fFrequency*3600;
- fSleepEstimate:=5e-3;
- fSleepMean:=5e-3;
- fSleepM2:=0.0;
- fSleepCount:=1;
 end;
 
 destructor TpvHighResolutionTimer.Destroy;
 begin
 {$if defined(windows)}
- if fWaitableTimer<>0 then begin
+{if fWaitableTimer<>0 then begin
   CloseHandle(fWaitableTimer);
- end;
+ end;}
 {$ifend}
  inherited Destroy;
 end;
@@ -368,202 +387,86 @@ begin
 end;
 
 function TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64):TpvHighResolutionTime;
+var SleepThreshold,SleepDuration,Remaining,TimeA,TimeB:TpvHighResolutionTime;
 {$if defined(Windows)}
-var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
-    EndTime,NowTime,Start:TpvHighResolutionTime;
-    DueTime:TLargeInteger;
-begin
- NowTime:=GetTime;
- EndTime:=NowTime+aDelay;
- Seconds:=ToFloatSeconds(aDelay);
- if fWaitableTimer<>0 then begin
-  while NowTime<EndTime do begin
-   ToWait:=Seconds-fSleepEstimate;
-   if ToWait>1e-7 then begin
-    Start:=GetTime;
-    DueTime:=-Max(TpvInt64(1),TpvInt64(trunc(ToWait*1e7)));
-    if SetWaitableTimer(fWaitableTimer,DueTime,0,nil,nil,false) then begin
-     case WaitForSingleObject(fWaitableTimer,1000) of
-      WAIT_TIMEOUT:begin
-       // Ignore and do nothing in this case
-      end;
-      WAIT_ABANDONED,WAIT_FAILED:begin
-       NtDelayExecution(false,DueTime);
-      end;
-      else {WAIT_OBJECT_0:}begin
-       // Do nothing in this case
-      end;
-     end;
-    end else begin
-     NtDelayExecution(false,DueTime);
-    end;
-    NowTime:=GetTime;
-    Observed:=ToFloatSeconds(NowTime-Start);
-    Seconds:=Seconds-Observed;
-    inc(fSleepCount);
-    if fSleepCount>=16777216 then begin
-     fSleepEstimate:=5e-3;
-     fSleepMean:=5e-3;
-     fSleepM2:=0.0;
-     fSleepCount:=1;
-    end else begin
-     Error:=Observed-ToWait;
-     Delta:=Error-fSleepMean;
-     fSleepMean:=fSleepMean+(Delta/fSleepCount);
-     fSleepM2:=fSleepM2+(Delta*(Error-fSleepMean));
-     fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
-    end;
-   end else begin
-    break;
-   end;
-  end;
- end else begin
-  while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
-   Start:=GetTime;
-   Windows.Sleep(1);
-   NowTime:=GetTime;
-   Observed:=ToFloatSeconds(NowTime-Start);
-   Seconds:=Seconds-Observed;
-   inc(fSleepCount);
-   if fSleepCount>=16777216 then begin
-    fSleepEstimate:=5e-3;
-    fSleepMean:=5e-3;
-    fSleepM2:=0.0;
-    fSleepCount:=1;
-   end else begin
-    Delta:=Observed-fSleepMean;
-    fSleepMean:=fSleepMean+(Delta/fSleepCount);
-    fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
-    fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
-   end;
-  end;
- end;
- repeat
-  NowTime:=GetTime;
- until NowTime>=EndTime;
- result:=NowTime;
-end;
-{$elseif defined(Linuxa)}
-var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
-    EndTime,NowTime,Start:TpvHighResolutionTime;
+    SleepTime:TLargeInteger;
+{$elseif defined(unix)}
+    SleepTime:TpvInt64;
     req,rem:timespec;
+{$ifend}
 begin
- NowTime:=GetTime;
- EndTime:=NowTime+aDelay;
- Seconds:=ToFloatSeconds(aDelay);
- while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
-  Start:=GetTime;
-  Sleep(1);
-  NowTime:=GetTime;
-  Observed:=ToFloatSeconds(NowTime-Start);
-  Seconds:=Seconds-Observed;
-  inc(fSleepCount);
-  if fSleepCount>=16777216 then begin
-   fSleepEstimate:=5e-3;
-   fSleepMean:=5e-3;
-   fSleepM2:=0.0;
-   fSleepCount:=1;
-  end else begin
-   Delta:=Observed-fSleepMean;
-   fSleepMean:=fSleepMean+(Delta/fSleepCount);
-   fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
-   fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
-  end;
- end;
- repeat
-  NowTime:=GetTime;
- until NowTime>=EndTime;
- result:=NowTime;
-end;
-{$else}
-var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
-{$ifdef unix}
-    req,rem:timespec;
-{$endif}
-begin
+
  if aDelay>0 then begin
-{$if defined(windows)}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while (NowTime+fFourMillisecondsInterval)<EndTime do begin
-   Windows.Sleep(1);
-   NowTime:=GetTime;
+
+  TimeA:=GetTime;
+  TimeB:=TimeA;
+
+  SleepThreshold:=fSleepThreshold;
+  if fSleepGranularity<>0 then begin
+   inc(SleepThreshold,aDelay div 6);
   end;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   Windows.Sleep(0);
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-  result:=NowTime;
-{$elseif defined(linux) or defined(android)}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while (NowTime+fFourMillisecondsInterval)<EndTime do begin
-   SleepTime:=((EndTime-NowTime)+2) shr 2;
+
+  Remaining:=aDelay;
+
+  while Remaining>SleepThreshold do begin
+   SleepDuration:=Remaining-SleepThreshold;
+{$if defined(Windows)}
+   if assigned(NtDelayExecution) then begin
+    SleepTime:=-ToHundredNanoseconds(SleepDuration);
+    if SleepTime<0 then begin
+     NtDelayExecution(false,SleepTime);
+    end;
+   end else begin
+    SleepDuration:=ToMilliseconds(SleepDuration);
+    if SleepDuration>0 then begin
+     Sleep(SleepDuration);
+    end;
+   end;
+{$elseif defined(Linux)}
+   SleepTime:=SleepDuration;
    if SleepTime>0 then begin
     req.tv_sec:=SleepTime div 1000000000;
     req.tv_nsec:=SleepTime mod 10000000000;
     fpNanoSleep(@req,@rem);
-    NowTime:=GetTime;
-    continue;
    end;
-   break;
-  end;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   ThreadSwitch;
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-  result:=NowTime;
-{$elseif defined(unix)}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while (NowTime+fFourMillisecondsInterval)<EndTime do begin
-   SleepTime:=((EndTime-NowTime)+2) shr 2;
+{$elseif defined(Unix)}
+   SleepTime:=SleepDuration;
    if SleepTime>0 then begin
     req.tv_sec:=SleepTime div 1000000;
     req.tv_nsec:=(SleepTime mod 1000000)*1000;
     fpNanoSleep(@req,@rem);
-    NowTime:=GetTime;
-    continue;
    end;
-   break;
-  end;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   ThreadSwitch;
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-  result:=NowTime;
+{$elseif defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
+   SleepDuration:=ToMilliseconds(SleepDuration);
+   if SleepDuration>0 then begin
+    SDL_Delay(SleepDuration);
+   end;
 {$else}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-{$if defined(PasVulkanUseSDL2) and not defined(PasVulkanHeadless)}
-  while (NowTime+fFourMillisecondsInterval)<EndTime then begin
-   SDL_Delay(1);
-   NowTime:=GetTime;
-  end;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   SDL_Delay(0);
-   NowTime:=GetTime;
-  end;
+   SleepDuration:=ToMilliseconds(SleepDuration);
+   if SleepDuration>0 then begin
+    Sleep(SleepDuration);
+   end;
 {$ifend}
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
+   TimeB:=GetTime;
+   dec(Remaining,TimeB-TimeA);
+   TimeA:=TimeB;
   end;
-  result:=NowTime;
-{$ifend}
+
+  while Remaining>0 do begin
+   TimeB:=GetTime;
+   dec(Remaining,TimeB-TimeA);
+   TimeA:=TimeB;
+  end;
+
+  result:=TimeA;
+
  end else begin
+
   result:=GetTime;
+
  end;
+
 end;
-{$ifend}
 
 function TpvHighResolutionTimer.ToFixedPointSeconds(const aTime:TpvHighResolutionTime):TpvInt64;
 var a,b:TUInt128;
@@ -647,9 +550,47 @@ begin
  end;
 end;
 
+function TpvHighResolutionTimer.ToHundredNanoseconds(const aTime:TpvHighResolutionTime):TpvInt64;
+begin
+ result:=aTime;
+ if fFrequency<>10000000 then begin
+  result:=((aTime*10000000)+((fFrequency+1) shr 1)) div fFrequency;
+ end;
+end;
+
+function TpvHighResolutionTimer.FromHundredNanoseconds(const aTime:TpvInt64):TpvHighResolutionTime;
+begin
+ result:=aTime;
+ if fFrequency<>10000000 then begin
+  result:=((aTime*fFrequency)+5000000) div 10000000;
+ end;
+end;
+
 initialization
 {$ifdef windows}
+ NTDLLLibHandle:=LoadLibrary('ntdll.dll');
+ if NTDLLLibHandle<>HMODULE(0) then begin
+  @NtDelayExecution:=GetProcAddress(NTDLLLibHandle,'NtDelayExecution');
+  @NtQueryTimerResolution:=GetProcAddress(NTDLLLibHandle,'NtQueryTimerResolution');
+  @NtSetTimerResolution:=GetProcAddress(NTDLLLibHandle,'NtSetTimerResolution');
+ end;
  timeBeginPeriod(1);
+ if assigned(NtDelayExecution) and
+    assigned(NtQueryTimerResolution) and
+    assigned(NtSetTimerResolution) then begin
+  if NtQueryTimerResolution(MinimumResolution,MaximumResolution,CurrentResolution)=0 then begin
+   GlobalSleepGranularity:=CurrentResolution;
+   if NtSetTimerResolution(MaximumResolution,true,CurrentResolution)=0 then begin
+    GlobalSleepGranularity:=MaximumResolution;
+   end;
+  end else begin
+   GlobalSleepGranularity:=10000; // 1ms in 100-ns units
+  end;
+ end else begin
+  GlobalSleepGranularity:=10000; // 1ms in 100-ns units
+ end;
+{$else}
+ GlobalSleepGranularity:=5000; // 0.5ms in 100-ns units
 {$endif}
 finalization
 {$ifdef windows}
