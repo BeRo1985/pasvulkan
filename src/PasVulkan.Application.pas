@@ -10307,26 +10307,62 @@ end;
 procedure TpvApplication.FrameRateLimiter;
 var LastTime,NowTime,FrameTime,TargetInterval,SleepDuration:TpvHighResolutionTime;
 begin
+
  if fFrameRateLimiterLastTime=0 then begin
   fFrameRateLimiterLastTime:=fHighResolutionTimer.GetTime; // Initialize first last time
  end;
+
  LastTime:=fFrameRateLimiterLastTime;
  NowTime:=fHighResolutionTimer.GetTime;
+
+ // Calculate new frame time
  FrameTime:=NowTime-LastTime;
- TargetInterval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
- if (FrameTime*100)>((TargetInterval*103)-(fFrameRateLimiterDeviation*100)) then begin
-  fFrameRateLimiterDeviation:=0;
- end else begin
-  SleepDuration:=TargetInterval-(FrameTime+fFrameRateLimiterDeviation);
-  if SleepDuration>0 then begin
-   // High resolution sleep function with drift compensation with observations using Welford’s algorithm,
-   // based on standard deviation above the mean and so on.
-   NowTime:=fHighResolutionTimer.Sleep(SleepDuration);
+
+ // Check the frame limiter is enabled at all.
+ if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
+
+  // If the frame limiter is enabled, do our magic here. :-)
+
+  // Calculate the target time interval based on the maximum frames per second value.
+  TargetInterval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
+
+  // Check if the deviation should be reset to zero, for example, if a slow frame was present.
+  if (FrameTime*100)>((TargetInterval*103)-(fFrameRateLimiterDeviation*100)) then begin
+
+   // So for example, if a slow frame was present, the deviation should be reset to zero, as
+   // the low performance should not be compensated for later.
+   fFrameRateLimiterDeviation:=0;
+
+  end else begin
+
+   SleepDuration:=TargetInterval-(FrameTime+fFrameRateLimiterDeviation);
+
+   // The sleep function should not be called if the time required to sleep is shorter than the time
+   // the function calls are likely to take.
+   if SleepDuration>0 then begin
+    // High resolution sleep function with drift compensation with observations using Welford’s algorithm,
+    // based on standard deviation above the mean and so on.
+    NowTime:=fHighResolutionTimer.Sleep(SleepDuration);
+   end;
+
+   // Calculate new frame time
+   FrameTime:=NowTime-LastTime;
+
+   // Any inaccuracies during sleep should be compensated for in the next frame, however the cumulative
+   // deviation should be limited to avoid stuttering if a series of slow frames is followed by a fast frame.
+   fFrameRateLimiterDeviation:=Min(TargetInterval shr 4,fFrameRateLimiterDeviation+(FrameTime-TargetInterval));
+
   end;
-  FrameTime:=NowTime-LastTime;
-  fFrameRateLimiterDeviation:=Min(TargetInterval shr 4,fFrameRateLimiterDeviation+(FrameTime-TargetInterval));
+
+ end else begin
+
+  // Disabled frame limiter => Do not sleeping at all
+  fFrameRateLimiterDeviation:=0;
+
  end;
+
  fFrameRateLimiterLastTime:=NowTime;
+
 end;
 
 {procedure TpvApplication.FrameRateLimiter;
