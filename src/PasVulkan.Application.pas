@@ -10312,6 +10312,10 @@ begin
   Interval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
   if (fNextTime=0) or (fNextTime>=(NowTime+Interval)) then begin
    fNextTime:=NowTime+Interval;
+   NowTime:=fHighResolutionTimer.GetTime;
+   if fNextTime>=(NowTime+Interval) then begin
+    fNextTime:=NowTime+Interval;
+   end;
   end else begin
    fNextTime:=fNextTime+Interval;
   end;
