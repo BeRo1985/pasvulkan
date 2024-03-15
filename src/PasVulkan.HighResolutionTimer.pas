@@ -458,13 +458,9 @@ begin
    TimeA:=TimeB;
   end;
 
-  result:=TimeA;
-
- end else begin
-
-  result:=GetTime;
-
  end;
+
+ result:=GetTime;
 
 end;
 
