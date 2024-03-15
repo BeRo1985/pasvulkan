@@ -111,7 +111,7 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        constructor Create;
        destructor Destroy; override;
        function GetTime:TpvInt64;
-       procedure Sleep(const aDelay:TpvHighResolutionTime);
+       function Sleep(const aDelay:TpvHighResolutionTime):TpvHighResolutionTime;
        function ToFixedPointSeconds(const aTime:TpvHighResolutionTime):TpvInt64;
        function ToFloatSeconds(const aTime:TpvHighResolutionTime):TpvDouble;
        function FromFloatSeconds(const aTime:TpvDouble):TpvHighResolutionTime;
@@ -367,7 +367,7 @@ begin
  result:=result shr fFrequencyShift;
 end;
 
-procedure TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64);
+function TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64):TpvHighResolutionTime;
 {$if defined(Windows)}
 var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
     EndTime,NowTime,Start:TpvHighResolutionTime;
@@ -441,6 +441,7 @@ begin
  repeat
   NowTime:=GetTime;
  until NowTime>=EndTime;
+ result:=NowTime;
 end;
 {$elseif defined(Linux)}
 var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
@@ -472,6 +473,7 @@ begin
  repeat
   NowTime:=GetTime;
  until NowTime>=EndTime;
+ result:=NowTime;
 end;
 {$else}
 var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
@@ -494,6 +496,7 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
+  result:=NowTime;
 {$elseif defined(linux) or defined(android)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
@@ -515,6 +518,7 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
+  result:=NowTime;
 {$elseif defined(unix)}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
@@ -536,6 +540,7 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
+  result:=NowTime;
 {$else}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
@@ -552,7 +557,10 @@ begin
   while NowTime<EndTime do begin
    NowTime:=GetTime;
   end;
+  result:=NowTime;
 {$ifend}
+ end else begin
+  result:=GetTime;
  end;
 end;
 {$ifend}

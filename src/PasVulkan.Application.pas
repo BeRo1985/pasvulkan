@@ -1525,6 +1525,8 @@ type EpvApplication=class(Exception)
        fNowTime:TpvHighResolutionTime;
        fDeltaTime:TpvHighResolutionTime;
        fNextTime:TpvHighResolutionTime;
+       fFrameRateLimiterLastTime:TpvHighResolutionTime;
+       fFrameRateLimiterDeviation:TpvHighResolutionTime;
        fFloatDeltaTime:TpvDouble;
        fUpdateDeltaTime:TpvDouble;
 
@@ -7311,6 +7313,8 @@ begin
  fNowTime:=0;
  fDeltaTime:=0;
  fNextTime:=0;
+ fFrameRateLimiterLastTime:=0;
+ fFrameRateLimiterDeviation:=0;
 
  fFrameCounter:=0;
 
@@ -10301,13 +10305,38 @@ begin
 end;
 
 procedure TpvApplication.FrameRateLimiter;
+var LastTime,NowTime,FrameTime,TargetInterval,SleepDuration:TpvHighResolutionTime;
+begin
+ if fFrameRateLimiterLastTime=0 then begin
+  fFrameRateLimiterLastTime:=fHighResolutionTimer.GetTime; // Initialize first last time
+ end;
+ LastTime:=fFrameRateLimiterLastTime;
+ NowTime:=fHighResolutionTimer.GetTime;
+ FrameTime:=NowTime-LastTime;
+ TargetInterval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
+ if (FrameTime*100)>((TargetInterval*103)-(fFrameRateLimiterDeviation*100)) then begin
+  fFrameRateLimiterDeviation:=0;
+ end else begin
+  SleepDuration:=TargetInterval-(FrameTime+fFrameRateLimiterDeviation);
+  if SleepDuration>0 then begin
+   // High resolution sleep function with drift compensation with observations using Welford’s algorithm,
+   // based on standard deviation above the mean and so on.
+   NowTime:=fHighResolutionTimer.Sleep(SleepDuration);
+  end;
+  FrameTime:=NowTime-LastTime;
+  fFrameRateLimiterDeviation:=Min(TargetInterval shr 4,fFrameRateLimiterDeviation+(FrameTime-TargetInterval));
+ end;
+ fFrameRateLimiterLastTime:=NowTime;
+end;
+
+{procedure TpvApplication.FrameRateLimiter;
 var NowTime,Interval:TpvHighResolutionTime;
 begin
  NowTime:=fHighResolutionTimer.GetTime;
  if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
   if (NowTime<fNextTime) and
      (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
-   fHighResolutionTimer.Sleep(fNextTime-NowTime);
+   fHighResolutionTimer.Sleep(fNextTime-NowTime); // Sleep function with drift compensation with observations using Welford’s algorithm (standard deviation above the mean)
   end;
   Interval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
   if (fNextTime=0) or (fNextTime>=(NowTime+Interval)) then begin
@@ -10326,7 +10355,7 @@ begin
    fNextTime:=0;
   end;
  end;
-end;
+end;}
 
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
