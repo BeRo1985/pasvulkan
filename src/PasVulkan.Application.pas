@@ -1524,11 +1524,12 @@ type EpvApplication=class(Exception)
        fLastTime:TpvHighResolutionTime;
        fNowTime:TpvHighResolutionTime;
        fDeltaTime:TpvHighResolutionTime;
-       fNextTime:TpvHighResolutionTime;
-       fFrameRateLimiterLastTime:TpvHighResolutionTime;
-       fFrameRateLimiterDeviation:TpvHighResolutionTime;
+       //fNextTime:TpvHighResolutionTime;
        fFloatDeltaTime:TpvDouble;
        fUpdateDeltaTime:TpvDouble;
+
+       fFrameRateLimiterLastTime:TpvHighResolutionTime;
+       fFrameRateLimiterDeviation:TpvHighResolutionTime;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
@@ -7312,7 +7313,9 @@ begin
  fLastTime:=0;
  fNowTime:=0;
  fDeltaTime:=0;
- fNextTime:=0;
+
+//fNextTime:=0;
+
  fFrameRateLimiterLastTime:=0;
  fFrameRateLimiterDeviation:=0;
 
