@@ -390,7 +390,7 @@ function TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64):TpvHighResolutionTi
 var SleepThreshold,SleepDuration,Remaining,TimeA,TimeB:TpvHighResolutionTime;
 {$if defined(Windows)}
     SleepTime:TLargeInteger;
-{$elseif defined(Linux) or defined(Unix)}
+{$elseif defined(Linux) or defined(Android) or defined(Unix)}
     SleepTime:TpvInt64;
     req,rem:timespec;
 {$ifend}
@@ -422,7 +422,7 @@ begin
      Sleep(SleepDuration);
     end;
    end;
-{$elseif defined(Linux)}
+{$elseif defined(Linux) or defined(Android)}
    SleepTime:=SleepDuration;
    if SleepTime>0 then begin
     req.tv_sec:=SleepTime div 1000000000;
