@@ -443,7 +443,7 @@ begin
  until NowTime>=EndTime;
  result:=NowTime;
 end;
-{$elseif defined(Linux)}
+{$elseif defined(Linuxa)}
 var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
     EndTime,NowTime,Start:TpvHighResolutionTime;
     req,rem:timespec;
