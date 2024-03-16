@@ -10320,7 +10320,7 @@ begin
  LastTime:=fFrameRateLimiterLastTime;
  NowTime:=fHighResolutionTimer.GetTime;
 
- // Calculate new frame time
+ // Calculate frame time
  FrameTime:=NowTime-LastTime;
 
  // Check the frame limiter is enabled at all.
@@ -10345,8 +10345,6 @@ begin
    // The sleep function should not be called if the time required to sleep is shorter than the time
    // the function calls are likely to take.
    if SleepDuration>0 then begin
-    // High resolution sleep function with drift compensation with observations using Welford’s algorithm,
-    // based on standard deviation above the mean and so on.
     NowTime:=fHighResolutionTimer.Sleep(SleepDuration);
    end;
 
@@ -10377,7 +10375,7 @@ begin
  if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
   if (NowTime<fNextTime) and
      (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
-   fHighResolutionTimer.Sleep(fNextTime-NowTime); // Sleep function with drift compensation with observations using Welford’s algorithm (standard deviation above the mean)
+   fHighResolutionTimer.Sleep(fNextTime-NowTime);
   end;
   Interval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
   if (fNextTime=0) or (fNextTime>=(NowTime+Interval)) then begin
