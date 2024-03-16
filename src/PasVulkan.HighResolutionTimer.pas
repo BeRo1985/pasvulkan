@@ -437,6 +437,7 @@ begin
        end;
        WAIT_ABANDONED,WAIT_FAILED:begin
         if assigned(NtDelayExecution) then begin
+         SleepTime:=-ToHundredNanoseconds(SleepDuration);
          NtDelayExecution(false,SleepTime);
         end else begin
          SleepDuration:=ToMilliseconds(SleepDuration);

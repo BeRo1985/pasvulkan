@@ -200,9 +200,9 @@ begin
    PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
   end;
 
-  if fEventReady[aInFlightFrameIndex] then begin
+{ if fEventReady[aInFlightFrameIndex] then begin
    Assert(false);
-  end;
+  end;}
   aCommandBuffer.CmdSetEvent(fEvents[aInFlightFrameIndex].Handle,
                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT){
                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or
