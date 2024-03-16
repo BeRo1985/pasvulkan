@@ -82,6 +82,7 @@ uses {$ifdef windows}
      Classes,
      SyncObjs,
      Math,
+     PasMP,
      PasVulkan.Types;
 
 type PPpvHighResolutionTime=^PpvHighResolutionTime;
@@ -91,7 +92,8 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
      TpvHighResolutionTimer=class
       private
 {$ifdef Windows}
-//     fWaitableTimer:THandle;
+       fWaitableTimer:THandle;
+       fWaitableTimerInUsage:TPasMPBool32;
 {$endif}
        fFrequency:TpvInt64;
        fFrequencyShift:TpvInt32;
@@ -283,13 +285,16 @@ begin
 end;
 
 {$if defined(Windows)}
-function CreateWaitableTimerExW(lpTimerAttributes:Pointer;lpTimerName:LPCWSTR;dwFlags,dwDesiredAccess:DWORD):THandle; {$ifdef cpu386}stdcall;{$endif} external 'kernel32.dll' name 'CreateWaitableTimerExW';
+type TCreateWaitableTimerExW=function(lpTimerAttributes:Pointer;lpTimerName:LPCWSTR;dwFlags,dwDesiredAccess:DWORD):THandle; {$ifdef cpu386}stdcall;{$endif}
 
-type TNtDelayExecution=function(Alertable:BOOL;var Interval:TLargeInteger):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
+     TNtDelayExecution=function(Alertable:BOOL;var Interval:TLargeInteger):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
      TNtQueryTimerResolution=function(var MinimumResolution,MaximumResolution,CurrentResolution:ULONG):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
      TNtSetTimerResolution=function(var DesiredResolution:ULONG;SetResolution:BOOL;var CurrentResolution:ULONG):LONG{NTSTATUS}; {$ifdef cpu386}stdcall;{$endif}
 
-var NTDLLLibHandle:HMODULE=HMODULE(0);
+var KERNEL32LibHandle:HMODULE=HMODULE(0);
+    CreateWaitableTimerExW:TCreateWaitableTimerExW=nil;
+
+    NTDLLLibHandle:HMODULE=HMODULE(0);
     NtDelayExecution:TNtDelayExecution=nil;
     NtQueryTimerResolution:TNtQueryTimerResolution=nil;
     NtSetTimerResolution:TNtSetTimerResolution=nil;
@@ -308,10 +313,15 @@ begin
  inherited Create;
  fFrequencyShift:=0;
 {$if defined(Windows)}
-(*fWaitableTimer:=CreateWaitableTimerExW(nil,nil,$00000002{CREATE_WAITABLE_TIMER_HIGH_RESOLUTION},$1f0003{TIMER_ALL_ACCESS});
+ if assigned(CreateWaitableTimerExW) then begin
+  fWaitableTimer:=CreateWaitableTimerExW(nil,nil,$00000002{CREATE_WAITABLE_TIMER_HIGH_RESOLUTION},$1f0003{TIMER_ALL_ACCESS});
+ end else begin
+  fWaitableTimer:=0;
+ end;
  if fWaitableTimer=0 then begin
   fWaitableTimer:=CreateWaitableTimer(nil,false,nil);
- end;*)
+ end;
+ fWaitableTimerInUsage:=false;
  if QueryPerformanceFrequency(fFrequency) then begin
   while (fFrequency and $ffffffffe0000000)<>0 do begin
    fFrequency:=fFrequency shr 1;
@@ -347,9 +357,9 @@ end;
 destructor TpvHighResolutionTimer.Destroy;
 begin
 {$if defined(windows)}
-{if fWaitableTimer<>0 then begin
+ if fWaitableTimer<>0 then begin
   CloseHandle(fWaitableTimer);
- end;}
+ end;
 {$ifend}
  inherited Destroy;
 end;
@@ -390,6 +400,8 @@ function TpvHighResolutionTimer.Sleep(const aDelay:TpvInt64):TpvHighResolutionTi
 var SleepThreshold,SleepDuration,Remaining,TimeA,TimeB:TpvHighResolutionTime;
 {$if defined(Windows)}
     SleepTime:TLargeInteger;
+    ToWait:TpvDouble;
+    WaitableTimerInUsage:TPasMPBool32;
 {$elseif defined(Linux) or defined(Android) or defined(Unix)}
     SleepTime:TpvInt64;
     req,rem:timespec;
@@ -401,6 +413,10 @@ begin
   TimeA:=GetTime;
   TimeB:=TimeA;
 
+{$if defined(Windows)}
+  WaitableTimerInUsage:=TPasMPInterlocked.CompareExchange(fWaitableTimerInUsage,TPasMPBool32(true),TPasMPBool32(false));
+{$ifend}
+
   SleepThreshold:=fSleepThreshold;
   if fSleepGranularity<>0 then begin
    inc(SleepThreshold,aDelay div 6);
@@ -411,7 +427,40 @@ begin
   while Remaining>SleepThreshold do begin
    SleepDuration:=Remaining-SleepThreshold;
 {$if defined(Windows)}
-   if assigned(NtDelayExecution) then begin
+   if (not WaitableTimerInUsage) and assigned(CreateWaitableTimerExW) and (fWaitableTimer<>0) then begin
+    SleepTime:=-ToHundredNanoseconds(SleepDuration);
+    if SleepTime<0 then begin
+     if SetWaitableTimer(fWaitableTimer,SleepTime,0,nil,nil,false) then begin
+      case WaitForSingleObject(fWaitableTimer,1000) of
+       WAIT_TIMEOUT:begin
+        // Ignore and do nothing in this case
+       end;
+       WAIT_ABANDONED,WAIT_FAILED:begin
+        if assigned(NtDelayExecution) then begin
+         NtDelayExecution(false,SleepTime);
+        end else begin
+         SleepDuration:=ToMilliseconds(SleepDuration);
+         if SleepDuration>0 then begin
+          Sleep(SleepDuration);
+         end;
+        end;
+       end;
+       else {WAIT_OBJECT_0:}begin
+        // Do nothing in this case
+       end;
+      end;
+     end else begin
+      if assigned(NtDelayExecution) then begin
+       NtDelayExecution(false,SleepTime);
+      end else begin
+       SleepDuration:=ToMilliseconds(SleepDuration);
+       if SleepDuration>0 then begin
+        Sleep(SleepDuration);
+       end;
+      end;
+     end;
+    end;
+   end else if assigned(NtDelayExecution) then begin
     SleepTime:=-ToHundredNanoseconds(SleepDuration);
     if SleepTime<0 then begin
      NtDelayExecution(false,SleepTime);
@@ -457,6 +506,12 @@ begin
    dec(Remaining,TimeB-TimeA);
    TimeA:=TimeB;
   end;
+
+{$if defined(Windows)}
+  if not WaitableTimerInUsage then begin
+   TPasMPInterlocked.Write(fWaitableTimerInUsage,TPasMPBool32(false));
+  end;
+{$ifend}
 
  end;
 
@@ -564,6 +619,10 @@ end;
 
 initialization
 {$ifdef windows}
+ KERNEL32LibHandle:=LoadLibrary('kernel32.dll');
+ if KERNEL32LibHandle<>HMODULE(0) then begin
+  @CreateWaitableTimerExW:=GetProcAddress(KERNEL32LibHandle,'CreateWaitableTimerExW');
+ end;
  NTDLLLibHandle:=LoadLibrary('ntdll.dll');
  if NTDLLLibHandle<>HMODULE(0) then begin
   @NtDelayExecution:=GetProcAddress(NTDLLLibHandle,'NtDelayExecution');
