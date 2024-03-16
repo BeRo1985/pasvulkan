@@ -99,8 +99,8 @@ type { TpvScene3DRendererPassesReflectiveShadowMapRenderPass }
        fMeshMaskedFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthFragmentShaderModule:TpvVulkanShaderModule;
        fMeshDepthMaskedFragmentShaderModule:TpvVulkanShaderModule;
-       fDebugPrimitiveVertexShaderModule:TpvVulkanShaderModule;
-       fDebugPrimitiveFragmentShaderModule:TpvVulkanShaderModule;
+{      fDebugPrimitiveVertexShaderModule:TpvVulkanShaderModule;
+       fDebugPrimitiveFragmentShaderModule:TpvVulkanShaderModule;}
        fPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPassVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fPassVulkanDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
@@ -109,10 +109,10 @@ type { TpvScene3DRendererPassesReflectiveShadowMapRenderPass }
        fVulkanPipelineShaderStageMeshMaskedFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthFragment:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageMeshDepthMaskedFragment:TpvVulkanPipelineShaderStage;
-       fVulkanPipelineShaderStageDebugPrimitiveVertex:TpvVulkanPipelineShaderStage;
-       fVulkanPipelineShaderStageDebugPrimitiveFragment:TpvVulkanPipelineShaderStage;
+{      fVulkanPipelineShaderStageDebugPrimitiveVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageDebugPrimitiveFragment:TpvVulkanPipelineShaderStage;}
        fVulkanGraphicsPipelines:array[boolean,TpvScene3D.TMaterial.TAlphaMode] of TpvScene3D.TGraphicsPipelines;
-       fVulkanDebugPrimitiveGraphicsPipeline:TpvVulkanGraphicsPipeline;
+//     fVulkanDebugPrimitiveGraphicsPipeline:TpvVulkanGraphicsPipeline;
        fVulkanPipelineLayout:TpvVulkanPipelineLayout;
 //     fSkyBox:TpvScene3DRendererSkyBox;
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
@@ -254,7 +254,7 @@ begin
 
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_vert.spv');
+{Stream:=pvScene3DShaderVirtualFileSystem.GetFile('debug_primitive_vert.spv');
  try
   fDebugPrimitiveVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -266,7 +266,7 @@ begin
   fDebugPrimitiveFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
   Stream.Free;
- end;
+ end;}
 
  fVulkanPipelineShaderStageMeshVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fMeshVertexShaderModule,'main');
 
@@ -286,9 +286,9 @@ begin
 
  end;
 
- fVulkanPipelineShaderStageDebugPrimitiveVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDebugPrimitiveVertexShaderModule,'main');
+{fVulkanPipelineShaderStageDebugPrimitiveVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fDebugPrimitiveVertexShaderModule,'main');
 
- fVulkanPipelineShaderStageDebugPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDebugPrimitiveFragmentShaderModule,'main');
+ fVulkanPipelineShaderStageDebugPrimitiveFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fDebugPrimitiveFragmentShaderModule,'main');}
 
 {fSkyBox:=TpvScene3DRendererSkyBox.Create(fInstance.Renderer,
                                           fInstance.Renderer.Scene3D,
@@ -315,9 +315,9 @@ begin
 
  end;
 
- FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveVertex);
+{FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveVertex);
 
- FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveFragment);
+ FreeAndNil(fVulkanPipelineShaderStageDebugPrimitiveFragment);}
 
  FreeAndNil(fMeshVertexShaderModule);
 
@@ -333,9 +333,9 @@ begin
 
  end;
 
- FreeAndNil(fDebugPrimitiveVertexShaderModule);
+{FreeAndNil(fDebugPrimitiveVertexShaderModule);
 
- FreeAndNil(fDebugPrimitiveFragmentShaderModule);
+ FreeAndNil(fDebugPrimitiveFragmentShaderModule);}
 
  inherited ReleasePersistentResources;
 end;
@@ -675,7 +675,7 @@ begin
 
  end;
 
- VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
+(*VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
                                                           fInstance.Renderer.VulkanPipelineCache,
                                                           0,
                                                           [],
@@ -761,7 +761,7 @@ begin
 
  finally
   fVulkanDebugPrimitiveGraphicsPipeline:=VulkanGraphicsPipeline;
- end;
+ end;*)
 
 {fSkyBox.AllocateResources(fVulkanRenderPass,
                            fInstance.ReflectiveShadowMapWidth,
@@ -778,7 +778,7 @@ var Index:TpvSizeInt;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
 //fSkyBox.ReleaseResources;
- FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
+//FreeAndNil(fVulkanDebugPrimitiveGraphicsPipeline);
  for DepthPrePass:=false to fInstance.Renderer.UseDepthPrepass do begin
   for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
    for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
