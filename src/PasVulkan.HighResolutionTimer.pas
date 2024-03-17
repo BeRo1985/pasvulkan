@@ -763,7 +763,7 @@ begin
    end;
   end;
 {$if defined(Windows)}  
-  TPasMP.Write(fHighResolutionTimer.fWaitableTimerInUsage,TPasMPBool32(false));
+  TPasMPInterlocked.Write(fHighResolutionTimer.fWaitableTimerInUsage,TPasMPBool32(false));
 {$ifend}
 {$if defined(Windows)}  
  end else begin
