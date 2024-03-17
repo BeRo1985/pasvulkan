@@ -1302,6 +1302,8 @@ type EpvApplication=class(Exception)
 
        fHighResolutionTimer:TpvHighResolutionTimer;
 
+       fFrameLimiterHighResolutionTimerSleepWithDriftCompensation:TpvHighResolutionTimerSleepWithDriftCompensation;
+
        fAssets:TpvApplicationAssets;
 
        fFiles:TpvApplicationFiles;
@@ -7118,6 +7120,8 @@ begin
 
  fHighResolutionTimer:=TpvHighResolutionTimer.Create;
 
+ fFrameLimiterHighResolutionTimerSleepWithDriftCompensation:=TpvHighResolutionTimerSleepWithDriftCompensation.Create(fHighResolutionTimer);
+
  fAssets:=TpvApplicationAssets.Create(self);
 
  fFiles:=TpvApplicationFiles.Create(self);
@@ -7386,6 +7390,8 @@ begin
  FreeAndNil(fFiles);
 
  FreeAndNil(fAssets);
+
+ FreeAndNil(fFrameLimiterHighResolutionTimerSleepWithDriftCompensation);
 
  FreeAndNil(fHighResolutionTimer);
 
@@ -10345,7 +10351,7 @@ begin
    // The sleep function should not be called if the time required to sleep is shorter than the time
    // the function calls are likely to take.
    if SleepDuration>0 then begin
-    NowTime:=fHighResolutionTimer.Sleep(SleepDuration);
+    NowTime:=fFrameLimiterHighResolutionTimerSleepWithDriftCompensation.Sleep(SleepDuration);
    end;
 
    // Calculate new frame time
@@ -10375,7 +10381,7 @@ begin
  if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
   if (NowTime<fNextTime) and
      (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
-   fHighResolutionTimer.Sleep(fNextTime-NowTime);
+   fFrameLimiterHighResolutionTimerSleepWithDriftCompensation.Sleep(fNextTime-NowTime);
   end;
   Interval:=fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
   if (fNextTime=0) or (fNextTime>=(NowTime+Interval)) then begin

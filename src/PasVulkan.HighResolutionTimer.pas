@@ -89,6 +89,7 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
      PpvHighResolutionTime=^TpvHighResolutionTime;
      TpvHighResolutionTime=TpvInt64;
 
+     { TpvHighResolutionTimer }
      TpvHighResolutionTimer=class
       private
 {$ifdef Windows}
@@ -133,6 +134,33 @@ type PPpvHighResolutionTime=^PpvHighResolutionTime;
        property SecondInterval:TpvHighResolutionTime read fFrequency;
        property MinuteInterval:TpvHighResolutionTime read fMinuteInterval;
        property HourInterval:TpvHighResolutionTime read fHourInterval;
+     end;
+
+     { TpvHighResolutionTimerSleep }
+     TpvHighResolutionTimerSleep=class
+      private
+       fHighResolutionTimer:TpvHighResolutionTimer;
+      public
+       constructor Create(const aHighResolutionTimer:TpvHighResolutionTimer); reintroduce;
+       destructor Destroy; override;
+       procedure Reset; virtual;
+       function Sleep(const aDelay:TpvHighResolutionTime):TpvHighResolutionTime; virtual;
+      published
+       property HighResolutionTimer:TpvHighResolutionTimer read fHighResolutionTimer; 
+     end;
+
+     { TpvHighResolutionTimerSleepWithDriftCompensation }
+     TpvHighResolutionTimerSleepWithDriftCompensation=class(TpvHighResolutionTimerSleep)
+      private
+       fSleepEstimate:TpvDouble;
+       fSleepMean:TpvDouble;
+       fSleepM2:TpvDouble;
+       fSleepCount:Int64;
+      public
+       constructor Create(const aHighResolutionTimer:TpvHighResolutionTimer); reintroduce;
+       destructor Destroy; override;
+       procedure Reset; override;
+       function Sleep(const aDelay:TpvHighResolutionTime):TpvHighResolutionTime; override;
      end;
 
 implementation
@@ -307,6 +335,8 @@ var KERNEL32LibHandle:HMODULE=HMODULE(0);
 {$ifend}
 
 var GlobalSleepGranularity:TpvUInt64=0;
+
+{ TpvHighResolutionTimer }
 
 constructor TpvHighResolutionTimer.Create;
 begin
@@ -617,6 +647,189 @@ begin
   result:=((aTime*fFrequency)+5000000) div 10000000;
  end;
 end;
+
+{ TpvHighResolutionTimerSleep }
+
+constructor TpvHighResolutionTimerSleep.Create(const aHighResolutionTimer:TpvHighResolutionTimer);
+begin
+ inherited Create;
+ fHighResolutionTimer:=aHighResolutionTimer;
+end;
+
+destructor TpvHighResolutionTimerSleep.Destroy; 
+begin
+ inherited Destroy;
+end;
+
+procedure TpvHighResolutionTimerSleep.Reset;
+begin
+ // Do nothing for the base class
+end;
+
+function TpvHighResolutionTimerSleep.Sleep(const aDelay:TpvHighResolutionTime):TpvHighResolutionTime;
+begin
+ result:=fHighResolutionTimer.Sleep(aDelay); // The default implementation for the base class
+end;
+
+{ TpvHighResolutionTimerSleepWithDriftCompensation }
+
+constructor TpvHighResolutionTimerSleepWithDriftCompensation.Create(const aHighResolutionTimer:TpvHighResolutionTimer);
+begin
+ inherited Create(aHighResolutionTimer);
+ Reset;
+end;
+
+destructor TpvHighResolutionTimerSleepWithDriftCompensation.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvHighResolutionTimerSleepWithDriftCompensation.Reset;
+begin
+ fSleepEstimate:=5e-3;
+ fSleepMean:=5e-3;
+ fSleepM2:=0.0;
+ fSleepCount:=1;
+end;
+
+function TpvHighResolutionTimerSleepWithDriftCompensation.Sleep(const aDelay:TpvHighResolutionTime):TpvHighResolutionTime;
+{$if defined(Windows) or defined(Linux) or defined(Android) or defined(Unix)}
+var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
+    EndTime,NowTime,Start:TpvHighResolutionTime;
+{$if defined(Windows)}    
+    DueTime:TLargeInteger;
+{$elseif defined(Linux) or defined(Android) or defined(Unix)}
+    req,rem:timespec;
+{$ifend}
+begin
+ NowTime:=fHighResolutionTimer.GetTime;
+ EndTime:=NowTime+aDelay;
+ Seconds:=fHighResolutionTimer.ToFloatSeconds(aDelay);
+{$if defined(Windows)} 
+ if (fHighResolutionTimer.fWaitableTimer<>0) and assigned(CreateWaitableTimerExW) and
+    (TPasMPInterlocked.CompareExchange(fHighResolutionTimer.fWaitableTimerInUsage,TPasMPBool32(true),TPasMPBool32(false))=TPasMPBool32(false)) then{$ifend}begin
+  while NowTime<EndTime do begin
+   ToWait:=Seconds-fSleepEstimate;
+   if ToWait>{$if defined(Windows)}1e-7{$elseif defined(Linux) or defined(Android) or defined(Unix)}1e-9{$ifend} then begin
+    Start:=fHighResolutionTimer.GetTime;
+{$if defined(Windows)}    
+    DueTime:=-Max(TpvInt64(1),TpvInt64(trunc(ToWait*1e7)));
+    if SetWaitableTimer(fHighResolutionTimer.fWaitableTimer,DueTime,0,nil,nil,false) then begin
+     case WaitForSingleObject(fHighResolutionTimer.fWaitableTimer,1000) of
+      WAIT_TIMEOUT:begin
+       // Ignore and do nothing in this case
+      end;
+      WAIT_ABANDONED,WAIT_FAILED:begin
+       if assigned(NtDelayExecution) then begin
+        NtDelayExecution(false,DueTime);
+       end else begin
+        Sleep(Max(0,trunc(ToWait*1000.0)));
+       end;
+      end;
+      else {WAIT_OBJECT_0:}begin
+       // Do nothing in this case
+      end;
+     end;
+    end else begin
+     if assigned(NtDelayExecution) then begin
+      NtDelayExecution(false,DueTime);
+     end else begin
+      Sleep(Max(0,trunc(ToWait*1000.0)));
+     end;
+    end;
+{$elseif defined(Linux) or defined(Android) or defined(Unix)}
+    req.tv_sec:=trunc(ToWait);
+    req.tv_nsec:=trunc((ToWait-req.tv_sec)*1e9);
+    fpNanoSleep(@req,@rem);                 
+{$ifend}    
+    NowTime:=fHighResolutionTimer.GetTime;
+    Observed:=fHighResolutionTimer.ToFloatSeconds(NowTime-Start);
+    Seconds:=Seconds-Observed;
+    inc(fSleepCount);
+    if fSleepCount>=16777216 then begin
+     fSleepEstimate:=5e-3;
+     fSleepMean:=5e-3;
+     fSleepM2:=0.0;
+     fSleepCount:=1;
+    end else begin
+     Error:=Observed-ToWait;
+     Delta:=Error-fSleepMean;
+     fSleepMean:=fSleepMean+(Delta/fSleepCount);
+     fSleepM2:=fSleepM2+(Delta*(Error-fSleepMean));
+     fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+    end;
+   end else begin
+    break;
+   end;
+  end;
+{$if defined(Windows)}  
+  TPasMP.Write(fHighResolutionTimer.fWaitableTimerInUsage,TPasMPBool32(false));
+{$ifend}
+{$if defined(Windows)}  
+ end else begin
+  while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
+   Start:=fHighResolutionTimer.GetTime;
+   if assigned(NtDelayExecution) then begin
+    DueTime:=-10000; // 1ms in 100-ns units
+    NtDelayExecution(false,DueTime);
+   end else begin
+    Windows.Sleep(1);
+   end;
+   NowTime:=fHighResolutionTimer.GetTime;
+   Observed:=fHighResolutionTimer.ToFloatSeconds(NowTime-Start);
+   Seconds:=Seconds-Observed;
+   inc(fSleepCount);
+   if fSleepCount>=16777216 then begin
+    fSleepEstimate:=5e-3;
+    fSleepMean:=5e-3;
+    fSleepM2:=0.0;
+    fSleepCount:=1;
+   end else begin
+    Delta:=Observed-fSleepMean;
+    fSleepMean:=fSleepMean+(Delta/fSleepCount);
+    fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
+    fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+   end;
+  end;
+{$ifend}
+ end;
+ repeat
+  NowTime:=fHighResolutionTimer.GetTime;
+ until NowTime>=EndTime;
+ result:=fHighResolutionTimer.GetTime;
+end;
+{$else}
+var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
+    EndTime,NowTime,Start:TpvHighResolutionTime;
+begin
+ NowTime:=GetTime;
+ EndTime:=NowTime+aDelay;
+ Seconds:=fHighResolutionTimer.ToFloatSeconds(aDelay);
+ while (NowTime<EndTime) and (Seconds>fSleepEstimate) do begin
+  Start:=fHighResolutionTimer.GetTime;
+  Sleep(1);
+  NowTime:=fHighResolutionTimer.GetTime;
+  Observed:=fHighResolutionTimer.ToFloatSeconds(NowTime-Start);
+  Seconds:=Seconds-Observed;
+  inc(fSleepCount);
+  if fSleepCount>=16777216 then begin
+   fSleepEstimate:=5e-3;
+   fSleepMean:=5e-3;
+   fSleepM2:=0.0;
+   fSleepCount:=1;
+  end else begin
+   Delta:=Observed-fSleepMean;
+   fSleepMean:=fSleepMean+(Delta/fSleepCount);
+   fSleepM2:=fSleepM2+(Delta*(Observed-fSleepMean));
+   fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+  end;
+ end;
+ repeat
+  NowTime:=fHighResolutionTimer.GetTime;
+ until NowTime>=EndTime;
+ result:=fHighResolutionTimer.GetTime;
+end;
+{$ifend}
 
 initialization
 {$ifdef windows}
