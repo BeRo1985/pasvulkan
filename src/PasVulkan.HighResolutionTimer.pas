@@ -693,10 +693,44 @@ begin
 end;
 
 function TpvHighResolutionTimerSleepWithDriftCompensation.Sleep(const aDelay:TpvHighResolutionTime):TpvHighResolutionTime;
-{$if defined(Windows) or defined(Linux) or defined(Android) or defined(Unix)}
+{$if true}
 var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
     EndTime,NowTime,Start:TpvHighResolutionTime;
-{$if defined(Windows)}    
+begin
+ NowTime:=fHighResolutionTimer.GetTime;
+ EndTime:=NowTime+aDelay;
+ Seconds:=fHighResolutionTimer.ToFloatSeconds(aDelay);
+ while NowTime<EndTime do begin
+  ToWait:=Seconds-fSleepEstimate;
+  if ToWait>{$if defined(Windows)}1e-7{$elseif defined(Linux) or defined(Android) or defined(Unix)}1e-9{$else}0.0{$ifend} then begin
+   Start:=fHighResolutionTimer.GetTime;
+   fHighResolutionTimer.Sleep(fHighResolutionTimer.FromFloatSeconds(ToWait));
+   NowTime:=fHighResolutionTimer.GetTime;
+   Observed:=fHighResolutionTimer.ToFloatSeconds(NowTime-Start);
+   Seconds:=Seconds-Observed;
+   inc(fSleepCount);
+   if fSleepCount>=16777216 then begin
+    Reset;
+   end else begin
+    Error:=Observed-ToWait;
+    Delta:=Error-fSleepMean;
+    fSleepMean:=fSleepMean+(Delta/fSleepCount);
+    fSleepM2:=fSleepM2+(Delta*(Error-fSleepMean));
+    fSleepEstimate:=fSleepMean+sqrt(fSleepM2/(fSleepCount-1));
+   end;
+  end else begin
+   break;
+  end;
+ end;
+ repeat
+  NowTime:=fHighResolutionTimer.GetTime;
+ until NowTime>=EndTime;
+ result:=NowTime;
+end;
+{$elseif defined(Windows) or defined(Linux) or defined(Android) or defined(Unix)}
+var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
+    EndTime,NowTime,Start:TpvHighResolutionTime;
+{$if defined(Windows)}
     DueTime:TLargeInteger;
 {$elseif defined(Linux) or defined(Android) or defined(Unix)}
     req,rem:timespec;
@@ -705,7 +739,7 @@ begin
  NowTime:=fHighResolutionTimer.GetTime;
  EndTime:=NowTime+aDelay;
  Seconds:=fHighResolutionTimer.ToFloatSeconds(aDelay);
-{$if defined(Windows)} 
+{$if defined(Windows)}
  if (fHighResolutionTimer.fWaitableTimer<>0) and assigned(CreateWaitableTimerExW) and
     (TPasMPInterlocked.CompareExchange(fHighResolutionTimer.fWaitableTimerInUsage,TPasMPBool32(true),TPasMPBool32(false))=TPasMPBool32(false)) then{$ifend}begin
   while NowTime<EndTime do begin
@@ -747,10 +781,7 @@ begin
     Seconds:=Seconds-Observed;
     inc(fSleepCount);
     if fSleepCount>=16777216 then begin
-     fSleepEstimate:=5e-3;
-     fSleepMean:=5e-3;
-     fSleepM2:=0.0;
-     fSleepCount:=1;
+     Reset;
     end else begin
      Error:=Observed-ToWait;
      Delta:=Error-fSleepMean;
@@ -780,10 +811,7 @@ begin
    Seconds:=Seconds-Observed;
    inc(fSleepCount);
    if fSleepCount>=16777216 then begin
-    fSleepEstimate:=5e-3;
-    fSleepMean:=5e-3;
-    fSleepM2:=0.0;
-    fSleepCount:=1;
+    Reset;
    end else begin
     Delta:=Observed-fSleepMean;
     fSleepMean:=fSleepMean+(Delta/fSleepCount);
@@ -796,7 +824,7 @@ begin
  repeat
   NowTime:=fHighResolutionTimer.GetTime;
  until NowTime>=EndTime;
- result:=fHighResolutionTimer.GetTime;
+ result:=NowTime;
 end;
 {$else}
 var Seconds,Observed,Delta,Error,ToWait:TpvDouble;
@@ -813,10 +841,7 @@ begin
   Seconds:=Seconds-Observed;
   inc(fSleepCount);
   if fSleepCount>=16777216 then begin
-   fSleepEstimate:=5e-3;
-   fSleepMean:=5e-3;
-   fSleepM2:=0.0;
-   fSleepCount:=1;
+   Reset;
   end else begin
    Delta:=Observed-fSleepMean;
    fSleepMean:=fSleepMean+(Delta/fSleepCount);
@@ -827,7 +852,7 @@ begin
  repeat
   NowTime:=fHighResolutionTimer.GetTime;
  until NowTime>=EndTime;
- result:=fHighResolutionTimer.GetTime;
+ result:=NowTime;
 end;
 {$ifend}
 
