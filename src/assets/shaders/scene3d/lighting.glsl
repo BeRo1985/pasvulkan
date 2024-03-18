@@ -43,7 +43,19 @@
             if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
               switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
-#if 0
+#if defined(RAYTRACING)
+                case 1u: { // Directional 
+                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, light.directionZFar.xyz, 0.1, 10000000.0);
+                  break;
+                }
+                case 2u: {  // Point
+                  // Fall-through, because same raytracing attempt as for spot lights. 
+                }
+                case 3u: {  // Spot
+                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalizedLightVector, 0.1, 10000000.0);
+                  break;
+                }
+#elif 0
                 case 1u: { // Directional 
                   // imageLightBasedLightDirection = light.directionZFar.xyz;
                   // fall-through

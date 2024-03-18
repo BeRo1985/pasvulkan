@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 #pragma shader_stage(fragment)
 
@@ -42,6 +42,9 @@ layout(location = 1) out vec2 outVelocity;
 // Global descriptor set
 
 #define PLANETS
+#ifdef RAYTRACING
+  #define USE_MATERIAL_BUFFER_REFERENCE // needed for raytracing
+#endif
 #include "globaldescriptorset.glsl"
 #undef PLANETS
 
@@ -64,6 +67,10 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 #define FRAGMENT_SHADER
 
 #include "math.glsl"
+
+#ifdef RAYTRACING
+  #include "raytracing.glsl"
+#endif
 
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
@@ -203,9 +210,9 @@ void main(){
     [[unroll]] for(int layerIndex = 0; layerIndex < 4; layerIndex++){
       const float weight = layerMaterialWeights[layerIndex];
       if(weight > 0.0){        
-        albedo += multiplanarTexture(u2DTextures[(GetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetMaterialScale(layerMaterials[layerIndex])) * weight;
-        normalHeight += multiplanarTexture(u2DTextures[(GetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetMaterialScale(layerMaterials[layerIndex])) * weight;
-        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetMaterialScale(layerMaterials[layerIndex])) * weight;
+        albedo += multiplanarTexture(u2DTextures[(GetPlanetMaterialAlbedoTextureIndex(layerMaterials[layerIndex]) << 1) | 1], GetPlanetMaterialScale(layerMaterials[layerIndex])) * weight;
+        normalHeight += multiplanarTexture(u2DTextures[(GetPlanetMaterialNormalHeightTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])) * weight;
+        occlusionRoughnessMetallic += multiplanarTexture(u2DTextures[(GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(layerMaterials[layerIndex]) << 1) | 0], GetPlanetMaterialScale(layerMaterials[layerIndex])) * weight;
         weightSum += weight;
       }
     }

@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 #define MESH_FRAGMENT_SHADER
 
@@ -205,6 +205,10 @@ vec3 cartesianToBarycentric(vec3 p, vec3 a, vec3 b, vec3 c) {
   vec2 vw = vec2((d11 * d20) - (d01 * d21), (d00 * d21) - (d01 * d20)) / vec2((d00 * d11) - (d01 * d01));
   return vec3((1.0 - vw.x) - vw.y, vw.xy);
 }
+#endif
+
+#ifdef RAYTRACING
+  #include "raytracing.glsl"
 #endif
 
 #if !(defined(DEPTHONLY) || defined(VOXELIZATION))
@@ -614,9 +618,9 @@ vec4 textureFetch(const in int textureIndex, const in vec4 defaultValue, const b
                         (m * vec3(texCoords[texCoordIndex], 1.0)).xy,   //
                         (m * vec3(texCoords_dFdx[texCoordIndex], 0.0)).xy,  //
                         (m * vec3(texCoords_dFdy[texCoordIndex], 0.0)).xy);
- }else{
-   return defaultValue;
- } 
+  }else{
+    return defaultValue;
+  } 
 }
 
 #endif

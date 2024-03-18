@@ -2,7 +2,9 @@
 #define GLOBAL_DESCRIPTOR_SET_GLSL 
 
 #ifdef RAYTRACING
-#extension GL_EXT_ray_tracing : enable
+  #extension GL_EXT_ray_tracing : enable
+  #extension GL_EXT_ray_query : enable
+  #extension GL_EXT_ray_flags_primitive_culling : enable
 #endif
 
 //#ifdef MESHS
@@ -131,7 +133,7 @@ layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer Ray
 };
 
 struct RaytracingGeometryItem {
-  uint type;
+  uint objectType;
   uint objectIndex;
   uint materialIndex;
   uint indexOffset;
