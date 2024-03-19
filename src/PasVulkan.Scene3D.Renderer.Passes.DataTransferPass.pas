@@ -135,7 +135,7 @@ end;
 procedure TpvScene3DRendererPassesDataTransferPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- fInstance.Scene3D.UploadFrameData(aInFlightFrameIndex,aCommandBuffer);
+// fInstance.Scene3D.UploadFrameData(aInFlightFrameIndex,aCommandBuffer);
 end;
 
 end.

@@ -3202,6 +3202,9 @@ type EpvScene3D=class(Exception);
        fEnvironmentTextureImage:TpvScene3D.TImage;
        fEnvironmentMode:TpvScene3DEnvironmentMode;
       private
+       fRendererInstanceLock:TPasMPCriticalSection;
+       fRendererInstanceList:TpvObjectList;
+      private
        fCachedVertexRanges:TCachedVertexRanges;
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
@@ -3210,8 +3213,10 @@ type EpvScene3D=class(Exception);
        fGPURaytracingDataVulkanBuffer:TpvVulkanBuffer;        
        fProcessFrameTimerQueries:TTimerQueries;
        fLastProcessFrameTimerQueryResults:TpvTimerQuery.TResults;
+       fProcessFrameTimerQueryUploadFrameDataIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
+       fProcessFrameTimerQueryUploadFrameDataCPUTime:TpvHighResolutionTime;
        fProcessFrameTimerQueryMeshComputeCPUTime:TpvHighResolutionTime;
        fProcessFrameTimerQueryUpdateRaytracingCPUTime:TpvHighResolutionTime;
        procedure NewImageDescriptorGeneration;
@@ -3361,6 +3366,8 @@ type EpvScene3D=class(Exception);
       public
        function CreateGroup(const aName:TpvUTF8String=''):TpvScene3D.TGroup;
       public
+       procedure DumpProfiler(const aStringList:TStringList=nil);
+      public
        property BoundingBox:TpvAABB read fBoundingBox;
        property InFlightFrameBoundingBoxes:TInFlightFrameAABBs read fInFlightFrameBoundingBoxes;
        property GlobalVulkanInstanceMatrixBuffers:TGlobalVulkanInstanceMatrixBuffers read fGlobalVulkanInstanceMatrixBuffers;
@@ -3403,6 +3410,9 @@ type EpvScene3D=class(Exception);
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
        property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
        property EnvironmentMode:TpvScene3DEnvironmentMode read fEnvironmentMode write fEnvironmentMode;
+      published
+       property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
+       property RendererInstanceList:TpvObjectList read fRendererInstanceList;
       published
        property RendererInstanceIDManager:TRendererInstanceIDManager read fRendererInstanceIDManager;
        property PotentiallyVisibleSet:TpvScene3D.TPotentiallyVisibleSet read fPotentiallyVisibleSet;
@@ -20704,6 +20714,10 @@ begin
  fNewInstances:=TpvScene3D.TGroup.TInstances.Create;
  fNewInstances.OwnsObjects:=false;
 
+ fRendererInstanceLock:=TPasMPCriticalSection.Create;
+
+ fRendererInstanceList:=TpvObjectList.Create(false);
+
  fRaytracingLock:=TPasMPCriticalSection.Create;
 
  fRaytracingPrimitiveIDCounter:=0;
@@ -21009,12 +21023,14 @@ begin
   end;
 
   for Index:=0 to fCountInFlightFrames-1 do begin
-   fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,IfThen(fRaytracingActive,2,1));
+   fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,2+IfThen(fRaytracingActive,1,0));
   end;
 
+  fProcessFrameTimerQueryUploadFrameDataIndex:=-1;
   fProcessFrameTimerQueryMeshComputeIndex:=-1;
   fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
 
+  fProcessFrameTimerQueryUploadFrameDataCPUTime:=0;
   fProcessFrameTimerQueryMeshComputeCPUTime:=0;
   fProcessFrameTimerQueryUpdateRaytracingCPUTime:=0;
 
@@ -21506,6 +21522,10 @@ begin
  FreeAndNil(fRaytracingLock);
 
  FreeAndNil(fRendererInstanceIDManager);
+
+ FreeAndNil(fRendererInstanceList);
+
+ FreeAndNil(fRendererInstanceLock);
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fProcessFrameTimerQueries[Index]);
@@ -22960,7 +22980,7 @@ var PlanetIndex:TpvSizeInt;
     BeginTime:TpvHighResolutionTime;
 begin
 
- exit;
+ //exit;
 
  if assigned(fVulkanDevice) then begin
 
@@ -22992,6 +23012,12 @@ begin
 
    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
+
+   fProcessFrameTimerQueryUploadFrameDataIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
+   BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+   UploadFrameData(aInFlightFrameIndex,CommandBuffer);
+   fProcessFrameTimerQueryUploadFrameDataCPUTime:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+   fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    fProcessFrameTimerQueryMeshComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Mesh compute');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
@@ -23033,7 +23059,7 @@ begin
    SubmitInfo.signalSemaphoreCount:=1;
    SubmitInfo.pSignalSemaphores:=@fVulkanProcessFrameSemaphores[aInFlightFrameIndex].Handle;
 
-   fVulkanDevice.UniversalQueue.Submit(1,@SubmitInfo,aWaitFence);
+   fVulkanProcessFrameQueue.Submit(1,@SubmitInfo,aWaitFence);
 
    aWaitSemaphore:=fVulkanProcessFrameSemaphores[aInFlightFrameIndex];
 
@@ -23402,8 +23428,8 @@ begin
   end;
 
 { fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Execute(fVulkanStagingQueue,
-                                                                           fVulkanStagingCommandBuffer,
-                                                                           fVulkanStagingFence);}
+                                                                fVulkanStagingCommandBuffer,
+                                                                fVulkanStagingFence);}
 
  end;
 
@@ -25301,6 +25327,64 @@ begin
  result:=TpvScene3D.TGroup.Create(ResourceManager,self,nil);
  result.fName:=aName;
 end;
+
+procedure TpvScene3D.DumpProfiler(const aStringList:TStringList);
+ procedure AddLine(const aLine:TpvUTF8String);
+ begin
+  if assigned(aStringList) then begin
+   aStringList.Add(aLine);
+  end else begin
+   pvApplication.Log(LOG_INFO,'TpvScene3D',aLine);
+  end;
+ end;
+var MaxLen,Index,RendererInstanceIndex:TpvSizeInt;
+    Result_:TpvTimerQuery.TResult;
+    s0,s1,s2:TpvUTF8String;
+    RendererInstance:TpvScene3DRendererInstance;
+begin
+
+ fRendererInstanceLock.Acquire;
+ try
+
+  AddLine('=================================================');
+
+  for RendererInstanceIndex:=0 to fRendererInstanceList.Count-1 do begin
+
+   RendererInstance:=TpvScene3DRendererInstance(fRendererInstanceList.Items[RendererInstanceIndex]);
+
+   AddLine('Renderer instance #'+IntToStr(RendererInstanceIndex)+':');
+
+   MaxLen:=1;
+   for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
+    if Result_.Valid then begin
+     MaxLen:=Max(MaxLen,length(Result_.Name));
+    end;
+   end;
+
+   Index:=0;
+   for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
+    if Result_.Valid then begin
+     s0:=Result_.Name;
+     while length(s0)<MaxLen do begin
+      s0:=' '+s0;
+     end;
+     Str(Result_.Duration*1000.0:1:5,s1);
+     Str(pvApplication.HighResolutionTimer.ToFloatSeconds(RendererInstance.FrameGraph.LastCPUTimeValues[Index])*1000.0:1:5,s2);
+     AddLine(s0+': '+s1+' ms GPU, '+s2+' ms CPU');
+    end;
+    inc(Index);
+   end;
+
+   AddLine('-----------------------');
+
+  end;
+
+ finally
+  fRendererInstanceLock.Release;
+ end;
+
+end;
+
 
 initialization
  InitializeAnimationChannelTargetOverwriteGroupMap;

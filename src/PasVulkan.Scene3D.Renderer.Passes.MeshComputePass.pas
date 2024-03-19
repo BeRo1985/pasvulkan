@@ -135,7 +135,7 @@ end;
 procedure TpvScene3DRendererPassesMeshComputePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- TpvScene3DMeshCompute(fInstance.Renderer.Scene3D.MeshCompute).Execute(aCommandBuffer,aInFlightFrameIndex,false);
+// TpvScene3DMeshCompute(fInstance.Renderer.Scene3D.MeshCompute).Execute(aCommandBuffer,aInFlightFrameIndex,false);
 end;
 
 end.

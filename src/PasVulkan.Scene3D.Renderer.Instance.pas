@@ -646,6 +646,8 @@ type { TpvScene3DRendererInstance }
       public
        constructor Create(const aParent:TpvScene3DRendererBaseObject;const aVirtualReality:TpvVirtualReality=nil;const aExternalImageFormat:TVkFormat=VK_FORMAT_UNDEFINED); reintroduce;
        destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
        procedure Prepare;
        procedure AcquirePersistentResources;
        procedure ReleasePersistentResources;
@@ -2043,6 +2045,32 @@ begin
  fScene3D.RendererInstanceIDManager.FreeID(fID+1);
 
  inherited Destroy;
+end;
+
+procedure TpvScene3DRendererInstance.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fScene3D) and assigned(fScene3D.RendererInstanceLock) and assigned(fScene3D.RendererInstanceList) then begin
+  fScene3D.RendererInstanceLock.Acquire;
+  try
+   fScene3D.RendererInstanceList.Add(self);
+  finally
+   fScene3D.RendererInstanceLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvScene3DRendererInstance.BeforeDestruction;
+begin
+ if assigned(fScene3D) and assigned(fScene3D.RendererInstanceLock) and assigned(fScene3D.RendererInstanceList) then begin
+  fScene3D.RendererInstanceLock.Acquire;
+  try
+   fScene3D.RendererInstanceList.RemoveWithoutFree(self);
+  finally
+   fScene3D.RendererInstanceLock.Release;
+  end;
+ end;
+ inherited BeforeDestruction;
 end;
 
 function TpvScene3DRendererInstance.AcquireRenderPassIndex(const aInFlightFrameIndex:TpvSizeInt):TpvSizeInt;

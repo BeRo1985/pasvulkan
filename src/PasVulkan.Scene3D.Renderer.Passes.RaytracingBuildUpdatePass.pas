@@ -133,7 +133,7 @@ end;
 procedure TpvScene3DRendererPassesRaytracingBuildUpdatePass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
- fInstance.Renderer.Scene3D.UpdateRaytracing(aCommandBuffer,aInFlightFrameIndex,false);
+ //fInstance.Renderer.Scene3D.UpdateRaytracing(aCommandBuffer,aInFlightFrameIndex,false);
 end;
 
 end.
