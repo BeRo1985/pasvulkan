@@ -92,6 +92,7 @@ uses {$ifdef Windows}
      PasVulkan.Frustum,
      PasVulkan.BufferRangeAllocator,
      PasVulkan.TransferQueue,
+     PasVulkan.TimerQuery,
      PasVulkan.Raytracing,
      POCA;
 
@@ -1491,6 +1492,18 @@ type EpvScene3D=class(Exception);
             PDrawChoreographyBatchRangeFrameBuckets=^TDrawChoreographyBatchRangeFrameBuckets;
             TDrawChoreographyBatchRangeFrameRenderPassBuckets=array[0..MaxInFlightFrames-1] of TDrawChoreographyBatchRangeRenderPassBuckets;
             PDrawChoreographyBatchRangeFrameRenderPassBuckets=^TDrawChoreographyBatchRangeFrameRenderPassBuckets;
+            { TGPURaytracingData }
+            TGPURaytracingData=packed record
+             GeometryInstanceOffsets:TVkDeviceSize;
+             GeometryItems:TVkDeviceSize;
+             MeshStaticVertices:TVkDeviceSize;
+             MeshDynamicVertices:TVkDeviceSize;
+             MeshIndices:TVkDeviceSize;
+             ParticleVertices:TVkDeviceSize;
+             PlanetBufRefDataArray:TVkDeviceSize;
+             PlanetVerticesArray:TVkDeviceSize;
+            end;
+            PGPURaytracingData=^TGPURaytracingData;            
             { TVulkanLongTermStaticBufferData }
             TVulkanLongTermStaticBufferData=class
              private
@@ -1561,6 +1574,7 @@ type EpvScene3D=class(Exception);
              published
               property BufferData:TVulkanShortTermDynamicBufferData read fBufferData;
             end;
+            TTimerQueries=array[0..MaxInFlightFrames-1] of TpvTimerQuery;
             { TGroup }
             TGroup=class(TBaseObject) // A group is a GLTF scene in a uber-scene
              public
@@ -3192,6 +3206,14 @@ type EpvScene3D=class(Exception);
        fMeshGenerationCounter:TpvUInt32;
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
+       fGPURaytracingData:TGPURaytracingData;
+       fGPURaytracingDataVulkanBuffer:TpvVulkanBuffer;        
+       fProcessFrameTimerQueries:TTimerQueries;
+       fLastProcessFrameTimerQueryResults:TpvTimerQuery.TResults;
+       fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
+       fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
+       fProcessFrameTimerQueryMeshComputeCPUTime:TpvHighResolutionTime;
+       fProcessFrameTimerQueryUpdateRaytracingCPUTime:TpvHighResolutionTime;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
@@ -3374,6 +3396,8 @@ type EpvScene3D=class(Exception);
        property MeshCompute:TObject read fMeshCompute;
       public
        property Planets:TObject read fPlanets;
+      public
+       property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
       published
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
@@ -20957,6 +20981,43 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
+  if fRaytracingActive then begin
+
+   FillChar(fGPURaytracingData,SizeOf(TGPURaytracingData),#0);
+
+   fGPURaytracingDataVulkanBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                          SizeOf(TGPURaytracingData),
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                          [],
+                                                          0,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          [],
+                                                          0,
+                                                          pvAllocationGroupIDScene3DRaytracing);
+
+  end else begin
+
+   fGPURaytracingDataVulkanBuffer:=nil;         
+
+  end;
+
+  for Index:=0 to fCountInFlightFrames-1 do begin
+   fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,IfThen(fRaytracingActive,2,1));
+  end;
+
+  fProcessFrameTimerQueryMeshComputeIndex:=-1;
+  fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
+
+  fProcessFrameTimerQueryMeshComputeCPUTime:=0;
+  fProcessFrameTimerQueryUpdateRaytracingCPUTime:=0;
+
   fGeneralComputeSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                                   VK_FILTER_LINEAR,
                                                   VK_FILTER_LINEAR,
@@ -21225,6 +21286,8 @@ begin
 
  FreeAndNil(fLightAABBTree);
 
+ FreeAndNil(fGPURaytracingDataVulkanBuffer);
+
  FreeAndNil(fGeneralComputeSampler);
 
  FreeAndNil(fPlanetDescriptorSetLayout);
@@ -21443,6 +21506,10 @@ begin
  FreeAndNil(fRaytracingLock);
 
  FreeAndNil(fRendererInstanceIDManager);
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fProcessFrameTimerQueries[Index]);
+ end;
 
  inherited Destroy;
 end;
@@ -22890,6 +22957,7 @@ var PlanetIndex:TpvSizeInt;
     WaitDstStageFlags:TVkPipelineStageFlags;
     CommandBuffer:TpvVulkanCommandBuffer;
     CommandBufferHandle:TVkCommandBuffer;
+    BeginTime:TpvHighResolutionTime;
 begin
 
  exit;
@@ -22914,15 +22982,32 @@ begin
 
   begin
 
+   if fProcessFrameTimerQueries[aInFlightFrameIndex].Update then begin
+    fLastProcessFrameTimerQueryResults:=fProcessFrameTimerQueries[aInFlightFrameIndex].Results;
+   end;
+
+   fProcessFrameTimerQueries[aInFlightFrameIndex].Reset;
+
    CommandBuffer:=fVulkanProcessFrameCommandBuffers[aInFlightFrameIndex];
 
    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
+   fProcessFrameTimerQueryMeshComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Mesh compute');
+   BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
+   fProcessFrameTimerQueryMeshComputeCPUTime:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+   fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    if fRaytracingActive then begin
+    fProcessFrameTimerQueryUpdateRaytracingIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Raytracing update');
+    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
     UpdateRaytracing(CommandBuffer,aInFlightFrameIndex,true);
+    fProcessFrameTimerQueryUpdateRaytracingCPUTime:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+   end else begin
+    fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
+    fProcessFrameTimerQueryUpdateRaytracingCPUTime:=0;
    end;
 
    CommandBuffer.EndRecording;
