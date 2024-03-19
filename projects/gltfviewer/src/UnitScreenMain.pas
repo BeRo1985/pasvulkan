@@ -655,8 +655,6 @@ begin
 end;
 
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-var MaxLen:TpvSizeInt;
-    Result_:TpvTimerQuery.TResult;
 begin
  result:=inherited KeyEvent(aKeyEvent);
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
@@ -665,19 +663,8 @@ begin
     pvApplication.Terminate;
    end;
    KEYCODE_F8:begin
-    if assigned(fRendererInstance.FrameGraph.LastTimerQueryResults) then begin
-     writeln('=================================================');
-     MaxLen:=1;
-     for Result_ in fRendererInstance.FrameGraph.LastTimerQueryResults do begin
-      if Result_.Valid then begin
-       MaxLen:=Max(MaxLen,length(Result_.Name));
-      end;
-     end;
-     for Result_ in fRendererInstance.FrameGraph.LastTimerQueryResults do begin
-      if Result_.Valid then begin
-       writeln(Result_.Name:MaxLen,': ',Result_.Duration*1000.0:1:5,' ms');
-      end;
-     end;
+    if assigned(fScene3D) then begin
+     fScene3D.DumpProfiler;
     end;
    end;
    KEYCODE_U:begin
