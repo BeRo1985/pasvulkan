@@ -3213,12 +3213,10 @@ type EpvScene3D=class(Exception);
        fGPURaytracingDataVulkanBuffer:TpvVulkanBuffer;        
        fProcessFrameTimerQueries:TTimerQueries;
        fLastProcessFrameTimerQueryResults:TpvTimerQuery.TResults;
+       fLastProcessFrameCPUTimeValues:array[0..3] of TpvHighResolutionTime;
        fProcessFrameTimerQueryUploadFrameDataIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
-       fProcessFrameTimerQueryUploadFrameDataCPUTime:TpvHighResolutionTime;
-       fProcessFrameTimerQueryMeshComputeCPUTime:TpvHighResolutionTime;
-       fProcessFrameTimerQueryUpdateRaytracingCPUTime:TpvHighResolutionTime;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
@@ -21030,9 +21028,9 @@ begin
   fProcessFrameTimerQueryMeshComputeIndex:=-1;
   fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
 
-  fProcessFrameTimerQueryUploadFrameDataCPUTime:=0;
-  fProcessFrameTimerQueryMeshComputeCPUTime:=0;
-  fProcessFrameTimerQueryUpdateRaytracingCPUTime:=0;
+  fLastProcessFrameTimerQueryResults:=nil;
+
+  FillChar(fLastProcessFrameCPUTimeValues,SizeOf(fLastProcessFrameCPUTimeValues),#0);
 
   fGeneralComputeSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                                   VK_FILTER_LINEAR,
@@ -21526,6 +21524,8 @@ begin
  FreeAndNil(fRendererInstanceList);
 
  FreeAndNil(fRendererInstanceLock);
+
+ fLastProcessFrameTimerQueryResults:=nil;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fProcessFrameTimerQueries[Index]);
@@ -23016,24 +23016,24 @@ begin
    fProcessFrameTimerQueryUploadFrameDataIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    UploadFrameData(aInFlightFrameIndex,CommandBuffer);
-   fProcessFrameTimerQueryUploadFrameDataCPUTime:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+   fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    fProcessFrameTimerQueryMeshComputeIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Mesh compute');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    TpvScene3DMeshCompute(fMeshCompute).Execute(CommandBuffer,aInFlightFrameIndex,true);
-   fProcessFrameTimerQueryMeshComputeCPUTime:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+   fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryMeshComputeIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    if fRaytracingActive then begin
     fProcessFrameTimerQueryUpdateRaytracingIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Raytracing update');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
     UpdateRaytracing(CommandBuffer,aInFlightFrameIndex,true);
-    fProcessFrameTimerQueryUpdateRaytracingCPUTime:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
    end else begin
     fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
-    fProcessFrameTimerQueryUpdateRaytracingCPUTime:=0;
+    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=0;
    end;
 
    CommandBuffer.EndRecording;
@@ -25348,11 +25348,44 @@ begin
 
   AddLine('=================================================');
 
+  AddLine('');
+  AddLine('Frame globals:');
+  AddLine('#################################################');
+  AddLine('');
+
+  begin
+
+   MaxLen:=1;
+   for Result_ in fLastProcessFrameTimerQueryResults do begin
+    if Result_.Valid then begin
+     MaxLen:=Max(MaxLen,length(Result_.Name));
+    end;
+   end;
+
+   Index:=0;
+   for Result_ in fLastProcessFrameTimerQueryResults do begin
+    if Result_.Valid then begin
+     s0:=Result_.Name;
+     while length(s0)<MaxLen do begin
+      s0:=' '+s0;
+     end;
+     Str(Result_.Duration*1000.0:1:5,s1);
+     Str(pvApplication.HighResolutionTimer.ToFloatSeconds(fLastProcessFrameCPUTimeValues[Index])*1000.0:1:5,s2);
+     AddLine(s0+': '+s1+' ms GPU, '+s2+' ms CPU');
+    end;
+    inc(Index);
+   end;
+
+  end;
+
   for RendererInstanceIndex:=0 to fRendererInstanceList.Count-1 do begin
 
    RendererInstance:=TpvScene3DRendererInstance(fRendererInstanceList.Items[RendererInstanceIndex]);
 
+   AddLine('');
    AddLine('Renderer instance #'+IntToStr(RendererInstanceIndex)+':');
+   AddLine('#################################################');
+   AddLine('');
 
    MaxLen:=1;
    for Result_ in RendererInstance.FrameGraph.LastTimerQueryResults do begin
@@ -25374,8 +25407,6 @@ begin
     end;
     inc(Index);
    end;
-
-   AddLine('-----------------------');
 
   end;
 
