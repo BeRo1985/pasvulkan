@@ -18,7 +18,7 @@ cd src
 cd "$CWD"
 
 # Patch the Linux binary for the relative path to the shared libraries
-patchelf --set-rpath "\$ORIGIN" ./bin/kartgame1
+patchelf --set-rpath "\$ORIGIN" ./bin/gltfviewer
 
 # Exit with success
 exit 0 
