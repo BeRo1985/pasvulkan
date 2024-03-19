@@ -939,6 +939,10 @@ begin
 
  end;
 
+{if fGroupInstance.Group.Animations.Count>=1 then begin
+  fAnimationIndex:=1;
+ end;}
+
 end;
 
 procedure TScreenMain.LoadGLTF(const aFileName:TpvUTF8String);
