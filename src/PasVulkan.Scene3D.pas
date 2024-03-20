@@ -25364,10 +25364,18 @@ var MaxLen,Index,RendererInstanceIndex:TpvSizeInt;
     Result_:TpvTimerQuery.TResult;
     s0,s1,s2:TpvUTF8String;
     RendererInstance:TpvScene3DRendererInstance;
+    SumDuration,TotalDuration:TpvDouble;
+    SumCPUTime,TotalCPUTime:TpvHighResolutionTime;
 begin
 
  fRendererInstanceLock.Acquire;
  try
+
+  SumDuration:=0.0;
+  TotalDuration:=0.0;
+
+  SumCPUTime:=0;
+  TotalCPUTime:=0;
 
   AddLine('=================================================');
 
@@ -25400,6 +25408,13 @@ begin
      Str(Result_.Duration*1000.0:1:5,s1);
      Str(pvApplication.HighResolutionTimer.ToFloatSeconds(fLastProcessFrameCPUTimeValues[Index])*1000.0:1:5,s2);
      AddLine(s0+': '+s1+' ms GPU, '+s2+' ms CPU');
+     if Result_.Name='Sum' then begin
+      SumDuration:=SumDuration+Result_.Duration;
+      inc(SumCPUTime,fLastProcessFrameCPUTimeValues[Index]);
+     end else if Result_.Name='Total' then begin
+      TotalDuration:=TotalDuration+Result_.Duration;
+      inc(TotalCPUTime,fLastProcessFrameCPUTimeValues[Index]);
+     end;
     end;
     inc(Index);
    end;
@@ -25437,9 +25452,39 @@ begin
      Str(Result_.Duration*1000.0:1:5,s1);
      Str(pvApplication.HighResolutionTimer.ToFloatSeconds(RendererInstance.FrameGraph.LastCPUTimeValues[Index])*1000.0:1:5,s2);
      AddLine(s0+': '+s1+' ms GPU, '+s2+' ms CPU');
+     if Result_.Name='Sum' then begin
+      SumDuration:=SumDuration+Result_.Duration;
+      inc(SumCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
+     end else if Result_.Name='Total' then begin
+      TotalDuration:=TotalDuration+Result_.Duration;
+      inc(TotalCPUTime,RendererInstance.FrameGraph.LastCPUTimeValues[Index]);
+     end;
     end;
     inc(Index);
    end;
+
+  end;
+
+  begin
+   AddLine('');
+   s1:='Summary:';
+   s2:='';
+   for Index:=1 to length(s1) do begin
+    s2:=s2+'-';
+   end;
+   AddLine(s1);
+   AddLine(s2);
+   AddLine('');
+
+   Str(SumDuration*1000.0:1:5,s1);
+   Str(pvApplication.HighResolutionTimer.ToFloatSeconds(SumCPUTime)*1000.0:1:5,s2);
+   AddLine('  Sum: '+s1+' ms GPU, '+s2+' ms CPU');
+
+   Str(TotalDuration*1000.0:1:5,s1);
+   Str(pvApplication.HighResolutionTimer.ToFloatSeconds(TotalCPUTime)*1000.0:1:5,s2);
+   AddLine('Total: '+s1+' ms GPU, '+s2+' ms CPU');
+
+   AddLine('');
 
   end;
 
@@ -25448,7 +25493,6 @@ begin
  end;
 
 end;
-
 
 initialization
  InitializeAnimationChannelTargetOverwriteGroupMap;
