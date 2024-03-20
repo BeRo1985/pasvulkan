@@ -25466,6 +25466,7 @@ begin
   end;
 
   begin
+
    AddLine('');
    s1:='Summary:';
    s2:='';
