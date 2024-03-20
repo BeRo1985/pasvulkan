@@ -7212,7 +7212,7 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aBottomRadius:TpvFloat;
                                     const aTopRadius:TpvFloat);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
-    ta,tb:TpvHighResolutionTime;
+//  ta,tb:TpvHighResolutionTime;
 begin
 
  inherited Create;
@@ -7245,7 +7245,7 @@ begin
 
  fTiledPhysicsMeshIndexGroups:=TTiledMeshIndexGroups.Create;
 
- ta:=pvApplication.HighResolutionTimer.GetTime;
+//ta:=pvApplication.HighResolutionTimer.GetTime;
  GenerateMeshIndices(fTiledVisualMeshIndices,
                      fTiledVisualMeshIndexGroups,
                      fVisualTileResolution,
@@ -7254,10 +7254,10 @@ begin
                      fCountVisualMeshLODLevels,
                      fVisualMeshLODOffsets,
                      fVisualMeshLODCounts);
- tb:=pvApplication.HighResolutionTimer.GetTime;
- writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(tb-ta)*1000.0:7:4,'ms');
+{tb:=pvApplication.HighResolutionTimer.GetTime;
+ writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(tb-ta)*1000.0:7:4,'ms');}
 
- ta:=pvApplication.HighResolutionTimer.GetTime;
+//ta:=pvApplication.HighResolutionTimer.GetTime;
  GenerateMeshIndices(fTiledPhysicsMeshIndices,
                      fTiledPhysicsMeshIndexGroups,
                      fPhysicsTileResolution,
@@ -7266,8 +7266,8 @@ begin
                      fCountPhysicsMeshLODLevels,
                      fPhysicsMeshLODOffsets,
                      fPhysicsMeshLODCounts);
- tb:=pvApplication.HighResolutionTimer.GetTime;
- writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(tb-ta)*1000.0:7:4,'ms');
+{tb:=pvApplication.HighResolutionTimer.GetTime;
+ writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(tb-ta)*1000.0:7:4,'ms');}
 
 {fCountVisualMeshIndices:=0;
  fCountVisualMeshLODLevels:=Max(1,IntLog2(fVisualTileResolution));
