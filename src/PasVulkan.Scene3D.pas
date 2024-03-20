@@ -24761,10 +24761,16 @@ begin
 
     if assigned(fRaytracingTLAS) then begin
 
-     fRaytracingTLAS.Update(fRaytracingTLASBLASInstancesBuffer.DeviceAddress,
-                            fRaytracingAccelerationStructureInstanceList.Count,
-                            TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
-                            false);
+     if BLASListChanged or
+        (fRaytracingTLAS.Instances.data.deviceAddress<>fRaytracingTLASBLASInstancesBuffer.DeviceAddress) or
+        (fRaytracingTLAS.CountInstances<>fRaytracingAccelerationStructureInstanceList.Count) then begin
+
+      fRaytracingTLAS.Update(fRaytracingTLASBLASInstancesBuffer.DeviceAddress,
+                             fRaytracingAccelerationStructureInstanceList.Count,
+                             TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
+                             false);
+
+     end;
 
     end else begin
 

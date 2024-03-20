@@ -325,6 +325,8 @@ type EpvRaytracing=class(Exception);
                         const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                         const aDynamicGeometry:Boolean=false);
       public
+       property Instances:TVkAccelerationStructureGeometryInstancesDataKHR read fInstances;
+       property CountInstances:TVkUInt32 read fCountInstances;
       published
      end;
 
@@ -1224,6 +1226,8 @@ begin
  fBuildGeometryInfo.pNext:=nil;
  fBuildGeometryInfo.flags:=aFlags;
  fBuildGeometryInfo.geometryCount:=1;
+
+ fCountInstances:=aInstanceCount;
 
  if fCountInstances>0 then begin
 
