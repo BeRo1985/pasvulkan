@@ -3213,7 +3213,7 @@ type EpvScene3D=class(Exception);
        fGPURaytracingDataVulkanBuffer:TpvVulkanBuffer;        
        fProcessFrameTimerQueries:TTimerQueries;
        fLastProcessFrameTimerQueryResults:TpvTimerQuery.TResults;
-       fLastProcessFrameCPUTimeValues:array[0..3] of TpvHighResolutionTime;
+       fLastProcessFrameCPUTimeValues:array of TpvHighResolutionTime;
        fProcessFrameTimerQueryUploadFrameDataIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
@@ -20629,7 +20629,7 @@ end;
 { TpvScene3D }
 
 constructor TpvScene3D.Create(const aResourceManager:TpvResourceManager;const aParent:TpvResource;const aMetaResource:TpvMetaResource;const aVulkanDevice:TpvVulkanDevice;const aUseBufferDeviceAddress:boolean;const aCountInFlightFrames:TpvSizeInt;const aVulkanPipelineCache:TpvVulkanPipelineCache);
-var Index,InFlightFrameIndex,RenderPassIndex:TpvSizeInt;
+var Index,InFlightFrameIndex,RenderPassIndex,Count:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TPrimitiveTopology;
     FaceCullingMode:TFaceCullingMode;
@@ -21020,17 +21020,26 @@ begin
 
   end;
 
-  for Index:=0 to fCountInFlightFrames-1 do begin
-   fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,2+IfThen(fRaytracingActive,1,0));
+  begin
+
+   Count:=2+IfThen(fRaytracingActive,1,0);
+
+   for Index:=0 to fCountInFlightFrames-1 do begin
+    fProcessFrameTimerQueries[Index]:=TpvTimerQuery.Create(fVulkanDevice,Count);
+   end;
+
+   fProcessFrameTimerQueryUploadFrameDataIndex:=-1;
+   fProcessFrameTimerQueryMeshComputeIndex:=-1;
+   fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
+
+   fLastProcessFrameTimerQueryResults:=nil;
+
+   fLastProcessFrameCPUTimeValues:=nil;
+   SetLength(fLastProcessFrameCPUTimeValues,Count+2);
+
+   FillChar(fLastProcessFrameCPUTimeValues[0],SizeOf(TpvHighResolutionTime)*(Count+2),#0);
+
   end;
-
-  fProcessFrameTimerQueryUploadFrameDataIndex:=-1;
-  fProcessFrameTimerQueryMeshComputeIndex:=-1;
-  fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
-
-  fLastProcessFrameTimerQueryResults:=nil;
-
-  FillChar(fLastProcessFrameCPUTimeValues,SizeOf(fLastProcessFrameCPUTimeValues),#0);
 
   fGeneralComputeSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                                   VK_FILTER_LINEAR,
@@ -21526,6 +21535,8 @@ begin
  FreeAndNil(fRendererInstanceLock);
 
  fLastProcessFrameTimerQueryResults:=nil;
+
+ fLastProcessFrameCPUTimeValues:=nil;
 
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fProcessFrameTimerQueries[Index]);
@@ -22971,7 +22982,7 @@ begin
 end;
 
 procedure TpvScene3D.ProcessFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
-var PlanetIndex:TpvSizeInt;
+var PlanetIndex,PassIndex:TpvSizeInt;
     Planet:TpvScene3DPlanet;
     SubmitInfo:TVkSubmitInfo;
     WaitDstStageFlags:TVkPipelineStageFlags;
@@ -23013,6 +23024,10 @@ begin
    CommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
    CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT));
 
+   if length(fLastProcessFrameCPUTimeValues)>=2 then begin
+    fLastProcessFrameCPUTimeValues[length(fLastProcessFrameCPUTimeValues)-1]:=pvApplication.HighResolutionTimer.GetTime;
+   end;
+
    fProcessFrameTimerQueryUploadFrameDataIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    UploadFrameData(aInFlightFrameIndex,CommandBuffer);
@@ -23034,6 +23049,14 @@ begin
    end else begin
     fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=0;
+   end;
+
+   if length(fLastProcessFrameCPUTimeValues)>=2 then begin
+    fLastProcessFrameCPUTimeValues[length(fLastProcessFrameCPUTimeValues)-1]:=pvApplication.HighResolutionTimer.GetTime-fLastProcessFrameCPUTimeValues[length(fLastProcessFrameCPUTimeValues)-1];
+    fLastProcessFrameCPUTimeValues[length(fLastProcessFrameCPUTimeValues)-2]:=0;
+    for PassIndex:=0 to (length(fLastProcessFrameCPUTimeValues)-2)-1 do begin
+     fLastProcessFrameCPUTimeValues[length(fLastProcessFrameCPUTimeValues)-2]:=fLastProcessFrameCPUTimeValues[length(fLastProcessFrameCPUTimeValues)-2]+fLastProcessFrameCPUTimeValues[PassIndex];
+    end;
    end;
 
    CommandBuffer.EndRecording;
