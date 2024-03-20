@@ -24016,7 +24016,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
     RaytracingGroupInstanceNodeIndex,
     PlanetIndex,CountPlanetTiles,PlanetTileIndex:TpvSizeInt;
-    MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS:Boolean;
+    MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
 //  RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -24313,6 +24313,8 @@ begin
     // Update structures of all planets                                         //
     //////////////////////////////////////////////////////////////////////////////
 
+    MustHandlePlanets:=false;
+
     TpvScene3DPlanets(fPlanets).Lock.Acquire;
     try
 
@@ -24321,8 +24323,11 @@ begin
      for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
       Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
       if assigned(Planet) and Planet.Ready then begin
-       for PlanetTile in Planet.RaytracingTileQueue do begin
-        PlanetTile.Update(aInFlightFrameIndex);
+       if Planet.RaytracingTileQueue.Count>0 then begin
+        MustHandlePlanets:=true;
+        for PlanetTile in Planet.RaytracingTileQueue do begin
+         PlanetTile.Update(aInFlightFrameIndex);
+        end;
        end;
        inc(CountPlanetTiles,Planet.TileMapResolution*Planet.TileMapResolution);
       end;
@@ -24490,7 +24495,7 @@ begin
 
     ScratchPass:=0;
 
-{}  if fRaytracingCountPlanetTiles>0 then begin
+{}  if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
 
      TpvScene3DPlanets(fPlanets).Lock.Acquire;
      try
@@ -24621,7 +24626,7 @@ begin
 
     ScratchPass:=0;
 
-{}  if fRaytracingCountPlanetTiles>0 then begin
+{}  if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
 
      TpvScene3DPlanets(fPlanets).Lock.Acquire;
      try
@@ -24860,16 +24865,18 @@ begin
 
     end;
 
-    TpvScene3DPlanets(fPlanets).Lock.Acquire;
-    try
-     for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
-      Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
-      if assigned(Planet) and Planet.Ready then begin
-       Planet.RaytracingTileQueue.ClearNoFree;
+    if MustHandlePlanets then begin
+     TpvScene3DPlanets(fPlanets).Lock.Acquire;
+     try
+      for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+       Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+       if assigned(Planet) and Planet.Ready then begin
+        Planet.RaytracingTileQueue.ClearNoFree;
+       end;
       end;
+     finally
+      TpvScene3DPlanets(fPlanets).Lock.Release;
      end;
-    finally
-     TpvScene3DPlanets(fPlanets).Lock.Release;
     end;
 
     if aLabels then begin
