@@ -24015,7 +24015,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoBufferItemIndex,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
     RaytracingGroupInstanceNodeIndex,
-    PlanetIndex,CountPlanetTiles,PlanetTileIndex:TpvSizeInt;
+    PlanetIndex,CountPlanetTiles,PlanetTileIndex,Count:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
@@ -24294,6 +24294,7 @@ begin
     // Update structures of all RaytracingActive group instance nodes           //
     //////////////////////////////////////////////////////////////////////////////
 
+    Count:=0;
     RaytracingGroupInstanceNode:=fRaytracingGroupInstanceNodeList.fFirst;
     while assigned(RaytracingGroupInstanceNode) do begin
      if RaytracingGroupInstanceNode.UpdateStructures(aInFlightFrameIndex,false) then begin
@@ -24306,7 +24307,10 @@ begin
      if RaytracingGroupInstanceNode.fGeometryChanged then begin
       MustUpdateTLAS:=true;
      end;
+     inc(Count);
      RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+    end;
+    if Count>0 then begin
     end;
 
     //////////////////////////////////////////////////////////////////////////////
