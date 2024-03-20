@@ -23030,7 +23030,9 @@ begin
 
    fProcessFrameTimerQueryUploadFrameDataIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+   fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'UploadFrameData',[0.5,0.25,1.0,1.0]);
    UploadFrameData(aInFlightFrameIndex,CommandBuffer);
+   fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
