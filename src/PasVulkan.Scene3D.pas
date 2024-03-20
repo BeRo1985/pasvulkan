@@ -25372,8 +25372,13 @@ begin
   AddLine('=================================================');
 
   AddLine('');
-  AddLine('Frame globals:');
-  AddLine('#################################################');
+  s1:='Frame globals:';
+  s2:='';
+  for Index:=1 to length(s1) do begin
+   s2:=s2+'-';
+  end;
+  AddLine(s1);
+  AddLine(s2);
   AddLine('');
 
   begin
@@ -25406,8 +25411,13 @@ begin
    RendererInstance:=TpvScene3DRendererInstance(fRendererInstanceList.Items[RendererInstanceIndex]);
 
    AddLine('');
-   AddLine('Renderer instance #'+IntToStr(RendererInstanceIndex)+':');
-   AddLine('#################################################');
+   s1:='Renderer instance #'+IntToStr(RendererInstanceIndex)+':';
+   s2:='';
+   for Index:=1 to length(s1) do begin
+    s2:=s2+'-';
+   end;
+   AddLine(s1);
+   AddLine(s2);
    AddLine('');
 
    MaxLen:=1;
