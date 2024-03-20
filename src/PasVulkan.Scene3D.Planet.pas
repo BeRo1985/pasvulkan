@@ -80,6 +80,7 @@ uses Classes,
      PasVulkan.CircularDoublyLinkedList,
      PasVulkan.VirtualReality,
      PasVulkan.Raytracing,
+     PasVulkan.HighResolutionTimer,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer.Image2D,
      PasVulkan.Scene3D.Renderer.MipmapImage2D;
@@ -7211,6 +7212,7 @@ constructor TpvScene3DPlanet.Create(const aScene3D:TObject;
                                     const aBottomRadius:TpvFloat;
                                     const aTopRadius:TpvFloat);
 var InFlightFrameIndex,Index,Resolution:TpvSizeInt;
+    ta,tb:TpvHighResolutionTime;
 begin
 
  inherited Create;
@@ -7243,6 +7245,7 @@ begin
 
  fTiledPhysicsMeshIndexGroups:=TTiledMeshIndexGroups.Create;
 
+ ta:=pvApplication.HighResolutionTimer.GetTime;
  GenerateMeshIndices(fTiledVisualMeshIndices,
                      fTiledVisualMeshIndexGroups,
                      fVisualTileResolution,
@@ -7251,7 +7254,10 @@ begin
                      fCountVisualMeshLODLevels,
                      fVisualMeshLODOffsets,
                      fVisualMeshLODCounts);
+ tb:=pvApplication.HighResolutionTimer.GetTime;
+ writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(tb-ta)*1000.0:7:4,'ms');
 
+ ta:=pvApplication.HighResolutionTimer.GetTime;
  GenerateMeshIndices(fTiledPhysicsMeshIndices,
                      fTiledPhysicsMeshIndexGroups,
                      fPhysicsTileResolution,
@@ -7260,6 +7266,8 @@ begin
                      fCountPhysicsMeshLODLevels,
                      fPhysicsMeshLODOffsets,
                      fPhysicsMeshLODCounts);
+ tb:=pvApplication.HighResolutionTimer.GetTime;
+ writeln(pvApplication.HighResolutionTimer.ToFloatSeconds(tb-ta)*1000.0:7:4,'ms');
 
 {fCountVisualMeshIndices:=0;
  fCountVisualMeshLODLevels:=Max(1,IntLog2(fVisualTileResolution));
@@ -7725,87 +7733,17 @@ procedure TpvScene3DPlanet.GenerateMeshIndices(const aTiledMeshIndices:TpvScene3
                                                out aCountMeshLODLevels:TpvSizeInt;
                                                out aMeshLODOffsets:TpvScene3DPlanet.TSizeIntArray;
                                                out aMeshLODCounts:TpvScene3DPlanet.TSizeIntArray);
-{type THashTriangle=array[0..2] of TpvInt32;
-     TTriangleHashMap=TpvHashMap<THashTriangle,Boolean>;}
 var TotalResolution,TotalResolutionMask,TotalResolutionBits,
-    TileResolutionMask,TileResolutionBits,
+    {TileResolutionMask,}TileResolutionBits,
     TileVertexSize:TpvInt32;
     CountIndices:TpvUInt32;
-//  TriangleHashMap:TTriangleHashMap;
- function GetVertexIndex(const aX,aY:TpvInt32):TpvUInt32;
- var x,y,TileMapX,TileMapY,TileQuadX,TileQuadY:TpvInt32;
- begin
-  if (TotalResolution and TotalResolutionMask)<>0 then begin
-   x:=((aX mod TotalResolution)+TotalResolution) mod TotalResolution;
-   y:=((aY mod TotalResolution)+TotalResolution) mod TotalResolution;
-   if ((((abs(aX) div TotalResolution)+IfThen(aX<0,1,0)) xor ((abs(aY) div TotalResolution)+IfThen(aY<0,1,0))) and 1)<>0 then begin
-    x:=(TotalResolution-(x+1)) mod TotalResolution;
-    y:=(TotalResolution-(y+1)) mod TotalResolution;
-   end;
-  end else begin
-   x:=(aX+TotalResolution) and TotalResolutionMask;
-   y:=(aY+TotalResolution) and TotalResolutionMask;
-   if ((((abs(aX) shr TotalResolutionBits)+IfThen(aX<0,1,0)) xor ((abs(aY) shr TotalResolutionBits)+IfThen(aY<0,1,0))) and 1)<>0 then begin
-    x:=(TotalResolution-(x+1)) and TotalResolutionMask;
-    y:=(TotalResolution-(y+1)) and TotalResolutionMask;
-   end;
-  end;
-  if (aTileResolution and TileResolutionMask)<>0 then begin
-   TileMapX:=x div aTileResolution;
-   TileMapY:=y div aTileResolution;
-  end else begin
-   TileMapX:=x shr TileResolutionBits;
-   TileMapY:=y shr TileResolutionBits;
-  end;
-  TileQuadX:=x-(TileMapX*aTileResolution);
-  TileQuadY:=y-(TileMapY*aTileResolution);
-  result:=(((TileMapY*aTileMapResolution)+TileMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
- end;
- procedure AddTriangle(const aV0,aV1,aV2:TpvUInt32);
-//var HashTriangle:THashTriangle;
- begin
-  if (aV0<>aV1) and (aV0<>aV2) and (aV1<>aV2) then begin
-{  if aV0<aV1 then begin
-    if aV1<aV2 then begin
-     HashTriangle[0]:=aV0;
-     HashTriangle[1]:=aV1;
-     HashTriangle[2]:=aV2; 
-    end else if aV0<aV2 then begin
-     HashTriangle[0]:=aV0;
-     HashTriangle[1]:=aV2;
-     HashTriangle[2]:=aV1;
-    end else begin
-     HashTriangle[0]:=aV2;
-     HashTriangle[1]:=aV0;
-     HashTriangle[2]:=aV1;
-    end;
-   end else begin
-    if aV0<aV2 then begin
-     HashTriangle[0]:=aV1;
-     HashTriangle[1]:=aV0;
-     HashTriangle[2]:=aV2;
-    end else if aV1<aV2 then begin
-     HashTriangle[0]:=aV1;
-     HashTriangle[1]:=aV2;
-     HashTriangle[2]:=aV0;
-    end else begin
-     HashTriangle[0]:=aV2;
-     HashTriangle[1]:=aV1;
-     HashTriangle[2]:=aV0;
-    end; 
-   end;
-   if not TriangleHashMap.ExistKey(HashTriangle) then}begin
-    //TriangleHashMap.Add(HashTriangle,true);
-    aTiledMeshIndices.Add([aV0,aV1,aV2]);
-    inc(CountIndices,3);
-   end;
-  end;
- end;
-var LODIndex:TpvSizeInt;
-    TileLODResolution,TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY,
-    LODStep:TpvInt32;
+    LODIndex:TpvSizeInt;
+    TileLODResolution,TileLODResolutionPlusBorder,
+    TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY:TpvInt32;
     v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
+    TileVertices:TpvUInt32DynamicArray;
+    x,y,TileQuadMapX,TileQuadMapY,TileQuadX,TileQuadY:TpvInt32;
 begin
 
  TotalResolution:=aTileResolution*aTileMapResolution;
@@ -7814,7 +7752,7 @@ begin
 
  TotalResolutionBits:=IntLog2(TotalResolution);
 
- TileResolutionMask:=aTileResolution-1;
+ //TileResolutionMask:=aTileResolution-1;
 
  TileResolutionBits:=IntLog2(aTileResolution);
 
@@ -7843,16 +7781,18 @@ begin
  aTiledMeshIndexGroups.Clear;
  aTiledMeshIndexGroups.Reserve(aTileMapResolution*aTileMapResolution*aCountMeshLODLevels);
 
-//TriangleHashMap:=TTriangleHashMap.Create(false);
+ CountIndices:=0;
+
+ TileVertices:=nil;
  try
 
-  CountIndices:=0;
+  SetLength(TileVertices,(aTileResolution+2)*(aTileResolution+2));
 
   for LODIndex:=0 to aCountMeshLODLevels-1 do begin
 
    TileLODResolution:=aTileResolution shr LODIndex;
 
-// TriangleHashMap.Clear;
+   TileLODResolutionPlusBorder:=TileLODResolution+2;
 
    aMeshLODOffsets[LODIndex]:=CountIndices;
 
@@ -7863,6 +7803,48 @@ begin
      TiledMeshIndexGroup:=Pointer(aTiledMeshIndexGroups.AddNew);
      TiledMeshIndexGroup^.FirstIndex:=CountIndices;
 
+     if (TotalResolution and TotalResolutionMask)<>0 then begin
+      for TileLODY:=IfThen(TileMapY=0,-1,0) to (TileLODResolution+1)-1 do begin
+       TileY:=TileLODY shl LODIndex;
+       for TileLODX:=IfThen(TileMapX=0,-1,0) to (TileLODResolution+1)-1 do begin
+        TileX:=TileLODX shl LODIndex;
+        GlobalX:=(TileMapX*aTileResolution)+TileX;
+        GlobalY:=(TileMapY*aTileResolution)+TileY;
+        x:=((GlobalX mod TotalResolution)+TotalResolution) mod TotalResolution;
+        y:=((GlobalY mod TotalResolution)+TotalResolution) mod TotalResolution;
+        if ((((abs(GlobalX) div TotalResolution)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) div TotalResolution)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+         x:=(TotalResolution-(x+1)) mod TotalResolution;
+         y:=(TotalResolution-(y+1)) mod TotalResolution;
+        end;
+        TileQuadMapX:=x div aTileResolution;
+        TileQuadMapY:=y div aTileResolution;
+        TileQuadX:=x-(TileQuadMapX*aTileResolution);
+        TileQuadY:=y-(TileQuadMapY*aTileResolution);
+        TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+       end;
+      end;
+     end else begin
+      for TileLODY:=IfThen(TileMapY=0,-1,0) to (TileLODResolution+1)-1 do begin
+       TileY:=TileLODY shl LODIndex;
+       for TileLODX:=IfThen(TileMapX=0,-1,0) to (TileLODResolution+1)-1 do begin
+        TileX:=TileLODX shl LODIndex;
+        GlobalX:=(TileMapX*aTileResolution)+TileX;
+        GlobalY:=(TileMapY*aTileResolution)+TileY;
+        x:=(GlobalX+TotalResolution) and TotalResolutionMask;
+        y:=(GlobalY+TotalResolution) and TotalResolutionMask;
+        if ((((abs(GlobalX) shr TotalResolutionBits)+IfThen(GlobalX<0,1,0)) xor ((abs(GlobalY) shr TotalResolutionBits)+IfThen(GlobalY<0,1,0))) and 1)<>0 then begin
+         x:=(TotalResolution-(x+1)) and TotalResolutionMask;
+         y:=(TotalResolution-(y+1)) and TotalResolutionMask;
+        end;
+        TileQuadMapX:=x shr TileResolutionBits;
+        TileQuadMapY:=y shr TileResolutionBits;
+        TileQuadX:=x-(TileQuadMapX*aTileResolution);
+        TileQuadY:=y-(TileQuadMapY*aTileResolution);
+        TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]:=(((TileQuadMapY*fTileMapResolution)+TileQuadMapX)*TileVertexSize)+((TileQuadY*aTileResolution)+TileQuadX);
+       end;
+      end;
+     end;
+
      for TileLODY:=0 to TileLODResolution-1 do begin
 
       TileY:=TileLODY shl LODIndex;
@@ -7871,28 +7853,46 @@ begin
 
        TileX:=TileLODX shl LODIndex;
 
-       LODStep:=1 shl LODIndex;
-
        GlobalX:=(TileMapX*aTileResolution)+TileX;
        GlobalY:=(TileMapY*aTileResolution)+TileY;
 
        if (GlobalX=0) or (GlobalY=0) then begin
-        v0:=GetVertexIndex(GlobalX-LODStep,GlobalY-LODStep);
-        v1:=GetVertexIndex(GlobalX,GlobalY-LODStep);
-        v2:=GetVertexIndex(GlobalX,GlobalY);
-        v3:=GetVertexIndex(GlobalX-LODStep,GlobalY);
-        AddTriangle(v0,v1,v2);
-        AddTriangle(v0,v2,v3);
+        v0:=TileVertices[((TileLODY+0)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1 -1
+        v1:=TileVertices[((TileLODY+0)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0 -1
+        v2:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0
+        v3:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+0)]; // -1  0
+        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
+         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+         aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
+         aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+         inc(CountIndices,3);
+        end;
+        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
+         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+         aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+         aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
+         inc(CountIndices,3);
+        end;
        end;
 
-       begin       
-        v0:=GetVertexIndex(GlobalX,GlobalY);
-        v1:=GetVertexIndex(GlobalX+LODStep,GlobalY);
-        v2:=GetVertexIndex(GlobalX+LODStep,GlobalY+LODStep);
-        v3:=GetVertexIndex(GlobalX,GlobalY+LODStep);
-        AddTriangle(v0,v1,v2);
-        AddTriangle(v0,v2,v3);
-       end; 
+       begin
+        v0:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0
+        v1:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+2)]; //  1  0
+        v2:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+2)]; //  1  1
+        v3:=TileVertices[((TileLODY+2)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  1
+        if (v0<>v1) and (v0<>v2) and (v1<>v2) then begin
+         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+         aTiledMeshIndices.ItemArray[CountIndices+1]:=v1;
+         aTiledMeshIndices.ItemArray[CountIndices+2]:=v2;
+         inc(CountIndices,3);
+        end;
+        if (v0<>v2) and (v0<>v3) and (v2<>v3) then begin
+         aTiledMeshIndices.ItemArray[CountIndices+0]:=v0;
+         aTiledMeshIndices.ItemArray[CountIndices+1]:=v2;
+         aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
+         inc(CountIndices,3);
+        end;
+       end;
 
       end;
 
@@ -7909,8 +7909,10 @@ begin
   end;
 
  finally
-//FreeAndNil(TriangleHashMap);
+  TileVertices:=nil;
  end;
+
+ aTiledMeshIndices.Count:=CountIndices;
 
  aTiledMeshIndices.Finish;
 
