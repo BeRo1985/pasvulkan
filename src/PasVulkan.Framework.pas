@@ -13511,14 +13511,14 @@ begin
  MemoryChunk:=fMemoryChunkList.First;
  while assigned(MemoryChunk) do begin
   try
-   writeln('Memory chunk #',TpvPtrUInt(MemoryChunk),' - AllocationGroupID: ',IntToHex(MemoryChunk.fAllocationGroupID),' - Size: ',MemoryChunk.fSize,' - Used: ',MemoryChunk.fUsed,' - Non-used: ',MemoryChunk.fSize-MemoryChunk.fUsed);
+   writeln('Memory chunk #',TpvPtrUInt(MemoryChunk),' - AllocationGroupID: ',IntToHex(MemoryChunk.fAllocationGroupID),' - Size: ',SizeToHumanReadableString(MemoryChunk.fSize),' - Used: ',SizeToHumanReadableString(MemoryChunk.fUsed),' - Non-used: ',SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed));
    inc(Size,MemoryChunk.fSize);
    inc(Used,MemoryChunk.fUsed);
   finally
    MemoryChunk:=MemoryChunk.fNextMemoryChunk;
   end;
  end;
- writeln('Total memory - Size: ',MemoryChunk.fSize,' - Used: ',MemoryChunk.fUsed,' - Non-used: ',MemoryChunk.fSize-MemoryChunk.fUsed);
+ writeln('Total memory - Size: ',SizeToHumanReadableString(Size),' - Used: ',SizeToHumanReadableString(Used),' - Non-used: ',SizeToHumanReadableString(Size-Used));
 end;
 
 constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;

@@ -192,6 +192,8 @@ function IsPathSeparator(const aChar:AnsiChar):Boolean;
 function ExpandRelativePath(const aRelativePath:TpvRawByteString;const aBasePath:TpvRawByteString=''):TpvRawByteString;
 function ConvertPathToRelative(aAbsolutePath,aBasePath:TpvRawByteString):TpvRawByteString;
 
+function SizeToHumanReadableString(const aSize:TpvUInt64):TpvRawByteString;
+
 implementation
 
 uses PasVulkan.Math,
@@ -1527,6 +1529,21 @@ begin
    result:=result+copy(aAbsolutePath,AbsolutePathIndex,(length(aAbsolutePath)-AbsolutePathIndex)+1);
   end;
  end;
+end;
+
+function SizeToHumanReadableString(const aSize:TpvUInt64):TpvRawByteString;
+const Suffixes:array[0..5] of TpvRawByteString=('B','KiB','MiB','GiB','TiB','PiB');
+var Index:TpvInt32;
+    Size:TpvDouble;
+begin
+ Size:=aSize;
+ Index:=0;
+ while (Size>=1024.0) and (Index<5) do begin
+  Size:=Size/1024.0;
+  inc(Index);
+ end;
+ Str(Size:1:2,Result);
+ result:=Size+' '+Suffixes[Index];
 end;
 
 end.
