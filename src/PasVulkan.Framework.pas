@@ -134,6 +134,7 @@ const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       pvAllocationGroupIDScene3DRaytracingSBT=TpvUInt64($0000000000000014) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDScene3DPlanetStatic=TpvUInt64($0000000000000015) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDScene3DPlanetDynamic=TpvUInt64($0000000000000016) or pvAllocationGroupIDInternalMask;
+      pvAllocationGroupIDKTXTextureStaging=TpvUInt64($0e00000000000000) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDKTXTexture=TpvUInt64($0f00000000000000) or pvAllocationGroupIDInternalMask;
       pvAllocationGroupIDDebug=TpvUInt64($0fffffffffffffff) or pvAllocationGroupIDInternalMask;
 
@@ -4127,6 +4128,8 @@ var MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryRequiredHeapFlags,MemoryPreferredHeapFlags,
     MemoryAvoidHeapFlags,MemoryPreferredNotHeapFlags:TVkMemoryHeapFlags;
     MemoryBlock:TpvVulkanDeviceMemoryBlock;
+    MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+    AllocationGroupID:TpvUInt64;
 begin
  if assigned(ktxVulkanDevice) then begin
   MemoryBlockFlags:=[];
@@ -4140,6 +4143,8 @@ begin
    MemoryPreferredHeapFlags:=0;
    MemoryAvoidHeapFlags:=0;
    MemoryPreferredNotHeapFlags:=0;
+   MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.Unknown;
+   AllocationGroupID:=pvAllocationGroupIDKTXTextureStaging;
   end else begin
    MemoryRequiredPropertyFlags:=0;
    MemoryPreferredPropertyFlags:=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -4149,6 +4154,8 @@ begin
    MemoryPreferredHeapFlags:=0;
    MemoryAvoidHeapFlags:=0;
    MemoryPreferredNotHeapFlags:=0;
+   MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.Unknown;
+   AllocationGroupID:=pvAllocationGroupIDKTXTexture;
   end;
   try
    MemoryBlock:=ktxVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
@@ -4163,9 +4170,9 @@ begin
                                                                   MemoryPreferredHeapFlags,
                                                                   MemoryAvoidHeapFlags,
                                                                   MemoryPreferredNotHeapFlags,
-                                                                  TpvVulkanDeviceMemoryAllocationType.Unknown,
+                                                                  MemoryAllocationType,
                                                                   nil,
-                                                                  pvAllocationGroupIDKTXTexture);
+                                                                  AllocationGroupID);
    result:=TpvPtrUInt(MemoryBlock);
    if assigned(pageCount) then begin
     pageCount^:=1;
@@ -23400,6 +23407,7 @@ begin
    fData:=nil;
   end;
  end;
+ Unload;
  if assigned(fKTXTexture) then begin
   try
    if assigned(fKTXVulkanTexture) then begin
@@ -23421,7 +23429,6 @@ begin
    fKTXVulkanTexture:=nil;
   end;
  end;
- Unload;
  inherited Destroy;
 end;
 
@@ -24297,8 +24304,8 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
       fImageLayout:=PktxVulkanTexture(fKTXVulkanTexture)^.imageLayout;
       fFormat:=PktxVulkanTexture(fKTXVulkanTexture)^.imageFormat;
       fImageViewType:=PktxVulkanTexture(fKTXVulkanTexture)^.viewType;
-      fDeviceMemory:=PktxVulkanTexture(fKTXVulkanTexture)^.deviceMemory;
-      fImage:=TpvVulkanImage.Create(fDevice,PktxVulkanTexture(fKTXVulkanTexture)^.image,nil,true);
+      fDeviceMemory:=VK_NULL_HANDLE;//PktxVulkanTexture(fKTXVulkanTexture)^.deviceMemory;
+      fImage:=TpvVulkanImage.Create(fDevice,PktxVulkanTexture(fKTXVulkanTexture)^.image,nil,false);
       fImageView:=TpvVulkanImageView.Create(fDevice,
                                             fImage,
                                             fImageViewType,
