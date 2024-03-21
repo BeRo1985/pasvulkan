@@ -12918,7 +12918,7 @@ begin
 
  fUseAllocationGroupIDs:=false;
 
- fTryToUseNewChunksWithLessCosts:=false;
+ fTryToUseNewChunksWithLessCosts:=true;
 
  fLazilyAllocationSupport:=false;
 
@@ -13271,7 +13271,7 @@ begin
 
     while assigned(MemoryChunk) do begin
 
-     if (fUseAllocationGroupIDs and (MemoryChunk.fAllocationGroupID=aAllocationGroupID)) and
+     if ((fUseAllocationGroupIDs and (MemoryChunk.fAllocationGroupID=aAllocationGroupID)) or not fUseAllocationGroupIDs) and
         ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
         ((aMemoryRequiredPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags)) and
         ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
@@ -13351,6 +13351,8 @@ begin
         FreeAndNil(MemoryChunk);
        end;
       end;
+     end else begin
+      result:=nil;
      end; //}
 
      // When a new fresh allocation would have higher costs or it even did failed, then try to
