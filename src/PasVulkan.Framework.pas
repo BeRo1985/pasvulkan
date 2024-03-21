@@ -1202,6 +1202,7 @@ type EpvVulkanException=class(Exception);
        fFirstMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fLastMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDedicatedAllocationSupport:TDedicatedAllocationSupport;
+       fUseAllocationGroupIDs:boolean;
        fLazilyAllocationSupport:boolean;
        fCountAllocations:TpvSizeInt;
        fReBAR:boolean;
@@ -1211,6 +1212,7 @@ type EpvVulkanException=class(Exception);
        fMaximumMemoryMappableDeviceLocalHeapSize:TVkDeviceSize;
        fMaximumMemoryMappableNonDeviceLocalHeapSize:TVkDeviceSize;
       public
+
        constructor Create(const aDevice:TpvVulkanDevice);
        destructor Destroy; override;
 
@@ -1268,6 +1270,8 @@ type EpvVulkanException=class(Exception);
        procedure Dump;
 
       published
+
+       property UseAllocationGroupIDs:boolean read fUseAllocationGroupIDs write fUseAllocationGroupIDs;
 
        property LazilyAllocationSupport:boolean read fLazilyAllocationSupport;
        
@@ -12909,6 +12913,8 @@ begin
 
  fDedicatedAllocationSupport:=TDedicatedAllocationSupport.None;
 
+ fUseAllocationGroupIDs:=false;
+
  fLazilyAllocationSupport:=false;
 
  fCountAllocations:=0;
@@ -13260,7 +13266,7 @@ begin
 
     while assigned(MemoryChunk) do begin
 
-     if (MemoryChunk.fAllocationGroupID=aAllocationGroupID) and
+     if (fUseAllocationGroupIDs and (MemoryChunk.fAllocationGroupID=aAllocationGroupID)) and
         ((aMemoryTypeBits and MemoryChunk.fMemoryTypeBits)<>0) and
         ((aMemoryRequiredPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryRequiredPropertyFlags)=aMemoryRequiredPropertyFlags)) and
         ((aMemoryAvoidPropertyFlags=0) or ((MemoryChunk.fMemoryPropertyFlags and aMemoryAvoidPropertyFlags)=0)) and
@@ -27797,13 +27803,13 @@ begin
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DDynamic,TVkDeviceSize(32) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DSurface,TVkDeviceSize(32) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DTexture,TVkDeviceSize(32) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingScratch,TVkDeviceSize(256) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASStatic,TVkDeviceSize(256) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASDynamic,TVkDeviceSize(256) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingTLAS,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingScratch,TVkDeviceSize(64) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASStatic,TVkDeviceSize(64) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASDynamic,TVkDeviceSize(64) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingTLAS,TVkDeviceSize(64) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingSBT,TVkDeviceSize(1) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetStatic,TVkDeviceSize(256) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetDynamic,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetStatic,TVkDeviceSize(64) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetDynamic,TVkDeviceSize(64) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDDebug,TVkDeviceSize(32) shl 20);
 end;
 
