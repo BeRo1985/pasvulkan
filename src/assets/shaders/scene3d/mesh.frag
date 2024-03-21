@@ -779,7 +779,7 @@ void main() {
       // needed and is an clearly improvement over the implementation based on Vlachos 2015.
       float kernelRoughness;
       {
-        const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
+        const float SIGMA2 = 0.15915494, KAPPA = 0.18;        n
         vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
         kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
       }

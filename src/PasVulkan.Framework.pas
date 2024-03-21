@@ -27810,13 +27810,13 @@ begin
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DDynamic,TVkDeviceSize(32) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DSurface,TVkDeviceSize(32) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DTexture,TVkDeviceSize(32) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingScratch,TVkDeviceSize(64) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASStatic,TVkDeviceSize(64) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASDynamic,TVkDeviceSize(64) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingTLAS,TVkDeviceSize(64) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingSBT,TVkDeviceSize(1) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetStatic,TVkDeviceSize(64) shl 20);
- VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetDynamic,TVkDeviceSize(64) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingScratch,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASStatic,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingBLASDynamic,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingTLAS,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DRaytracingSBT,TVkDeviceSize(16) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetStatic,TVkDeviceSize(256) shl 20);
+ VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDScene3DPlanetDynamic,TVkDeviceSize(256) shl 20);
  VulkanDefaultGroupHeapChunkSizes.Add(pvAllocationGroupIDDebug,TVkDeviceSize(32) shl 20);
 end;
 
