@@ -1203,6 +1203,7 @@ type EpvVulkanException=class(Exception);
        fLastMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDedicatedAllocationSupport:TDedicatedAllocationSupport;
        fUseAllocationGroupIDs:boolean;
+       fTryToUseNewChunksWithLessCosts:boolean;
        fLazilyAllocationSupport:boolean;
        fCountAllocations:TpvSizeInt;
        fReBAR:boolean;
@@ -1272,6 +1273,8 @@ type EpvVulkanException=class(Exception);
       published
 
        property UseAllocationGroupIDs:boolean read fUseAllocationGroupIDs write fUseAllocationGroupIDs;
+
+       property TryToUseNewChunksWithLessCosts:boolean read fTryToUseNewChunksWithLessCosts write fTryToUseNewChunksWithLessCosts;
 
        property LazilyAllocationSupport:boolean read fLazilyAllocationSupport;
        
@@ -12915,6 +12918,8 @@ begin
 
  fUseAllocationGroupIDs:=false;
 
+ fTryToUseNewChunksWithLessCosts:=false;
+
  fLazilyAllocationSupport:=false;
 
  fCountAllocations:=0;
@@ -13312,7 +13317,7 @@ begin
 
     if (BestCost<High(TpvUInt32)) and assigned(BestMemoryChunk) then begin
 
-     if BestCost>0 then begin
+     if fTryToUseNewChunksWithLessCosts and (BestCost>0) then begin
       // Then in a case of a positive best-found, compare it to a fresh new allocation
       MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,@fMemoryChunkList,aAllocationGroupID);
       try
