@@ -3405,6 +3405,7 @@ type EpvVulkanException=class(Exception);
        fDataSize:TpvSizeInt;
        fDoFreeDataAfterFinish:boolean;
        fKTXTexture:pointer;
+       fKTXVulkanTexture:pointer;
        fAllocationGroupID:TpvUInt64;
        procedure UpdateSRGBFormat;
        procedure SetSampler(const aSampler:TpvVulkanSampler);
@@ -3846,6 +3847,23 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
 
      TktxTextureIterateCallback=function(miplevel,face,width,height,depth:TpvInt32;faceLodSize:TpvUInt64;pixels,UserData:pointer):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
 
+     TktxVulkanTexture_subAllocatorAllocMemFuncPtr=function(allocInfo:PVkMemoryAllocateInfo;memReq:PVkMemoryRequirements;pageCount:PpvUInt64):TpvUInt64; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_subAllocatorBindBufferFuncPtr=function(buffer:TVkBuffer;allocId:TpvUInt64):TVkResult; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_subAllocatorBindImageFuncPtr=function(image:TVkImage;allocId:TpvUInt64):TVkResult; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_subAllocatorMemoryMapFuncPtr=function(allocId,pageNumber:TpvUInt64;mapLength:PVkDeviceSize;dataPtr:PpvPointer):TVkResult; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_subAllocatorMemoryUnmapFuncPtr=procedure(allocId,pageNumber:TpvUInt64); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_subAllocatorFreeMemFuncPtr=procedure(allocId:TpvUInt64); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+
+     TktxtVulkanTexture_subAllocatorCallbacks=record
+      allocMemFuncPtr:TktxVulkanTexture_subAllocatorAllocMemFuncPtr;
+      bindBufferFuncPtr:TktxVulkanTexture_subAllocatorBindBufferFuncPtr;
+      bindImageFuncPtr:TktxVulkanTexture_subAllocatorBindImageFuncPtr;
+      memoryMapFuncPtr:TktxVulkanTexture_subAllocatorMemoryMapFuncPtr;
+      memoryUnmapFuncPtr:TktxVulkanTexture_subAllocatorMemoryUnmapFuncPtr;
+      freeMemFuncPtr:TktxVulkanTexture_subAllocatorFreeMemFuncPtr;
+     end;
+     PktxtVulkanTexture_subAllocatorCallbacks=^TktxtVulkanTexture_subAllocatorCallbacks;
+
      TktxTextureVTbl=record
       Destroy:procedure(this:PktxTexture); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
       GetImageOffset:function(this:PktxTexture;level,layer,faceSlice:TpvUInt32;offset:PpvSizeUInt):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
@@ -3944,6 +3962,7 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
       depth:TpvUInt32;
       levelCount:TpvUInt32;
       layerCount:TpvUInt32;
+      allocationId:TpvUInt64;
      end;
      PktxVulkanTexture=^TktxVulkanTexture;
 
@@ -4037,6 +4056,7 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
      TktxTexture_GetRowPitch=function(this:PktxTexture;level:TpvUInt32):TpvUInt32; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture_GetElementSize=function(this:PktxTexture):TpvUInt32; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture_GetDataSize=function(this:PktxTexture):TpvSizeUInt; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxVulkanTexture_Destruct_WithSuballocator=function(This:PktxVulkanTexture;device:TVkDevice;pAllocator:PVkAllocationCallbacks;subAllocatorCallbacks:PktxtVulkanTexture_subAllocatorCallbacks):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxVulkanTexture_Destruct=procedure(This:PktxVulkanTexture;device:TVkDevice;pAllocator:PVkAllocationCallbacks); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxVulkanDeviceInfo_CreateEx=function(instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):PktxVulkanDeviceInfo; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend} 
      TktxVulkanDeviceInfo_Create=function(physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks):PktxVulkanDeviceInfo; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
@@ -4044,10 +4064,13 @@ type TktxTextureClassID=(ktxTexture1_c=1,ktxTexture2_c=2);
      TktxVulkanDeviceInfo_ConstructEx=function(This:PktxVulkanDeviceInfo;instance:TVkInstance;physicalDevice:TVkPhysicalDevice;device:TVkDevice;queue:TVkQueue;cmdPool:TVkCommandPool;pAllocator:PVkAllocationCallbacks;pFunctions:PktxVulkanFunctions):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxVulkanDeviceInfo_Destruct=procedure(This:PktxVulkanDeviceInfo); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxVulkanDeviceInfo_Destroy=procedure(This:PktxVulkanDeviceInfo); {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture_VkUploadEx_WithSuballocator=function(This:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout;subAllocatorCallbacks:PktxtVulkanTexture_subAllocatorCallbacks):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture_VkUploadEx=function(This:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture_VkUpload=function(texture:PktxTexture;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture1_VkUploadEx_WithSuballocator=function(This:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout;subAllocatorCallbacks:PktxtVulkanTexture_subAllocatorCallbacks):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture1_VkUploadEx=function(This:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture1_VkUpload=function(texture:PktxTexture1;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
+     TktxTexture2_VkUploadEx_WithSuballocator=function(This:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout;subAllocatorCallbacks:PktxtVulkanTexture_subAllocatorCallbacks):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture2_VkUploadEx=function(This:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture;tiling:TVkImageTiling;usageFlags:TVkImageUsageFlags;finalLayout:TVkImageLayout):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture2_VkUpload=function(texture:PktxTexture2;vdi:PktxVulkanDeviceInfo;vkTexture:PktxVulkanTexture):TKTX_error_code; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
      TktxTexture_GetVkFormat=function(This:PktxTexture):TVkFormat; {$if defined(Windows) or defined(Win32) or defined(Win64)}stdcall;{$else}cdecl;{$ifend}
@@ -4061,6 +4084,7 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxTexture_GetRowPitch:TktxTexture_GetRowPitch=nil;
     ktxTexture_GetElementSize:TktxTexture_GetElementSize=nil;
     ktxTexture_GetDataSize:TktxTexture_GetDataSize=nil;
+    ktxVulkanTexture_Destruct_WithSuballocator:TktxVulkanTexture_Destruct_WithSuballocator=nil;
     ktxVulkanTexture_Destruct:TktxVulkanTexture_Destruct=nil;
     ktxVulkanDeviceInfo_CreateEx:TktxVulkanDeviceInfo_CreateEx=nil;
     ktxVulkanDeviceInfo_Create:TktxVulkanDeviceInfo_Create=nil;
@@ -4068,10 +4092,13 @@ var ktxTexture_CreateFromMemory:TktxTexture_CreateFromMemory=nil;
     ktxVulkanDeviceInfo_ConstructEx:TktxVulkanDeviceInfo_ConstructEx=nil;
     ktxVulkanDeviceInfo_Destruct:TktxVulkanDeviceInfo_Destruct=nil;
     ktxVulkanDeviceInfo_Destroy:TktxVulkanDeviceInfo_Destroy=nil;
+    ktxTexture_VkUploadEx_WithSuballocator:TktxTexture_VkUploadEx_WithSuballocator=nil;
     ktxTexture_VkUploadEx:TktxTexture_VkUploadEx=nil;
     ktxTexture_VkUpload:TktxTexture_VkUpload=nil;
+    ktxTexture1_VkUploadEx_WithSuballocator:TktxTexture1_VkUploadEx_WithSuballocator=nil;
     ktxTexture1_VkUploadEx:TktxTexture1_VkUploadEx=nil;
     ktxTexture1_VkUpload:TktxTexture1_VkUpload=nil;
+    ktxTexture2_VkUploadEx_WithSuballocator:TktxTexture2_VkUploadEx_WithSuballocator=nil;
     ktxTexture2_VkUploadEx:TktxTexture2_VkUploadEx=nil;
     ktxTexture2_VkUpload:TktxTexture2_VkUpload=nil;
     ktxTexture_GetVkFormat:TktxTexture_GetVkFormat=nil;
@@ -4175,6 +4202,7 @@ begin
      ktxTexture_GetRowPitch:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetRowPitch');
      ktxTexture_GetElementSize:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetElementSize');
      ktxTexture_GetDataSize:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetDataSize');
+     ktxVulkanTexture_Destruct_WithSuballocator:=GetProcAddress(ktxLibraryHandle,'ktxVulkanTexture_Destruct_WithSuballocator');
      ktxVulkanTexture_Destruct:=GetProcAddress(ktxLibraryHandle,'ktxVulkanTexture_Destruct');
      ktxVulkanDeviceInfo_CreateEx:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_CreateEx');
      ktxVulkanDeviceInfo_Create:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Create');
@@ -4182,10 +4210,13 @@ begin
      ktxVulkanDeviceInfo_ConstructEx:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_ConstructEx');
      ktxVulkanDeviceInfo_Destruct:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Destruct');
      ktxVulkanDeviceInfo_Destroy:=GetProcAddress(ktxLibraryHandle,'ktxVulkanDeviceInfo_Destroy');
+     ktxTexture_VkUploadEx_WithSuballocator:=GetProcAddress(ktxLibraryHandle,'ktxTexture_VkUploadEx_WithSuballocator');
      ktxTexture_VkUploadEx:=GetProcAddress(ktxLibraryHandle,'ktxTexture_VkUploadEx');
      ktxTexture_VkUpload:=GetProcAddress(ktxLibraryHandle,'ktxTexture_VkUpload');
+     ktxTexture1_VkUploadEx_WithSuballocator:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_VkUploadEx_WithSuballocator');
      ktxTexture1_VkUploadEx:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_VkUploadEx');
      ktxTexture1_VkUpload:=GetProcAddress(ktxLibraryHandle,'ktxTexture1_VkUpload');
+     ktxTexture2_VkUploadEx_WithSuballocator:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_VkUploadEx_WithSuballocator');
      ktxTexture2_VkUploadEx:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_VkUploadEx');
      ktxTexture2_VkUpload:=GetProcAddress(ktxLibraryHandle,'ktxTexture2_VkUpload');
      ktxTexture_GetVkFormat:=GetProcAddress(ktxLibraryHandle,'ktxTexture_GetVkFormat');
@@ -4198,6 +4229,7 @@ begin
         assigned(ktxTexture_GetRowPitch) and
         assigned(ktxTexture_GetElementSize) and
         assigned(ktxTexture_GetDataSize) and
+        //assigned(ktxVulkanTexture_Destruct_WithSuballocator) and
         assigned(ktxVulkanTexture_Destruct) and
         assigned(ktxVulkanDeviceInfo_CreateEx) and
         assigned(ktxVulkanDeviceInfo_Create) and
@@ -4205,10 +4237,13 @@ begin
         assigned(ktxVulkanDeviceInfo_ConstructEx) and
         assigned(ktxVulkanDeviceInfo_Destruct) and
         assigned(ktxVulkanDeviceInfo_Destroy) and
+        //assigned(ktxTexture_VkUploadEx_WithSuballocator) and
         assigned(ktxTexture_VkUploadEx) and
         assigned(ktxTexture_VkUpload) and
+        //assigned(ktxTexture1_VkUploadEx_WithSuballocator) and
         assigned(ktxTexture1_VkUploadEx) and
         assigned(ktxTexture1_VkUpload) and
+        //assigned(ktxTexture2_VkUploadEx_WithSuballocator) and
         assigned(ktxTexture2_VkUploadEx) and
         assigned(ktxTexture2_VkUpload) and
         assigned(ktxTexture_GetVkFormat) and
@@ -22928,6 +22963,8 @@ begin
 
  fKTXTexture:=nil;
 
+ fKTXVulkanTexture:=nil;
+
 end;
 
 constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
@@ -23234,9 +23271,21 @@ begin
  end;
  if assigned(fKTXTexture) then begin
   try
+   if assigned(fKTXVulkanTexture) then begin
+    if assigned(ktxVulkanTexture_Destruct) then begin
+     ktxVulkanTexture_Destruct(fKTXVulkanTexture,fDevice.Handle,nil);
+    end;
+   end;
    PktxTexture(fKTXTexture)^.vtbl^.Destroy(fKTXTexture);
   finally
    fKTXTexture:=nil;
+  end;
+ end;
+ if assigned(fKTXVulkanTexture) then begin
+  try
+   FreeMem(fKTXVulkanTexture);
+  finally
+   fKTXVulkanTexture:=nil;
   end;
  end;
  Unload;
@@ -24032,7 +24081,6 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
  var KTXTexture:PktxTexture;
      KTXVulkanFunctions:TktxVulkanFunctions;
      KTXVulkanDeviceInfo:PktxVulkanDeviceInfo;
-     KTXVulkanTexture:TktxVulkanTexture;
      CommandPool:TpvVulkanCommandPool;
      KTXResult:TKTX_error_code;
  begin
@@ -24089,24 +24137,25 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
                                                      @KTXVulkanFunctions);
    if assigned(KTXVulkanDeviceInfo) then begin
     try
+     GetMem(fKTXVulkanTexture,SizeOf(TktxVulkanTexture));
      KTXResult:=ktxTexture_VkUploadEx(ktxTexture,
                                       KTXVulkanDeviceInfo,
-                                      @KTXVulkanTexture,
+                                      fKTXVulkanTexture,
                                       VK_IMAGE_TILING_OPTIMAL,
                                       TpvUInt32(VK_IMAGE_USAGE_SAMPLED_BIT),
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
      if KTXResult=TKTX_error_code.KTX_SUCCESS then begin
-      fWidth:=KTXVulkanTexture.width;
-      fHeight:=KTXVulkanTexture.height;
-      fDepth:=KTXVulkanTexture.depth;
-      fCountArrayLayers:=KTXVulkanTexture.layerCount;
-      fCountMipMaps:=KTXVulkanTexture.levelCount;
-      fCountStorageLevels:=KTXVulkanTexture.levelCount;
-      fImageLayout:=KTXVulkanTexture.imageLayout;
-      fFormat:=KTXVulkanTexture.imageFormat;
-      fImageViewType:=KTXVulkanTexture.viewType;
-      fDeviceMemory:=KTXVulkanTexture.deviceMemory;
-      fImage:=TpvVulkanImage.Create(fDevice,KTXVulkanTexture.image,nil,true);
+      fWidth:=PktxVulkanTexture(fKTXVulkanTexture)^.width;
+      fHeight:=PktxVulkanTexture(fKTXVulkanTexture)^.height;
+      fDepth:=PktxVulkanTexture(fKTXVulkanTexture)^.depth;
+      fCountArrayLayers:=PktxVulkanTexture(fKTXVulkanTexture)^.layerCount;
+      fCountMipMaps:=PktxVulkanTexture(fKTXVulkanTexture)^.levelCount;
+      fCountStorageLevels:=PktxVulkanTexture(fKTXVulkanTexture)^.levelCount;
+      fImageLayout:=PktxVulkanTexture(fKTXVulkanTexture)^.imageLayout;
+      fFormat:=PktxVulkanTexture(fKTXVulkanTexture)^.imageFormat;
+      fImageViewType:=PktxVulkanTexture(fKTXVulkanTexture)^.viewType;
+      fDeviceMemory:=PktxVulkanTexture(fKTXVulkanTexture)^.deviceMemory;
+      fImage:=TpvVulkanImage.Create(fDevice,PktxVulkanTexture(fKTXVulkanTexture)^.image,nil,true);
       fImageView:=TpvVulkanImageView.Create(fDevice,
                                             fImage,
                                             fImageViewType,
@@ -24133,6 +24182,11 @@ procedure TpvVulkanTexture.Finish(const aGraphicsQueue:TpvVulkanQueue;
       end;
       fDescriptorImageInfo.imageLayout:=fImageLayout;
      end else begin
+      try
+       FreeMem(fKTXVulkanTexture);
+      finally
+       fKTXVulkanTexture:=nil;
+      end;
       raise EpvVulkanTextureException.Create('KTX error: '+KTXErrorCodeToString(KTXResult));
      end;
     finally
