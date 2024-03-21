@@ -1543,7 +1543,7 @@ begin
   inc(Index);
  end;
  Str(Size:1:2,Result);
- result:=Size+' '+Suffixes[Index];
+ result:=result+' '+Suffixes[Index];
 end;
 
 end.
