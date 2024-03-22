@@ -13518,20 +13518,41 @@ end;
 procedure TpvVulkanDeviceMemoryManager.Dump;
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
     Size,Used:TpvUInt64;
+    s:TpvRawByteString;
 begin
+
+ // Initialize
  Size:=0;
  Used:=0;
+
+ // Loop over all memory chunks
  MemoryChunk:=fMemoryChunkList.Last;
  while assigned(MemoryChunk) do begin
-  try
-   writeln('Memory chunk #',TpvPtrUInt(MemoryChunk),' - AllocationGroupID: ',IntToHex(MemoryChunk.fAllocationGroupID),' - Size: ',SizeToHumanReadableString(MemoryChunk.fSize),' - Used: ',SizeToHumanReadableString(MemoryChunk.fUsed),' - Non-used: ',SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed));
-   inc(Size,MemoryChunk.fSize);
-   inc(Used,MemoryChunk.fUsed);
-  finally
-   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+  
+  s:='Memory chunk #'+IntToStr(TpvPtrUInt(MemoryChunk))+': ';
+  if fUseAllocationGroupIDs then begin
+   s:=s+'AllocationGroupID '+IntToHex(MemoryChunk.fAllocationGroupID)+' - ';
   end;
+  
+  s:=s+'Size '+SizeToHumanReadableString(MemoryChunk.fSize)+' - '+
+       'Used '+SizeToHumanReadableString(MemoryChunk.fUsed)+' - '+
+       'Non-used '+SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed);
+  writeln(s);
+  
+  inc(Size,MemoryChunk.fSize);
+  inc(Used,MemoryChunk.fUsed);
+  
+  MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
+
  end;
- writeln('Total memory - Size: ',SizeToHumanReadableString(Size),' - Used: ',SizeToHumanReadableString(Used),' - Non-used: ',SizeToHumanReadableString(Size-Used));
+
+ // Total memory usage
+ s:='Total memory: '+
+    'Size '+SizeToHumanReadableString(Size)+' - '+
+    'Used '+SizeToHumanReadableString(Used)+' - '+
+    'Non-used '+SizeToHumanReadableString(Size-Used);
+ writeln(s);
+
 end;
 
 constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
