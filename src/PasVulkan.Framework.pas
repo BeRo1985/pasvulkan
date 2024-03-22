@@ -13518,6 +13518,7 @@ end;
 procedure TpvVulkanDeviceMemoryManager.Dump(const aStringList:TStringList);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
     Size,Used:TpvUInt64;
+    Index:TpvSizeInt;
     s:TpvRawByteString;
 begin
 
@@ -13525,11 +13526,13 @@ begin
  Size:=0;
  Used:=0;
 
+ Index:=0;
+
  // Loop over all memory chunks
  MemoryChunk:=fMemoryChunkList.Last;
  while assigned(MemoryChunk) do begin
   
-  s:='Memory chunk #'+IntToStr(TpvPtrUInt(MemoryChunk))+': ';
+  s:='Memory chunk #'+IntToStr(Index)+': ';
   if fUseAllocationGroupIDs then begin
    s:=s+'AllocationGroupID '+IntToHex(MemoryChunk.fAllocationGroupID)+' - ';
   end;
@@ -13546,6 +13549,8 @@ begin
   
   inc(Size,MemoryChunk.fSize);
   inc(Used,MemoryChunk.fUsed);
+
+  inc(Index);
   
   MemoryChunk:=MemoryChunk.fPreviousMemoryChunk;
 
