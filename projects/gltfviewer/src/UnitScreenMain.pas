@@ -663,8 +663,12 @@ begin
     pvApplication.Terminate;
    end;
    KEYCODE_F8:begin
-    if assigned(fScene3D) then begin
-     fScene3D.DumpProfiler;
+    if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+     pvApplication.DumpVulkanMemoryManager;
+    end else begin
+     if assigned(fScene3D) then begin
+      fScene3D.DumpProfiler;
+     end;
     end;
    end;
    KEYCODE_U:begin

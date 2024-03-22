@@ -1887,6 +1887,8 @@ type EpvApplication=class(Exception)
 
        procedure UpdateAudio; virtual;
 
+       procedure DumpVulkanMemoryManager; virtual;
+
        class procedure Main; virtual;
 
        property VulkanFrameBuffers:TpvVulkanSwapChainSimpleDirectRenderTargetFrameBuffers read fVulkanFrameBuffers;
@@ -13786,6 +13788,25 @@ begin
  if assigned(fScreen) then begin
   fScreen.UpdateAudio;
  end;
+end;
+
+procedure TpvApplication.DumpVulkanMemoryManager; 
+var StringList:TStringList;
+    Index:TpvSizeInt;
+    Line:TpvUTF8String;
+begin
+ if assigned(fVulkanDevice) then begin
+  StringList:=TStringList.Create;
+  try
+   fVulkanDevice.MemoryManager.Dump(StringList);
+   for Index:=0 to StringList.Count-1 do begin
+    Line:=StringList[Index];
+    TpvApplication.Log(LOG_INFO,'TpvApplication',Line);
+   end;
+  finally
+   FreeAndNil(StringList);
+  end; 
+ end; 
 end;
 
 class procedure TpvApplication.Main;
