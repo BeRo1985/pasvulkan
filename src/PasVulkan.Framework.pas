@@ -1268,7 +1268,7 @@ type EpvVulkanException=class(Exception);
                                    const aCommandBuffer:TpvVulkanCommandBuffer=nil;
                                    const aFence:TpvVulkanFence=nil);
 
-       procedure Dump;
+       procedure Dump(const aStringList:TStringList=nil);
 
       published
 
@@ -13515,7 +13515,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanDeviceMemoryManager.Dump;
+procedure TpvVulkanDeviceMemoryManager.Dump(const aStringList:TStringList);
 var MemoryChunk:TpvVulkanDeviceMemoryChunk;
     Size,Used:TpvUInt64;
     s:TpvRawByteString;
@@ -13537,7 +13537,12 @@ begin
   s:=s+'Size '+SizeToHumanReadableString(MemoryChunk.fSize)+' - '+
        'Used '+SizeToHumanReadableString(MemoryChunk.fUsed)+' - '+
        'Non-used '+SizeToHumanReadableString(MemoryChunk.fSize-MemoryChunk.fUsed);
-  writeln(s);
+
+  if assigned(aStringList) then begin
+   aStringList.Add(s);
+  end else begin
+   WriteLn(s);
+  end;
   
   inc(Size,MemoryChunk.fSize);
   inc(Used,MemoryChunk.fUsed);
@@ -13551,7 +13556,12 @@ begin
     'Size '+SizeToHumanReadableString(Size)+' - '+
     'Used '+SizeToHumanReadableString(Used)+' - '+
     'Non-used '+SizeToHumanReadableString(Size-Used);
- writeln(s);
+
+ if assigned(aStringList) then begin
+  aStringList.Add(s);
+ end else begin
+  WriteLn(s);
+ end;
 
 end;
 
