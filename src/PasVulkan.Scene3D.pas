@@ -23218,6 +23218,8 @@ begin
      fGPURaytracingData.MeshIndices:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
      fGPURaytracingData.MeshDynamicVertices:=VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer.DeviceAddress;
 
+     fGPURaytracingData.ParticleVertices:=fVulkanParticleVertexBuffers[aInFlightFrameIndex].DeviceAddress;
+
      fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
                                         fVulkanFrameGraphStagingCommandBuffer,
                                         fVulkanFrameGraphStagingFence,
