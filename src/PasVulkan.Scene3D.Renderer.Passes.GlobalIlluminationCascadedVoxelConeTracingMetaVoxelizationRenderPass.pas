@@ -224,7 +224,11 @@ begin
 
  /// --
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_vert.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_vert.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_vert.spv');
+ end;
  try
   fParticleVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
 //fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleVertexShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleVertexShaderModule');
@@ -232,30 +236,59 @@ begin
   Stream.Free;
  end;
 
- case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
-  1:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_1_geom.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
+   1:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_1_geom.spv');
+   end;
+   2:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_2_geom.spv');
+   end;
+   3:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_3_geom.spv');
+   end;
+   4:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_4_geom.spv');
+   end;
+   5:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_5_geom.spv');
+   end;
+   6:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_6_geom.spv');
+   end;
+   7:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_7_geom.spv');
+   end;
+   else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_8_geom.spv');
+   end;
   end;
-  2:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_2_geom.spv');
-  end;
-  3:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_3_geom.spv');
-  end;
-  4:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_4_geom.spv');
-  end;
-  5:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_5_geom.spv');
-  end;
-  6:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_6_geom.spv');
-  end;
-  7:begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_7_geom.spv');
-  end;
-  else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_8_geom.spv');
+ end else begin
+  case fInstance.Renderer.GlobalIlluminationVoxelCountCascades of
+   1:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_1_geom.spv');
+   end;
+   2:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_2_geom.spv');
+   end;
+   3:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_3_geom.spv');
+   end;
+   4:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_4_geom.spv');
+   end;
+   5:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_5_geom.spv');
+   end;
+   6:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_6_geom.spv');
+   end;
+   7:begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_7_geom.spv');
+   end;
+   else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_8_geom.spv');
+   end;
   end;
  end;
  try
@@ -264,7 +297,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_frag.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_voxelization_frag.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_voxelization_frag.spv');
+ end;
  try
   fParticleFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
 //fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleFragmentShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleFragmentShaderModule');

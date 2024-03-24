@@ -3050,6 +3050,7 @@ type EpvScene3D=class(Exception);
        fGlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fGlobalVulkanDescriptorPool:TpvVulkanDescriptorPool;
        fGlobalVulkanDescriptorSets:TGlobalVulkanDescriptorSets;
+       fGlobalVulkanDescriptorSetTextureBindingIndex:TpvSizeInt;
        fVulkanProcessFrameQueue:TpvVulkanQueue;
        fVulkanProcessFrameCommandPool:TpvVulkanCommandPool;
        fVulkanProcessFrameCommandBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanCommandBuffer;
@@ -3174,7 +3175,6 @@ type EpvScene3D=class(Exception);
        fVkMultiDrawIndexedInfoEXTDynamicArray:TVkMultiDrawIndexedInfoEXTDynamicArray;
        fVkMultiDrawIndexedInfoEXTFirstInstance:TpvSizeInt;
        fVkMultiDrawIndexedInfoEXTInstancesCount:TpvSizeInt;
-       fTopLevelAccelerationStructure:TpvRaytracingTopLevelAccelerationStructure;
       public
        fVulkanNodeMatricesBufferData:array[0..MaxInFlightFrames-1] of TMatricesDynamicArray;
        fMeshComputeFrameDoneMask:TpvUInt32;
@@ -20633,6 +20633,10 @@ var Index,InFlightFrameIndex,RenderPassIndex,Count:TpvSizeInt;
     MaterialAlphaMode:TpvScene3D.TMaterial.TAlphaMode;
     PrimitiveTopology:TPrimitiveTopology;
     FaceCullingMode:TFaceCullingMode;
+    UniversalQueue:TpvVulkanQueue;
+    UniversalCommandPool:TpvVulkanCommandPool;
+    UniversalCommandBuffer:TpvVulkanCommandBuffer;
+    UniversalFence:TpvVulkanFence;
 begin
 
  inherited Create(aResourceManager,aParent,aMetaResource);
@@ -21171,13 +21175,39 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                []);
   end;
-  fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+  if fRaytracingActive then begin
+   fGlobalVulkanDescriptorSetLayout.AddBinding(4,
+                                               VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                               [],
+                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
+   fGlobalVulkanDescriptorSetLayout.AddBinding(5,
+                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                               1,
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                               [],
+                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
+   fGlobalVulkanDescriptorSetTextureBindingIndex:=6;
+  end else begin
+   fGlobalVulkanDescriptorSetTextureBindingIndex:=4;
+  end;
+  fGlobalVulkanDescriptorSetLayout.AddBinding(fGlobalVulkanDescriptorSetTextureBindingIndex,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                               length(fImageInfos),
                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
-                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                                              IfThen(fRaytracingActive,TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0),
                                               [],
                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT) or
                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT) or
@@ -21237,6 +21267,76 @@ begin
  end;
 
  fOnNodeFilter:=nil;
+
+ if assigned(fVulkanDevice) and fRaytracingActive then begin
+
+  fVulkanFrameGraphStagingQueue:=fVulkanDevice.UniversalQueue;
+
+  fVulkanFrameGraphStagingCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                                   fVulkanDevice.UniversalQueueFamilyIndex,
+                                                                   TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  fVulkanFrameGraphStagingCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanFrameGraphStagingCommandPool,
+                                                                       VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+  fVulkanFrameGraphStagingFence:=TpvVulkanFence.Create(fVulkanDevice);
+
+  try
+
+   UniversalQueue:=fVulkanDevice.UniversalQueue;
+   try
+
+    UniversalCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                      fVulkanDevice.UniversalQueueFamilyIndex,
+                                                      TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+    try
+
+     UniversalCommandBuffer:=TpvVulkanCommandBuffer.Create(UniversalCommandPool,
+                                                           VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     try
+
+      UniversalFence:=TpvVulkanFence.Create(fVulkanDevice);
+      try
+
+       UniversalCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+       UniversalCommandBuffer.BeginRecording;
+
+       UpdateRaytracing(UniversalCommandBuffer,0,true);
+
+       UniversalCommandBuffer.EndRecording;
+       UniversalCommandBuffer.Execute(UniversalQueue,
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                      nil,nil,
+                                      UniversalFence,
+                                      true);
+
+      finally
+       FreeAndNil(UniversalFence);
+      end;
+
+     finally
+      FreeAndNil(UniversalCommandBuffer);
+     end;
+
+    finally
+     FreeAndNil(UniversalCommandPool);
+    end;
+
+   finally
+    UniversalQueue:=nil;
+   end;
+
+  finally
+
+   FreeAndNil(fVulkanFrameGraphStagingFence);
+
+   FreeAndNil(fVulkanFrameGraphStagingCommandBuffer);
+
+   FreeAndNil(fVulkanFrameGraphStagingCommandPool);
+
+  end;
+
+ end;
 
 end;
 
@@ -21936,7 +22036,10 @@ begin
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) or
                                                                     TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT),
                                                                     length(fImageInfos)*length(fGlobalVulkanDescriptorSets));
-        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*3);
+        if fRaytracingActive then begin
+         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,length(fGlobalVulkanDescriptorSets)*1);
+        end;
+        fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,length(fGlobalVulkanDescriptorSets)*IfThen(fRaytracingActive,4,3));
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,length(fGlobalVulkanDescriptorSets)*5);
         fGlobalVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,length(fGlobalVulkanDescriptorSets)*length(fImageInfos));
         fGlobalVulkanDescriptorPool.Initialize;
@@ -22252,7 +22355,30 @@ begin
                                                                   [],
                                                                   false);
          end;
-         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+         if fRaytracingActive then begin
+          if assigned(fRaytracingTLAS) then begin
+           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(4,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
+                                                                   [],
+                                                                   [],
+                                                                   [],
+                                                                   [fRaytracingTLAS.AccelerationStructure],
+                                                                   false);
+          end;
+          if assigned(fGPURaytracingDataVulkanBuffer) then begin
+           fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
+                                                                   0,
+                                                                   1,
+                                                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                                   [],
+                                                                   [fGPURaytracingDataVulkanBuffer.DescriptorBufferInfo],
+                                                                   [],
+                                                                   false);
+          end;
+         end;
+         fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(fGlobalVulkanDescriptorSetTextureBindingIndex,
                                                                  0,
                                                                  length(fImageInfos),
                                                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -23189,7 +23315,7 @@ begin
    try
     if fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]<>fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex] then begin
      fInFlightFrameImageInfoImageDescriptorUploadedGenerations[aInFlightFrameIndex]:=fInFlightFrameImageInfoImageDescriptorGenerations[aInFlightFrameIndex];
-     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(fGlobalVulkanDescriptorSetTextureBindingIndex,
                                                                            0,
                                                                            length(fInFlightFrameImageInfos[aInFlightFrameIndex]),
                                                                            TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),

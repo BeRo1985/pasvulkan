@@ -151,6 +151,7 @@ type TpvScene3DRenderer=class;
        fVirtualRealityHUDWidth:TpvInt32;
        fVirtualRealityHUDHeight:TpvInt32;
        fBufferDeviceAddress:boolean;
+       fRaytracingActive:boolean;
        fMeshFragTypeName:TpvUTF8String;
        fMeshFragGlobalIlluminationTypeName:TpvUTF8String;
        fMeshFragShadowTypeName:TpvUTF8String;
@@ -233,6 +234,7 @@ type TpvScene3DRenderer=class;
        property VirtualRealityHUDWidth:TpvInt32 read fVirtualRealityHUDWidth write fVirtualRealityHUDWidth;
        property VirtualRealityHUDHeight:TpvInt32 read fVirtualRealityHUDHeight write fVirtualRealityHUDHeight;
        property BufferDeviceAddress:boolean read fBufferDeviceAddress;
+       property RaytracingActive:boolean read fRaytracingActive;
        property MeshFragTypeName:TpvUTF8String read fMeshFragTypeName;
        property MeshFragGlobalIlluminationTypeName:TpvUTF8String read fMeshFragGlobalIlluminationTypeName;
        property MeshFragShadowTypeName:TpvUTF8String read fMeshFragShadowTypeName;
@@ -591,8 +593,15 @@ begin
  fShadowMapSize:=Max(16,fShadowMapSize);
 
  fBufferDeviceAddress:=fScene3D.UseBufferDeviceAddress;
+
+ fRaytracingActive:=fScene3D.RaytracingActive;
+
  if fBufferDeviceAddress then begin
-  fMeshFragTypeName:='matbufref';
+  if fRaytracingActive then begin
+   fMeshFragTypeName:='matbufref_raytracing';
+  end else begin
+   fMeshFragTypeName:='matbufref';
+  end;
  end else begin
   fMeshFragTypeName:='matssbo';
  end;

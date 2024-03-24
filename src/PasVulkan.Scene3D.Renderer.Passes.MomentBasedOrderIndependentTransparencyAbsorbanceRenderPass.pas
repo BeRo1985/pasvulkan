@@ -241,7 +241,11 @@ begin
 
  /// --
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_vert.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_vert.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_vert.spv');
+ end;
  try
   fParticleVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
 //fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleVertexShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleVertexShaderModule');
@@ -249,7 +253,11 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_mboit_pass1_frag.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_mboit_pass1_frag.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_mboit_pass1_frag.spv');
+ end;
  try
   fParticleFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
 //fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleFragmentShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleFragmentShaderModule');

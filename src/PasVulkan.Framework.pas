@@ -261,6 +261,8 @@ type EpvVulkanException=class(Exception);
      TVkSpecializationMapEntryArray=array of TVkSpecializationMapEntry;
      TVkPipelineCacheArray=array of TVkPipelineCache;
      TVkBufferImageCopyArray=array of TVkBufferImageCopy;
+     TVkAccelerationStructureKHRArray=array of TVkAccelerationStructureKHR;
+     TVkWriteDescriptorSetAccelerationStructureKHRArray=array of TVkWriteDescriptorSetAccelerationStructureKHR;
 
      TVkUInt32DynamicArray=TpvDynamicArray<TVkUInt32>;
 
@@ -2650,6 +2652,7 @@ type EpvVulkanException=class(Exception);
       ImageInfo:array of TVkDescriptorImageInfo;
       BufferInfo:array of TVkDescriptorBufferInfo;
       TexelBufferView:array of TVkBufferView;
+      AccelerationStructureInfo:array of TVkAccelerationStructureKHR;
      end;
 
      TpvVulkanDescriptorSetWriteDescriptorSetMetaDataArray=array of TpvVulkanDescriptorSetWriteDescriptorSetMetaData;
@@ -2670,6 +2673,8 @@ type EpvVulkanException=class(Exception);
        fWriteDescriptorSetQueue:TVkWriteDescriptorSetArray;
        fWriteDescriptorSetQueueMetaData:TpvVulkanDescriptorSetWriteDescriptorSetMetaDataArray;
        fWriteDescriptorSetQueueSize:TpvInt32;
+       fWriteDescriptorSetAccelerationStructureKHRQueue:TVkWriteDescriptorSetAccelerationStructureKHRArray;
+       fWriteDescriptorSetAccelerationStructureKHRQueueSize:TpvInt32;
       public
        constructor Create(const aDescriptorPool:TpvVulkanDescriptorPool;
                           const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout);
@@ -2690,7 +2695,16 @@ type EpvVulkanException=class(Exception);
                                       const aImageInfo:array of TVkDescriptorImageInfo;
                                       const aBufferInfo:array of TVkDescriptorBufferInfo;
                                       const aTexelBufferView:array of TVkBufferView;
-                                      const aDoInstant:boolean=false);
+                                      const aAccelerationStructureInfo:array of TVkAccelerationStructureKHR;
+                                      const aDoInstant:boolean=false); overload;
+       procedure WriteToDescriptorSet(const aDestinationBinding:TpvUInt32;
+                                      const aDestinationArrayElement:TpvUInt32;
+                                      const aDescriptorCount:TpvUInt32;
+                                      const aDescriptorType:TVkDescriptorType;
+                                      const aImageInfo:array of TVkDescriptorImageInfo;
+                                      const aBufferInfo:array of TVkDescriptorBufferInfo;
+                                      const aTexelBufferView:array of TVkBufferView;
+                                      const aDoInstant:boolean=false); overload;
        procedure Flush;
       published
        property Device:TpvVulkanDevice read fDevice;
@@ -20460,6 +20474,9 @@ begin
  fWriteDescriptorSetQueueMetaData:=nil;
  fWriteDescriptorSetQueueSize:=0;
 
+ fWriteDescriptorSetAccelerationStructureKHRQueue:=nil;
+ fWriteDescriptorSetAccelerationStructureKHRQueueSize:=0;
+
  FillChar(fDescriptorSetAllocateInfo,SizeOf(TVkDescriptorSetAllocateInfo),#0);
  fDescriptorSetAllocateInfo.sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
  fDescriptorSetAllocateInfo.descriptorPool:=fDescriptorPool.fDescriptorPoolHandle;
@@ -20494,9 +20511,10 @@ begin
   fDevice.fDeviceVulkan.FreeDescriptorSets(fDevice.fDeviceHandle,fDescriptorPool.fDescriptorPoolHandle,1,@fDescriptorSetHandle);
   fDescriptorSetHandle:=VK_NULL_HANDLE;
  end;
- SetLength(fCopyDescriptorSetQueue,0);
- SetLength(fWriteDescriptorSetQueue,0);
- SetLength(fWriteDescriptorSetQueueMetaData,0);
+ fCopyDescriptorSetQueue:=nil;
+ fWriteDescriptorSetQueue:=nil;
+ fWriteDescriptorSetQueueMetaData:=nil;
+ fWriteDescriptorSetAccelerationStructureKHRQueue:=nil;
  inherited Destroy;
 end;
 
@@ -20561,11 +20579,22 @@ procedure TpvVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:
                                                       const aImageInfo:array of TVkDescriptorImageInfo;
                                                       const aBufferInfo:array of TVkDescriptorBufferInfo;
                                                       const aTexelBufferView:array of TVkBufferView;
-                                                      const aDoInstant:boolean=false);
+                                                      const aAccelerationStructureInfo:array of TVkAccelerationStructureKHR;
+                                                      const aDoInstant:boolean);
  procedure InstantWriteToDescriptorSet;
  var WriteDescriptorSet:TVkWriteDescriptorSet;
+     WriteDescriptorSetAccelerationStructureKHR:TVkWriteDescriptorSetAccelerationStructureKHR;
  begin
   FillChar(WriteDescriptorSet,SizeOf(TVkWriteDescriptorSet),#0);
+  WriteDescriptorSet.pNext:=nil;
+  if length(aAccelerationStructureInfo)>0 then begin
+   FillChar(WriteDescriptorSetAccelerationStructureKHR,SizeOf(TVkWriteDescriptorSetAccelerationStructureKHR),#0);
+   WriteDescriptorSetAccelerationStructureKHR.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+   WriteDescriptorSetAccelerationStructureKHR.pNext:=WriteDescriptorSet.pNext;
+   WriteDescriptorSetAccelerationStructureKHR.accelerationStructureCount:=length(aAccelerationStructureInfo);
+   WriteDescriptorSetAccelerationStructureKHR.pAccelerationStructures:=@aAccelerationStructureInfo[0];
+   WriteDescriptorSet.pNext:=@WriteDescriptorSetAccelerationStructureKHR;
+  end;
   WriteDescriptorSet.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
   WriteDescriptorSet.dstSet:=fDescriptorSetHandle;
   WriteDescriptorSet.dstBinding:=aDestinationBinding;
@@ -20607,6 +20636,7 @@ begin
   WriteDescriptorSet:=@fWriteDescriptorSetQueue[Index];
   WriteDescriptorSetMetaData:=@fWriteDescriptorSetQueueMetaData[Index];
   FillChar(WriteDescriptorSet^,SizeOf(TVkWriteDescriptorSet),#0);
+  WriteDescriptorSet^.pNext:=nil;
   WriteDescriptorSet^.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
   WriteDescriptorSet^.dstSet:=fDescriptorSetHandle;
   WriteDescriptorSet^.dstBinding:=aDestinationBinding;
@@ -20619,6 +20649,7 @@ begin
   WriteDescriptorSetMetaData^.ImageInfo:=nil;
   WriteDescriptorSetMetaData^.BufferInfo:=nil;
   WriteDescriptorSetMetaData^.TexelBufferView:=nil;
+  WriteDescriptorSetMetaData^.AccelerationStructureInfo:=nil;
   if length(aImageInfo)>0 then begin
    SetLength(WriteDescriptorSetMetaData^.ImageInfo,length(aImageInfo));
    Move(aImageInfo[0],WriteDescriptorSetMetaData^.ImageInfo[0],length(aImageInfo)*SizeOf(TVkDescriptorImageInfo));
@@ -20631,17 +20662,49 @@ begin
    SetLength(WriteDescriptorSetMetaData^.TexelBufferView,length(aTexelBufferView));
    Move(aTexelBufferView[0],WriteDescriptorSetMetaData^.TexelBufferView[0],length(aTexelBufferView)*SizeOf(TVkBufferView));
   end;
+  if length(aAccelerationStructureInfo)>0 then begin
+   SetLength(WriteDescriptorSetMetaData^.AccelerationStructureInfo,length(aAccelerationStructureInfo));
+   Move(aAccelerationStructureInfo[0],WriteDescriptorSetMetaData^.AccelerationStructureInfo[0],length(aAccelerationStructureInfo)*SizeOf(TVkAccelerationStructureKHR));
+   inc(fWriteDescriptorSetAccelerationStructureKHRQueueSize);
+  end;
  end;
 end;
 
+procedure TpvVulkanDescriptorSet.WriteToDescriptorSet(const aDestinationBinding:TpvUInt32;
+                                                      const aDestinationArrayElement:TpvUInt32;
+                                                      const aDescriptorCount:TpvUInt32;
+                                                      const aDescriptorType:TVkDescriptorType;
+                                                      const aImageInfo:array of TVkDescriptorImageInfo;
+                                                      const aBufferInfo:array of TVkDescriptorBufferInfo;
+                                                      const aTexelBufferView:array of TVkBufferView;
+                                                      const aDoInstant:boolean);
+begin
+ WriteToDescriptorSet(aDestinationBinding,
+                      aDestinationArrayElement,
+                      aDescriptorCount,
+                      aDescriptorType,
+                      aImageInfo,
+                      aBufferInfo,
+                      aTexelBufferView,
+                      [],
+                      aDoInstant);
+end;
+
 procedure TpvVulkanDescriptorSet.Flush;
-var Index:TpvInt32;
+var Index,WriteDescriptorSetAccelerationStructureKHRQueueIndex:TpvInt32;
     WriteDescriptorSet:PVkWriteDescriptorSet;
     WriteDescriptorSetMetaData:PpvVulkanDescriptorSetWriteDescriptorSetMetaData;
+    WriteDescriptorSetAccelerationStructureKHR:PVkWriteDescriptorSetAccelerationStructureKHR;
 begin
  if fWriteDescriptorSetQueueSize>0 then begin
+  if (fWriteDescriptorSetAccelerationStructureKHRQueueSize>0) and
+     (length(fWriteDescriptorSetAccelerationStructureKHRQueue)<=fWriteDescriptorSetAccelerationStructureKHRQueueSize) then begin
+   SetLength(fWriteDescriptorSetAccelerationStructureKHRQueue,(fWriteDescriptorSetAccelerationStructureKHRQueueSize+1)*2);
+  end;
+  WriteDescriptorSetAccelerationStructureKHRQueueIndex:=0;
   for Index:=0 to fWriteDescriptorSetQueueSize-1 do begin
    WriteDescriptorSet:=@fWriteDescriptorSetQueue[Index];
+   WriteDescriptorSet^.pNext:=nil;
    WriteDescriptorSetMetaData:=@fWriteDescriptorSetQueueMetaData[Index];
    if length(WriteDescriptorSetMetaData^.ImageInfo)>0 then begin
     WriteDescriptorSet^.pImageInfo:=@WriteDescriptorSetMetaData^.ImageInfo[0];
@@ -20658,6 +20721,16 @@ begin
    end else begin
     WriteDescriptorSet^.pTexelBufferView:=nil;
    end;
+   if length(WriteDescriptorSetMetaData^.AccelerationStructureInfo)>0 then begin
+    WriteDescriptorSetAccelerationStructureKHR:=@fWriteDescriptorSetAccelerationStructureKHRQueue[WriteDescriptorSetAccelerationStructureKHRQueueIndex];
+    inc(WriteDescriptorSetAccelerationStructureKHRQueueIndex);
+    FillChar(WriteDescriptorSetAccelerationStructureKHR^,SizeOf(TVkWriteDescriptorSetAccelerationStructureKHR),#0);
+    WriteDescriptorSetAccelerationStructureKHR^.sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    WriteDescriptorSetAccelerationStructureKHR^.pNext:=WriteDescriptorSet^.pNext;
+    WriteDescriptorSetAccelerationStructureKHR^.accelerationStructureCount:=length(WriteDescriptorSetMetaData^.AccelerationStructureInfo);
+    WriteDescriptorSetAccelerationStructureKHR^.pAccelerationStructures:=@WriteDescriptorSetMetaData^.AccelerationStructureInfo[0];
+    WriteDescriptorSet^.pNext:=WriteDescriptorSetAccelerationStructureKHR;
+   end;
   end;
   if fCopyDescriptorSetQueueSize>0 then begin
    fDevice.fDeviceVulkan.UpdateDescriptorSets(fDevice.fDeviceHandle,fWriteDescriptorSetQueueSize,@fWriteDescriptorSetQueue[0],fCopyDescriptorSetQueueSize,@fCopyDescriptorSetQueue[0]);
@@ -20669,6 +20742,7 @@ begin
  end;
  fCopyDescriptorSetQueueSize:=0;
  fWriteDescriptorSetQueueSize:=0;
+ fWriteDescriptorSetAccelerationStructureKHRQueueSize:=0;
 end;
 
 constructor TpvVulkanPipelineLayout.Create(const aDevice:TpvVulkanDevice);

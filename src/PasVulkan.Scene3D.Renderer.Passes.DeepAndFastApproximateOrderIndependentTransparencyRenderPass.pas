@@ -289,7 +289,11 @@ begin
 
  /// --
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_vert.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_vert.spv');
+ end else begin
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_vert.spv');
+ end;
  try
   fParticleVertexShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
 //fFrameGraph.VulkanDevice.DebugMarker.SetObjectName(fParticleVertexShaderModule.Handle,TVkDebugReportObjectTypeEXT.VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,'fParticleVertexShaderModule');
@@ -310,17 +314,33 @@ begin
   end;
  end;
 
- if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_reversedz_'+OITVariant+'_dfaoit_frag.spv');
+ if fInstance.Renderer.Scene3D.RaytracingActive then begin
+  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   if fInstance.ZFar<0.0 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_reversedz_'+OITVariant+'_dfaoit_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_'+OITVariant+'_dfaoit_frag.spv');
+   end;
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_'+OITVariant+'_dfaoit_frag.spv');
+   if fInstance.ZFar<0.0 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_reversedz_msaa_'+OITVariant+'_dfaoit_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_raytracing_msaa_'+OITVariant+'_dfaoit_frag.spv');
+   end;
   end;
  end else begin
-  if fInstance.ZFar<0.0 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_reversedz_msaa_'+OITVariant+'_dfaoit_frag.spv');
+  if fInstance.Renderer.SurfaceSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+   if fInstance.ZFar<0.0 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_reversedz_'+OITVariant+'_dfaoit_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_'+OITVariant+'_dfaoit_frag.spv');
+   end;
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_msaa_'+OITVariant+'_dfaoit_frag.spv');
+   if fInstance.ZFar<0.0 then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_reversedz_msaa_'+OITVariant+'_dfaoit_frag.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('particle_msaa_'+OITVariant+'_dfaoit_frag.spv');
+   end;
   end;
  end;
  try

@@ -294,6 +294,8 @@ compileshaderarguments=(
 
   "-V particle.vert -o ${tempPath}/particle_vert.spv"
   "-V particle.vert -DVOXELIZATION -o ${tempPath}/particle_voxelization_vert.spv"
+  "-V particle.vert -DRAYTRACING -o ${tempPath}/particle_raytracing_vert.spv"
+  "-V particle.vert -DRAYTRACING -DVOXELIZATION -o ${tempPath}/particle_raytracing_voxelization_vert.spv"
 
   "-V resampling.frag -o ${tempPath}/resampling_frag.spv"
    
@@ -450,6 +452,13 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DMSM -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_msm_frag.spv"
   "-V planet_renderpass.frag -DMSM -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_external_msm_frag.spv"
   "-V planet_renderpass.frag -DMSM -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_velocity_external_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_velocity_external_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_wireframe_external_msm_frag.spv"
+  "-V planet_renderpass.frag -DMSM -DRAYTRACING -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_external_msm_frag.spv"
 
   # PCFPCSS
   "-V planet_renderpass.frag -DPCFPCSS -o ${tempPath}/planet_renderpass_pcfpcss_frag.spv"
@@ -459,6 +468,13 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_wireframe_velocity_pcfpcss_frag.spv"
   "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_external_pcfpcss_frag.spv"
   "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_wireframe_velocity_external_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -o ${tempPath}/planet_renderpass_raytracing_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_velocity_external_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_wireframe_external_pcfpcss_frag.spv"
+  "-V planet_renderpass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -DEXTERNAL_VERTICES -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_external_pcfpcss_frag.spv"
     
 )
 
