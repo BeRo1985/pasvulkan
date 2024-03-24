@@ -23126,6 +23126,8 @@ var PlanetIndex,PassIndex:TpvSizeInt;
     CommandBuffer:TpvVulkanCommandBuffer;
     CommandBufferHandle:TVkCommandBuffer;
     BeginTime:TpvHighResolutionTime;
+    VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
+    VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
 begin
 
  //exit;
@@ -23198,6 +23200,26 @@ begin
                                                                            [],
                                                                            [fRaytracingTLAS.AccelerationStructure],
                                                                            true);
+
+    end;
+
+    begin
+
+     VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.BufferData;
+     VulkanLongTermStaticBufferData:=fVulkanLongTermStaticBuffers.BufferData;
+
+     fGPURaytracingData.MeshStaticVertices:=VulkanLongTermStaticBufferData.fVulkanStaticVertexBuffer.DeviceAddress;
+     fGPURaytracingData.MeshIndices:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
+     fGPURaytracingData.MeshDynamicVertices:=VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer.DeviceAddress;
+
+     fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
+                                        fVulkanFrameGraphStagingCommandBuffer,
+                                        fVulkanFrameGraphStagingFence,
+                                        fGPURaytracingData,
+                                        fGPURaytracingDataVulkanBuffer,
+                                        0,
+                                        SizeOf(TGPURaytracingData));
+
 
     end;
 
