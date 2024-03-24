@@ -1194,10 +1194,10 @@ begin
 
   if fInstance.GlobalIlluminationCascadedVoxelConeTracingDebugVisualization then begin
 
-   fSkyBox.Draw(aInFlightFrameIndex,
+{  fSkyBox.Draw(aInFlightFrameIndex,
                 InFlightFrameState^.FinalViewIndex,
                 InFlightFrameState^.CountFinalViews,
-                aCommandBuffer);
+                aCommandBuffer);//}
 
    if assigned(fVoxelMeshVisualization) then begin
     fVoxelMeshVisualization.Draw(aInFlightFrameIndex,
