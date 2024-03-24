@@ -3211,7 +3211,7 @@ type EpvScene3D=class(Exception);
        fNewInstanceListLock:TPasMPSlimReaderWriterLock;
        fNewInstances:TpvScene3D.TGroup.TInstances;
        fGPURaytracingData:TGPURaytracingData;
-       fGPURaytracingDataVulkanBuffer:TpvVulkanBuffer;        
+       fGPURaytracingDataVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fProcessFrameTimerQueries:TTimerQueries;
        fLastProcessFrameTimerQueryResults:TpvTimerQuery.TResults;
        fLastProcessFrameCPUTimeValues:array of TpvHighResolutionTime;
@@ -21006,26 +21006,30 @@ begin
 
    FillChar(fGPURaytracingData,SizeOf(TGPURaytracingData),#0);
 
-   fGPURaytracingDataVulkanBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                          SizeOf(TGPURaytracingData),
-                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
-                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                          [],
-                                                          0,
-                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          [],
-                                                          0,
-                                                          pvAllocationGroupIDScene3DRaytracing);
+   FillChar(fGPURaytracingDataVulkanBuffers,SizeOf(fGPURaytracingDataVulkanBuffers),#0);
+
+   for Index:=0 to fCountInFlightFrames-1 do begin
+    fGPURaytracingDataVulkanBuffers[Index]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                   SizeOf(TGPURaytracingData),
+                                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                   [],
+                                                                   0,
+                                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                   0,
+                                                                   0,
+                                                                   0,
+                                                                   0,
+                                                                   0,
+                                                                   0,
+                                                                   [],
+                                                                   0,
+                                                                   pvAllocationGroupIDScene3DRaytracing);
+   end;
 
   end else begin
 
-   fGPURaytracingDataVulkanBuffer:=nil;         
+   FillChar(fGPURaytracingDataVulkanBuffers,SizeOf(fGPURaytracingDataVulkanBuffers),#0);
 
   end;
 
@@ -21420,7 +21424,9 @@ begin
 
  FreeAndNil(fLightAABBTree);
 
- FreeAndNil(fGPURaytracingDataVulkanBuffer);
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fGPURaytracingDataVulkanBuffers[Index]);
+ end;
 
  FreeAndNil(fGeneralComputeSampler);
 
@@ -22378,13 +22384,13 @@ begin
                                                                    [fRaytracingTLAS.AccelerationStructure],
                                                                    false);
           end;
-          if assigned(fGPURaytracingDataVulkanBuffer) then begin
+          if assigned(fGPURaytracingDataVulkanBuffers[Index]) then begin
            fGlobalVulkanDescriptorSets[Index].WriteToDescriptorSet(5,
                                                                    0,
                                                                    1,
                                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                                                    [],
-                                                                   [fGPURaytracingDataVulkanBuffer.DescriptorBufferInfo],
+                                                                   [fGPURaytracingDataVulkanBuffers[Index].DescriptorBufferInfo],
                                                                    [],
                                                                    false);
           end;
@@ -23216,7 +23222,7 @@ begin
                                         fVulkanFrameGraphStagingCommandBuffer,
                                         fVulkanFrameGraphStagingFence,
                                         fGPURaytracingData,
-                                        fGPURaytracingDataVulkanBuffer,
+                                        fGPURaytracingDataVulkanBuffers[aInFlightFrameIndex],
                                         0,
                                         SizeOf(TGPURaytracingData));
 
