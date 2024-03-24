@@ -3164,6 +3164,7 @@ type EpvScene3D=class(Exception);
        fRaytracingTLASBLASInstancesBuffer:TpvVulkanBuffer;
        fRaytracingTLASBuffer:TpvVulkanBuffer;
        fRaytracingTLAS:TpvRaytracingTopLevelAccelerationStructure;
+       fRaytracingTLASAccelerationStructures:array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -20778,6 +20779,10 @@ begin
 
  fRaytracingTLAS:=nil;
 
+ for Index:=Low(fRaytracingTLASAccelerationStructures) to High(fRaytracingTLASAccelerationStructures)-1 do begin
+  fRaytracingTLASAccelerationStructures[Index]:=VK_NULL_HANDLE;
+ end;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -21324,6 +21329,12 @@ begin
 
    finally
     UniversalQueue:=nil;
+   end;
+
+   if assigned(fRaytracingTLAS) then begin
+    for Index:=Low(fRaytracingTLASAccelerationStructures) to High(fRaytracingTLASAccelerationStructures)-1 do begin
+     fRaytracingTLASAccelerationStructures[Index]:=fRaytracingTLAS.AccelerationStructure;
+    end;
    end;
 
   finally
@@ -23169,11 +23180,30 @@ begin
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
 
    if fRaytracingActive then begin
+
     fProcessFrameTimerQueryUpdateRaytracingIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Raytracing update');
     BeginTime:=pvApplication.HighResolutionTimer.GetTime;
+
     UpdateRaytracing(CommandBuffer,aInFlightFrameIndex,true);
+
+    if assigned(fRaytracingTLAS) and
+       (fRaytracingTLASAccelerationStructures[aInFlightFrameIndex]<>fRaytracingTLAS.AccelerationStructure) then begin
+     fRaytracingTLASAccelerationStructures[aInFlightFrameIndex]:=fRaytracingTLAS.AccelerationStructure;
+     fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                           0,
+                                                                           1,
+                                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR),
+                                                                           [],
+                                                                           [],
+                                                                           [],
+                                                                           [fRaytracingTLAS.AccelerationStructure],
+                                                                           true);
+
+    end;
+
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
     fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
+
    end else begin
     fProcessFrameTimerQueryUpdateRaytracingIndex:=-1;
     fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUpdateRaytracingIndex]:=0;
