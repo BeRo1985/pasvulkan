@@ -126,7 +126,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
 
 #ifdef RAYTRACING
 
-layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer PlanetDataArray {
+layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer ReferencedPlanetDataArray {
   PlanetData PlanetData[];
 };
 
@@ -196,8 +196,7 @@ layout(set = 0, std140, binding = 5) uniform RaytracingData {
   RaytracingMeshDynamicVertices meshDynamicVertices;
   RaytracingMeshIndices meshIndices;  
   RaytracingParticleVertices particleVertices;
-  PlanetDataArray PlanetDataArray;
-  RaytracingPlanetVerticesArray planetVerticesArray;
+  ReferencedPlanetDataArray referencedPlanetDataArray;
 } uRaytracingData;
 
 layout(set = 0, binding = 6) uniform sampler2D u2DTextures[];

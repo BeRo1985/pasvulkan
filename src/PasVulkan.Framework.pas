@@ -263,6 +263,7 @@ type EpvVulkanException=class(Exception);
      TVkBufferImageCopyArray=array of TVkBufferImageCopy;
      TVkAccelerationStructureKHRArray=array of TVkAccelerationStructureKHR;
      TVkWriteDescriptorSetAccelerationStructureKHRArray=array of TVkWriteDescriptorSetAccelerationStructureKHR;
+     TVkDeviceAddressArray=array of TVkDeviceAddress;
 
      TVkUInt32DynamicArray=TpvDynamicArray<TVkUInt32>;
 

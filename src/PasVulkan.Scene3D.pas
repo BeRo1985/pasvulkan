@@ -1500,8 +1500,7 @@ type EpvScene3D=class(Exception);
              MeshDynamicVertices:TVkDeviceSize;
              MeshIndices:TVkDeviceSize;
              ParticleVertices:TVkDeviceSize;
-             PlanetBufRefDataArray:TVkDeviceSize;
-             PlanetVerticesArray:TVkDeviceSize;
+             ReferencedPlanetDataArray:TVkDeviceSize;
             end;
             PGPURaytracingData=^TGPURaytracingData;            
             { TVulkanLongTermStaticBufferData }
@@ -3138,6 +3137,8 @@ type EpvScene3D=class(Exception);
        fSkyBoxBrightnessFactor:TpvScalar;
        fLightIntensityFactor:TpvScalar;
        fEmissiveIntensityFactor:TpvScalar;
+       fReferencedPlanetDataBufRefArray:array[0..MaxInFlightFrames-1] of TVkDeviceAddressArray;
+       fReferencedPlanetDataBufRefArrayVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
        fRaytracingLock:TPasMPCriticalSection;
        fRaytracingPrimitiveIDCounter:TpvUInt64;
        fRaytracingGroupInstanceNodeIDCounter:TpvUInt64;
@@ -3278,7 +3279,7 @@ type EpvScene3D=class(Exception);
        procedure EndFrame(const aInFlightFrameIndex:TpvSizeInt;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence);
 //     procedure FinalizeViews(const aInFlightFrameIndex:TpvSizeInt);
        procedure UploadFrame(const aInFlightFrameIndex:TpvSizeInt);
-       procedure UploadFrameData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+       procedure UploadFrameData(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
        procedure PrepareLights(const aInFlightFrameIndex:TpvSizeInt;
                                const aViewBaseIndex:TpvSizeInt;
                                const aCountViews:TpvSizeInt;
@@ -3304,6 +3305,8 @@ type EpvScene3D=class(Exception);
                                       const aInFlightFrameIndex:TpvSizeInt;
                                       const aCommandBuffer:TpvVulkanCommandBuffer;
                                       const aPipelineLayout:TpvVulkanPipelineLayout);
+       procedure UpdatePlanetBufRefArray(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                         const aInFlightFrameIndex:TpvSizeInt);
        procedure UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;
                                   const aInFlightFrameIndex:TpvSizeInt;
                                   const aLabels:Boolean);
@@ -20728,6 +20731,11 @@ begin
 
  fRendererInstanceList:=TpvObjectList.Create(false);
 
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  fReferencedPlanetDataBufRefArray[Index]:=nil;
+  fReferencedPlanetDataBufRefArrayVulkanBuffers[Index]:=nil;
+ end;
+
  fRaytracingLock:=TPasMPCriticalSection.Create;
 
  fRaytracingPrimitiveIDCounter:=0;
@@ -21408,7 +21416,6 @@ begin
 
  FreeAndNil(fVulkanProcessFrameCommandPool);
 
-
  for Index:=0 to fCountInFlightFrames-1 do begin
   FreeAndNil(fGlobalVulkanDescriptorSets[Index]);
  end;
@@ -21666,6 +21673,11 @@ begin
  FreeAndNil(fRaytracingGroupInstanceNodeList);
 
  FreeAndNil(fRaytracingLock);
+
+ for Index:=0 to fCountInFlightFrames-1 do begin
+  FreeAndNil(fReferencedPlanetDataBufRefArrayVulkanBuffers[Index]);
+  fReferencedPlanetDataBufRefArray[Index]:=nil;
+ end;
 
  FreeAndNil(fRendererInstanceIDManager);
 
@@ -23202,7 +23214,8 @@ begin
    fProcessFrameTimerQueryUploadFrameDataIndex:=fProcessFrameTimerQueries[aInFlightFrameIndex].Start(fVulkanProcessFrameQueue,CommandBuffer,'Upload frame data');
    BeginTime:=pvApplication.HighResolutionTimer.GetTime;
    fVulkanDevice.DebugUtils.CmdBufLabelBegin(CommandBuffer,'UploadFrameData',[0.5,0.25,1.0,1.0]);
-   UploadFrameData(aInFlightFrameIndex,CommandBuffer);
+   UploadFrameData(CommandBuffer,aInFlightFrameIndex);
+   UpdatePlanetBufRefArray(CommandBuffer,aInFlightFrameIndex);
    fVulkanDevice.DebugUtils.CmdBufLabelEnd(CommandBuffer);
    fLastProcessFrameCPUTimeValues[fProcessFrameTimerQueryUploadFrameDataIndex]:=pvApplication.HighResolutionTimer.GetTime-BeginTime;
    fProcessFrameTimerQueries[aInFlightFrameIndex].Stop(fVulkanProcessFrameQueue,CommandBuffer);
@@ -23257,10 +23270,11 @@ begin
 
      fGPURaytracingData.ParticleVertices:=fVulkanParticleVertexBuffers[aInFlightFrameIndex].DeviceAddress;
 
-{
-             PlanetBufRefDataArray:TVkDeviceSize;
-             PlanetVerticesArray:TVkDeviceSize;
-}
+     if assigned(fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex]) then begin
+      fGPURaytracingData.ReferencedPlanetDataArray:=fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+     end else begin
+      fGPURaytracingData.ReferencedPlanetDataArray:=0;
+     end;
 
      fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
                                         fVulkanFrameGraphStagingCommandBuffer,
@@ -23688,7 +23702,7 @@ begin
 
 end;
 
-procedure TpvScene3D.UploadFrameData(const aInFlightFrameIndex:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+procedure TpvScene3D.UploadFrameData(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 begin
  if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
   fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Flush(aCommandBuffer);
@@ -24234,6 +24248,92 @@ begin
   end;
 
  end;
+end;
+
+procedure TpvScene3D.UpdatePlanetBufRefArray(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                             const aInFlightFrameIndex:TpvSizeInt);
+var PlanetIndex,Count:TpvSizeInt;
+    Planet:TpvScene3DPlanet;
+    MustReupload:boolean;
+begin
+
+ if fUseBufferDeviceAddress then begin
+
+  TpvScene3DPlanets(fPlanets).Lock.Acquire;
+  try
+
+   MustReupload:=false;
+
+   Count:=0;
+   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+    if Planet.Ready then begin
+     inc(Count);
+    end;
+   end;
+
+   if length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex])<Count then begin
+    SetLength(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex],Count*2);
+    MustReupload:=true;
+   end;
+
+   Count:=0;
+   for PlanetIndex:=0 to TpvScene3DPlanets(fPlanets).Count-1 do begin
+    Planet:=TpvScene3DPlanets(fPlanets).Items[PlanetIndex];
+    if Planet.Ready then begin
+     if fReferencedPlanetDataBufRefArray[aInFlightFrameIndex,Count]<>Planet.PlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress then begin
+      fReferencedPlanetDataBufRefArray[aInFlightFrameIndex,Count]:=Planet.PlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+      MustReupload:=true;
+     end;
+     inc(Count);
+    end;
+   end;
+
+   if (not assigned(fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex])) or
+      (fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex].Size<(length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex])*SizeOf(TVkDeviceAddress))) then begin
+
+    FreeAndNil(fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex]);
+
+    fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                               SizeOf(TVkDeviceAddress)*length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex]),
+                                                                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                               [],
+                                                                                               0,
+                                                                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               0,
+                                                                                               [],
+                                                                                               0,
+                                                                                               pvAllocationGroupIDScene3DPlanetStatic);
+    fVulkanDevice.DebugUtils.SetObjectName(fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fReferencedPlanetDataBufRefArrayVulkanBuffers['+IntToStr(aInFlightFrameIndex)+']');
+
+    MustReupload:=true;
+
+   end;
+
+   if MustReupload then begin
+
+    fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
+                                       fVulkanFrameGraphStagingCommandBuffer,
+                                       fVulkanFrameGraphStagingFence,
+                                       fReferencedPlanetDataBufRefArray[aInFlightFrameIndex][0],
+                                       fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex],
+                                       0,
+                                       length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex])*SizeOf(TVkDeviceAddress));
+
+   end; 
+
+  finally
+   TpvScene3DPlanets(fPlanets).Lock.Release;
+  end;
+
+ end;
+
 end;
 
 procedure TpvScene3D.UpdateRaytracing(const aCommandBuffer:TpvVulkanCommandBuffer;

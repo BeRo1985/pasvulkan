@@ -127,6 +127,7 @@ type TpvScene3DPlanets=class;
 
             end;
             PPlanetData=^TPlanetData;
+            TPlanetDataVulkanBuffers=array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
             TMaterial=record
              AlbedoTexture:TpvUInt32;
              NormalHeightTexture:TpvUInt32;
@@ -932,7 +933,7 @@ type TpvScene3DPlanets=class;
        fInFlightFrameQueueFamilyIndices:TpvVulkanQueueFamilyIndices;
        fPlanetData:TPlanetData;
        fPointerToPlanetData:PPlanetData;
-       fPlanetDataVulkanBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
+       fPlanetDataVulkanBuffers:TPlanetDataVulkanBuffers;
        fMaterials:TMaterials;
        fPointerToMaterials:PMaterials;
        fDescriptorPool:TpvVulkanDescriptorPool;
@@ -1007,7 +1008,8 @@ type TpvScene3DPlanets=class;
        property InFlightFrameDataList:TInFlightFrameDataList read fInFlightFrameDataList;
       public
        property PlanetData:PPlanetData read fPointerToPlanetData;
-       property Materials:PMaterials read fPointerToMaterials; 
+       property PlanetDataVulkanBuffers:TPlanetDataVulkanBuffers read fPlanetDataVulkanBuffers;
+       property Materials:PMaterials read fPointerToMaterials;
        property VisualMeshLODOffsets:TSizeIntArray read fVisualMeshLODOffsets;
        property VisualMeshLODCounts:TSizeIntArray read fVisualMeshLODCounts;
        property PhysicsMeshLODOffsets:TSizeIntArray read fPhysicsMeshLODOffsets;
