@@ -119,8 +119,7 @@ type TpvScene3DPlanets=class;
 
              Flags:TpvUInt32;
              Resolutions:TpvUInt32;
-             Reserved1:TpvUInt32;
-             Reserved2:TpvUInt32;
+             Vertices:TVkDeviceAddress;
 
              Selected:TpvVector4;
 
@@ -762,6 +761,8 @@ type TpvScene3DPlanets=class;
                     TessellationFactor:TpvFloat;
                     Jitter:TpvVector2;
                     FrameIndex:TpvUInt32;
+                    Reversed:TpvUInt32;
+                    PlanetData:TVkDeviceAddress;
                    end;
                    PPushConstants=^TPushConstants;
              private
@@ -1457,7 +1458,9 @@ begin
 
     fVisualMeshVertexBuffers[0]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                         (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshVertex),
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags,
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                        TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags or
+                                                        IfThen(TpvScene3D(fPlanet.fScene3D).UseBufferDeviceAddress,TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),0),
                                                         fPlanet.fGlobalBufferSharingMode,
                                                         fPlanet.fGlobalBufferQueueFamilyIndices,
                                                         0,
@@ -6850,6 +6853,11 @@ begin
       fPushConstants.Jitter:=TpvVector2.Null;
      end;
      fPushConstants.FrameIndex:=aFrameIndex;
+     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+      fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+     end else begin
+      fPushConstants.PlanetData:=0;
+     end;
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
@@ -7421,7 +7429,8 @@ begin
    fPlanetDataVulkanBuffers[InFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                                         SizeOf(TpvScene3DPlanet.TPlanetData),
                                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                        IfThen(TpvScene3D(fScene3D).UseBufferDeviceAddress,TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),0),
                                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                         [],
                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
@@ -8587,6 +8596,11 @@ begin
     fPlanetData.Flags:=fPlanetData.Flags or (1 shl 2);
    end;
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
+   if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+    fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
+   end else begin
+    fPlanetData.Vertices:=0;
+   end;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
 
    for MaterialIndex:=Low(TpvScene3DPlanet.TMaterials) to High(TpvScene3DPlanet.TMaterials) do begin

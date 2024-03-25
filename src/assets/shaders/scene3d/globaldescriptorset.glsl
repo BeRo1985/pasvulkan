@@ -87,10 +87,8 @@ layout(set = 0, binding = 3, std430) readonly buffer Materials {
 #endif // defined(USE_MATERIAL_BUFFER_REFERENCE)
 //#endif // MESHS
 
-#ifdef RAYTRACING
-
 #if 0
-struct RaytracingPlanetBufRefMaterial {
+struct PlanetMaterial {
   uint albedo;
   uint normalHeight;
   uint occlusionRoughnessMetallic;
@@ -101,14 +99,16 @@ struct RaytracingPlanetBufRefMaterial {
 #define GetRaytracingPlanetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).occlusionRoughnessMetallic
 #define GetRaytracingPlanetMaterialScale(m) (m).scale
 #else
-#define RaytracingPlanetBufRefMaterial uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = scale (float)
-#define GetRaytracingPlanetBufRefMaterialAlbedoTextureIndex(m) (m).x
-#define GetRaytracingPlanetBufRefMaterialNormalHeightTextureIndex(m) (m).y
-#define GetRaytracingPlanetBufRefMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).z
-#define GetRaytracingPlanetBufRefMaterialScale(m) (uintBitsToFloat((m).w))
+#define PlanetMaterial uvec4  // x = albedo, y = normalHeight, z = occlusionRoughnessMetallic, w = scale (float)
+#define GetPlanetMaterialAlbedoTextureIndex(m) (m).x
+#define GetPlanetMaterialNormalHeightTextureIndex(m) (m).y
+#define GetPlanetMaterialOcclusionRoughnessMetallicTextureIndex(m) (m).z
+#define GetPlanetMaterialScale(m) (uintBitsToFloat((m).w))
 #endif
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer RaytracingPlanetBufRefData {
+#ifdef RAYTRACING
+
+layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer PlanetData {
 
   mat4 modelMatrix;
 
@@ -116,16 +116,16 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ra
 
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 
-  uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z = unused, w = unused
+  uvec4 flagsResolutionsVertices; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z+w = buffer device address to vertices 
 
   vec4 selected; // xyz = octahedral map coordinates, w = radius   
 
-  RaytracingPlanetBufRefMaterial materials[16];
+  PlanetMaterial materials[16];
 
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer RaytracingPlanetBufRefDataArray {
-  RaytracingPlanetBufRefData planetBufRefData[];
+layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer PlanetDataArray {
+  PlanetData PlanetData[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer RaytracingGeometryInstanceOffsets {
@@ -194,7 +194,7 @@ layout(set = 0, std140, binding = 5) uniform RaytracingData {
   RaytracingMeshDynamicVertices meshDynamicVertices;
   RaytracingMeshIndices meshIndices;  
   RaytracingParticleVertices particleVertices;
-  RaytracingPlanetBufRefDataArray planetBufRefDataArray;
+  PlanetDataArray PlanetDataArray;
   RaytracingPlanetVerticesArray planetVerticesArray;
 } uRaytracingData;
 

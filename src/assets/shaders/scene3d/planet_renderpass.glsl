@@ -1,6 +1,7 @@
 #ifndef PLANET_RENDERPASS_GLSL
 #define PLANET_RENDERPASS_GLSL
 
+#ifndef RAYTRACING
 #if 0
 struct PlanetMaterial {
   uint albedo;
@@ -28,13 +29,14 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
 
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 
-  uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z = unused, w = unused
+  uvec4 flagsResolutionsVertices; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z+w = buffer device address to vertices 
 
   vec4 selected; // xyz = octahedral map coordinates, w = radius   
 
   PlanetMaterial materials[16];
 
 } planetData;
+#endif
 
 layout(push_constant) uniform PushConstants {
 
@@ -48,10 +50,20 @@ layout(push_constant) uniform PushConstants {
   vec2 jitter;
 
   int frameIndex; 
+  int reversed;
+#ifdef RAYTRACING // Raytracing needs buffer device address anyway, so just use it here also!
+  PlanetData planetData;
+#else
+  uvec2 unusedPlanetData; // Ignored in this case  
+#endif
 
 } pushConstants;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef RAYTRACING
+PlanetData planetData = pushConstants.planetData; // For to avoid changing the code below
+#endif
 
 PlanetMaterial layerMaterials[4];
 vec4 layerMaterialWeights;

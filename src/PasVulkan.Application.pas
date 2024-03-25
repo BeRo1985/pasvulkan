@@ -7071,6 +7071,12 @@ begin
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
+
+{$if defined(Linux)}
+ SDL_SetHint('SDL_VIDEODRIVER','wayland,x11');
+ SDL_SetHint(SDL_HINT_VIDEO_DRIVER,'wayland,x11');
+{$ifend}
+
 {$else}
 {$ifend}
 
