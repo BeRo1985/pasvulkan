@@ -40,9 +40,9 @@
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
 #if defined(RAYTRACING)
-            vec3 rayOrigin = inWorldSpacePosition.xyz;// + (normal.xyz * 1e-3);
-            vec3 rayNormal = normal.xyz;
-            float rayOffset = 1e-3;
+            vec3 rayOrigin = inWorldSpacePosition.xyz;
+            vec3 rayNormal = triangleNormal;
+            float rayOffset = 0.0;
 #endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
             if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {

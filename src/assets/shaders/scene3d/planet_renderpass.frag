@@ -190,6 +190,13 @@ void main(){
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
+#ifdef RAYTRACING
+  vec3 triangleNormal = normalize(cross(dFdy(inBlock.worldSpacePosition), dFdx(inBlock.worldSpacePosition)));
+  if(dot(triangleNormal, normal) < 0.0){
+    triangleNormal = -triangleNormal;
+  }
+#endif
+
   tangentSpaceBasis = mat3(tangent, bitangent, normal);
 
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);

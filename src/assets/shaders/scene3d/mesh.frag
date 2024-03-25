@@ -644,6 +644,12 @@ void main() {
     workBitangent = inBitangent * frontFacingSign;
     workNormal = inNormal * frontFacingSign;
   }
+#ifdef RAYTRACING
+  vec3 triangleNormal = normalize(cross(dFdy(inWorldSpacePosition), dFdx(inWorldSpacePosition)));
+  if(dot(triangleNormal, inNormal) < 0.0){
+    triangleNormal = -triangleNormal;
+  }
+#endif
 #if defined(USE_MATERIAL_BUFFER_REFERENCE) && !defined(USE_INT64)
   material = uMaterials.materials;
   {

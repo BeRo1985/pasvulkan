@@ -6,22 +6,23 @@
 vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
 #if 0
   return fma(mix(normal, direction, abs(dot(normal, direction))), 1e-3, p);
-#elif 0
-  const vec4 values = vec4(1e-4, 1e-3, 1e-3, 0.0); // slope bias offset, normal bias scale, slope bias scale, maximal offset 
+#elif 1
+  const float slopeBiasOffset = 1e-4, normalBiasScale = 5e-3, slopeBiasScale = 5e-3, maxOffset = 0.0;
   float cosAlpha = clamp(dot(normal, direction), 0.0, 1.0);
   float offsetScaleN = sqrt(1.0 - (cosAlpha * cosAlpha));  // sin(acos(D·N))
   float offsetScaleD = offsetScaleN / max(5e-4, cosAlpha); // tan(acos(D·N))
-  vec2 offsets = fma(vec2(offsetScaleN, min(2.0, offsetScaleD)), vec2(values.yz), vec2(0.0, values.x));
-  if(values.w > 1e-6){
-    offsets.xy = clamp(offsets.xy, vec2(-values.w), vec2(values.w));
+  vec2 offsets = fma(vec2(offsetScaleN, min(2.0, offsetScaleD)), vec2(normalBiasScale, slopeBiasScale), vec2(0.0, slopeBiasOffset));
+  if(maxOffset > 1e-6){
+    offsets.xy = clamp(offsets.xy, vec2(-maxOffset), vec2(maxOffset));
   }
   return position + (normal * offsets.x) + (direction * offsets.y);
 #else
   // Based on: A Fast and Robust Method for Avoiding Self-Intersection - Carsten Wächter & Nikolaus Binder - 26 February 2019
   // Implementation as optimized GLSL code by Benjamin Rosseaux - 2024
-  const float origin = 1.0 / 32.0, floatScale = 1.0 / 65536.0, intScale = 256.0; 
+  const float origin = 1.0 / 32.0, floatScale = 1.0 / 65536.0, intScale = 256.0, directionScale = 1.0 / 1024.0;
   vec3 pI = intBitsToFloat(floatBitsToInt(position) + (ivec3(vec3(normal * intScale)) * ivec3(ivec3(1) - (ivec3(lessThan(position, ivec3(0))) << ivec3(1)))));
-  return mix(pI, fma(normal, vec3(floatScale), position), vec3(lessThan(abs(position), vec3(origin))));
+  return mix(pI, fma(normal, vec3(floatScale), position), vec3(lessThan(abs(position), vec3(origin)))) + 
+         (direction * directionScale); // and for additional safety a small offset in the direction of the ray
 #endif
 }
 
