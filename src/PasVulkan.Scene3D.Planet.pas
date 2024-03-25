@@ -6079,7 +6079,7 @@ constructor TpvScene3DPlanet.TRenderPass.Create(const aRenderer:TObject;
 var Stream:TStream;
     Kind:TpvUTF8String;
     ShadowKind:TpvUTF8String;
-    RaytracingKind:TpvUTF8String;
+    TopLevelKind:TpvUTF8String;
 begin
 
  inherited Create;
@@ -6139,15 +6139,17 @@ begin
   end;
 
   if TpvScene3D(fScene3D).RaytracingActive then begin
-   RaytracingKind:='raytracing_';
+   TopLevelKind:='raytracing_';
+  end else if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+   TopLevelKind:='bufref_';
   end else begin
-   RaytracingKind:='';
+   TopLevelKind:='';
   end;
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+'velocity_vert.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_vert.spv');
   end else begin 
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+'vert.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'vert.spv');
   end;
   try
    fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -6179,9 +6181,9 @@ begin
   end else begin
 
    if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+'velocity_tesc.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_tesc.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+'tesc.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'tesc.spv');
    end;
    try
     fTessellationControlShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -6192,9 +6194,9 @@ begin
    fVulkanDevice.DebugUtils.SetObjectName(fTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationControlShaderModule');
 
    if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+'velocity_tese.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_tese.spv');
    end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+'tese.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'tese.spv');
    end;
    try
     fTessellationEvaluationShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
@@ -6219,7 +6221,7 @@ begin
    
    TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
    
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+'rsm_frag.spv');
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'rsm_frag.spv');
     try
      fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally
@@ -6242,15 +6244,15 @@ begin
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+'wireframe_velocity_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'wireframe_velocity_'+Kind+ShadowKind+'frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+'wireframe_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'wireframe_'+Kind+ShadowKind+'frag.spv');
      end;
     end else begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+'velocity_'+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'velocity_'+Kind+ShadowKind+'frag.spv');
      end else begin
-      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+RaytracingKind+Kind+ShadowKind+'frag.spv');
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+ShadowKind+'frag.spv');
      end;
     end;
     try

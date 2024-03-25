@@ -1,7 +1,7 @@
 #ifndef PLANET_RENDERPASS_GLSL
 #define PLANET_RENDERPASS_GLSL
 
-#ifndef RAYTRACING
+#if !defined(USE_BUFFER_REFERENCE) 
 #if 0
 struct PlanetMaterial {
   uint albedo;
@@ -51,7 +51,7 @@ layout(push_constant) uniform PushConstants {
 
   int frameIndex; 
   int reversed;
-#ifdef RAYTRACING // Raytracing needs buffer device address anyway, so just use it here also!
+#if defined(USE_BUFFER_REFERENCE) 
   PlanetData planetData;
 #else
   uvec2 unusedPlanetData; // Ignored in this case  
@@ -61,7 +61,7 @@ layout(push_constant) uniform PushConstants {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef RAYTRACING
+#if defined(USE_BUFFER_REFERENCE) 
 PlanetData planetData = pushConstants.planetData; // For to avoid changing the code below
 #endif
 

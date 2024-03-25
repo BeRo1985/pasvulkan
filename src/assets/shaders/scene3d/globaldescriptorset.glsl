@@ -87,6 +87,7 @@ layout(set = 0, binding = 3, std430) readonly buffer Materials {
 #endif // defined(USE_MATERIAL_BUFFER_REFERENCE)
 //#endif // MESHS
 
+#if defined(USE_BUFFER_REFERENCE) 
 #if 0
 struct PlanetMaterial {
   uint albedo;
@@ -106,8 +107,6 @@ struct PlanetMaterial {
 #define GetPlanetMaterialScale(m) (uintBitsToFloat((m).w))
 #endif
 
-#ifdef RAYTRACING
-
 layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer PlanetData {
 
   mat4 modelMatrix;
@@ -123,6 +122,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
   PlanetMaterial materials[16];
 
 };
+#endif
+
+#ifdef RAYTRACING
 
 layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer PlanetDataArray {
   PlanetData PlanetData[];
