@@ -24233,7 +24233,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingGroupInstanceNodeIndex,
     PlanetIndex,CountPlanetTiles,PlanetTileIndex,Count:TpvSizeInt;
     MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets,
-    MustTLASUpdate:Boolean;
+    UseEmptyBLASInstance,MustTLASUpdate:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
 //  RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -24578,11 +24578,6 @@ begin
      CountBLASInstances:=0;
      CountBLASGeometries:=0;
 
-     if assigned(fRaytracingEmptyBLASInstance) then begin
-      inc(CountBLASInstances);
-      inc(CountBLASGeometries);
-     end;
-
      if fRaytracingCountPlanetTiles>0 then begin
       inc(CountBLASInstances,fRaytracingCountPlanetTiles);
       inc(CountBLASGeometries,fRaytracingCountPlanetTiles);
@@ -24600,6 +24595,14 @@ begin
       RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
      end;
 
+     if assigned(fRaytracingEmptyBLASInstance) and (CountBLASInstances=0) and (CountBLASGeometries=0) then begin
+      inc(CountBLASInstances);
+      inc(CountBLASGeometries);
+      UseEmptyBLASInstance:=true;
+     end else begin
+      UseEmptyBLASInstance:=false;
+     end;
+
      if length(fRaytracingBLASGeometryInfoBufferItems)<CountBLASGeometries then begin
       SetLength(fRaytracingBLASGeometryInfoBufferItems,CountBLASGeometries*2);
      end;
@@ -24610,23 +24613,6 @@ begin
 
      RaytracingBLASGeometryInfoBufferItemIndex:=0;
      RaytracingBLASGeometryInfoOffsetBufferItemIndex:=0;
-
-     if assigned(fRaytracingEmptyBLASInstance) then begin
-
-      fRaytracingBLASInstances.Add(fRaytracingEmptyBLASInstance);
-
-      Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
-      fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
-      inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
-
-      Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
-      fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypeNone,
-                                                                                                                                        0,
-                                                                                                                                        0,
-                                                                                                                                        0);
-      inc(RaytracingBLASGeometryInfoBufferItemIndex);
-
-     end;
 
 {}   if fRaytracingCountPlanetTiles>0 then begin
 
@@ -24701,6 +24687,23 @@ begin
       end;
 
       RaytracingGroupInstanceNode:=RaytracingGroupInstanceNode.fNext;
+
+     end;
+
+     if UseEmptyBLASInstance and assigned(fRaytracingEmptyBLASInstance) then begin
+
+      fRaytracingBLASInstances.Add(fRaytracingEmptyBLASInstance);
+
+      Assert(RaytracingBLASGeometryInfoOffsetBufferItemIndex<length(fRaytracingBLASGeometryInfoOffsetBufferItems));
+      fRaytracingBLASGeometryInfoOffsetBufferItems[RaytracingBLASGeometryInfoOffsetBufferItemIndex]:=RaytracingBLASGeometryInfoBufferItemIndex;
+      inc(RaytracingBLASGeometryInfoOffsetBufferItemIndex);
+
+      Assert(RaytracingBLASGeometryInfoBufferItemIndex<length(fRaytracingBLASGeometryInfoBufferItems));
+      fRaytracingBLASGeometryInfoBufferItems[RaytracingBLASGeometryInfoBufferItemIndex]:=TpvRaytracingBLASGeometryInfoBufferItem.Create(TpvRaytracingBLASGeometryInfoBufferItem.TypeNone,
+                                                                                                                                        0,
+                                                                                                                                        0,
+                                                                                                                                        0);
+      inc(RaytracingBLASGeometryInfoBufferItemIndex);
 
      end;
 
