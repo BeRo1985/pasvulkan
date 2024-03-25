@@ -24232,7 +24232,8 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     RaytracingBLASGeometryInfoOffsetBufferItemIndex,
     RaytracingGroupInstanceNodeIndex,
     PlanetIndex,CountPlanetTiles,PlanetTileIndex,Count:TpvSizeInt;
-    MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets:Boolean;
+    MustWaitForPreviousFrame,BLASListChanged,MustUpdateTLAS,MustHandlePlanets,
+    MustTLASUpdate:Boolean;
     RaytracingGroupInstanceNodeQueueItem:TRaytracingGroupInstanceNodeQueueItem;
     RaytracingGroupInstanceNode:TRaytracingGroupInstanceNode;
 //  RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
@@ -25043,6 +25044,8 @@ begin
     // Create or update TLAS                                                   //
     /////////////////////////////////////////////////////////////////////////////
 
+    MustTLASUpdate:=false;
+
     if assigned(fRaytracingTLAS) then begin
 
      if BLASListChanged or
@@ -25053,6 +25056,8 @@ begin
                              fRaytracingAccelerationStructureInstanceList.Count,
                              TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR),
                              false);
+
+      MustTLASUpdate:=true;
 
      end;
 
@@ -25071,7 +25076,8 @@ begin
     /////////////////////////////////////////////////////////////////////////////
 
     if (not assigned(fRaytracingTLASBuffer)) or
-       (fRaytracingTLASBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)) then begin
+       (fRaytracingTLASBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)) or
+       MustTLASUpdate then begin
 
      if assigned(pvApplication) then begin
       pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
@@ -25079,26 +25085,31 @@ begin
 
      fRaytracingTLAS.Finalize;
 
-     FreeAndNil(fRaytracingTLASBuffer);
+     if (not assigned(fRaytracingTLASBuffer)) or
+        (fRaytracingTLASBuffer.Size<Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)) then begin
 
-     fRaytracingTLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                   RoundUpToPowerOfTwo64(Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)),
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
-                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                   [],
-                                                   0,
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   [],
-                                                   256,
-                                                   pvAllocationGroupIDScene3DRaytracingTLAS
-                                                  );
-     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBuffer');
+      FreeAndNil(fRaytracingTLASBuffer);
+
+      fRaytracingTLASBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                    RoundUpToPowerOfTwo64(Max(1,fRaytracingTLAS.BuildSizesInfo.accelerationStructureSize)),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
+                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                    [],
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    [],
+                                                    256,
+                                                    pvAllocationGroupIDScene3DRaytracingTLAS
+                                                   );
+      fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBuffer');
+
+     end;
 
      fRaytracingTLAS.Initialize(fRaytracingTLASBuffer,0);
      fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLAS.AccelerationStructure,VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR,'TpvScene3D.fRaytracingTLAS');
