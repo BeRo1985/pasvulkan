@@ -3,26 +3,27 @@
 
 #ifdef RAYTRACING
 
-/*
-
-// From globaldescriptorset.glsl:
-
-layout(set = 0, binding = 4) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure; // Top level acceleration structure
-
-layout(set = 0, std140, binding = 5) uniform RaytracingData { 
-  // Everything here is just a buffer reference / pointer to the actual data in the buffers
-  RaytracingGeometryInstanceOffsets geometryInstanceOffsets;
-  RaytracingGeometryItems geometryItems;
-  RaytracingMeshStaticVertices meshStaticVertices;
-  RaytracingMeshDynamicVertices meshDynamicVertices;
-  RaytracingMeshIndices meshIndices;  
-  RaytracingParticleVertices particleVertices;
-  RaytracingPlanetBufRefDataArray planetBufRefDataArray;
-  RaytracingPlanetVerticesArray planetVerticesArray;
-} uRaytracingData;
-
-layout(set = 0, binding = 6) uniform sampler2D u2DTextures[]; // Bindless freely random indexable texture array
-*/
+vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
+#if 0
+  return fma(mix(normal, direction, abs(dot(normal, direction))), 1e-3, p);
+#elif 0
+  const vec4 values = vec4(1e-4, 1e-3, 1e-3, 0.0); // slope bias offset, normal bias scale, slope bias scale, maximal offset 
+  float cosAlpha = clamp(dot(normal, direction), 0.0, 1.0);
+  float offsetScaleN = sqrt(1.0 - (cosAlpha * cosAlpha));  // sin(acos(D·N))
+  float offsetScaleD = offsetScaleN / max(5e-4, cosAlpha); // tan(acos(D·N))
+  vec2 offsets = fma(vec2(offsetScaleN, min(2.0, offsetScaleD)), vec2(values.yz), vec2(0.0, values.x));
+  if(values.w > 1e-6){
+    offsets.xy = clamp(offsets.xy, vec2(-values.w), vec2(values.w));
+  }
+  return position + (normal * offsets.x) + (direction * offsets.y);
+#else
+  // Based on: A Fast and Robust Method for Avoiding Self-Intersection - Carsten Wächter & Nikolaus Binder - 26 February 2019
+  const float origin = 1.0 / 32.0, floatScale = 1.0 / 65536.0, intScale = 256.0; 
+  ivec3 ofI = ivec3(vec3(normal * intScale));
+  vec3 pI = intBitsToFloat(floatBitsToInt(position) + ivec3((position.x < 0.0) ? -ofI.x : ofI.x, (position.y < 0.0) ? -ofI.y : ofI.y, (position.z < 0.0) ? -ofI.z : ofI.z));
+  return mix(pI, fma(normal, vec3(floatScale), position), vec3(lessThan(abs(position), vec3(origin))));
+#endif
+}
 
 vec4 raytracingTextureFetch(const in Material material, const in int textureIndex, const in vec4 defaultValue, const bool sRGB, const in vec2 texCoords[2]){
   int textureID = material.textures[textureIndex];
@@ -37,10 +38,10 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
 
 // Fast hard shadow raytracing just for opaque triangles, without alpha cut-off and alpha blending testing, and not with the support for
 // custom intersection shaders of custom shapes, and so on. So this is really for the most simple and fast hard shadow raytracing.
-float getRaytracedFastHardShadow(vec3 position, vec3 direction, float minDistance, float maxDistance){
+float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
   const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT;// | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, position, minDistance, direction, maxDistance);
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
   rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
   float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0;
   rayQueryTerminateEXT(rayQuery);
@@ -48,7 +49,7 @@ float getRaytracedFastHardShadow(vec3 position, vec3 direction, float minDistanc
 }                 
 
 // Full hard shadow raytracing with alpha cut-off and alpha blending support and so on
-float getRaytracedHardShadow(vec3 position, vec3 direction, float minDistance, float maxDistance){
+float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
 
   float result = 1.0;
 
@@ -60,7 +61,7 @@ float getRaytracedHardShadow(vec3 position, vec3 direction, float minDistance, f
                      0;
 
   rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, position, minDistance, direction, maxDistance);
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
 
   bool done = false;
   while((!done) && rayQueryProceedEXT(rayQuery)){
