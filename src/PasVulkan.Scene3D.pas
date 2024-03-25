@@ -21198,23 +21198,23 @@ begin
    fGlobalVulkanDescriptorSetLayout.AddBinding(4,
                                                VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
                                                1,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                              {TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
-                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
+                                               0);//TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
    fGlobalVulkanDescriptorSetLayout.AddBinding(5,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                              {TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
-                                               TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
+                                               0);//TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
    fGlobalVulkanDescriptorSetTextureBindingIndex:=6;
   end else begin
    fGlobalVulkanDescriptorSetTextureBindingIndex:=4;

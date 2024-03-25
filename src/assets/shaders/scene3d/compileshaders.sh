@@ -923,9 +923,12 @@ for index in ${!compileshaderarguments[@]}; do
   parameters=${compileshaderarguments[$index]}
   # echo "Processing $parameters . . ."
   (     
-    # If -DRAYTRACING is in the parameters, add --target-env vulkan1.2 to the parameters
+    # If -DRAYTRACING is in the parameters, add --target-env vulkan1.2 to the parameters 
     if [[ $parameters == *"-DRAYTRACING"* ]]; then
-      parameters="$parameters --target-env vulkan1.2"
+      # but not for mesh.comp, due to a bug in the NVIDIA driver while GPU-assisted validation is enabled (it crashes the driver then) 
+      if [[ $parameters != *"mesh.comp"* ]]; then
+        parameters="$parameters --target-env vulkan1.2"
+      fi
     fi
     ${glslangValidatorPath} $parameters #--target-env spirv1.5 >/dev/null
     if [ $? -ne 0 ]; then
