@@ -39,20 +39,23 @@
             vec3 lightVector = lightPosition - inWorldSpacePosition.xyz;
             vec3 normalizedLightVector = normalize(lightVector);
 #ifdef SHADOWS
+#if defined(RAYTRACING)
+            float rayOffset = 1e-3;
+#endif
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
             if (/*(uShadows != 0) &&*/ ((light.metaData.y & 0x80000000u) == 0u) && (uCascadedShadowMaps.metaData.x != SHADOWMAP_MODE_NONE)) {
               switch (light.metaData.x) {
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
                 case 1u: { // Directional 
-                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), 0.01, 10000000.0);
+                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
                   break;
                 }
                 case 2u: {  // Point
                   // Fall-through, because same raytracing attempt as for spot lights. 
                 }
                 case 3u: {  // Spot
-                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalizedLightVector, 0.01, 10000000.0);
+                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalizedLightVector, rayOffset, 10000000.0);
                   break;
                 }
 #elif 0
@@ -83,7 +86,7 @@
                   imageLightBasedLightDirection = light.directionZFar.xyz;
                   litIntensity = lightAttenuation;
 #if defined(RAYTRACING)
-                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), 0.01, 10000000.0);
+                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
 #else
                   float viewSpaceDepth = -inViewSpacePosition.z;
 #ifdef UseReceiverPlaneDepthBias
