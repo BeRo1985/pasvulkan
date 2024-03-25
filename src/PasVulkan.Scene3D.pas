@@ -3168,6 +3168,7 @@ type EpvScene3D=class(Exception);
        fRaytracingTLASBuffer:TpvVulkanBuffer;
        fRaytracingTLAS:TpvRaytracingTopLevelAccelerationStructure;
        fRaytracingTLASAccelerationStructures:array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
+       fRaytracingTLASGenerations:array[-1..MaxInFlightFrames-1] of TpvUInt64;
        fBufferRangeAllocatorLock:TPasMPCriticalSection;
        fVulkanDynamicVertexBufferData:TGPUDynamicVertexDynamicArray;
        fVulkanStaticVertexBufferData:TGPUStaticVertexDynamicArray;
@@ -20793,6 +20794,10 @@ begin
   fRaytracingTLASAccelerationStructures[Index]:=VK_NULL_HANDLE;
  end;
 
+ for Index:=Low(fRaytracingTLASGenerations) to High(fRaytracingTLASGenerations)-1 do begin
+  fRaytracingTLASGenerations[Index]:=High(TpvUInt64);
+ end;
+
  fBufferRangeAllocatorLock:=TPasMPCriticalSection.Create;
 
  if assigned(fVulkanDevice) then begin
@@ -21204,7 +21209,7 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
-                                               0);//TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
+                                               0{TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT)});
    fGlobalVulkanDescriptorSetLayout.AddBinding(5,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                1,
@@ -21214,7 +21219,7 @@ begin
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                                [],
-                                               0);//TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT));
+                                               0{TVkDescriptorBindingFlags(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT)});
    fGlobalVulkanDescriptorSetTextureBindingIndex:=6;
   end else begin
    fGlobalVulkanDescriptorSetTextureBindingIndex:=4;
@@ -21346,8 +21351,11 @@ begin
    end;
 
    if assigned(fRaytracingTLAS) then begin
-    for Index:=Low(fRaytracingTLASAccelerationStructures) to High(fRaytracingTLASAccelerationStructures)-1 do begin
+    for Index:=Low(fRaytracingTLASAccelerationStructures) to High(fRaytracingTLASAccelerationStructures) do begin
      fRaytracingTLASAccelerationStructures[Index]:=fRaytracingTLAS.AccelerationStructure;
+    end;
+    for Index:=Low(fRaytracingTLASGenerations) to High(fRaytracingTLASGenerations) do begin
+     fRaytracingTLASGenerations[Index]:=fRaytracingTLAS.Generation;
     end;
    end;
 
@@ -23213,8 +23221,10 @@ begin
     UpdateRaytracing(CommandBuffer,aInFlightFrameIndex,true);
 
     if assigned(fRaytracingTLAS) and
-       (fRaytracingTLASAccelerationStructures[aInFlightFrameIndex]<>fRaytracingTLAS.AccelerationStructure) then begin
+       (fRaytracingTLASAccelerationStructures[aInFlightFrameIndex]<>fRaytracingTLAS.AccelerationStructure) or
+       (fRaytracingTLASGenerations[aInFlightFrameIndex]<>fRaytracingTLAS.Generation) then begin
      fRaytracingTLASAccelerationStructures[aInFlightFrameIndex]:=fRaytracingTLAS.AccelerationStructure;
+     fRaytracingTLASGenerations[aInFlightFrameIndex]:=fRaytracingTLAS.Generation;
      fGlobalVulkanDescriptorSets[aInFlightFrameIndex].WriteToDescriptorSet(4,
                                                                            0,
                                                                            1,

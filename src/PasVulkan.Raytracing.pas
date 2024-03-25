@@ -179,6 +179,7 @@ type EpvRaytracing=class(Exception);
        fBuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR;
        fBuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR;
        fBuildOffsetInfoPtr:PVkAccelerationStructureBuildRangeInfoKHR;
+       fGeneration:TpvUInt64;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aAccelerationStructureType:TVkAccelerationStructureTypeKHR=TVkAccelerationStructureTypeKHR(VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR)); reintroduce; 
@@ -201,6 +202,7 @@ type EpvRaytracing=class(Exception);
        property Device:TpvVulkanDevice read fDevice;
        property AccelerationStructure:TVkAccelerationStructureKHR read fAccelerationStructure;
        property AccelerationStructureType:TVkAccelerationStructureTypeKHR read fAccelerationStructureType;
+       property Generation:TpvUInt64 read fGeneration;
       public
        property BuildGeometryInfo:TVkAccelerationStructureBuildGeometryInfoKHR read fBuildGeometryInfo;
        property BuildSizesInfo:TVkAccelerationStructureBuildSizesInfoKHR read fBuildSizesInfo;
@@ -552,6 +554,8 @@ begin
  fBuildSizesInfo.updateScratchSize:=0;
  fBuildSizesInfo.buildScratchSize:=0;
 
+ fGeneration:=0;
+
 end;
 
 destructor TpvRaytracingAccelerationStructure.Destroy;
@@ -620,6 +624,8 @@ begin
   CreateInfo.offset:=aResultOffset;
 
   VulkanCheckResult(fDevice.Commands.Commands.CreateAccelerationStructureKHR(fDevice.Handle,@CreateInfo,nil,@fAccelerationStructure));
+
+  inc(fGeneration);
 
  end;
 
