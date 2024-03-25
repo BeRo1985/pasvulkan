@@ -212,6 +212,8 @@ float getRaytracedHardShadow(vec3 position, vec3 direction, float minDistance, f
 
   }
 
+  result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) ? 1.0 : 0.0;
+
   // Terminate the ray query 
   rayQueryTerminateEXT(rayQuery);
 

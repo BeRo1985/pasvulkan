@@ -45,14 +45,14 @@
 #if !defined(REFLECTIVESHADOWMAPOUTPUT)
 #if defined(RAYTRACING)
                 case 1u: { // Directional 
-                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), 0.01, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), 0.01, 10000000.0);
                   break;
                 }
                 case 2u: {  // Point
                   // Fall-through, because same raytracing attempt as for spot lights. 
                 }
                 case 3u: {  // Spot
-                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalizedLightVector, 0.01, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(inWorldSpacePosition, normalizedLightVector, 0.01, 10000000.0);
                   break;
                 }
 #elif 0
@@ -83,7 +83,7 @@
                   imageLightBasedLightDirection = light.directionZFar.xyz;
                   litIntensity = lightAttenuation;
 #if defined(RAYTRACING)
-                  lightAttenuation *= getRaytracedFastHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), 0.01, 10000000.0);
+                  lightAttenuation *= getRaytracedHardShadow(inWorldSpacePosition, normalize(-light.directionZFar.xyz), 0.01, 10000000.0);
 #else
                   float viewSpaceDepth = -inViewSpacePosition.z;
 #ifdef UseReceiverPlaneDepthBias

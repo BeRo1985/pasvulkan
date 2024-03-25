@@ -2145,7 +2145,7 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                             Light:TpvScene3D.TLight;
-//                          WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+                            WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -2524,6 +2524,7 @@ type EpvScene3D=class(Exception);
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fVisitedState:array[-1..MaxInFlightFrames-1] of TpvUInt32;
                      fModelMatrix:TpvMatrix4x4;
+                     fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
@@ -5397,8 +5398,8 @@ begin
 
     MustUpdate:=MustUpdateAll;
 
-    if fCacheVerticesGeneration<>fInstanceNode^.CacheVerticesGeneration then begin
-     fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGeneration;
+    if fCacheVerticesGeneration<>fInstanceNode^.CacheVerticesGenerations[aInFlightFrameIndex] then begin
+     fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGenerations[aInFlightFrameIndex];
      fGeometryChanged:=true;
      if fDynamicGeometry then begin
       MustUpdate:=true;
@@ -5589,8 +5590,9 @@ begin
 
 {$else}
 
-    Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
-            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
+{   Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
+            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];}
+    Matrix:=fInstanceNode.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
 
 {$endif}
 
@@ -18869,7 +18871,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   end;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
-//InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
+  InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
   if assigned(Node.fMesh) then begin
    if Matrix.Determinant<0.0 then begin
     Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
@@ -19274,6 +19276,8 @@ begin
  if aInFlightFrameIndex>=0 then begin
 
   fActives[aInFlightFrameIndex]:=fActive;
+
+  fModelMatrices[aInFlightFrameIndex]:=fModelMatrix;
 
  end;
 
@@ -24244,6 +24248,7 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     FrameDoneMask:TPasMPUInt32;
     Planet:TpvScene3DPlanet;
     PlanetTile:TpvScene3DPlanet.TRaytracingTile;
+    MemoryBarrier:TVkMemoryBarrier;
 {   VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;//}
 begin
@@ -24253,6 +24258,8 @@ begin
  if (TPasMPInterlocked.ExchangeBitwiseOr(fUpdateRaytracingFrameDoneMask,FrameDoneMask) and FrameDoneMask)=0 then begin
 
   if fRaytracingActive then begin
+
+   pvApplication.WaitForPreviousFrame(true);
 
    fRaytracingLock.Acquire;
    try
@@ -24264,6 +24271,26 @@ begin
 {   VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.BufferData;
 
     VulkanLongTermStaticBufferData:=fVulkanLongTermStaticBuffers.BufferData;//}
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Host memory barrier                                                     //
+    /////////////////////////////////////////////////////////////////////////////
+
+    FillChar(MemoryBarrier,SizeOf(TVkMemoryBarrier),#0);
+    MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    MemoryBarrier.pNext:=nil;
+    MemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT);
+    MemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+
+    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR),
+                                      0,
+                                      1,
+                                      @MemoryBarrier,
+                                      0,
+                                      nil,
+                                      0,
+                                      nil);
 
     /////////////////////////////////////////////////////////////////////////////
     // Wait for previous frame, when there are changes in the BLAS list, since //
