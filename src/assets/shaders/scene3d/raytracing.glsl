@@ -38,11 +38,11 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
 // Fast hard shadow raytracing just for opaque triangles, without alpha cut-off and alpha blending testing, and not with the support for
 // custom intersection shaders of custom shapes, and so on. So this is really for the most simple and fast hard shadow raytracing.
 float getRaytracedFastHardShadow(vec3 position, vec3 direction, float minDistance, float maxDistance){
-  const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT;
+  const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, position, minDistance, direction, maxDistance);
   rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
-  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCandidateIntersectionTriangleEXT) ? 0.0 : 1.0;
+  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0;
   rayQueryTerminateEXT(rayQuery);
   return result;
 }                 

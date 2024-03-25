@@ -8537,7 +8537,7 @@ begin
       if Sphere.Center.Length<Sphere.Radius then begin
        RendererInstance.fMinimumLODLevel:=0;
       end else begin
-       RendererInstance.fMinimumLODLevel:=Ceil(Clamp(Log2(Sphere.Center.Length/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1)));
+       RendererInstance.fMinimumLODLevel:=0;//Ceil(Clamp(Log2(Sphere.Center.Length/Sphere.Radius),0.0,Max(0.0,fTileMapBits-1)));
       end;
 
      end;
