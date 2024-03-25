@@ -1152,7 +1152,7 @@ begin
  FillChar(fBuildOffsetInfo,SizeOf(TVkAccelerationStructureBuildRangeInfoKHR),#0);
  fBuildOffsetInfo.firstVertex:=0;
  fBuildOffsetInfo.primitiveOffset:=0;
- fBuildOffsetInfo.primitiveCount:=fCountInstances;
+ fBuildOffsetInfo.primitiveCount:=aInstanceCount;
  
  fBuildOffsetInfoPtr:=@fBuildOffsetInfo;
 
@@ -1212,7 +1212,7 @@ begin
  FillChar(fBuildOffsetInfo,SizeOf(TVkAccelerationStructureBuildRangeInfoKHR),#0);
  fBuildOffsetInfo.firstVertex:=0;
  fBuildOffsetInfo.primitiveOffset:=0;
- fBuildOffsetInfo.primitiveCount:=fCountInstances;
+ fBuildOffsetInfo.primitiveCount:=aInstanceCount;
 
  fBuildOffsetInfoPtr:=@fBuildOffsetInfo;
 
