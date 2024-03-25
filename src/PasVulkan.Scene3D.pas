@@ -24290,12 +24290,12 @@ begin
    end;
 
    if (not assigned(fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex])) or
-      (fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex].Size<(length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex])*SizeOf(TVkDeviceAddress))) then begin
+      (fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex].Size<(Max(1,length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex]))*SizeOf(TVkDeviceAddress))) then begin
 
     FreeAndNil(fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex]);
 
     fReferencedPlanetDataBufRefArrayVulkanBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                                               SizeOf(TVkDeviceAddress)*length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex]),
+                                                                                               Max(1,length(fReferencedPlanetDataBufRefArray[aInFlightFrameIndex]))*SizeOf(TVkDeviceAddress),
                                                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT),
                                                                                                TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                                                [],
