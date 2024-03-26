@@ -20705,7 +20705,8 @@ begin
 
  fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
 
- fHardwareRaytracingSupport:=(fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
+ fHardwareRaytracingSupport:=aUseBufferDeviceAddress and
+                             (fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
 
  fRaytracingActive:=fHardwareRaytracingSupport;
