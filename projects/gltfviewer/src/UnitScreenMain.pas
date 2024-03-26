@@ -250,7 +250,7 @@ begin
  fRenderer.Prepare;
 
  fRenderer.MinLogLuminance:=-3.5;
- fRenderer.MaxLogLuminance:=4.0;
+ fRenderer.MaxLogLuminance:=8.0;
 
  fRenderer.AcquirePersistentResources;
 
@@ -260,7 +260,8 @@ begin
 
  fRendererInstance.UseDebugBlit:=false;
 
- fRendererInstance.LuminanceFactor:=2.0;
+ fRendererInstance.LuminanceExponent:=1.0;
+ fRendererInstance.LuminanceFactor:=4.0;
 
  fRendererInstance.Prepare;
 
