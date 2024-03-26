@@ -5412,6 +5412,11 @@ begin
      end;
     end;
 
+    if fUpdateCounter<1 then begin
+     fGeometryChanged:=true;
+     MustUpdate:=true;
+    end;
+
     if MustUpdate then begin
 
      for RaytracingPrimitiveIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
@@ -5429,7 +5434,7 @@ begin
      // Do a full rebuild every 64 updates, to avoid too many rebuilds, but with a little bit of fake randomness on base of the 
      // pointer address to avoid all BLASes being updated at the same time, which would cause a performance hit.
      inc(fUpdateCounter);
-     fUpdateDirty:=((fUpdateCounter+(TpvPtrUInt(self)*39157)) and 63)<>0;
+     fUpdateDirty:=fDynamicGeometry and (((fUpdateCounter+(TpvPtrUInt(self)*39157)) and 63)<>0);
 
     end;
 
@@ -5450,13 +5455,25 @@ begin
         (fNode.fNodeMeshInstanceIndex>=0) and
         (fNode.fNodeMeshInstanceIndex<RaytracingPrimitive.fNodeMeshPrimitiveInstances.Count) then begin
 
-      Opaque:=(RaytracingPrimitive.Material.Data.AlphaMode=TpvScene3D.TMaterial.TAlphaMode.Opaque) or
-              ((RaytracingPrimitive.Material.Data.ShadingModel in [TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness,TpvScene3D.TMaterial.TShadingModel.Unlit]) and
-               ((RaytracingPrimitive.Material.Data.PBRMetallicRoughness.BaseColorFactor.w=1.0) and
-                not assigned(RaytracingPrimitive.Material.Data.PBRMetallicRoughness.BaseColorTexture.Texture))) or
-              ((RaytracingPrimitive.Material.Data.ShadingModel=TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness) and
-               ((RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseFactor.w=1.0) and
-                not assigned(RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseTexture.Texture)));
+      case RaytracingPrimitive.Material.Data.AlphaMode of
+       TpvScene3D.TMaterial.TAlphaMode.Opaque:begin
+        Opaque:=true;
+       end;
+       TpvScene3D.TMaterial.TAlphaMode.Blend:begin
+        Opaque:=((RaytracingPrimitive.Material.Data.ShadingModel in [TpvScene3D.TMaterial.TShadingModel.PBRMetallicRoughness,TpvScene3D.TMaterial.TShadingModel.Unlit]) and
+                 ((RaytracingPrimitive.Material.Data.PBRMetallicRoughness.BaseColorFactor.w=1.0) and
+                  not assigned(RaytracingPrimitive.Material.Data.PBRMetallicRoughness.BaseColorTexture.Texture))) or
+                ((RaytracingPrimitive.Material.Data.ShadingModel=TpvScene3D.TMaterial.TShadingModel.PBRSpecularGlossiness) and
+                 ((RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseFactor.w=1.0) and
+                  not assigned(RaytracingPrimitive.Material.Data.PBRSpecularGlossiness.DiffuseTexture.Texture)));
+       end;
+       TpvScene3D.TMaterial.TAlphaMode.Mask:begin
+        Opaque:=RaytracingPrimitive.Material.Data.AlphaCutOff>=1.0;
+       end;
+       else begin
+        Opaque:=true;
+       end;
+      end;
 
       BLASGroup^.fAllOpaque:=BLASGroup^.fAllOpaque and Opaque;
 
@@ -5493,6 +5510,8 @@ begin
 
     fUpdateDirty:=false;
 
+    fGeometryChanged:=true;
+
    end;
 
    if not assigned(BLASGroup^.fBLAS) then begin
@@ -5501,7 +5520,8 @@ begin
                                                                            IfThen(fDynamicGeometry,
                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) or
                                                                                   TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR),
-                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR)),
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR){or
+                                                                                  TVkBuildAccelerationStructureFlagsKHR(VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR)}),
                                                                            fDynamicGeometry);
     BLASGroup^.fAccelerationStructureSize:=BLASGroup^.fBLAS.BuildSizesInfo.accelerationStructureSize;
     fDirty:=true;
@@ -20542,7 +20562,7 @@ var NodeIndex,IndicesStart,IndicesCount,InFlightFrameIndex,
     DrawChoreographyBatchUniqueItemIndex,
     CountDrawChoreographyBatchUniqueItems:TpvSizeInt;
     Scene:TpvScene3D.TGroup.TScene;
-    Node:TpvScene3D.TGroup.TInstance.PNode;
+    InstanceNode:TpvScene3D.TGroup.TInstance.PNode;
     DrawChoreographyBatchUniqueItem:TpvScene3D.TDrawChoreographyBatchItem;
     CachedVertexRange:TpvScene3D.TCachedVertexRange;
 begin
@@ -20556,29 +20576,29 @@ begin
    FillChar(fCacheVerticesNodeDirtyBitmap[0],Length(fCacheVerticesNodeDirtyBitmap)*SizeOf(TpvUInt32),#$0);
 
    for NodeIndex:=0 to length(fNodes)-1 do begin
-    Node:=@fNodes[NodeIndex];
+    InstanceNode:=@fNodes[NodeIndex];
 
-    if Node^.CacheVerticesDirtyCounter>0 then begin
+    if InstanceNode^.CacheVerticesDirtyCounter>0 then begin
 
-     dec(Node^.CacheVerticesDirtyCounter);
+     dec(InstanceNode^.CacheVerticesDirtyCounter);
 
-     inc(Node^.CacheVerticesGeneration);
+     inc(InstanceNode^.CacheVerticesGeneration);
 
-     if Node^.CacheVerticesGeneration=0 then begin
+     if InstanceNode^.CacheVerticesGeneration=0 then begin
 
       // Handle generation value overflow
-      Node^.CacheVerticesGeneration:=1;
+      InstanceNode^.CacheVerticesGeneration:=1;
 
       for InFlightFrameIndex:=0 to fSceneInstance.fCountInFlightFrames-1 do begin
-       Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=0;
+       InstanceNode^.CacheVerticesGenerations[aInFlightFrameIndex]:=0;
       end;
 
      end;
 
     end;
 
-    if Node^.CacheVerticesGenerations[aInFlightFrameIndex]<>Node^.CacheVerticesGeneration then begin
-     Node^.CacheVerticesGenerations[aInFlightFrameIndex]:=Node^.CacheVerticesGeneration;
+    if InstanceNode^.CacheVerticesGenerations[aInFlightFrameIndex]<>InstanceNode^.CacheVerticesGeneration then begin
+     InstanceNode^.CacheVerticesGenerations[aInFlightFrameIndex]:=InstanceNode^.CacheVerticesGeneration;
      fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5]:=fCacheVerticesNodeDirtyBitmap[NodeIndex shr 5] or (TpvUInt32(1) shl (NodeIndex and 31));
     end;
 
@@ -24211,7 +24231,7 @@ begin
    BufferMemoryBarriers[0].pNext:=nil;
    BufferMemoryBarriers[0].buffer:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex].fVulkanCachedVertexBuffer.Handle;
    BufferMemoryBarriers[0].srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-   BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+   BufferMemoryBarriers[0].dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT) or IfThen(fRaytracingActive,TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR),0);
    BufferMemoryBarriers[0].srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
    BufferMemoryBarriers[0].dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
    BufferMemoryBarriers[0].offset:=0;
