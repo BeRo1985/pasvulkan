@@ -23739,7 +23739,7 @@ end;
 
 procedure TpvScene3D.UploadFrameData(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex:TpvSizeInt);
 begin
- if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) then begin
+ if assigned(fVulkanDevice) and assigned(fInFlightFrameDataTransferQueues[aInFlightFrameIndex]) and (fInFlightFrameDataTransferQueues[aInFlightFrameIndex].QueueItems.Count>0) then begin
   fInFlightFrameDataTransferQueues[aInFlightFrameIndex].Flush(aCommandBuffer);
  end;
 end;
