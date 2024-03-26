@@ -2931,6 +2931,7 @@ type EpvScene3D=class(Exception);
               fDirty:TPasMPBool32;
               fUpdateCounter:TpvUInt64;
               fUpdateDirty:TPasMPBool32;
+              fInitialized:TPasMPBool32;
              public
               constructor Create(const aSceneInstance:TpvScene3D;
                                  const aGroup:TpvScene3D.TGroup;
@@ -5308,6 +5309,8 @@ begin
 
  fUpdateDirty:=false;
 
+ fInitialized:=false;
+
 end;
 
 destructor TpvScene3D.TRaytracingGroupInstanceNode.Destroy;
@@ -5338,6 +5341,15 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
 begin
 
  result:=false;
+
+ // This check is to avoid empty BLASes when the mesh compute shader does not generate any geometry for the current frame yet, because
+ // the mesh compute shader processes only active stuff. In the case of async loading, the mesh compute shader may not have processed
+ // the vertices yet, so we have to wait until the geometry is processed, and then we can generate the BLASes for the first time.
+ // Otherwise the BLASes would contain empty or even random data (when using uninitialized memory), which would cause incorrect 
+ // raytracing results.
+ if (not fInitialized) and not (fInstance.fActives[aInFlightFrameIndex] and fInstanceNode^.BoundingBoxFilled[aInFlightFrameIndex]) then begin
+  exit;
+ end;
 
  MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
@@ -5409,7 +5421,7 @@ begin
      end;
     end;
 
-    if fUpdateCounter<1 then begin
+    if not fInitialized then begin
      fGeometryChanged:=true;
      MustUpdate:=true;
     end;
@@ -5654,6 +5666,8 @@ begin
   end;
 
  end;
+
+ fInitialized:=true;
 
 end;
 
