@@ -3166,6 +3166,8 @@ type EpvScene3D=class(Exception);
        fRaytracingBLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingTLASScratchBuffer:TpvVulkanBuffer;
        fRaytracingTLASBLASInstancesBuffer:TpvVulkanBuffer;
+       fRaytracingTLASBLASInstancesBuffers:array[-1..MaxInFlightFrames] of TpvVulkanBuffer;
+       fRaytracingTLASBLASInstancesBufferSize:TVkDeviceSize;
        fRaytracingTLASBuffer:TpvVulkanBuffer;
        fRaytracingTLAS:TpvRaytracingTopLevelAccelerationStructure;
        fRaytracingTLASAccelerationStructures:array[-1..MaxInFlightFrames-1] of TVkAccelerationStructureKHR;
@@ -20794,15 +20796,19 @@ begin
 
  fRaytracingTLASBLASInstancesBuffer:=nil;
 
+ for Index:=Low(fRaytracingTLASBLASInstancesBuffers) to High(fRaytracingTLASBLASInstancesBuffers) do begin
+  fRaytracingTLASBLASInstancesBuffers[Index]:=nil;
+ end;
+
  fRaytracingTLASBuffer:=nil;
 
  fRaytracingTLAS:=nil;
 
- for Index:=Low(fRaytracingTLASAccelerationStructures) to High(fRaytracingTLASAccelerationStructures)-1 do begin
+ for Index:=Low(fRaytracingTLASAccelerationStructures) to High(fRaytracingTLASAccelerationStructures) do begin
   fRaytracingTLASAccelerationStructures[Index]:=VK_NULL_HANDLE;
  end;
 
- for Index:=Low(fRaytracingTLASGenerations) to High(fRaytracingTLASGenerations)-1 do begin
+ for Index:=Low(fRaytracingTLASGenerations) to High(fRaytracingTLASGenerations) do begin
   fRaytracingTLASGenerations[Index]:=High(TpvUInt64);
  end;
 
@@ -21627,6 +21633,10 @@ begin
  FreeAndNil(fRaytracingTLAS);
 
  FreeAndNil(fRaytracingTLASScratchBuffer);
+
+ for Index:=Low(fRaytracingTLASBLASInstancesBuffers) to High(fRaytracingTLASBLASInstancesBuffers) do begin
+  FreeAndNil(fRaytracingTLASBLASInstancesBuffers[Index]);
+ end;
 
  FreeAndNil(fRaytracingTLASBLASInstancesBuffer);
 
@@ -24359,6 +24369,8 @@ var InstanceIndex,GeometryIndex,CountBLASInstances,CountBLASGeometries,
     Planet:TpvScene3DPlanet;
     PlanetTile:TpvScene3DPlanet.TRaytracingTile;
     MemoryBarrier:TVkMemoryBarrier;
+    BufferMemoryBarriers:array[0..1] of TVkBufferMemoryBarrier; 
+    BufferCopy:TVkBufferCopy;
 {   VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;//}
 begin
@@ -24369,7 +24381,7 @@ begin
 
   if fRaytracingActive then begin
 
-   pvApplication.WaitForPreviousFrame(true);
+// pvApplication.WaitForPreviousFrame(true);
 
    fRaytracingLock.Acquire;
    try
@@ -24751,7 +24763,7 @@ begin
      RaytracingBLASGeometryInfoBufferItemIndex:=0;
      RaytracingBLASGeometryInfoOffsetBufferItemIndex:=0;
 
-{}   if fRaytracingCountPlanetTiles>0 then begin
+     if fRaytracingCountPlanetTiles>0 then begin
 
       TpvScene3DPlanets(fPlanets).Lock.Acquire;
       try
@@ -24920,7 +24932,7 @@ begin
 
     ScratchPass:=0;
 
-{}  if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
+    if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
 
      TpvScene3DPlanets(fPlanets).Lock.Acquire;
      try
@@ -25051,7 +25063,7 @@ begin
 
     ScratchPass:=0;
 
-{}  if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
+    if MustHandlePlanets and (fRaytracingCountPlanetTiles>0) then begin
 
      TpvScene3DPlanets(fPlanets).Lock.Acquire;
      try
@@ -25138,8 +25150,10 @@ begin
      fRaytracingAccelerationStructureInstanceList.Add(fRaytracingBLASInstances[InstanceIndex].AccelerationStructureInstance);
     end;
 
+    fRaytracingTLASBLASInstancesBufferSize:=RoundUpToPowerOfTwo64(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR));
+
     if (not assigned(fRaytracingTLASBLASInstancesBuffer)) or
-       (fRaytracingTLASBLASInstancesBuffer.Size<(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR))) then begin
+       (fRaytracingTLASBLASInstancesBuffer.Size<fRaytracingTLASBLASInstancesBufferSize) then begin
 
      if assigned(pvApplication) then begin
       pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
@@ -25148,8 +25162,8 @@ begin
      FreeAndNil(fRaytracingTLASBLASInstancesBuffer);
 
      fRaytracingTLASBLASInstancesBuffer:=TpvVulkanBuffer.Create(fVulkanDevice,
-                                                                RoundUpToPowerOfTwo64(Max(1,fRaytracingAccelerationStructureInstanceList.Count)*SizeOf(TVkAccelerationStructureInstanceKHR)),
-                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+                                                                fRaytracingTLASBLASInstancesBufferSize,
+                                                                TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT),
                                                                 TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                                 [],
                                                                 TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
@@ -25170,14 +25184,122 @@ begin
 
     end;
 
+    if (not assigned(fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex])) or
+       (fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Size<fRaytracingTLASBLASInstancesBufferSize) then begin
+
+     if assigned(pvApplication) then begin
+      pvApplication.WaitForPreviousFrame(true); // wait on previous frame to avoid destroy still-in-usage buffers.
+     end;
+
+     FreeAndNil(fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex]);
+
+     fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
+                                                                                      fRaytracingTLASBLASInstancesBufferSize,
+                                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR) or TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                                      [],
+                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                                                      0,
+                                                                                      0,
+                                                                                      0,
+                                                                                      0,
+                                                                                      0,
+                                                                                      0,
+                                                                                      [TpvVulkanBufferFlag.PersistentMappedIfPossibe],
+                                                                                      0,
+                                                                                      pvAllocationGroupIDScene3DRaytracingScratch
+                                                                                     );
+     fVulkanDevice.DebugUtils.SetObjectName(fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3D.fRaytracingVulkanTLASBLASInstancesBuffers['+IntToStr(aInFlightFrameIndex)+']');
+
+     MustUpdateTLAS:=true;
+
+    end;
+
     if fRaytracingAccelerationStructureInstanceList.Count>0 then begin
+
      fVulkanDevice.MemoryStaging.Upload(fVulkanFrameGraphStagingQueue,
                                         fVulkanFrameGraphStagingCommandBuffer,
                                         fVulkanFrameGraphStagingFence,
                                         fRaytracingAccelerationStructureInstanceList.ItemArray[0],
-                                        fRaytracingTLASBLASInstancesBuffer,
+                                        fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex],
                                         0,
                                         fRaytracingAccelerationStructureInstanceList.Count*SizeOf(TVkAccelerationStructureInstanceKHR));
+
+     // Copy in-flight-frame-wise fRaytracingTLASBLASInstancesBuffers to the single GPU-side fRaytracingTLASBLASInstancesBuffer
+
+     BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or 
+                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Handle,
+                                                            0,
+                                                            fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Size);
+
+     BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or
+                                                            TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) or
+                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                                            TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                            TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            VK_QUEUE_FAMILY_IGNORED,
+                                                            fRaytracingTLASBLASInstancesBuffer.Handle,
+                                                            0,
+                                                            fRaytracingTLASBLASInstancesBuffer.Size);
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        0,
+                                        0,nil,
+                                        2,@BufferMemoryBarriers[0],
+                                        0,nil);
+
+      BufferCopy:=TVkBufferCopy.Create(TVkDeviceSize(0),
+                                       TVkDeviceSize(0),
+                                       fRaytracingTLASBLASInstancesBuffer.Size);
+
+      aCommandBuffer.CmdCopyBuffer(fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Handle,
+                                   fRaytracingTLASBLASInstancesBuffer.Handle,
+                                   1,@BufferCopy);
+
+      BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                             TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR) or
+                                                             TVkAccessFlags(VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR) or
+                                                             TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                                             TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                             VK_QUEUE_FAMILY_IGNORED,
+                                                             VK_QUEUE_FAMILY_IGNORED,
+                                                             fRaytracingTLASBLASInstancesBuffer.Handle,
+                                                             0,
+                                                             fRaytracingTLASBLASInstancesBuffer.Size);
+
+      BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                             TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or 
+                                                             TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                             VK_QUEUE_FAMILY_IGNORED,
+                                                             VK_QUEUE_FAMILY_IGNORED,
+                                                             fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Handle,
+                                                             0,
+                                                             fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Size);
+
+      aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or
+                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR),
+                                        0,
+                                        0,nil,
+                                        2,@BufferMemoryBarriers[0],
+                                        0,nil);
+
     end;
 
     /////////////////////////////////////////////////////////////////////////////
@@ -25210,6 +25332,8 @@ begin
                                                                         false);
 
     end;
+
+//  fRaytracingTLAS.UpdateInstanceAddress(fRaytracingTLASBLASInstancesBuffer.DeviceAddress);
 
     /////////////////////////////////////////////////////////////////////////////
     // Allocate or grow TLAS buffer                                            //
@@ -25297,10 +25421,10 @@ begin
     if MustUpdateTLAS or BLASListChanged then begin
 
      fRaytracingTLAS.Build(aCommandBuffer,
-                          fRaytracingTLASScratchBuffer,
-                          0,
-                          false,
-                          nil);
+                           fRaytracingTLASScratchBuffer,
+                           0,
+                           false,
+                           nil);
 
      TpvRaytracingAccelerationStructure.MemoryBarrier(aCommandBuffer);
 

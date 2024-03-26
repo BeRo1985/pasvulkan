@@ -326,6 +326,7 @@ type EpvRaytracing=class(Exception);
                         const aInstanceCount:TVkUInt32;
                         const aFlags:TVkBuildAccelerationStructureFlagsKHR=0;
                         const aDynamicGeometry:Boolean=false);
+       procedure UpdateInstanceAddress(const aInstanceAddress:TVkDeviceAddress);
       public
        property Instances:TVkAccelerationStructureGeometryInstancesDataKHR read fInstances;
        property CountInstances:TVkUInt32 read fCountInstances;
@@ -1252,5 +1253,9 @@ begin
 
 end;
 
+procedure TpvRaytracingTopLevelAccelerationStructure.UpdateInstanceAddress(const aInstanceAddress:TVkDeviceAddress);
+begin
+ fInstances.Data.deviceAddress:=aInstanceAddress;
+end;
 
 end.
