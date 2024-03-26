@@ -17,6 +17,10 @@ layout(set = 0, binding = 0) writeonly uniform imageCube uDestinationTexture;
 #endif
 layout(set = 0, binding = 1) uniform samplerCube uSourceTexture;
 
+layout(push_constant, std140, row_major) uniform PushConstants {
+  vec4 lightDirectionIntensityFactor; // xyz = light direction, w = intensity factor
+} pushConstants;
+
 ivec2 destinationTextureSize = imageSize(uDestinationTexture);         
 
 #include "cubemap.glsl"
@@ -29,7 +33,7 @@ void main() {
   ivec3 uvw = ivec3(gl_GlobalInvocationID.xyz);
   if (all(greaterThanEqual(uvw, ivec3(0))) && all(lessThan(uvw, ivec3(destinationTextureSize, 6)))) {
     vec3 direction = getCubeMapDirection((vec2(uvw.xy) + vec2(0.5)) / vec2(destinationTextureSize), uvw.z);
-    vec4 c = textureLod(uSourceTexture, direction, 0.0) * vec2(0.5, 1.0).xxxy; // Scale the color to fit into the range of 16-bit floating point numbers, by converting to half lux, so that the sun can be represented as 64000 "bi-lux" instead of 120000 lux.
+    vec4 c = textureLod(uSourceTexture, direction, 0.0) * vec2(pushConstants.lightDirectionIntensityFactor.w, 1.0).xxxy;
 #ifdef USE_RGB9E5
     imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(c.xyz)));
 #else

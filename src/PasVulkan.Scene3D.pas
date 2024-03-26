@@ -3208,8 +3208,10 @@ type EpvScene3D=class(Exception);
       private
        fSkyBoxTextureImage:TpvScene3D.TImage;
        fSkyBoxMode:TpvScene3DEnvironmentMode;
+       fSkyBoxIntensityFactor:TpvFloat;
        fEnvironmentTextureImage:TpvScene3D.TImage;
        fEnvironmentMode:TpvScene3DEnvironmentMode;
+       fEnvironmentIntensityFactor:TpvFloat;
       private
        fRendererInstanceLock:TPasMPCriticalSection;
        fRendererInstanceList:TpvObjectList;
@@ -3417,8 +3419,10 @@ type EpvScene3D=class(Exception);
       published
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
+       property SkyBoxIntensityFactor:TpvFloat read fSkyBoxIntensityFactor write fSkyBoxIntensityFactor;
        property EnvironmentTextureImage:TpvScene3D.TImage read fEnvironmentTextureImage write fEnvironmentTextureImage;
        property EnvironmentMode:TpvScene3DEnvironmentMode read fEnvironmentMode write fEnvironmentMode;
+       property EnvironmentIntensityFactor:TpvFloat read fEnvironmentIntensityFactor write fEnvironmentIntensityFactor;
       published
        property RendererInstanceLock:TPasMPCriticalSection read fRendererInstanceLock;
        property RendererInstanceList:TpvObjectList read fRendererInstanceList;
@@ -21004,6 +21008,10 @@ begin
 
  fEnvironmentMode:=TpvScene3DEnvironmentMode.Sky;
 
+ fSkyBoxIntensityFactor:=1e-4;
+
+ fEnvironmentIntensityFactor:=1e-4;
+
  fDefaultSampler:=TSampler.Create(ResourceManager,self);
  fDefaultSampler.AssignFromDefault;
  fDefaultSampler.IncRef;
@@ -22972,14 +22980,14 @@ begin
         end;
        end;
        begin
-        Intensity:=Intensity*fLightIntensityFactor;
+        Intensity:=Intensity*fLightIntensityFactor; // should included the bi-lux stuff, if needed
        end;
-       begin
+{      begin
         // Scale the color to fit into the range of 16-bit floating point numbers,
         // by halfing the value, so that the sun can be represented as 64000 "bi-lux"
         // instead of 120000 lux.
         Intensity:=Intensity*0.5;
-       end;
+       end;}
        LightItem^.ColorIntensity:=TpvVector4.InlineableCreate(Light.fDataPointer^.fColor,Intensity);
        LightItem^.PositionRange:=TpvVector4.InlineableCreate(Light.fPosition,Light.fDataPointer^.fRange);
        LightItem^.DirectionZFar:=TpvVector4.InlineableCreate(Light.fDirection,0.0);

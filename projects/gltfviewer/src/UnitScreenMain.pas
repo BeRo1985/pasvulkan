@@ -188,6 +188,8 @@ begin
 
  if pvApplication.Assets.ExistAsset('envmap.hdr') then begin
   fScene3D.EnvironmentTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,fScene3D);
+  fScene3D.EnvironmentIntensityFactor:=1.0;
+  fScene3D.SkyBoxIntensityFactor:=1.0;
   Stream:=pvApplication.Assets.GetAssetStream('envmap.hdr');
   if assigned(Stream) then begin
    try
@@ -205,6 +207,7 @@ begin
 
   if pvApplication.Assets.ExistAsset('skybox.hdr') then begin
    fScene3D.SkyBoxTextureImage:=TpvScene3D.TImage.Create(pvApplication.ResourceManager,fScene3D);
+   fScene3D.SkyBoxIntensityFactor:=1.0;
    Stream:=pvApplication.Assets.GetAssetStream('skybox.hdr');
    if assigned(Stream) then begin
     try
@@ -225,7 +228,7 @@ begin
  fPrimaryDirectionalLight.Type_:=TpvScene3D.TLightData.TType.PrimaryDirectional;
  fPrimaryDirectionalLight.Color:=TpvVector3.InlineableCreate(1.7,1.15,0.70);
  fPrimaryDirectionalLight.Matrix:=TpvMatrix4x4.CreateConstructZ(-fScene3D.PrimaryLightDirection);
- fPrimaryDirectionalLight.Intensity:=1000.0;
+ fPrimaryDirectionalLight.Intensity:=10000.0*fScene3D.EnvironmentIntensityFactor;
  fPrimaryDirectionalLight.Range:=0.0;
  fPrimaryDirectionalLight.CastShadows:=true;
  fPrimaryDirectionalLight.DataPointer^.Visible:=true;
@@ -245,6 +248,9 @@ begin
  fRenderer.GlobalIlluminationCaching:=false;
  fRenderer.ToneMappingMode:=TpvScene3DRendererToneMappingMode.AGXRec2020Punchy;
  fRenderer.Prepare;
+
+ fRenderer.MinLogLuminance:=-3.5;
+ fRenderer.MaxLogLuminance:=4.0;
 
  fRenderer.AcquirePersistentResources;
 

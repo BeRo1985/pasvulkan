@@ -1025,6 +1025,7 @@ var Stream:TStream;
     UniversalFence:TpvVulkanFence;
     EmptySSAOCubeMapTextureData:TpvUInt8DynamicArray;
     SkyBoxTexture,EnvironmentTexture:TpvVulkanTexture;
+    IntensityFactor:TpvFloat;
 begin
 
  if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
@@ -1034,12 +1035,13 @@ begin
   EnvironmentTexture:=nil;
  end;
 
- fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedCubeMapFormat,EnvironmentTexture,fScene3D.EnvironmentMode);
+ fEnvironmentCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fScene3D.EnvironmentIntensityFactor,fOptimizedCubeMapFormat,EnvironmentTexture,fScene3D.EnvironmentMode);
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEnvironmentCubeMap.Image');
  fVulkanDevice.DebugUtils.SetObjectName(fEnvironmentCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEnvironmentCubeMap.ImageView');
 
  if (fScene3D.SkyBoxTextureImage=fScene3D.EnvironmentTextureImage) and
-    (fScene3D.SkyBoxMode=fScene3D.EnvironmentMode) then begin
+    (fScene3D.SkyBoxMode=fScene3D.EnvironmentMode) and
+    SameValue(fScene3D.SkyBoxIntensityFactor,fScene3D.EnvironmentIntensityFactor) then begin
 
   fSkyBoxCubeMap:=fEnvironmentCubeMap;
 
@@ -1048,13 +1050,16 @@ begin
   if assigned(fScene3D) and assigned(fScene3D.SkyBoxTextureImage) then begin
    fScene3D.SkyBoxTextureImage.Upload;
    SkyBoxTexture:=fScene3D.SkyBoxTextureImage.Texture;
+   IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
   end else if assigned(fScene3D) and assigned(fScene3D.EnvironmentTextureImage) then begin
    SkyBoxTexture:=fScene3D.EnvironmentTextureImage.Texture;
+   IntensityFactor:=fScene3D.EnvironmentIntensityFactor;
   end else begin
    SkyBoxTexture:=nil;
+   IntensityFactor:=fScene3D.SkyBoxIntensityFactor;
   end;
 
-  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode);
+  fSkyBoxCubeMap:=TpvScene3DRendererEnvironmentCubeMap.Create(fVulkanDevice,fVulkanPipelineCache,fScene3D.PrimaryLightDirection,IntensityFactor,fOptimizedCubeMapFormat,SkyBoxTexture,fScene3D.SkyBoxMode);
   fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fSkyBoxCubeMap.Image');
   fVulkanDevice.DebugUtils.SetObjectName(fSkyBoxCubeMap.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fSkyBoxCubeMap.ImageView');
 

@@ -76,6 +76,10 @@ uses SysUtils,
 type { TpvScene3DRendererEnvironmentCubeMap }
      TpvScene3DRendererEnvironmentCubeMap=class
       public
+       type TPushConstants=packed record
+             LightDirectionIntensityFactor:TpvVector4; // xyz = light direction, w = intensity factor
+            end;
+            PPushConstants=^TPushConstants;
       private
        fComputeShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageCompute:TpvVulkanPipelineShaderStage;
@@ -85,11 +89,13 @@ type { TpvScene3DRendererEnvironmentCubeMap }
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fDescriptorImageInfo:TVkDescriptorImageInfo;
        fLightDirection:TpvVector3;
+       fIntensityFactor:TpvFloat;
+       fPushConstants:TPushConstants;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
       public
 
-       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat=TVkFormat(VK_FORMAT_R16G16B16A16_SFLOAT);const aTexture:TpvVulkanTexture=nil;const aEnvironmentMode:TpvScene3DEnvironmentMode=TpvScene3DEnvironmentMode.Sky);
 
        destructor Destroy; override;
 
@@ -117,7 +123,7 @@ implementation
 
 { TpvScene3DRendererEnvironmentCubeMap }
 
-constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode);
+constructor TpvScene3DRendererEnvironmentCubeMap.Create(const aVulkanDevice:TpvVulkanDevice;const aVulkanPipelineCache:TpvVulkanPipelineCache;const aLightDirection:TpvVector3;const aIntensityFactor:TpvFloat;const aImageFormat:TVkFormat;const aTexture:TpvVulkanTexture;const aEnvironmentMode:TpvScene3DEnvironmentMode);
 var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Stream:TStream;
     MemoryRequirements:TVkMemoryRequirements;
@@ -145,7 +151,6 @@ var Index,FaceIndex,MipMaps,CountMipMapLevelSets,MipMapLevelSetIndex:TpvSizeInt;
     Pipeline:TpvVulkanComputePipeline;
     ImageBlit:TVkImageBlit;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
-    LocalLightDirection:TpvVector4;
     AdditionalImageFormat:TVkFormat;
     FormatVariant,DownsampleFormatVariant:String;
     DownsampleComputeShaderModule:TpvVulkanShaderModule;
@@ -164,7 +169,9 @@ begin
 
  fLightDirection:=aLightDirection;
 
- LocalLightDirection:=TpvVector4.InlineableCreate(fLightDirection,0.0);
+ fIntensityFactor:=aIntensityFactor;
+ 
+ fPushConstants.LightDirectionIntensityFactor:=TpvVector4.InlineableCreate(fLightDirection,fIntensityFactor);
 
  // For generation
  if aImageFormat=VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 then begin
@@ -464,9 +471,7 @@ begin
 
             PipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
             try
-             if not assigned(aTexture) then begin
-              PipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvVector4));
-             end;
+             PipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TpvScene3DRendererEnvironmentCubeMap.TPushConstants));
              PipelineLayout.AddDescriptorSetLayout(VulkanDescriptorSetLayout);
              PipelineLayout.Initialize;
 
@@ -515,13 +520,11 @@ begin
                                                          0,
                                                          nil);
 
-              if not assigned(aTexture) then begin
-               ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
-                                                     TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
-                                                     0,
-                                                     SizeOf(TpvVector4),
-                                                     @LocalLightDirection);
-              end;
+              ComputeCommandBuffer.CmdPushConstants(PipelineLayout.Handle,
+                                                    TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_COMPUTE_BIT),
+                                                    0,
+                                                    SizeOf(TpvScene3DRendererEnvironmentCubeMap.TPushConstants),
+                                                    @fPushConstants);
 
               ComputeCommandBuffer.CmdDispatch(Max(1,(fWidth+((1 shl 4)-1)) shr 4),
                                                Max(1,(fHeight+((1 shl 4)-1)) shr 4),

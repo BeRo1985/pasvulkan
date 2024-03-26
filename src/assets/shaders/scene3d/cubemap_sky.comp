@@ -5,11 +5,13 @@
 #extension GL_GOOGLE_include_directive : enable
 
 /* clang-format off */
+
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(push_constant, std140, row_major) uniform PushConstants {
-  vec3 lightDirection;
+  vec4 lightDirectionIntensityFactor; // xyz = light direction, w = intensity factor
 } pushConstants;
+
 /* clang-format on */
 
 #ifdef USE_RGB9E5
@@ -26,7 +28,7 @@ const float TWO_PI = 6.28318530718;
 const float Is = 120000.0 * 0.5; // Sun intensity 
 const float Im = 0.3 * 0.5;      // Moon intensity 
 
-vec3 sunDirection = pushConstants.lightDirection;
+vec3 sunDirection = pushConstants.lightDirectionIntensityFactor.xyz;
 vec3 moonDirection = -sunDirection;
 vec3 uSunColor = vec3(1.70, 1.15, 0.70);
 vec3 uMoonColor = vec3(0.17, 0.115, 0.07);
@@ -40,7 +42,7 @@ vec2 rotate(vec2 p, float a){
 
 #ifdef FAST
 /*vec4 atmosphereGet(vec3 rayOrigin, vec3 rayDirection){
-  vec3 sunDirection = pushConstants.lightDirection;
+  vec3 sunDirection = pushConstants.lightDirectionIntensityFactor.xyz;
   vec3 sunLightColor = vec3(1.70, 1.15, 0.70);
   const float atmosphereHaze = 0.03;
   const float atmosphereHazeFadeScale = 1.0;
@@ -385,7 +387,7 @@ void main() {
     if(true){
       // Night
       vec3 tempInscattering, tempTransmittance;
-      vec3 lightDirection = -normalize(-pushConstants.lightDirection); // Just the reverse of the sun direction as the simplest approximation for the moon
+      vec3 lightDirection = -normalize(-pushConstants.lightDirectionIntensityFactor.xyz); // Just the reverse of the sun direction as the simplest approximation for the moon
       float factor = smoothstep(-0.1, 0.0, lightDirection.y); 
       if(factor > 0.0){
         getAtmosphere(vec3(0.0, 0.0, 0.0),
@@ -408,7 +410,7 @@ void main() {
     if(true){
       // Day      
       vec3 tempInscattering, tempTransmittance;
-      vec3 lightDirection = -normalize(pushConstants.lightDirection);
+      vec3 lightDirection = -normalize(pushConstants.lightDirectionIntensityFactor.xyz);
       float factor = smoothstep(-0.1, -0.0, lightDirection.y); 
       if(factor > 0.0){
         getAtmosphere(vec3(0.0, 0.0, 0.0),
@@ -438,7 +440,7 @@ void main() {
       }
     }
 
-    vec4 outputColor = vec4(inscattering * 0.5, 1.0); // scale down to "bi-lux" for the 16-bit floating point format, where a bi-lux is 2 lux 
+    vec4 outputColor = vec4(inscattering * pushConstants.lightDirectionIntensityFactor.w, 1.0); 
 
 #ifdef USE_RGB9E5
     imageStore(uDestinationTexture, uvw, uvec4(encodeRGB9E5(outputColor.xyz)));
