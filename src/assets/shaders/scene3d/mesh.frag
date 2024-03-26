@@ -645,8 +645,10 @@ void main() {
     workNormal = inNormal * frontFacingSign;
   }
 #ifdef RAYTRACING
+  // The geometric normal is needed for raytracing ray offseting
   vec3 triangleNormal = normalize(cross(dFdy(inWorldSpacePosition), dFdx(inWorldSpacePosition)));
-  if(dot(triangleNormal, inNormal) < 0.0){
+  if(dot(triangleNormal, workNormal) < 0.0){
+    // Flip the normal if the triangle normal is facing the opposite direction of the smoothed normal
     triangleNormal = -triangleNormal;
   }
 #endif

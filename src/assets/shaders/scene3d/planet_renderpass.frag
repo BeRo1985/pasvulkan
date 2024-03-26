@@ -191,8 +191,10 @@ void main(){
   vec3 bitangent = normalize(cross(normal, tangent));
 
 #ifdef RAYTRACING
+  // The geometric normal is needed for raytracing ray offseting
   vec3 triangleNormal = normalize(cross(dFdy(inBlock.worldSpacePosition), dFdx(inBlock.worldSpacePosition)));
   if(dot(triangleNormal, normal) < 0.0){
+    // Flip the normal if the triangle normal is facing the opposite direction of the smoothed normal
     triangleNormal = -triangleNormal;
   }
 #endif

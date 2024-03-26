@@ -19,10 +19,12 @@ vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in 
 #else
   // Based on: A Fast and Robust Method for Avoiding Self-Intersection - Carsten Wächter & Nikolaus Binder - 26 February 2019
   // Implementation as optimized GLSL code by Benjamin Rosseaux - 2024
-  const float origin = 1.0 / 32.0, floatScale = 1.0 / 65536.0, intScale = 256.0, directionScale = 1.0 / 1024.0;
-  vec3 pI = intBitsToFloat(floatBitsToInt(position) + (ivec3(vec3(normal * intScale)) * ivec3(ivec3(1) - (ivec3(lessThan(position, ivec3(0))) << ivec3(1)))));
-  return mix(pI, fma(normal, vec3(floatScale), position), vec3(lessThan(abs(position), vec3(origin)))) + 
-         (direction * directionScale); // and for additional safety a small offset in the direction of the ray
+  const float origin = 1.0 / 16.0, floatScale = 3.0 / 65536.0, intScale = 3.0 * 256.0, directionScale = 0.0;
+  return mix(
+    intBitsToFloat(floatBitsToInt(position) + (ivec3(normal * mix(vec3(intScale), vec3(-intScale), vec3(lessThanEqual(position, vec3(0.0))))))), 
+    fma(normal, vec3(floatScale), position), 
+    vec3(lessThan(abs(position), vec3(origin)))
+  ) + (direction * directionScale); // and for additional safety a small offset in the direction of the ray
 #endif
 }
 
