@@ -25266,7 +25266,7 @@ begin
 
       BufferCopy:=TVkBufferCopy.Create(TVkDeviceSize(0),
                                        TVkDeviceSize(0),
-                                       fRaytracingTLASBLASInstancesBuffer.Size);
+                                       fRaytracingAccelerationStructureInstanceList.Count*SizeOf(TVkAccelerationStructureInstanceKHR));
 
       aCommandBuffer.CmdCopyBuffer(fRaytracingTLASBLASInstancesBuffers[aInFlightFrameIndex].Handle,
                                    fRaytracingTLASBLASInstancesBuffer.Handle,
