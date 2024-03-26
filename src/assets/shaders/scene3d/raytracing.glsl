@@ -5,8 +5,51 @@
 
 vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
 #if 0
-  return fma(mix(normal, direction, abs(dot(normal, direction))), 1e-3, p);
+  // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction and the ray direction
+  return fma(mix(normal, direction, abs(dot(normal, direction))), 1e-3, position);
 #elif 1
+  /*
+  ** 
+  ** To effectively minimize self-intersection errors in ray tracing, it's crucial to properly scale the offset applied to the ray's starting point.
+  ** This adjustment depends on the angle between the surface normal and the ray direction. Specifically, the scale of the offset perpendicular to 
+  ** the surface should vary with the sine of the angle between the normal and the ray direction. Likewise, the scale of the offset along the ray's 
+  ** path should be proportional to the tangent of this angle. These adjustments ensure that the offset is appropriately scaled to reduce 
+  ** self-intersections without unnecessarily distorting the geometry.
+  ** 
+  ** 
+  **                                               ^  N                                                                                              ^  N
+  **                                              /|\                                                                                               /|\
+  **                                               |                                                 D                                               |
+  **                                               |                                                                                                 |
+  **                                               |                                          ......                                                 |                                               D
+  **                                               |         ...--.                             ....                                      .-         |                                       .......
+  **                                               |     ....     ::                          :::- .                                      . ::       |                                         .::..
+  **                                               |  ....         .-                      ::.     .                                      .  .-      |                                      .:::-  .
+  **                                               |...              -.                 ::.                                               .    -.    |                                   .::       .
+  **                                             ..|                  ::             :::                                                  .     ::   |                                .::.
+  **                                           ... |                    -         :::                                                     .      .-  |                             .::.
+  **                                         ..    |                     -.    :::                                                        .        - |                           ::.
+  **                                      ...      |                      ::::.                                                           .         :|                       .::.
+  **                                    -.         |                     ::.-                                                             :.         ==     α             .::
+  **                                     ::        |       α          ::.    ::                                                            .:        |===              .::.
+  **                                      .-       | ===           :::        .:                                                             -       |   ==         .::.
+  **                                        -.     |    ===     :::            .-                                                             ::     |    .===    ::.
+  **                                         ::    |       ==:::                 :.                                                            .-    |     . .=::.
+  **                                          .:   |      .::                     .:                                                             -.  |     :..:
+  **                                            -. |   .::                          -                                                             :. |   ::. .-
+  **                                             ::-:::                              ::                                                            .-=:::      -.
+  **       :::::::::::::::::::::::::::::::::::::::-*-:::::::::::::::::::::::::::::::----:::::.              .::::::::::::::::::::-:::----------------+=---------=-------:::::::::::::::::::::::
+  **                                                -:                            ...                                                                 :-        .
+  **                                                 .:                        ...                                                                     .-       .
+  **                                                  .-                    ...                                                                          :.     .
+  **                                                    -.              ....                                                                              ::    .
+  **                                                     ::         .....                                                                                  .-   .
+  **                                                       -      ...                                                                                        -. .
+  **                                                        :. ...                                                                                            ::
+  **                                                         ..
+  ** 
+  **                                                Slope Basis                                                                                    Normal Bias
+  */
   const float slopeBiasOffset = 1e-4, normalBiasScale = 5e-3, slopeBiasScale = 5e-3, maxOffset = 0.0;
   float cosAlpha = clamp(dot(normal, direction), 0.0, 1.0);
   float offsetScaleN = sqrt(1.0 - (cosAlpha * cosAlpha));  // sin(acos(D·N))
@@ -19,6 +62,8 @@ vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in 
 #else
   // Based on: A Fast and Robust Method for Avoiding Self-Intersection - Carsten Wächter & Nikolaus Binder - 26 February 2019
   // Implementation as optimized GLSL code by Benjamin Rosseaux - 2024
+  // But it seems still to have some issues with a bit far away geometry, so it might need some further tweaking and therefore it 
+  // is not used here for now
   const float origin = 1.0 / 16.0, floatScale = 3.0 / 65536.0, intScale = 3.0 * 256.0, directionScale = 0.0;
   return mix(
     intBitsToFloat(floatBitsToInt(position) + (ivec3(normal * mix(vec3(intScale), vec3(-intScale), vec3(lessThanEqual(position, vec3(0.0))))))), 
