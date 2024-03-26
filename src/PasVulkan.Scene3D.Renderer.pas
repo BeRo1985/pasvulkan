@@ -578,7 +578,7 @@ begin
 
  fGPUCulling:=true;
 
- fGPUShadowCulling:=true;
+ fGPUShadowCulling:=not fScene3D.RaytracingActive;
 
  fEarlyDepthPrepassNeeded:=false;
 
