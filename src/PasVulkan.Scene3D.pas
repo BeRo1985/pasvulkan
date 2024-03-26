@@ -2144,7 +2144,7 @@ type EpvScene3D=class(Exception);
                             WorkWeights:TpvFloatDynamicArray;
                             WorkMatrix:TpvMatrix4x4;
                             Light:TpvScene3D.TLight;
-                            WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+//                          WorkMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                             BoundingBoxes:array[-1..MaxInFlightFrames-1] of TpvAABB;
                             BoundingBoxFilled:array[-1..MaxInFlightFrames-1] of boolean;
                             PotentiallyVisibleSetNodeIndices:array[0..MaxInFlightFrames-1] of TpvScene3D.TPotentiallyVisibleSet.TNodeIndex;
@@ -2523,7 +2523,7 @@ type EpvScene3D=class(Exception);
                      fFrameUploadedMeshContentGenerations:array[0..MaxInFlightFrames-1] of TpvUInt64;
                      fVisitedState:array[-1..MaxInFlightFrames-1] of TpvUInt32;
                      fModelMatrix:TpvMatrix4x4;
-                     fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
+//                   fModelMatrices:array[-1..MaxInFlightFrames-1] of TpvMatrix4x4;
                      fNodeMatrices:TNodeMatrices;
                      fMorphTargetVertexWeights:TMorphTargetVertexWeights;
                      fRenderInstanceLock:TpvInt32;
@@ -5616,9 +5616,9 @@ begin
 
 {$else}
 
-{   Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
-            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];}
-    Matrix:=fInstanceNode.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
+    Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
+            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
+//  Matrix:=fInstanceNode.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
 
 {$endif}
 
@@ -18897,7 +18897,7 @@ procedure TpvScene3D.TGroup.TInstance.Update(const aInFlightFrameIndex:TpvSizeIn
   end;
   Matrix:=Matrix*aMatrix;
   InstanceNode^.WorkMatrix:=Matrix;
-  InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
+//InstanceNode^.WorkMatrices[aInFlightFrameIndex]:=Matrix;
   if assigned(Node.fMesh) then begin
    if Matrix.Determinant<0.0 then begin
     Include(InstanceNode^.Flags,TpvScene3D.TGroup.TInstance.TNode.TInstanceNodeFlag.InverseFrontFaces);
@@ -19303,7 +19303,7 @@ begin
 
   fActives[aInFlightFrameIndex]:=fActive;
 
-  fModelMatrices[aInFlightFrameIndex]:=fModelMatrix;
+//fModelMatrices[aInFlightFrameIndex]:=fModelMatrix;
 
  end;
 
