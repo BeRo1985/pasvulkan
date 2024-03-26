@@ -5409,10 +5409,10 @@ begin
      end;
     end;
 
-{   if fUpdateCounter<1 then begin
+    if fUpdateCounter<1 then begin
      fGeometryChanged:=true;
      MustUpdate:=true;
-    end;}
+    end;
 
     if MustUpdate then begin
 
