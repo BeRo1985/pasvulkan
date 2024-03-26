@@ -25228,6 +25228,10 @@ begin
 
      // Copy in-flight-frame-wise fRaytracingTLASBLASInstancesBuffers to the single GPU-side fRaytracingTLASBLASInstancesBuffer
 
+     // This code ensures synchronization between the CPU and GPU by copying data from the CPU-side buffer to a temporary GPU-side 
+     // buffer, and then to the final GPU-side buffer. This avoids performance issues caused by waiting for the CPU to finish its
+     // work before using the buffer on the GPU.
+ 
      BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_HOST_WRITE_BIT) or 
                                                             TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                             TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
