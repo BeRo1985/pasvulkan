@@ -5320,7 +5320,6 @@ begin
 end;
 
 function TpvScene3D.TRaytracingGroupInstanceNode.UpdateStructures(const aInFlightFrameIndex:TpvSizeInt;const aForce:Boolean):Boolean;
-{$undef UsePretransformedVerticesForRaytracing}
 var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstanceIndex,
     BLASInstanceIndex,IndexOffset:TpvSizeInt;
     BLASGroupVariant:TpvScene3D.TRaytracingGroupInstanceNode.TBLASGroupVariant;
@@ -5328,7 +5327,8 @@ var CountRenderInstances,CountPrimitives,RaytracingPrimitiveIndex,RendererInstan
     RaytracingBottomLevelAccelerationStructureInstance:TpvRaytracingBottomLevelAccelerationStructureInstance;
     GeometryInstanceFlags:TVkGeometryInstanceFlagsKHR;
     RaytracingPrimitive:TpvScene3D.TGroup.TMesh.TPrimitive;
-    DoubleSided,MustUpdate,MustUpdateAll,Opaque:Boolean;
+    DoubleSided,MustUpdate,MustUpdateAll,Opaque,
+    UsePretransformedVerticesForRaytracing:Boolean;
     VulkanShortTermDynamicBufferData:TVulkanShortTermDynamicBufferData;
     VulkanLongTermStaticBufferData:TVulkanLongTermStaticBufferData;
     AccelerationStructureGeometry:PVkAccelerationStructureGeometryKHR;
@@ -5341,18 +5341,15 @@ begin
 
  MatricesDynamicArray:=@fSceneInstance.fVulkanNodeMatricesBufferData[aInFlightFrameIndex];
 
-{$ifdef UsePretransformedVerticesForRaytracing}
- // In this case, we always have dynamic geometry since we use pretransformed vertices, which can be changed at any time in this case.
- fDynamicGeometry:=true; 
-{$else}
+ UsePretransformedVerticesForRaytracing:=false;
+
  // Check if we have dynamic geometry, which means that we have to update the bottom level acceleration structure if the geometry has changed.
  fDynamicGeometry:=(TpvScene3D.TGroup.TNode.TNodeFlag.SkinAnimated in fNode.fFlags) or
                    (TpvScene3D.TGroup.TNode.TNodeFlag.WeightsAnimated in fNode.fFlags);
-{$endif}
 
  fGeometryChanged:=false;
 
- VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.BufferData;
+ VulkanShortTermDynamicBufferData:=fSceneInstance.fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
 
  VulkanLongTermStaticBufferData:=fSceneInstance.fVulkanLongTermStaticBuffers.BufferData;
 
@@ -5412,20 +5409,20 @@ begin
      end;
     end;
 
-    if fUpdateCounter<1 then begin
+{   if fUpdateCounter<1 then begin
      fGeometryChanged:=true;
      MustUpdate:=true;
-    end;
+    end;}
 
     if MustUpdate then begin
 
      for RaytracingPrimitiveIndex:=0 to BLASGroup^.fBLASGeometry.Geometries.Count-1 do begin
       AccelerationStructureGeometry:=@BLASGroup^.fBLASGeometry.Geometries.ItemArray[RaytracingPrimitiveIndex];
-{$ifdef UsePretransformedVerticesForRaytracing}
-      AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer.DeviceAddress;
-{$else}
-      AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
-{$endif}
+      if UsePretransformedVerticesForRaytracing then begin
+       AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer.DeviceAddress;
+      end else begin
+       AccelerationStructureGeometry^.geometry.triangles.vertexData.deviceAddress:=VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer.DeviceAddress;
+      end;
       AccelerationStructureGeometry^.geometry.triangles.indexData.deviceAddress:=VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer.DeviceAddress;
      end;
 
@@ -5439,6 +5436,8 @@ begin
     end;
 
    end else begin
+
+    fCacheVerticesGeneration:=fInstanceNode^.CacheVerticesGenerations[aInFlightFrameIndex];
 
     BLASGroup^.fBLASGeometry:=TpvRaytracingBottomLevelAccelerationStructureGeometry.Create(fSceneInstance.fVulkanDevice);
 
@@ -5479,24 +5478,29 @@ begin
 
       IndexOffset:=fInstance.fVulkanDrawIndexBufferOffset+RaytracingPrimitive.fNodeMeshPrimitiveInstances[fNode.fNodeMeshInstanceIndex].fStartBufferDrawIndexOffset;
 
-      BLASGroup^.fBLASGeometry.AddTriangles({$ifdef UsePretransformedVerticesForRaytracing}
-                                             VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer
-                                            {$else}
-                                             VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer
-                                            {$endif},
-                                            0,
-                                            fInstance.fVulkanVertexBufferOffset+fInstance.fVulkanVertexBufferCount,
-                                            {$ifdef UsePretransformedVerticesForRaytracing}
-                                             SizeOf(TGPUCachedVertex)
-                                            {$else}
-                                             SizeOf(TGPUCachedRaytracingVertex)
-                                            {$endif},
-                                            VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
-                                            IndexOffset*SizeOf(TpvUInt32),
-                                            RaytracingPrimitive.fCountIndices,
-                                            Opaque,
-                                            nil,
-                                            0);
+      if UsePretransformedVerticesForRaytracing then begin
+       BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedVertexBuffer,
+                                             0,
+                                             fInstance.fVulkanVertexBufferOffset+fInstance.fVulkanVertexBufferCount,
+                                             SizeOf(TGPUCachedVertex),
+                                             VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
+                                             IndexOffset*SizeOf(TpvUInt32),
+                                             RaytracingPrimitive.fCountIndices,
+                                             Opaque,
+                                             nil,
+                                             0);
+      end else begin
+       BLASGroup^.fBLASGeometry.AddTriangles(VulkanShortTermDynamicBufferData.fVulkanCachedRaytracingVertexBuffer,
+                                             0,
+                                             fInstance.fVulkanVertexBufferOffset+fInstance.fVulkanVertexBufferCount,
+                                             SizeOf(TGPUCachedRaytracingVertex),
+                                             VulkanLongTermStaticBufferData.fVulkanDrawIndexBuffer,
+                                             IndexOffset*SizeOf(TpvUInt32),
+                                             RaytracingPrimitive.fCountIndices,
+                                             Opaque,
+                                             nil,
+                                             0);
+      end;
 
       BLASGroup^.fMaterialIDs.Add(RaytracingPrimitive.Material.ID);
 
@@ -5610,17 +5614,17 @@ begin
 
    if CountRenderInstances>0 then begin
 
-{$ifdef UsePretransformedVerticesForRaytracing}
+    if UsePretransformedVerticesForRaytracing then begin
 
-    Matrix:=TpvMatrix4x4.Identity;
+     Matrix:=TpvMatrix4x4.Identity;
 
-{$else}
+    end else begin
 
-    Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
-            MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
-//  Matrix:=fInstanceNode.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
+     Matrix:=MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset+(fNode.Index+1)]*
+             MatricesDynamicArray^.Items[fInstance.fVulkanNodeMatricesBufferOffset];
+ //  Matrix:=fInstanceNode.WorkMatrices[aInFlightFrameIndex]*fInstance.fModelMatrices[aInFlightFrameIndex];
 
-{$endif}
+    end;
 
     if fInstance.fUseRenderInstances then begin
 
