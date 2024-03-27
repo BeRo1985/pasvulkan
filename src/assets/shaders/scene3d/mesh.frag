@@ -639,6 +639,7 @@ void main() {
   }
 #endif
   {
+    // For double sided triangles in the back-facing case, the normal, tangent and bitangent vectors need to be flipped.
     float frontFacingSign = gl_FrontFacing ? 1.0 : -1.0;   
     workTangent = inTangent * frontFacingSign;
     workBitangent = inBitangent * frontFacingSign;
@@ -707,7 +708,7 @@ void main() {
   } else {
     normal = normalize(workNormal);
   }
-  normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+  //normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 
 #elif defined(DEPTHONLY)
 #if defined(ALPHATEST) || defined(LOOPOIT) || defined(LOCKOIT) || defined(WBOIT) || defined(MBOIT) || defined(DFAOIT)
@@ -808,7 +809,7 @@ void main() {
       } else {
         normal = normalize(workNormal);
       }
-      normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+      //normal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 
       vec4 occlusionTexture = textureFetch(3, vec4(1.0), false);
 
@@ -912,7 +913,7 @@ void main() {
         } else {
           clearcoatNormal = normalize(workNormal);
         }
-        clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
+        //clearcoatNormal *= (((flags & (1u << 6u)) != 0u) && !gl_FrontFacing) ? -1.0 : 1.0;
 #ifdef UseGeometryRoughness        
         clearcoatRoughness = min(max(clearcoatRoughness, minimumRoughness) + geometryRoughness, 1.0);
 #else
