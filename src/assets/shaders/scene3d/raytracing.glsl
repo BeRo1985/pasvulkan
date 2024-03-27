@@ -87,7 +87,7 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
 // Fast hard shadow raytracing just for opaque triangles, without alpha cut-off and alpha blending testing, and not with the support for
 // custom intersection shaders of custom shapes, and so on. So this is really for the most simple and fast hard shadow raytracing.
 float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
-  const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT;// | gl_RayFlagsSkipAABBEXT;
+  const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
   rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
@@ -196,7 +196,7 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
                 }else if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 5u)) != 0u){
                   // Blend / Alpha Blend
                   float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
-                  result *= (1.0 - alpha);
+                  result *= (1.0 - clamp(alpha, 0.0, 1.0));
                 }else{
                   // Opaque, but should not happen here, since we have already checked above for opaque hits
                   rayQueryConfirmIntersectionEXT(rayQuery);
@@ -261,7 +261,9 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
 
   }
 
-  result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) ? 1.0 : 0.0;
+  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
+    result = 0.0;
+  } 
 
   // Terminate the ray query 
   rayQueryTerminateEXT(rayQuery);
