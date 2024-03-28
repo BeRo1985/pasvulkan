@@ -18,6 +18,30 @@
 
 #include "bufferreference_definitions.glsl"
 
+#if defined(RAYTRACING)
+
+#if defined(WIREFRAME) 
+layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
+#else
+layout(location = 0) in vec3 inWorldSpacePosition;
+#endif
+
+layout(location = 1) in InBlock {
+  vec3 position;
+  vec3 sphereNormal;
+  vec3 normal;
+  vec3 worldSpacePosition;
+  vec3 viewSpacePosition;
+  vec3 cameraRelativePosition;
+  vec2 jitter;
+#ifdef VELOCITY
+  vec4 previousClipSpace;
+  vec4 currentClipSpace;
+#endif  
+} inBlock;
+
+#else
+
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 sphereNormal;
@@ -31,6 +55,8 @@ layout(location = 0) in InBlock {
   vec4 currentClipSpace;
 #endif  
 } inBlock;
+
+#endif
 
 layout(location = 0) out vec4 outFragColor;
 #ifdef VELOCITY
@@ -196,12 +222,22 @@ void main(){
   vec3 bitangent = normalize(cross(normal, tangent));
 
 #ifdef RAYTRACING
+#ifdef WIREFRAME
+  // The geometric normal is needed for raytracing ray offseting
+  vec3 triangleNormal = normalize(
+                          cross(
+                            inWorldSpacePositionPerVertex[1] - inWorldSpacePositionPerVertex[0], 
+                            inWorldSpacePositionPerVertex[2] - inWorldSpacePositionPerVertex[0]
+                          )
+                        );
+#else
   // The geometric normal is needed for raytracing ray offseting
   vec3 triangleNormal = normalize(cross(dFdy(inBlock.worldSpacePosition), dFdx(inBlock.worldSpacePosition)));
   if(dot(triangleNormal, normal) < 0.0){
     // Flip the normal if the triangle normal is facing the opposite direction of the smoothed normal
     triangleNormal = -triangleNormal;
   }
+#endif
 #endif
 
   tangentSpaceBasis = mat3(tangent, bitangent, normal);

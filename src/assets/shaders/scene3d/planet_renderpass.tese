@@ -22,6 +22,26 @@ layout(location = 0) in InBlock {
   vec3 normal;
 } inBlocks[];
 
+#if defined(RAYTRACING)
+
+layout(location = 0) out vec3 outWorldSpacePosition;
+
+layout(location = 1) out OutBlock {
+  vec3 position;
+  vec3 sphereNormal;
+  vec3 normal;
+  vec3 worldSpacePosition;
+  vec3 viewSpacePosition;
+  vec3 cameraRelativePosition;
+  vec2 jitter;
+#ifdef VELOCITY
+  vec4 previousClipSpace;
+  vec4 currentClipSpace;
+#endif  
+} outBlock;
+
+#else
+
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 sphereNormal;
@@ -35,6 +55,9 @@ layout(location = 0) out OutBlock {
   vec4 currentClipSpace;
 #endif  
 } outBlock;
+
+#endif
+
 
 in gl_PerVertex {
 	vec4 gl_Position;
@@ -151,6 +174,10 @@ void main(){
 #ifdef VELOCITY
   outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
   outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+#endif
+
+#if defined(RAYTRACING)
+  outWorldSpacePosition = worldSpacePosition;
 #endif
 
 	gl_Position = viewProjectionMatrix * vec4(position, 1.0);
