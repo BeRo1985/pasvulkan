@@ -25,6 +25,11 @@
   #extension GL_EXT_shader_atomic_float : enable
 #endif
 
+#ifdef RAYTRACING
+  #extension GL_EXT_fragment_shader_barycentric : enable
+  #define HAVE_PERVERTEX
+#endif
+
 #extension GL_EXT_control_flow_attributes : enable
 
 #include "bufferreference_definitions.glsl"
@@ -52,7 +57,11 @@
 #endif
 
 #ifdef VOXELIZATION
+#ifdef HAVE_PERVERTEX
+layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
+#else
 layout(location = 0) in vec3 inWorldSpacePosition;
+#endif
 layout(location = 1) in vec3 inViewSpacePosition;
 layout(location = 2) in vec3 inCameraRelativePosition;
 layout(location = 3) in vec3 inTangent;
@@ -71,7 +80,11 @@ layout(location = 15) flat in vec3 inVertex0;
 layout(location = 16) flat in vec3 inVertex1;
 layout(location = 17) flat in vec3 inVertex2;
 #else
+#ifdef HAVE_PERVERTEX
+layout(location = 0) pervertexEXT in vec3 inWorldSpacePositionPerVertex[];
+#else
 layout(location = 0) in vec3 inWorldSpacePosition;
+#endif
 layout(location = 1) in vec3 inViewSpacePosition;
 layout(location = 2) in vec3 inCameraRelativePosition;
 layout(location = 3) in vec3 inTangent;
@@ -84,13 +97,29 @@ layout(location = 9) in vec3 inModelScale;
 layout(location = 10) flat in uint inMaterialID;
 layout(location = 11) flat in int inViewIndex;
 layout(location = 12) flat in uint inFrameIndex;
+
 #ifdef VELOCITY
 layout(location = 13) flat in vec4 inJitter;
 layout(location = 14) in vec4 inPreviousClipSpace;
 layout(location = 15) in vec4 inCurrentClipSpace;
 #else
 layout(location = 13) flat in vec2 inJitter;
-#endif
+#endif // VELOCITY
+
+#endif // VOXELIZATION
+
+#ifdef HAVE_PERVERTEX
+
+// inWorldSpacePosition do need to be calculated in this case, since it is passed as a per-vertex attribute without interpolation.
+vec3 inWorldSpacePosition = (inWorldSpacePositionPerVertex[0] * gl_BaryCoordEXT.x) + (inWorldSpacePositionPerVertex[1] * gl_BaryCoordEXT.y) + (inWorldSpacePositionPerVertex[2] * gl_BaryCoordEXT.z);
+
+// Calculate the geometric normal from the per-vertex positions with consideration of the front facing flag for double-sided triangles 
+vec3 inGeometricNormal = normalize(
+                           cross(
+                             inWorldSpacePositionPerVertex[1] - inWorldSpacePositionPerVertex[0], 
+                             inWorldSpacePositionPerVertex[2] - inWorldSpacePositionPerVertex[0]
+                           )
+                         ) * (gl_FrontFacing ? 1.0 : -1.0);
 #endif
 
 #ifdef VOXELIZATION
@@ -654,12 +683,16 @@ void main() {
     workNormal = inNormal * frontFacingSign;
   }
 #ifdef RAYTRACING
+#ifdef HAVE_PERVERTEX
+  vec3 triangleNormal = inGeometricNormal; // The geometric normal is needed for raytracing ray offseting 
+#else 
   // The geometric normal is needed for raytracing ray offseting
-  vec3 triangleNormal = normalize(cross(dFdy(inWorldSpacePosition), dFdx(inWorldSpacePosition)));
+  vec3 triangleNormal = normalize(cross(dFdyFine(inWorldSpacePosition), dFdxFine(inWorldSpacePosition)));
   if(dot(triangleNormal, workNormal) < 0.0){
     // Flip the normal if the triangle normal is facing the opposite direction of the smoothed normal
     triangleNormal = -triangleNormal;
   }
+#endif
 #endif
 #if defined(USE_MATERIAL_BUFFER_REFERENCE) && !defined(USE_INT64)
   material = uMaterials.materials;

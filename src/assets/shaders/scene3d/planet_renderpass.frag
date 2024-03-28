@@ -10,6 +10,7 @@
 #extension GL_EXT_control_flow_attributes : enable
 #ifdef WIREFRAME
   #extension GL_EXT_fragment_shader_barycentric : enable
+  #define HAVE_PERVERTEX
 #endif
 
 #define LIGHTS 

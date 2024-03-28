@@ -12,6 +12,10 @@
 #endif
 #extension GL_GOOGLE_include_directive : enable
 
+#ifdef RAYTRACING
+#extension GL_EXT_fragment_shader_barycentric : enable // for calculating the geometry normal in the fragment shader without dFdx/dFdy in a more direct way, per pervertexEXT
+#endif
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec4 inNormalSign;
 layout(location = 2) in vec3 inTangent;
@@ -46,8 +50,8 @@ layout(location = 14) out vec4 outPreviousClipSpace;
 layout(location = 15) out vec4 outCurrentClipSpace;
 #else
 layout(location = 13) flat out vec2 outJitter;
-#endif
-#endif
+#endif // VELOCITY
+#endif // VOXELIZATION
 
 /* clang-format off */
 

@@ -5,8 +5,11 @@
 
 vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
 #if 0
+  // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction
+  return fma(normal, vec3(1e-3), position);
+#elif 0
   // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction and the ray direction
-  return fma(mix(normal, direction, abs(dot(normal, direction))), 1e-3, position);
+  return fma(mix(normal, direction, abs(dot(normal, direction))), vec3(1e-3), position);
 #elif 1
   /*
   ** 
@@ -264,7 +267,7 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
     result = 0.0;
   } 
-
+    
   // Terminate the ray query 
   rayQueryTerminateEXT(rayQuery);
 
