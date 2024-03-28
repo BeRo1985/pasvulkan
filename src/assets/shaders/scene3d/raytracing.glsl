@@ -5,6 +5,15 @@
 
 // All routines in this files consider meters as units for distances and positions, keep this in mind when reading the code
 
+void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
+  vec3 direction = worldSpacePosition - objectRayOrigin;
+  vec3 reflected = reflect(direction, smoothNormal);
+  float d = dot(reflected, geometricNormal);
+  if(d < 0.0){
+    smoothNormal = normalize(normalize(fma(geometricNormal, vec3(-d), reflected)) - normalize(direction));
+  }
+}
+
 vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
 #if 0
   // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction
