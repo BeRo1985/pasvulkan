@@ -8,9 +8,9 @@
 void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
   vec3 direction = worldSpacePosition - objectRayOrigin;
   vec3 reflected = reflect(direction, smoothNormal);
-  float d = dot(reflected, geometricNormal);
-  if(d < 0.0){
-    smoothNormal = normalize(normalize(fma(geometricNormal, vec3(-d), reflected)) - normalize(direction));
+  float reflectedDotSmoothNormal = dot(reflected, smoothNormal);
+  if(reflectedDotSmoothNormal < 0.0){
+    smoothNormal = normalize(normalize(fma(geometricNormal, vec3(-reflectedDotSmoothNormal), reflected)) - normalize(direction));
   }
 }
 
