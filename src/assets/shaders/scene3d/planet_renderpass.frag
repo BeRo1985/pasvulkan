@@ -76,6 +76,10 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
 
+#define LIGHTING_GLOBALS
+#include "lighting.glsl"
+#undef LIGHTING_GLOBALS
+
 float envMapMaxLevelGGX = max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[0]) - 1.0);
 float envMapMaxLevelCharlie = 0.0;//max(0.0, textureQueryLevels(uImageBasedLightingEnvMaps[1]) - 1.0);
 
@@ -275,6 +279,10 @@ void main(){
   const float specularWeight = 1.0;
 
   const float iblWeight = 1.0;
+
+#define LIGHTING_INITIALIZATION
+#include "lighting.glsl"
+#undef LIGHTING_INITIALIZATION
 
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"

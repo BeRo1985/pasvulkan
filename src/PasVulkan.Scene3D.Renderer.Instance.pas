@@ -470,7 +470,7 @@ type { TpvScene3DRendererInstance }
        fCameraPreset:TpvScene3DRendererCameraPreset;
        fUseDebugBlit:boolean;
       private
-       fVertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray;
+       fMeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray;
        fDrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets;
       public
        fSetGlobalResourcesDone:TpvScene3D.TSetGlobalResourcesDone;
@@ -682,7 +682,7 @@ type { TpvScene3DRendererInstance }
       public
        property VulkanViewUniformBuffers:TpvScene3D.TVulkanViewUniformBuffers read fVulkanViewUniformBuffers;
       public
-       property VertexStagePushConstants:TpvScene3D.TVertexStagePushConstantArray read fVertexStagePushConstants write fVertexStagePushConstants;
+       property MeshStagePushConstants:TpvScene3D.TMeshStagePushConstantArray read fMeshStagePushConstants write fMeshStagePushConstants;
        property DrawChoreographyBatchItemFrameBuckets:TpvScene3D.TDrawChoreographyBatchItemFrameBuckets read fDrawChoreographyBatchItemFrameBuckets write fDrawChoreographyBatchItemFrameBuckets;
       public
        property CameraViewMatrices[const aInFlightFrameIndex:TpvInt32]:TpvMatrix4x4 read GetCameraViewMatrix write SetCameraViewMatrix;
@@ -5638,7 +5638,7 @@ procedure TpvScene3DRendererInstance.ExecuteDraw(const aPreviousInFlightFrameInd
 var DrawChoreographyBatchRangeIndex:TpvSizeInt;
     Pipeline,NewPipeline:TpvVulkanPipeline;
     First,GPUCulling:boolean;
-    VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+    VertexStagePushConstants:TpvScene3D.PMeshStagePushConstants;
     DrawChoreographyBatchRangeDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeDynamicArray;
     DrawChoreographyBatchRangeIndexDynamicArray:TpvScene3D.PDrawChoreographyBatchRangeIndexDynamicArray;
     DrawChoreographyBatchRange:TpvScene3D.PDrawChoreographyBatchRange;
@@ -5647,7 +5647,7 @@ begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) then begin
 
-  VertexStagePushConstants:=@fVertexStagePushConstants[aRenderPassIndex];
+  VertexStagePushConstants:=@fMeshStagePushConstants[aRenderPassIndex];
   VertexStagePushConstants^.ViewBaseIndex:=aViewBaseIndex;
   VertexStagePushConstants^.CountViews:=aCountViews;
   VertexStagePushConstants^.CountAllViews:=fViews[aInFlightFrameIndex].Count;

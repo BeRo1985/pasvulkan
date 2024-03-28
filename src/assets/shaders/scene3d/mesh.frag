@@ -123,6 +123,10 @@ const int TEXTURE_ENVMAP_LAMBERTIAN = 5;
 
 const int TEXTURE_BASE_INDEX = 10;
 
+// Push constants
+
+#include "mesh_pushconstants.glsl" 
+
 // Global descriptor set
 
 #define MESHS
@@ -571,6 +575,10 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #include "shadows.glsl"
 
+#define LIGHTING_GLOBALS
+#include "lighting.glsl"
+#undef LIGHTING_GLOBALS
+
 #endif // !defined(DEPTHONLY) || defined(VOXELIZATION) 
 
 #if defined(USE_MATERIAL_BUFFER_REFERENCE)
@@ -939,6 +947,10 @@ void main() {
         anisotropyBdotV = dot(anisotropyB, viewDirection);   
       }
 #endif
+
+#define LIGHTING_INITIALIZATION
+#include "lighting.glsl"
+#undef LIGHTING_INITIALIZATION
 
 #define LIGHTING_IMPLEMENTATION
 #include "lighting.glsl"

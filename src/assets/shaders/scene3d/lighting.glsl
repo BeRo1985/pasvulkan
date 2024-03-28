@@ -1,6 +1,24 @@
 #if defined(LIGHTING_GLOBALS)
 
+#ifdef RAYTRACING
+#ifdef RAYTRACED_SOFT_SHADOWS
+  #include "bluenoise.glsl"
+  #include "pcg.glsl"
+  //#include "possiondisks.glsl"
+  #include "tangentspacebasis.glsl"
+#endif
+#endif
 
+#elif defined(LIGHTING_INITIALIZATION)
+
+#ifdef RAYTRACING
+#ifdef RAYTRACED_SOFT_SHADOWS
+  uvec3 shadowDiscRandomValues = pcgHash33(uvec3(uvec2(gl_FragCoord.xy), uint(pushConstants.frameIndex)));
+  float shadowDiscRotationAngle = fract((uintBitsToFloat(((shadowDiscRandomValues.x >> 9u) & 0x007fffffu) | 0x3f800000u) - 1.0) + (float(int(pushConstants.frameIndex & 4095)) * 0.61803398875)) * 6.283185307179586476925286766559;
+  vec2 shadowDiscRotation = vec2(sin(vec2(shadowDiscRotationAngle) + vec2(1.5707963267948966, 0.0)));
+  mat2 shadowDiscRotationMatrix = mat2(shadowDiscRotation.x, shadowDiscRotation.y, -shadowDiscRotation.y, shadowDiscRotation.x);
+#endif
+#endif
 
 #elif defined(LIGHTING_IMPLEMENTATION)
 
@@ -88,7 +106,27 @@
                   imageLightBasedLightDirection = light.directionZFar.xyz;
                   litIntensity = lightAttenuation;
 #if defined(RAYTRACING)
+#ifdef RAYTRACED_SOFT_SHADOWS
+                  if(true){
+                    // Soft shadow
+                    const int countSamples = 8;
+                    vec3 lightNormal = normalize(-light.directionZFar.xyz);
+                    vec3 lightTangent = normalize(cross(lightNormal, getPerpendicularVector(lightNormal)));
+                    vec3 lightBitangent = cross(lightNormal, lightTangent);
+                    float shadow = 0.0;
+                    for(int i = 0; i < countSamples; i++){
+                      vec2 sampleXY = (shadowDiscRotationMatrix * BlueNoise2DDisc[(i + int(shadowDiscRandomValues.y)) & BlueNoise2DDiscMask]) * 1e-2;
+                      vec3 sampleDirection = normalize(lightNormal + (sampleXY.x * lightTangent) + (sampleXY.y * lightBitangent));
+                      shadow += getRaytracedHardShadow(rayOrigin, rayNormal, sampleDirection, rayOffset, 10000000.0);
+                    }
+                    lightAttenuation *= shadow / float(countSamples);                    
+                  }else{
+                    // Hard shadow 
+                    lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
+                  }
+#else
                   lightAttenuation *= getRaytracedHardShadow(rayOrigin, rayNormal, normalize(-light.directionZFar.xyz), rayOffset, 10000000.0);
+#endif
 #else
                   float viewSpaceDepth = -inViewSpacePosition.z;
 #ifdef UseReceiverPlaneDepthBias

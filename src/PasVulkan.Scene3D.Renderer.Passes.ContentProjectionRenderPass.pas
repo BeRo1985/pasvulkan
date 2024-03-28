@@ -298,7 +298,7 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3D.TVertexStagePushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3D.TMeshStagePushConstants));
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.Initialize;
 
@@ -398,11 +398,11 @@ end;
 
 procedure TpvScene3DRendererPassesContentProjectionRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var RenderPassIndex:TpvInt32;
-    VertexStagePushConstants:TpvScene3D.TVertexStagePushConstants;
+    VertexStagePushConstants:TpvScene3D.TMeshStagePushConstants;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  RenderPassIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].ViewRenderPassIndex;
- VertexStagePushConstants:=fInstance.VertexStagePushConstants[RenderPassIndex];
+ VertexStagePushConstants:=fInstance.MeshStagePushConstants[RenderPassIndex];
  if assigned(fInstance.VirtualReality) then begin
   VertexStagePushConstants.ViewBaseIndex:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].HUDViewIndex;
   VertexStagePushConstants.CountViews:=fInstance.InFlightFrameStates^[aInFlightFrameIndex].CountFinalViews;
@@ -412,7 +412,7 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvScene3D.TVertexStagePushConstants),
+                                 SizeOf(TpvScene3D.TMeshStagePushConstants),
                                  @VertexStagePushConstants);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       fVulkanPipelineLayout.Handle,

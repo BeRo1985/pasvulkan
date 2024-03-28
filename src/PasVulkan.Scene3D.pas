@@ -346,14 +346,14 @@ type EpvScene3D=class(Exception);
              CountIndices:UInt32;
             end;
             PMeshComputeStagePushConstants=^TMeshComputeStagePushConstants;
-            TVertexStagePushConstants=record
+            TMeshStagePushConstants=record
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
              CountAllViews:UInt32;
              FrameIndex:UInt32;
              Jitter:TpvVector4;
             end;
-            PVertexStagePushConstants=^TVertexStagePushConstants;
+            PMeshStagePushConstants=^TMeshStagePushConstants;
             { TVertex }
             TVertex=packed record                    // Minimum required vertex structure for to be GLTF 2.0 conformant
              public
@@ -2867,7 +2867,7 @@ type EpvScene3D=class(Exception);
             PMaterialBufferData=^TMaterialBufferData;
             TImageInfos=array[0..65535] of TVkDescriptorImageInfo;
             TGlobalVulkanDescriptorSets=array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-            TVertexStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TVertexStagePushConstants;
+            TMeshStagePushConstantArray=array[0..MaxRenderPassIndices-1] of TpvScene3D.TMeshStagePushConstants;
             TInFlightFrameLights=array[0..MaxInFlightFrames-1] of TpvScene3D.TLights;
             TCountInFlightFrameLights=array[-1..MaxInFlightFrames-1] of TpvSizeInt;
             TCachedVertexRange=record
@@ -24117,10 +24117,11 @@ begin
   TpvScene3DRendererInstance(aRendererInstance).fSetGlobalResourcesDone[aRenderPassIndex]:=true;
 
   aCommandBuffer.CmdPushConstants(aPipelineLayout.Handle,
-                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT),
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_VERTEX_BIT) or
+                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                   0,
-                                  SizeOf(TpvScene3D.TVertexStagePushConstants),
-                                  @TpvScene3DRendererInstance(aRendererInstance).VertexStagePushConstants[aRenderPassIndex]);
+                                  SizeOf(TpvScene3D.TMeshStagePushConstants),
+                                  @TpvScene3DRendererInstance(aRendererInstance).MeshStagePushConstants[aRenderPassIndex]);
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        aPipelineLayout.Handle,
@@ -25521,7 +25522,7 @@ procedure TpvScene3D.DrawDebugPrimitives(const aRendererInstance:TObject;
                                          const aPipelineLayout:TpvVulkanPipelineLayout;
                                          const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
 const Offsets:TVkDeviceSize=0;
-//var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+//var VertexStagePushConstants:TpvScene3D.PMeshStagePushConstants;
 begin
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fDebugPrimitiveVertexDynamicArrays[aInFlightFrameIndex].Count>0) then begin
 
@@ -25558,7 +25559,7 @@ procedure TpvScene3D.DrawParticles(const aRendererInstance:TObject;
                                    const aPipelineLayout:TpvVulkanPipelineLayout;
                                    const aOnSetRenderPassResources:TpvScene3D.TOnSetRenderPassResources);
 const Offsets:TVkDeviceSize=0;
-//var VertexStagePushConstants:TpvScene3D.PVertexStagePushConstants;
+//var VertexStagePushConstants:TpvScene3D.PMeshStagePushConstants;
 begin
 
  if (aViewBaseIndex>=0) and (aCountViews>0) and (fCountInFlightFrameParticleVertices[aInFlightFrameIndex]>0) then begin

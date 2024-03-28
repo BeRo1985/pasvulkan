@@ -10,6 +10,7 @@
 #if defined(SHADERDEBUG) && !defined(VELOCITY)
 #extension GL_EXT_debug_printf : enable
 #endif
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec4 inNormalSign;
@@ -59,13 +60,8 @@ layout (push_constant) uniform PushConstants {
 
 #else
 */
-layout (push_constant) uniform PushConstants {
-  uint viewBaseIndex;
-  uint countViews;
-  uint countAllViews;
-  uint frameIndex;
-  vec4 jitter;
-} pushConstants;
+
+#include "mesh_pushconstants.glsl" 
 
 //#endif
 
