@@ -3,6 +3,8 @@
 
 #ifdef RAYTRACING
 
+// All routines in this files consider meters as units for distances and positions, keep this in mind when reading the code
+
 vec3 raytracingOffsetRay(const in vec3 position, const in vec3 normal, const in vec3 direction){
 #if 0
   // A simple offset to avoid self-intersections by moving the ray's starting point slightly along the normal direction
