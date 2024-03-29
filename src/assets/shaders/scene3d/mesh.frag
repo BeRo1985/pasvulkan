@@ -25,10 +25,10 @@
   #extension GL_EXT_shader_atomic_float : enable
 #endif
 
-#ifdef RAYTRACING
+/*#if defined(RAYTRACING)
   #extension GL_EXT_fragment_shader_barycentric : enable
   #define HAVE_PERVERTEX
-#endif
+#endif*/
 
 #extension GL_EXT_control_flow_attributes : enable
 
@@ -683,17 +683,13 @@ void main() {
     workNormal = inNormal * frontFacingSign;
   }
 #ifdef RAYTRACING
-#ifdef HAVE_PERVERTEX
-  vec3 triangleNormal = inGeometricNormal; // The geometric normal is needed for raytracing ray offseting 
+  // The geometric normal is needed for raytracing ray offseting 
+#if defined(HAVE_PERVERTEX)
+  vec3 triangleNormal = inGeometricNormal;
 #else 
-  // The geometric normal is needed for raytracing ray offseting
-  vec3 triangleNormal = normalize(cross(dFdyFine(inWorldSpacePosition), dFdxFine(inWorldSpacePosition)));
-  if(dot(triangleNormal, workNormal) < 0.0){
-    // Flip the normal if the triangle normal is facing the opposite direction of the smoothed normal
-    triangleNormal = -triangleNormal;
-  }
-#endif
-#endif
+  vec3 triangleNormal = normalize(cross(dFdyFine(inCameraRelativePosition), dFdxFine(inCameraRelativePosition)));
+#endif // HAVE_PERVERTEX
+#endif // RAYTRACING
 #if defined(USE_MATERIAL_BUFFER_REFERENCE) && !defined(USE_INT64)
   material = uMaterials.materials;
   {
