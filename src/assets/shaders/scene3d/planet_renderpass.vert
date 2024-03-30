@@ -82,9 +82,6 @@ void main(){
 
   vec3 sphereNormal = normalize(inVector);
 
-
-  // Without tessellation, so directly output the vertex data to the fragment shader
-
   mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
 #if 1
