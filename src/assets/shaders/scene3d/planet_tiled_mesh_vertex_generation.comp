@@ -56,7 +56,7 @@ vec3 safeNormalize(vec3 v){
 vec3 correctedOctPlanetUnsignedDecode(ivec2 coordinate, int totalResolution){
   if(any(equal(coordinate, ivec2(totalResolution - 1)))){
     // Correct the coordinate at the border to avoid artifacts at the border that are caused by the octahedral wrapping 
-    // when the normal is calculated because it is too dense at the border then
+    // when the normal is calculated because it is too dense at the border then.
     if(coordinate.x == (totalResolution - 1)){
       if(coordinate.y == (totalResolution - 1)){
         // TODO: Check if this is correct
@@ -68,7 +68,7 @@ vec3 correctedOctPlanetUnsignedDecode(ivec2 coordinate, int totalResolution){
       return octPlanetUnsignedDecode((vec2(coordinate) + vec2(0.0, -0.5)) / vec2(totalResolution)); 
     }
   }else{
-    // Just pass through the coordinate, because it's not at the border, so it's not corrected here to avoid artifacts at the border
+    // Just pass through, because it's not at the border, so it's not corrected here to avoid artifacts at the border.
     return octPlanetUnsignedDecode(vec2(coordinate) / vec2(totalResolution));  
   }
 }
@@ -77,7 +77,7 @@ float getHeightAt(ivec2 coordinate, int totalResolution){
   ivec2 xy = coordinate << ivec2(pushConstants.lod);
   if(any(equal(xy, ivec2(totalResolution - 1)))){
     // Correct the coordinate at the border to avoid artifacts at the border that are caused by the octahedral wrapping 
-    // when the normal is calculated because it is too dense at the border then
+    // when the normal is calculated because it is too dense at the border then.
     if(xy.x == (totalResolution - 1)){
       if(xy.y == (totalResolution - 1)){
         // TODO: Check if this is correct
@@ -89,6 +89,7 @@ float getHeightAt(ivec2 coordinate, int totalResolution){
       return mix(texelFetch(uTextureHeightMap, xy - ivec2(0, 1), 0).x, texelFetch(uTextureHeightMap, xy, 0).x, 0.5);
     }
   }else{
+    // Just pass through, because it's not at the border, so it's not corrected here to avoid artifacts at the border.
     return texelFetch(uTextureHeightMap, xy, 0).x;
   }
 }
