@@ -6807,7 +6807,7 @@ begin
         end;
         TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
         TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-         TessellationFactor:=1.0/4.0;
+         TessellationFactor:=1.0/16.0;
         end;
         else begin
          TessellationFactor:=1.0/16.0;

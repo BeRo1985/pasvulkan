@@ -12,6 +12,14 @@
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
+#if 0
+// Just a idea to include material indices and weights in the vertex data, but it's not used in this shader yet.
+struct TriangleVertex {
+  uvec4 positionNormal; // xyz = position, w = octahedral normal (2x16 bit for x and y)
+  uvec2 materialIndicesAndWeights; // x = byte-wise material indices, y = byte-wise material weights
+}; // 24 bytes per vertex (16 bytes for positionNormal, 8 bytes for materialIndicesAndWeights) 
+#endif
+
 layout(set = 0, binding = 0, std430) buffer TriangleVertices {
   uvec4 vertices[]; // 16 bytes per vertex
 } triangleVertices;
@@ -44,6 +52,46 @@ vec3 safeNormalize(vec3 v){
 /*vec3 safeNormalizeEx(vec3 v){
   return v;
 }*/
+
+vec3 correctedOctPlanetUnsignedDecode(ivec2 coordinate, int totalResolution){
+  if(any(equal(coordinate, ivec2(totalResolution - 1)))){
+    // Correct the coordinate at the border to avoid artifacts at the border that are caused by the octahedral wrapping 
+    // when the normal is calculated because it is too dense at the border then
+    if(coordinate.x == (totalResolution - 1)){
+      if(coordinate.y == (totalResolution - 1)){
+        // TODO: Check if this is correct
+        return octPlanetUnsignedDecode((vec2(coordinate) + vec2(-0.5)) / vec2(totalResolution)); 
+      }else{
+        return octPlanetUnsignedDecode((vec2(coordinate) + vec2(-0.5, 0.0)) / vec2(totalResolution)); 
+      }
+    }else{ //if(coordinate.y == (totalResolution - 1)){
+      return octPlanetUnsignedDecode((vec2(coordinate) + vec2(0.0, -0.5)) / vec2(totalResolution)); 
+    }
+  }else{
+    // Just pass through the coordinate, because it's not at the border, so it's not corrected here to avoid artifacts at the border
+    return octPlanetUnsignedDecode(vec2(coordinate) / vec2(totalResolution));  
+  }
+}
+
+float getHeightAt(ivec2 coordinate, int totalResolution){
+  ivec2 xy = coordinate << ivec2(pushConstants.lod);
+  if(any(equal(xy, ivec2(totalResolution - 1)))){
+    // Correct the coordinate at the border to avoid artifacts at the border that are caused by the octahedral wrapping 
+    // when the normal is calculated because it is too dense at the border then
+    if(xy.x == (totalResolution - 1)){
+      if(xy.y == (totalResolution - 1)){
+        // TODO: Check if this is correct
+        return mix(texelFetch(uTextureHeightMap, xy - ivec2(1), 0).x, texelFetch(uTextureHeightMap, xy, 0).x, 0.5);
+      }else{
+        return mix(texelFetch(uTextureHeightMap, xy - ivec2(1, 0), 0).x, texelFetch(uTextureHeightMap, xy, 0).x, 0.5);
+      }
+    }else{// if(xy.y == (totalResolution - 1)){
+      return mix(texelFetch(uTextureHeightMap, xy - ivec2(0, 1), 0).x, texelFetch(uTextureHeightMap, xy, 0).x, 0.5);
+    }
+  }else{
+    return texelFetch(uTextureHeightMap, xy, 0).x;
+  }
+}
 
 void main(){
 
@@ -94,25 +142,25 @@ void main(){
         ivec2 hxy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 0,  1), ivec2(totalResolution));
         ivec2 ixy = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2( 1,  1), ivec2(totalResolution));
 
-        float ah = texelFetch(uTextureHeightMap, axy << ivec2(pushConstants.lod), 0).x;
-        float bh = texelFetch(uTextureHeightMap, bxy << ivec2(pushConstants.lod), 0).x;
-        float ch = texelFetch(uTextureHeightMap, cxy << ivec2(pushConstants.lod), 0).x;
-        float dh = texelFetch(uTextureHeightMap, dxy << ivec2(pushConstants.lod), 0).x;
-        float eh = texelFetch(uTextureHeightMap, exy << ivec2(pushConstants.lod), 0).x;
-        float fh = texelFetch(uTextureHeightMap, fxy << ivec2(pushConstants.lod), 0).x;
-        float gh = texelFetch(uTextureHeightMap, gxy << ivec2(pushConstants.lod), 0).x;
-        float hh = texelFetch(uTextureHeightMap, hxy << ivec2(pushConstants.lod), 0).x;
-        float ih = texelFetch(uTextureHeightMap, ixy << ivec2(pushConstants.lod), 0).x;
+        float ah = getHeightAt(axy, int(totalResolution));
+        float bh = getHeightAt(bxy, int(totalResolution));
+        float ch = getHeightAt(cxy, int(totalResolution));
+        float dh = getHeightAt(dxy, int(totalResolution));
+        float eh = getHeightAt(exy, int(totalResolution));
+        float fh = getHeightAt(fxy, int(totalResolution));
+        float gh = getHeightAt(gxy, int(totalResolution));
+        float hh = getHeightAt(hxy, int(totalResolution));
+        float ih = getHeightAt(ixy, int(totalResolution));
         
-        vec4 av = vec4(octPlanetUnsignedDecode(vec2(axy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ah), ah);
-        vec4 bv = vec4(octPlanetUnsignedDecode(vec2(bxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, bh), bh);
-        vec4 cv = vec4(octPlanetUnsignedDecode(vec2(cxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ch), ch);
-        vec4 dv = vec4(octPlanetUnsignedDecode(vec2(dxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, dh), dh);
-        vec4 ev = vec4(octPlanetUnsignedDecode(vec2(exy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, eh), eh);
-        vec4 fv = vec4(octPlanetUnsignedDecode(vec2(fxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, fh), fh);
-        vec4 gv = vec4(octPlanetUnsignedDecode(vec2(gxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, gh), gh);
-        vec4 hv = vec4(octPlanetUnsignedDecode(vec2(hxy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, hh), hh);
-        vec4 iv = vec4(octPlanetUnsignedDecode(vec2(ixy) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ih), ih);
+        vec4 av = vec4(correctedOctPlanetUnsignedDecode(axy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ah), ah);
+        vec4 bv = vec4(correctedOctPlanetUnsignedDecode(bxy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, bh), bh);
+        vec4 cv = vec4(correctedOctPlanetUnsignedDecode(cxy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ch), ch);
+        vec4 dv = vec4(correctedOctPlanetUnsignedDecode(dxy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, dh), dh);
+        vec4 ev = vec4(correctedOctPlanetUnsignedDecode(exy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, eh), eh);
+        vec4 fv = vec4(correctedOctPlanetUnsignedDecode(fxy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, fh), fh);
+        vec4 gv = vec4(correctedOctPlanetUnsignedDecode(gxy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, gh), gh);
+        vec4 hv = vec4(correctedOctPlanetUnsignedDecode(hxy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, hh), hh);
+        vec4 iv = vec4(correctedOctPlanetUnsignedDecode(ixy, int(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, ih), ih);
         
         // Calculate the smoothed normal at point e as the average of the normals of the surrounding triangles in triangle fan order:
         vec3 normal = safeNormalize(
@@ -135,10 +183,10 @@ void main(){
         // slower, because the other compute shader pass works on the complete height map at once, while this variant above works 
         // only on changed/updated tiles.
 
-        float height = texelFetch(uTextureHeightMap, ivec2(quadXY), pushConstants.lod).x;
+        float height = getHeightAt(ivec2(quadXY), int(totalResolution));
 
         triangleVertices.vertices[(tileMapIndex * tileVertexSize) + tileVertexIndex] = uvec4(
-          floatBitsToUint(octPlanetUnsignedDecode(vec2(quadXY) / vec2(totalResolution)) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height)),
+          floatBitsToUint(correctedOctPlanetUnsignedDecode(ivec2(quadXY), totalResolution) * mix(pushConstants.bottomRadius, pushConstants.topRadius, height)),
           packSnorm2x16(octSignedEncode(normalize(texelFetch(uTextureNormalMap, ivec2(quadXY), pushConstants.lod).xyz)))
         );
 
