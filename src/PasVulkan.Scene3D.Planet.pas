@@ -97,11 +97,6 @@ type TpvScene3DPlanets=class;
             THeightMap=array of THeightValue;
             TSourcePrimitiveMode=
              (
-              NormalizedCubeTriangles,
-              NormalizedCubeQuads,
-              OctasphereTriangles,
-              OctasphereQuads,
-              Icosphere,
               VisualMeshTriangles,
               PhysicsMeshTriangles
              );
@@ -139,7 +134,6 @@ type TpvScene3DPlanets=class;
             PMaterials=^TMaterials;
             TSizeIntArray=array of TpvSizeInt;
        const SourcePrimitiveMode:TpvScene3DPlanet.TSourcePrimitiveMode=TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles;
-             Direct:Boolean=true;
        type TMeshVertex=packed record
              Position:TpvVector3;
              OctahedralEncodedNormal:TpvInt16Vector2;
@@ -774,12 +768,8 @@ type TpvScene3DPlanets=class;
               fVulkanDevice:TpvVulkanDevice;              
               fRenderPass:TpvVulkanRenderPass;
               fVertexShaderModule:TpvVulkanShaderModule;
-              fTessellationControlShaderModule:TpvVulkanShaderModule;
-              fTessellationEvaluationShaderModule:TpvVulkanShaderModule;
               fFragmentShaderModule:TpvVulkanShaderModule;
               fVertexShaderStage:TpvVulkanPipelineShaderStage;
-              fTessellationControlShaderStage:TpvVulkanPipelineShaderStage;
-              fTessellationEvaluationShaderStage:TpvVulkanPipelineShaderStage;
               fFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
@@ -1041,148 +1031,10 @@ implementation
 uses PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer,
      PasVulkan.Scene3D.Renderer.Instance,
-     PasVulkan.Geometry.FibonacciSphere,
      PasVulkan.VirtualFileSystem;
 
 type TVector3Array=TpvDynamicArray<TpvVector3>;
      TIndexArray=TpvDynamicArray<TpvUInt32>;
-
-procedure Subdivide(var aVertices:TVector3Array;var aIndices:TIndexArray;const aSubdivisions:TpvSizeInt=2);
-type TVectorHashMap=TpvHashMap<TpvVector3,TpvSizeInt>;
-var SubdivisionIndex,IndexIndex,VertexIndex:TpvSizeInt;
-    NewIndices:TIndexArray;
-    v0,v1,v2,va,vb,vc:TpvVector3;
-    i0,i1,i2,ia,ib,ic:TpvUInt32;
-    VectorHashMap:TVectorHashMap;
-begin
-
- NewIndices.Initialize;
- try
-
-  VectorHashMap:=TVectorHashMap.Create(-1);
-  try
-
-   for VertexIndex:=0 to aVertices.Count-1 do begin
-    VectorHashMap.Add(aVertices.Items[VertexIndex],VertexIndex);
-   end;
-
-   for SubdivisionIndex:=1 to aSubdivisions do begin
-
-    NewIndices.Count:=0;
-
-    IndexIndex:=0;
-    while (IndexIndex+2)<aIndices.Count do begin
-
-     i0:=aIndices.Items[IndexIndex+0];
-     i1:=aIndices.Items[IndexIndex+1];
-     i2:=aIndices.Items[IndexIndex+2];
-
-     v0:=aVertices.Items[i0];
-     v1:=aVertices.Items[i1];
-     v2:=aVertices.Items[i2];
-
-     va:=Mix(v0,v1,0.5);
-     vb:=Mix(v1,v2,0.5);
-     vc:=Mix(v2,v0,0.5);
-
-     VertexIndex:=VectorHashMap[va];
-     if VertexIndex<0 then begin
-      VertexIndex:=aVertices.Add(va);
-      VectorHashMap.Add(va,VertexIndex);
-     end;
-     ia:=VertexIndex;
-
-     VertexIndex:=VectorHashMap[vb];
-     if VertexIndex<0 then begin
-      VertexIndex:=aVertices.Add(vb);
-      VectorHashMap.Add(vb,VertexIndex);
-     end;
-     ib:=VertexIndex;
-
-     VertexIndex:=VectorHashMap[vc];
-     if VertexIndex<0 then begin
-      VertexIndex:=aVertices.Add(vc);
-      VectorHashMap.Add(vc,VertexIndex);
-     end;
-     ic:=VertexIndex;
-
-     NewIndices.Add([i0,ia,ic]);
-     NewIndices.Add([i1,ib,ia]);
-     NewIndices.Add([i2,ic,ib]);
-     NewIndices.Add([ia,ib,ic]);
-
-     inc(IndexIndex,3);
-
-    end;
-
-    aIndices.Assign(NewIndices);
-
-   end;
-
-  finally
-   FreeAndNil(VectorHashMap);
-  end;
-
- finally
-  NewIndices.Finalize;
- end;
-
-end;
-
-procedure NormalizeVertices(var aVertices:TVector3Array);
-var VertexIndex:TpvSizeInt;
-begin
- for VertexIndex:=0 to aVertices.Count-1 do begin
-  aVertices.Items[VertexIndex]:=aVertices.Items[VertexIndex].Normalize;
- end;
-end;
-
-procedure CreateIcosahedronSphere(var aVertices:TVector3Array;var aIndices:TIndexArray;const aCountMinimumVertices:TpvSizeInt=4096);
-const GoldenRatio=1.61803398874989485; // (1.0+sqrt(5.0))/2.0 (golden ratio)
-      IcosahedronLength=1.902113032590307; // sqrt(sqr(1)+sqr(GoldenRatio))
-      IcosahedronNorm=0.5257311121191336; // 1.0 / IcosahedronLength
-      IcosahedronNormGoldenRatio=0.85065080835204; // GoldenRatio / IcosahedronLength
-      IcosaheronVertices:array[0..11] of TpvVector3=
-       (
-        (x:0.0;y:IcosahedronNorm;z:IcosahedronNormGoldenRatio),
-        (x:0.0;y:-IcosahedronNorm;z:IcosahedronNormGoldenRatio),
-        (x:IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
-        (x:-IcosahedronNorm;y:IcosahedronNormGoldenRatio;z:0.0),
-        (x:IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
-        (x:-IcosahedronNormGoldenRatio;y:0.0;z:IcosahedronNorm),
-        (x:0.0;y:-IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
-        (x:0.0;y:IcosahedronNorm;z:-IcosahedronNormGoldenRatio),
-        (x:-IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
-        (x:IcosahedronNorm;y:-IcosahedronNormGoldenRatio;z:0.0),
-        (x:-IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm),
-        (x:IcosahedronNormGoldenRatio;y:0.0;z:-IcosahedronNorm)
-       );
-      IcosahedronIndices:array[0..(20*3)-1] of TpvUInt32=
-       (
-        0,5,1,0,3,5,0,2,3,0,4,2,0,1,4,
-        1,5,8,5,3,10,3,2,7,2,4,11,4,1,9,
-        7,11,6,11,9,6,9,8,6,8,10,6,10,7,6,
-        2,11,7,4,9,11,1,8,9,5,10,8,3,7,10
-       );
-var SubdivisionLevel,Count:TpvSizeInt;
-begin
-
- Count:=12;
- SubdivisionLevel:=0;
- while Count<aCountMinimumVertices do begin
-  Count:=12+((10*((2 shl SubdivisionLevel)+1))*((2 shl SubdivisionLevel)-1));
-  inc(SubdivisionLevel);
- end;
-
- aVertices.Assign(IcosaheronVertices);
-
- aIndices.Assign(IcosahedronIndices);
-
- Subdivide(aVertices,aIndices,SubdivisionLevel);
-
- NormalizeVertices(aVertices);
-
-end;
 
 { TpvScene3DPlanet.TData }
 
@@ -1764,8 +1616,8 @@ begin
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or 
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or 
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or 
+{                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or }
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or 
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT),
                                      0,
@@ -1839,8 +1691,8 @@ begin
 
    aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or 
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or 
+{                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or }
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or 
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT),
                                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
@@ -6102,27 +5954,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  case TpvScene3DPlanet.SourcePrimitiveMode of
-   TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles:begin
-    Kind:='triangles_';
-   end;
-   TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles:begin
-    Kind:='octahedral_triangles_';
-   end;
-   TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-    Kind:='octahedral_';
-   end;
-   TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
-    Kind:='icosahedral_triangles_';
-   end;
-   TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
-   TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
-    Kind:='external_';
-   end;
-   else begin
-    Kind:='';
-   end;
-  end;
+  Kind:='';
 
   case TpvScene3DRenderer(fRenderer).ShadowMode of
    TpvScene3DRendererShadowMode.DPCF,TpvScene3DRendererShadowMode.PCF,TpvScene3DRendererShadowMode.PCSS:begin
@@ -6134,10 +5966,6 @@ begin
    else begin
     ShadowKind:='';
    end;
-  end;
-
-  if Direct then begin
-   Kind:='direct_'+Kind;
   end;
 
   if TpvScene3D(fScene3D).RaytracingActive then begin
@@ -6162,9 +5990,6 @@ begin
   fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fVertexShaderModule');
 
   case TpvScene3DPlanet.SourcePrimitiveMode of
-   TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
-   TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
-   TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere,
    TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
    TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
     Kind:='triangles_';
@@ -6172,42 +5997,6 @@ begin
    else begin
     Kind:='';
    end;
-  end;
-
-  if Direct then begin
-
-   fTessellationControlShaderModule:=nil;
-
-   fTessellationEvaluationShaderModule:=nil;
-
-  end else begin
-
-   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_tesc.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'tesc.spv');
-   end;
-   try
-    fTessellationControlShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
-   finally
-    FreeAndNil(Stream);
-   end;
-
-   fVulkanDevice.DebugUtils.SetObjectName(fTessellationControlShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationControlShaderModule');
-
-   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_tese.spv');
-   end else begin
-    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'tese.spv');
-   end;
-   try
-    fTessellationEvaluationShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
-   finally
-    FreeAndNil(Stream);
-   end;
-
-   fVulkanDevice.DebugUtils.SetObjectName(fTessellationEvaluationShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fTessellationEvaluationShaderModule');
-
   end;
 
   case fMode of
@@ -6234,15 +6023,7 @@ begin
 
    else begin
 
-    case TpvScene3DPlanet.SourcePrimitiveMode of
-     TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
-     TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
-      Kind:='external_';
-     end;
-     else begin
-      Kind:='';
-     end;
-    end;
+    Kind:='';
 
     if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
      if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
@@ -6272,18 +6053,6 @@ begin
 
   fVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
 
-  if assigned(fTessellationControlShaderModule) then begin
-   fTessellationControlShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,fTessellationControlShaderModule,'main');
-  end else begin
-   fTessellationControlShaderStage:=nil;
-  end;
-
-  if assigned(fTessellationEvaluationShaderModule) then begin
-   fTessellationEvaluationShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,fTessellationEvaluationShaderModule,'main');
-  end else begin
-   fTessellationEvaluationShaderStage:=nil;
-  end;
-
   if assigned(fFragmentShaderModule) then begin
    fFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
   end else begin
@@ -6297,8 +6066,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                   1,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6307,8 +6076,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                   3,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6317,8 +6086,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                   3,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6327,8 +6096,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
                                   1,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6337,8 +6106,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                   1,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6347,8 +6116,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                   2,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6357,8 +6126,8 @@ begin
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                   1,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                                 TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                   [],
                                   0);
@@ -6369,8 +6138,8 @@ begin
 
   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
   fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or 
-                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or 
+{                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        0,
                                        SizeOf(TPushConstants));
@@ -6394,17 +6163,9 @@ begin
 
  FreeAndNil(fFragmentShaderStage);
 
- FreeAndNil(fTessellationEvaluationShaderStage);
-
- FreeAndNil(fTessellationControlShaderStage);
-
  FreeAndNil(fVertexShaderStage);
 
  FreeAndNil(fFragmentShaderModule);
-
- FreeAndNil(fTessellationEvaluationShaderModule);
-
- FreeAndNil(fTessellationControlShaderModule);
 
  FreeAndNil(fVertexShaderModule);
 
@@ -6558,21 +6319,11 @@ begin
                                              0);
 
  fPipeline.AddStage(fVertexShaderStage);
- if assigned(fTessellationControlShaderStage) then begin
-  fPipeline.AddStage(fTessellationControlShaderStage);
- end;
- if assigned(fTessellationEvaluationShaderStage) then begin
-  fPipeline.AddStage(fTessellationEvaluationShaderStage);
- end;
  if assigned(fFragmentShaderStage) then begin
   fPipeline.AddStage(fFragmentShaderStage);
  end;
 
- if Direct then begin
-  fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
- end else begin
-  fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
- end;
+ fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
  fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
@@ -6663,21 +6414,6 @@ begin
  end;
  fPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
  fPipeline.DepthStencilState.StencilTestEnable:=false;
-
- if not Direct then begin
-  case TpvScene3DPlanet.SourcePrimitiveMode of
-   TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles,
-   TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
-   TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere,
-   TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
-   TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
-    fPipeline.TessellationState.PatchControlPoints:=3;
-   end;
-   else begin
-    fPipeline.TessellationState.PatchControlPoints:=4;
-   end;
-  end;
- end;
 
  fPipeline.Initialize;
 
@@ -6790,29 +6526,11 @@ begin
       TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
       TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
       TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
-       case TpvScene3DPlanet.SourcePrimitiveMode of
-        TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
-         TessellationFactor:=1.0/256.0;
-        end;
-        else begin
-         TessellationFactor:=1.0/4.0;
-        end;
-       end;
+       TessellationFactor:=1.0/4.0;
        Level:=-1;
       end;
       else begin
-       case TpvScene3DPlanet.SourcePrimitiveMode of
-        TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
-         TessellationFactor:=1.0/16.0;
-        end;
-        TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
-        TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-         TessellationFactor:=1.0/16.0;
-        end;
-        else begin
-         TessellationFactor:=1.0/16.0;
-        end;
-       end;
+       TessellationFactor:=1.0/16.0;
        Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/4.0)),0),7);
       end;
      end;
@@ -6821,29 +6539,10 @@ begin
 
      fPushConstants.ViewBaseIndex:=aViewBaseIndex;
      fPushConstants.CountViews:=aCountViews;
-     case TpvScene3DPlanet.SourcePrimitiveMode of
-      TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
-       if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=64;
-       end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(1 shl Level,32),256);
-       end;
-      end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles,
-      TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-       if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=64;
-       end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(1 shl Level,16),256);
-       end;
-      end;
-      else begin
-       if Level<0 then begin
-        fPushConstants.CountQuadPointsInOneDirection:=64;
-       end else begin
-        fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
-       end;
-      end;
+     if Level<0 then begin
+      fPushConstants.CountQuadPointsInOneDirection:=64;
+     end else begin
+      fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
      end;
      if Level>=0 then begin
       //writeln(fPushConstants.CountQuadPointsInOneDirection,' ',Level);
@@ -6865,29 +6564,14 @@ begin
 
      aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or 
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or 
+{                                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                     TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      0,
                                      SizeOf(TPushConstants),
                                      @fPushConstants);
 
      case TpvScene3DPlanet.SourcePrimitiveMode of
-      TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeTriangles:begin
-       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*6,1,0,0);
-      end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.NormalizedCubeQuads:begin
-       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6*4,1,0,0);
-      end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereTriangles:begin
-       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*6,1,0,0);
-      end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.OctasphereQuads:begin
-       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*4,1,0,0);
-      end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.Icosphere:begin
-       aCommandBuffer.CmdDraw(fPushConstants.CountQuadPointsInOneDirection*fPushConstants.CountQuadPointsInOneDirection*3*20,1,0,0);
-      end;
       TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
 {      aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);}
@@ -6935,6 +6619,9 @@ begin
                                      Planet.fPhysicsMeshLODOffsets[0],
                                      0,
                                      0);
+      end;
+      else begin
+       Assert(false);
       end;
      end;
 
@@ -7952,8 +7639,8 @@ begin
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    3,
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                    TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                    [],
                    0);
@@ -7963,8 +7650,8 @@ begin
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                    1,
                    TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or
+{                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
                    TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                    [],
                    0);
