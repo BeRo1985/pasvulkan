@@ -54,6 +54,7 @@ vec3 safeNormalize(vec3 v){
 }*/
 
 vec3 correctedOctPlanetUnsignedDecode(ivec2 coordinate, int totalResolution){
+#if 1
   if(any(equal(coordinate, ivec2(totalResolution - 1)))){
     // Correct the coordinate at the border to avoid artifacts at the border that are caused by the octahedral wrapping 
     // when the normal is calculated because it is too dense at the border then.
@@ -71,9 +72,13 @@ vec3 correctedOctPlanetUnsignedDecode(ivec2 coordinate, int totalResolution){
     // Just pass through, because it's not at the border, so it's not corrected here to avoid artifacts at the border.
     return octPlanetUnsignedDecode(vec2(coordinate) / vec2(totalResolution));  
   }
+#else
+  return octPlanetUnsignedDecode(vec2(coordinate) / vec2(totalResolution));
+#endif
 }
 
 float getHeightAt(ivec2 coordinate, int totalResolution){
+#if 1
   ivec2 xy = coordinate << ivec2(pushConstants.lod);
   if(any(equal(xy, ivec2(totalResolution - 1)))){
     // Correct the coordinate at the border to avoid artifacts at the border that are caused by the octahedral wrapping 
@@ -92,6 +97,9 @@ float getHeightAt(ivec2 coordinate, int totalResolution){
     // Just pass through, because it's not at the border, so it's not corrected here to avoid artifacts at the border.
     return texelFetch(uTextureHeightMap, xy, 0).x;
   }
+#else
+  return texelFetch(uTextureHeightMap, coordinate << ivec2(pushConstants.lod), 0).x;
+#endif
 }
 
 void main(){
