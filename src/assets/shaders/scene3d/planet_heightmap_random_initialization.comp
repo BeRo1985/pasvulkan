@@ -207,8 +207,8 @@ vec3 Erosion(in vec2 p, vec2 dir, float scale){
   float f = 6.28318530718;
   vec3 va = vec3(0.0);
   float wt = 0.0;
-  for(int i=-2; i<=1; i++){
-    for(int j=-2; j<=1; j++){
+  for(int i =- 2; i <= 1; i++){
+    for(int j = -2; j <= 1; j++){
       vec2 o = vec2(i, j);
       vec2 h = hash22(ip - o, scale) * 0.5;
       vec2 pp = fp + o - h;
