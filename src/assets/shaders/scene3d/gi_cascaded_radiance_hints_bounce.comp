@@ -194,7 +194,12 @@ void main(){
         vec4 lTSH5 = textureLod(uTexSH[lTexIndexOffset + 5], lVolume3DPosition, 0.0);
         vec4 lTSH6 = textureLod(uTexSH[lTexIndexOffset + 6], lVolume3DPosition, 0.0);
     #endif
-        if(false){//((lSampleCascadeIndex + 1) < GI_CASCADES){
+#if 0    
+        if(false)
+#else
+        if((lSampleCascadeIndex + 1) < GI_CASCADES)
+#endif
+        {
           vec3 lAABBFadeDistances = smoothstep(globalIlluminationVolumeAABBFadeStart[lSampleCascadeIndex].xyz, globalIlluminationVolumeAABBFadeEnd[lSampleCascadeIndex].xyz, abs(lSamplePosition.xyz - globalIlluminationVolumeAABBSnappedCenter[lSampleCascadeIndex].xyz));
           float lAABBFadeFactor = max(max(lAABBFadeDistances.x, lAABBFadeDistances.y), lAABBFadeDistances.z);
           if(lAABBFadeFactor > 1e-4){

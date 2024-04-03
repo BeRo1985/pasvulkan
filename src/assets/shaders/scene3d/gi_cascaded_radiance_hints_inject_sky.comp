@@ -120,19 +120,26 @@ void main(){
       /*float lFactor = //max(0.0, direction.y) *
                       (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xy, 0.0).x - lSampleUVW.z, 0.0, 1.0));
 //                    texture(uTexTopDownSkyOcclusionMap, lSampleUVW.xyz);      */
-      float lFactor = 1.0;
-     /*{
+      float lFactor;
+      {
         const int countOcclusionSamples = 8;
-        for(int lOcclusionSampleIndex = 0; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){
-          vec3 lOcclusionSamplePosition = mix(lPosition, lSamplePosition, float(lOcclusionSampleIndex) / float(countOcclusionSamples));
-          vec4 lOcclusionSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lOcclusionSamplePosition, 1.0); 
-          lOcclusionSampleUVWPosition /= lOcclusionSampleUVWPosition.w;
-          vec3 lOcclusionSampleUVW = vec3(clamp(fma(vec2(lOcclusionSampleUVWPosition.xy), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0)), lOcclusionSampleUVWPosition.z);
-//        lFactor *= (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xy, 0.0).x - lOcclusionSampleUVW.z, 0.0, 1.0));
-          float lOcclusionSample = texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xyz);
-          lFactor *= lOcclusionSample;
+        if(countOcclusionSamples > 0){
+          vec2 lValueSum = vec2(0.0);
+          for(int lOcclusionSampleIndex = 0; lOcclusionSampleIndex < countOcclusionSamples; lOcclusionSampleIndex++){
+            vec3 lOcclusionSamplePosition = mix(lPosition, lSamplePosition, (float(lOcclusionSampleIndex) + 1.0) / float(countOcclusionSamples));
+            vec4 lOcclusionSampleUVWPosition = uTopDownSkyOcclusionMapViewProjectionMatrix * vec4(lOcclusionSamplePosition, 1.0); 
+            lOcclusionSampleUVWPosition /= lOcclusionSampleUVWPosition.w;
+            vec3 lOcclusionSampleUVW = vec3(clamp(fma(vec2(lOcclusionSampleUVWPosition.xy), vec2(0.5), vec2(0.5)), vec2(0.0), vec2(1.0)), lOcclusionSampleUVWPosition.z);
+  //        lFactor *= (1.0 - clamp(texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xy, 0.0).x - lOcclusionSampleUVW.z, 0.0, 1.0));
+            float lOcclusionSample = texture(uTexTopDownSkyOcclusionMap, lOcclusionSampleUVW.xyz);
+            float lWeight = 1.0 - (float(lOcclusionSampleIndex) / float(countOcclusionSamples));
+            lValueSum += vec2(lOcclusionSample, 1.0) * (lWeight * lWeight);
+          }
+          lFactor = (lValueSum.y > 0.0) ? (lValueSum.x / lValueSum.y) : 1.0;
+        }else{
+          lFactor = 1.0;
         }
-      }*/
+      }
       if(lFactor < 1e-6){
         continue;
       }

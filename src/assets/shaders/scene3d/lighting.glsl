@@ -257,7 +257,7 @@
 #endif
                ){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
-              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz * max(0.0, dot(normal, lightDirection));
+              diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz; // * clamp(dot(normal, lightDirection), 0.0, 1.0);
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
