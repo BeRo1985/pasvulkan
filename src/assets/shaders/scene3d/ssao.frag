@@ -383,11 +383,13 @@ vec3 signedOctDecode(vec3 normal) {
 }
 
 #if 1
+// Sample points generated using a Halton sequence, which is a low-discrepancy sequence, where low count of samples is already often
+// enough to get good results in the most cases. The samples are generated in a hemisphere oriented along the z-axis. 
 #define NUM_SAMPLES 16
 #include "ssao_samples.glsl"
 const float radius = 0.5;
-const float bias = 0.0; // already built into the samples in ssao_samples.glsl through ssao_gensamples.poca
-const float strength = 0.25;
+const float bias = 1e-3; // should be enough to prevent self occlusion in the most cases
+const float strength = 1.0; // full strength for now
 #else
 const int countKernelSamples = 64;
 const vec3 kernelSamples[64] = vec3[64](                                     //
@@ -425,8 +427,8 @@ const vec3 kernelSamples[64] = vec3[64](                                     //
     vec3(0.41729, -0.15485, 0.46251), vec3(-0.44272, -0.67928, 0.1865)     //
 );
 const float radius = 0.5;
-const float bias = 0.025;
-const float strength = 0.25;
+const float bias = 1e-3;
+const float strength = 1.0;
 #endif
 
 void main() {
