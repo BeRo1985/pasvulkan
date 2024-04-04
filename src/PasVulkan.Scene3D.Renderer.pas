@@ -393,7 +393,7 @@ begin
   fCountInFlightFrames:=pvApplication.CountInFlightFrames;
  end;
 
- fScreenSpaceAmbientOcclusion:=false;
+ fScreenSpaceAmbientOcclusion:=true;
 
  fAntialiasingMode:=TpvScene3DRendererAntialiasingMode.Auto;
 

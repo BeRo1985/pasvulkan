@@ -4,6 +4,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_ARB_shader_viewport_layer_array : enable
+#extension GL_GOOGLE_include_directive : enable
 
 /* clang-format off */
 layout(location = 0) in vec2 inTexCoord;
@@ -88,7 +89,7 @@ vec3 hash33(vec3 p) {
 #define SSAO 0
 #define SPIRALAO 1
 #define GTAO 2
-#define METHOD SPIRALAO
+#define METHOD SSAO
 
 #if METHOD == SPIRALAO
 
@@ -381,42 +382,12 @@ vec3 signedOctDecode(vec3 normal) {
   return normalize(vec3(outNormal, fma(normal.z, 2.0, -1.0) * (1.0 - (abs(outNormal.x) + abs(outNormal.y)))));
 }
 
+#if 1
 #define NUM_SAMPLES 16
-#if NUM_SAMPLES == 16
-const int countKernelSamples = 16;
-const vec3 kernelSamples[16] = vec3[](                               //
-    vec3(0.5381, 0.1856, -0.4319), vec3(0.1379, 0.2486, 0.4430),     //
-    vec3(0.3371, 0.5679, -0.0057), vec3(-0.6999, -0.0451, -0.0019),  //
-    vec3(0.0689, -0.1598, -0.8547), vec3(0.0560, 0.0069, -0.1843),   //
-    vec3(-0.0146, 0.1402, 0.0762), vec3(0.0100, -0.1924, -0.0344),   //
-    vec3(-0.3577, -0.5301, -0.4358), vec3(-0.3169, 0.1063, 0.0158),  //
-    vec3(0.0103, -0.5869, 0.0046), vec3(-0.0897, -0.4940, 0.3287),   //
-    vec3(0.7119, -0.0154, -0.0918), vec3(-0.0533, 0.0596, -0.5411),  //
-    vec3(0.0352, -0.0631, 0.5460), vec3(-0.4776, 0.2847, -0.0271)    //
-);
-#elif NUM_SAMPLES == 32
-const int countKernelSamples = 32;
-const vec3 kernelSamples[32] = vec3[](                                    //
-    vec3(0.04977, -0.04471, 0.04996), vec3(-0.04065, -0.01937, 0.03193),  //
-    vec3(0.05599, 0.05979, 0.05766), vec3(-0.00204, -0.0544, 0.06674),    //
-    vec3(0.05004, -0.04665, 0.02538), vec3(-0.03188, 0.02046, 0.02251),   //
-    vec3(0.05737, -0.02254, 0.07554), vec3(-0.02503, -0.02483, 0.02495),  //
-    vec3(-0.01753, 0.01439, 0.00535), vec3(-0.04406, -0.09028, 0.08368),  //
-    vec3(-0.01041, -0.03287, 0.01927), vec3(-0.00738, -0.06583, 0.0674),  //
-    vec3(0.07683, 0.12697, 0.107), vec3(-0.10479, 0.06544, 0.10174),      //
-    vec3(-0.07455, 0.03445, 0.22414), vec3(-0.10851, 0.14234, 0.16644),   //
-    vec3(0.13457, -0.02251, 0.13051), vec3(-0.18767, -0.20883, 0.05777),  //
-    vec3(-0.00256, -0.002, 0.00407), vec3(-0.22577, 0.31606, 0.08916),    //
-    vec3(0.20722, -0.27084, 0.11013), vec3(-0.13086, 0.11929, 0.28022),   //
-    vec3(0.05294, -0.22787, 0.14848), vec3(0.14184, 0.04716, 0.13485),    //
-    vec3(-0.02358, -0.08097, 0.21913), vec3(0.15865, 0.23046, 0.04372),   //
-    vec3(0.08301, -0.30966, 0.06741), vec3(0.38129, 0.33204, 0.52949),    //
-    vec3(0.42449, 0.00565, 0.11758), vec3(0.32902, 0.0309, 0.1785),       //
-    vec3(0.86736, -0.00273, 0.10014), vec3(0.41729, -0.15485, 0.46251),   //
-);
-#elif NUM_SAMPLES == 64
+#include "ssao_samples.glsl"
+#else
 const int countKernelSamples = 64;
-const vec3 kernelSamples[64] = vec3[](                                     //
+const vec3 kernelSamples[64] = vec3[64](                                     //
     vec3(0.04977, -0.04471, 0.04996), vec3(0.01457, 0.01653, 0.00224),     //
     vec3(-0.04065, -0.01937, 0.03193), vec3(0.01378, -0.09158, 0.04092),   //
     vec3(0.05599, 0.05979, 0.05766), vec3(0.09227, 0.04428, 0.01545),      //
@@ -450,7 +421,6 @@ const vec3 kernelSamples[64] = vec3[](                                     //
     vec3(0.86736, -0.00273, 0.10014), vec3(0.45574, -0.77201, 0.00384),    //
     vec3(0.41729, -0.15485, 0.46251), vec3(-0.44272, -0.67928, 0.1865)     //
 );
-
 #endif
 
 const float radius = 0.5;
