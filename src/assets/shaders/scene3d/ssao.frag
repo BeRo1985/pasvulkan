@@ -385,6 +385,9 @@ vec3 signedOctDecode(vec3 normal) {
 #if 1
 #define NUM_SAMPLES 16
 #include "ssao_samples.glsl"
+const float radius = 0.5;
+const float bias = 0.0; // already built into the samples in ssao_samples.glsl through ssao_gensamples.poca
+const float strength = 1.0;
 #else
 const int countKernelSamples = 64;
 const vec3 kernelSamples[64] = vec3[64](                                     //
@@ -421,11 +424,10 @@ const vec3 kernelSamples[64] = vec3[64](                                     //
     vec3(0.86736, -0.00273, 0.10014), vec3(0.45574, -0.77201, 0.00384),    //
     vec3(0.41729, -0.15485, 0.46251), vec3(-0.44272, -0.67928, 0.1865)     //
 );
-#endif
-
 const float radius = 0.5;
 const float bias = 0.025;
-const float strength = 0.25;
+const float strength = 1.0;
+#endif
 
 void main() {
 #ifdef MULTIVIEW
