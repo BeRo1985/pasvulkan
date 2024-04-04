@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
@@ -18,14 +18,24 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 0, binding = 0, std140) uniform uboViews {
+#ifdef RAYTRACING
+  #extension GL_EXT_buffer_reference : enable
+  #extension GL_EXT_nonuniform_qualifier : enable
+  #include "bufferreference_definitions.glsl"
+  #include "globaldescriptorset.glsl"
+  #define SET_INDEX 1
+#else
+  #define SET_INDEX 0  
+#endif
+
+layout(set = SET_INDEX, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256
 } uView;
 
 #ifdef MULTIVIEW
-layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
+layout(set = SET_INDEX, binding = 1) uniform sampler2DArray uTextureDepth;
 #else
-layout(set = 0, binding = 1) uniform sampler2D uTextureDepth;
+layout(set = SET_INDEX, binding = 1) uniform sampler2D uTextureDepth;
 #endif
 
 layout (push_constant) uniform PushConstants {
@@ -37,6 +47,11 @@ layout (push_constant) uniform PushConstants {
 /* clang-format on */
 
 float viewIndex = float(int(gl_ViewIndex));
+
+#ifdef RAYTRACING
+mat4 viewMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].viewMatrix;
+mat4 inverseViewMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].inverseViewMatrix;
+#endif
 
 mat4 projectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].projectionMatrix;
 mat4 inverseProjectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].inverseProjectionMatrix;
@@ -85,6 +100,10 @@ vec3 hash33(vec3 p) {
   p3 += dot(p3, p3.yxz + 19.19);
   return fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
 }
+
+#ifdef RAYTRACING
+  #include "raytracing.glsl"
+#endif
 
 #define SSAO 0
 #define SPIRALAO 1
@@ -479,6 +498,21 @@ void main() {
     viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
 #endif
     vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));
+#ifdef RAYTRACING
+    vec3 worldNormal = transpose(inverse(mat3(inverseViewMatrix))) * viewNormal;
+    vec3 worldTangent = normalize(randomVector - (worldNormal * dot(randomVector, worldNormal)));
+    vec3 worldBitangent = cross(worldNormal, worldTangent);
+    mat3 worldTBN = mat3(worldTangent, worldBitangent, worldNormal);
+    for (int i = 0; i < countKernelSamples; i++) {
+      vec3 rayOrigin = position.xyz;
+      vec3 rayDirection = worldTBN * kernelSamples[i];
+      float hitTime = -1.0;
+      if(getRaytracedFastHardShadow(rayOrigin, worldNormal, rayDirection, 0.0, radius, hitTime) < 0.5){ // returns 0.0 (in shadow) or 1.0 (not in shadow)
+        occlusion += (hitTime > 0.0) ? smoothstep(0.0, 1.0, radius / hitTime) : 0.0;
+      }
+    }
+    occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
+#else
     vec3 viewTangent = normalize(randomVector - (viewNormal * dot(randomVector, viewNormal)));
     vec3 viewBitangent = cross(viewNormal, viewTangent);
     mat3 viewTBN = mat3(viewTangent, viewBitangent, viewNormal);
@@ -494,6 +528,7 @@ void main() {
       occlusion += (sampleDepth >= (depth + bias)) ? smoothstep(0.0, 1.0, radius / abs(depth - sampleDepth)) : 0.0;
     }
     occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
+#endif
   }
   oFragOcclusionDepth = vec2(occlusion, depth);
 }

@@ -3,6 +3,10 @@
 
 #ifdef RAYTRACING
 
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
+#extension GL_EXT_ray_flags_primitive_culling : enable
+
 // All routines in this files consider meters as units for distances and positions, keep this in mind when reading the code
 
 void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
@@ -100,18 +104,35 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
 
 // Fast hard shadow raytracing just for opaque triangles, without alpha cut-off and alpha blending testing, and not with the support for
 // custom intersection shaders of custom shapes, and so on. So this is really for the most simple and fast hard shadow raytracing.
+float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, out float hitTime){
+  const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
+  rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
+  float result;
+  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT){
+    result = 0.0;
+    hitTime = rayQueryGetIntersectionTEXT(rayQuery, true);
+  }else{
+    result = 1.0;
+    hitTime = -1.0;
+  } 
+  rayQueryTerminateEXT(rayQuery);
+  return result;
+}                 
+
 float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
   const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
   rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
-  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0;
+  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 0.0 : 1.0; 
   rayQueryTerminateEXT(rayQuery);
   return result;
 }                 
 
 // Full hard shadow raytracing with alpha cut-off and alpha blending support and so on
-float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
+float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, out float hitTime){
 
   float result = 1.0;
 
@@ -276,7 +297,10 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
   }
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
+    hitTime = rayQueryGetIntersectionTEXT(rayQuery, true);
     result = 0.0;
+  }else{
+    hitTime = -1.0;  
   } 
     
   // Terminate the ray query 
@@ -285,6 +309,11 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
   // Return the result
   return result;
 
+}
+
+float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
+  float hitTime; // Dummy variable, not used here. For a variant without hitTime see above
+  return getRaytracedHardShadow(position, normal, direction, minDistance, maxDistance, hitTime);
 }
 
 #endif // RAYTRACING

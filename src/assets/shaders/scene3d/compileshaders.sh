@@ -279,6 +279,8 @@ compileshaderarguments=(
 
   "-V ssao.frag -o ${tempPath}/ssao_frag.spv"
   "-V ssao.frag -DMULTIVIEW -o ${tempPath}/ssao_multiview_frag.spv"
+  "-V ssao.frag -DRAYTRACING -o ${tempPath}/ssao_raytracing_frag.spv"
+  "-V ssao.frag -DRAYTRACING -DMULTIVIEW -o ${tempPath}/ssao_raytracing_multiview_frag.spv"
 
   "-V ssao_blur.frag -o ${tempPath}/ssao_blur_frag.spv"
 
