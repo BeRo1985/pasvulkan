@@ -104,23 +104,6 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
 
 // Fast hard shadow raytracing just for opaque triangles, without alpha cut-off and alpha blending testing, and not with the support for
 // custom intersection shaders of custom shapes, and so on. So this is really for the most simple and fast hard shadow raytracing.
-float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, out float hitTime){
-  const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
-  rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
-  rayQueryProceedEXT(rayQuery); // No loop needed here, since we are only interested in the first hit (terminate on first hit flag is set above)
-  float result;
-  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT){
-    result = 0.0;
-    hitTime = rayQueryGetIntersectionTEXT(rayQuery, true);
-  }else{
-    result = 1.0;
-    hitTime = -1.0;
-  } 
-  rayQueryTerminateEXT(rayQuery);
-  return result;
-}                 
-
 float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
   const uint flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
@@ -131,8 +114,90 @@ float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, flo
   return result;
 }                 
 
+float getRaytracedFastOcclusion(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, bool offsetRay){
+  const uint flags = gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, offsetRay ? raytracingOffsetRay(position, normal, direction) : position, minDistance, direction, maxDistance);
+  while(rayQueryProceedEXT(rayQuery)){}; // Loop until the ray is terminated, so we get the closest hit, which we are interested in for occulsion
+  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 1.0 - clamp(rayQueryGetIntersectionTEXT(rayQuery, true) / maxDistance, 0.0, 1.0) : 0.0; 
+  rayQueryTerminateEXT(rayQuery);
+  return result;
+}                 
+
+bool getRaytracedFastPositionAndNormal(vec3 position, vec3 direction, float minDistance, float maxDistance, out vec3 hitPosition, out vec3 hitNormal){
+
+  const uint flags = gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
+
+  rayQueryEXT rayQuery;
+
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff,  position, minDistance, direction, maxDistance);
+
+  while(rayQueryProceedEXT(rayQuery)){}; // Loop until the ray is terminated, so we get the closest hit, which we are interested in for occulsion
+
+  bool result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? true : false;
+
+  if(result){
+
+    int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
+    
+    int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
+    
+    uint geometryInstanceOffset = uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID];
+    
+    RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
+
+    switch(geometryItem.objectType){
+
+      case 0u:{
+
+        // Mesh object type
+
+        int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+
+        vec3 barycentrics = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, false));
+
+        barycentrics.x = 1.0 - (barycentrics.y + barycentrics.z); // Calculate the missing barycentric coordinate
+
+        uint indexOffset = geometryItem.indexOffset + (primitiveID * 3u);
+          
+        uvec3 indices = uvec3(
+          uRaytracingData.meshIndices.meshIndices[indexOffset + 0u],
+          uRaytracingData.meshIndices.meshIndices[indexOffset + 1u],
+          uRaytracingData.meshIndices.meshIndices[indexOffset + 2u]
+        );
+
+        vec3 vertexPositionArray[3] = vec3[3](
+          uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.x].positionNormalXY.xyz,
+          uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.y].positionNormalXY.xyz,
+          uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.z].positionNormalXY.xyz
+        );
+
+        hitPosition = (barycentrics.x * vertexPositionArray[0]) + (barycentrics.y * vertexPositionArray[1]) + (barycentrics.z * vertexPositionArray[2]);
+
+        hitNormal = normalize(cross(vertexPositionArray[1] - vertexPositionArray[0], vertexPositionArray[2] - vertexPositionArray[0]));
+        if(dot(hitNormal, direction) > 0.0){
+          hitNormal = -hitNormal;
+        }
+
+        break;
+
+      }
+
+      default:{
+        hitPosition = position + (direction * rayQueryGetIntersectionTEXT(rayQuery, true));
+        hitNormal = -direction;
+        break;
+      }
+
+    } 
+
+  }
+  rayQueryTerminateEXT(rayQuery);
+  return result;
+}                 
+
 // Full hard shadow raytracing with alpha cut-off and alpha blending support and so on
-float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, out float hitTime){
+float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
 
   float result = 1.0;
 
@@ -297,10 +362,7 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
   }
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
-    hitTime = rayQueryGetIntersectionTEXT(rayQuery, true);
     result = 0.0;
-  }else{
-    hitTime = -1.0;  
   } 
     
   // Terminate the ray query 
@@ -309,11 +371,6 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
   // Return the result
   return result;
 
-}
-
-float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
-  float hitTime; // Dummy variable, not used here. For a variant without hitTime see above
-  return getRaytracedHardShadow(position, normal, direction, minDistance, maxDistance, hitTime);
 }
 
 #endif // RAYTRACING

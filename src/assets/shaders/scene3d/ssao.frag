@@ -56,6 +56,11 @@ mat4 inverseViewMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_V
 mat4 projectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].projectionMatrix;
 mat4 inverseProjectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + int(gl_ViewIndex)].inverseProjectionMatrix;
 
+#ifdef RAYTRACING
+mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
+#endif
+
 vec3 fetchPosition(vec2 texCoord) {
 #ifdef MULTIVIEW
   vec4 position = inverseProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, vec3(texCoord, viewIndex), 0).x), 1.0);
@@ -64,6 +69,22 @@ vec3 fetchPosition(vec2 texCoord) {
 #endif
   return position.xyz / position.w;
 }
+
+#ifdef RAYTRACING
+vec3 fetchWorldPosition(vec2 texCoord) {
+#ifdef MULTIVIEW
+  vec4 position = inverseViewProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, vec3(texCoord, viewIndex), 0).x), 1.0);
+#else
+  vec4 position = inverseViewProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, texCoord, 0).x), 1.0);
+#endif
+  return position.xyz / position.w;
+}
+
+vec3 getWorldPosition(vec2 texCoord, float depth) {
+  vec4 position = inverseViewProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), depth), 1.0);
+  return position.xyz / position.w;
+}
+#endif
 
 vec3 fetchPositionLod(vec2 texCoord, float lod) {
 #ifdef MULTIVIEW
@@ -462,6 +483,25 @@ void main() {
   if (isinf(depth) || (abs(depth) < 1e-7)) {
     occlusion = 1.0;
   } else {
+#if 0 //def RAYTRACING
+    vec3 primaryRayOrigin = inverseViewMatrix[3].xyz; // getWorldPosition(texCoord.xy, (projectionMatrix[2][3] < -1e-7) ? 1.0 : 0.0);
+    vec3 primaryRayTarget = fetchWorldPosition(texCoord.xy);
+    vec3 primaryRayDirection = normalize(primaryRayTarget - primaryRayOrigin);
+    vec3 rayOrigin, worldNormal;
+    if(getRaytracedFastPositionAndNormal(primaryRayOrigin, primaryRayDirection, 0.0, 1000000.0, rayOrigin, worldNormal)){
+      vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));
+      vec3 worldTangent = normalize(randomVector - (worldNormal * dot(randomVector, worldNormal)));
+      vec3 worldBitangent = cross(worldNormal, worldTangent);
+      mat3 worldTBN = mat3(worldTangent, worldBitangent, worldNormal);
+      for (int i = 0; i < countKernelSamples; i++) {
+        vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
+        occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldTBN[2], rayDirection, 0.025, radius, false);
+      }
+      occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
+    }else{
+      occlusion = 1.0;      
+    }
+#else
     vec3 viewNormal;
 #if 1
     {
@@ -498,24 +538,22 @@ void main() {
     viewNormal = (length(viewNormal) < 1e-6) ? vec3(0.0, 0.0, -1.0) : normalize(viewNormal);
 #endif
     vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));
-#ifdef RAYTRACING
-    vec3 worldNormal = transpose(inverse(mat3(inverseViewMatrix))) * viewNormal;
-    vec3 worldTangent = normalize(randomVector - (worldNormal * dot(randomVector, worldNormal)));
-    vec3 worldBitangent = cross(worldNormal, worldTangent);
-    mat3 worldTBN = mat3(worldTangent, worldBitangent, worldNormal);
-    for (int i = 0; i < countKernelSamples; i++) {
-      vec3 rayOrigin = position.xyz;
-      vec3 rayDirection = worldTBN * kernelSamples[i];
-      float hitTime = -1.0;
-      if(getRaytracedFastHardShadow(rayOrigin, worldNormal, rayDirection, 0.0, radius, hitTime) < 0.5){ // returns 0.0 (in shadow) or 1.0 (not in shadow)
-        occlusion += (hitTime > 0.0) ? smoothstep(0.0, 1.0, radius / hitTime) : 0.0;
-      }
-    }
-    occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
-#else
     vec3 viewTangent = normalize(randomVector - (viewNormal * dot(randomVector, viewNormal)));
     vec3 viewBitangent = cross(viewNormal, viewTangent);
     mat3 viewTBN = mat3(viewTangent, viewBitangent, viewNormal);
+#ifdef RAYTRACING
+    mat3 worldTBN = transpose(inverse(mat3(inverseViewMatrix))) * viewTBN;
+#if 1
+    vec3 rayOrigin = fetchWorldPosition(texCoord.xy); 
+#else   
+    vec4 rayOrigin = inverseViewMatrix * vec4(position.xyz, 1.0);
+    rayOrigin.xyz /= rayOrigin.w;
+#endif    
+    for (int i = 0; i < countKernelSamples; i++) {
+      vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
+      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldTBN[2], rayDirection, 0.025, radius, false);
+    }
+#else
     for (int i = 0; i < countKernelSamples; i++) {
       vec4 p = projectionMatrix * vec4(position.xyz + ((viewTBN * kernelSamples[i]) * radius), 1.0);
       p.xyz /= p.w;
@@ -527,8 +565,9 @@ void main() {
 #endif
       occlusion += (sampleDepth >= (depth + bias)) ? smoothstep(0.0, 1.0, radius / abs(depth - sampleDepth)) : 0.0;
     }
+#endif // RAYTRACING
     occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
-#endif
+#endif 
   }
   oFragOcclusionDepth = vec2(occlusion, depth);
 }

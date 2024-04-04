@@ -171,10 +171,18 @@ begin
   Stream.Free;
  end;
 
- if fInstance.CountSurfaceViews>1 then begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_multiview_frag.spv');
- end else begin
-  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_frag.spv');
+{if fInstance.Scene3D.RaytracingActive then begin
+  if fInstance.CountSurfaceViews>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_raytracing_multiview_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_raytracing_frag.spv');
+  end;
+ end else}begin
+  if fInstance.CountSurfaceViews>1 then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_multiview_frag.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_frag.spv');
+  end;
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
@@ -254,6 +262,9 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
+{if fInstance.Scene3D.RaytracingActive then begin
+  fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalVulkanDescriptorSetLayout);
+ end;}
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TSSAOPushConstants));
  fVulkanPipelineLayout.Initialize;
@@ -352,24 +363,48 @@ end;
 procedure TpvScene3DRendererPassesSSAORenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     SSAOPushConstants:TSSAOPushConstants;
+//  DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
+
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
+
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
+
  SSAOPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
  SSAOPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
  SSAOPushConstants.FrameIndex:=FrameGraph.DrawFrameIndex;
- aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                      fVulkanPipelineLayout.Handle,
-                                      0,
-                                      1,
-                                      @fVulkanDescriptorSets[aInFlightFrameIndex].Handle,0,nil);
+
+{if fInstance.Scene3D.RaytracingActive then begin
+
+  DescriptorSets[0]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+  DescriptorSets[1]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                       fVulkanPipelineLayout.Handle,
+                                       0,
+                                       2,@DescriptorSets,
+                                       0,nil);
+
+ end else}begin
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                       fVulkanPipelineLayout.Handle,
+                                       0,
+                                       1,@fVulkanDescriptorSets[aInFlightFrameIndex].Handle,
+                                       0,nil);
+
+ end;
+
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
                                  SizeOf(TSSAOPushConstants),
                                  @SSAOPushConstants);
+
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+
  aCommandBuffer.CmdDraw(3,1,0,0);
+
 end;
 
 end.
