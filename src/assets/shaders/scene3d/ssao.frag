@@ -548,7 +548,7 @@ void main() {
     for (int i = 0; i < countSamples; i++) {
 //      vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countSamples)));
       vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
-      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, bias, radius, true, true);
+      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, 2.0, true, true);
     }
   
     occlusion = clamp(1.0 - (strength * (occlusion / float(countSamples))), 0.0, 1.0);
