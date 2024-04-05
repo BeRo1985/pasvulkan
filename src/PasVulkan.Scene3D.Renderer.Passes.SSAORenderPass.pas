@@ -171,13 +171,13 @@ begin
   Stream.Free;
  end;
 
-{if fInstance.Scene3D.RaytracingActive then begin
+ if fInstance.Scene3D.RaytracingActive then begin
   if fInstance.CountSurfaceViews>1 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_raytracing_multiview_frag.spv');
   end else begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_raytracing_frag.spv');
   end;
- end else}begin
+ end else begin
   if fInstance.CountSurfaceViews>1 then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_multiview_frag.spv');
   end else begin
@@ -262,9 +262,9 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
-{if fInstance.Scene3D.RaytracingActive then begin
+ if fInstance.Scene3D.RaytracingActive then begin
   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalVulkanDescriptorSetLayout);
- end;}
+ end;
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
  fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TSSAOPushConstants));
  fVulkanPipelineLayout.Initialize;
@@ -363,7 +363,7 @@ end;
 procedure TpvScene3DRendererPassesSSAORenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     SSAOPushConstants:TSSAOPushConstants;
-//  DescriptorSets:array[0..1] of TVkDescriptorSet;
+    DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
 
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -374,7 +374,7 @@ begin
  SSAOPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
  SSAOPushConstants.FrameIndex:=FrameGraph.DrawFrameIndex;
 
-{if fInstance.Scene3D.RaytracingActive then begin
+ if fInstance.Scene3D.RaytracingActive then begin
 
   DescriptorSets[0]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[1]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
@@ -385,7 +385,7 @@ begin
                                        2,@DescriptorSets,
                                        0,nil);
 
- end else}begin
+ end else begin
 
   aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                        fVulkanPipelineLayout.Handle,

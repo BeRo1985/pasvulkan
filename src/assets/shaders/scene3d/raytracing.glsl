@@ -102,6 +102,298 @@ vec4 raytracingTextureFetch(const in Material material, const in int textureInde
   } 
 }
 
+// This function handles the rayProceedEXT loop with alpha handling based on the material properties
+void rayProceedEXTAlphaHandlingBasedLoop(in rayQueryEXT rayQuery, const in bool closest, out float resultAlpha){
+
+  resultAlpha = 1.0;
+
+  bool done = false;
+  while((!done) && rayQueryProceedEXT(rayQuery)){
+
+    uint intersectionType = rayQueryGetIntersectionTypeEXT(rayQuery, false);
+    
+    switch(intersectionType){
+    
+      case gl_RayQueryCandidateIntersectionTriangleEXT:{
+    
+        bool opaqueHit = (rayQueryGetRayFlagsEXT(rayQuery) & gl_RayFlagsOpaqueEXT) != 0;
+    
+        if(opaqueHit){
+
+          // Shortcut for opaque triangles, no need to check material alpha cut-off or alpha blending here
+    
+          rayQueryConfirmIntersectionEXT(rayQuery);
+          resultAlpha = 0.0;
+          if(!closest){
+            done = true;
+          }
+
+        }else{
+
+          // With possible transparent triangles we need to check the material alpha cut-off and alpha blending
+
+          int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
+          
+          int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
+          
+          uint geometryInstanceOffset = uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID];
+          
+          RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
+
+          switch(geometryItem.objectType){
+
+            case 0u:{
+
+              // Mesh object type
+    
+              Material material = uMaterials.materials[geometryItem.materialIndex]; // <= buffer reference, so practically a pointer inside the shader here
+
+              // Check if alpha cut-off or alpha blending is used
+              if((material.alphaCutOffFlagsTex0Tex1.y & ((1u << 4u) | (1u << 5u))) != 0u){ 
+
+                int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);
+
+                vec3 barycentrics = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, false));
+
+                barycentrics.x = 1.0 - (barycentrics.y + barycentrics.z); // Calculate the missing barycentric coordinate
+    
+                uint indexOffset = geometryItem.indexOffset + (primitiveID * 3u);
+                
+                uvec3 indices = uvec3(
+                  uRaytracingData.meshIndices.meshIndices[indexOffset + 0u],
+                  uRaytracingData.meshIndices.meshIndices[indexOffset + 1u],
+                  uRaytracingData.meshIndices.meshIndices[indexOffset + 2u]
+                );
+
+                vec4 vertexTexCoordsArray[3] = vec4[3](
+                  uRaytracingData.meshStaticVertices.meshStaticVertices[indices.x].texCoords,
+                  uRaytracingData.meshStaticVertices.meshStaticVertices[indices.y].texCoords,
+                  uRaytracingData.meshStaticVertices.meshStaticVertices[indices.z].texCoords
+                );
+
+                vec4 vertexColorArray[3] = vec4[3](
+                  vec4(unpackHalf2x16(uRaytracingData.meshStaticVertices.meshStaticVertices[indices.x].color0MaterialID.x), unpackHalf2x16(uRaytracingData.meshStaticVertices.meshStaticVertices[indices.x].color0MaterialID.y)),
+                  vec4(unpackHalf2x16(uRaytracingData.meshStaticVertices.meshStaticVertices[indices.y].color0MaterialID.x), unpackHalf2x16(uRaytracingData.meshStaticVertices.meshStaticVertices[indices.y].color0MaterialID.y)),
+                  vec4(unpackHalf2x16(uRaytracingData.meshStaticVertices.meshStaticVertices[indices.z].color0MaterialID.x), unpackHalf2x16(uRaytracingData.meshStaticVertices.meshStaticVertices[indices.z].color0MaterialID.y))                
+                );
+
+                vec4 vertexTexCoords = (barycentrics.x * vertexTexCoordsArray[0]) + (barycentrics.y * vertexTexCoordsArray[1]) + (barycentrics.z * vertexTexCoordsArray[2]);
+
+                vec4 vertexColor = (barycentrics.x * vertexColorArray[0]) + (barycentrics.y * vertexColorArray[1]) + (barycentrics.z * vertexColorArray[2]);
+
+                vec2 texCoords[2] = vec2[2]( vertexTexCoords.xy, vertexTexCoords.zw );
+
+                if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 4u)) != 0u){
+                  // Mask / Alpha Test
+                  float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
+                  if(alpha >= uintBitsToFloat(material.alphaCutOffFlagsTex0Tex1.x)){
+                    rayQueryConfirmIntersectionEXT(rayQuery);
+                    resultAlpha = 0.0;
+                    if(!closest){
+                      done = true;
+                    }
+                  }              
+                }else if((material.alphaCutOffFlagsTex0Tex1.y & (1u << 5u)) != 0u){
+                  // Blend / Alpha Blend
+                  float alpha = raytracingTextureFetch(material, 0, vec4(1.0), true, texCoords).w * material.baseColorFactor.w * vertexColor.w;
+                  resultAlpha *= (1.0 - clamp(alpha, 0.0, 1.0));
+                }else{
+                  // Opaque, but should not happen here, since we have already checked above for opaque hits
+                  rayQueryConfirmIntersectionEXT(rayQuery);
+                  resultAlpha = 0.0;
+                  if(!closest){
+                    done = true;
+                  }
+                }
+
+              }else{
+                  
+                // Opaque
+                rayQueryConfirmIntersectionEXT(rayQuery);
+                resultAlpha = 0.0;
+                if(!closest){
+                  done = true;
+                }
+
+              } 
+
+              break;
+
+            }
+
+            case 1u:{
+              
+              // Particle object type, ignore for now, but TODO
+              break;
+
+            } 
+
+            case 2u:{
+              
+              // Planet object type, consider as opaque for all cases for now, since the ground should be always opaque on the planets
+ 
+              rayQueryConfirmIntersectionEXT(rayQuery);
+              resultAlpha = 0.0;
+              if(!closest){
+                done = true;
+              }
+
+              break;
+
+            }
+
+            default:{
+              break;
+            }
+
+          } 
+
+        }
+
+        break;
+      }
+
+      case gl_RayQueryCandidateIntersectionAABBEXT:{
+        // Ignore for now
+        //rayQueryGenerateIntersectionEXT(rayQuery, 0.0);
+        break;
+      }
+
+      default:{
+        break;
+      }
+
+    } 
+
+  }
+
+}
+
+bool tracePrimaryBasicGeometryRay(vec3 position, vec3 direction, float minDistance, float maxDistance, out vec3 hitPosition, out vec3 hitFlatNormal, out vec3 hitNormal){
+
+  const uint flags = 0u | 
+                     //gl_RayFlagsCullFrontFacingTrianglesEXT |
+                     //gl_RayFlagsTerminateOnFirstHitEXT | 
+                     //gl_RayFlagsOpaqueEXT |
+                     //gl_RayFlagsSkipClosestHitShaderEXT |
+                     0u;
+
+  rayQueryEXT rayQuery;
+
+  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, position, minDistance, direction, maxDistance);
+
+  float temporaryAlpha;
+  rayProceedEXTAlphaHandlingBasedLoop(rayQuery, true, temporaryAlpha);
+
+  bool result = rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT;
+
+  if(result){
+
+    uint intersectionType = rayQueryGetIntersectionTypeEXT(rayQuery, false);
+    
+    switch(intersectionType){
+    
+      case gl_RayQueryCandidateIntersectionTriangleEXT:{
+
+        int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
+        
+        int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
+        
+        uint geometryInstanceOffset = uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID];
+        
+        RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
+
+        switch(geometryItem.objectType){
+
+          case 0u:{
+
+            // Mesh object type
+
+            // mat4x3 objectToWorld = rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true); // don't need this here, since meshDynamicVertices already contains the world space positions 
+
+            int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+
+            vec3 barycentrics = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+
+            barycentrics.x = 1.0 - (barycentrics.y + barycentrics.z); // Calculate the missing barycentric coordinate
+
+            uint indexOffset = geometryItem.indexOffset + (primitiveID * 3u);
+              
+            uvec3 indices = uvec3(
+              uRaytracingData.meshIndices.meshIndices[indexOffset + 0u],
+              uRaytracingData.meshIndices.meshIndices[indexOffset + 1u],
+              uRaytracingData.meshIndices.meshIndices[indexOffset + 2u]
+            );
+
+            uvec4 vertexPositionNormalXYArray[3] = uvec4[3](
+              uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.x].positionNormalXY,
+              uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.y].positionNormalXY,
+              uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.z].positionNormalXY
+            );
+
+            vec3 vertexPositionArray[3] = vec3[3](
+              uintBitsToFloat(vertexPositionNormalXYArray[0].xyz),
+              uintBitsToFloat(vertexPositionNormalXYArray[1].xyz),
+              uintBitsToFloat(vertexPositionNormalXYArray[2].xyz)
+            );
+
+            vec3 vertexNormalArray[3] = vec3[3](
+              normalize(vec3(unpackSnorm2x16(vertexPositionNormalXYArray[0].w), unpackSnorm2x16(uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.x].normalZSignTangentXYZModelScaleXYZ.x).x)),
+              normalize(vec3(unpackSnorm2x16(vertexPositionNormalXYArray[1].w), unpackSnorm2x16(uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.y].normalZSignTangentXYZModelScaleXYZ.x).x)),
+              normalize(vec3(unpackSnorm2x16(vertexPositionNormalXYArray[2].w), unpackSnorm2x16(uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.z].normalZSignTangentXYZModelScaleXYZ.x).x))
+            );
+
+            hitPosition = (barycentrics.x * vertexPositionArray[0]) + (barycentrics.y * vertexPositionArray[1]) + (barycentrics.z * vertexPositionArray[2]);
+
+            hitNormal = normalize((barycentrics.x * vertexNormalArray[0]) + (barycentrics.y * vertexNormalArray[1]) + (barycentrics.z * vertexNormalArray[2]));
+            
+            hitFlatNormal = normalize(cross(vertexPositionArray[1] - vertexPositionArray[0], vertexPositionArray[2] - vertexPositionArray[0]));
+            if(dot(hitFlatNormal, direction) > 0.0){
+              hitFlatNormal = -hitFlatNormal;
+              hitNormal = -hitNormal;
+            }
+
+            break;
+
+          }
+
+          default:{
+            hitPosition = position + (direction * rayQueryGetIntersectionTEXT(rayQuery, true));
+            hitNormal = -direction;
+            hitFlatNormal = -direction;
+            break;
+          }
+
+        } 
+
+        break;
+
+      }
+
+      case gl_RayQueryCandidateIntersectionAABBEXT:{
+        // Ignore for now
+        hitPosition = position + (direction * rayQueryGetIntersectionTEXT(rayQuery, true));
+        hitNormal = -direction;
+        hitFlatNormal = -direction;
+        break;
+      }
+
+      default:{
+        hitPosition = position + (direction * rayQueryGetIntersectionTEXT(rayQuery, true));
+        hitNormal = -direction;
+        hitFlatNormal = -direction;
+        break;
+      }
+
+    }
+
+  }
+
+  rayQueryTerminateEXT(rayQuery);
+
+  return result;
+}                 
+
 // Fast hard shadow raytracing just for opaque triangles, without alpha cut-off and alpha blending testing, and not with the support for
 // custom intersection shaders of custom shapes, and so on. So this is really for the most simple and fast hard shadow raytracing.
 float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
@@ -114,84 +406,16 @@ float getRaytracedFastHardShadow(vec3 position, vec3 normal, vec3 direction, flo
   return result;
 }                 
 
-float getRaytracedFastOcclusion(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, bool offsetRay){
+float getRaytracedFastOcclusion(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance, bool offsetRay, bool useDistanceBasedCutOff){
   const uint flags = gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, offsetRay ? raytracingOffsetRay(position, normal, direction) : position, minDistance, direction, maxDistance);
   while(rayQueryProceedEXT(rayQuery)){}; // Loop until the ray is terminated, so we get the closest hit, which we are interested in for occulsion
-  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? 1.0 - clamp(rayQueryGetIntersectionTEXT(rayQuery, true) / maxDistance, 0.0, 1.0) : 0.0; 
-  rayQueryTerminateEXT(rayQuery);
-  return result;
-}                 
-
-bool getRaytracedFastPositionAndNormal(vec3 position, vec3 direction, float minDistance, float maxDistance, out vec3 hitPosition, out vec3 hitNormal){
-
-  const uint flags = gl_RayFlagsCullNoOpaqueEXT | gl_RayFlagsSkipAABBEXT;
-
-  rayQueryEXT rayQuery;
-
-  rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff,  position, minDistance, direction, maxDistance);
-
-  while(rayQueryProceedEXT(rayQuery)){}; // Loop until the ray is terminated, so we get the closest hit, which we are interested in for occulsion
-
-  bool result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) ? true : false;
-
-  if(result){
-
-    int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false);
-    
-    int geometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, false);
-    
-    uint geometryInstanceOffset = uRaytracingData.geometryInstanceOffsets.geometryInstanceOffsets[instanceID];
-    
-    RaytracingGeometryItem geometryItem = uRaytracingData.geometryItems.geometryItems[geometryInstanceOffset + geometryID];
-
-    switch(geometryItem.objectType){
-
-      case 0u:{
-
-        // Mesh object type
-
-        int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
-
-        vec3 barycentrics = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, false));
-
-        barycentrics.x = 1.0 - (barycentrics.y + barycentrics.z); // Calculate the missing barycentric coordinate
-
-        uint indexOffset = geometryItem.indexOffset + (primitiveID * 3u);
-          
-        uvec3 indices = uvec3(
-          uRaytracingData.meshIndices.meshIndices[indexOffset + 0u],
-          uRaytracingData.meshIndices.meshIndices[indexOffset + 1u],
-          uRaytracingData.meshIndices.meshIndices[indexOffset + 2u]
-        );
-
-        vec3 vertexPositionArray[3] = vec3[3](
-          uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.x].positionNormalXY.xyz,
-          uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.y].positionNormalXY.xyz,
-          uRaytracingData.meshDynamicVertices.meshDynamicVertices[indices.z].positionNormalXY.xyz
-        );
-
-        hitPosition = (barycentrics.x * vertexPositionArray[0]) + (barycentrics.y * vertexPositionArray[1]) + (barycentrics.z * vertexPositionArray[2]);
-
-        hitNormal = normalize(cross(vertexPositionArray[1] - vertexPositionArray[0], vertexPositionArray[2] - vertexPositionArray[0]));
-        if(dot(hitNormal, direction) > 0.0){
-          hitNormal = -hitNormal;
-        }
-
-        break;
-
-      }
-
-      default:{
-        hitPosition = position + (direction * rayQueryGetIntersectionTEXT(rayQuery, true));
-        hitNormal = -direction;
-        break;
-      }
-
-    } 
-
-  }
+  float result = (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT) 
+                   ? (useDistanceBasedCutOff 
+                        ? (1.0 - clamp(rayQueryGetIntersectionTEXT(rayQuery, true) / maxDistance, 0.0, 1.0))
+                        : 1.0) 
+                   : 0.0; 
   rayQueryTerminateEXT(rayQuery);
   return result;
 }                 
@@ -199,19 +423,21 @@ bool getRaytracedFastPositionAndNormal(vec3 position, vec3 direction, float minD
 // Full hard shadow raytracing with alpha cut-off and alpha blending support and so on
 float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float minDistance, float maxDistance){
 
-  float result = 1.0;
-
-  const uint flags = 0 | 
+  const uint flags = 0u | 
                      //gl_RayFlagsCullFrontFacingTrianglesEXT |
                      //gl_RayFlagsTerminateOnFirstHitEXT | 
                      //gl_RayFlagsOpaqueEXT |
                      //gl_RayFlagsSkipClosestHitShaderEXT |
-                     0;
+                     0u;
 
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, uRaytracingTopLevelAccelerationStructure, flags, 0xff, raytracingOffsetRay(position, normal, direction), minDistance, direction, maxDistance);
 
-  bool done = false;
+  float result;
+
+  rayProceedEXTAlphaHandlingBasedLoop(rayQuery, false, result);
+
+/*bool done = false;
   while((!done) && rayQueryProceedEXT(rayQuery)){
 
     uint intersectionType = rayQueryGetIntersectionTypeEXT(rayQuery, false);
@@ -359,7 +585,7 @@ float getRaytracedHardShadow(vec3 position, vec3 normal, vec3 direction, float m
 
     } 
 
-  }
+  }*/
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT){
     result = 0.0;

@@ -124,6 +124,32 @@ vec3 hash33(vec3 p) {
 
 #ifdef RAYTRACING
   #include "raytracing.glsl"
+  #include "tangentspacebasis.glsl"
+
+vec2 Hammersley(const in int index, const in int numSamples) {
+#if 1
+  return vec2(fract(float(index) / float(numSamples)), float(bitfieldReverse(uint(index))) * 2.3283064365386963e-10);
+#else
+  uint reversedIndex = uint(index);
+  reversedIndex = (reversedIndex << 16u) | (reversedIndex >> 16u);
+  reversedIndex = ((reversedIndex & 0x00ff00ffu) << 8u) | ((reversedIndex & 0xff00ff00u) >> 8u);
+  reversedIndex = ((reversedIndex & 0x0f0f0f0fu) << 4u) | ((reversedIndex & 0xf0f0f0f0u) >> 4u);
+  reversedIndex = ((reversedIndex & 0x33333333u) << 2u) | ((reversedIndex & 0xccccccccu) >> 2u);
+  reversedIndex = ((reversedIndex & 0x55555555u) << 1u) | ((reversedIndex & 0xaaaaaaaau) >> 1u);
+  return vec2(fract(float(index) / float(numSamples)), float(reversedIndex) * 2.3283064365386963e-10);
+#endif
+}
+
+mat3 generateTBN(const in vec3 normal) {
+  vec3 bitangent = (1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0))) <= 1e-7) ? vec3(0.0, 0.0, (dot(normal, vec3(0.0, 1.0, 0.0)) > 0.0) ? 1.0 : -1.0) : vec3(0.0, 1.0, 0.0);
+  vec3 tangent = normalize(cross(bitangent, normal));
+  return mat3(tangent, cross(normal, tangent), normal);
+}
+
+vec3 sampleHemisphere(vec2 xi){
+  return vec3(sin(vec2(xi.y * 6.283185307179586) + vec2(1.57079632679489661923, 0.0)) * sqrt(1.0 - (xi.x * xi.x)), xi.x);
+}
+
 #endif
 
 #define SSAO 0
@@ -477,31 +503,70 @@ void main() {
 #else
   vec2 texCoord = inTexCoord;
 #endif
+#ifdef RAYTRACING
+
+  float depth, occlusion;
+
+#if 1
+
+  bool reversedZ = projectionMatrix[2][3] < -1e-7;
+  
+  bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
+    
+  vec4 primaryRayOrigin = inverseViewProjectionMatrix * vec4(fma(texCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+  primaryRayOrigin /= primaryRayOrigin.w;
+    
+  vec4 primaryRayTarget = inverseViewProjectionMatrix * vec4(fma(texCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? (infiniteFarPlane ? 0.9 : 0.0) : 1.0, 1.0);
+  primaryRayTarget /= primaryRayTarget.w;
+
+#else
+
+  vec3 primaryRayOrigin = inverseViewMatrix[3].xyz;
+  
+  vec3 primaryRayTarget = fetchWorldPosition(texCoord.xy);
+
+#endif
+
+  vec3 primaryRayDirection = normalize(primaryRayTarget.xyz - primaryRayOrigin.xyz);
+  
+  vec3 rayOrigin, worldNormal, worldFlatNormal;
+  
+  if(tracePrimaryBasicGeometryRay(primaryRayOrigin.xyz, primaryRayDirection.xyz, 0.0, 1000000.0, rayOrigin, worldFlatNormal, worldNormal)){
+  
+#if 1
+    vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));
+
+    vec3 worldTangent = normalize(randomVector - (worldNormal * dot(randomVector, worldNormal)));
+    vec3 worldBitangent = cross(worldNormal, worldTangent);
+
+    mat3 worldTBN = mat3(worldTangent, worldBitangent, worldNormal);
+#else
+    mat3 worldTBN = getTangentSpaceFromNormal(worldFlatNormal); 
+#endif
+  
+    const int countSamples = countKernelSamples;
+    for (int i = 0; i < countSamples; i++) {
+//      vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countSamples)));
+      vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
+      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, bias, radius, true, true);
+    }
+  
+    occlusion = clamp(1.0 - (strength * (occlusion / float(countSamples))), 0.0, 1.0);
+
+    depth = length(rayOrigin.xyz - primaryRayOrigin.xyz);
+  
+  }else{
+    occlusion = 1.0;      
+    depth = uintBitsToFloat(0x7f800000u); // inf 
+  }
+
+#else
   vec3 position = fetchPosition(texCoord.xy);
   float depth = position.z;
   float occlusion = 0.0;
   if (isinf(depth) || (abs(depth) < 1e-7)) {
     occlusion = 1.0;
   } else {
-#if 0 //def RAYTRACING
-    vec3 primaryRayOrigin = inverseViewMatrix[3].xyz; // getWorldPosition(texCoord.xy, (projectionMatrix[2][3] < -1e-7) ? 1.0 : 0.0);
-    vec3 primaryRayTarget = fetchWorldPosition(texCoord.xy);
-    vec3 primaryRayDirection = normalize(primaryRayTarget - primaryRayOrigin);
-    vec3 rayOrigin, worldNormal;
-    if(getRaytracedFastPositionAndNormal(primaryRayOrigin, primaryRayDirection, 0.0, 1000000.0, rayOrigin, worldNormal)){
-      vec3 randomVector = normalize(hash33(vec3(gl_FragCoord.xy, float(uint(pushConstants.frameIndex & 0xfffu)))) - vec3(0.5));
-      vec3 worldTangent = normalize(randomVector - (worldNormal * dot(randomVector, worldNormal)));
-      vec3 worldBitangent = cross(worldNormal, worldTangent);
-      mat3 worldTBN = mat3(worldTangent, worldBitangent, worldNormal);
-      for (int i = 0; i < countKernelSamples; i++) {
-        vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
-        occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldTBN[2], rayDirection, 0.025, radius, false);
-      }
-      occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
-    }else{
-      occlusion = 1.0;      
-    }
-#else
     vec3 viewNormal;
 #if 1
     {
@@ -551,7 +616,7 @@ void main() {
 #endif    
     for (int i = 0; i < countKernelSamples; i++) {
       vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
-      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldTBN[2], rayDirection, 0.025, radius, false);
+      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldTBN[2], rayDirection, 0.01, radius, false, true);
     }
 #else
     for (int i = 0; i < countKernelSamples; i++) {
@@ -567,8 +632,8 @@ void main() {
     }
 #endif // RAYTRACING
     occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
-#endif 
   }
+#endif // RAYTRACING
   oFragOcclusionDepth = vec2(occlusion, depth);
 }
-#endif
+#endif 
