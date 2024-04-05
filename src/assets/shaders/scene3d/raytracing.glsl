@@ -6,8 +6,11 @@
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
 #extension GL_EXT_ray_flags_primitive_culling : enable
+#extension GL_EXT_buffer_reference_uvec2 : enable
 
 // All routines in this files consider meters as units for distances and positions, keep this in mind when reading the code
+
+#include "octahedralmap.glsl"
 
 void raytracingCorrectSmoothNormal(inout vec3 smoothNormal, const in vec3 geometricNormal, const in vec3 worldSpacePosition, const in vec3 objectRayOrigin){
   vec3 direction = worldSpacePosition - objectRayOrigin;
@@ -352,6 +355,71 @@ bool tracePrimaryBasicGeometryRay(vec3 position, vec3 direction, float minDistan
               hitFlatNormal = -hitFlatNormal;
               hitNormal = -hitNormal;
             }
+
+            break;
+
+          }
+
+          case 1u:{
+            
+            // Particle object type, ignore for now, but TODO
+            hitPosition = position + (direction * rayQueryGetIntersectionTEXT(rayQuery, true));
+            hitNormal = -direction;
+            hitFlatNormal = -direction;
+            break;
+
+          }
+
+          case 2u:{
+            
+            // Planet object type
+
+            mat4x3 objectToWorld = rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true); 
+
+            ReferencedPlanetDataArray referencedPlanetDataArray = uRaytracingData.referencedPlanetDataArray;            
+            
+            PlanetData planetData = referencedPlanetDataArray.planetData[geometryItem.objectIndex];
+
+            RaytracingPlanetVertices raytracingPlanetVertices = RaytracingPlanetVertices(uvec2(planetData.verticesIndices.xy)); 
+            
+            RaytracingPlanetIndices raytracingPlanetIndices = RaytracingPlanetIndices(uvec2(planetData.verticesIndices.zw)); 
+
+            int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+
+            vec3 barycentrics = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+
+            barycentrics.x = 1.0 - (barycentrics.y + barycentrics.z); // Calculate the missing barycentric coordinate
+
+            uint indexOffset = geometryItem.indexOffset + (primitiveID * 3u);
+              
+            uvec3 indices = uvec3(
+              raytracingPlanetIndices.planetIndices[indexOffset + 0u],
+              raytracingPlanetIndices.planetIndices[indexOffset + 1u],
+              raytracingPlanetIndices.planetIndices[indexOffset + 2u]
+            );
+
+            vec3 vertexPositionArray[3] = vec3[3](
+              objectToWorld * vec4(uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.x].xyz), 1.0),
+              objectToWorld * vec4(uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.y].xyz), 1.0),
+              objectToWorld * vec4(uintBitsToFloat(raytracingPlanetVertices.planetVertices[indices.z].xyz), 1.0)
+            );
+
+            vec3 vertexNormalArray[3] = vec3[3](
+              normalize(objectToWorld * vec4(octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.x].w)), 0.0)),
+              normalize(objectToWorld * vec4(octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.y].w)), 0.0)),
+              normalize(objectToWorld * vec4(octSignedDecode(unpackSnorm2x16(raytracingPlanetVertices.planetVertices[indices.z].w)), 0.0))
+            );
+
+            hitPosition = (barycentrics.x * vertexPositionArray[0]) + (barycentrics.y * vertexPositionArray[1]) + (barycentrics.z * vertexPositionArray[2]);
+
+            hitNormal = normalize((barycentrics.x * vertexNormalArray[0]) + (barycentrics.y * vertexNormalArray[1]) + (barycentrics.z * vertexNormalArray[2]));
+            
+            hitFlatNormal = normalize(cross(vertexPositionArray[1] - vertexPositionArray[0], vertexPositionArray[2] - vertexPositionArray[0]));
+            if(dot(hitFlatNormal, direction) > 0.0){
+              hitFlatNormal = -hitFlatNormal;
+              hitNormal = -hitNormal;
+            }
+
 
             break;
 

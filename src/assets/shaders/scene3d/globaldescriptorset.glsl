@@ -115,7 +115,9 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
 
   vec4 bottomRadiusTopRadiusHeightMapScale; // x = bottomRadius, y = topRadius, z = heightMapScale, w = unused
 
-  uvec4 flagsResolutionsVertices; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution), z+w = buffer device address to vertices 
+  uvec4 flagsResolutions; // x = flags, y = resolution (2x 16-bit: tile map resolution, tile resolution)
+
+  uvec4 verticesIndices; // xy = vertices device address, zw = indices device address
 
   vec4 selected; // xyz = octahedral map coordinates, w = radius   
 
@@ -127,7 +129,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Pl
 #ifdef RAYTRACING
 
 layout(buffer_reference, std430, buffer_reference_align = 8) readonly buffer ReferencedPlanetDataArray {
-  PlanetData PlanetData[];
+  PlanetData planetData[];
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer RaytracingGeometryInstanceOffsets {
@@ -183,8 +185,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer Ra
   RaytracingPlanetVertex planetVertices[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 16) readonly buffer RaytracingPlanetVerticesArray {
-  RaytracingPlanetVertices planetVertices[];
+layout(buffer_reference, std430, buffer_reference_align = 4) readonly buffer RaytracingPlanetIndices {
+  uint planetIndices[];
 };
 
 layout(set = 0, binding = 4) uniform accelerationStructureEXT uRaytracingTopLevelAccelerationStructure;

@@ -23231,7 +23231,7 @@ begin
 
  if assigned(fVulkanDevice) then begin
 
-  VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.BufferData;
+  VulkanShortTermDynamicBufferData:=fVulkanShortTermDynamicBuffers.fBufferDataArray[aInFlightFrameIndex];
 
   VulkanLongTermStaticBufferData:=fVulkanLongTermStaticBuffers.BufferData;
 

@@ -98,7 +98,7 @@ void main(){
 
   vec3 normal = octSignedDecode(inOctahedralEncodedNormal);
 
-  if((planetData.flagsResolutionsVertices.x & (1u << 1u)) != 0){
+  if((planetData.flagsResolutions.x & (1u << 1u)) != 0){
 
     layerMaterialSetup(sphereNormal);
 

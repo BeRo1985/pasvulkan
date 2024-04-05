@@ -114,7 +114,11 @@ type TpvScene3DPlanets=class;
 
              Flags:TpvUInt32;
              Resolutions:TpvUInt32;
+             Reserved1:TpvUInt32;
+             Reserved2:TpvUInt32;
+
              Vertices:TVkDeviceAddress;
+             Indices:TVkDeviceAddress;
 
              Selected:TpvVector4;
 
@@ -8289,8 +8293,10 @@ begin
    fPlanetData.Resolutions:=((fTileMapResolution and $ffff) shl 16) or (fVisualTileResolution and $ffff);
    if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
     fPlanetData.Vertices:=fData.fVisualMeshVertexBuffers[(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].DeviceAddress;
+    fPlanetData.Indices:=fData.fVisualMeshIndexBuffer.DeviceAddress;
    end else begin
     fPlanetData.Vertices:=0;
+    fPlanetData.Indices:=0;
    end;
    fPlanetData.Selected:=InFlightFrameData.SelectedRegion.Vector;
 

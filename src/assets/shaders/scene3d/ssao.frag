@@ -125,6 +125,7 @@ vec3 hash33(vec3 p) {
 #ifdef RAYTRACING
   #include "raytracing.glsl"
   #include "tangentspacebasis.glsl"
+  #include "pcg.glsl"
 
 vec2 Hammersley(const in int index, const in int numSamples) {
 #if 1
@@ -511,13 +512,18 @@ void main() {
 
   bool reversedZ = projectionMatrix[2][3] < -1e-7;
   
-  bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
-    
-  vec4 primaryRayOrigin = inverseViewProjectionMatrix * vec4(fma(texCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
-  primaryRayOrigin /= primaryRayOrigin.w;
-    
-  vec4 primaryRayTarget = inverseViewProjectionMatrix * vec4(fma(texCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? (infiniteFarPlane ? 0.9 : 0.0) : 1.0, 1.0);
-  primaryRayTarget /= primaryRayTarget.w;
+  //bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
+
+  vec4 nearPlane = vec4(fma(texCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+
+  vec4 cameraDirection = vec4((inverseProjectionMatrix * nearPlane).xyz, 0.0); 
+      
+/*vec4 primaryRayOrigin = inverseViewProjectionMatrix * vec4(fma(texCoord.xy, vec2(2.0), vec2(-1.0)), reversedZ ? 1.0 : 0.0, 1.0);
+  primaryRayOrigin /= primaryRayOrigin.w;*/
+
+  vec3 primaryRayOrigin = inverseViewMatrix[3].xyz;
+
+  vec3 primaryRayDirection = normalize((inverseViewMatrix * cameraDirection).xyz);
 
 #else
 
@@ -525,10 +531,10 @@ void main() {
   
   vec3 primaryRayTarget = fetchWorldPosition(texCoord.xy);
 
-#endif
-
   vec3 primaryRayDirection = normalize(primaryRayTarget.xyz - primaryRayOrigin.xyz);
-  
+
+#endif
+ 
   vec3 rayOrigin, worldNormal, worldFlatNormal;
   
   if(tracePrimaryBasicGeometryRay(primaryRayOrigin.xyz, primaryRayDirection.xyz, 0.0, 1000000.0, rayOrigin, worldFlatNormal, worldNormal)){
@@ -546,9 +552,9 @@ void main() {
   
     const int countSamples = countKernelSamples;
     for (int i = 0; i < countSamples; i++) {
-//      vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countSamples)));
+//    vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countSamples)));
       vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
-      occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, 2.0, true, true);
+      occlusion += smoothstep(0.0, 0.25, getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, radius, true, true));
     }
   
     occlusion = clamp(1.0 - (strength * (occlusion / float(countSamples))), 0.0, 1.0);

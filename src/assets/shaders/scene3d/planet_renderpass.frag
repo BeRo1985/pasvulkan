@@ -243,7 +243,7 @@ void main(){
 
   multiplanarSetup(inBlock.position, dFdx(inBlock.position), dFdy(inBlock.position), normal);
 
-  if((planetData.flagsResolutionsVertices.x & (1u << 2u)) != 0){
+  if((planetData.flagsResolutions.x & (1u << 2u)) != 0){
     parallaxMapping();
   }
 
@@ -334,7 +334,7 @@ void main(){
   }
 
 #ifdef WIREFRAME
-  if((planetData.flagsResolutionsVertices.x & (1u << 0u)) != 0){
+  if((planetData.flagsResolutions.x & (1u << 0u)) != 0){
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
   }
 #endif  
