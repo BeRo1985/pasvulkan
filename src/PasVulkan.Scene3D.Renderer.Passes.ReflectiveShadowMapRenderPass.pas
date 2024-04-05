@@ -460,12 +460,12 @@ begin
                                                                        0,
                                                                        2,
                                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                      fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                       [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                                                                      fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
                                                                         // Duplicate as dummy really non-used opaque texture
-                                                                        TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                      fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                        TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                                                                      fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
                                                                                                       TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                                                                        ],
                                                                        [],

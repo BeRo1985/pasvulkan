@@ -191,10 +191,10 @@ type TpvScene3DRenderer=class;
        fMipMapMaxFilterSampler:TpvVulkanSampler;
        fClampedSampler:TpvVulkanSampler;
        fClampedNearestSampler:TpvVulkanSampler;
-       fSSAOSampler:TpvVulkanSampler;
+       fAmbientOcclusionSampler:TpvVulkanSampler;
        fSMAAAreaTexture:TpvVulkanTexture;
        fSMAASearchTexture:TpvVulkanTexture;
-       fEmptySSAOTexture:TpvVulkanTexture;
+       fEmptyAmbientOcclusionTexture:TpvVulkanTexture;
 {      fLensColorTexture:TpvVulkanTexture;
        fLensDirtTexture:TpvVulkanTexture;
        fLensStarTexture:TpvVulkanTexture;}
@@ -273,10 +273,10 @@ type TpvScene3DRenderer=class;
        property MipMapMaxFilterSampler:TpvVulkanSampler read fMipMapMaxFilterSampler;
        property ClampedSampler:TpvVulkanSampler read fClampedSampler;
        property ClampedNearestSampler:TpvVulkanSampler read fClampedNearestSampler;
-       property SSAOSampler:TpvVulkanSampler read fSSAOSampler;
+       property AmbientOcclusionSampler:TpvVulkanSampler read fAmbientOcclusionSampler;
        property SMAAAreaTexture:TpvVulkanTexture read fSMAAAreaTexture;
        property SMAASearchTexture:TpvVulkanTexture read fSMAASearchTexture;
-       property EmptySSAOTexture:TpvVulkanTexture read fEmptySSAOTexture;
+       property EmptyAmbientOcclusionTexture:TpvVulkanTexture read fEmptyAmbientOcclusionTexture;
 {      property LensColorTexture:TpvVulkanTexture read fLensColorTexture;
        property LensDirtTexture:TpvVulkanTexture read fLensDirtTexture;
        property LensStarTexture:TpvVulkanTexture read fLensStarTexture;}
@@ -1023,7 +1023,7 @@ var Stream:TStream;
     UniversalCommandPool:TpvVulkanCommandPool;
     UniversalCommandBuffer:TpvVulkanCommandBuffer;
     UniversalFence:TpvVulkanFence;
-    EmptySSAOCubeMapTextureData:TpvUInt8DynamicArray;
+    EmptyAmbientOcclusionTextureData:TpvUInt8DynamicArray;
     SkyBoxTexture,EnvironmentTexture:TpvVulkanTexture;
     IntensityFactor:TpvFloat;
 begin
@@ -1340,7 +1340,7 @@ begin
                                                  false);
  fVulkanDevice.DebugUtils.SetObjectName(fClampedNearestSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fClampedNearestSampler');
 
- fSSAOSampler:=TpvVulkanSampler.Create(fVulkanDevice,
+ fAmbientOcclusionSampler:=TpvVulkanSampler.Create(fVulkanDevice,
                                        TVkFilter.VK_FILTER_LINEAR,
                                        TVkFilter.VK_FILTER_LINEAR,
                                        TVkSamplerMipmapMode.VK_SAMPLER_MIPMAP_MODE_LINEAR,
@@ -1356,7 +1356,7 @@ begin
                                        0.0,
                                        VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
                                        false);
- fVulkanDevice.DebugUtils.SetObjectName(fSSAOSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fSSAOSampler');
+ fVulkanDevice.DebugUtils.SetObjectName(fAmbientOcclusionSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3DRenderer.fAmbientOcclusionSampler');
 
  UniversalQueue:=fVulkanDevice.UniversalQueue;
  try
@@ -1441,11 +1441,11 @@ begin
       end;
      end;
 
-     EmptySSAOCubeMapTextureData:=nil;
+     EmptyAmbientOcclusionTextureData:=nil;
      try
-      SetLength(EmptySSAOCubeMapTextureData,2048*2048*6);
-      FillChar(EmptySSAOCubeMapTextureData[0],length(EmptySSAOCubeMapTextureData)*SizeOf(TpvUInt8),#$ff);
-      fEmptySSAOTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
+      SetLength(EmptyAmbientOcclusionTextureData,2048*2048*6);
+      FillChar(EmptyAmbientOcclusionTextureData[0],length(EmptyAmbientOcclusionTextureData)*SizeOf(TpvUInt8),#$ff);
+      fEmptyAmbientOcclusionTexture:=TpvVulkanTexture.CreateFromMemory(fVulkanDevice,
                                                            UniversalQueue,
                                                            UniversalCommandBuffer,
                                                            UniversalFence,
@@ -1464,17 +1464,17 @@ begin
                                                             TpvVulkanTextureUsageFlag.TransferDst,
                                                             TpvVulkanTextureUsageFlag.TransferSrc,
                                                             TpvVulkanTextureUsageFlag.Sampled],
-                                                           @EmptySSAOCubeMapTextureData[0],
-                                                           length(EmptySSAOCubeMapTextureData)*SizeOf(TpvUInt8),
+                                                           @EmptyAmbientOcclusionTextureData[0],
+                                                           length(EmptyAmbientOcclusionTextureData)*SizeOf(TpvUInt8),
                                                            false,
                                                            false,
                                                            0,
                                                            true,
                                                            false);
-      fVulkanDevice.DebugUtils.SetObjectName(fEmptySSAOTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEmptySSAOTexture.Image');
-      fVulkanDevice.DebugUtils.SetObjectName(fEmptySSAOTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEmptySSAOTexture.ImageView');
+      fVulkanDevice.DebugUtils.SetObjectName(fEmptyAmbientOcclusionTexture.Image.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRenderer.fEmptyAmbientOcclusionTexture.Image');
+      fVulkanDevice.DebugUtils.SetObjectName(fEmptyAmbientOcclusionTexture.ImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRenderer.fEmptyAmbientOcclusionTexture.ImageView');
      finally
-      EmptySSAOCubeMapTextureData:=nil;
+      EmptyAmbientOcclusionTextureData:=nil;
      end;
 
 {    case fLensMode of
@@ -1582,7 +1582,7 @@ begin
 
  FreeAndNil(fCheckShadowMapSampler);
 
- FreeAndNil(fSSAOSampler);
+ FreeAndNil(fAmbientOcclusionSampler);
 
  FreeAndNil(fClampedNearestSampler);
 
@@ -1599,7 +1599,7 @@ begin
  FreeAndNil(fSMAAAreaTexture);
  FreeAndNil(fSMAASearchTexture);
 
- FreeAndNil(fEmptySSAOTexture);
+ FreeAndNil(fEmptyAmbientOcclusionTexture);
 
 {FreeAndNil(fLensColorTexture);
  FreeAndNil(fLensDirtTexture);

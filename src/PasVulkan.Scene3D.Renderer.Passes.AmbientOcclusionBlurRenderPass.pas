@@ -147,14 +147,14 @@ begin
 
  if aHorziontal then begin
 
-  fResourceInput:=AddImageInput('resourcetype_ssao',
-                                'resource_ssao_data_temporary',
+  fResourceInput:=AddImageInput('resourcetype_ambientocclusion',
+                                'resource_ambientocclusion_data_temporary',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
-  fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                  'resource_ssao_data_temporary_blurred',
+  fResourceOutput:=AddImageOutput('resourcetype_ambientocclusion',
+                                  'resource_ambientocclusion_data_temporary_blurred',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),
@@ -164,14 +164,14 @@ begin
 
  end else begin
 
-  fResourceInput:=AddImageInput('resourcetype_ssao',
-                                'resource_ssao_data_temporary_blurred',
+  fResourceInput:=AddImageInput('resourcetype_ambientocclusion',
+                                'resource_ambientocclusion_data_temporary_blurred',
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 []//TpvFrameGraph.TResourceTransition.TFlag.Attachment]
                                );
 
-  fResourceOutput:=AddImageOutput('resourcetype_ssao_final',
-                                  'resource_ssao_data_final',
+  fResourceOutput:=AddImageOutput('resourcetype_ambientocclusion_final',
+                                  'resource_ambientocclusion_data_final',
                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                   TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                                TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),

@@ -141,8 +141,8 @@ begin
                                        1.0,
                                        fInstance.CountSurfaceViews);
 
- fResourceOutput:=AddImageOutput('resourcetype_ssao',
-                                 'resource_ssao_data_temporary',
+ fResourceOutput:=AddImageOutput('resourcetype_ambientocclusion',
+                                 'resource_ambientocclusion_data_temporary',
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  TpvFrameGraph.TLoadOp.Create(TpvFrameGraph.TLoadOp.TKind.Clear,
                                                               TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0)),

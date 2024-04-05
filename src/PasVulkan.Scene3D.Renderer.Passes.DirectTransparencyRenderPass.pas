@@ -145,8 +145,8 @@ inherited Create(aFrameGraph);
                                           );
 
  if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
-  fResourceSSAO:=AddImageInput('resourcetype_ssao_final',
-                               'resource_ssao_data_final',
+  fResourceSSAO:=AddImageInput('resourcetype_ambientocclusion_final',
+                               'resource_ambientocclusion_data_final',
                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                []
                               );
@@ -415,7 +415,7 @@ begin
                                                                         0,
                                                                         2,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
+                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
                                                                                                        fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                        fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                          TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
@@ -429,8 +429,8 @@ begin
                                                                         0,
                                                                         2,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.SSAOSampler.Handle,
-                                                                                                       fInstance.Renderer.EmptySSAOTexture.ImageView.Handle,
+                                                                        [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
+                                                                                                       fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
                                                                                                        TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
                                                                          TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                        fInstance.SceneMipmappedArray2DImage.VulkanArrayImageView.Handle,

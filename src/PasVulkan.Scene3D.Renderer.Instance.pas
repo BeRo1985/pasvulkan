@@ -2890,7 +2890,7 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_ssao',
+ fFrameGraph.AddImageResourceType('resourcetype_ambientocclusion',
                                   false,
                                   VK_FORMAT_R32G32_SFLOAT,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
@@ -2900,7 +2900,7 @@ begin
                                   1
                                  );
 
- fFrameGraph.AddImageResourceType('resourcetype_ssao_final',
+ fFrameGraph.AddImageResourceType('resourcetype_ambientocclusion_final',
                                   false,
                                   VK_FORMAT_R8_UNORM,
                                   TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT),
