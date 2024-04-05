@@ -435,8 +435,6 @@ procedure TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass.Execute
 var MipMapLevelIndex,MipMapLevelSetIndex:TpvSizeInt;
     CountMipMaps:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
-    BufferMemoryBarrier:TVkBufferMemoryBarrier;
-    NearestFarthestDepthVulkanBuffer:TpvVulkanBuffer;
     PushConstants:TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass.TPushConstants;
 begin
 
@@ -445,40 +443,6 @@ begin
  //////////////////////////
 
  begin
-
-  NearestFarthestDepthVulkanBuffer:=fInstance.NearestFarthestDepthVulkanBuffers[aInFlightFrameIndex];
-
-  FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-  BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  BufferMemoryBarrier.pNext:=nil;
-  BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarrier.buffer:=NearestFarthestDepthVulkanBuffer.Handle;
-  BufferMemoryBarrier.offset:=0;
-  BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
-
-  aCommandBuffer.CmdPipelineBarrier(FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                    0,
-                                    0,nil,
-                                    1,@BufferMemoryBarrier,
-                                    0,nil);
-
-  aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*0,SizeOf(TVkUInt32)*2,TVkUInt32($ffffffff));
-  aCommandBuffer.CmdFillBuffer(NearestFarthestDepthVulkanBuffer.Handle,SizeOf(TVkUInt32)*2,SizeOf(TVkUInt32)*2,TVkUInt32($00000000));
-
-  FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-  BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  BufferMemoryBarrier.pNext:=nil;
-  BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-  BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarrier.buffer:=NearestFarthestDepthVulkanBuffer.Handle;
-  BufferMemoryBarrier.offset:=0;
-  BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
 
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -500,7 +464,7 @@ begin
                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                     0,
                                     0,nil,
-                                    1,@BufferMemoryBarrier,
+                                    0,nil,
                                     1,@ImageMemoryBarrier);
 
  end;
@@ -620,17 +584,6 @@ begin
 
  begin
 
-  FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
-  BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  BufferMemoryBarrier.pNext:=nil;
-  BufferMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  BufferMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
-  BufferMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
-  BufferMemoryBarrier.buffer:=NearestFarthestDepthVulkanBuffer.Handle;
-  BufferMemoryBarrier.offset:=0;
-  BufferMemoryBarrier.size:=VK_WHOLE_SIZE;
-
   FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
   ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   ImageMemoryBarrier.pNext:=nil;
@@ -650,7 +603,7 @@ begin
                                     FrameGraph.VulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                     0,
                                     0,nil,
-                                    1,@BufferMemoryBarrier,
+                                    0,nil,
                                     1,@ImageMemoryBarrier);
 
  end;

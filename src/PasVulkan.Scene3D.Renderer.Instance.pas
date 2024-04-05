@@ -3295,13 +3295,13 @@ begin
 
  if Renderer.ScreenSpaceAmbientOcclusion then begin
 
-{ TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass:=TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass:=TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass.Create(fFrameGraph,self);
   if Renderer.EarlyDepthPrepassNeeded then begin
    TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
-  end;}
+  end;{}
 
   TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass:=TpvScene3DRendererPassesAmbientOcclusionRenderPass.Create(fFrameGraph,self);
-/// TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass);
+  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass);
   if Renderer.EarlyDepthPrepassNeeded then begin
    TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   end;

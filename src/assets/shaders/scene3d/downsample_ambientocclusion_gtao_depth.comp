@@ -54,6 +54,7 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
 } pushConstants;
 
+mat4 projectionMatrix;
 mat4 inverseProjectionMatrix;
 
 float linearizeDepth(float z) {
@@ -62,7 +63,21 @@ float linearizeDepth(float z) {
 #else
   vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
 #endif
-  return -(v.x / v.y);
+  return min(-(v.x / v.y), 1e+37); 
+}
+
+float delinearizeDepth(float z) {
+  if(z >= 1e+36){
+    return 0.0; 
+  }else{
+    z = -z; 
+#if 0
+    vec2 v = (projectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+    vec2 v = fma(projectionMatrix[2].zw, vec2(z), projectionMatrix[3].zw);  
+#endif
+    return v.x / v.y;
+  }
 }
 
 #elif defined(REDUCTION)
@@ -134,8 +149,10 @@ void main() {
 
 #ifdef MULTIVIEW
     int viewIndex = int(gl_GlobalInvocationID.z);
+    projectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(viewIndex)].projectionMatrix;
     inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex + uint(viewIndex)].inverseProjectionMatrix;
 #else
+    projectionMatrix = uView.views[pushConstants.viewBaseIndex].projectionMatrix;
     inverseProjectionMatrix = uView.views[pushConstants.viewBaseIndex].inverseProjectionMatrix;
 #endif
     
@@ -178,6 +195,8 @@ void main() {
 
     float depth = (depthWeightSum.y > 0.0) ? (depthWeightSum.x / depthWeightSum.y) : 0.0;
 
+    imageStore(uDestinationTexture, invocationPosition, vec4(delinearizeDepth(depth)));
+
 #else
 
 #ifdef MULTIVIEW
@@ -186,11 +205,10 @@ void main() {
     float depth = linearizeDepth(texelFetch(uSourceTexture, ivec2(xy), 0).x);
 #endif
     
-    uint depthUI = floatBitsToUint(depth);
-    
+    imageStore(uDestinationTexture, invocationPosition, vec4(delinearizeDepth(depth)));
+
 #endif
     
-    imageStore(uDestinationTexture, invocationPosition, vec4(depth));
 
   }
 
