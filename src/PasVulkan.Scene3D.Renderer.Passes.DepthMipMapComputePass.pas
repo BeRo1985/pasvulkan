@@ -194,15 +194,15 @@ begin
 
  if fInstance.ZFar<0.0 then begin
   if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reversedz_reduction_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_reversedz_reduction_comp.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reversedz_reduction_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_reversedz_reduction_comp.spv');
   end;
  end else begin
   if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_multiview_reduction_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_multiview_reduction_comp.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_culldepthpyramid_reduction_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('downsample_depth_reduction_comp.spv');
   end;
  end;
  try

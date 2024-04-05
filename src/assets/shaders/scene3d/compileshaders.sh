@@ -105,6 +105,13 @@ compileshaderarguments=(
   "-V downsample_depth.comp -DREDUCTION -DREVERSEDZ -o ${tempPath}/downsample_depth_reversedz_reduction_comp.spv"
   "-V downsample_depth.comp -DREDUCTION -DMULTIVIEW -DREVERSEDZ -o ${tempPath}/downsample_depth_multiview_reversedz_reduction_comp.spv"
   
+  "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -o ${tempPath}/downsample_ambientocclusion_gtao_depth_firstpass_comp.spv"
+  "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -DMSAA -o ${tempPath}/downsample_ambientocclusion_gtao_depth_msaa_firstpass_comp.spv"
+  "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -DMULTIVIEW -o ${tempPath}/downsample_ambientocclusion_gtao_depth_multiview_firstpass_comp.spv"
+  "-V downsample_ambientocclusion_gtao_depth.comp -DFIRSTPASS -DMULTIVIEW -DMSAA -o ${tempPath}/downsample_ambientocclusion_gtao_depth_multiview_msaa_firstpass_comp.spv"
+  "-V downsample_ambientocclusion_gtao_depth.comp -DREDUCTION -o ${tempPath}/downsample_ambientocclusion_gtao_depth_reduction_comp.spv"
+  "-V downsample_ambientocclusion_gtao_depth.comp -DREDUCTION -DMULTIVIEW -o ${tempPath}/downsample_ambientocclusion_gtao_depth_multiview_reduction_comp.spv"
+
   "-V downsample_heightmap.comp -o ${tempPath}/downsample_heightmap_comp.spv"
 
   "-V downsample_normalmap.comp -o ${tempPath}/downsample_normalmap_comp.spv"
