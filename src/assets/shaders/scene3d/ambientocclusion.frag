@@ -38,6 +38,12 @@ layout(set = SET_INDEX, binding = 1) uniform sampler2DArray uTextureDepth;
 layout(set = SET_INDEX, binding = 1) uniform sampler2D uTextureDepth;
 #endif
 
+#ifdef MULTIVIEW
+layout(set = SET_INDEX, binding = 2) uniform sampler2DArray uTextureLinearDepth;
+#else
+layout(set = SET_INDEX, binding = 2) uniform sampler2D uTextureLinearDepth;
+#endif
+
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
@@ -60,6 +66,24 @@ mat4 inverseProjectionMatrix = uView.views[int(pushConstants.viewBaseIndex) + in
 mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 #endif
+
+float linearizeDepth(float z){
+#if 0
+  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
+}
+
+float delinearizeDepth(float z){
+#if 0
+  vec2 v = (projectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
+#else
+  vec2 v = fma(projectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
+#endif
+  return v.x / v.y;
+}
 
 vec3 fetchPosition(vec2 texCoord) {
 #ifdef MULTIVIEW
@@ -93,15 +117,6 @@ vec3 fetchPositionLod(vec2 texCoord, float lod) {
   vec4 position = inverseProjectionMatrix * vec4(vec3(fma(texCoord, vec2(2.0), vec2(-1.0)), textureLod(uTextureDepth, texCoord, lod).x), 1.0);
 #endif
   return position.xyz / position.w;
-}
-
-float linearizeDepth(float z) {
-#if 0
-  vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
-#else
-  vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
-#endif
-  return v.x / v.y;
 }
 
 float hash12(vec2 p){
@@ -156,7 +171,7 @@ vec3 sampleHemisphere(vec2 xi){
 #define SSAO 0
 #define SPIRALAO 1
 #define GTAO 2
-#define METHOD SSAO
+#define METHOD GTAO
 
 #if METHOD == SPIRALAO
 
