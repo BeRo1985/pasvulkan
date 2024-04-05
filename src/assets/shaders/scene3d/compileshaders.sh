@@ -277,12 +277,12 @@ compileshaderarguments=(
   "-V msm_resolve.frag -DMSAA -o ${tempPath}/msm_resolve_msaa_frag.spv"
   "-V msm_resolve.vert -o ${tempPath}/msm_resolve_vert.spv"
 
-  "-V ssao.frag -o ${tempPath}/ssao_frag.spv"
-  "-V ssao.frag -DMULTIVIEW -o ${tempPath}/ssao_multiview_frag.spv"
-  "-V ssao.frag -DRAYTRACING -o ${tempPath}/ssao_raytracing_frag.spv"
-  "-V ssao.frag -DRAYTRACING -DMULTIVIEW -o ${tempPath}/ssao_raytracing_multiview_frag.spv"
+  "-V ambientocclusion.frag -o ${tempPath}/ambientocclusion_frag.spv"
+  "-V ambientocclusion.frag -DMULTIVIEW -o ${tempPath}/ambientocclusion_multiview_frag.spv"
+  "-V ambientocclusion.frag -DRAYTRACING -o ${tempPath}/ambientocclusion_raytracing_frag.spv"
+  "-V ambientocclusion.frag -DRAYTRACING -DMULTIVIEW -o ${tempPath}/ambientocclusion_raytracing_multiview_frag.spv"
 
-  "-V ssao_blur.frag -o ${tempPath}/ssao_blur_frag.spv"
+  "-V ambientocclusion_blur.frag -o ${tempPath}/ambientocclusion_blur_frag.spv"
 
   "-V contentprojection.frag -o ${tempPath}/contentprojection_frag.spv"
   "-V contentprojection.frag -DREVERSEDZ -o ${tempPath}/contentprojection_reversedz_frag.spv"

@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass;
+unit PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionRenderPass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -77,10 +77,10 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererPassesSSAORenderPass }
-     TpvScene3DRendererPassesSSAORenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesAmbientOcclusionRenderPass }
+     TpvScene3DRendererPassesAmbientOcclusionRenderPass=class(TpvFrameGraph.TRenderPass)
       public
-       type TSSAOPushConstants=record
+       type TAmbientOcclusionPushConstants=record
              ViewBaseIndex:UInt32;
              CountViews:UInt32;
              FrameIndex:UInt32;
@@ -114,16 +114,18 @@ type { TpvScene3DRendererPassesSSAORenderPass }
 
 implementation
 
-{ TpvScene3DRendererPassesSSAORenderPass }
+const UseRTAO=false;
 
-constructor TpvScene3DRendererPassesSSAORenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
+{ TpvScene3DRendererPassesAmbientOcclusionRenderPass }
+
+constructor TpvScene3DRendererPassesAmbientOcclusionRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance);
 begin
 
  inherited Create(aFrameGraph);
 
  fInstance:=aInstance;
 
- Name:='SSAORenderPass';
+ Name:='AmbientOcclusionRenderPass';
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
 
@@ -149,12 +151,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererPassesSSAORenderPass.Destroy;
+destructor TpvScene3DRendererPassesAmbientOcclusionRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesSSAORenderPass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionRenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
@@ -171,17 +173,17 @@ begin
   Stream.Free;
  end;
 
- if fInstance.Scene3D.RaytracingActive then begin
+ if fInstance.Scene3D.RaytracingActive and UseRTAO then begin
   if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_raytracing_multiview_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ambientocclusion_raytracing_multiview_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_raytracing_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ambientocclusion_raytracing_frag.spv');
   end;
  end else begin
   if fInstance.CountSurfaceViews>1 then begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_multiview_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ambientocclusion_multiview_frag.spv');
   end else begin
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_frag.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ambientocclusion_frag.spv');
   end;
  end;
  try
@@ -198,7 +200,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesSSAORenderPass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -209,7 +211,7 @@ begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesSSAORenderPass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
@@ -262,11 +264,11 @@ begin
  end;
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
- if fInstance.Scene3D.RaytracingActive then begin
+ if fInstance.Scene3D.RaytracingActive and UseRTAO then begin
   fVulkanPipelineLayout.AddDescriptorSetLayout(fInstance.Scene3D.GlobalVulkanDescriptorSetLayout);
  end;
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TSSAOPushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TAmbientOcclusionPushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -334,7 +336,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesSSAORenderPass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -355,14 +357,14 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesSSAORenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAmbientOcclusionRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesSSAORenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAmbientOcclusionRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
-    SSAOPushConstants:TSSAOPushConstants;
+    AmbientOcclusionPushConstants:TAmbientOcclusionPushConstants;
     DescriptorSets:array[0..1] of TVkDescriptorSet;
 begin
 
@@ -370,11 +372,11 @@ begin
 
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
- SSAOPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
- SSAOPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
- SSAOPushConstants.FrameIndex:=FrameGraph.DrawFrameIndex;
+ AmbientOcclusionPushConstants.ViewBaseIndex:=InFlightFrameState^.FinalViewIndex;
+ AmbientOcclusionPushConstants.CountViews:=InFlightFrameState^.CountFinalViews;
+ AmbientOcclusionPushConstants.FrameIndex:=FrameGraph.DrawFrameIndex;
 
- if fInstance.Scene3D.RaytracingActive then begin
+ if fInstance.Scene3D.RaytracingActive and UseRTAO then begin
 
   DescriptorSets[0]:=fInstance.Scene3D.GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
   DescriptorSets[1]:=fVulkanDescriptorSets[aInFlightFrameIndex].Handle;
@@ -398,8 +400,8 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TSSAOPushConstants),
-                                 @SSAOPushConstants);
+                                 SizeOf(TAmbientOcclusionPushConstants),
+                                 @AmbientOcclusionPushConstants);
 
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
 

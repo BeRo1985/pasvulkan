@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
-unit PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass;
+unit PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionBlurRenderPass;
 {$i PasVulkan.inc}
 {$ifndef fpc}
  {$ifdef conditionalexpressions}
@@ -77,8 +77,8 @@ uses SysUtils,
      PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Renderer.SkyBox;
 
-type { TpvScene3DRendererPassesSSAOBlurRenderPass }
-     TpvScene3DRendererPassesSSAOBlurRenderPass=class(TpvFrameGraph.TRenderPass)
+type { TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass }
+     TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass=class(TpvFrameGraph.TRenderPass)
       private
        type TFragmentStagePushConstants=record
              Direction:TpvVector4;
@@ -113,9 +113,9 @@ type { TpvScene3DRendererPassesSSAOBlurRenderPass }
 
 implementation
 
-{ TpvScene3DRendererPassesSSAOBlurRenderPass }
+{ TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass }
 
-constructor TpvScene3DRendererPassesSSAOBlurRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aHorziontal:boolean);
+constructor TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance;const aHorziontal:boolean);
 var Index:TpvSizeInt;
 begin
 
@@ -125,10 +125,10 @@ begin
 
  if aHorziontal then begin
   fFragmentStagePushConstants.Direction:=TpvVector4.InlineableCreate(1.0,0.0,0.0,0.0);
-  Name:='SSAOBlurRenderPass(Horziontal)';
+  Name:='AmbientOcclusionBlurRenderPass(Horziontal)';
  end else begin
   fFragmentStagePushConstants.Direction:=TpvVector4.InlineableCreate(0.0,1.0,0.0,0.0);
-  Name:='SSAOBlurRenderPass(Vertical)';
+  Name:='AmbientOcclusionBlurRenderPass(Vertical)';
  end;
 
  MultiviewMask:=fInstance.SurfaceMultiviewMask;
@@ -182,12 +182,12 @@ begin
 
 end;
 
-destructor TpvScene3DRendererPassesSSAOBlurRenderPass.Destroy;
+destructor TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AcquirePersistentResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.AcquirePersistentResources;
 var Stream:TStream;
 begin
 
@@ -204,7 +204,7 @@ begin
   Stream.Free;
  end;
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ssao_blur_frag.spv');
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('ambientocclusion_blur_frag.spv');
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(fInstance.Renderer.VulkanDevice,Stream);
  finally
@@ -219,7 +219,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.ReleasePersistentResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.ReleasePersistentResources;
 begin
  FreeAndNil(fVulkanPipelineShaderStageVertex);
  FreeAndNil(fVulkanPipelineShaderStageFragment);
@@ -230,7 +230,7 @@ begin
  inherited ReleasePersistentResources;
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.AcquireVolatileResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.AcquireVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
  inherited AcquireVolatileResources;
@@ -270,7 +270,7 @@ begin
 
  fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fInstance.Renderer.VulkanDevice);
  fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
- fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesSSAOBlurRenderPass.TFragmentStagePushConstants));
+ fVulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),0,SizeOf(TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.TFragmentStagePushConstants));
  fVulkanPipelineLayout.Initialize;
 
  fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fInstance.Renderer.VulkanDevice,
@@ -338,7 +338,7 @@ begin
 
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.ReleaseVolatileResources;
+procedure TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.ReleaseVolatileResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
@@ -359,12 +359,12 @@ begin
  inherited ReleaseVolatileResources;
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.Update(const aUpdateInFlightFrameIndex,aUpdateFrameIndex:TpvSizeInt);
 begin
  inherited Update(aUpdateInFlightFrameIndex,aUpdateFrameIndex);
 end;
 
-procedure TpvScene3DRendererPassesSSAOBlurRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+procedure TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -375,7 +375,7 @@ begin
  aCommandBuffer.CmdPushConstants(fVulkanPipelineLayout.Handle,
                                  TVkShaderStageFlags(TVkShaderStageFlagBits.VK_SHADER_STAGE_FRAGMENT_BIT),
                                  0,
-                                 SizeOf(TpvScene3DRendererPassesSSAOBlurRenderPass.TFragmentStagePushConstants),
+                                 SizeOf(TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.TFragmentStagePushConstants),
                                  @fFragmentStagePushConstants);
  aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
  aCommandBuffer.CmdDraw(3,1,0,0);

@@ -453,7 +453,7 @@ vec3 signedOctDecode(vec3 normal) {
 // Sample points generated using a Halton sequence, which is a low-discrepancy sequence, where low count of samples is already often
 // enough to get good results in the most cases. The samples are generated in a hemisphere oriented along the z-axis. 
 #define NUM_SAMPLES 16
-#include "ssao_samples.glsl"
+#include "ambientocclusion_samples.glsl"
 const float radius = 0.5;
 const float bias = 1e-3; // should be enough to prevent self occlusion in the most cases
 const float strength = 1.0; // full strength for now
@@ -554,7 +554,7 @@ void main() {
     for (int i = 0; i < countSamples; i++) {
 //    vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countSamples)));
       vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
-      occlusion += smoothstep(0.0, 0.25, getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, radius, true, true));
+      occlusion += smoothstep(0.0, 0.25, getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, 2.0, true, true));
     }
   
     occlusion = clamp(1.0 - (strength * (occlusion / float(countSamples))), 0.0, 1.0);

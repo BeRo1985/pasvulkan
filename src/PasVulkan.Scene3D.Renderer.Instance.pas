@@ -877,8 +877,8 @@ uses{PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass,
-     PasVulkan.Scene3D.Renderer.Passes.SSAORenderPass,
-     PasVulkan.Scene3D.Renderer.Passes.SSAOBlurRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionRenderPass,
+     PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeComputePass,
@@ -978,8 +978,8 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass;
-       fSSAORenderPass:TpvScene3DRendererPassesSSAORenderPass;
-       fSSAOBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesSSAOBlurRenderPass;
+       fAmbientOcclusionRenderPass:TpvScene3DRendererPassesAmbientOcclusionRenderPass;
+       fAmbientOcclusionBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
        fReflectionProbeMipMapComputePass:TpvScene3DRendererPassesReflectionProbeMipMapComputePass;
        fReflectionProbeComputePassGGX:TpvScene3DRendererPassesReflectionProbeComputePass;
@@ -3291,17 +3291,17 @@ begin
 
  if Renderer.ScreenSpaceAmbientOcclusion then begin
 
-  TpvScene3DRendererInstancePasses(fPasses).fSSAORenderPass:=TpvScene3DRendererPassesSSAORenderPass.Create(fFrameGraph,self);
+  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass:=TpvScene3DRendererPassesAmbientOcclusionRenderPass.Create(fFrameGraph,self);
   if Renderer.EarlyDepthPrepassNeeded then begin
-   TpvScene3DRendererInstancePasses(fPasses).fSSAORenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
+   TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   end;
 { if assigned(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass) then begin
-   TpvScene3DRendererInstancePasses(fPasses).fSSAORenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
+   TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fRaytracingBuildUpdatePass);
   end;}
 
-  TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[0]:=TpvScene3DRendererPassesSSAOBlurRenderPass.Create(fFrameGraph,self,true);
+  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionBlurRenderPasses[0]:=TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.Create(fFrameGraph,self,true);
 
-  TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[1]:=TpvScene3DRendererPassesSSAOBlurRenderPass.Create(fFrameGraph,self,false);
+  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionBlurRenderPasses[1]:=TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass.Create(fFrameGraph,self,false);
 
  end;
 
@@ -3393,7 +3393,7 @@ begin
   TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
  end;
  if Renderer.ScreenSpaceAmbientOcclusion then begin
-  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fSSAOBlurRenderPasses[1]);
+  TpvScene3DRendererInstancePasses(fPasses).fForwardRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionBlurRenderPasses[1]);
  end;
 
  if not Renderer.EarlyDepthPrepassNeeded then begin
