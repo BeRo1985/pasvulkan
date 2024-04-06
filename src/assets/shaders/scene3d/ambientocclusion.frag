@@ -464,7 +464,7 @@ vec3 signedOctDecode(vec3 normal) {
   return normalize(vec3(outNormal, fma(normal.z, 2.0, -1.0) * (1.0 - (abs(outNormal.x) + abs(outNormal.y)))));
 }
 
-#if 1
+#if 0
 // Sample points generated using a Halton sequence, which is a low-discrepancy sequence, where low count of samples is already often
 // enough to get good results in the most cases. The samples are generated in a hemisphere oriented along the z-axis. 
 #define NUM_SAMPLES 16
