@@ -97,12 +97,33 @@ function genSamples(count = 64) { // default 64 samples
     samples[(i * 4) + 2] = ((samples[(i * 4) + 2] * adjustedRadius * normlen) * (1.0 - zShift)) + zShift;
     
   }
+
+  // Generate random radius for each sample in the W axis by shuffling the samples
+  let radiusSamples = new Array(count);
+  for (i = 0; i < count; i++) {
+    radiusSamples[i] = (i + 1.0) / count;
+  }  
+  for (p = 0; p < count; p++) {
+    for (i = 0; i < count; i++) {
+      let v = (p << 16) | i;
+      let s = ((v * 747796405) + 2891336453) & 0xffffffff;
+      let w = (((s >> ((s >> 28) + 4)) ^ s) * 277803737) & 0xffffffff;
+      let r = ((w >> 22) ^ w) & 0xffffffff;
+      let j = r % count;
+      let t = radiusSamples[i];
+      radiusSamples[i] = radiusSamples[j];
+      radiusSamples[j] = t;
+    }
+  }
+  for (i = 0; i < count; i++) {
+    samples[i * 4 + 3] = radiusSamples[i];
+  }
   
   // Format and print the samples
   print(`const int countKernelSamples = ${count};`, "\n");
-  print(`const vec3 kernelSamples[${count}] = vec3[${count}](`, "\n");
+  print(`const vec4 kernelSamples[${count}] = vec4[${count}](`, "\n");
   for (i = 0; i < count; i++) {
-    print(`  vec3(${samples[i * 4]}, ${samples[(i * 4) + 1]}, ${samples[(i * 4) + 2]})${(i < count - 1) ? ',' : ''}`, "\n");
+    print(`  vec4(${samples[i * 4]}, ${samples[(i * 4) + 1]}, ${samples[(i * 4) + 2]}, ${samples[(i * 4) + 3]})${(i < count - 1) ? ',' : ''}`, "\n");
   }
   print(");\n");
 }

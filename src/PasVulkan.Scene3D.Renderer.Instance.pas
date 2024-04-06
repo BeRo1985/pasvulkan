@@ -559,7 +559,7 @@ type { TpvScene3DRendererInstance }
        fCascadedShadowMapCullDepthPyramidMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fCullDepthArray2DImage:TpvScene3DRendererArray2DImage;
        fCullDepthPyramidMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
-       fAmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
+//     fAmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fSceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
        fFullResSceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage;
@@ -768,7 +768,7 @@ type { TpvScene3DRendererInstance }
        property CascadedShadowMapCullDepthPyramidMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fCascadedShadowMapCullDepthPyramidMipmappedArray2DImage;
        property CullDepthArray2DImage:TpvScene3DRendererArray2DImage read fCullDepthArray2DImage;
        property CullDepthPyramidMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fCullDepthPyramidMipmappedArray2DImage;
-       property AmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fAmbientOcclusionDepthMipmappedArray2DImage;
+//     property AmbientOcclusionDepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fAmbientOcclusionDepthMipmappedArray2DImage;
        property DepthMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fDepthMipmappedArray2DImage;
        property SceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fSceneMipmappedArray2DImage;
        property FullResSceneMipmappedArray2DImage:TpvScene3DRendererMipmappedArray2DImage read fFullResSceneMipmappedArray2DImage;
@@ -879,7 +879,7 @@ uses{PasVulkan.Scene3D.Renderer.Passes.DataTransferPass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.GlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass,
-     PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionDepthMipMapComputePass,
+//   PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionDepthMipMapComputePass,
      PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.AmbientOcclusionBlurRenderPass,
      PasVulkan.Scene3D.Renderer.Passes.ReflectionProbeRenderPass,
@@ -981,7 +981,7 @@ type TpvScene3DRendererInstancePasses=class
        fGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceTransferComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingRadianceMipMapComputePass;
        fGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass:TpvScene3DRendererPassesGlobalIlluminationCascadedVoxelConeTracingFinalizationCustomPass;
-       fAmbientOcclusionDepthMipMapComputePass:TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass;
+//     fAmbientOcclusionDepthMipMapComputePass:TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass;
        fAmbientOcclusionRenderPass:TpvScene3DRendererPassesAmbientOcclusionRenderPass;
        fAmbientOcclusionBlurRenderPasses:array[0..1] of TpvScene3DRendererPassesAmbientOcclusionBlurRenderPass;
        fReflectionProbeRenderPass:TpvScene3DRendererPassesReflectionProbeRenderPass;
@@ -3295,13 +3295,13 @@ begin
 
  if Renderer.ScreenSpaceAmbientOcclusion then begin
 
-  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass:=TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass.Create(fFrameGraph,self);
+ {TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass:=TpvScene3DRendererPassesAmbientOcclusionDepthMipMapComputePass.Create(fFrameGraph,self);
   if Renderer.EarlyDepthPrepassNeeded then begin
    TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthPrepassRenderPass);
   end;{}
 
   TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass:=TpvScene3DRendererPassesAmbientOcclusionRenderPass.Create(fFrameGraph,self);
-  TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass);
+//TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionDepthMipMapComputePass);
   if Renderer.EarlyDepthPrepassNeeded then begin
    TpvScene3DRendererInstancePasses(fPasses).fAmbientOcclusionRenderPass.AddExplicitPassDependency(TpvScene3DRendererInstancePasses(fPasses).fDepthMipMapComputePass);
   end;
@@ -4362,9 +4362,9 @@ begin
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fCullDepthPyramidMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fCullDepthPyramidMipmappedArray2DImage.Image');
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fCullDepthPyramidMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fCullDepthPyramidMipmappedArray2DImage.ImageView');
 
-      fAmbientOcclusionDepthMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
+{     fAmbientOcclusionDepthMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fAmbientOcclusionDepthMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fAmbientOcclusionDepthMipmappedArray2DImage.Image');
-      Renderer.VulkanDevice.DebugUtils.SetObjectName(fAmbientOcclusionDepthMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fAmbientOcclusionDepthMipmappedArray2DImage.ImageView');
+      Renderer.VulkanDevice.DebugUtils.SetObjectName(fAmbientOcclusionDepthMipmappedArray2DImage.VulkanImageView.Handle,VK_OBJECT_TYPE_IMAGE_VIEW,'TpvScene3DRendererInstance.fAmbientOcclusionDepthMipmappedArray2DImage.ImageView');}
 
       fDepthMipmappedArray2DImage:=TpvScene3DRendererMipmappedArray2DImage.Create(fScene3D.VulkanDevice,fScaledWidth,fScaledHeight,fCountSurfaceViews,VK_FORMAT_R32_SFLOAT,VK_SAMPLE_COUNT_1_BIT,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,pvAllocationGroupIDScene3DSurface);
       Renderer.VulkanDevice.DebugUtils.SetObjectName(fDepthMipmappedArray2DImage.VulkanImage.Handle,VK_OBJECT_TYPE_IMAGE,'TpvScene3DRendererInstance.fDepthMipmappedArray2DImage.Image');
@@ -4850,7 +4850,7 @@ begin
   FreeAndNil(fCullDepthArray2DImage);
   FreeAndNil(fCullDepthPyramidMipmappedArray2DImage);
   FreeAndNil(fDepthMipmappedArray2DImage);
-  FreeAndNil(fAmbientOcclusionDepthMipmappedArray2DImage);
+//FreeAndNil(fAmbientOcclusionDepthMipmappedArray2DImage);
   if fSceneMipmappedArray2DImage=fFullResSceneMipmappedArray2DImage then begin
    FreeAndNil(fSceneMipmappedArray2DImage);
    fFullResSceneMipmappedArray2DImage:=nil;

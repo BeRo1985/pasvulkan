@@ -38,11 +38,11 @@ layout(set = SET_INDEX, binding = 1) uniform sampler2DArray uTextureDepth;
 layout(set = SET_INDEX, binding = 1) uniform sampler2D uTextureDepth;
 #endif
 
-#ifdef MULTIVIEW
+/*#ifdef MULTIVIEW
 layout(set = SET_INDEX, binding = 2) uniform sampler2DArray uTextureLinearDepth;
 #else
 layout(set = SET_INDEX, binding = 2) uniform sampler2D uTextureLinearDepth;
-#endif
+#endif*/
 
 layout (push_constant) uniform PushConstants {
   uint viewBaseIndex;
@@ -171,7 +171,7 @@ vec3 sampleHemisphere(vec2 xi){
 #define SSAO 0
 #define SPIRALAO 1
 #define GTAO 2
-#define METHOD GTAO
+#define METHOD SSAO
 
 #if METHOD == SPIRALAO
 
@@ -472,46 +472,50 @@ vec3 signedOctDecode(vec3 normal) {
 const float radius = 0.5;
 const float bias = 1e-3; // should be enough to prevent self occlusion in the most cases
 const float strength = 1.0; // full strength for now
+const int stepKernelSamples = 1;
 #else
 const int countKernelSamples = 64;
-const vec3 kernelSamples[64] = vec3[64](                                     //
-    vec3(0.04977, -0.04471, 0.04996), vec3(0.01457, 0.01653, 0.00224),     //
-    vec3(-0.04065, -0.01937, 0.03193), vec3(0.01378, -0.09158, 0.04092),   //
-    vec3(0.05599, 0.05979, 0.05766), vec3(0.09227, 0.04428, 0.01545),      //
-    vec3(-0.00204, -0.0544, 0.06674), vec3(-0.00033, -0.00019, 0.00037),   //
-    vec3(0.05004, -0.04665, 0.02538), vec3(0.03813, 0.0314, 0.03287),      //
-    vec3(-0.03188, 0.02046, 0.02251), vec3(0.0557, -0.03697, 0.05449),     //
-    vec3(0.05737, -0.02254, 0.07554), vec3(-0.01609, -0.00377, 0.05547),   //
-    vec3(-0.02503, -0.02483, 0.02495), vec3(-0.03369, 0.02139, 0.0254),    //
-    vec3(-0.01753, 0.01439, 0.00535), vec3(0.07336, 0.11205, 0.01101),     //
-    vec3(-0.04406, -0.09028, 0.08368), vec3(-0.08328, -0.00168, 0.08499),  //
-    vec3(-0.01041, -0.03287, 0.01927), vec3(0.00321, -0.00488, 0.00416),   //
-    vec3(-0.00738, -0.06583, 0.0674), vec3(0.09414, -0.008, 0.14335),      //
-    vec3(0.07683, 0.12697, 0.107), vec3(0.00039, 0.00045, 0.0003),         //
-    vec3(-0.10479, 0.06544, 0.10174), vec3(-0.00445, -0.11964, 0.1619),    //
-    vec3(-0.07455, 0.03445, 0.22414), vec3(-0.00276, 0.00308, 0.00292),    //
-    vec3(-0.10851, 0.14234, 0.16644), vec3(0.04688, 0.10364, 0.05958),     //
-    vec3(0.13457, -0.02251, 0.13051), vec3(-0.16449, -0.15564, 0.12454),   //
-    vec3(-0.18767, -0.20883, 0.05777), vec3(-0.04372, 0.08693, 0.0748),    //
-    vec3(-0.00256, -0.002, 0.00407), vec3(-0.0967, -0.18226, 0.29949),     //
-    vec3(-0.22577, 0.31606, 0.08916), vec3(-0.02751, 0.28719, 0.31718),    //
-    vec3(0.20722, -0.27084, 0.11013), vec3(0.0549, 0.10434, 0.32311),      //
-    vec3(-0.13086, 0.11929, 0.28022), vec3(0.15404, -0.06537, 0.22984),    //
-    vec3(0.05294, -0.22787, 0.14848), vec3(-0.18731, -0.04022, 0.01593),   //
-    vec3(0.14184, 0.04716, 0.13485), vec3(-0.04427, 0.05562, 0.05586),     //
-    vec3(-0.02358, -0.08097, 0.21913), vec3(-0.14215, 0.19807, 0.00519),   //
-    vec3(0.15865, 0.23046, 0.04372), vec3(0.03004, 0.38183, 0.16383),      //
-    vec3(0.08301, -0.30966, 0.06741), vec3(0.22695, -0.23535, 0.19367),    //
-    vec3(0.38129, 0.33204, 0.52949), vec3(-0.55627, 0.29472, 0.3011),      //
-    vec3(0.42449, 0.00565, 0.11758), vec3(0.3665, 0.00359, 0.0857),        //
-    vec3(0.32902, 0.0309, 0.1785), vec3(-0.08294, 0.51285, 0.05656),       //
-    vec3(0.86736, -0.00273, 0.10014), vec3(0.45574, -0.77201, 0.00384),    //
-    vec3(0.41729, -0.15485, 0.46251), vec3(-0.44272, -0.67928, 0.1865)     //
+const vec4 kernelSamples[64] = vec4[64](                                     //
+    vec4(0.04977, -0.04471, 0.04996, 1.0), vec4(0.01457, 0.01653, 0.00224, 1.0),     //
+    vec4(-0.04065, -0.01937, 0.03193, 1.0), vec4(0.01378, -0.09158, 0.04092, 1.0),   //
+    vec4(0.05599, 0.05979, 0.05766, 1.0), vec4(0.09227, 0.04428, 0.01545, 1.0),      //
+    vec4(-0.00204, -0.0544, 0.06674, 1.0), vec4(-0.00033, -0.00019, 0.00037, 1.0),   //
+    vec4(0.05004, -0.04665, 0.02538, 1.0), vec4(0.03813, 0.0314, 0.03287, 1.0),      //
+    vec4(-0.03188, 0.02046, 0.02251, 1.0), vec4(0.0557, -0.03697, 0.05449, 1.0),     //
+    vec4(0.05737, -0.02254, 0.07554, 1.0), vec4(-0.01609, -0.00377, 0.05547, 1.0),   //
+    vec4(-0.02503, -0.02483, 0.02495, 1.0), vec4(-0.03369, 0.02139, 0.0254, 1.0),    //
+    vec4(-0.01753, 0.01439, 0.00535, 1.0), vec4(0.07336, 0.11205, 0.01101, 1.0),     //
+    vec4(-0.04406, -0.09028, 0.08368, 1.0), vec4(-0.08328, -0.00168, 0.08499, 1.0),  //
+    vec4(-0.01041, -0.03287, 0.01927, 1.0), vec4(0.00321, -0.00488, 0.00416, 1.0),   //
+    vec4(-0.00738, -0.06583, 0.0674, 1.0), vec4(0.09414, -0.008, 0.14335, 1.0),      //
+    vec4(0.07683, 0.12697, 0.107, 1.0), vec4(0.00039, 0.00045, 0.0003, 1.0),         //
+    vec4(-0.10479, 0.06544, 0.10174, 1.0), vec4(-0.00445, -0.11964, 0.1619, 1.0),    //
+    vec4(-0.07455, 0.03445, 0.22414, 1.0), vec4(-0.00276, 0.00308, 0.00292, 1.0),    //
+    vec4(-0.10851, 0.14234, 0.16644, 1.0), vec4(0.04688, 0.10364, 0.05958, 1.0),     //
+    vec4(0.13457, -0.02251, 0.13051, 1.0), vec4(-0.16449, -0.15564, 0.12454, 1.0),   //
+    vec4(-0.18767, -0.20883, 0.05777, 1.0), vec4(-0.04372, 0.08693, 0.0748, 1.0),    //
+    vec4(-0.00256, -0.002, 0.00407, 1.0), vec4(-0.0967, -0.18226, 0.29949, 1.0),     //
+    vec4(-0.22577, 0.31606, 0.08916, 1.0), vec4(-0.02751, 0.28719, 0.31718, 1.0),    //
+    vec4(0.20722, -0.27084, 0.11013, 1.0), vec4(0.0549, 0.10434, 0.32311, 1.0),      //
+    vec4(-0.13086, 0.11929, 0.28022, 1.0), vec4(0.15404, -0.06537, 0.22984, 1.0),    //
+    vec4(0.05294, -0.22787, 0.14848, 1.0), vec4(-0.18731, -0.04022, 0.01593, 1.0),   //
+    vec4(0.14184, 0.04716, 0.13485, 1.0), vec4(-0.04427, 0.05562, 0.05586, 1.0),     //
+    vec4(-0.02358, -0.08097, 0.21913, 1.0), vec4(-0.14215, 0.19807, 0.00519, 1.0),   //
+    vec4(0.15865, 0.23046, 0.04372, 1.0), vec4(0.03004, 0.38183, 0.16383, 1.0),      //
+    vec4(0.08301, -0.30966, 0.06741, 1.0), vec4(0.22695, -0.23535, 0.19367, 1.0),    //
+    vec4(0.38129, 0.33204, 0.52949, 1.0), vec4(-0.55627, 0.29472, 0.3011, 1.0),      //
+    vec4(0.42449, 0.00565, 0.11758, 1.0), vec4(0.3665, 0.00359, 0.0857, 1.0),        //
+    vec4(0.32902, 0.0309, 0.1785, 1.0), vec4(-0.08294, 0.51285, 0.05656, 1.0),       //
+    vec4(0.86736, -0.00273, 0.10014, 1.0), vec4(0.45574, -0.77201, 0.00384, 1.0),    //
+    vec4(0.41729, -0.15485, 0.46251, 1.0), vec4(-0.44272, -0.67928, 0.1865, 1.0)     //
 );
 const float radius = 0.5;
 const float bias = 1e-3;
 const float strength = 1.0;
+const int stepKernelSamples = 4;
 #endif
+
+const float divKernelSamples = 1.0 / float(countKernelSamples / stepKernelSamples); 
 
 void main() {
 #ifdef MULTIVIEW
@@ -565,14 +569,13 @@ void main() {
     mat3 worldTBN = getTangentSpaceFromNormal(worldFlatNormal); 
 #endif
   
-    const int countSamples = countKernelSamples;
-    for (int i = 0; i < countSamples; i++) {
-//    vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countSamples)));
-      vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
-      occlusion += smoothstep(0.0, 0.25, getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, 2.0, true, true));
+    for (int i = 0; i < countKernelSamples; i += stepKernelSamples) {
+//    vec3 rayDirection = normalize(worldTBN * sampleHemisphere(Hammersley(i, countKernelSamples)));
+      vec3 rayDirection = normalize(worldTBN * kernelSamples[i].xyz);
+      occlusion += smoothstep(0.0, 0.25, getRaytracedFastOcclusion(rayOrigin.xyz, worldFlatNormal, rayDirection, 0.0, radius, true, true));
     }
   
-    occlusion = clamp(1.0 - (strength * (occlusion / float(countSamples))), 0.0, 1.0);
+    occlusion = clamp(1.0 - (strength * (occlusion * divKernelSamples)), 0.0, 1.0);
 
     depth = length(rayOrigin.xyz - primaryRayOrigin.xyz);
   
@@ -635,13 +638,13 @@ void main() {
     vec4 rayOrigin = inverseViewMatrix * vec4(position.xyz, 1.0);
     rayOrigin.xyz /= rayOrigin.w;
 #endif    
-    for (int i = 0; i < countKernelSamples; i++) {
-      vec3 rayDirection = normalize(worldTBN * kernelSamples[i]);
+    for (int i = 0; i < countKernelSamples; i += stepKernelSamples) {
+      vec3 rayDirection = normalize(worldTBN * kernelSamples[i].xyz);
       occlusion += getRaytracedFastOcclusion(rayOrigin.xyz, worldTBN[2], rayDirection, 0.01, radius, false, true);
     }
 #else
-    for (int i = 0; i < countKernelSamples; i++) {
-      vec4 p = projectionMatrix * vec4(position.xyz + ((viewTBN * kernelSamples[i]) * radius), 1.0);
+    for (int i = 0; i < countKernelSamples; i += stepKernelSamples) {
+      vec4 p = projectionMatrix * vec4(position.xyz + ((viewTBN * kernelSamples[i].xyz) * kernelSamples[i].w * radius), 1.0);
       p.xyz /= p.w;
       p.xy = fma(p.xy, vec2(0.5), vec2(0.5));
 #ifdef MULTIVIEW
@@ -652,7 +655,7 @@ void main() {
       occlusion += (sampleDepth >= (depth + bias)) ? smoothstep(0.0, 1.0, radius / abs(depth - sampleDepth)) : 0.0;
     }
 #endif // RAYTRACING
-    occlusion = clamp(1.0 - (strength * (occlusion / float(countKernelSamples))), 0.0, 1.0);
+    occlusion = clamp(1.0 - (strength * (occlusion * divKernelSamples)), 0.0, 1.0);
   }
 #endif // RAYTRACING
   oFragOcclusionDepth = vec2(occlusion, depth);
