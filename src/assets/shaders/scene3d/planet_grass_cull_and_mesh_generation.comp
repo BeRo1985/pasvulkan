@@ -292,30 +292,9 @@ void main(){
 
   makePersistentLength(p0, p1, p2, grassHeight);
 
-  vec3 sideVec = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
+  vec3 sideVector = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
 
-  vec3 offset = sideVec * grassThickness;
-
-  vec3 bladeVertices[verticesPerBlade];
-  vec3 bladeNormals[verticesPerBlade];
-
-  for(int i = 0; i < verticesPerBlade; i++){
-    float t = float(i >> 1) / float(verticesPerBlade);
-    float s = float(1 - ((i & 1) << 1)); // 1 or -1
-    vec3 localP0 = p0 + (offset * (s * 1.0));
-    vec3 localP1 = p1 + (offset * (s * 0.7));
-    vec3 localP2 = p2 + (offset * (s * 0.3));
-    bladeVertices[i] = bezier(localP0, localP1, localP2, t);
-    bladeNormals[i] = normalize(cross(sideVec, normalize(bezierDerivative(localP0, localP1, localP2, t))));
-  }  
-
-  vec3 bladeVerticesTransformed[verticesPerBlade];
-  vec3 bladeNormalsTransformed[verticesPerBlade];
-
-  for(int i = 0; i < verticesPerBlade; i++){
-    bladeVerticesTransformed[i] = patchPosition + (patchTangentSpaceBasis * bladeVertices[i]);
-    bladeNormalsTransformed[i] = normalize(patchTangentSpaceBasis * bladeNormals[i]);
-  }
+  vec3 offset = sideVector * grassThickness;
 
   uint baseVertexIndex = atomicAdd(grassMetaData.countGrassVertices, verticesPerBlade);
   uint baseIndexIndex = atomicAdd(grassMetaData.countGrassIndices, indicesPerBlade);
@@ -351,11 +330,18 @@ void main(){
   // Hint: Winding order don't matter here, because grass is double sided for the rendering, so no backface 
   //       culling is performed here at all 
 
-  // Store the vertices for the grass blade
+  // Calculate and store the vertices for the grass blade
   for(uint i = 0u, j = uint(verticesPerBlade); i < j; i++){
+    float t = float(i >> 1) / float(verticesPerBlade);
+    float s = float(1 - ((i & 1) << 1)); // 1 or -1
+    vec3 localP0 = p0 + (offset * (s * 1.0));
+    vec3 localP1 = p1 + (offset * (s * 0.7));
+    vec3 localP2 = p2 + (offset * (s * 0.3));
+    vec3 position = patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t));
+    vec3 normal = normalize(patchTangentSpaceBasis * normalize(cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t)))));
     grassVertices.vertices[baseVertexIndex + i] = uvec4(
-      floatBitsToUint(bladeVerticesTransformed[i]),              // xyz: 32-bit float vertex position 
-      packSnorm2x16(octSignedEncode(bladeNormalsTransformed[i])) //   w: 2x 16-bit signed normalized octahedral-encoded normal
+      floatBitsToUint(position),                      // xyz: 32-bit float vertex position 
+      packSnorm2x16(octSignedEncode(normal))          //   w: 2x 16-bit signed normalized octahedral-encoded normal
     );    
   }
 
