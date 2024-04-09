@@ -176,7 +176,7 @@ void main(){
   /////////////////////////////////////////////////////////////////////////
 
   // TODO: Add evaluation of the grass map data here (density and other properties) together with early out return
-  //       if the grass is not needed at this position
+  //       if the grass is not needed at this position. randomFloatData.x can be used for the density evaluation
 
   /////////////////////////////////////////////////////////////////////////
 
@@ -282,12 +282,12 @@ void main(){
 
   // Otherwise, add the vertices and indices for the grass blade
 
-  float bladeDirectionAngle = radians(45.0);
+  float bladeDirectionAngle = randomFloatData.y * 6.28318530718; // 2 * PI
   vec2 bladeDirection = normalize(sin(vec2(bladeDirectionAngle) + vec2(1.57079632679, 0.0)));
 
-  float offsetAngle = radians(25.0);
+  float offsetAngle = randomFloatData.z * 6.28318530718; // 2 * PI
   vec2 offsetDirection = normalize(sin(vec2(offsetAngle) + vec2(1.57079632679, 0.0)));      
-  float offsetRadius = 0.1;
+  float offsetRadius = 0.0; // TODO: Make it configurable
 
   vec3 bladeOffset = ((offsetDirection.x * patchTangent) + (offsetDirection.y * patchBitangent)) * offsetRadius; 
 
@@ -298,9 +298,9 @@ void main(){
   // Add some wind effect to the grass blade 
   {
 
-    float windDirection = 20.0; // TODO: Make this configurable
+    const float windDirection = radians(20.0); // TODO: Calculate this based on the global position in 3D space and make it configurable
  
-    float windStrength = 0.25; // TODO: Make this configurable
+    const float windStrength = 0.25; // TODO: Calculate this based on the global position in 3D space and make it configurable
 
     vec2 windOffset = sin(
       vec2(
