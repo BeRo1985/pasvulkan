@@ -326,15 +326,37 @@ void main(){
     return;
   }
 
+  // The following diagram shows the vertex and triangle layout for a single grass blade with 4 edge vertices on each side as example:
+  //
+  // V6 +-----+  V7
+  //    |\  T5|
+  //    | \   |
+  //    |  \  |
+  //    |   \ |
+  //    | T4 \|
+  // V4 +-----+ V5
+  //    |\  T3|
+  //    | \   |
+  //    |  \  |
+  //    |   \ |
+  //    | T2 \|
+  // V2 +-----+ V3
+  //    |\  T1|
+  //    | \   |
+  //    |  \  |
+  //    |   \ |
+  //    | T0 \|
+  // V0 +-----+ V1
+  //
+  // Hint: Winding order don't matter here, because grass is double sided for the rendering, so no backface 
+  //       culling is performed here at all 
+
   for(uint i = 0u, j = uint(verticesPerBlade); i < j; i++){
     grassVertices.vertices[baseVertexIndex + i] = uvec4(
       floatBitsToUint(bladeVerticesTransformed[i]), 
       packSnorm2x16(octSignedEncode(bladeNormalsTransformed[i]))
     );    
   }
-
-  // Hint: Winding order don't matter here, because grass is double sided for the rendering, so no backface 
-  //       culling is performed here at all 
 
   for(uint i = 0u, j = uint(trianglesPerBlade); i < j; i++){
     uint triangleBaseIndex = baseVertexIndex + (i * 3u);
