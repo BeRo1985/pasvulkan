@@ -360,9 +360,9 @@ void main(){
   }
 
   // Store the indices for the grass blade
-  for(uint i = 0u, j = uint(trianglesPerBlade); i < j; i += 2u){
+  for(uint i = 0u, j = uint(trianglesPerBlade) >> 1u; i < j; i++){
     
-    uint triangleBaseIndex = baseVertexIndex + (i * 3u);
+    uint triangleBaseIndex = baseVertexIndex + (i * 6u);
     uint triangleBaseVertex = baseVertexIndex + (i << 1u);
 
     // First triangle of the quad 
