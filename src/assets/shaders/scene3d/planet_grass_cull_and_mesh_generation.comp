@@ -48,9 +48,22 @@ layout(set = 0, binding = 2, std430) buffer VisibleTileList {
   uint visibleTiles[];
 } visibleTileList;
 
-layout(set = 0, binding = 2, std430) buffer VisualMeshVertices {
+layout(set = 0, binding = 3, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
+
+layout(set = 0, binding = 4, std430) buffer GrassMetaData {
+  uint countGrassVertices;
+  uint countGrassIndices;  
+} grassMetaData;
+
+layout(set = 0, binding = 5, std430) buffer GrassVertices {
+  uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
+} grassVertices;
+
+layout(set = 0, binding = 6, std430) buffer GrassIndices {
+  uint indices[];
+} grassIndices;
 
 #include "frustum.glsl"
 
@@ -80,11 +93,23 @@ vec3 bezierDerivative(vec3 p0, vec3 p1, vec3 p2, float t){
   return ((2.0 * (1. - t)) * (p1 - p0)) + ((2.0 * t) * (p2 - p1));
 }
 
+void makePersistentLength(in vec3 v0, inout vec3 v1, inout vec3 v2, in float height){
+  vec3 v01 = v1 - v0;
+  vec3 v12 = v2 - v1;
+  float L = fma(2.0, length(v2 - v0), length(v01) + length(v12)) / 3.0; 
+  float lDiff = height / L;
+  v1 = fma(v01, vec3(lDiff), v0); 
+  v2 = fma(v12, vec3(lDiff), v1);
+}
+
+const int verticesPerBladeEdge = 4;
+const int verticesPerBlade = verticesPerBladeEdge * 2;
+const int trianglesPerBlade = (verticesPerBladeEdge * 2) - 2; 
+const int indicesPerBlade = trianglesPerBlade * 3;
+
 void main(){
 
-  const uint countLODLevels = uint(log2(float(pushConstants.tileResolution)));
-
-  uint localInvocationIndex = gl_LocalInvocationID.x;
+  uint localInvocationIndex = gl_LocalInvocationIndex;
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
   uint countViews = min(pushConstants.countViews, 8); 
@@ -106,6 +131,12 @@ void main(){
   groupMemoryBarrier();
   barrier(); 
 
+  // A early pre-check if there is enough space for the new vertices and indices
+  if(((grassMetaData.countGrassVertices + verticesPerBlade) > pushConstants.maximumCountVertices) ||
+     ((grassMetaData.countGrassIndices + indicesPerBlade) > pushConstants.maximumCountIndices)){
+    return;
+  } 
+
   const uint tileListIndex = gl_GlobalInvocationID.x;  
 
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
@@ -114,120 +145,108 @@ void main(){
 
   const uvec2 localTileXY = uvec2(gl_GlobalInvocationID.yz);
 
-  if((tileListIndex < tileMapSize) && 
-     (tileListIndex < countVisibleTiles) && 
-     all(lessThanEqual(localTileXY, uvec2(pushConstants.tileResolution)))){ 
+  // Check if the current invocation is still in the valid ranges, otherwise return
+  if((tileListIndex >= tileMapSize) || 
+     (tileListIndex >= countVisibleTiles) || 
+     any(greaterThanEqual(localTileXY, uvec2(pushConstants.tileResolution)))){ 
+    return;
+  }
 
-    vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
-    int countLODLevels = textureQueryLevels(uTextureDepth);
+  vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
+  int countLODLevels = textureQueryLevels(uTextureDepth);
 
-    const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 1u];
+  const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 1u];
 
-    const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
-    const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
+  const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
+  const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
 
-    uvec2 globalXY = (uvec2(tileMapX, tileMapY) * pushConstants.tileResolution) + uvec2(gl_GlobalInvocationID.yz);
+  uvec2 globalXY = (uvec2(tileMapX, tileMapY) * pushConstants.tileResolution) + uvec2(gl_GlobalInvocationID.yz);
 
-    uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
+  uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
 
-    /////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////
 
-    uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
+  // TODO: Add evaluation of the grass map data here (density and other properties) together with early out return
+  //       if the grass is not needed at this position
 
-    vec3 vertexPosition = uintBitsToFloat(rawVertex.xyz);
+  /////////////////////////////////////////////////////////////////////////
 
-    vec3 vertexNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
+  uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
 
-    vec3 vertexTangent, vertexBitangent;
+  vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
-    getTangentSpaceBasisFromNormal(vertexNormal, vertexTangent, vertexBitangent); 
+  vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 
-    /////////////////////////////////////////////////////////////////////////
+  vec3 patchTangent, patchBitangent;
 
-    vec3 worstCaseBaseVertexPosition = vertexPosition;
-    vec3 worstCaseTipVertexPosition = vertexPosition + (vertexNormal * pushConstants.grassHeight); 
+  getTangentSpaceBasisFromNormal(patchNormal, patchTangent, patchBitangent); 
 
-    vec3 tangentThickness = vertexTangent * pushConstants.grassThickness;
-    vec3 bitangentThickness = vertexBitangent * pushConstants.grassThickness;
+  mat3 patchTangentSpaceBasis = mat3(patchTangent, patchBitangent, patchNormal);
 
-    /////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////
 
-    vec3 aabbEdges[8] = vec3[8](
-      (worstCaseBaseVertexPosition - tangentThickness) - bitangentThickness,
-      (worstCaseBaseVertexPosition + tangentThickness) - bitangentThickness,
-      (worstCaseBaseVertexPosition + tangentThickness) + bitangentThickness,
-      (worstCaseBaseVertexPosition - tangentThickness) + bitangentThickness,
-      (worstCaseTipVertexPosition - tangentThickness) - bitangentThickness,
-      (worstCaseTipVertexPosition + tangentThickness) - bitangentThickness,
-      (worstCaseTipVertexPosition + tangentThickness) + bitangentThickness,
-      (worstCaseTipVertexPosition - tangentThickness) + bitangentThickness
-    );
+  const float grassHeight = pushConstants.grassHeight;
+  const float grassThickness = pushConstants.grassThickness;
+  const float grassLeaning = 0.3;
 
-    vec3 aabbMin = min(min(min(aabbEdges[0], aabbEdges[1]), min(aabbEdges[2], aabbEdges[3])), min(min(aabbEdges[4], aabbEdges[5]), min(aabbEdges[6], aabbEdges[7])));
-    vec3 aabbMax = max(max(max(aabbEdges[0], aabbEdges[1]), max(aabbEdges[2], aabbEdges[3])), max(max(aabbEdges[4], aabbEdges[5]), max(aabbEdges[6], aabbEdges[7]))); 
+  /////////////////////////////////////////////////////////////////////////
 
-    /////////////////////////////////////////////////////////////////////////
+  vec3 worstCaseBaseVertexPosition = patchPosition;
+  vec3 worstCaseTipVertexPosition = patchPosition + (patchNormal * pushConstants.grassHeight); 
 
-    vec4 boundingSphere = vec4(mix(aabbMin, aabbMax, 0.5), length(aabbMax - aabbMin) * 0.5);
+  /////////////////////////////////////////////////////////////////////////
 
-    /////////////////////////////////////////////////////////////////////////
+  // The calculation of the bounding sphere is based on the worst case scenario, assuming that the grass blade is leaning to
+  // the maximum, the bounding sphere is calculated by the following formula:
+  //
+  //   center = patchPosition + (patchNormal * (max(grassHeight, grassThickness) * 0.5))
+  //   radius = max(grassHeight, grassThickness) * 0.5
+
+  vec4 boundingSphere = vec4(
+    fma(patchNormal, vec3(max(grassHeight, grassThickness) * 0.5), patchPosition), 
+    max(grassHeight, grassThickness) * 0.5
+  );
+
+  /////////////////////////////////////////////////////////////////////////
+  
+  bool visible = false;
+  
+  for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
     
-    bool visible = false;
+    mat4 viewMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].viewMatrix;      
+    vec4 viewSpaceBoundingSphere = vec4((viewMatrix * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+
+    if(frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere)){
     
-    for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
-      
-      mat4 viewMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].viewMatrix;      
-      vec4 viewSpaceBoundingSphere = vec4((viewMatrix * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+      visible = true;
 
-      if(frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere)){
-      
-        vec3 viewSpaceAABBMin = aabbMin;
-        vec3 viewSpaceAABBMax = aabbMax;
-      
-        mat4 modelViewMatrix = viewMatrix * pushConstants.modelMatrix;
-      
-        aabbTransform(viewSpaceAABBMin, viewSpaceAABBMax, modelViewMatrix);
-      
-        if(frustumCullingAABBTest(frustums[viewIndex], viewSpaceAABBMin, viewSpaceAABBMax)){
-          
-          visible = true;
+      vec4 aabb;
 
-          vec4 aabb;
+      float zNear = abs(uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[3][2] / uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[2][3]);
 
-          float zNear = abs(uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[3][2] / uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[2][3]);
+      if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNear, uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
 
-//        if(projectAABB(viewSpaceAABBMin, viewSpaceAABBMax, zNear, uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
-          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNear, uView.views[pushConstants.baseViewIndex + viewIndex].projectionMatrix, aabb, true)){
+        vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+        
+        float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
 
-            vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
-            
-            float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
-
-  #undef USE_FASTER_DEPTH_CALCULATIONS
-  #ifdef USE_FASTER_DEPTH_CALCULATIONS
-            vec2 depthZ = fma(
-              uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[2].zw,
-              textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
-              uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[3].zw
-            );
-  #else
-            vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
-              (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
-              textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
-              1.0
-            )).zw;
-  #endif
-            float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
-            
-            visible = (((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth);
-
-          }
-
-          if(visible){
-            break;
-          }
-
-        }
+#undef USE_FASTER_DEPTH_CALCULATIONS
+#ifdef USE_FASTER_DEPTH_CALCULATIONS
+        vec2 depthZ = fma(
+          uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[2].zw,
+          textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
+          uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix[3].zw
+        );
+#else
+        vec2 depthZ = (uView.views[pushConstants.baseViewIndex + viewIndex].inverseProjectionMatrix * vec4(
+          (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
+          textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
+          1.0
+        )).zw;
+#endif
+        float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
+        
+        visible = (((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth);
 
       }
 
@@ -237,28 +256,93 @@ void main(){
 
     }
 
-    /////////////////////////////////////////////////////////////////////////
-
     if(visible){
-
-      const float grassLeaning = 0.3, bladeHeight = 1.0;
-      vec3 bladeDirection = normalize(vec3(0.0, 1.0, 0.0));
-
-      vec3 p0 = vec3(0.0);
-      vec3 p1 = p0 + vec2(0.0, bladeHeight).xxy;
-      vec3 p2 = fma(bladeDirection, vec3(bladeHeight * grassLeaning), p1);      
-
-      vec3 sideVec = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0)); 
-
-      //vec3 normal = cross(sideVec, normalize(bezierDerivative(p0, p1, p2, t)));
-
-
-      
-
+      break;
     }
 
   }
-  
+ 
+  /////////////////////////////////////////////////////////////////////////
+
+  // If the grass blade is not visible, then return
+  if(!visible){
+    return;
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+
+  // Otherwise, add the vertices and indices for the grass blade
+
+  float bladeDirectionAngle = radians(45.0);
+  vec2 bladeDirection = normalize(sin(vec2(bladeDirectionAngle) + vec2(1.57079632679, 0.0)));
+
+  float offsetAngle = radians(25.0);
+  vec2 offsetDirection = normalize(sin(vec2(offsetAngle) + vec2(1.57079632679, 0.0)));      
+  float offsetRadius = 0.1;
+
+  vec3 bladeOffset = ((offsetDirection.x * patchTangent) + (offsetDirection.y * patchBitangent)) * offsetRadius; 
+
+//      vec2 windOffset = vec2(0.0, 0.0); 
+
+  vec3 p0 = bladeOffset;
+  vec3 p1 = p0 + vec2(0.0, grassHeight).xxy;
+  vec3 p2 = fma(vec3(bladeDirection, 0.0), vec3(grassHeight * grassLeaning), p1);      
+
+  //p2 += getWindOffset
+
+  makePersistentLength(p0, p1, p2, grassHeight);
+
+  vec3 sideVec = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
+
+  vec3 offset = sideVec * grassThickness;
+
+  vec3 bladeVertices[verticesPerBlade];
+  vec3 bladeNormals[verticesPerBlade];
+
+  for(int i = 0; i < verticesPerBlade; i++){
+    float t = float(i >> 1) / float(verticesPerBlade);
+    float s = float(1 - ((i & 1) << 1)); // 1 or -1
+    vec3 localP0 = p0 + (offset * (s * 1.0));
+    vec3 localP1 = p1 + (offset * (s * 0.7));
+    vec3 localP2 = p2 + (offset * (s * 0.3));
+    bladeVertices[i] = bezier(localP0, localP1, localP2, t);
+    bladeNormals[i] = normalize(cross(sideVec, normalize(bezierDerivative(localP0, localP1, localP2, t))));
+  }  
+
+  vec3 bladeVerticesTransformed[verticesPerBlade];
+  vec3 bladeNormalsTransformed[verticesPerBlade];
+
+  for(int i = 0; i < verticesPerBlade; i++){
+    bladeVerticesTransformed[i] = patchPosition + (patchTangentSpaceBasis * bladeVertices[i]);
+    bladeNormalsTransformed[i] = normalize(patchTangentSpaceBasis * bladeNormals[i]);
+  }
+
+  uint baseVertexIndex = atomicAdd(grassMetaData.countGrassVertices, verticesPerBlade);
+  uint baseIndexIndex = atomicAdd(grassMetaData.countGrassIndices, indicesPerBlade);
+
+  // Post-check if there is enough space for the new vertices and indices
+  if(((baseVertexIndex + verticesPerBlade) > pushConstants.maximumCountVertices) ||
+     ((baseIndexIndex + indicesPerBlade) > pushConstants.maximumCountIndices)){
+    return;
+  }
+
+  for(uint i = 0u, j = uint(verticesPerBlade); i < j; i++){
+    grassVertices.vertices[baseVertexIndex + i] = uvec4(
+      floatBitsToUint(bladeVerticesTransformed[i]), 
+      packSnorm2x16(octSignedEncode(bladeNormalsTransformed[i]))
+    );    
+  }
+
+  // Hint: Winding order don't matter here, because grass is double sided for the rendering, so no backface 
+  //       culling is performed here at all 
+
+  for(uint i = 0u, j = uint(trianglesPerBlade); i < j; i++){
+    uint triangleBaseIndex = baseVertexIndex + (i * 3u);
+    uint triangleBaseVertex = baseVertexIndex + (i >> 1u) + (i & 1u);
+    grassIndices.indices[triangleBaseIndex + 0u] = triangleBaseVertex + 0u;
+    grassIndices.indices[triangleBaseIndex + 1u] = triangleBaseVertex + 1u;
+    grassIndices.indices[triangleBaseIndex + 2u] = triangleBaseVertex + 2u;
+  }
 
 }
 
