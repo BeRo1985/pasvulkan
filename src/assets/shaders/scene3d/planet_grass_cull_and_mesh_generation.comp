@@ -296,6 +296,8 @@ void main(){
 
   vec3 offset = sideVector * grassThickness;
 
+  /////////////////////////////////////////////////////////////////////////
+
   uint baseVertexIndex = atomicAdd(grassMetaData.countGrassVertices, verticesPerBlade);
   uint baseIndexIndex = atomicAdd(grassMetaData.countGrassIndices, indicesPerBlade);
 
