@@ -159,6 +159,10 @@ type TpvScene3DPlanets=class;
             end;
             PTiledMeshIndexGroup=^TTiledMeshIndexGroup;
             TTiledMeshIndexGroups=TpvDynamicArrayList<TTiledMeshIndexGroup>;
+            TGrassMetaBufferData=packed record
+             CountVertices:TpvUInt32;
+             CountIndices:TpvUInt32;
+            end;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -208,6 +212,9 @@ type TpvScene3DPlanets=class;
               fPhysicsMeshIndexBuffer:TpvVulkanBuffer;
               fPhysicsMeshVertexBuffer:TpvVulkanBuffer;
               fRayIntersectionResultBuffer:TpvVulkanBuffer;
+              fGrassMetaBuffer:TpvVulkanBuffer;
+              fGrassVertexBuffer:TpvVulkanBuffer;
+              fGrassIndexBuffer:TpvVulkanBuffer;
               fCountTriangleIndices:TVkUInt32;
               fCountDirtyTiles:TVkUInt32;
               fModelMatrix:TpvMatrix4x4;
@@ -848,6 +855,7 @@ type TpvScene3DPlanets=class;
               fKey:TKey;
               fVulkanVisiblityBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               fVulkanDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
+              fVulkanVisibleTileListBuffer:TpvVulkanBuffer;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
@@ -5749,7 +5757,7 @@ var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,CountBufferMemoryBarrie
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
-    BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
 begin
 
@@ -5876,6 +5884,15 @@ begin
                                                                                           VK_WHOLE_SIZE);
            inc(CountBufferMemoryBarriers);
 
+           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                                                          RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                                                                          0,
+                                                                                          VK_WHOLE_SIZE);
+           inc(CountBufferMemoryBarriers);
+
            DstPipelineStageFlags:=DstPipelineStageFlags or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
           end;
@@ -5902,10 +5919,17 @@ begin
         end;
 
         if fPass=0 then begin
+
          aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Handle,
                                       0,
                                       RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Size,
                                       0);
+
+         aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                      0,
+                                      RendererViewInstance.fVulkanVisibleTileListBuffer.Size,
+                                      0);
+
         end;
 
         begin
@@ -5925,6 +5949,7 @@ begin
 
          case fPass of
           0:begin
+
            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                           TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                           VK_QUEUE_FAMILY_IGNORED,
@@ -5933,6 +5958,15 @@ begin
                                                                                           0,
                                                                                           VK_WHOLE_SIZE);
            inc(CountBufferMemoryBarriers);
+
+           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                                                          VK_QUEUE_FAMILY_IGNORED,
+                                                                                          RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                                                                          0,
+                                                                                          VK_WHOLE_SIZE);  
+
           end;
           else begin
           end;
@@ -5993,6 +6027,19 @@ begin
           end;
           else begin
           end;
+         end;
+
+         if fPass=1 then begin
+           
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);   
+
          end;
 
          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
@@ -6887,6 +6934,26 @@ begin
                                                                 );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.DrawIndexedIndirectCommandBuffer');
 
+ fVulkanVisibleTileListBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                      ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+1)*SizeOf(TpvUInt32),
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                      [],
+                                                      0,
+                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      [],
+                                                      0,
+                                                      pvAllocationGroupIDScene3DPlanetStatic
+                                                     );
+ fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisibleTileListBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisibleTileListBuffer');
+
  fDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
                                                                   TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
 
@@ -6957,6 +7024,15 @@ begin
                                                            [],
                                                            false);
 
+  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+                                                           0,
+                                                           1,
+                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                           [],
+                                                           [fVulkanVisibleTileListBuffer.DescriptorBufferInfo],
+                                                           [],
+                                                           false);       
+
   fDescriptorSets[InFlightFrameIndex].Flush;
 
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
@@ -6976,6 +7052,7 @@ begin
   FreeAndNil(fVulkanVisiblityBuffers[InFlightFrameIndex]);
  end;
  FreeAndNil(fVulkanDrawIndexedIndirectCommandBuffer);
+ FreeAndNil(fVulkanVisibleTileListBuffer);
  inherited Destroy;
 end;
 
@@ -7815,6 +7892,12 @@ begin
                    TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                    [],
                    0);
+ result.AddBinding(6,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                   [],
+                   0);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetCullDescriptorSetLayout');
 end;
@@ -7824,7 +7907,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),6*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),7*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetCullDescriptorPool');
 end;

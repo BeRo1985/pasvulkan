@@ -81,6 +81,10 @@ layout(set = 1, binding = 5, std430) readonly buffer TileVertexIndexGroups {
   uvec2 data[]; // x = first vertex index, y = count of indices, and the data count is the same as the tile map size multiplied by LOD levels    
 } tileVertexIndexGroups;
 
+layout(set = 1, binding = 6, std430) buffer VisibleTileList {
+  uint data[]; // first item = count of visible tiles, then the tile indices follow
+} visibleTileList;
+
 #include "frustum.glsl"
 
 #include "aabb.glsl"
@@ -293,6 +297,14 @@ void main(){
       uint tileIndexOffset = tileMapIndex * countTileIndices;
       for(uint lodCounter = 0u; lodCounter < lod; lodCounter++){
         tileIndexOffset += (lod0TileSize >> (lodCounter << 1u)) * (tileMapSize * 6u);
+      }
+#endif
+
+#if defined(PASS1) // Only for the disocclusion pass so that every visible tile can be directly added to the list of visible tiles without further checks 
+      {
+        // If visible, add to the list of visible tiles for other also to be culled content on the planet like trees, grass, etc.
+        const uint outputVisibleTileIndex = atomicAdd(visibleTileList.data[0], 1u) + 1u; // 1-based, since 0 is used for the counter
+        visibleTileList.data[outputVisibleTileIndex] = tileMapIndex;
       }
 #endif
 
