@@ -22,6 +22,7 @@ layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -37,6 +38,7 @@ layout(location = 1) out OutBlock {
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -98,6 +100,7 @@ void main(){
 
   outBlock.position = position;         
   outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
+  outBlock.texCoord = inTexCoord;
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;

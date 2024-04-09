@@ -29,6 +29,7 @@ layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in InBlock {
   vec3 position;
   vec3 normal;
+  vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
@@ -44,6 +45,7 @@ layout(location = 1) in InBlock {
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 normal;
+  vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
   vec3 cameraRelativePosition;
