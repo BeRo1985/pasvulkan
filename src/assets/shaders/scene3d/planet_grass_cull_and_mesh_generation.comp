@@ -57,8 +57,13 @@ layout(set = 0, binding = 4, std430) buffer GrassMetaData {
   uint countGrassIndices;  
 } grassMetaData;
 
+struct GrassVertex {
+  uvec4 positionNormal; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
+  uvec4 texcoord;       // x = 2x 16-bit unsigned normalized texcoord, yzw = unused
+};
+
 layout(set = 0, binding = 5, std430) buffer GrassVertices {
-  uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
+  GrassVertex vertices[]; 
 } grassVertices;
 
 layout(set = 0, binding = 6, std430) buffer GrassIndices {
@@ -342,9 +347,17 @@ void main(){
     vec3 localP2 = p2 + (offset * (s * 0.3));
     vec3 position = patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t));
     vec3 normal = normalize(patchTangentSpaceBasis * normalize(cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t)))));
-    grassVertices.vertices[baseVertexIndex + i] = uvec4(
-      floatBitsToUint(position),                      // xyz: 32-bit float vertex position 
-      packSnorm2x16(octSignedEncode(normal))          //   w: 2x 16-bit signed normalized octahedral-encoded normal
+    grassVertices.vertices[baseVertexIndex + i] = GrassVertex(
+      uvec4(
+        floatBitsToUint(position),                      // xyz: 32-bit float vertex position 
+        packSnorm2x16(octSignedEncode(normal))          //   w: 2x 16-bit signed normalized octahedral-encoded normal
+      ),
+      uvec4(
+        packUnorm2x16(vec2(float(i & 1), t)),           //   x: 2x 16-bit unsigned normalized texcoord
+        0u,                                             //   y: unused
+        0u,                                             //   z: unused
+        0u                                              //   w: unused
+      )
     );    
   }
 
