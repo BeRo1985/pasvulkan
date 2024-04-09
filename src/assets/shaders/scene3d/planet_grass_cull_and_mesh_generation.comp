@@ -91,6 +91,7 @@ layout(set = 0, binding = 6, std430) buffer GrassIndices {
 // forward approach in my opinion, so that almost everything is done on the GPU and is in the same place, as long as it don't hurts the performance
 // significantly.
 shared vec3 planetPosition;
+shared mat3 planetNormalMatrix;
 shared Frustum frustums[8];
 shared Frustum additionalFrustums[8];
 
@@ -117,7 +118,9 @@ void main(){
   if(localInvocationIndex == 0u){
     vec4 p = pushConstants.modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     planetPosition = p.xyz / p.w;
+    planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
   }
+
 
   if((countViews > 0u) && (localInvocationIndex < countViews)){   
     frustumSetup(frustums[localInvocationIndex], uView.views[pushConstants.baseViewIndex + localInvocationIndex].projectionMatrix);      
@@ -212,7 +215,7 @@ void main(){
   //   radius = max(grassHeight, grassThickness) * 0.5
 
   vec4 boundingSphere = vec4(
-    fma(patchNormal, vec3(max(grassHeight, grassThickness) * 0.5), patchPosition), 
+    (pushConstants.modelMatrix * vec4(fma(patchNormal, vec3(max(grassHeight, grassThickness) * 0.5), patchPosition), 1.0)).xyz,
     max(grassHeight, grassThickness) * 0.5
   );
 
@@ -367,14 +370,15 @@ void main(){
   //       culling is performed here at all 
 
   // Calculate and store the vertices for the grass blade
+  const mat4 modelMatrix = pushConstants.modelMatrix; 
   for(uint i = 0u, j = uint(verticesPerBlade); i < j; i++){
     float t = float(i >> 1) / float(verticesPerBlade);
     float s = float(1 - ((i & 1) << 1)); // 1 or -1
     vec3 localP0 = p0 + (offset * (s * 1.0));
     vec3 localP1 = p1 + (offset * (s * 0.7));
-    vec3 localP2 = p2 + (offset * (s * 0.3));
-    vec3 position = patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t));
-    vec3 normal = normalize(patchTangentSpaceBasis * normalize(cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t)))));
+    vec3 localP2 = p2 + (offset * (s * 0.3));    
+    vec3 position = (modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
+    vec3 normal = normalize(planetNormalMatrix * (patchTangentSpaceBasis * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t)))));
     grassVertices.vertices[baseVertexIndex + i] = GrassVertex(
       uvec4(
         floatBitsToUint(position),                      // xyz: 32-bit float vertex position 
