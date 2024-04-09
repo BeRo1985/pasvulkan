@@ -85,21 +85,12 @@ shared vec3 planetPosition;
 shared Frustum frustums[8];
 shared Frustum additionalFrustums[8];
 
-vec3 bezier(vec3 p0, vec3 p1, vec3 p2, float t){
+vec3 bezier(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float t){
   return mix(mix(p0, p1, t), mix(p1, p2, t), t);
 }
 
-vec3 bezierDerivative(vec3 p0, vec3 p1, vec3 p2, float t){
+vec3 bezierDerivative(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float t){
   return ((2.0 * (1. - t)) * (p1 - p0)) + ((2.0 * t) * (p2 - p1));
-}
-
-void makePersistentLength(in vec3 v0, inout vec3 v1, inout vec3 v2, in float height){
-  vec3 v01 = v1 - v0;
-  vec3 v12 = v2 - v1;
-  float L = fma(2.0, length(v2 - v0), length(v01) + length(v12)) / 3.0; 
-  float lDiff = height / L;
-  v1 = fma(v01, vec3(lDiff), v0); 
-  v2 = fma(v12, vec3(lDiff), v1);
 }
 
 const int verticesPerBladeEdge = 4;
@@ -282,15 +273,25 @@ void main(){
 
   vec3 bladeOffset = ((offsetDirection.x * patchTangent) + (offsetDirection.y * patchBitangent)) * offsetRadius; 
 
-//      vec2 windOffset = vec2(0.0, 0.0); 
-
   vec3 p0 = bladeOffset;
   vec3 p1 = p0 + vec2(0.0, grassHeight).xxy;
   vec3 p2 = fma(vec3(bladeDirection, 0.0), vec3(grassHeight * grassLeaning), p1);      
 
-  //p2 += getWindOffset
-
-  makePersistentLength(p0, p1, p2, grassHeight);
+  {
+    vec2 windOffset = vec2(0.0, 0.0); 
+    // TODO: Add wind offset calculation here
+    p2 += vec3(windOffset, 0.0);
+  }
+  
+  // Ensure that the grass blade has a persistent length
+  {
+    vec3 p01 = p1 - p0;
+    vec3 p12 = p2 - p1;
+    float L = fma(2.0, length(p2 - p0), length(p01) + length(p12)) / 3.0; 
+    float lDiff = grassHeight / L;
+    p1 = fma(p01, vec3(lDiff), p0); 
+    p2 = fma(p12, vec3(lDiff), p1);
+  }
 
   vec3 sideVector = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
 
