@@ -749,6 +749,7 @@ type TpvScene3DPlanets=class;
                     MaximumDistance:TpvFloat;
                     GrassHeight:TpvFloat;
                     GrassThickness:TpvFloat;
+                    CountVerticesPerBladeEdge:TpvUInt32;
                     Time:TpvFloat;
                    end;
                    PGrassPushConstants=^TGrassPushConstants;
@@ -6245,7 +6246,8 @@ begin
          fGrassPushConstants.MaximumDistance:=1000.0;
          fGrassPushConstants.GrassHeight:=0.125;
          fGrassPushConstants.GrassThickness:=0.03;
-         fGrassPushConstants.Time:=0.0;
+         fGrassPushConstants.CountVerticesPerBladeEdge:=4;
+         fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
 
          begin
 

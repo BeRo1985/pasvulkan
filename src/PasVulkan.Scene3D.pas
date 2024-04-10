@@ -2876,6 +2876,8 @@ type EpvScene3D=class(Exception);
             end;
             PCachedVertexRange=^TCachedVertexRange;
             TCachedVertexRanges=TpvDynamicArray<TCachedVertexRange>;
+            TSceneTimes=array[0..MaxInFlightFrames-1] of TpvDouble;
+            PSceneTimes=^TSceneTimes;
             TInFlightFrameMaterialBufferDataGenerations=array[0..MaxInFlightFrames-1] of TMaterialGenerations;
             TSetGlobalResourcesDone=array[0..MaxRenderPassIndices-1] of boolean;
             { TRaytracingGroupInstanceNode }
@@ -3229,6 +3231,8 @@ type EpvScene3D=class(Exception);
        fProcessFrameTimerQueryUploadFrameDataIndex:TpvSizeInt;
        fProcessFrameTimerQueryMeshComputeIndex:TpvSizeInt;
        fProcessFrameTimerQueryUpdateRaytracingIndex:TpvSizeInt;
+       fSceneTimes:TSceneTimes;
+       fPointerToSceneTimes:PSceneTimes;
        procedure NewImageDescriptorGeneration;
        procedure NewMaterialDataGeneration;
        procedure CullLights(const aInFlightFrameIndex:TpvSizeInt;
@@ -3417,6 +3421,8 @@ type EpvScene3D=class(Exception);
        property Planets:TObject read fPlanets;
       public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;
+      public
+       property SceneTimes:PSceneTimes read fPointerToSceneTimes;
       published
        property SkyBoxTextureImage:TpvScene3D.TImage read fSkyBoxTextureImage write fSkyBoxTextureImage;
        property SkyBoxMode:TpvScene3DEnvironmentMode read fSkyBoxMode write fSkyBoxMode;
@@ -21001,6 +21007,10 @@ begin
  fMaterialHashMap:=TMaterialHashMap.Create(nil);
 
  FillChar(fInFlightFrameMaterialBufferDataGenerations,SizeOf(TInFlightFrameMaterialBufferDataGenerations),#$ff);
+
+ FillChar(fSceneTimes,SizeOf(TSceneTimes),#0);
+
+ fPointerToSceneTimes:=@fSceneTimes;
 
  fSkyBoxTextureImage:=nil;
 
