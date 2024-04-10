@@ -92,8 +92,6 @@ type TpvScene3DPlanets=class;
      { TpvScene3DPlanet }
      TpvScene3DPlanet=class
       public
-       const MaxGrassVertices=1048576;
-             MaxGrassIndices=1572864;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -939,7 +937,9 @@ type TpvScene3DPlanets=class;
        fBottomRadius:TpvFloat; // Start of the lowest planet ground
        fTopRadius:TpvFloat; // End of the atmosphere
        fHeightMapScale:TpvFloat; // Scale factor for the height map
-       fCountVisualMeshIndices:TpvSizeInt; 
+       fMaxGrassVertices:TpvSizeInt;
+       fMaxGrassIndices:TpvSizeInt;
+       fCountVisualMeshIndices:TpvSizeInt;
        fCountVisualMeshLODLevels:TpvSizeInt;
        fCountPhysicsMeshIndices:TpvSizeInt; 
        fCountPhysicsMeshLODLevels:TpvSizeInt;
@@ -6240,8 +6240,8 @@ begin
          fGrassPushConstants.CountAdditionalViews:=CountAdditionalViews;
          fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
          fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
-         fGrassPushConstants.MaximumCountVertices:=MaxGrassVertices;
-         fGrassPushConstants.MaximumCountIndices:=MaxGrassIndices;
+         fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
+         fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
          fGrassPushConstants.MaximumDistance:=1000.0;
          fGrassPushConstants.GrassHeight:=0.125;
          fGrassPushConstants.GrassThickness:=0.03;
@@ -7306,7 +7306,7 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassMetaDataBuffer');
 
  fVulkanGrassVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                    MaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),
+                                                    fPlanet.fMaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -7327,7 +7327,7 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassVerticesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassVerticesBuffer');
 
  fVulkanGrassIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                   MaxGrassIndices*SizeOf(TpvUInt32),
+                                                   fPlanet.fMaxGrassIndices*SizeOf(TpvUInt32),
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -7586,6 +7586,10 @@ begin
  fVisualResolution:=fTileMapResolution*fVisualTileResolution;
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
+
+ fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 7)*(4*2);
+
+ fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 7)*((4*2)-2);
 
  fTiledVisualMeshIndices:=TMeshIndices.Create;
 
