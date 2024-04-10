@@ -12,6 +12,7 @@
 layout(local_size_x = 1, local_size_y = 8, local_size_z = 8) in;
 
 layout(push_constant) uniform PushConstants {
+
   mat4 modelMatrix;
 
   uint baseViewIndex;
@@ -24,6 +25,7 @@ layout(push_constant) uniform PushConstants {
   uint maximumCountVertices;
   uint maximumCountIndices;
  
+  float maximumDistance;
   float grassHeight;
   float grassThickness;
   float time;
@@ -43,15 +45,15 @@ layout(set = 0, binding = 0, std140) uniform uboViews {
 
 layout(set = 0, binding = 1) uniform sampler2DArray uTextureDepth;
 
-layout(set = 0, binding = 2, std430) buffer VisibleTileList {
+layout(set = 1, binding = 0, std430) buffer VisibleTileList {
   uint visibleTiles[];
 } visibleTileList;
 
-layout(set = 0, binding = 3, std430) buffer VisualMeshVertices {
+layout(set = 1, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
-layout(set = 0, binding = 4, std430) buffer GrassMetaData {
+layout(set = 1, binding = 2, std430) buffer GrassMetaData {
   uint countGrassVertices;
   uint countGrassIndices;  
 } grassMetaData;
@@ -61,11 +63,11 @@ struct GrassVertex {
   uvec4 texcoord;       // x = 2x 16-bit unsigned normalized texcoord, yzw = unused
 };
 
-layout(set = 0, binding = 5, std430) buffer GrassVertices {
+layout(set = 1, binding = 3, std430) buffer GrassVertices {
   GrassVertex vertices[]; 
 } grassVertices;
 
-layout(set = 0, binding = 6, std430) buffer GrassIndices {
+layout(set = 1, binding = 4, std430) buffer GrassIndices {
   uint indices[];
 } grassIndices;
 
@@ -217,9 +219,23 @@ void main(){
   );
 
   /////////////////////////////////////////////////////////////////////////
+
+  // Distance culling based on the bounding sphere of the grass blade
+
+  vec3 cameraPosition = (countViews > 0) ? uView.views[pushConstants.baseViewIndex].inverseViewMatrix[3].xyz : vec3(0.0);
+  
+  // Early out if the grass blade is too far away from the camera
+  if((pushConstants.maximumDistance > 1e-7) && 
+     ((distance(cameraPosition, boundingSphere.xyz) - boundingSphere.w) > pushConstants.maximumDistance)){
+    return;
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+
+  // Frustum culling and hierarchical depth-buffer-culling based on the bounding sphere of the grass blade
   
   bool visible = false;
-  
+
   for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
     
     mat4 viewMatrix = uView.views[pushConstants.baseViewIndex + viewIndex].viewMatrix;      

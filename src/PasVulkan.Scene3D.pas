@@ -3031,6 +3031,7 @@ type EpvScene3D=class(Exception);
        fGeneralComputeSampler:TpvVulkanSampler;
        fPlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fPlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout;
        fMeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout;
        fVulkanStagingQueue:TpvVulkanQueue;
@@ -3434,6 +3435,7 @@ type EpvScene3D=class(Exception);
        property GeneralComputeSampler:TpvVulkanSampler read fGeneralComputeSampler;
        property PlanetDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetDescriptorSetLayout;
        property PlanetCullDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetCullDescriptorSetLayout;
+       property PlanetGrassCullAndMeshGenerationDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fPlanetGrassCullAndMeshGenerationDescriptorSetLayout;
        property MeshComputeVulkanDescriptorSet0Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet0Layout;
        property MeshComputeVulkanDescriptorSet1Layout:TpvVulkanDescriptorSetLayout read fMeshComputeVulkanDescriptorSet1Layout;
        property GlobalVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout read fGlobalVulkanDescriptorSetLayout;
@@ -21152,6 +21154,8 @@ begin
 
   fPlanetCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetCullDescriptorSetLayout(fVulkanDevice);
 
+  fPlanetGrassCullAndMeshGenerationDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(fVulkanDevice);
+
   fMeshComputeVulkanDescriptorSet0Layout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
 
   // Group - Vertices
@@ -21511,6 +21515,8 @@ begin
  FreeAndNil(fPlanetDescriptorSetLayout);
 
  FreeAndNil(fPlanetCullDescriptorSetLayout);
+
+ FreeAndNil(fPlanetGrassCullAndMeshGenerationDescriptorSetLayout);
 
  FreeAndNil(fMeshComputeVulkanDescriptorSet0Layout);
 
