@@ -761,14 +761,18 @@ type TpvScene3DPlanets=class;
                fCullRenderPass:TpvScene3DRendererCullRenderPass;
                fPass:TpvSizeInt;
                fVulkanDevice:TpvVulkanDevice;
-               fComputeShaderModule:TpvVulkanShaderModule;
-               fComputeShaderStage:TpvVulkanPipelineShaderStage;
-               fPipeline:TpvVulkanComputePipeline;
+               fPlanetComputeShaderModule:TpvVulkanShaderModule;
+               fPlanetComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fPlanetPipeline:TpvVulkanComputePipeline;
                fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
                fDescriptorPool:TpvVulkanDescriptorPool;
                fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-               fPipelineLayout:TpvVulkanPipelineLayout;
+               fPlanetPipelineLayout:TpvVulkanPipelineLayout;
                fPlanetPushConstants:TPlanetPushConstants;
+               fGrassComputeShaderModule:TpvVulkanShaderModule;
+               fGrassComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fGrassPipeline:TpvVulkanComputePipeline;
+               fGrassPipelineLayout:TpvVulkanPipelineLayout;
                fGrassPushConstants:TGrassPushConstants;
               public
                constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullRenderPass:TpvScene3DRendererCullRenderPass;const aPass:TpvSizeInt); reintroduce;
@@ -893,8 +897,10 @@ type TpvScene3DPlanets=class;
               fVulkanGrassMetaDataBuffer:TpvVulkanBuffer;
               fVulkanGrassVerticesBuffer:TpvVulkanBuffer;
               fVulkanGrassIndicesBuffer:TpvVulkanBuffer;
-              fDescriptorPool:TpvVulkanDescriptorPool;
-              fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fPlanetCullDescriptorPool:TpvVulkanDescriptorPool;
+              fPlanetCullDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fGrassCullDescriptorPool:TpvVulkanDescriptorPool;
+              fGrassCullDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
               destructor Destroy; override;
@@ -5632,14 +5638,14 @@ begin
    end;
   end;
   try
-   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   fPlanetComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
    FreeAndNil(Stream);
   end;
 
-  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TCullPass.fComputeShaderModule');
+  fVulkanDevice.DebugUtils.SetObjectName(fPlanetComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TCullPass.fComputeShaderModule');
 
-  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+  fPlanetComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fPlanetComputeShaderModule,'main');
 
   fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
   fDescriptorSetLayout.AddBinding(0, // Views
@@ -5662,19 +5668,49 @@ begin
   end;
   fDescriptorSetLayout.Initialize;
 
-  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
-  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPlanetPushConstants));
-  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
-  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetCullDescriptorSetLayout);
-  fPipelineLayout.Initialize;
+  fPlanetPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPlanetPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPlanetPushConstants));
+  fPlanetPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetCullDescriptorSetLayout);
+  fPlanetPipelineLayout.Initialize;
 
-  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+  fPlanetPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
                                              pvApplication.VulkanPipelineCache,
                                              TVkPipelineCreateFlags(0),
-                                             fComputeShaderStage,
-                                             fPipelineLayout,
+                                             fPlanetComputeShaderStage,
+                                             fPlanetPipelineLayout,
                                              nil,
                                              0);
+
+  if fPass=1 then begin
+
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_cull_and_mesh_generation_comp.spv');
+   try
+    fGrassComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   finally
+    FreeAndNil(Stream);
+   end;
+
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DGrass.TCullPass.fComputeShaderModule');
+
+   fGrassComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fGrassComputeShaderModule,'main');
+
+   fGrassPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+   fGrassPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TGrassPushConstants));
+   fGrassPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+   fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetGrassCullAndMeshGenerationDescriptorSetLayout);
+   fGrassPipelineLayout.Initialize;
+
+   fGrassPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                   pvApplication.VulkanPipelineCache,
+                                                   TVkPipelineCreateFlags(0),
+                                                   fGrassComputeShaderStage,
+                                                   fGrassPipelineLayout,
+                                                   nil,
+                                                   0);
+
+  end;
+
  end;
 
 end;
@@ -5682,15 +5718,23 @@ end;
 destructor TpvScene3DPlanet.TCullPass.Destroy;
 begin
 
- FreeAndNil(fPipeline);
+ FreeAndNil(fGrassPipeline);
 
- FreeAndNil(fPipelineLayout);
+ FreeAndNil(fGrassPipelineLayout);
+
+ FreeAndNil(fPlanetPipeline);
+
+ FreeAndNil(fPlanetPipelineLayout);
 
  FreeAndNil(fDescriptorSetLayout);
 
- FreeAndNil(fComputeShaderStage);
+ FreeAndNil(fGrassComputeShaderStage);
 
- FreeAndNil(fComputeShaderModule);
+ FreeAndNil(fGrassComputeShaderModule);
+
+ FreeAndNil(fPlanetComputeShaderStage);
+
+ FreeAndNil(fPlanetComputeShaderModule);
 
  inherited Destroy;
 
@@ -5824,10 +5868,10 @@ begin
 
       First:=false;
 
-      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPlanetPipeline.Handle);
 
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                           fPipelineLayout.Handle,
+                                           fPlanetPipelineLayout.Handle,
                                            0,
                                            1,
                                            @fDescriptorSets[aInFlightFrameIndex].Handle,
@@ -6025,14 +6069,14 @@ begin
          end;
 
          aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                              fPipelineLayout.Handle,
+                                              fPlanetPipelineLayout.Handle,
                                               1,
                                               1,
-                                              @RendererViewInstance.fDescriptorSets[aInFlightFrameIndex].Handle,
+                                              @RendererViewInstance.fPlanetCullDescriptorSets[aInFlightFrameIndex].Handle,
                                               0,
                                               nil);
 
-         aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+         aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
                                          TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                          0,
                                          SizeOf(TPlanetPushConstants),
@@ -6935,7 +6979,7 @@ end;
 { TpvScene3DPlanet.TRendererViewInstance }
 
 constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
-var InFlightFrameIndex,PreviousInFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,PreviousInFlightFrameIndex,Index:TpvSizeInt;
 begin
  inherited Create;
 
@@ -7077,100 +7121,171 @@ begin
                                                   );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassIndicesBuffer');
 
- fDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
-                                                                  TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
+ fPlanetCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
+                                                                            TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
 
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
-  fDescriptorSets[InFlightFrameIndex]:=nil;
+  fPlanetCullDescriptorSets[InFlightFrameIndex]:=nil;
  end;
 
  for InFlightFrameIndex:=0 to TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1 do begin
- 
+
   PreviousInFlightFrameIndex:=InFlightFrameIndex-1;
   if PreviousInFlightFrameIndex<0 then begin
    PreviousInFlightFrameIndex:=TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames-1;
   end;
-  
-  fDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetCullDescriptorSetLayout);
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fPlanet.fData.fTiledMeshBoundingBoxesBuffer.DescriptorBufferInfo],
-                                                           [],
-                                                           false);
+  begin
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fPlanet.fData.fTiledMeshBoundingSpheresBuffer.DescriptorBufferInfo],
-                                                           [],
-                                                           false);
+   fPlanetCullDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fPlanetCullDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetCullDescriptorSetLayout);
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].DescriptorBufferInfo],
-                                                           [],
-                                                           false);
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(0,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fPlanet.fData.fTiledMeshBoundingBoxesBuffer.DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fVulkanVisiblityBuffers[InFlightFrameIndex].DescriptorBufferInfo],
-                                                           [],
-                                                           false);       
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(1,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fPlanet.fData.fTiledMeshBoundingSpheresBuffer.DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fVulkanDrawIndexedIndirectCommandBuffer.DescriptorBufferInfo],
-                                                           [],
-                                                           false);
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(2,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fVulkanVisiblityBuffers[PreviousInFlightFrameIndex].DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fPlanet.fData.fTiledVisualMeshIndexGroupsBuffer.DescriptorBufferInfo],
-                                                           [],
-                                                           false);
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(3,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fVulkanVisiblityBuffers[InFlightFrameIndex].DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
 
-  fDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
-                                                           0,
-                                                           1,
-                                                           TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                           [],
-                                                           [fVulkanVisibleTileListBuffer.DescriptorBufferInfo],
-                                                           [],
-                                                           false);       
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(4,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fVulkanDrawIndexedIndirectCommandBuffer.DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
 
-  fDescriptorSets[InFlightFrameIndex].Flush;
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fPlanet.fData.fTiledVisualMeshIndexGroupsBuffer.DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
 
-  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+   fPlanetCullDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(6,
+                                                                      0,
+                                                                      1,
+                                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                                      [],
+                                                                      [fVulkanVisibleTileListBuffer.DescriptorBufferInfo],
+                                                                      [],
+                                                                      false);
+
+   fPlanetCullDescriptorSets[InFlightFrameIndex].Flush;
+
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fPlanetCullDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fPlanetCullDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
+
+  end;
+
+ end;
+
+ fGrassCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorPool(fPlanet.fVulkanDevice,
+                                                                                                 TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
+
+ for Index:=0 to 1 do begin
+
+  begin
+
+   fGrassCullDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fGrassCullDescriptorPool,TpvScene3D(fPlanet.Scene3D).PlanetGrassCullAndMeshGenerationDescriptorSetLayout);
+
+   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                        [],
+                                                        [fVulkanVisibleTileListBuffer.DescriptorBufferInfo],
+                                                        [],
+                                                        false);
+
+   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                        [],
+                                                        [fPlanet.fData.fVisualMeshVertexBuffers[Index].DescriptorBufferInfo],
+                                                        [],
+                                                        false);
+
+   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(2,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                        [],
+                                                        [fVulkanGrassMetaDataBuffer.DescriptorBufferInfo],
+                                                        [],
+                                                        false);
+
+   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                        [],
+                                                        [fVulkanGrassVerticesBuffer.DescriptorBufferInfo],
+                                                        [],
+                                                        false);
+
+   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(4,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                        [],
+                                                        [fVulkanGrassIndicesBuffer.DescriptorBufferInfo],
+                                                        [],
+                                                        false);
+
+
+   fGrassCullDescriptorSets[Index].Flush;
+
+   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fGrassCullDescriptorSets[Index].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRendererViewInstance.fGrassCullDescriptorSets['+IntToStr(Index)+']');
+
+  end;
 
  end;
 
 end;
 
 destructor TpvScene3DPlanet.TRendererViewInstance.Destroy;
-var InFlightFrameIndex:TpvSizeInt;
+var InFlightFrameIndex,Index:TpvSizeInt;
 begin
- for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
-  FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
+ for Index:=0 to 1 do begin
+  FreeAndNil(fGrassCullDescriptorSets[Index]);
  end;
- FreeAndNil(fDescriptorPool);
+ FreeAndNil(fGrassCullDescriptorPool);
+ for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
+  FreeAndNil(fPlanetCullDescriptorSets[InFlightFrameIndex]);
+ end;
+ FreeAndNil(fPlanetCullDescriptorPool);
  for InFlightFrameIndex:=0 to MaxInFlightFrames-1 do begin
   FreeAndNil(fVulkanVisiblityBuffers[InFlightFrameIndex]);
  end;

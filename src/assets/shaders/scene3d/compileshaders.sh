@@ -386,7 +386,7 @@ compileshaderarguments=(
   
   # Grass on planets
   
-  "-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation.spv"
+  "-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
 
   "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
   "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
