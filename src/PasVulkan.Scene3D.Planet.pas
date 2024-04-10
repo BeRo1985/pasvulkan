@@ -92,6 +92,8 @@ type TpvScene3DPlanets=class;
      { TpvScene3DPlanet }
      TpvScene3DPlanet=class
       public
+       const MaxGrassVertices=1048576;
+             MaxGrassIndices=1572864;
        type THeightValue=TpvFloat;
             PHeightValue=^THeightValue;
             THeightMap=array of THeightValue;
@@ -163,6 +165,20 @@ type TpvScene3DPlanets=class;
              CountVertices:TpvUInt32;
              CountIndices:TpvUInt32;
             end;
+            PGrassMetaBufferData=^TGrassMetaBufferData;
+            TGrassVertex=packed record
+             PositionX:TpvFloat;
+             PositionY:TpvFloat;
+             Positionz:TpvFloat;
+             OctNormalX:TpvInt16;
+             OctNormalY:TpvInt16;
+             TexCoordU:TpvUInt16;
+             TexCoordV:TpvUInt16;
+             Reserved0:TpvUInt32;
+             Reserved1:TpvUInt32;
+             Reserved2:TpvUInt32;
+            end;
+            PGrassVertex=^TGrassVertex;
             { TData }
             TData=class // one ground truth instance and one or more in-flight instances for flawlessly parallel rendering
              public
@@ -856,6 +872,9 @@ type TpvScene3DPlanets=class;
               fVulkanVisiblityBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               fVulkanDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
               fVulkanVisibleTileListBuffer:TpvVulkanBuffer;
+              fVulkanGrassMetaDataBuffer:TpvVulkanBuffer;
+              fVulkanGrassVerticesBuffer:TpvVulkanBuffer;
+              fVulkanGrassIndicesBuffer:TpvVulkanBuffer;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
              public
@@ -6953,6 +6972,68 @@ begin
                                                       pvAllocationGroupIDScene3DPlanetStatic
                                                      );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisibleTileListBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisibleTileListBuffer');
+ 
+ fVulkanGrassMetaDataBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                    SizeOf(TpvScene3DPlanet.TGrassMetaBufferData),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                    [],
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    [],
+                                                    0,
+                                                    pvAllocationGroupIDScene3DPlanetStatic
+                                                   );
+ fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassMetaDataBuffer');
+
+ fVulkanGrassVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                    MaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                    [],
+                                                    0,
+                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    [],
+                                                    0,
+                                                    pvAllocationGroupIDScene3DPlanetStatic
+                                                   );
+ fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassVerticesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassVerticesBuffer');
+
+ fVulkanGrassIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                   MaxGrassIndices*SizeOf(TpvUInt32),
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                   [],
+                                                   0,
+                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   [],
+                                                   0,
+                                                   pvAllocationGroupIDScene3DPlanetStatic
+                                                  );
+ fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassIndicesBuffer');
 
  fDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
                                                                   TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
@@ -7053,6 +7134,9 @@ begin
  end;
  FreeAndNil(fVulkanDrawIndexedIndirectCommandBuffer);
  FreeAndNil(fVulkanVisibleTileListBuffer);
+ FreeAndNil(fVulkanGrassMetaDataBuffer);
+ FreeAndNil(fVulkanGrassVerticesBuffer);
+ FreeAndNil(fVulkanGrassIndicesBuffer);
  inherited Destroy;
 end;
 
