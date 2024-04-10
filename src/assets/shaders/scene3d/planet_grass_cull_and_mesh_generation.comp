@@ -21,14 +21,11 @@ layout(push_constant) uniform PushConstants {
 
   uint tileMapResolution;
   uint tileResolution;  
-  float bottomRadius;
-  float topRadius;
-
   uint maximumCountVertices;
   uint maximumCountIndices;
+ 
   float grassHeight;
   float grassThickness;
-
   float time;
 
 } pushConstants;
