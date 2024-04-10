@@ -5969,7 +5969,7 @@ begin
                                                                                            VK_WHOLE_SIZE);
             inc(CountBufferMemoryBarriers);
 
-            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                                                            TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
                                                                                            VK_QUEUE_FAMILY_IGNORED,
                                                                                            VK_QUEUE_FAMILY_IGNORED,
@@ -6138,7 +6138,7 @@ begin
           if fPass=1 then begin
 
            BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                                                           VK_QUEUE_FAMILY_IGNORED,
                                                                                           VK_QUEUE_FAMILY_IGNORED,
                                                                                           RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
@@ -6332,9 +6332,11 @@ begin
                                           SizeOf(TGrassPushConstants),
                                           @fGrassPushConstants);
 
-          aCommandBuffer.CmdDispatch(Planet.fTileMapResolution*Planet.fTileMapResolution,
+          aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,0);
+
+{         aCommandBuffer.CmdDispatch(Planet.fTileMapResolution*Planet.fTileMapResolution,
                                      ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+255) shr 8,
-                                     1);
+                                     1);}
 
          end;
 
@@ -7265,6 +7267,7 @@ begin
  fVulkanVisibleTileListBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                       ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+3)*SizeOf(TpvUInt32),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                       [],
