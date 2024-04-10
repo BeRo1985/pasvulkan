@@ -6010,10 +6010,31 @@ begin
                                        RendererViewInstance.fVulkanVisiblityBuffers[aInFlightFrameIndex].Size,
                                        0);
 
-          aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
-                                       0,
-                                       RendererViewInstance.fVulkanVisibleTileListBuffer.Size,
-                                       0);
+          begin
+
+           aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                        0,
+                                        SizeOf(TpvUInt32),
+                                        0);
+
+           aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                        SizeOf(TpvUInt32),
+                                        SizeOf(TpvUInt32),
+                                        ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+255) shr 8);
+
+           aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                        SizeOf(TpvUInt32)+SizeOf(TpvUInt32),
+                                        SizeOf(TpvUInt32),
+                                        1);
+
+           if RendererViewInstance.fVulkanVisibleTileListBuffer.Size>(SizeOf(TpvUInt32)*3) then begin
+            aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                         SizeOf(TpvUInt32)*3,
+                                         RendererViewInstance.fVulkanVisibleTileListBuffer.Size-(SizeOf(TpvUInt32)*3),
+                                         0);
+           end;
+
+          end;
 
          end;
 
@@ -6082,7 +6103,7 @@ begin
                                          SizeOf(TPlanetPushConstants),
                                          @fPlanetPushConstants);
 
-         aCommandBuffer.CmdDispatch(((Planet.TileMapResolution*Planet.TileMapResolution)+255) shr 8,
+         aCommandBuffer.CmdDispatch(((Planet.fTileMapResolution*Planet.fTileMapResolution)+255) shr 8,
                                     1,
                                     1);
 
@@ -6311,9 +6332,9 @@ begin
                                           SizeOf(TGrassPushConstants),
                                           @fGrassPushConstants);
 
-          aCommandBuffer.CmdDispatch(((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
-                                     (Planet.fVisualTileResolution+7) shr 3,
-                                     (Planet.fVisualTileResolution+7) shr 3);
+          aCommandBuffer.CmdDispatch(Planet.fTileMapResolution*Planet.fTileMapResolution,
+                                     ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+255) shr 8,
+                                     1);
 
          end;
 
@@ -7242,7 +7263,7 @@ begin
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.DrawIndexedIndirectCommandBuffer');
 
  fVulkanVisibleTileListBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                      ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+1)*SizeOf(TpvUInt32),
+                                                      ((fPlanet.TileMapResolution*fPlanet.TileMapResolution)+3)*SizeOf(TpvUInt32),
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),

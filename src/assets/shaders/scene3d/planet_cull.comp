@@ -82,7 +82,7 @@ layout(set = 1, binding = 5, std430) readonly buffer TileVertexIndexGroups {
 } tileVertexIndexGroups;
 
 layout(set = 1, binding = 6, std430) buffer VisibleTileList {
-  uint data[]; // first item = count of visible tiles, then the tile indices follow
+  uint data[]; // first item = count of visible tiles, then after index 2 the tile indices follow, since the first three items are indirect compute dispatch arguments
 } visibleTileList;
 
 #include "frustum.glsl"
@@ -303,7 +303,7 @@ void main(){
 #if defined(PASS1) // Only for the disocclusion pass so that every visible tile can be directly added to the list of visible tiles without further checks 
       {
         // If visible, add to the list of visible tiles for other also to be culled content on the planet like trees, grass, etc.
-        const uint outputVisibleTileIndex = atomicAdd(visibleTileList.data[0], 1u) + 1u; // 1-based, since 0 is used for the counter
+        const uint outputVisibleTileIndex = atomicAdd(visibleTileList.data[0], 1u) + 3u; // 3-based, see above
         visibleTileList.data[outputVisibleTileIndex] = tileMapIndex;
       }
 #endif
