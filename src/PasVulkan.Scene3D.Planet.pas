@@ -796,7 +796,7 @@ type TpvScene3DPlanets=class;
                      Opaque
                     );
                    PMode=^TMode;
-                   TPushConstants=packed record
+                   TPlanetPushConstants=packed record
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountQuadPointsInOneDirection:TpvUInt32;
@@ -808,7 +808,18 @@ type TpvScene3DPlanets=class;
                     Reversed:TpvUInt32;
                     PlanetData:TVkDeviceAddress;
                    end;
-                   PPushConstants=^TPushConstants;
+                   PPlanetPushConstants=^TPlanetPushConstants;
+                   TGrassPushConstants=packed record
+                    ModelMatrix:TpvMatrix4x4;
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountQuadPointsInOneDirection:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    ResolutionXY:TpvUInt32;
+                    Jitter:TpvVector2;
+                    FrameIndex:TpvUInt32;
+                   end;
+                   PGrassPushConstants=^TGrassPushConstants;
              private
               fRenderer:TObject;
               fRendererInstance:TObject;
@@ -816,16 +827,23 @@ type TpvScene3DPlanets=class;
               fMode:TpvScene3DPlanet.TRenderPass.TMode;
               fVulkanDevice:TpvVulkanDevice;              
               fRenderPass:TpvVulkanRenderPass;
-              fVertexShaderModule:TpvVulkanShaderModule;
-              fFragmentShaderModule:TpvVulkanShaderModule;
-              fVertexShaderStage:TpvVulkanPipelineShaderStage;
-              fFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fPlanetVertexShaderModule:TpvVulkanShaderModule;
+              fPlanetFragmentShaderModule:TpvVulkanShaderModule;
+              fPlanetVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fPlanetFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fGrassVertexShaderModule:TpvVulkanShaderModule;
+              fGrassFragmentShaderModule:TpvVulkanShaderModule;
+              fGrassVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fGrassFragmentShaderStage:TpvVulkanPipelineShaderStage;
               fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
               fDescriptorPool:TpvVulkanDescriptorPool;
               fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
-              fPipelineLayout:TpvVulkanPipelineLayout;
-              fPipeline:TpvVulkanGraphicsPipeline;
-              fPushConstants:TPushConstants;
+              fPlanetPipelineLayout:TpvVulkanPipelineLayout;
+              fPlanetPipeline:TpvVulkanGraphicsPipeline;
+              fPlanetPushConstants:TPlanetPushConstants;
+              fGrassPipelineLayout:TpvVulkanPipelineLayout;
+              fGrassPipeline:TpvVulkanGraphicsPipeline;
+              fGrassPushConstants:TGrassPushConstants;
               fWidth:TpvInt32;
               fHeight:TpvInt32;
               fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
@@ -845,7 +863,7 @@ type TpvScene3DPlanets=class;
               procedure ReleaseResources;
               procedure Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
              public
-              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+              property PushConstants:TPlanetPushConstants read fPlanetPushConstants write fPlanetPushConstants;
             end;
             { TRendererInstance }
             TRendererInstance=class
@@ -6457,16 +6475,27 @@ begin
 
   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'velocity_vert.spv');
-  end else begin 
+  end else begin
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+Kind+'vert.spv');
   end;
   try
-   fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   fPlanetVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
   finally
    FreeAndNil(Stream);
   end;
+  fVulkanDevice.DebugUtils.SetObjectName(fPlanetVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fPlanetVertexShaderModule');
 
-  fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fVertexShaderModule');
+  if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vert.spv');
+  end else begin
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'vert.spv');
+  end;
+  try
+   fGrassVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+  fVulkanDevice.DebugUtils.SetObjectName(fGrassVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fGrassVertexShaderModule');
 
   case TpvScene3DPlanet.SourcePrimitiveMode of
    TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
@@ -6485,7 +6514,9 @@ begin
    TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,
    TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion:begin
    
-    fFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
+    fPlanetFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
+
+    fGrassFragmentShaderModule:=nil; // No fragment shader, because we only need write to the depth buffer in these cases
 
    end; 
    
@@ -6493,12 +6524,19 @@ begin
    
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_renderpass_'+TopLevelKind+'rsm_frag.spv');
     try
-     fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+     fPlanetFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally
      FreeAndNil(Stream);
     end;
 
-   end; 
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'rsm_frag.spv');
+    try
+     fGrassFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+    finally
+     FreeAndNil(Stream);
+    end;
+
+   end;
 
    else begin
 
@@ -6518,7 +6556,26 @@ begin
      end;
     end;
     try
-     fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+     fPlanetFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+    finally
+     FreeAndNil(Stream);
+    end;
+
+    if fVulkanDevice.FragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric<>VK_FALSE then begin
+     if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'wireframe_velocity_'+Kind+ShadowKind+'frag.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'wireframe_'+Kind+ShadowKind+'frag.spv');
+     end;
+    end else begin
+     if TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+'velocity_'+Kind+ShadowKind+'frag.spv');
+     end else begin
+      Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+ShadowKind+'frag.spv');
+     end;
+    end;
+    try
+     fGrassFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
     finally
      FreeAndNil(Stream);
     end;
@@ -6526,16 +6583,28 @@ begin
    end;
   end;
 
-  if assigned(fFragmentShaderModule) then begin
-   fVulkanDevice.DebugUtils.SetObjectName(fFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fFragmentShaderModule');
+  if assigned(fPlanetFragmentShaderModule) then begin
+   fVulkanDevice.DebugUtils.SetObjectName(fPlanetFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fPlanetFragmentShaderModule');
   end;
 
-  fVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
+  if assigned(fGrassFragmentShaderModule) then begin
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fGrassFragmentShaderModule');
+  end;
 
-  if assigned(fFragmentShaderModule) then begin
-   fFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
+  fPlanetVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fPlanetVertexShaderModule,'main');
+
+  if assigned(fPlanetFragmentShaderModule) then begin
+   fPlanetFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fPlanetFragmentShaderModule,'main');
   end else begin
-   fFragmentShaderStage:=nil;
+   fPlanetFragmentShaderStage:=nil;
+  end;
+
+  fGrassVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fGrassVertexShaderModule,'main');
+
+  if assigned(fGrassFragmentShaderModule) then begin
+   fGrassFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fGrassFragmentShaderModule,'main');
+  end else begin
+   fGrassFragmentShaderStage:=nil;
   end;
 
   fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
@@ -6615,17 +6684,31 @@ begin
 
   fDescriptorSetLayout.Initialize;
 
-  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
-  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
+  fPlanetPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPlanetPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
 {                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                        TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
                                        TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                        0,
-                                       SizeOf(TPushConstants));
-  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
-  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Global planet descriptor set
-  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
-  fPipelineLayout.Initialize;
+                                       SizeOf(TPlanetPushConstants));
+  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
+  fPlanetPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Global planet descriptor set
+  fPlanetPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
+  fPlanetPipelineLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fPlanetPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fPlanetPipelineLayout');
+
+  fGrassPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fGrassPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+{                                           TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
+                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                            0,
+                                            SizeOf(TGrassPushConstants));
+  fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
+  fGrassPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout); // Global planet descriptor set
+  fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
+  fGrassPipelineLayout.Initialize;
+  fVulkanDevice.DebugUtils.SetObjectName(fGrassPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TRenderPass.fGrassPipelineLayout');
 
  end;
 
@@ -6634,19 +6717,31 @@ end;
 destructor TpvScene3DPlanet.TRenderPass.Destroy;
 begin
 
- FreeAndNil(fPipeline);
+ FreeAndNil(fGrassPipeline);
 
- FreeAndNil(fPipelineLayout);
+ FreeAndNil(fGrassPipelineLayout);
+
+ FreeAndNil(fPlanetPipeline);
+
+ FreeAndNil(fPlanetPipelineLayout);
 
  FreeAndNil(fDescriptorSetLayout);
 
- FreeAndNil(fFragmentShaderStage);
+ FreeAndNil(fGrassFragmentShaderStage);
 
- FreeAndNil(fVertexShaderStage);
+ FreeAndNil(fGrassVertexShaderStage);
 
- FreeAndNil(fFragmentShaderModule);
+ FreeAndNil(fGrassFragmentShaderModule);
 
- FreeAndNil(fVertexShaderModule);
+ FreeAndNil(fGrassVertexShaderModule);
+
+ FreeAndNil(fPlanetFragmentShaderStage);
+
+ FreeAndNil(fPlanetVertexShaderStage);
+
+ FreeAndNil(fPlanetFragmentShaderModule);
+
+ FreeAndNil(fPlanetVertexShaderModule);
 
  inherited Destroy;
 
@@ -6669,6 +6764,7 @@ begin
  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),9*TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),1*TpvScene3D(fScene3D).CountInFlightFrames);
  fDescriptorPool.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fDescriptorPool.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.TRenderPass.fDescriptorPool');
 
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   fDescriptorSets[InFlightFrameIndex]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
@@ -6785,116 +6881,232 @@ begin
                                                            [],
                                                            false);
   fDescriptorSets[InFlightFrameIndex].Flush;
+  fVulkanDevice.DebugUtils.SetObjectName(fDescriptorSets[InFlightFrameIndex].Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET,'TpvScene3DPlanet.TRenderPass.fDescriptorSets['+IntToStr(InFlightFrameIndex)+']');
  end;
 
- fPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
-                                             TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
-                                             0,
-                                             [],
-                                             fPipelineLayout,
-                                             aRenderPass,
-                                             0,
-                                             nil,
-                                             0);
+ begin
 
- fPipeline.AddStage(fVertexShaderStage);
- if assigned(fFragmentShaderStage) then begin
-  fPipeline.AddStage(fFragmentShaderStage);
- end;
+  fPlanetPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                                    TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
+                                                    0,
+                                                    [],
+                                                    fPlanetPipelineLayout,
+                                                    aRenderPass,
+                                                    0,
+                                                    nil,
+                                                    0);
 
- fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
- fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
-
- case TpvScene3DPlanet.SourcePrimitiveMode of
-  TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
-  TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
-   fPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TMeshVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-   fPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
-   fPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16_SNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PMeshVertex(nil)^.OctahedralEncodedNormal)));
+  fPlanetPipeline.AddStage(fPlanetVertexShaderStage);
+  if assigned(fPlanetFragmentShaderStage) then begin
+   fPlanetPipeline.AddStage(fPlanetFragmentShaderStage);
   end;
-  else begin
-  end;
- end;
 
- fPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
- fPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+  fPlanetPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
- fPipeline.RasterizationState.DepthClampEnable:=false;
- fPipeline.RasterizationState.RasterizerDiscardEnable:=false;
- fPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
- case fMode of
-  TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
-  TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-  TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
-   fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
-  end;
-  else begin
-   fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
-  end;
- end;
- fPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
- fPipeline.RasterizationState.DepthBiasEnable:=false;
- fPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
- fPipeline.RasterizationState.DepthBiasClamp:=0.0;
- fPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
- fPipeline.RasterizationState.LineWidth:=1.0;
+  fPlanetPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
- fPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
- fPipeline.MultisampleState.SampleShadingEnable:=false;
- fPipeline.MultisampleState.MinSampleShading:=0.0;
- fPipeline.MultisampleState.CountSampleMasks:=0;
- fPipeline.MultisampleState.AlphaToCoverageEnable:=false;
- fPipeline.MultisampleState.AlphaToOneEnable:=false;
-
- fPipeline.ColorBlendState.LogicOpEnable:=false;
- fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
- fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
- fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
- fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
- fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
- fPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_OP_ADD,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_OP_ADD,
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                         TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
- if (fMode=TpvScene3DPlanet.TRenderPass.TMode.Opaque) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
-  fPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_OP_ADD,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_FACTOR_ZERO,
-                                                         VK_BLEND_OP_ADD,
-                                                         0);
- end;
-
- fPipeline.DepthStencilState.DepthTestEnable:=true;
- fPipeline.DepthStencilState.DepthWriteEnable:=true;
- case fMode of
-  TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
-  TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-  TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
-   fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
-  end;
-  else begin
-   if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
-    fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
-   end else begin
-    fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+  case TpvScene3DPlanet.SourcePrimitiveMode of
+   TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles,
+   TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
+    fPlanetPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TMeshVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+    fPlanetPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
+    fPlanetPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16_SNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PMeshVertex(nil)^.OctahedralEncodedNormal)));
+   end;
+   else begin
    end;
   end;
- end;
- fPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
- fPipeline.DepthStencilState.StencilTestEnable:=false;
 
- fPipeline.Initialize;
+  fPlanetPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  fPlanetPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  fPlanetPipeline.RasterizationState.DepthClampEnable:=false;
+  fPlanetPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  fPlanetPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  case fMode of
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+    fPlanetPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+   end;
+   else begin
+    fPlanetPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+   end;
+  end;
+  fPlanetPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  fPlanetPipeline.RasterizationState.DepthBiasEnable:=false;
+  fPlanetPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  fPlanetPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  fPlanetPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  fPlanetPipeline.RasterizationState.LineWidth:=1.0;
+
+  fPlanetPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  fPlanetPipeline.MultisampleState.SampleShadingEnable:=false;
+  fPlanetPipeline.MultisampleState.MinSampleShading:=0.0;
+  fPlanetPipeline.MultisampleState.CountSampleMasks:=0;
+  fPlanetPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  fPlanetPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  fPlanetPipeline.ColorBlendState.LogicOpEnable:=false;
+  fPlanetPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  fPlanetPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  fPlanetPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  fPlanetPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  fPlanetPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  fPlanetPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  if (fMode=TpvScene3DPlanet.TRenderPass.TMode.Opaque) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+   fPlanetPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          0);
+  end;
+
+  fPlanetPipeline.DepthStencilState.DepthTestEnable:=true;
+  fPlanetPipeline.DepthStencilState.DepthWriteEnable:=true;
+  case fMode of
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+    fPlanetPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+   end;
+   else begin
+    if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
+     fPlanetPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+    end else begin
+     fPlanetPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+    end;
+   end;
+  end;
+  fPlanetPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  fPlanetPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  fPlanetPipeline.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPlanetPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TRenderPass.fPlanetPipeline');
+
+ end;
+
+ begin
+
+  fGrassPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                                   TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
+                                                   0,
+                                                   [],
+                                                   fGrassPipelineLayout,
+                                                   aRenderPass,
+                                                   0,
+                                                   nil,
+                                                   0);
+
+  fGrassPipeline.AddStage(fGrassVertexShaderStage);
+  if assigned(fGrassFragmentShaderStage) then begin
+   fGrassPipeline.AddStage(fGrassFragmentShaderStage);
+  end;
+
+  fGrassPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+  fGrassPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+  fGrassPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TGrassVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
+  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16_SNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.OctNormalX)));
+  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16_UNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.TexCoordU)));
+
+  fGrassPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  fGrassPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  fGrassPipeline.RasterizationState.DepthClampEnable:=false;
+  fGrassPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  fGrassPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  case fMode of
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+    fGrassPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+   end;
+   else begin
+    fGrassPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+   end;
+  end;
+  fGrassPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  fGrassPipeline.RasterizationState.DepthBiasEnable:=false;
+  fGrassPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  fGrassPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  fGrassPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  fGrassPipeline.RasterizationState.LineWidth:=1.0;
+
+  fGrassPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  fGrassPipeline.MultisampleState.SampleShadingEnable:=false;
+  fGrassPipeline.MultisampleState.MinSampleShading:=0.0;
+  fGrassPipeline.MultisampleState.CountSampleMasks:=0;
+  fGrassPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  fGrassPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  fGrassPipeline.ColorBlendState.LogicOpEnable:=false;
+  fGrassPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+  fGrassPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+  fGrassPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+  fGrassPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+  fGrassPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+  fGrassPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+  if (fMode=TpvScene3DPlanet.TRenderPass.TMode.Opaque) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+   fGrassPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_FACTOR_ZERO,
+                                                          VK_BLEND_OP_ADD,
+                                                          0);
+  end;
+
+  fGrassPipeline.DepthStencilState.DepthTestEnable:=true;
+  fGrassPipeline.DepthStencilState.DepthWriteEnable:=true;
+  case fMode of
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+   TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+   TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+    fGrassPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+   end;
+   else begin
+    if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
+     fGrassPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+    end else begin
+     fGrassPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+    end;
+   end;
+  end;
+  fGrassPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  fGrassPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  fGrassPipeline.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fGrassPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TRenderPass.fGrassPipeline');
+
+ end;
 
 end;
 
@@ -6902,7 +7114,9 @@ procedure TpvScene3DPlanet.TRenderPass.ReleaseResources;
 var InFlightFrameIndex:TpvSizeInt;
 begin
 
- FreeAndNil(fPipeline);
+ FreeAndNil(fGrassPipeline);
+
+ FreeAndNil(fPlanetPipeline);
 
  for InFlightFrameIndex:=0 to TpvScene3D(fScene3D).CountInFlightFrames-1 do begin
   FreeAndNil(fDescriptorSets[InFlightFrameIndex]);
@@ -6956,13 +7170,13 @@ begin
        
       First:=false;
 
-      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fPipeline.Handle);
+      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fPlanetPipeline.Handle);
 
       DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
       DescriptorSets[1]:=fDescriptorSets[aInFlightFrameIndex].Handle;
 
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           fPipelineLayout.Handle,
+                                           fPlanetPipelineLayout.Handle,
                                            0,
                                            2,
                                            @DescriptorSets,
@@ -6972,7 +7186,7 @@ begin
      end; 
 
      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                          fPipelineLayout.Handle,
+                                          fPlanetPipelineLayout.Handle,
                                           2,
                                           1,
                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
@@ -7016,39 +7230,39 @@ begin
 
 //     writeln(Rect.Width:1:6,' ',Rect.Height:1:6,' ',Level:1:6);
 
-     fPushConstants.ViewBaseIndex:=aViewBaseIndex;
-     fPushConstants.CountViews:=aCountViews;
+     fPlanetPushConstants.ViewBaseIndex:=aViewBaseIndex;
+     fPlanetPushConstants.CountViews:=aCountViews;
      if Level<0 then begin
-      fPushConstants.CountQuadPointsInOneDirection:=64;
+      fPlanetPushConstants.CountQuadPointsInOneDirection:=64;
      end else begin
-      fPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
+      fPlanetPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
      end;
      if Level>=0 then begin
-      //writeln(fPushConstants.CountQuadPointsInOneDirection,' ',Level);
+      //writeln(fPlanetPushConstants.CountQuadPointsInOneDirection,' ',Level);
      end;
-     fPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
-     fPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
-     fPushConstants.TessellationFactor:=TessellationFactor;
+     fPlanetPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
+     fPlanetPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+     fPlanetPushConstants.TessellationFactor:=TessellationFactor;
      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-      fPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
+      fPlanetPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
      end else begin
-      fPushConstants.Jitter:=TpvVector2.Null;
+      fPlanetPushConstants.Jitter:=TpvVector2.Null;
      end;
-     fPushConstants.FrameIndex:=aFrameIndex;
+     fPlanetPushConstants.FrameIndex:=aFrameIndex;
      if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-      fPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+      fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
      end else begin
-      fPushConstants.PlanetData:=0;
+      fPlanetPushConstants.PlanetData:=0;
      end;
 
-     aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+     aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
 {                                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                      0,
-                                     SizeOf(TPushConstants),
-                                     @fPushConstants);
+                                     SizeOf(TPlanetPushConstants),
+                                     @fPlanetPushConstants);
 
      case TpvScene3DPlanet.SourcePrimitiveMode of
       TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin

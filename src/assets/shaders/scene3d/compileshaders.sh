@@ -384,30 +384,6 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_frag.spv"
   "-V planet_renderpass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_frag.spv"
   
-  # Grass on planets
-  
-  "-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
-
-  "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
-  "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
-  "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_vert.spv"
-  "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_vert.spv"
-  "-V planet_grass.vert -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_vert.spv"
-  "-V planet_grass.vert -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_vert.spv"
-
-  "-V planet_grass.frag -o ${tempPath}/planet_grass_frag.spv"
-  "-V planet_grass.frag -DVELOCITY -o ${tempPath}/planet_grass_velocity_frag.spv"
-  "-V planet_grass.frag -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_frag.spv"
-  "-V planet_grass.frag -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_frag.spv"
-  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_frag.spv"
-  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_frag.spv"
-
   # MSM
   "-V planet_renderpass.frag -DMSM -o ${tempPath}/planet_renderpass_msm_frag.spv"
   "-V planet_renderpass.frag -DMSM -DVELOCITY -o ${tempPath}/planet_renderpass_velocity_msm_frag.spv"
@@ -435,7 +411,59 @@ compileshaderarguments=(
   "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_velocity_pcfpcss_frag.spv"
   "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_renderpass_raytracing_wireframe_pcfpcss_frag.spv"
   "-V planet_renderpass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_renderpass_raytracing_wireframe_velocity_pcfpcss_frag.spv"
-    
+
+  # Grass on planets
+  
+  "-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
+
+  "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
+  "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
+  "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_vert.spv"
+  "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_vert.spv"
+  "-V planet_grass.vert -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_vert.spv"
+  "-V planet_grass.vert -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_vert.spv"
+
+  "-V planet_grass.frag -o ${tempPath}/planet_grass_frag.spv"
+  "-V planet_grass.frag -DVELOCITY -o ${tempPath}/planet_grass_velocity_frag.spv"
+  "-V planet_grass.frag -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_frag.spv"
+  "-V planet_grass.frag -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_frag.spv"
+  "-V planet_grass.frag -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_frag.spv"
+  "-V planet_grass.frag -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_frag.spv"
+
+  # MSM
+  "-V planet_grass.frag -DMSM -o ${tempPath}/planet_grass_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DVELOCITY -o ${tempPath}/planet_grass_velocity_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_msm_frag.spv"
+  "-V planet_grass.frag -DMSM -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_msm_frag.spv"
+
+  # PCFPCSS
+  "-V planet_grass.frag -DPCFPCSS -o ${tempPath}/planet_grass_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DVELOCITY -o ${tempPath}/planet_grass_velocity_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DWIREFRAME -o ${tempPath}/planet_grass_wireframe_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_wireframe_velocity_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DWIREFRAME -o ${tempPath}/planet_grass_bufref_wireframe_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DUSE_BUFFER_REFERENCE -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_bufref_wireframe_velocity_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -o ${tempPath}/planet_grass_raytracing_wireframe_pcfpcss_frag.spv"
+  "-V planet_grass.frag -DPCFPCSS -DRAYTRACING -DWIREFRAME -DVELOCITY -o ${tempPath}/planet_grass_raytracing_wireframe_velocity_pcfpcss_frag.spv"
+
 )
 
 #############################################
