@@ -258,7 +258,7 @@ void main(){
 
   // Frustum culling and hierarchical depth-buffer-culling based on the bounding sphere of the grass blade
   
-  {
+  if(false){
     
     bool visible = false;
 

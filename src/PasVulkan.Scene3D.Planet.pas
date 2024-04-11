@@ -6265,7 +6265,7 @@ begin
          fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
-         fGrassPushConstants.MaximumDistance:=1000.0;
+         fGrassPushConstants.MaximumDistance:=100.0;
          fGrassPushConstants.GrassHeight:=0.125;
          fGrassPushConstants.GrassThickness:=0.03;
          fGrassPushConstants.CountVerticesPerBladeEdge:=4;
