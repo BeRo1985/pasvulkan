@@ -216,9 +216,16 @@ void main(){
   //   radius = max(grassHeight, grassThickness) * 0.5
 
   vec4 boundingSphere = vec4(
+    (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
+    max(grassHeight, grassThickness)
+  );
+
+/*
+  vec4 boundingSphere = vec4(
     (pushConstants.modelMatrix * vec4(fma(patchNormal, vec3(max(grassHeight, grassThickness) * 0.5), patchPosition), 1.0)).xyz,
     max(grassHeight, grassThickness) * 0.5
   );
+*/
 
   /////////////////////////////////////////////////////////////////////////
 
