@@ -6265,7 +6265,7 @@ begin
          fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
          fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
-         fGrassPushConstants.MaximumDistance:=100.0;
+         fGrassPushConstants.MaximumDistance:=1000.0;
          fGrassPushConstants.GrassHeight:=0.125;
          fGrassPushConstants.GrassThickness:=0.03;
          fGrassPushConstants.CountVerticesPerBladeEdge:=4;
@@ -6346,7 +6346,7 @@ begin
                                                fGrassPipelineLayout.Handle,
                                                1,
                                                1,
-                                               @RendererViewInstance.fGrassCullDescriptorSets[aInFlightFrameIndex].Handle,
+                                               @RendererViewInstance.fGrassCullDescriptorSets[Planet.fData.fVisualMeshVertexBufferRenderIndex and 1].Handle,
                                                0,
                                                nil);
 
@@ -7096,7 +7096,8 @@ begin
     fGrassPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
    end;
    else begin
-    fGrassPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+//  fGrassPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+    fGrassPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
    end;
   end;
   fGrassPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -8006,9 +8007,9 @@ begin
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
- fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 7)*(4*2);
+ fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 1)*(4*2);
 
- fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 7)*((4*2)-2);
+ fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 1)*((4*2)-2);
 
  fTiledVisualMeshIndices:=TMeshIndices.Create;
 

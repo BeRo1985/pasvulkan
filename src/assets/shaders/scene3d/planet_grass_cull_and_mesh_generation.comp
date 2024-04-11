@@ -209,11 +209,6 @@ void main(){
 
   /////////////////////////////////////////////////////////////////////////
 
-  vec3 worstCaseBaseVertexPosition = patchPosition;
-  vec3 worstCaseTipVertexPosition = patchPosition + (patchNormal * pushConstants.grassHeight); 
-
-  /////////////////////////////////////////////////////////////////////////
-
   // The calculation of the bounding sphere is based on the worst case scenario, assuming that the grass blade is leaning to
   // the maximum, the bounding sphere is calculated by the following formula:
   //
@@ -258,7 +253,7 @@ void main(){
 
   // Frustum culling and hierarchical depth-buffer-culling based on the bounding sphere of the grass blade
   
-  if(false){
+  {
     
     bool visible = false;
 
@@ -342,7 +337,7 @@ void main(){
 
     const float windDirection = radians(20.0); // TODO: Calculate this based on the global position in 3D space and make it configurable
  
-    const float windStrength = 0.25; // TODO: Calculate this based on the global position in 3D space and make it configurable
+    const float windStrength = 0.01; // TODO: Calculate this based on the global position in 3D space and make it configurable
 
     vec2 windOffset = sin(
       vec2(
