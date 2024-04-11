@@ -5862,8 +5862,9 @@ var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,CountBufferMemoryBarrie
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
-    BufferMemoryBarriers:array[0..3] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
+    BufferCopy:TVkBufferCopy;
 begin
 
  PreviousInFlightFrameIndex:=aInFlightFrameIndex-1;
@@ -6368,7 +6369,8 @@ begin
           CountBufferMemoryBarriers:=0;
 
           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                         //TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
                                                                                          VK_QUEUE_FAMILY_IGNORED,
                                                                                          VK_QUEUE_FAMILY_IGNORED,
                                                                                          RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
@@ -6394,12 +6396,65 @@ begin
                                                                                          VK_WHOLE_SIZE);
           inc(CountBufferMemoryBarriers);
 
-          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);
+
+          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                             0,
                                             0,nil,
                                             CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
                                             0,nil);
+         end;
+
+         begin
+
+          BufferCopy.srcOffset:=TpvPtrUInt(@PGrassMetaBufferData(nil)^.CountIndices);
+          BufferCopy.dstOffset:=TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand.indexCount);
+          BufferCopy.size:=SizeOf(TpvUInt32);
+
+          aCommandBuffer.CmdCopyBuffer(RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
+                                       RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
+                                       1,
+                                       @BufferCopy);
+
+         end;
+
+         begin
+
+          CountBufferMemoryBarriers:=0;
+
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);
+
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);
+
+          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                            0,
+                                            0,nil,
+                                            CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                            0,nil);
+
          end;
 
         end;
