@@ -434,7 +434,7 @@ void main(){
   // Store the indices for the grass blade
   for(uint i = 0u, j = uint(countTrianglesPerBlade) >> 1u; i < j; i++){
     
-    uint triangleBaseIndex = baseVertexIndex + (i * 6u);
+    uint triangleBaseIndex = baseIndexIndex + (i * 6u);
     uint triangleBaseVertex = baseVertexIndex + (i << 1u);
 
     // First triangle of the quad 
