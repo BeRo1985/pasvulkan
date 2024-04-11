@@ -59,8 +59,10 @@ layout(location = 0) in InBlock {
 #endif
 
 layout(location = 0) out vec4 outFragColor;
-#ifdef VELOCITY
-layout(location = 1) out vec2 outVelocity;
+#if defined(VELOCITY)
+  layout(location = 1) out vec2 outVelocity;
+#elif defined(REFLECTIVESHADOWMAPOUTPUT)
+  layout(location = 1) out vec4 outFragNormalUsed; // xyz = normal, w = 1.0 if normal was used, 0.0 otherwise (by clearing the normal buffer to vec4(0.0))
 #endif
 
 #define inViewSpacePosition inBlock.viewSpacePosition
@@ -246,8 +248,10 @@ void main(){
    
   outFragColor = vec4(clamp(c.xyz, vec3(-65504.0), vec3(65504.0)), c.w);
 
-#ifdef VELOCITY
+#if defined(VELOCITY)
   outVelocity = (inBlock.currentClipSpace.xy / inBlock.currentClipSpace.w) - (inBlock.previousClipSpace.xy / inBlock.previousClipSpace.w);
+#elif defined(REFLECTIVESHADOWMAPOUTPUT)
+  outFragNormalUsed = vec4(vec3(fma(normalize(workNormal), vec3(0.5), vec3(0.5))), 1.0);  
 #endif
 
 }
