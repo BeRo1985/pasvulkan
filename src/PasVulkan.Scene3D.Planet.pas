@@ -164,6 +164,11 @@ type TpvScene3DPlanets=class;
              CountIndices:TpvUInt32;
             end;
             PGrassMetaBufferData=^TGrassMetaBufferData;
+            TGrassDrawIndexedIndirectCommand=packed record
+             DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
+             Count:TpvUInt32;
+            end;
+            PGrassDrawIndexedIndirectCommand=^TGrassDrawIndexedIndirectCommand;
             TGrassVertex=packed record
              PositionX:TpvFloat;
              PositionY:TpvFloat;
@@ -226,9 +231,6 @@ type TpvScene3DPlanets=class;
               fPhysicsMeshIndexBuffer:TpvVulkanBuffer;
               fPhysicsMeshVertexBuffer:TpvVulkanBuffer;
               fRayIntersectionResultBuffer:TpvVulkanBuffer;
-              fGrassMetaBuffer:TpvVulkanBuffer;
-              fGrassVertexBuffer:TpvVulkanBuffer;
-              fGrassIndexBuffer:TpvVulkanBuffer;
               fCountTriangleIndices:TVkUInt32;
               fCountDirtyTiles:TVkUInt32;
               fModelMatrix:TpvMatrix4x4;
@@ -914,6 +916,7 @@ type TpvScene3DPlanets=class;
               fVulkanGrassMetaDataBuffer:TpvVulkanBuffer;
               fVulkanGrassVerticesBuffer:TpvVulkanBuffer;
               fVulkanGrassIndicesBuffer:TpvVulkanBuffer;
+              fVulkanGrassDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
               fPlanetCullDescriptorPool:TpvVulkanDescriptorPool;
               fPlanetCullDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fGrassCullDescriptorPool:TpvVulkanDescriptorPool;
@@ -7156,174 +7159,279 @@ begin
  TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Acquire;
  try
 
-  First:=true;
+  begin
 
-  for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+   First:=true;
 
-   Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+   for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
 
-   if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+    Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
 
-    {if Planet.fData.fVisible then}begin
+    if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
 
-     if First then begin
-       
-      First:=false;
+     {if Planet.fData.fVisible then}begin
 
-      aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fPlanetPipeline.Handle);
+      if First then begin
 
-      DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
-      DescriptorSets[1]:=fDescriptorSets[aInFlightFrameIndex].Handle;
+       First:=false;
+
+       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fPlanetPipeline.Handle);
+
+       DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+       DescriptorSets[1]:=fDescriptorSets[aInFlightFrameIndex].Handle;
+
+       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            fPlanetPipelineLayout.Handle,
+                                            0,
+                                            2,
+                                            @DescriptorSets,
+                                            0,
+                                            nil);
+
+      end;
 
       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            fPlanetPipelineLayout.Handle,
-                                           0,
                                            2,
-                                           @DescriptorSets,
+                                           1,
+                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
                                            0,
                                            nil);
 
-     end; 
+      ViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ViewMatrix;
+      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
+      ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
 
-     aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                          fPlanetPipelineLayout.Handle,
-                                          2,
-                                          1,
-                                          @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
-                                          0,
-                                          nil);
+      Sphere.Center:=(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
+      Sphere.Radius:=Planet.fBottomRadius;
 
-     ViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ViewMatrix;
-     InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
-     ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
+      Center:=ViewMatrix^.MulHomogen(Sphere.Center);
+      Right:=InverseViewMatrix.Right.xyz*Sphere.Radius;
+      Up:=InverseViewMatrix.Up.xyz*Sphere.Radius;
 
-     Sphere.Center:=(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix*TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0)).xyz;
-     Sphere.Radius:=Planet.fBottomRadius;
+      LeftAnchor:=ProjectionMatrix^.MulHomogen(Center-Right).xy;
+      RightAnchor:=ProjectionMatrix^.MulHomogen(Center+Right).xy;
+      DownAnchor:=ProjectionMatrix^.MulHomogen(Center-Up).xy;
+      UpAnchor:=ProjectionMatrix^.MulHomogen(Center+Up).xy;
 
-     Center:=ViewMatrix^.MulHomogen(Sphere.Center);
-     Right:=InverseViewMatrix.Right.xyz*Sphere.Radius;
-     Up:=InverseViewMatrix.Up.xyz*Sphere.Radius;
+      MinXY:=((TpvVector2.InlineableCreate(Min(LeftAnchor.x,Min(RightAnchor.x,Min(DownAnchor.x,UpAnchor.x))),Min(LeftAnchor.y,Min(RightAnchor.y,Min(DownAnchor.y,UpAnchor.y))))*0.5)+TpvVector2.InlineableCreate(0.5))*TpvVector2.InlineableCreate(fWidth,fHeight);
 
-     LeftAnchor:=ProjectionMatrix^.MulHomogen(Center-Right).xy;
-     RightAnchor:=ProjectionMatrix^.MulHomogen(Center+Right).xy;
-     DownAnchor:=ProjectionMatrix^.MulHomogen(Center-Up).xy;
-     UpAnchor:=ProjectionMatrix^.MulHomogen(Center+Up).xy;
+      MaxXY:=((TpvVector2.InlineableCreate(Max(LeftAnchor.x,Max(RightAnchor.x,Max(DownAnchor.x,UpAnchor.x))),Max(LeftAnchor.y,Max(RightAnchor.y,Max(DownAnchor.y,UpAnchor.y))))*0.5)+TpvVector2.InlineableCreate(0.5))*TpvVector2.InlineableCreate(fWidth,fHeight);
 
-     MinXY:=((TpvVector2.InlineableCreate(Min(LeftAnchor.x,Min(RightAnchor.x,Min(DownAnchor.x,UpAnchor.x))),Min(LeftAnchor.y,Min(RightAnchor.y,Min(DownAnchor.y,UpAnchor.y))))*0.5)+TpvVector2.InlineableCreate(0.5))*TpvVector2.InlineableCreate(fWidth,fHeight);
+      Rect:=TpvRect.CreateAbsolute(MinXY,MaxXY);
 
-     MaxXY:=((TpvVector2.InlineableCreate(Max(LeftAnchor.x,Max(RightAnchor.x,Max(DownAnchor.x,UpAnchor.x))),Max(LeftAnchor.y,Max(RightAnchor.y,Max(DownAnchor.y,UpAnchor.y))))*0.5)+TpvVector2.InlineableCreate(0.5))*TpvVector2.InlineableCreate(fWidth,fHeight);
-
-     Rect:=TpvRect.CreateAbsolute(MinXY,MaxXY);
-
-     case fMode of
-      TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
-      TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-      TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
-       TessellationFactor:=1.0/4.0;
-       Level:=-1;
+      case fMode of
+       TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
+       TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+       TpvScene3DPlanet.TRenderPass.TMode.ReflectiveShadowMap:begin
+        TessellationFactor:=1.0/4.0;
+        Level:=-1;
+       end;
+       else begin
+        TessellationFactor:=1.0/16.0;
+        Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/4.0)),0),7);
+       end;
       end;
-      else begin
-       TessellationFactor:=1.0/16.0;
-       Level:=Min(Max(Round(Rect.Size.Length/Max(1,sqrt(sqr(fWidth)+sqr(fHeight))/4.0)),0),7);
+
+ //     writeln(Rect.Width:1:6,' ',Rect.Height:1:6,' ',Level:1:6);
+
+      fPlanetPushConstants.ViewBaseIndex:=aViewBaseIndex;
+      fPlanetPushConstants.CountViews:=aCountViews;
+      if Level<0 then begin
+       fPlanetPushConstants.CountQuadPointsInOneDirection:=64;
+      end else begin
+       fPlanetPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
       end;
-     end;
+      if Level>=0 then begin
+       //writeln(fPlanetPushConstants.CountQuadPointsInOneDirection,' ',Level);
+      end;
+      fPlanetPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
+      fPlanetPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+      fPlanetPushConstants.TessellationFactor:=TessellationFactor;
+      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
+       fPlanetPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
+      end else begin
+       fPlanetPushConstants.Jitter:=TpvVector2.Null;
+      end;
+      fPlanetPushConstants.FrameIndex:=aFrameIndex;
+      if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+       fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+      end else begin
+       fPlanetPushConstants.PlanetData:=0;
+      end;
 
-//     writeln(Rect.Width:1:6,' ',Rect.Height:1:6,' ',Level:1:6);
+      aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+ {                                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                      0,
+                                      SizeOf(TPlanetPushConstants),
+                                      @fPlanetPushConstants);
 
-     fPlanetPushConstants.ViewBaseIndex:=aViewBaseIndex;
-     fPlanetPushConstants.CountViews:=aCountViews;
-     if Level<0 then begin
-      fPlanetPushConstants.CountQuadPointsInOneDirection:=64;
-     end else begin
-      fPlanetPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
-     end;
-     if Level>=0 then begin
-      //writeln(fPlanetPushConstants.CountQuadPointsInOneDirection,' ',Level);
-     end;
-     fPlanetPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
-     fPlanetPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
-     fPlanetPushConstants.TessellationFactor:=TessellationFactor;
-     if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
-      fPlanetPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
-     end else begin
-      fPlanetPushConstants.Jitter:=TpvVector2.Null;
-     end;
-     fPlanetPushConstants.FrameIndex:=aFrameIndex;
-     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
-      fPlanetPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
-     end else begin
-      fPlanetPushConstants.PlanetData:=0;
-     end;
-
-     aCommandBuffer.CmdPushConstants(fPlanetPipelineLayout.Handle,
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or 
-{                                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
-                                     TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                     0,
-                                     SizeOf(TPlanetPushConstants),
-                                     @fPlanetPushConstants);
-
-     case TpvScene3DPlanet.SourcePrimitiveMode of
-      TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
-{      aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);}
-       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffers[Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].Handle,@Offsets);
-///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-//      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
-       if assigned(vkCmdDrawIndexedIndirectCount) and
-          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
-                                                     RendererViewInstance) then begin
-        case fMode of
-         TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
-         TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion:begin
-          vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
-                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                        ((Planet.TileMapResolution*Planet.TileMapResolution)+1)*(16*SizeOf(TVkUInt32)),
-                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                        SizeOf(TVkUInt32),
-                                        Planet.TileMapResolution*Planet.TileMapResolution,
-                                        16*SizeOf(TVkUInt32));
+      case TpvScene3DPlanet.SourcePrimitiveMode of
+       TpvScene3DPlanet.TSourcePrimitiveMode.VisualMeshTriangles:begin
+ {      aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffer.Handle,@Offsets);}
+        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fVisualMeshVertexBuffers[Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBufferRenderIndex and 1].Handle,@Offsets);
+ ///    aCommandBuffer.CmdBindIndexBuffer(Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+ //      aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fInFlightFrameDataList[aInFlightFrameIndex].fVisualMeshVertexBuffer.Handle,@Offsets);{}
+        if assigned(vkCmdDrawIndexedIndirectCount) and
+           Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
+                                                      RendererViewInstance) then begin
+         case fMode of
+          TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion,
+          TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion:begin
+           vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                         RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                         ((Planet.TileMapResolution*Planet.TileMapResolution)+1)*(16*SizeOf(TVkUInt32)),
+                                         RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                         SizeOf(TVkUInt32),
+                                         Planet.TileMapResolution*Planet.TileMapResolution,
+                                         16*SizeOf(TVkUInt32));
+          end;
+          else begin
+           vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                         RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                         16*SizeOf(TVkUInt32),
+                                         RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
+                                         0,
+                                         Planet.TileMapResolution*Planet.TileMapResolution,
+                                         16*SizeOf(TVkUInt32));
+          end;
          end;
-         else begin
-          vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
-                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                        16*SizeOf(TVkUInt32),
-                                        RendererViewInstance.fVulkanDrawIndexedIndirectCommandBuffer.Handle,
-                                        0,
-                                        Planet.TileMapResolution*Planet.TileMapResolution,
-                                        16*SizeOf(TVkUInt32));
-         end;
+        end else begin
+         aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
+                                       1,
+                                       Planet.fVisualMeshLODOffsets[0],
+                                       0,
+                                       0);
         end;
-       end else begin
-        aCommandBuffer.CmdDrawIndexed(Planet.fVisualMeshLODCounts[0],
+       end;
+       TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
+        aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+        aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsMeshVertexBuffer.Handle,@Offsets);
+        aCommandBuffer.CmdDrawIndexed(Planet.fPhysicsMeshLODCounts[0],
                                       1,
-                                      Planet.fVisualMeshLODOffsets[0],
+                                      Planet.fPhysicsMeshLODOffsets[0],
                                       0,
                                       0);
        end;
+       else begin
+        Assert(false);
+       end;
       end;
-      TpvScene3DPlanet.TSourcePrimitiveMode.PhysicsMeshTriangles:begin
-       aCommandBuffer.CmdBindIndexBuffer(Planet.fData.fPhysicsMeshIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@Planet.fData.fPhysicsMeshVertexBuffer.Handle,@Offsets);
-       aCommandBuffer.CmdDrawIndexed(Planet.fPhysicsMeshLODCounts[0],
-                                     1,
-                                     Planet.fPhysicsMeshLODOffsets[0],
-                                     0,
-                                     0);
-      end;
-      else begin
-       Assert(false);
-      end;
+
      end;
 
     end;
 
    end;
 
-  end;    
-   
+  end;
+
+  begin
+
+   First:=true;
+
+   for PlanetIndex:=0 to TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Count-1 do begin
+
+    Planet:=TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Items[PlanetIndex];
+
+    if Planet.fReady and Planet.fInFlightFrameReady[aInFlightFrameIndex] then begin
+
+     {if Planet.fData.fVisible then}begin
+
+      if First then begin
+
+       First:=false;
+
+       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fGrassPipeline.Handle);
+
+       DescriptorSets[0]:=TpvScene3D(fScene3D).GlobalVulkanDescriptorSets[aInFlightFrameIndex].Handle;
+       DescriptorSets[1]:=fDescriptorSets[aInFlightFrameIndex].Handle;
+
+       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            fGrassPipelineLayout.Handle,
+                                            0,
+                                            2,
+                                            @DescriptorSets,
+                                            0,
+                                            nil);
+
+      end;
+
+      aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           fGrassPipelineLayout.Handle,
+                                           2,
+                                           1,
+                                           @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
+                                           0,
+                                           nil);
+
+      ViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ViewMatrix;
+      InverseViewMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].InverseViewMatrix;
+      ProjectionMatrix:=@TpvScene3DRendererInstance(fRendererInstance).Views[aInFlightFrameIndex].Items[aViewBaseIndex].ProjectionMatrix;
+
+      fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
+      fGrassPushConstants.ViewBaseIndex:=aViewBaseIndex;
+      fGrassPushConstants.CountViews:=aCountViews;
+      if Level<0 then begin
+       fGrassPushConstants.CountQuadPointsInOneDirection:=64;
+      end else begin
+       fGrassPushConstants.CountQuadPointsInOneDirection:=64;//Min(Max(16 shl Level,2),256);
+      end;
+      if Level>=0 then begin
+       //writeln(fGrassPushConstants.CountQuadPointsInOneDirection,' ',Level);
+      end;
+      fGrassPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
+      fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
+      if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
+       fGrassPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;
+      end else begin
+       fGrassPushConstants.Jitter:=TpvVector2.Null;
+      end;
+      fGrassPushConstants.FrameIndex:=aFrameIndex;
+{     if TpvScene3D(fScene3D).UseBufferDeviceAddress then begin
+       fGrassPushConstants.PlanetData:=Planet.fPlanetDataVulkanBuffers[aInFlightFrameIndex].DeviceAddress;
+      end else begin
+       fGrassPushConstants.PlanetData:=0;
+      end;}
+
+      aCommandBuffer.CmdPushConstants(fGrassPipelineLayout.Handle,
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+ {                                    TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or }
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                      0,
+                                      SizeOf(TGrassPushConstants),
+                                      @fGrassPushConstants);
+
+      if assigned(vkCmdDrawIndexedIndirectCount) and
+         Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
+                                                    RendererViewInstance) then begin
+
+       aCommandBuffer.CmdBindIndexBuffer(RendererViewInstance.fVulkanGrassIndicesBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+       aCommandBuffer.CmdBindVertexBuffers(0,1,@RendererViewInstance.fVulkanGrassVerticesBuffer.Handle,@Offsets);
+
+       vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
+                                     RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
+                                     TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand),
+                                     RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
+                                     TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.Count),
+                                     1,
+                                     SizeOf(TVkDrawIndexedIndirectCommand));
+      end;
+
+     end;
+
+    end;
+
+   end;
+
+  end;
+
  finally
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
  end;
@@ -7421,6 +7529,7 @@ end;
 
 constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
 var InFlightFrameIndex,PreviousInFlightFrameIndex,Index:TpvSizeInt;
+    GrassDrawIndexedIndirectCommand:TGrassDrawIndexedIndirectCommand;
 begin
  inherited Create;
 
@@ -7503,6 +7612,7 @@ begin
  
  fVulkanGrassMetaDataBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
                                                     SizeOf(TpvScene3DPlanet.TGrassMetaBufferData),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
@@ -7562,6 +7672,43 @@ begin
                                                    pvAllocationGroupIDScene3DPlanetStatic
                                                   );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassIndicesBuffer');
+
+ fVulkanGrassDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                                      SizeOf(TpvScene3DPlanet.TGrassDrawIndexedIndirectCommand),
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
+                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                                      [],
+                                                                      0,
+                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      0,
+                                                                      [],
+                                                                      0,
+                                                                      pvAllocationGroupIDScene3DPlanetStatic
+                                                                     );
+ fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassDrawIndexedIndirectCommandBuffer');
+
+ GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.indexCount:=0;
+ GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.instanceCount:=1;
+ GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.firstIndex:=0;
+ GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.vertexOffset:=0;
+ GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.firstInstance:=0;
+ GrassDrawIndexedIndirectCommand.Count:=1;
+
+ fPlanet.fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanUniversalQueue,
+                                            fPlanet.fVulkanUniversalCommandBuffer,
+                                            fPlanet.fVulkanUniversalFence,
+                                            GrassDrawIndexedIndirectCommand,
+                                            fVulkanGrassDrawIndexedIndirectCommandBuffer,
+                                            0,
+                                            SizeOf(TGrassDrawIndexedIndirectCommand));
 
  fPlanetCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
                                                                             TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
@@ -7736,6 +7883,7 @@ begin
  FreeAndNil(fVulkanGrassMetaDataBuffer);
  FreeAndNil(fVulkanGrassVerticesBuffer);
  FreeAndNil(fVulkanGrassIndicesBuffer);
+ FreeAndNil(fVulkanGrassDrawIndexedIndirectCommandBuffer);
  inherited Destroy;
 end;
 
