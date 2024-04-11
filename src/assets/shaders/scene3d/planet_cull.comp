@@ -300,19 +300,24 @@ void main(){
       }
 #endif
 
+/*
 #if defined(PASS1) // Only for the disocclusion pass so that every visible tile can be directly added to the list of visible tiles without further checks 
       {
         // If visible, add to the list of visible tiles for other also to be culled content on the planet like trees, grass, etc.
         const uint outputVisibleTileIndex = atomicAdd(visibleTileList.data[0], 1u) + 3u; // 3-based, see above
         visibleTileList.data[outputVisibleTileIndex] = tileMapIndex;
       }
-#endif
+#endif*/
 
 #if defined(PASS0) || defined(PASS1)  
       // add to visibility buffer only if not yet existing        
       if((atomicOr(visibilityBuffer.bitmap[tileMapIndex >> 5u], mask) & mask) == 0u)
 #endif      
       { 
+
+        // If visible, add to the list of visible tiles for other also to be culled content on the planet like trees, grass, etc.
+        const uint outputVisibleTileIndex = atomicAdd(visibleTileList.data[0], 1u) + 3u; // 3-based, see above
+        visibleTileList.data[outputVisibleTileIndex] = tileMapIndex;
 
         const uint outputDrawIndexedIndirectCommandIndex = atomicAdd(outputDrawIndexedIndirectCommands.data[0].cmd0.x, 1u) + 1u; // 1-based, since 0 is used for counters and the like
 

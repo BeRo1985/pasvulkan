@@ -6356,11 +6356,11 @@ begin
                                           SizeOf(TGrassPushConstants),
                                           @fGrassPushConstants);
 
-          aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,0);
+//        aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,0);
 
-{         aCommandBuffer.CmdDispatch(Planet.fTileMapResolution*Planet.fTileMapResolution,
+          aCommandBuffer.CmdDispatch(Planet.fTileMapResolution*Planet.fTileMapResolution,
                                      ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+255) shr 8,
-                                     1);}
+                                     1);//}
 
          end;
 
@@ -7387,7 +7387,7 @@ begin
 
   end;
 
-  begin
+  if not (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion]) then begin
 
    First:=true;
 
@@ -8517,7 +8517,7 @@ var TotalResolution,TotalResolutionMask,TotalResolutionBits,
     CountIndices:TpvUInt32;
     LODIndex:TpvSizeInt;
     TileLODResolution,TileLODResolutionPlusBorder,
-    TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY:TpvInt32;
+    TileMapX,TileMapY,TileLODX,TileLODY,TileX,TileY,GlobalX,GlobalY,Start:TpvInt32;
     v0,v1,v2,v3:TpvUInt32;
     TiledMeshIndexGroup:PTiledMeshIndexGroup;
     TileVertices:TpvUInt32DynamicArray;
@@ -8581,10 +8581,16 @@ begin
      TiledMeshIndexGroup:=Pointer(aTiledMeshIndexGroups.AddNew);
      TiledMeshIndexGroup^.FirstIndex:=CountIndices;
 
+     if (TileMapX=0) or (TileMapY=0) then begin
+      Start:=-1;
+     end else begin
+      Start:=0;
+     end;
+
      if (TotalResolution and TotalResolutionMask)<>0 then begin
-      for TileLODY:=IfThen(TileMapY=0,-1,0) to (TileLODResolution+1)-1 do begin
+      for TileLODY:=Start to (TileLODResolution+1)-1 do begin
        TileY:=TileLODY shl LODIndex;
-       for TileLODX:=IfThen(TileMapX=0,-1,0) to (TileLODResolution+1)-1 do begin
+       for TileLODX:=Start to (TileLODResolution+1)-1 do begin
         TileX:=TileLODX shl LODIndex;
         GlobalX:=(TileMapX*aTileResolution)+TileX;
         GlobalY:=(TileMapY*aTileResolution)+TileY;
@@ -8602,9 +8608,9 @@ begin
        end;
       end;
      end else begin
-      for TileLODY:=IfThen(TileMapY=0,-1,0) to (TileLODResolution+1)-1 do begin
+      for TileLODY:=Start to (TileLODResolution+1)-1 do begin
        TileY:=TileLODY shl LODIndex;
-       for TileLODX:=IfThen(TileMapX=0,-1,0) to (TileLODResolution+1)-1 do begin
+       for TileLODX:=Start to (TileLODResolution+1)-1 do begin
         TileX:=TileLODX shl LODIndex;
         GlobalX:=(TileMapX*aTileResolution)+TileX;
         GlobalY:=(TileMapY*aTileResolution)+TileY;
@@ -8651,7 +8657,7 @@ begin
          aTiledMeshIndices.ItemArray[CountIndices+2]:=v3;
          inc(CountIndices,3);
         end;
-       end;
+       end;//}
 
        begin
         v0:=TileVertices[((TileLODY+1)*TileLODResolutionPlusBorder)+(TileLODX+1)]; //  0  0

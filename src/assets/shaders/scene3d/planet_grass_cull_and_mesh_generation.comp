@@ -124,7 +124,6 @@ void main(){
     planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
   }
 
-
   if((countViews > 0u) && (localInvocationIndex < countViews)){   
     frustumSetup(frustums[localInvocationIndex], uView.views[pushConstants.baseViewIndex + localInvocationIndex].projectionMatrix);      
   }
@@ -156,7 +155,7 @@ void main(){
 
   // Check if the current invocation is still in the valid ranges, otherwise return
   if((tileListIndex >= tileMapSize) || 
-     (tileListIndex >= countVisibleTiles) || 
+     //(tileListIndex >= countVisibleTiles) || 
      any(greaterThanEqual(localTileXY, uvec2(pushConstants.tileResolution)))){ 
     return;
   }
@@ -164,7 +163,8 @@ void main(){
   vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
   int countLODLevels = textureQueryLevels(uTextureDepth);
 
-  const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
+  const uint tileMapIndex = tileListIndex;
+  ;// visibleTileList.visibleTiles[tileListIndex + 3u];
 
   const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
   const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
