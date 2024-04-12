@@ -169,7 +169,8 @@ void main(){
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
-  vec4 albedo = vec4(1.0);
+  //vec4 albedo = vec4(0.41, 0.44, 0.29, 1.0);
+  vec4 albedo = vec4(0.140645, 0.164282, 0.065656, 1.0) * clamp(inBlock.texCoord.y, 0.1, 1.0);  
   vec4 normalHeight = vec4(0.5, 0.5, 0.5, 0.5);
   vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.0, 0.0);
   

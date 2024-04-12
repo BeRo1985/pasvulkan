@@ -430,6 +430,8 @@ type EpvVulkanException=class(Exception);
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
        fFragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR;
        fFragmentShaderBarycentricPropertiesKHR:TVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR;
+       fMeshShaderFeaturesEXT:TVkPhysicalDeviceMeshShaderFeaturesEXT;
+       fMeshShaderPropertiesEXT:TVkPhysicalDeviceMeshShaderPropertiesEXT;
        fAccelerationStructureFeaturesKHR:TVkPhysicalDeviceAccelerationStructureFeaturesKHR;
        fAccelerationStructurePropertiesKHR:TVkPhysicalDeviceAccelerationStructurePropertiesKHR;
        fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
@@ -509,6 +511,8 @@ type EpvVulkanException=class(Exception);
        property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT;
        property FragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR read fFragmentShaderBarycentricFeaturesKHR;
        property FragmentShaderBarycentricPropertiesKHR:TVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR read fFragmentShaderBarycentricPropertiesKHR;
+       property MeshShaderFeaturesEXT:TVkPhysicalDeviceMeshShaderFeaturesEXT read fMeshShaderFeaturesEXT;
+       property MeshShaderPropertiesEXT:TVkPhysicalDeviceMeshShaderPropertiesEXT read fMeshShaderPropertiesEXT;
        property AccelerationStructureFeaturesKHR:TVkPhysicalDeviceAccelerationStructureFeaturesKHR read fAccelerationStructureFeaturesKHR;
        property AccelerationStructurePropertiesKHR:TVkPhysicalDeviceAccelerationStructurePropertiesKHR read fAccelerationStructurePropertiesKHR;
        property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR;
@@ -722,6 +726,7 @@ type EpvVulkanException=class(Exception);
        fBufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR;
        fHostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT;
        fFragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR;
+       fMeshShaderFeaturesEXT:TVkPhysicalDeviceMeshShaderFeaturesEXT;
        fAccelerationStructureFeaturesKHR:TVkPhysicalDeviceAccelerationStructureFeaturesKHR;
        fRayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR;
        fRayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR;
@@ -805,6 +810,7 @@ type EpvVulkanException=class(Exception);
        property BufferDeviceAddressFeaturesKHR:TVkPhysicalDeviceBufferDeviceAddressFeaturesKHR read fBufferDeviceAddressFeaturesKHR write fBufferDeviceAddressFeaturesKHR;
        property HostQueryResetFeaturesEXT:TVkPhysicalDeviceHostQueryResetFeaturesEXT read fHostQueryResetFeaturesEXT write fHostQueryResetFeaturesEXT;
        property FragmentShaderBarycentricFeaturesKHR:TVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR read fFragmentShaderBarycentricFeaturesKHR;
+       property MeshShaderFeaturesEXT:TVkPhysicalDeviceMeshShaderFeaturesEXT read fMeshShaderFeaturesEXT;
        property AccelerationStructureFeaturesKHR:TVkPhysicalDeviceAccelerationStructureFeaturesKHR read fAccelerationStructureFeaturesKHR write fAccelerationStructureFeaturesKHR;
        property RayTracingPipelineFeaturesKHR:TVkPhysicalDeviceRayTracingPipelineFeaturesKHR read fRayTracingPipelineFeaturesKHR write fRayTracingPipelineFeaturesKHR;
        property RayQueryFeaturesKHR:TVkPhysicalDeviceRayQueryFeaturesKHR read fRayQueryFeaturesKHR write fRayQueryFeaturesKHR;
@@ -8601,6 +8607,15 @@ begin
  end;
 
  begin
+  FillChar(fMeshShaderFeaturesEXT,SizeOf(TVkPhysicalDeviceMeshShaderFeaturesEXT),#0);
+  fMeshShaderFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+  if AvailableExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0 then begin
+   fMeshShaderFeaturesEXT.pNext:=fFeatures2KHR.pNext;
+   fFeatures2KHR.pNext:=@fMeshShaderFeaturesEXT;
+  end;
+ end;
+
+ begin
   FillChar(fAccelerationStructureFeaturesKHR,SizeOf(TVkPhysicalDeviceAccelerationStructureFeaturesKHR),#0);
   fAccelerationStructureFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
   if AvailableExtensionNames.IndexOf(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)>0 then begin
@@ -8776,6 +8791,13 @@ begin
  if fAvailableExtensionNames.IndexOf(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)>=0 then begin
   fFragmentShaderBarycentricPropertiesKHR.pNext:=fProperties2KHR.pNext;
   fProperties2KHR.pNext:=@fFragmentShaderBarycentricPropertiesKHR;
+ end;
+
+ FillChar(fMeshShaderPropertiesEXT,SizeOf(TVkPhysicalDeviceMeshShaderPropertiesEXT),#0);
+ fMeshShaderPropertiesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+ if fAvailableExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>=0 then begin
+  fMeshShaderPropertiesEXT.pNext:=fProperties2KHR.pNext;
+  fProperties2KHR.pNext:=@fMeshShaderPropertiesEXT;
  end;
 
  if ((fInstance.APIVersion and VK_API_VERSION_WITHOUT_PATCH_MASK)=VK_API_VERSION_1_0) and
@@ -10695,6 +10717,20 @@ begin
     fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric:=PhysicalDevice.fFragmentShaderBarycentricFeaturesKHR.fragmentShaderBarycentric;
     fFragmentShaderBarycentricFeaturesKHR.pNext:=DeviceCreateInfo.pNext;
     DeviceCreateInfo.pNext:=@fFragmentShaderBarycentricFeaturesKHR;
+   end;
+
+   FillChar(fMeshShaderFeaturesEXT,SizeOf(TVkPhysicalDeviceMeshShaderFeaturesEXT),#0);
+   fMeshShaderFeaturesEXT.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+   if (fEnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
+      ((PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) or
+       (PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE)) then begin
+    fMeshShaderFeaturesEXT.taskShader:=PhysicalDevice.fMeshShaderFeaturesEXT.taskShader;
+    fMeshShaderFeaturesEXT.meshShader:=PhysicalDevice.fMeshShaderFeaturesEXT.meshShader;
+    fMeshShaderFeaturesEXT.multiviewMeshShader:=PhysicalDevice.fMeshShaderFeaturesEXT.multiviewMeshShader;
+    fMeshShaderFeaturesEXT.primitiveFragmentShadingRateMeshShader:=VK_FALSE;//PhysicalDevice.fMeshShaderFeaturesEXT.primitiveFragmentShadingRateMeshShader;
+    fMeshShaderFeaturesEXT.meshShaderQueries:=PhysicalDevice.fMeshShaderFeaturesEXT.meshShaderQueries;
+    fMeshShaderFeaturesEXT.pNext:=DeviceCreateInfo.pNext;
+    DeviceCreateInfo.pNext:=@fMeshShaderFeaturesEXT;
    end;
 
    FillChar(fAccelerationStructureFeaturesKHR,SizeOf(TVkPhysicalDeviceAccelerationStructureFeaturesKHR),#0);
