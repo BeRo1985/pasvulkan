@@ -77,13 +77,9 @@ layout(set = 3, binding = 2, std430) buffer VisibleGrassBladeBitmap {
 shared vec3 planetPosition;
 shared Frustum frustums[8];
 
-shared uint visiblePositions[TASK_GROUP_SIZE]; // 128 positions for 128 grass blades, 2x 16-bit integers for the position packed into a 32-bit integer 
-
-shared uint countVisiblePositions;  
-
 struct TaskData {
   uint countPositions;
-  uint positions[TASK_GROUP_SIZE];
+  uint positions[TASK_GROUP_SIZE]; // 2x 16-bit integers for the position packed into a 32-bit integer 
 };
 
 #if defined(VERTEX_SHADER_CODE_PATH)
@@ -354,6 +350,5 @@ void main() {
 #endif
 
   }
-
 
 } 

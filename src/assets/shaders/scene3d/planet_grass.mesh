@@ -47,11 +47,13 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
+layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
+  uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
+} visualMeshVertices;
+
 struct TaskData {
-  vec3 position;
-  vec3 normal;
-  uint index;
-  float height;
+  uint countPositions;
+  uint positions[TASK_GROUP_SIZE]; // 2x 16-bit integers for the position packed into a 32-bit integer 
 };
 
 #if defined(VERTEX_SHADER_CODE_PATH)
@@ -142,6 +144,8 @@ layout(location = 0) out OutBlock {
 
 #include "pcg.glsl"
 
+#include "octahedral.glsl"
+
 #include "tangentspacebasis.glsl"
 
 vec3 bezier(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float t){
@@ -228,7 +232,7 @@ void main() {
 #endif
   {
 #if !defined(VERTEX_SHADER_CODE_PATH)
-    uint vertexID = gl_LocalInvocationIndex + (i * GROUP_SIZE);
+    uint vertexID = gl_LocalInvocationIndex + (i * MESH_GROUP_SIZE);
     
     if(vertexID >= countVertices){
       break;
@@ -238,13 +242,19 @@ void main() {
     uint bladeID = vertexID / countVerticesPerBlade;
     uint vertexIndex = vertexID - (bladeID * countVerticesPerBlade);
 
-    const float grassHeight = taskData.height;
+    const float grassHeight = pushConstants.grassHeight;
     const float grassThickness = pushConstants.grassThickness;
     const float grassLeaning = 0.03; // TODO: Make it configurable
 
+    const uint globalPosition = taskData.positions[vertexID];
+
+    const uvec2 globalXY = uvec2(globalPosition & 0xffffu, globalPosition >> 16u);
+
+    const uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
+
     // Generate some random data for the grass blade to make it look more natural, but keep it deterministic, based on the global position
     // and the linear global index of the grass blade
-    const uvec4 randomUIntData = pcgHash44(uvec4(taskData.index, bladeID, 0u, 0u));
+    const uvec4 randomUIntData = pcgHash44(uvec4(globalXY, globalIndex, bladeID));
 
     // The following line generates a random float value in the range of [0.0, 1.0] for each component through bittwiddling tricks 
     const vec4 randomFloatData = uintBitsToFloat(((randomUIntData >> uvec4(9u)) & uvec4(0x007fffffu)) | uvec4(0x3f800000u)) - vec4(1.0);
@@ -297,9 +307,13 @@ void main() {
 
     vec3 offset = sideVector * grassThickness;
 
-    const vec3 patchPosition = taskData.position;
+    uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
 
-    const mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(taskData.normal);
+    vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
+
+    vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
+
+    const mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(patchNormal);
 
     float t = float(uint(vertexIndex >> 1u)) / float(countVerticesPerBladeEdge - 1u);
     float s = float(int(1 - ((int(vertexIndex) & 1) << 1))); // 1 or -1
@@ -366,7 +380,7 @@ void main() {
   // Emit the indices for the grass blade
   for(uint i = 0u; i < 2u; i++){
     
-    uint triangleID = gl_LocalInvocationIndex + (i * GROUP_SIZE);
+    uint triangleID = gl_LocalInvocationIndex + (i * MESH_GROUP_SIZE);
 
     if(triangleID >= countTriangles){
       break;
