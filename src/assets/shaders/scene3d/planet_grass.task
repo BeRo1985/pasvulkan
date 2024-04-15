@@ -16,18 +16,18 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
-#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_nonuniform_qualifier : enable 
 #extension GL_EXT_control_flow_attributes : enable
 #ifdef WIREFRAME
   #extension GL_EXT_fragment_shader_barycentric : enable
   #define HAVE_PERVERTEX
 #endif
 
-#define GROUP_SIZE 128
-#define GRASS_VERT_COUNT 256
-#define GRASS_PRIM_COUNT 192
+#define TASK_GROUP_SIZE 128
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+#define MESH_GROUP_SIZE 128
+
+layout(local_size_x = 1, local_size_y = TASK_GROUP_SIZE, local_size_z = 1) in;
 
 #include "planet_grass.glsl"
 
@@ -52,6 +52,10 @@ layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
+layout(set = 3, binding = 2, std430) buffer VisibleGrassBladeBitmap {
+  uint bitmap[];
+} visibleGrassBladeBitmap;
+
 #include "frustum.glsl"
 
 #include "aabb.glsl"
@@ -73,11 +77,13 @@ layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
 shared vec3 planetPosition;
 shared Frustum frustums[8];
 
+shared uint visiblePositions[TASK_GROUP_SIZE]; // 128 positions for 128 grass blades, 2x 16-bit integers for the position packed into a 32-bit integer 
+
+shared uint countVisiblePositions;  
+
 struct TaskData {
-  vec3 position;
-  vec3 normal;
-  uint index;
-  float height;
+  uint countPositions;
+  uint positions[TASK_GROUP_SIZE];
 };
 
 #if defined(VERTEX_SHADER_CODE_PATH)
@@ -91,6 +97,8 @@ layout(set = 1, binding = 3, std430) buffer TaskPayload {
   TaskData taskData[];
 } taskPayload;
 
+shared TaskData taskData;
+
 #else
 
 taskPayloadSharedEXT TaskData taskData;
@@ -101,14 +109,18 @@ void main() {
 
   /////////////////////////////////////////////////////////////////////////
    
-  uint localInvocationIndex = gl_LocalInvocationIndex;
+  const uint localInvocationIndex = gl_LocalInvocationIndex;
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
-  uint countViews = min(pushConstants.countViews, 8); 
+  const uint countViews = min(pushConstants.countViews, 8); 
 
   if(localInvocationIndex == 0u){
+
+    taskData.countPositions = 0u; // reset the count of visible positions
+
     vec4 p = pushConstants.modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     planetPosition = p.xyz / p.w;
+
   }
 
   if((countViews > 0u) && (localInvocationIndex < countViews)){   
@@ -119,35 +131,44 @@ void main() {
   groupMemoryBarrier();
   barrier(); 
 
-  const uint tileListIndex = gl_GlobalInvocationID.x;  
+  const uint globalInvocationIndex = (((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x;
+                                     
+  const uint tileTotalResolution = pushConstants.tileResolution * pushConstants.tileResolution;
+
+  const uint tileListIndex = globalInvocationIndex / tileTotalResolution;  
+
+  const uint remainingGlobalInvocationIndex = globalInvocationIndex - (tileListIndex * tileTotalResolution);
 
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
-  //const uint countVisibleTiles = visibleTileList.visibleTiles[0];
+  const uint countVisibleTiles = visibleTileList.visibleTiles[0];
 
-  const uint localTileY = gl_GlobalInvocationID.y / pushConstants.tileResolution;
-  const uint localTileX = gl_GlobalInvocationID.y - (localTileY * pushConstants.tileResolution);
+  const uint localTileY = remainingGlobalInvocationIndex / pushConstants.tileResolution;
+  const uint localTileX = remainingGlobalInvocationIndex - (localTileY * pushConstants.tileResolution);
 
   const uvec2 localTileXY = uvec2(localTileX, localTileY);
 
   // Check if the current invocation is still in the valid ranges, otherwise return
   if((tileListIndex >= tileMapSize) || 
-     //(tileListIndex >= countVisibleTiles) || 
+     (tileListIndex >= countVisibleTiles) || 
      any(greaterThanEqual(localTileXY, uvec2(pushConstants.tileResolution)))){ 
     return;
   }
 
-  vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
-  int countLODLevels = textureQueryLevels(uTextureDepth);
+  const vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
+  const int countLODLevels = textureQueryLevels(uTextureDepth);
 
-  const uint tileMapIndex = tileListIndex;// visibleTileList.visibleTiles[tileListIndex + 3u];
+  const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
+//const uint tileMapIndex = tileListIndex;// visibleTileList.visibleTiles[tileListIndex + 3u];
 
   const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
   const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
 
-  uvec2 globalXY = (uvec2(tileMapX, tileMapY) * pushConstants.tileResolution) + localTileXY;
+  const uvec2 tileMapXY = uvec2(tileMapX, tileMapY);
 
-  uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
+  const uvec2 globalXY = (tileMapXY * pushConstants.tileResolution) + localTileXY;
+
+  const uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
 
   /////////////////////////////////////////////////////////////////////////
 
@@ -205,11 +226,11 @@ void main() {
 
   /////////////////////////////////////////////////////////////////////////
 
+  bool visible = false;
+
   // Distance culling based on the bounding sphere of the grass blade
 #if 1
   if(pushConstants.maximumDistance > 1e-7){
-
-    bool visible = false;
 
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
 
@@ -225,10 +246,10 @@ void main() {
 
     }
 
-    // Early out if the grass blade is too far away from the camera at all views
-    if(!visible){
-      return;
-    }
+  }else{
+
+    // If the maximum distance is zero, then the grass blade is always visible
+    visible = true;
 
   }
 
@@ -236,9 +257,9 @@ void main() {
 
   // Frustum culling and hierarchical depth-buffer-culling based on the bounding sphere of the grass blade
   
-  {
+  if(visible){
     
-    bool visible = false;
+    visible = false;
 
     for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
       
@@ -291,47 +312,48 @@ void main() {
       }
 
     }
-  
-    // If the grass blade is not visible, then return
-    if(!visible){
-      return;
-    }
-
+      
   }
 #endif
 
   /////////////////////////////////////////////////////////////////////////
 
-  // Otherwise, emit mesh shader invocations for the grass blade set
+  // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
+  taskData.positions[atomicAdd(taskData.countPositions, 1u)] = uint((globalXY.y << 16u) | (globalXY.x & 0xffffu));
+
+  // Wait for all invocations to finish the culling calculations
+  memoryBarrierShared();
+  groupMemoryBarrier();
+  barrier();
+  
+  if(localInvocationIndex == 0u){
 
 #if defined(VERTEX_SHADER_CODE_PATH)
 
-  const uint countVerticesPerBladeEdge = pushConstants.countVerticesPerBladeEdge;
-  const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
-  const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
-  const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
-  const uint countBlades = 1u;
+    const uint countVerticesPerBladeEdge = 4u;//pushConstants.countVerticesPerBladeEdge;
+    const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
+    const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
+    const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
+    const uint countBlades = 32u;
+    const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
 
-  const uint taskIndex = atomicAdd(taskPayloadMetaData.countPayloads, 1u);
-
-  taskPayload.taskData[taskIndex] = TaskData(
-    patchPosition,
-    patchNormal,
-    globalIndex,
-    grassHeight
-  );
-
-  atomicAdd(taskPayloadMetaData.countVertices, countIndicesPerBlade * countBlades); // since no real index buffer is used, the count of indices is used as count of vertices
+    // Emit the vertex tasks for the vertex shader invocations into the storage buffer (poor-man mesh shader emulation)
+    taskPayload.taskData[atomicAdd(taskPayloadMetaData.countPayloads, 1u)] = taskData;
+    
+    // Increment the total count of vertices for the vertex shader invocations, where vertices count = indices count, because 
+    // the vertex shader do calculate the vertex data on the fly without any additional storage buffers. Thus the mesh shader
+    // code part is faster, because it don't need to calculate the vertex data for every index again and again but just once
+    // per index, which can be a huge performance gain. 
+    atomicAdd(taskPayloadMetaData.countVertices, taskData.countPositions * countIndicesPerPayload);
 
 #else
-  
-  taskData.position = patchPosition;
-  taskData.normal = patchNormal;
-  taskData.index = globalIndex;
-  taskData.height = grassHeight;
 
-  EmitMeshTasksEXT(1, 1, 1);
+    // Emit the mesh tasks for the mesh shader invocations
+    EmitMeshTasksEXT((taskData.countPositions + (MESH_GROUP_SIZE - 1u)) / MESH_GROUP_SIZE, 1, 1);
 
 #endif
- 
+
+  }
+
+
 } 

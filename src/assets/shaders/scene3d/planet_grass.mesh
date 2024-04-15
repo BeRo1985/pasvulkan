@@ -21,12 +21,15 @@
   #define HAVE_PERVERTEX
 #endif
 
-#define GROUP_SIZE 128
+#define TASK_GROUP_SIZE 128
+
+#define MESH_GROUP_SIZE 128
+
 #define GRASS_VERT_COUNT 256
 #define GRASS_PRIM_COUNT 192
 
 #if !defined(VERTEX_SHADER_CODE_PATH)
-layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 layout(triangles, max_vertices = GRASS_VERT_COUNT, max_primitives = GRASS_PRIM_COUNT) out;
 #endif
@@ -161,6 +164,7 @@ void main() {
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
   const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
   const uint countBlades = 32u;
+  const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
 
   ////////////////////////////////////////////////////////////////////////////////
 
