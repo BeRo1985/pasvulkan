@@ -1,8 +1,16 @@
 #version 460
 
-#pragma shader_stage(task)
-
-#extension GL_EXT_mesh_shader : enable 
+#if defined(VERTEX_SHADER_CODE_PATH)
+  // When the vertex shader code path is defined, then this shader is compiled as a compute shader, where
+  // the compute shader code generates payload data for the vertex shader invocations as poor-man mesh 
+  // shader alternative into storage buffers, but with size limitations.  
+  #pragma shader_stage(compute)
+#else
+  // Otherwise, the shader is compiled as a mesh shader, where the task shader code generates payload data
+  // for the mesh shader invocations
+  #pragma shader_stage(task)
+  #extension GL_EXT_mesh_shader : enable 
+#endif
 
 #extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
@@ -95,7 +103,22 @@ struct TaskData {
   float height;
 };
 
+#if defined(VERTEX_SHADER_CODE_PATH)
+
+layout(set = 1, binding = 2, std430) buffer TaskPayloadMetaData {
+  uint countPayloads;
+  uint countVertices;
+} taskPayloadMetaData;
+
+layout(set = 1, binding = 3, std430) buffer TaskPayload {
+  TaskData taskData[];
+} taskPayload;
+
+#else
+
 taskPayloadSharedEXT TaskData taskData;
+
+#endif
 
 void main() {
 
@@ -307,11 +330,34 @@ void main() {
 
   // Otherwise, emit mesh shader invocations for the grass blade set
 
+#if defined(VERTEX_SHADER_CODE_PATH)
+
+  const uint countVerticesPerBladeEdge = pushConstants.countVerticesPerBladeEdge;
+  const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
+  const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
+  const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
+  const uint countBlades = 1u;
+
+  const uint taskIndex = atomicAdd(taskPayloadMetaData.countPayloads, 1u);
+
+  taskPayload.taskData[taskIndex] = TaskData(
+    patchTangentSpaceBasis,
+    patchPosition,
+    globalIndex,
+    grassHeight
+  );
+
+  atomicAdd(taskPayloadMetaData.countVertices, countIndicesPerBlade * countBlades); // since no real index buffer is used, the count of indices is used as count of vertices
+
+#else
+  
   taskData.bladeTangentSpaceBasis = patchTangentSpaceBasis;
   taskData.bladePosition = patchPosition;
   taskData.bladeIndex = globalIndex;
   taskData.height = grassHeight;
 
   EmitMeshTasksEXT(GROUP_SIZE, 1, 1);
+
+#endif
  
 } 

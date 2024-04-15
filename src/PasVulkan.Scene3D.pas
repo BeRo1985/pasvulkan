@@ -3019,6 +3019,7 @@ type EpvScene3D=class(Exception);
        fBufferStreamingMode:TBufferStreamingMode;
        fMultiDrawSupport:Boolean;
        fMaxMultiDrawCount:TpvUInt32;
+       fMeshShaderSupport:Boolean;
        fHardwareRaytracingSupport:Boolean;
        fRaytracingActive:Boolean;
        fAccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags;
@@ -3451,6 +3452,7 @@ type EpvScene3D=class(Exception);
        property BufferStreamingMode:TBufferStreamingMode read fBufferStreamingMode write fBufferStreamingMode;
        property MultiDrawSupport:boolean read fMultiDrawSupport;
        property MaxMultiDrawCount:TpvUInt32 read fMaxMultiDrawCount write fMaxMultiDrawCount;
+       property MeshShaderSupport:Boolean read fMeshShaderSupport;
        property HardwareRaytracingSupport:Boolean read fHardwareRaytracingSupport;
        property RaytracingActive:Boolean read fRaytracingActive;
        property AccelerationStructureInputBufferUsageFlags:TVkBufferUsageFlags read fAccelerationStructureInputBufferUsageFlags;
@@ -20755,6 +20757,11 @@ begin
 
  fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
 
+ fMeshShaderSupport:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
+                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE) and
+                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) and
+                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE);
+
  fHardwareRaytracingSupport:=aUseBufferDeviceAddress and
                              (fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
@@ -20767,9 +20774,6 @@ begin
  end else begin
   fAccelerationStructureInputBufferUsageFlags:=TVkBufferUsageFlags(0);
  end;
-
-//A!
-//fDrawBufferStorageMode:=TDrawBufferStorageMode.SeparateBuffers;
 
  fMeshGenerationCounter:=1;
 
