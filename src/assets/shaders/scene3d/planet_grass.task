@@ -193,7 +193,7 @@ void main() {
 
   vec4 boundingSphere = vec4(
     (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
-    max(max(grassHeight, grassThickness), 0.25)
+    max(max(grassHeight, grassThickness) + 0.25, 0.25) * 2.0
   );
 
 /*
@@ -249,10 +249,10 @@ void main() {
       
         visible = true;
 
+#if 1
         vec4 aabb;
 
         float zNear = abs(uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[3][2] / uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[2][3]);
-
         if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNear, uView.views[pushConstants.viewBaseIndex + viewIndex].projectionMatrix, aabb, true)){
 
           vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
@@ -278,6 +278,7 @@ void main() {
           visible = (((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth);
 
         }
+#endif
 
         if(visible){
           break;
