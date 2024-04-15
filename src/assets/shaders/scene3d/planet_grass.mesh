@@ -156,11 +156,11 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
 void main() {
   
-  const uint countVerticesPerBladeEdge = pushConstants.countVerticesPerBladeEdge;
+  const uint countVerticesPerBladeEdge = 4u;//pushConstants.countVerticesPerBladeEdge;
   const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
   const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
-  const uint countBlades = 1u;
+  const uint countBlades = 32u;
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,7 +294,7 @@ void main() {
     vec3 offset = sideVector * grassThickness;
 
     const vec3 patchPosition = taskData.position;
-    
+
     const mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(taskData.normal);
 
     float t = float(uint(vertexIndex >> 1u)) / float(countVerticesPerBladeEdge - 1u);
