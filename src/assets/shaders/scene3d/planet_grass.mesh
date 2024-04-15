@@ -238,13 +238,12 @@ void main() {
   ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(VERTEX_SHADER_CODE_PATH)
-  {
-
-    const TaskData taskData = taskPayload.taskData[taskIndex];
-
+ const TaskData taskData = taskPayload.taskData[taskIndex];
 #else
-  for(uint i = 0u; i < 2; i++){
-
+  for(uint i = 0u; i < 2; i++)
+#endif
+  {
+#if !defined(VERTEX_SHADER_CODE_PATH)
     uint vertexID = gl_LocalInvocationIndex + (i * GROUP_SIZE);
     
     if(vertexID >= countVertices){
