@@ -7,11 +7,19 @@ layout(push_constant) uniform PushConstants {
 
   uint viewBaseIndex;
   uint countViews;
-  uint countQuadPointsInOneDirection; 
   uint countAllViews;
+  uint countVerticesPerBladeEdge;
   
-  uint resolutionXY;  
+  float maximumDistance;
+  float grassHeight;
+  float grassThickness;
+  float time;
+
+  uint tileMapResolution;
+  uint tileResolution;  
+  uint resolutionXY;
   int frameIndex; 
+
   vec2 jitter;
 
 } pushConstants;

@@ -452,6 +452,20 @@ compileshaderarguments=(
   
   "-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
 
+  "-V planet_grass.task --target-env vulkan1.2 -o ${tempPath}/planet_grass_task.spv"
+  "-V planet_grass.task --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_task.spv"
+  "-V planet_grass.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_task.spv"
+  "-V planet_grass.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_task.spv"
+  "-V planet_grass.task --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_task.spv"
+  "-V planet_grass.task --target-env vulkan1.2 -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_task.spv"
+
+  "-V planet_grass.mesh --target-env vulkan1.2 -o ${tempPath}/planet_grass_mesh.spv"
+  "-V planet_grass.mesh --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_mesh.spv"
+  "-V planet_grass.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_mesh.spv"
+  "-V planet_grass.mesh --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -DVELOCITY -o ${tempPath}/planet_grass_bufref_velocity_mesh.spv"
+  "-V planet_grass.mesh --target-env vulkan1.2 -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_mesh.spv"
+  "-V planet_grass.mesh --target-env vulkan1.2 -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_mesh.spv"
+
   "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
   "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_vert.spv"

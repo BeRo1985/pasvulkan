@@ -20759,8 +20759,8 @@ begin
 
  fMeshShaderSupport:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE) and
-                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE) and
-                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE);
+                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE){and
+                     (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE)};
 
  fHardwareRaytracingSupport:=aUseBufferDeviceAddress and
                              (fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and

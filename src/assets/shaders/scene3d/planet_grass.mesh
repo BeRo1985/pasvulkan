@@ -31,29 +31,7 @@ layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = GRASS_VERT_COUNT, max_primitives = GRASS_PRIM_COUNT) out;
 #endif
 
-layout(push_constant) uniform PushConstants {
-
-  mat4 modelMatrix;
-
-  uint baseViewIndex;
-  uint countViews;
-  uint additionalViewIndex;
-  uint countAdditionalViews; 
-
-  uint tileMapResolution;
-  uint tileResolution;  
-  uint maximumCountVertices;
-  uint maximumCountIndices;
- 
-  float maximumDistance;
-  float grassHeight;
-  float grassThickness;
-  uint countVerticesPerBladeEdge;
-
-  float time;
-  vec2 jitter; 
-
-} pushConstants;
+#include "planet_grass.glsl"
 
 struct View {
   mat4 viewMatrix;
@@ -62,24 +40,24 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 0, binding = 0, std140) uniform uboViews {
+layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
 struct TaskData {
-  mat3 bladeTangentSpaceBasis;
-  vec3 bladePosition;
-  uint bladeIndex;
+  vec3 position;
+  vec3 normal;
+  uint index;
   float height;
 };
 
 #if defined(VERTEX_SHADER_CODE_PATH)
-layout(set = 1, binding = 2, std430) buffer TaskPayloadMetaData {
+layout(set = 4, binding = 2, std430) buffer TaskPayloadMetaData {
   uint countPayloads;
   uint countVertices;
 } taskPayloadMetaData;
 
-layout(set = 1, binding = 3, std430) buffer TaskPayload {
+layout(set = 4, binding = 3, std430) buffer TaskPayload {
   TaskData taskData[];
 } taskPayload;
 #else
@@ -161,6 +139,8 @@ layout(location = 0) out OutBlock {
 
 #include "pcg.glsl"
 
+#include "tangentspacebasis.glsl"
+
 vec3 bezier(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float t){
   return mix(mix(p0, p1, t), mix(p1, p2, t), t);
 }
@@ -169,7 +149,7 @@ vec3 bezierDerivative(const in vec3 p0, const in vec3 p1, const in vec3 p2, cons
   return ((2.0 * (1. - t)) * (p1 - p0)) + ((2.0 * t) * (p2 - p1));
 }
 
-uint viewIndex = pushConstants.baseViewIndex + uint(gl_ViewIndex);
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
@@ -260,7 +240,7 @@ void main() {
 
     // Generate some random data for the grass blade to make it look more natural, but keep it deterministic, based on the global position
     // and the linear global index of the grass blade
-    const uvec4 randomUIntData = pcgHash44(uvec4(taskData.bladeIndex, bladeID, 0u, 0u));
+    const uvec4 randomUIntData = pcgHash44(uvec4(taskData.index, bladeID, 0u, 0u));
 
     // The following line generates a random float value in the range of [0.0, 1.0] for each component through bittwiddling tricks 
     const vec4 randomFloatData = uintBitsToFloat(((randomUIntData >> uvec4(9u)) & uvec4(0x007fffffu)) | uvec4(0x3f800000u)) - vec4(1.0);
@@ -313,8 +293,9 @@ void main() {
 
     vec3 offset = sideVector * grassThickness;
 
-    const vec3 patchPosition = taskData.bladePosition;
-    const mat3 patchTangentSpaceBasis = taskData.bladeTangentSpaceBasis;
+    const vec3 patchPosition = taskData.position;
+    
+    const mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(taskData.normal);
 
     float t = float(uint(vertexIndex >> 1u)) / float(countVerticesPerBladeEdge - 1u);
     float s = float(int(1 - ((int(vertexIndex) & 1) << 1))); // 1 or -1
@@ -351,23 +332,23 @@ void main() {
     
 #else
 
-    outBlock[i].position = position;         
-    outBlock[i].normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
-    outBlock[i].texCoord = vec2(float(uint(i & 1u)), t);
-    outBlock[i].worldSpacePosition = worldSpacePosition;
-    outBlock[i].viewSpacePosition = viewSpacePosition.xyz;  
-    outBlock[i].cameraRelativePosition = worldSpacePosition - cameraPosition;
-    outBlock[i].jitter = pushConstants.jitter;
+    outBlock[vertexID].position = position;         
+    outBlock[vertexID].normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
+    outBlock[vertexID].texCoord = vec2(float(uint(i & 1u)), t);
+    outBlock[vertexID].worldSpacePosition = worldSpacePosition;
+    outBlock[vertexID].viewSpacePosition = viewSpacePosition.xyz;  
+    outBlock[vertexID].cameraRelativePosition = worldSpacePosition - cameraPosition;
+    outBlock[vertexID].jitter = pushConstants.jitter;
   #ifdef VELOCITY
-    outBlock[i].currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
-    outBlock[i].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
+    outBlock[vertexID].currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
+    outBlock[vertexID].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
   #endif
 
   #if defined(RAYTRACING)
-    outWorldSpacePosition[i] = worldSpacePosition;
+    outWorldSpacePosition[vertexID] = worldSpacePosition;
   #endif
 
-    gl_MeshVerticesEXT[i].gl_Position = viewProjectionMatrix * vec4(position, 1.0);
+    gl_MeshVerticesEXT[vertexID].gl_Position = viewProjectionMatrix * vec4(position, 1.0);
 
 #endif
 
@@ -392,7 +373,7 @@ void main() {
 
     uint offset = (bladeID * countVerticesPerBlade) + ((triangleIndex >> 1u) << 1u);
 
-    gl_PrimitiveTriangleIndicesEXT[i] = (((triangleIndex & 1u) == 0u) ? uvec3(0, 1, 2) : uvec3(3, 2, 1)) + uvec3(offset);
+    gl_PrimitiveTriangleIndicesEXT[triangleID] = (((triangleIndex & 1u) == 0u) ? uvec3(0, 1, 2) : uvec3(3, 2, 1)) + uvec3(offset);
 
   }
 #endif
