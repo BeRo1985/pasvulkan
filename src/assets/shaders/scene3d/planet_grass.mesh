@@ -374,6 +374,10 @@ void main() {
   }
 
 #if !defined(VERTEX_SHADER_CODE_PATH)
+  
+  // Not needed for the vertex shader code path, but required for the mesh shader code path, because the mesh 
+  // shader code path deduplicates the vertices of the grass blades index-wise.
+
   // Emit the indices for the grass blade
   for(uint i = 0u; i < 2u; i++){
     
