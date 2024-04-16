@@ -20762,7 +20762,7 @@ begin
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE){and
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE)};
 
- fHardwareRaytracingSupport:=false and
+ fHardwareRaytracingSupport:=//false and
                              aUseBufferDeviceAddress and
                              (fVulkanDevice.RayTracingPipelineFeaturesKHR.rayTracingPipeline<>VK_FALSE) and
                              (fVulkanDevice.RayQueryFeaturesKHR.rayQuery<>VK_FALSE);
