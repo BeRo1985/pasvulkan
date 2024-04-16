@@ -45,7 +45,7 @@ uint totalResolution = pushConstants.tileMapResolution * pushConstants.tileResol
 
 vec3 getTriangleVertex(ivec2 quadXY){
 
-  quadXY = wrapOctahedralTexelCoordinates(ivec2(quadXY) + ivec2(-1, -1), ivec2(totalResolution));
+  quadXY = wrapOctahedralTexelCoordinates(ivec2(quadXY), ivec2(totalResolution));
   
   uvec2 tileMapXY = quadXY / uvec2(pushConstants.tileResolution);
 
