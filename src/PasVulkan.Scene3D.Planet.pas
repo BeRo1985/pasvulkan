@@ -8349,6 +8349,15 @@ begin
                                                         [],
                                                         false);
 
+   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(2,
+                                                        0,
+                                                        1,
+                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                        [],
+                                                        [fPlanet.fData.fVisualMeshDistanceBuffers[Index].DescriptorBufferInfo],
+                                                        [],
+                                                        false);
+
 {  fGrassCullDescriptorSets[Index].WriteToDescriptorSet(2,
                                                         0,
                                                         1,
@@ -9310,6 +9319,15 @@ begin
                    ShaderStageFlags,
                    [],
                    0);
+
+ // VisualMeshDistances
+ result.AddBinding(2,
+                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                   1,
+                   ShaderStageFlags,
+                   [],
+                   0);
+                   
 {
  // GrassMetaData                   
  result.AddBinding(2,
@@ -9345,7 +9363,7 @@ begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),6*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetGrassCullMeshGenerationDescriptorPool');
 end;

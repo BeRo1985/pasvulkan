@@ -52,6 +52,10 @@ layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
+layout(set = 3, binding = 2, std430) buffer VisualMeshDistances {
+  float values[];
+} visualMeshDistances;
+
 #include "frustum.glsl"
 
 #include "aabb.glsl"
@@ -168,9 +172,11 @@ void main() {
 
     /////////////////////////////////////////////////////////////////////////
 
-    uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
+    const uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
 
-    vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
+    const float grassOffsetRadius = visualMeshDistances.values[globalIndex];
+
+    const vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
 //  vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 
@@ -179,7 +185,6 @@ void main() {
     const float grassHeight = pushConstants.grassHeight;
     const float grassThickness = pushConstants.grassThickness;
     const float grassLeaning = 0.3;
-    const float grassOffsetRadius = 0.25;
 
     /////////////////////////////////////////////////////////////////////////
 

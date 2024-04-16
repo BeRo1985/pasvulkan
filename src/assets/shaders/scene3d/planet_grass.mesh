@@ -51,6 +51,10 @@ layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
+layout(set = 3, binding = 2, std430) buffer VisualMeshDistances {
+  float values[];
+} visualMeshDistances;
+
 struct TaskData {
   uint count;
   uint indices[TASK_GROUP_SIZE];
@@ -227,8 +231,6 @@ void main() {
 
   const uint globalIndex = taskData.indices[invocationIndex];
 
-  const float grassOffsetRadius = 0.25;
-
   const uint tileMapIndex = globalIndex / tileSize; 
   const uint localTileIndex = globalIndex - (tileMapIndex * tileSize);
 
@@ -244,9 +246,11 @@ void main() {
   
   const uvec2 globalXY = (tileMapXY * uvec2(pushConstants.tileResolution)) + localTileXY;
 
-  uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
+  const uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
 
-  vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
+  const float grassOffsetRadius = visualMeshDistances.values[globalIndex];
+
+  const vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
 // const uint countVertices = countVerticesPerBlade * countBlades;
 
