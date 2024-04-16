@@ -254,7 +254,8 @@ void main() {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
+  //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
+//mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
 
   mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
@@ -356,7 +357,7 @@ void main() {
     vec3 localP1 = p1 + (offset * (s * 0.7));
     vec3 localP2 = p2 + (offset * (s * 0.3));    
     vec3 position = (pushConstants.modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
-    vec3 normal = normalize(planetNormalMatrix * (patchTangentSpaceBasis * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t)))));
+    vec3 normal = normalize((pushConstants.modelMatrix * vec4(patchTangentSpaceBasis * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t))), 0.0)).xyz);
 
     vec3 worldSpacePosition = position;
 
@@ -373,7 +374,7 @@ void main() {
     outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
     outBlock.jitter = pushConstants.jitter;
   #ifdef VELOCITY
-    outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
+    outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
     outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
   #endif
 
@@ -393,7 +394,7 @@ void main() {
     outBlock[vertexID].cameraRelativePosition = worldSpacePosition - cameraPosition;
     outBlock[vertexID].jitter = pushConstants.jitter;
   #ifdef VELOCITY
-    outBlock[vertexID].currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
+    outBlock[vertexID].currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
     outBlock[vertexID].previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
   #endif
 

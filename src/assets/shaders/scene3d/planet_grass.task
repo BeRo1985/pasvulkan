@@ -145,7 +145,7 @@ void main() {
 
   // Check if the current invocation is still in the valid ranges, otherwise return
   if((tileListIndex < tileMapSize) &&
-     (tileListIndex << countVisibleTiles) &&
+     (tileListIndex < countVisibleTiles) &&
      all(lessThan(localTileXY, uvec2(pushConstants.tileResolution)))){ 
 
     const vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
@@ -282,7 +282,9 @@ void main() {
     /////////////////////////////////////////////////////////////////////////
 
     // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
-    taskData.indices[atomicAdd(taskData.count, 1u)] = globalIndex;
+    if(visible){
+      taskData.indices[atomicAdd(taskData.count, 1u)] = globalIndex;
+    }
 
   }
 

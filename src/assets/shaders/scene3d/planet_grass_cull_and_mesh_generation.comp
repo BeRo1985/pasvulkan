@@ -155,7 +155,7 @@ void main(){
 
   // Check if the current invocation is still in the valid ranges, otherwise return
   if((tileListIndex >= tileMapSize) || 
-     //(tileListIndex >= countVisibleTiles) || 
+     (tileListIndex >= countVisibleTiles) || 
      any(greaterThanEqual(localTileXY, uvec2(pushConstants.tileResolution)))){ 
     return;
   }
@@ -163,15 +163,16 @@ void main(){
   vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
   int countLODLevels = textureQueryLevels(uTextureDepth);
 
-  const uint tileMapIndex = tileListIndex;
-  ;// visibleTileList.visibleTiles[tileListIndex + 3u];
+  const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
 
   const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
   const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
 
   uvec2 globalXY = (uvec2(tileMapX, tileMapY) * pushConstants.tileResolution) + localTileXY;
 
-  uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
+  const uint globalIndex = (((tileMapY * pushConstants.tileMapResolution) + tileMapX) * 
+                             (pushConstants.tileResolution * pushConstants.tileResolution)) + 
+                           ((localTileXY.y * pushConstants.tileResolution) + localTileXY.x);
 
   /////////////////////////////////////////////////////////////////////////
 

@@ -106,7 +106,7 @@ void main(){
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
   outBlock.jitter = pushConstants.jitter;
 #ifdef VELOCITY
-  outBlock.currentClipSpace = (projectionMatrix * viewMatrix) * vec4(position, 1.0);
+  outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
   outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
 #endif
 

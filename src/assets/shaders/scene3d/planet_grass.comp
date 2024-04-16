@@ -22,14 +22,12 @@ layout(push_constant) uniform PushConstants {
 
   uint tileMapResolution;
   uint tileResolution;  
-  uint maximumCountVertices;
-  uint maximumCountIndices;
+  uint maximumCountBlades;
+  uint countVerticesPerBladeEdge;
  
   float maximumDistance;
   float grassHeight;
   float grassThickness;
-  uint countVerticesPerBladeEdge;
-
   float time;
 
 } pushConstants;
@@ -55,25 +53,32 @@ layout(set = 1, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
+/*
+struct VkDrawIndirectCommand {
+  uint vertexCount;
+  uint instanceCount;
+  uint firstVertex;
+  uint firstInstance;
+} VkDrawIndirectCommand;
+*/
+
 layout(set = 1, binding = 2, std430) buffer GrassMetaData {
-  uint countGrassVertices;
-  uint countGrassIndices;  
+  uint vertexCount;
+  uint instanceCount;
+  uint firstVertex;
+  uint firstInstance;
 } grassMetaData;
 
 struct GrassBlade {
-  vec4 v1_xyz_v2_w;
-  vec4 v2_yz_up_xy;
-  vec4 up_z_bitangent_xyz;
-  vec4 bitangent;
+  uint mapIndex;
+  uint bladeIndex;
+  float offsetRadius; 
+  float lod;
 };
 
 layout(set = 1, binding = 3, std430) buffer GrassBlades {
   GrassBlade blades[];
 } grassBlades;
-
-layout(set = 1, binding = 4, std430) buffer GrassIndices {
-  uint indices[];
-} grassIndices;
 
 #include "frustum.glsl"
 
@@ -113,6 +118,8 @@ void main(){
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
   const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
 
+  const uint countBlades = 1u;
+
   /////////////////////////////////////////////////////////////////////////
    
   uint localInvocationIndex = gl_LocalInvocationIndex;
@@ -139,8 +146,7 @@ void main(){
   barrier(); 
 
   // A early pre-check if there is enough space for the new vertices and indices
-  if(((grassMetaData.countGrassVertices + countVerticesPerBlade) > pushConstants.maximumCountVertices) ||
-     ((grassMetaData.countGrassIndices + countIndicesPerBlade) > pushConstants.maximumCountIndices)){
+  if((grassMetaData.vertexCount + countBlades) > pushConstants.maximumCountBlades){
     return;
   } 
 
@@ -173,7 +179,9 @@ void main(){
 
   uvec2 globalXY = (uvec2(tileMapX, tileMapY) * pushConstants.tileResolution) + localTileXY;
 
-  uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
+  const uint globalIndex = (((tileMapY * pushConstants.tileMapResolution) + tileMapX) * 
+                             (pushConstants.tileResolution * pushConstants.tileResolution)) + 
+                           ((localTileXY.y * pushConstants.tileResolution) + localTileXY.x);
 
   /////////////////////////////////////////////////////////////////////////
 
@@ -195,13 +203,13 @@ void main(){
 
   vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
-  vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
+  //vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 
-  vec3 patchTangent, patchBitangent;
+  //vec3 patchTangent, patchBitangent;
 
-  getTangentSpaceBasisFromNormal(patchNormal, patchTangent, patchBitangent); 
+  //getTangentSpaceBasisFromNormal(patchNormal, patchTangent, patchBitangent); 
 
-  mat3 patchTangentSpaceBasis = mat3(patchTangent, patchBitangent, patchNormal);
+  //mat3 patchTangentSpaceBasis = mat3(patchTangent, patchBitangent, patchNormal);
 
   /////////////////////////////////////////////////////////////////////////
 
@@ -211,23 +219,12 @@ void main(){
 
   /////////////////////////////////////////////////////////////////////////
 
-  // The calculation of the bounding sphere is based on the worst case scenario, assuming that the grass blade is leaning to
-  // the maximum, the bounding sphere is calculated by the following formula:
-  //
-  //   center = patchPosition + (patchNormal * (max(grassHeight, grassThickness) * 0.5))
-  //   radius = max(grassHeight, grassThickness) * 0.5
+  float offsetRadius = 0.25;
 
   vec4 boundingSphere = vec4(
     (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
-    max(max(grassHeight, grassThickness), 0.25)
+    max(max(grassHeight, grassThickness) + offsetRadius, offsetRadius) * 2.0
   );
-
-/*
-  vec4 boundingSphere = vec4(
-    (pushConstants.modelMatrix * vec4(fma(patchNormal, vec3(max(grassHeight, grassThickness) * 0.5), patchPosition), 1.0)).xyz,
-    max(grassHeight, grassThickness) * 0.5
-  );
-*/
 
   /////////////////////////////////////////////////////////////////////////
 
@@ -326,144 +323,11 @@ void main(){
 
   /////////////////////////////////////////////////////////////////////////
 
-  // Otherwise, add the vertices and indices for the grass blades
+  // Otherwise, add the grass blades
 
-  uint countBlades = 1u;
-
+  uint baseBladeIndex = atomicAdd(grassMetaData.vertexCount, countBlades); 
   for(uint bladeIndex = 0u; bladeIndex < countBlades; bladeIndex++){
- 
-    // Generate some random data for the grass blade to make it look more natural, but keep it deterministic, based on the global position
-    // and the linear global index of the grass blade
-    const uvec4 randomUIntData = pcgHash44(uvec4(globalXY.xy, globalIndex - bladeIndex, bladeIndex));
-
-    // The following line generates a random float value in the range of [0.0, 1.0] for each component through bittwiddling tricks 
-    const vec4 randomFloatData = uintBitsToFloat(((randomUIntData >> uvec4(9u)) & uvec4(0x007fffffu)) | uvec4(0x3f800000u)) - vec4(1.0);
-
-    float bladeDirectionAngle = randomFloatData.y * 6.28318530718; // 2 * PI
-    vec2 bladeDirection = normalize(sin(vec2(bladeDirectionAngle) + vec2(1.57079632679, 0.0)));
-
-    float offsetAngle = randomFloatData.z * 6.28318530718; // 2 * PI
-    vec2 offsetDirection = normalize(sin(vec2(offsetAngle) + vec2(1.57079632679, 0.0)));      
-    float offsetRadius = randomFloatData.x * 0.25; // TODO: Make it configurable
-
-    vec3 bladeOffset = vec3(offsetDirection.xy, 0.0) * offsetRadius; 
-
-    vec3 p0 = bladeOffset;
-    vec3 p1 = p0 + vec2(0.0, grassHeight).xxy;
-    vec3 p2 = fma(vec3(bladeDirection, 0.0), vec3(grassHeight * grassLeaning), p1);      
-
-    // Add some wind effect to the grass blade 
-    {
-
-      const float windDirection = radians(20.0); // TODO: Calculate this based on the global position in 3D space and make it configurable
-  
-      const float windStrength = 0.01; // TODO: Calculate this based on the global position in 3D space and make it configurable
-
-      vec2 windOffset = sin(
-        vec2(
-          pushConstants.time + 
-          dot(sin(vec2(windDirection) + vec2(1.57079632679, 0.0)), vec2(globalXY) / vec2(pushConstants.tileMapResolution * pushConstants.tileResolution)) + 
-          (randomFloatData.w * 4.0)
-        ) * vec2(0.5, 1.0)
-      ) * vec2(2.0, 1.0) * windStrength;
-
-      // TODO: Add additional usage of a velocity field for physical interaction with sphere colliders just as the player
-
-      p2 += vec3(windOffset, 0.0);
-
-    }
-    
-    // Ensure that the grass blade has a persistent length
-    {
-      vec3 p01 = p1 - p0;
-      vec3 p12 = p2 - p1;
-      float L = fma(2.0, length(p2 - p0), length(p01) + length(p12)) / 3.0; 
-      float lDiff = grassHeight / L;
-      p1 = fma(p01, vec3(lDiff), p0); 
-      p2 = fma(p12, vec3(lDiff), p1);
-    }
-
-    vec3 sideVector = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
-
-    vec3 offset = sideVector * grassThickness;
-
-    /////////////////////////////////////////////////////////////////////////
-
-    uint baseVertexIndex = atomicAdd(grassMetaData.countGrassVertices, countVerticesPerBlade);
-    uint baseIndexIndex = atomicAdd(grassMetaData.countGrassIndices, countIndicesPerBlade);
-
-    // Post-check if there is enough space for the new vertices and indices
-    if(((baseVertexIndex + countVerticesPerBlade) > pushConstants.maximumCountVertices) ||
-      ((baseIndexIndex + countIndicesPerBlade) > pushConstants.maximumCountIndices)){
-      return;
-    }
-
-    // The following diagram shows the vertex and triangle layout for a single grass blade with 4 edge vertices on each side as example:
-    //
-    // V6 +-----+  V7
-    //    |\  T5|
-    //    | \   |
-    //    |  \  |
-    //    |   \ |
-    //    | T4 \|
-    // V4 +-----+ V5
-    //    |\  T3|
-    //    | \   |
-    //    |  \  |
-    //    |   \ |
-    //    | T2 \|
-    // V2 +-----+ V3
-    //    |\  T1|
-    //    | \   |
-    //    |  \  |
-    //    |   \ |
-    //    | T0 \|
-    // V0 +-----+ V1
-    //
-    // Hint: Winding order don't matter here, because grass is double sided for the rendering, so no backface 
-    //       culling is performed here at all 
-
-    // Calculate and store the vertices for the grass blade
-    for(uint i = 0u, j = uint(countVerticesPerBlade); i < j; i++){
-      float t = float(uint(i >> 1u)) / float(uint((countVerticesPerBlade >> 1u) - 1u));
-      float s = float(int(1 - ((int(i) & 1) << 1))); // 1 or -1
-      vec3 localP0 = p0 + (offset * (s * 1.0));
-      vec3 localP1 = p1 + (offset * (s * 0.7));
-      vec3 localP2 = p2 + (offset * (s * 0.3));    
-      vec3 position = (pushConstants.modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
-      vec3 normal = normalize(planetNormalMatrix * (patchTangentSpaceBasis * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t)))));
-      grassVertices.vertices[baseVertexIndex + i] = GrassVertex(
-        uvec4(
-          floatBitsToUint(position),                      // xyz: 32-bit float vertex position 
-          packSnorm2x16(octSignedEncode(normal))          //   w: 2x 16-bit signed normalized octahedral-encoded normal
-        ),
-        uvec4(
-          packUnorm2x16(vec2(float(uint(i & 1u)), t)),    //   x: 2x 16-bit unsigned normalized texcoord
-          0u,                                             //   y: unused
-          0u,                                             //   z: unused
-          0u                                              //   w: unused
-        )
-      );    
-    }
-
-    // Store the indices for the grass blade
-    for(uint i = 0u, j = uint(countTrianglesPerBlade) >> 1u; i < j; i++){
-      
-      uint triangleBaseIndex = baseIndexIndex + (i * 6u);
-      uint triangleBaseVertex = baseVertexIndex + (i << 1u);
-
-      // First triangle of the quad 
-      grassIndices.indices[triangleBaseIndex + 0u] = triangleBaseVertex + 0u;
-      grassIndices.indices[triangleBaseIndex + 1u] = triangleBaseVertex + 1u;
-      grassIndices.indices[triangleBaseIndex + 2u] = triangleBaseVertex + 2u;
-
-      // Second triangle of the quad    
-      grassIndices.indices[triangleBaseIndex + 3u] = triangleBaseVertex + 3u;
-      grassIndices.indices[triangleBaseIndex + 4u] = triangleBaseVertex + 2u;
-      grassIndices.indices[triangleBaseIndex + 5u] = triangleBaseVertex + 1u;
-
-    }
-
+    grassBlades.blades[baseBladeIndex + bladeIndex] = GrassBlade(globalIndex, bladeIndex, offsetRadius, 1.0);
   }
 
 }

@@ -452,6 +452,8 @@ compileshaderarguments=(
   
   "-V planet_grass_cull_and_mesh_generation.comp -o ${tempPath}/planet_grass_cull_and_mesh_generation_comp.spv"
 
+  "-V planet_grass.comp -o ${tempPath}/planet_grass.spv"
+
   "-V planet_grass.task --target-env vulkan1.2 -o ${tempPath}/planet_grass_task.spv"
   "-V planet_grass.task --target-env vulkan1.2 -DVELOCITY -o ${tempPath}/planet_grass_velocity_task.spv"
   "-V planet_grass.task --target-env vulkan1.2 -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_task.spv"
