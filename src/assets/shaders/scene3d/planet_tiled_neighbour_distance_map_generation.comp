@@ -32,8 +32,6 @@ layout(set = 0, binding = 2, std430) buffer NeighbourDistances {
   float values[];
 } neighbourDistances;
 
-layout(set = 0, binding = 3) uniform texture2D uTextureHeightMap; // r32f
-
 layout(push_constant) uniform PushConstants {
   uint tileMapResolution;
   uint tileResolution;
