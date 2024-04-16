@@ -817,7 +817,7 @@ type TpvScene3DPlanets=class;
                     ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
-                    CountVerticesPerBladeEdge:TpvUInt32;
+                    MaximalCountBladesPerPatch:TpvUInt32;
 
                     MaximumDistance:TpvFloat;
                     GrassHeight:TpvFloat;
@@ -7533,10 +7533,10 @@ begin
       fGrassPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
       fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
       fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
-      fGrassPushConstants.MaximumDistance:=Planet.fTopRadius*0.75;
+      fGrassPushConstants.MaximumDistance:=Planet.fTopRadius;
       fGrassPushConstants.GrassHeight:=0.125;
       fGrassPushConstants.GrassThickness:=0.01;
-      fGrassPushConstants.CountVerticesPerBladeEdge:=4;
+      fGrassPushConstants.MaximalCountBladesPerPatch:=8;
       fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
        fGrassPushConstants.Jitter:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].Jitter.xy;

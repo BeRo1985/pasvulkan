@@ -8,7 +8,7 @@ layout(push_constant) uniform PushConstants {
   uint viewBaseIndex;
   uint countViews;
   uint countAllViews;
-  uint countVerticesPerBladeEdge;
+  uint maximalCountBladesPerPatch;
   
   float maximumDistance;
   float grassHeight;

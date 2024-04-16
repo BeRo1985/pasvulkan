@@ -209,7 +209,7 @@ void main() {
 
 // const uint countVertices = countVerticesPerBlade * countBlades;
 
-  const uint maxCountBlades = 8u;
+  const uint maxCountBlades = min(max(pushConstants.maximalCountBladesPerPatch, 1u), 8u); // 1 .. 8
 
   const float countBladesFloat = mix(
     1.0, 
