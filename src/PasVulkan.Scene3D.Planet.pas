@@ -7473,7 +7473,7 @@ begin
 
   if assigned(fGrassPipeline) and
      not (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,
-                    TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
+                    //TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,
                     TpvScene3DPlanet.TRenderPass.TMode.ShadowMap,
                     TpvScene3DPlanet.TRenderPass.TMode.ShadowMapDisocclusion]) then begin
 
