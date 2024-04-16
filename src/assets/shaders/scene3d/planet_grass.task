@@ -136,10 +136,10 @@ void main() {
 
   const uint localTileInvocationIndex = gl_GlobalInvocationID.x;
 
-  const uint localTileY = localTileInvocationIndex / (pushConstants.tileResolution >> 2u); 
-  const uint localTileX = localTileInvocationIndex - (localTileY * (pushConstants.tileResolution >> 2u));
+  const uint localTileY = localTileInvocationIndex / (pushConstants.tileResolution >> 0u); 
+  const uint localTileX = localTileInvocationIndex - (localTileY * (pushConstants.tileResolution >> 0u));
 
-  const uvec2 localTileXY = uvec2(localTileX, localTileY) << uvec2(2u);
+  const uvec2 localTileXY = uvec2(localTileX, localTileY) << uvec2(0u);
 
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
