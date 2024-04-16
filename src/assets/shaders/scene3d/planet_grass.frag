@@ -98,6 +98,8 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 
 #include "math.glsl"
 
+#include "srgb.glsl"
+
 #ifdef RAYTRACING
   #include "raytracing.glsl"
 #endif
@@ -169,10 +171,14 @@ void main(){
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
-  //vec4 albedo = vec4(0.41, 0.44, 0.29, 1.0);
-  vec4 albedo = vec4(0.140645, 0.164282, 0.065656, 1.0) * clamp(inBlock.texCoord.y, 0.1, 1.0);  
+  const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
+  const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);
+
+  const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
+
+  vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
   vec4 normalHeight = vec4(0.5, 0.5, 0.5, 0.5);
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.0, 0.0, 0.0);
   
   workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
  
