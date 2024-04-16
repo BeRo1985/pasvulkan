@@ -23,7 +23,7 @@
   #define HAVE_PERVERTEX
 #endif
 
-#define TASK_GROUP_SIZE 64
+#define TASK_GROUP_SIZE 128
 
 #define MESH_GROUP_SIZE 32 // 128
 

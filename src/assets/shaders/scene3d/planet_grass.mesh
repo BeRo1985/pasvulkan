@@ -21,7 +21,7 @@
   #define HAVE_PERVERTEX
 #endif
 
-#define TASK_GROUP_SIZE 64
+#define TASK_GROUP_SIZE 128
 
 #define MESH_GROUP_SIZE 32 // 128
 
@@ -211,7 +211,14 @@ void main() {
 
   const uint maxCountBlades = 8u;
 
-  const float countBladesFloat = mix(float(maxCountBlades), 2.0, clamp(length(patchPosition - inverseViewMatrix[3].xyz) / pushConstants.maximumDistance, 0.0, 1.0));
+  const float countBladesFloat = mix(
+    1.0, 
+    float(maxCountBlades), 
+    min(
+      pow(clamp(1.0 / (1.0 + max(0.0, log2(distance(patchPosition, inverseViewMatrix[3].xyz)) - 2.0)), 0.0, 1.0), 1.0),
+      pow(1.0 - clamp(distance(patchPosition, inverseViewMatrix[3].xyz) / pushConstants.maximumDistance, 0.0, 1.0), 2.0)
+    )
+  );
 
   const uint countBlades = uint(ceil(countBladesFloat));
 
@@ -221,7 +228,7 @@ void main() {
   const uint countTriangles = countTrianglesPerBlade * countBlades;
 
   const float grassHeight = pushConstants.grassHeight;
-  const float grassThickness = pushConstants.grassThickness * ((invocationIndex == (countBlades - 1u)) ? fract(countBladesFloat) : 1.0) * (float(maxCountBlades) / countBladesFloat);
+  const float grassThickness = pushConstants.grassThickness;
   const float grassLeaning = 0.03; // TODO: Make it configurable
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -355,7 +362,7 @@ void main() {
 
     vec3 sideVector = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
 
-    vec3 offset = sideVector * grassThickness;
+    vec3 offset = sideVector * grassThickness * ((bladeID == (countBlades - 1u)) ? fract(countBladesFloat) : 1.0) * (float(maxCountBlades) / countBladesFloat);
 
     float t = float(uint(vertexIndex >> 1u)) / float(countVerticesPerBladeEdge - 1u);
     float s = float(int(1 - ((int(vertexIndex) & 1) << 1))); // 1 or -1

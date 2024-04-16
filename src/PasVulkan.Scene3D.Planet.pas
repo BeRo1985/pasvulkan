@@ -7533,9 +7533,9 @@ begin
       fGrassPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
       fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
       fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
-      fGrassPushConstants.MaximumDistance:=1000.0;
+      fGrassPushConstants.MaximumDistance:=Planet.fTopRadius*0.75;
       fGrassPushConstants.GrassHeight:=0.125;
-      fGrassPushConstants.GrassThickness:=0.03;
+      fGrassPushConstants.GrassThickness:=0.01;
       fGrassPushConstants.CountVerticesPerBladeEdge:=4;
       fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);
       if fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque] then begin
@@ -7572,7 +7572,7 @@ begin
                                      SizeOf(TVkDrawIndexedIndirectCommand));                   }
 
        TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
-                                                                               (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+63) shr 6,
+                                                                               (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
                                                                                ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
                                                                                1
                                                                               {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
