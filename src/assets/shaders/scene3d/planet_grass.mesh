@@ -227,6 +227,8 @@ void main() {
 
   const uint globalIndex = taskData.indices[invocationIndex];
 
+  const float grassOffsetRadius = 0.25;
+
   const uint tileMapIndex = globalIndex / tileSize; 
   const uint localTileIndex = globalIndex - (tileMapIndex * tileSize);
 
@@ -365,7 +367,7 @@ void main() {
 
     float offsetAngle = randomFloatData.z * 6.28318530718; // 2 * PI
     vec2 offsetDirection = normalize(sin(vec2(offsetAngle) + vec2(1.57079632679, 0.0)));      
-    float offsetRadius = randomFloatData.x * 0.25; // TODO: Make it configurable
+    float offsetRadius = randomFloatData.x * grassOffsetRadius;
 
     vec3 bladeOffset = vec3(offsetDirection.xy, 0.0) * offsetRadius; 
 

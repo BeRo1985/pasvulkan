@@ -179,12 +179,13 @@ void main() {
     const float grassHeight = pushConstants.grassHeight;
     const float grassThickness = pushConstants.grassThickness;
     const float grassLeaning = 0.3;
+    const float grassOffsetRadius = 0.25;
 
     /////////////////////////////////////////////////////////////////////////
 
     vec4 boundingSphere = vec4(
       (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
-      max(max(grassHeight, grassThickness) + 0.25, 0.25) * 2.0
+      max(max(grassHeight, grassThickness) + grassOffsetRadius, grassOffsetRadius) * 2.0
     );
 
     /////////////////////////////////////////////////////////////////////////
