@@ -188,7 +188,7 @@ void main() {
     );
 
     /////////////////////////////////////////////////////////////////////////
-
+ 
     bool visible = false;
 
     // Distance culling based on the bounding sphere of the grass blade
