@@ -35,12 +35,8 @@ layout(set = 0, binding = 2, std430) buffer NeighbourDistances {
 layout(set = 0, binding = 3) uniform texture2D uTextureHeightMap; // r32f
 
 layout(push_constant) uniform PushConstants {
-  //mat4 modelMatrix;
-  float bottomRadius;
-  float topRadius;
   uint tileMapResolution;
   uint tileResolution;
-  int lod;
 } pushConstants;
 
 #include "octahedral.glsl"
@@ -90,8 +86,6 @@ void main(){
         tileVertexXY.x = tileVertexIndex - (tileVertexXY.y * pushConstants.tileResolution);
 
         uvec2 quadXY = (tileMapXY * pushConstants.tileResolution) + tileVertexXY;
-
-        // Variant that uses temporary neighbor vertices to calculate the distances
 
         // Calculate the distances to the neighbors
 
