@@ -148,7 +148,13 @@ vec3 workNormal;
 
 void main(){
 
-  vec3 normal = inBlock.normal.xyz;
+  float sideSign = gl_FrontFacing ? 1.0 : -1.0;
+
+  vec3 normal = inBlock.normal.xyz * sideSign;
+  if(dot(normal, inBlock.viewSpacePosition) > 0.0){
+    normal = -normal;
+    sideSign = -sideSign;
+  }
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
@@ -160,7 +166,7 @@ void main(){
                             inWorldSpacePositionPerVertex[1] - inWorldSpacePositionPerVertex[0], 
                             inWorldSpacePositionPerVertex[2] - inWorldSpacePositionPerVertex[0]
                           )
-                        );
+                        ) * sideSign;
 #else
   vec3 triangleNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition)));
 #endif

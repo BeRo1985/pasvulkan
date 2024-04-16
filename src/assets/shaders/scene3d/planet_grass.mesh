@@ -156,13 +156,31 @@ vec3 bezierDerivative(const in vec3 p0, const in vec3 p1, const in vec3 p2, cons
   return ((2.0 * (1. - t)) * (p1 - p0)) + ((2.0 * t) * (p2 - p1));
 }
 
+float easeOut(const in float t, const in float power){
+  return 1.0 - pow(1.0 - t, power);
+}
+
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 
+shared mat4 viewProjectionMatrix;
+shared mat4 inverseModelViewMatrix;
+shared mat3 normalModelMatrix;
+
 void main() {
   
+  if(gl_LocalInvocationIndex == 0u){
+    viewProjectionMatrix = projectionMatrix * viewMatrix;
+    inverseModelViewMatrix = inverse(viewMatrix * pushConstants.modelMatrix);
+    normalModelMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
+  }
+
+  barrier();
+
+  /////////////////////////////////////////////////////////////////////////////
+
   const uint countVerticesPerBladeEdge = 4u;//pushConstants.countVerticesPerBladeEdge;
   const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
@@ -270,8 +288,6 @@ void main() {
   //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
 //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
 
-  mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
-
 #if 1
   // The actual standard approach
   vec3 cameraPosition = inverseViewMatrix[3].xyz;
@@ -291,6 +307,16 @@ void main() {
   vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 
   const mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(patchNormal);
+
+  /////////////////////////////////////////////////////////////////////////////
+
+  // The following code calculates the camera-relative left vector of the camera in patch space
+  const vec3 cameraWorldLeft = normalize(transpose(patchTangentSpaceBasis) * (inverseModelViewMatrix * vec4(-1.0, 0.0, 0.0, 0.0)).xyz);
+
+  const vec3 viewDirection = normalize((pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz - cameraPosition);
+  const vec3 viewDirectionXZ = normalize(vec3(viewDirection.x, 0.0, viewDirection.z));
+
+  const mat3 modelNormalOutputMatrix = patchTangentSpaceBasis * normalModelMatrix;
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -317,7 +343,7 @@ void main() {
     const vec4 randomFloatData = uintBitsToFloat(((randomUIntData >> uvec4(9u)) & uvec4(0x007fffffu)) | uvec4(0x3f800000u)) - vec4(1.0);
 
     float bladeDirectionAngle = randomFloatData.y * 6.28318530718; // 2 * PI
-    vec2 bladeDirection = normalize(sin(vec2(bladeDirectionAngle) + vec2(1.57079632679, 0.0)));
+    vec3 bladeDirection = vec3(normalize(sin(vec2(bladeDirectionAngle) + vec2(1.57079632679, 0.0))), 0.0);
 
     float offsetAngle = randomFloatData.z * 6.28318530718; // 2 * PI
     vec2 offsetDirection = normalize(sin(vec2(offsetAngle) + vec2(1.57079632679, 0.0)));      
@@ -327,7 +353,7 @@ void main() {
 
     vec3 p0 = bladeOffset;
     vec3 p1 = p0 + vec2(0.0, grassHeight).xxy;
-    vec3 p2 = fma(vec3(bladeDirection, 0.0), vec3(grassHeight * grassLeaning), p1);      
+    vec3 p2 = fma(bladeDirection, vec3(grassHeight * grassLeaning), p1);      
 
     // Add some wind effect to the grass blade 
     {
@@ -362,6 +388,11 @@ void main() {
 
     vec3 sideVector = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
 
+    const vec3 faceNormalVector = normalize(cross(sideVector, bladeDirection));
+
+    const float viewDotNormal = clamp(dot(modelNormalOutputMatrix * faceNormalVector, viewDirectionXZ), 0.0, 1.0);
+    const float viewSpaceThickenFactor = clamp(easeOut(1.0 - viewDotNormal, 4.0) * smoothstep(0.0, 0.2, viewDotNormal), 0.0, 1.0);
+
     float t = float(uint(vertexIndex >> 1u)) / float(countVerticesPerBladeEdge - 1u);
 
     float s = float(int(1 - ((int(vertexIndex) & 1) << 1))); // 1 or -1
@@ -369,6 +400,7 @@ void main() {
     vec3 offset = sideVector * 
                   (
                     grassThickness * // Base thickness of the grass blade 
+                    (1.0 + (viewSpaceThickenFactor * 0.5)) * // Thicken the grass blade based on the view direction
                     mix(1.0, 0.01, smoothstep(0.5, 1.0, t)) * // tapering towards the top to the grass blade tip
                     ((bladeID == (countBlades - 1u)) ? fract(countBladesFloat) : 1.0) * // LOD fade out fractional scaling for to keep the LOD transition smooth 
                     (float(maxCountBlades) / countBladesFloat) // LOD width compensation scaling for to keep the visual appearance of the grass blades consistent even in the distance  
@@ -378,7 +410,7 @@ void main() {
     vec3 localP1 = p1 + (offset * (s * 0.7));
     vec3 localP2 = p2 + (offset * (s * 0.3));    
     vec3 position = (pushConstants.modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
-    vec3 normal = normalize((pushConstants.modelMatrix * vec4(patchTangentSpaceBasis * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t))), 0.0)).xyz);
+    vec3 normal = normalize(modelNormalOutputMatrix * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t))));
 
     vec3 worldSpacePosition = position;
 
@@ -388,7 +420,7 @@ void main() {
 #if defined(VERTEX_SHADER_CODE_PATH)
 
     outBlock.position = position;         
-    outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
+    outBlock.normal = normal;
     outBlock.texCoord = vec2(float(uint(vertexIndex & 1u)), t);
     outBlock.worldSpacePosition = worldSpacePosition;
     outBlock.viewSpacePosition = viewSpacePosition.xyz;  
@@ -408,7 +440,7 @@ void main() {
 #else
 
     outBlock[vertexID].position = position;         
-    outBlock[vertexID].normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
+    outBlock[vertexID].normal = normal;
     outBlock[vertexID].texCoord = vec2(float(uint(i & 1u)), t);
     outBlock[vertexID].worldSpacePosition = worldSpacePosition;
     outBlock[vertexID].viewSpacePosition = viewSpacePosition.xyz;  
@@ -448,7 +480,7 @@ void main() {
 
     uint offset = (bladeID * countVerticesPerBlade) + ((triangleIndex >> 1u) << 1u);
 
-    gl_PrimitiveTriangleIndicesEXT[triangleID] = (((triangleIndex & 1u) == 0u) ? uvec3(0, 1, 2) : uvec3(3, 2, 1)) + uvec3(offset);
+    gl_PrimitiveTriangleIndicesEXT[triangleID] = (((triangleIndex & 1u) == 0u) ? uvec3(0, 2, 1) : uvec3(1, 2, 3)) + uvec3(offset);
 
   }
 #endif
