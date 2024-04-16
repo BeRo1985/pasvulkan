@@ -954,7 +954,7 @@ for index in ${!compileshaderarguments[@]}; do
         parameters="$parameters --target-env vulkan1.2"
       fi
     fi
-    ${glslangValidatorPath} $parameters #--target-env spirv1.5 >/dev/null
+    ${glslangValidatorPath} -g $parameters #--target-env spirv1.5 >/dev/null
     if [ $? -ne 0 ]; then
       echo "Error encountered. Stopping compilation."
       kill -s TERM 0

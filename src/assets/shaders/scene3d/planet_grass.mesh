@@ -21,12 +21,12 @@
   #define HAVE_PERVERTEX
 #endif
 
-#define TASK_GROUP_SIZE 128
+#define TASK_GROUP_SIZE 64
 
-#define MESH_GROUP_SIZE 128
+#define MESH_GROUP_SIZE 32 // 128
 
-#define GRASS_VERT_COUNT 256
-#define GRASS_PRIM_COUNT 192
+#define GRASS_VERT_COUNT 64 // 256
+#define GRASS_PRIM_COUNT 48 // 192
 
 #if !defined(VERTEX_SHADER_CODE_PATH)
 layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
@@ -52,8 +52,8 @@ layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
 } visualMeshVertices;
 
 struct TaskData {
-  uint countPositions;
-  uint positions[TASK_GROUP_SIZE]; // 2x 16-bit integers for the position packed into a 32-bit integer 
+  uint count;
+  uint indices[TASK_GROUP_SIZE];
 };
 
 #if defined(VERTEX_SHADER_CODE_PATH)
@@ -167,10 +167,53 @@ void main() {
   const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
   const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
-  const uint countBlades = 32u;
+  const uint countBlades = 8u;
   const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
 
   ////////////////////////////////////////////////////////////////////////////////
+
+#if defined(VERTEX_SHADER_CODE_PATH)
+  // TODO: Implement it in a correct way 
+  const uint invocationIndex = vertexID / countVerticesPerBlade;
+#else
+  const uint invocationIndex = gl_WorkGroupID.x;
+#endif
+
+  if(invocationIndex >= taskData.count){
+#if defined(VERTEX_SHADER_CODE_PATH)
+    gl_Position = vec4(uintBitsToFloat(0x7fc00000u)); // NaN for discarded vertices, not optimal, but it should work
+#endif
+    return; // Early exit, because the position index is out of bounds
+  }
+
+  const float grassHeight = pushConstants.grassHeight;
+  const float grassThickness = pushConstants.grassThickness;
+  const float grassLeaning = 0.03; // TODO: Make it configurable
+
+  const uint tileSize = pushConstants.tileResolution * pushConstants.tileResolution;
+
+  const uint globalIndex = taskData.indices[invocationIndex];
+
+  const uint tileMapIndex = globalIndex / tileSize; 
+  const uint localTileIndex = globalIndex - (tileMapIndex * tileSize);
+
+  const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
+  const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
+
+  const uvec2 tileMapXY = uvec2(tileMapX, tileMapY);
+
+  const uint localTileY = localTileIndex / pushConstants.tileResolution;
+  const uint localTileX = localTileIndex - (localTileY * pushConstants.tileResolution);
+
+  const uvec2 localTileXY = uvec2(localTileX, localTileY);
+  
+  const uvec2 globalXY = (tileMapXY * uvec2(pushConstants.tileResolution)) + localTileXY;
+
+  uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
+
+  vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
+
+// const uint countVertices = countVerticesPerBlade * countBlades;
 
   const uint countVertices = countVerticesPerBlade * countBlades;
   const uint countTriangles = countTrianglesPerBlade * countBlades;
@@ -230,34 +273,6 @@ void main() {
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////
-
-#if defined(VERTEX_SHADER_CODE_PATH)
-  // TODO: Implement it in a correct way 
-  const uint positionIndex = vertexID / countVerticesPerBlade;
-  if(positionIndex >= taskData.countPositions){
-    gl_Position = vec4(uintBitsToFloat(0x7fc00000u)); // NaN for discarded vertices, not optimal, but it should work
-    return; // Early exit, because the position index is out of bounds
-  }
-#else
-  const uint positionIndex = gl_GlobalInvocationID.x;
-  if(positionIndex >= taskData.countPositions){
-    return; // Early exit, because the position index is out of bounds
-  }
-#endif
-
-  const float grassHeight = pushConstants.grassHeight;
-  const float grassThickness = pushConstants.grassThickness;
-  const float grassLeaning = 0.03; // TODO: Make it configurable
-
-  const uint globalPosition = taskData.positions[positionIndex];
-
-  const uvec2 globalXY = uvec2(globalPosition & 0xffffu, globalPosition >> 16u);
-
-  const uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
-
-  uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
-
-  vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
   vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 

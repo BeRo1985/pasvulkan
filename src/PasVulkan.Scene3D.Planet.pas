@@ -7572,11 +7572,11 @@ begin
                                      SizeOf(TVkDrawIndexedIndirectCommand));                   }
 
        TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
-                                                                               ((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
-                                                                               ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+7) shr 3,
-                                                                               1{
-                                                                               ((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
-                                                                               ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+7) shr 3,
+                                                                               (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+63) shr 6,
+                                                                               ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
+                                                                               1
+                                                                              {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
+                                                                               (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+15) shr 4,
                                                                                1});
 
       end;

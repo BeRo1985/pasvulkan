@@ -912,6 +912,8 @@ begin
   end;
  end;
 
+//fTransparencyMode:=TpvScene3DRendererTransparencyMode.LOOPOIT;
+
  if fDepthOfFieldMode=TpvScene3DRendererDepthOfFieldMode.Auto then begin
   case TpvVulkanVendorID(fVulkanDevice.PhysicalDevice.Properties.vendorID) of
    TpvVulkanVendorID.AMD:begin

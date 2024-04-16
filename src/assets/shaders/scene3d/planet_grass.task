@@ -23,11 +23,11 @@
   #define HAVE_PERVERTEX
 #endif
 
-#define TASK_GROUP_SIZE 128
+#define TASK_GROUP_SIZE 64
 
-#define MESH_GROUP_SIZE 128
+#define MESH_GROUP_SIZE 32 // 128
 
-layout(local_size_x = 1, local_size_y = TASK_GROUP_SIZE, local_size_z = 1) in;
+layout(local_size_x = TASK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 #include "planet_grass.glsl"
 
@@ -52,10 +52,6 @@ layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
-layout(set = 3, binding = 2, std430) buffer VisibleGrassBladeBitmap {
-  uint bitmap[];
-} visibleGrassBladeBitmap;
-
 #include "frustum.glsl"
 
 #include "aabb.glsl"
@@ -78,8 +74,8 @@ shared vec3 planetPosition;
 shared Frustum frustums[8];
 
 struct TaskData {
-  uint countPositions;
-  uint positions[TASK_GROUP_SIZE]; // 2x 16-bit integers for the position packed into a 32-bit integer 
+  uint count;
+  uint indices[TASK_GROUP_SIZE]; 
 };
 
 #if defined(VERTEX_SHADER_CODE_PATH)
@@ -112,7 +108,7 @@ void main() {
 
   if(localInvocationIndex == 0u){
 
-    taskData.countPositions = 0u; // reset the count of visible positions
+    taskData.count = 0u; // reset the count of visible positions
 
     vec4 p = pushConstants.modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     planetPosition = p.xyz / p.w;
@@ -123,214 +119,187 @@ void main() {
     frustumSetup(frustums[localInvocationIndex], uView.views[pushConstants.viewBaseIndex + localInvocationIndex].projectionMatrix);      
   }
 
-  memoryBarrierShared();
-  groupMemoryBarrier();
+  //memoryBarrierShared();
+  //groupMemoryBarrier();
   barrier(); 
 
-  const uint globalInvocationIndex = (((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x;
+  //const uint globalInvocationIndex = (((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x;
                                      
-  const uint tileTotalResolution = pushConstants.tileResolution * pushConstants.tileResolution;
+  //const uint tileTotalResolution = (pushConstants.tileResolution >> 2u) * (pushConstants.tileResolution >> 2u);
 
-  const uint tileListIndex = globalInvocationIndex / tileTotalResolution;  
+//const uint tileListIndex = globalInvocationIndex / tileTotalResolution;  
+  const uint tileListIndex = gl_GlobalInvocationID.y;
 
-  const uint remainingGlobalInvocationIndex = globalInvocationIndex - (tileListIndex * tileTotalResolution);
+  //const uint remainingGlobalInvocationIndex = globalInvocationIndex - (tileListIndex * tileTotalResolution);
+
+  //const uint countVisibleTiles = visibleTileList.visibleTiles[0];
+
+  const uint localTileInvocationIndex = gl_GlobalInvocationID.x;
+
+  const uint localTileY = localTileInvocationIndex / (pushConstants.tileResolution >> 2u); 
+  const uint localTileX = localTileInvocationIndex - (localTileY * (pushConstants.tileResolution >> 2u));
+
+  const uvec2 localTileXY = uvec2(localTileX, localTileY) << uvec2(2u);
 
   const uint tileMapSize = pushConstants.tileMapResolution * pushConstants.tileMapResolution;
 
-  const uint countVisibleTiles = visibleTileList.visibleTiles[0];
-
-  const uint localTileY = remainingGlobalInvocationIndex / pushConstants.tileResolution;
-  const uint localTileX = remainingGlobalInvocationIndex - (localTileY * pushConstants.tileResolution);
-
-  const uvec2 localTileXY = uvec2(localTileX, localTileY);
-
   // Check if the current invocation is still in the valid ranges, otherwise return
-  if((tileListIndex >= tileMapSize) || 
-     (tileListIndex >= countVisibleTiles) || 
-     any(greaterThanEqual(localTileXY, uvec2(pushConstants.tileResolution)))){ 
-    return;
-  }
+  if((tileListIndex < tileMapSize) &&
+     ///(tileListIndex << countVisibleTiles) &&
+     all(lessThan(localTileXY, uvec2(pushConstants.tileResolution)))){ 
 
-  const vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
-  const int countLODLevels = textureQueryLevels(uTextureDepth);
+    const vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
+    const int countLODLevels = textureQueryLevels(uTextureDepth);
 
-  const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
-//const uint tileMapIndex = tileListIndex;// visibleTileList.visibleTiles[tileListIndex + 3u];
+    //const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
+    const uint tileMapIndex = tileListIndex;// visibleTileList.visibleTiles[tileListIndex + 3u];
 
-  const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
-  const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
+    const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
+    const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
 
-  const uvec2 tileMapXY = uvec2(tileMapX, tileMapY);
+    const uvec2 tileMapXY = uvec2(tileMapX, tileMapY);
 
-  const uvec2 globalXY = (tileMapXY * pushConstants.tileResolution) + localTileXY;
+    const uvec2 globalXY = (tileMapXY * pushConstants.tileResolution) + localTileXY;
+  
+    // The index is tile-wise, so the global index is calculated by the tile map index and the local tile index
+    const uint globalIndex = (((tileMapXY.y * pushConstants.tileMapResolution) + tileMapXY.x) * 
+                               (pushConstants.tileResolution * pushConstants.tileResolution)) + 
+                             ((localTileXY.y * pushConstants.tileResolution) + localTileXY.x);
 
-  const uint globalIndex = (globalXY.y * (pushConstants.tileMapResolution * pushConstants.tileResolution)) + globalXY.x;
+    /////////////////////////////////////////////////////////////////////////
 
-  /////////////////////////////////////////////////////////////////////////
+    uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
 
-  // Generate some random data for the grass blade to make it look more natural, but keep it deterministic, based on the global position
-  // and the linear global index of the grass blade
-  const uvec4 randomUIntData = pcgHash44(uvec4(globalXY.xy, globalIndex, 0u));
+    vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
 
-  // The following line generates a random float value in the range of [0.0, 1.0] for each component through bittwiddling tricks 
-  const vec4 randomFloatData = uintBitsToFloat(((randomUIntData >> uvec4(9u)) & uvec4(0x007fffffu)) | uvec4(0x3f800000u)) - vec4(1.0);
+//  vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 
-  /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
 
-  // TODO: Add evaluation of the grass map data here (density and other properties) together with early out return
-  //       if the grass is not needed at this position. randomFloatData.x can be used for the density evaluation
+    const float grassHeight = pushConstants.grassHeight;
+    const float grassThickness = pushConstants.grassThickness;
+    const float grassLeaning = 0.3;
 
-  /////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
 
-  uvec4 rawVertex = visualMeshVertices.vertices[globalIndex];
+    vec4 boundingSphere = vec4(
+      (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
+      max(max(grassHeight, grassThickness) + 0.25, 0.25) * 2.0
+    );
 
-  vec3 patchPosition = uintBitsToFloat(rawVertex.xyz);
+    /////////////////////////////////////////////////////////////////////////
 
-  vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
+    bool visible = false;
 
-/*vec3 patchTangent, patchBitangent;
+    // Distance culling based on the bounding sphere of the grass blade
+  #if 1
+    if(pushConstants.maximumDistance > 1e-7){
 
-  getTangentSpaceBasisFromNormal(patchNormal, patchTangent, patchBitangent); 
+      for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
 
-  mat3 patchTangentSpaceBasis = mat3(patchTangent, patchBitangent, patchNormal);*/
+        vec3 cameraPosition = (countViews > 0) ? uView.views[pushConstants.viewBaseIndex + viewIndex].inverseViewMatrix[3].xyz : vec3(0.0);
+        
+        // If the grass blade is not too far away from the camera, mark it as visible and break the loop, since it is visible
+        // at least at one view  
+        if((pushConstants.maximumDistance > 1e-7) && 
+          ((distance(cameraPosition, boundingSphere.xyz) - boundingSphere.w) <= pushConstants.maximumDistance)){
+          visible = true;      
+          break;
+        }
 
-  /////////////////////////////////////////////////////////////////////////
-
-  const float grassHeight = pushConstants.grassHeight;
-  const float grassThickness = pushConstants.grassThickness;
-  const float grassLeaning = 0.3;
-
-  /////////////////////////////////////////////////////////////////////////
-
-  // The calculation of the bounding sphere is based on the worst case scenario, assuming that the grass blade is leaning to
-  // the maximum, the bounding sphere is calculated by the following formula:
-  //
-  //   center = patchPosition + (patchNormal * (max(grassHeight, grassThickness) * 0.5))
-  //   radius = max(grassHeight, grassThickness) * 0.5
-
-  vec4 boundingSphere = vec4(
-    (pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz,
-    max(max(grassHeight, grassThickness) + 0.25, 0.25) * 2.0
-  );
-
-/*
-  vec4 boundingSphere = vec4(
-    (pushConstants.modelMatrix * vec4(fma(patchNormal, vec3(max(grassHeight, grassThickness) * 0.5), patchPosition), 1.0)).xyz,
-    max(grassHeight, grassThickness) * 0.5
-  );
-*/
-
-  /////////////////////////////////////////////////////////////////////////
-
-  bool visible = false;
-
-  // Distance culling based on the bounding sphere of the grass blade
-#if 1
-  if(pushConstants.maximumDistance > 1e-7){
-
-    for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
-
-      vec3 cameraPosition = (countViews > 0) ? uView.views[pushConstants.viewBaseIndex + viewIndex].inverseViewMatrix[3].xyz : vec3(0.0);
-      
-      // If the grass blade is not too far away from the camera, mark it as visible and break the loop, since it is visible
-      // at least at one view  
-      if((pushConstants.maximumDistance > 1e-7) && 
-        ((distance(cameraPosition, boundingSphere.xyz) - boundingSphere.w) <= pushConstants.maximumDistance)){
-        visible = true;      
-        break;
       }
+
+    }else{
+
+      // If the maximum distance is zero, then the grass blade is always visible
+      visible = true;
 
     }
 
-  }else{
+    /////////////////////////////////////////////////////////////////////////
 
-    // If the maximum distance is zero, then the grass blade is always visible
-    visible = true;
-
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-
-  // Frustum culling and hierarchical depth-buffer-culling based on the bounding sphere of the grass blade
-  
-  if(visible){
+    // Frustum culling and hierarchical depth-buffer-culling based on the bounding sphere of the grass blade
     
-    visible = false;
-
-    for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+    if(visible){
       
-      mat4 viewMatrix = uView.views[pushConstants.viewBaseIndex + viewIndex].viewMatrix;      
-      vec4 viewSpaceBoundingSphere = vec4((viewMatrix * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
+      visible = false;
 
-      if(frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere)){
-      
-        visible = true;
+      for(uint viewIndex = 0u; viewIndex < countViews; viewIndex++){
+        
+        mat4 viewMatrix = uView.views[pushConstants.viewBaseIndex + viewIndex].viewMatrix;      
+        vec4 viewSpaceBoundingSphere = vec4((viewMatrix * vec4(boundingSphere.xyz, 1.0)).xyz, boundingSphere.w);
 
-#if 1
-        vec4 aabb;
+        if(frustumCullingSphereTest(frustums[viewIndex], viewSpaceBoundingSphere)){
+        
+          visible = true;
 
-        float zNear = abs(uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[3][2] / uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[2][3]);
-        if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNear, uView.views[pushConstants.viewBaseIndex + viewIndex].projectionMatrix, aabb, true)){
+  #if 1
+          vec4 aabb;
 
-          vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
-          
-          float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
+          float zNear = abs(uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[3][2] / uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[2][3]);
+          if(projectSphere(viewSpaceBoundingSphere.xyz, viewSpaceBoundingSphere.w, zNear, uView.views[pushConstants.viewBaseIndex + viewIndex].projectionMatrix, aabb, true)){
 
-#undef USE_FASTER_DEPTH_CALCULATIONS
-#ifdef USE_FASTER_DEPTH_CALCULATIONS
-          vec2 depthZ = fma(
-            uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[2].zw,
-            textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
-            uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[3].zw
-          );
-#else
-          vec2 depthZ = (uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix * vec4(
-            (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
-            textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
-            1.0
-          )).zw;
-#endif
-          float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
-          
-          visible = (((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth);
+            vec2 size = vec2(aabb.zw - aabb.xy) * viewPortSize;
+            
+            float level = clamp(floor(log2(max(size.x, size.y))), 0.0, float(countLODLevels - 1)); 
+
+  #undef USE_FASTER_DEPTH_CALCULATIONS
+  #ifdef USE_FASTER_DEPTH_CALCULATIONS
+            vec2 depthZ = fma(
+              uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[2].zw,
+              textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).xx, 
+              uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix[3].zw
+            );
+  #else
+            vec2 depthZ = (uView.views[pushConstants.viewBaseIndex + viewIndex].inverseProjectionMatrix * vec4(
+              (aabb.xy + aabb.zw) - vec2(1.0), // optimized from: fma(mix(aabb.xy, aabb.zw, 0.5), vec2(2.0), vec2(-1.0))
+              textureLod(uTextureDepth, vec3(mix(aabb.xy, aabb.zw, 0.5), float(viewIndex)), level).x, 
+              1.0
+            )).zw;
+  #endif
+            float depth = -(depthZ.x / depthZ.y); // flip the sign, because z in view space is negative otherwise
+            
+            visible = (((-viewSpaceBoundingSphere.z) - viewSpaceBoundingSphere.w) <= depth);
+
+          }
+  #endif
+
+          if(visible){
+            break;
+          }
 
         }
-#endif
 
         if(visible){
           break;
         }
 
       }
-
-      if(visible){
-        break;
-      }
-
+        
     }
-      
+  #endif
+
+    /////////////////////////////////////////////////////////////////////////
+
+    // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
+    taskData.indices[atomicAdd(taskData.count, 1u)] = globalIndex;
+
   }
-#endif
-
-  /////////////////////////////////////////////////////////////////////////
-
-  // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
-  taskData.positions[atomicAdd(taskData.countPositions, 1u)] = uint((globalXY.y << 16u) | (globalXY.x & 0xffffu));
 
   // Wait for all invocations to finish the culling calculations
-  memoryBarrierShared();
-  groupMemoryBarrier();
+  //memoryBarrierShared();
+  //groupMemoryBarrier();
   barrier();
   
-  if(localInvocationIndex == 0u){
-
 #if defined(VERTEX_SHADER_CODE_PATH)
+
+  if((localInvocationIndex == 0u) && (taskData.count > 0u)){
 
     const uint countVerticesPerBladeEdge = 4u;//pushConstants.countVerticesPerBladeEdge;
     const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
     const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
     const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
-    const uint countBlades = 32u;
+    const uint countBlades = 8u;
     const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
 
     // Emit the vertex tasks for the vertex shader invocations into the storage buffer (poor-man mesh shader emulation)
@@ -340,15 +309,15 @@ void main() {
     // the vertex shader do calculate the vertex data on the fly without any additional storage buffers. Thus the mesh shader
     // code part is faster, because it don't need to calculate the vertex data for every index again and again but just once
     // per index, which can be a huge performance gain. 
-    atomicAdd(taskPayloadMetaData.countVertices, taskData.countPositions * countIndicesPerPayload);
+    atomicAdd(taskPayloadMetaData.countVertices, taskData.count * countIndicesPerPayload);
+
+  }
 
 #else
 
-    // Emit the mesh tasks for the mesh shader invocations
-    EmitMeshTasksEXT((taskData.countPositions + (MESH_GROUP_SIZE - 1u)) / MESH_GROUP_SIZE, 1, 1);
+  // Emit the mesh tasks for the mesh shader invocations  
+  EmitMeshTasksEXT(taskData.count, 1, 1);
 
 #endif
-
-  }
 
 } 
