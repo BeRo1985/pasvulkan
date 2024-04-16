@@ -369,7 +369,7 @@ void main() {
     vec3 offset = sideVector * 
                   (
                     grassThickness * // Base thickness of the grass blade 
-                    mix(1.0, 0.01, smoothstep(0.75, 1.0, t)) * // tapering towards the top to the grass blade tip
+                    mix(1.0, 0.01, smoothstep(0.5, 1.0, t)) * // tapering towards the top to the grass blade tip
                     ((bladeID == (countBlades - 1u)) ? fract(countBladesFloat) : 1.0) * // LOD fade out fractional scaling for to keep the LOD transition smooth 
                     (float(maxCountBlades) / countBladesFloat) // LOD width compensation scaling for to keep the visual appearance of the grass blades consistent even in the distance  
                   );
