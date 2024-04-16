@@ -7534,7 +7534,7 @@ begin
       fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
       fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
       fGrassPushConstants.MaximumDistance:=Planet.fTopRadius;
-      fGrassPushConstants.GrassHeight:=0.125*1.25;
+      fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
       fGrassPushConstants.GrassThickness:=0.01;
       fGrassPushConstants.MaximalCountBladesPerPatch:=8;
       fGrassPushConstants.ResolutionXY:=(fWidth and $ffff) or ((fHeight and $ffff) shl 16);

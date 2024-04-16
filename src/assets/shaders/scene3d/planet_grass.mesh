@@ -153,7 +153,7 @@ vec3 bezier(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float
 }
 
 vec3 bezierDerivative(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float t){
-  return ((2.0 * (1. - t)) * (p1 - p0)) + ((2.0 * t) * (p2 - p1));
+  return mix(p1 - p0, p2 - p1, t) * 2.0;
 }
 
 float easeOut(const in float t, const in float power){
@@ -168,15 +168,36 @@ mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
 shared mat4 viewProjectionMatrix;
 shared mat4 inverseModelViewMatrix;
 shared mat3 normalModelMatrix;
+shared vec3 cameraPosition;
+
+const uvec3 vertexIndices[2] = uvec3[2](uvec3(0, 1, 2), uvec3(1, 3, 2));
+
+//#define BRUTEFORCE_NORMAL_CALCULATION
 
 void main() {
   
   if(gl_LocalInvocationIndex == 0u){
+
+    // Stuff that is only needed once per task group for all invocations, to avoid redundant calculations
+
     viewProjectionMatrix = projectionMatrix * viewMatrix;
+    
     inverseModelViewMatrix = inverse(viewMatrix * pushConstants.modelMatrix);
+    
     normalModelMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
+
+#if 1
+    // The actual standard approach
+    cameraPosition = inverseViewMatrix[3].xyz;
+#else
+    // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
+    cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
+#endif   
+
   }
 
+  groupMemoryBarrier();
+  memoryBarrierShared();
   barrier();
 
   /////////////////////////////////////////////////////////////////////////////
@@ -247,7 +268,7 @@ void main() {
 
   const float grassHeight = pushConstants.grassHeight;
   const float grassThickness = pushConstants.grassThickness;
-  const float grassLeaning = 0.03; // TODO: Make it configurable
+  const float grassLeaning = 0.1; // TODO: Make it configurable
 
   ////////////////////////////////////////////////////////////////////////////////
       
@@ -288,14 +309,6 @@ void main() {
   //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
 //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
 
-#if 1
-  // The actual standard approach
-  vec3 cameraPosition = inverseViewMatrix[3].xyz;
-#else
-  // This approach assumes that the view matrix has no scaling or skewing, but only rotation and translation.
-  vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
-#endif   
-
   ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(VERTEX_SHADER_CODE_PATH)
@@ -306,18 +319,22 @@ void main() {
 
   vec3 patchNormal = octSignedDecode(unpackSnorm2x16(rawVertex.w));      
 
-  const mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(patchNormal);
+  /////////////////////////////////////////////////////////////////////////////
+
+  mat3 patchTangentSpaceBasis = getTangentSpaceFromNormal(patchNormal);
+  if(dot(patchTangentSpaceBasis[2], cross(patchTangentSpaceBasis[0], patchTangentSpaceBasis[1])) < 0.0){
+    patchTangentSpaceBasis[0] = -patchTangentSpaceBasis[0];
+  }
 
   /////////////////////////////////////////////////////////////////////////////
 
-  // The following code calculates the camera-relative left vector of the camera in patch space
-  const vec3 cameraWorldLeft = normalize(transpose(patchTangentSpaceBasis) * (inverseModelViewMatrix * vec4(-1.0, 0.0, 0.0, 0.0)).xyz);
+  //const vec3 cameraWorldLeft = normalize(transpose(patchTangentSpaceBasis) * (inverseModelViewMatrix * vec4(-1.0, 0.0, 0.0, 0.0)).xyz);
 
   const vec3 viewDirection = normalize((pushConstants.modelMatrix * vec4(patchPosition, 1.0)).xyz - cameraPosition);
   const vec3 viewDirectionXZ = normalize(vec3(viewDirection.x, 0.0, viewDirection.z));
 
-  const mat3 modelNormalOutputMatrix = patchTangentSpaceBasis * normalModelMatrix;
-
+  const mat3 modelPatchSpaceBasisMatrix = normalModelMatrix * patchTangentSpaceBasis;
+   
   /////////////////////////////////////////////////////////////////////////////
 
 #if !defined(VERTEX_SHADER_CODE_PATH)
@@ -344,6 +361,7 @@ void main() {
 
     float bladeDirectionAngle = randomFloatData.y * 6.28318530718; // 2 * PI
     vec3 bladeDirection = vec3(normalize(sin(vec2(bladeDirectionAngle) + vec2(1.57079632679, 0.0))), 0.0);
+    const vec3 bladeUp = vec3(0.0, 0.0, 1.0);
 
     float offsetAngle = randomFloatData.z * 6.28318530718; // 2 * PI
     vec2 offsetDirection = normalize(sin(vec2(offsetAngle) + vec2(1.57079632679, 0.0)));      
@@ -387,13 +405,13 @@ void main() {
     }
 
     vec3 sideVector = normalize(vec3(bladeDirection.y, -bladeDirection.x, 0.0)); 
-
-    const vec3 faceNormalVector = normalize(cross(sideVector, bladeDirection));
-
-    const float viewDotNormal = clamp(dot(modelNormalOutputMatrix * faceNormalVector, viewDirectionXZ), 0.0, 1.0);
+    
+    const float viewDotNormal = clamp(dot(modelPatchSpaceBasisMatrix * bladeDirection, viewDirectionXZ), 0.0, 1.0);
     const float viewSpaceThickenFactor = clamp(easeOut(1.0 - viewDotNormal, 4.0) * smoothstep(0.0, 0.2, viewDotNormal), 0.0, 1.0);
 
     float t = float(uint(vertexIndex >> 1u)) / float(countVerticesPerBladeEdge - 1u);
+
+    float t2 = (float(uint(vertexIndex >> 1u)) + 0.5) / float(countVerticesPerBladeEdge);
 
     float s = float(int(1 - ((int(vertexIndex) & 1) << 1))); // 1 or -1
 
@@ -409,8 +427,18 @@ void main() {
     vec3 localP0 = p0 + (offset * (s * 1.0));
     vec3 localP1 = p1 + (offset * (s * 0.7));
     vec3 localP2 = p2 + (offset * (s * 0.3));    
+
     vec3 position = (pushConstants.modelMatrix * vec4(patchPosition + (patchTangentSpaceBasis * bezier(localP0, localP1, localP2, t)), 1.0)).xyz;
-    vec3 normal = normalize(modelNormalOutputMatrix * cross(sideVector, normalize(bezierDerivative(localP0, localP1, localP2, t))));
+
+#if defined(BRUTEFORCE_NORMAL_CALCULATION)
+
+    vec3 normal = vec3(0.0); // clear the normal for the brute-force calculation
+
+#else
+
+    vec3 normal = normalize(modelPatchSpaceBasisMatrix * cross(bezierDerivative(localP0, localP1, localP2, t2), sideVector));
+    
+#endif
 
     vec3 worldSpacePosition = position;
 
@@ -462,7 +490,13 @@ void main() {
   }
 
 #if !defined(VERTEX_SHADER_CODE_PATH)
-  
+
+#if defined(BRUTEFORCE_NORMAL_CALCULATION)
+  groupMemoryBarrier();
+  memoryBarrierShared();
+  barrier();
+#endif
+
   // Not needed for the vertex shader code path, but required for the mesh shader code path, because the mesh 
   // shader code path deduplicates the vertices of the grass blades index-wise.
 
@@ -480,9 +514,46 @@ void main() {
 
     uint offset = (bladeID * countVerticesPerBlade) + ((triangleIndex >> 1u) << 1u);
 
-    gl_PrimitiveTriangleIndicesEXT[triangleID] = (((triangleIndex & 1u) == 0u) ? uvec3(0, 2, 1) : uvec3(1, 2, 3)) + uvec3(offset);
+#if defined(BRUTEFORCE_NORMAL_CALCULATION)
+    
+    uvec3 indices = gl_PrimitiveTriangleIndicesEXT[triangleID] = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+    
+    vec3 normal = normalize(cross(
+      outBlock[indices[1]].position - outBlock[indices[0]].position,
+      outBlock[indices[2]].position - outBlock[indices[0]].position
+    ));
+    
+    outBlock[indices[0]].normal += normal;
+    outBlock[indices[1]].normal += normal;
+    outBlock[indices[2]].normal += normal;
+
+#else
+
+   gl_PrimitiveTriangleIndicesEXT[triangleID] = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+
+#endif
 
   }
+
+#if defined(BRUTEFORCE_NORMAL_CALCULATION)
+  
+  /////////////////////////////////////////////////////////////////////////////
+
+  groupMemoryBarrier();
+  memoryBarrierShared();
+  barrier();
+
+  // Normalize the normals
+  for(uint i = 0u; i < 2u; i++){
+    uint vertexID = gl_LocalInvocationIndex + (i * MESH_GROUP_SIZE);
+    if(vertexID >= countVertices){
+      break;
+    }
+    outBlock[vertexID].normal = normalize(outBlock[vertexID].normal);
+  }
+
+#endif
+
 #endif
 
 } 

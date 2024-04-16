@@ -151,10 +151,7 @@ void main(){
   float sideSign = gl_FrontFacing ? 1.0 : -1.0;
 
   vec3 normal = inBlock.normal.xyz * sideSign;
-  if(dot(normal, inBlock.viewSpacePosition) > 0.0){
-    normal = -normal;
-    sideSign = -sideSign;
-  }
+//normal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition))); // * sideSign;
   vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
   vec3 bitangent = normalize(cross(normal, tangent));
 
@@ -168,7 +165,7 @@ void main(){
                           )
                         ) * sideSign;
 #else
-  vec3 triangleNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition)));
+  vec3 triangleNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition))) * sideSign;
 #endif
 #endif
 
