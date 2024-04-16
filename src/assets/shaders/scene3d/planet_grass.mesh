@@ -167,8 +167,6 @@ void main() {
   const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
   const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
-  const uint countBlades = 8u;
-  const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -185,10 +183,6 @@ void main() {
 #endif
     return; // Early exit, because the position index is out of bounds
   }
-
-  const float grassHeight = pushConstants.grassHeight;
-  const float grassThickness = pushConstants.grassThickness;
-  const float grassLeaning = 0.03; // TODO: Make it configurable
 
   const uint tileSize = pushConstants.tileResolution * pushConstants.tileResolution;
 
@@ -215,8 +209,20 @@ void main() {
 
 // const uint countVertices = countVerticesPerBlade * countBlades;
 
+  const uint maxCountBlades = 8u;
+
+  const float countBladesFloat = mix(float(maxCountBlades), 2.0, clamp(length(patchPosition - inverseViewMatrix[3].xyz) / pushConstants.maximumDistance, 0.0, 1.0));
+
+  const uint countBlades = uint(ceil(countBladesFloat));
+
+  const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
+
   const uint countVertices = countVerticesPerBlade * countBlades;
   const uint countTriangles = countTrianglesPerBlade * countBlades;
+
+  const float grassHeight = pushConstants.grassHeight;
+  const float grassThickness = pushConstants.grassThickness * ((invocationIndex == (countBlades - 1u)) ? fract(countBladesFloat) : 1.0) * (float(maxCountBlades) / countBladesFloat);
+  const float grassLeaning = 0.03; // TODO: Make it configurable
 
   ////////////////////////////////////////////////////////////////////////////////
       
