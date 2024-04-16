@@ -281,9 +281,11 @@ void main() {
 
     /////////////////////////////////////////////////////////////////////////
 
-    // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
     if(visible){
+
+      // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
       taskData.indices[atomicAdd(taskData.count, 1u)] = globalIndex;
+
     }
 
   }
@@ -322,4 +324,4 @@ void main() {
 
 #endif
 
-} 
+}
