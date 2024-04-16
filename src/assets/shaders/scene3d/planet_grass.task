@@ -132,7 +132,7 @@ void main() {
 
   //const uint remainingGlobalInvocationIndex = globalInvocationIndex - (tileListIndex * tileTotalResolution);
 
-  //const uint countVisibleTiles = visibleTileList.visibleTiles[0];
+  const uint countVisibleTiles = visibleTileList.visibleTiles[0];
 
   const uint localTileInvocationIndex = gl_GlobalInvocationID.x;
 
@@ -145,14 +145,14 @@ void main() {
 
   // Check if the current invocation is still in the valid ranges, otherwise return
   if((tileListIndex < tileMapSize) &&
-     ///(tileListIndex << countVisibleTiles) &&
+     (tileListIndex << countVisibleTiles) &&
      all(lessThan(localTileXY, uvec2(pushConstants.tileResolution)))){ 
 
     const vec2 viewPortSize = vec2(textureSize(uTextureDepth, 0).xy);
     const int countLODLevels = textureQueryLevels(uTextureDepth);
 
-    //const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
-    const uint tileMapIndex = tileListIndex;// visibleTileList.visibleTiles[tileListIndex + 3u];
+    const uint tileMapIndex = visibleTileList.visibleTiles[tileListIndex + 3u];
+    //const uint tileMapIndex = tileListIndex;// visibleTileList.visibleTiles[tileListIndex + 3u];
 
     const uint tileMapY = tileMapIndex / pushConstants.tileMapResolution;
     const uint tileMapX = tileMapIndex - (tileMapY * pushConstants.tileMapResolution);
