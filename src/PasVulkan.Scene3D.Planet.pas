@@ -229,6 +229,7 @@ type TpvScene3DPlanets=class;
               fVisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
               fVisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
               fVisualMeshVertexBufferCopies:TVisualMeshVertexBufferCopies;
+              fVisualMeshDistanceBufferCopies:TVisualMeshVertexBufferCopies;
               fVisualMeshVertexBufferUpdateIndex:TPasMPInt32;
               fVisualMeshVertexBufferNextRenderIndex:TPasMPInt32;
               fVisualMeshVertexBufferRenderIndex:TPasMPInt32;
@@ -637,7 +638,7 @@ type TpvScene3DPlanets=class;
               type TPushConstants=packed record
                     //ModelMatrix:TpvMatrix4x4;
                     BottomRadius:TpvFloat;
-                    TopRadius:TpvFloat;                    
+                    TopRadius:TpvFloat;
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
                     LOD:TpvInt32;
@@ -657,6 +658,32 @@ type TpvScene3DPlanets=class;
               fPushConstants:TPushConstants;
              public
               constructor Create(const aPlanet:TpvScene3DPlanet;const aPhysics:Boolean); reintroduce;
+              destructor Destroy; override;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
+            { TMeshDistanceGeneration }
+            TMeshDistanceGeneration=class
+             public
+              type TPushConstants=packed record
+                    TileMapResolution:TpvUInt32;
+                    TileResolution:TpvUInt32;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fPlanet:TpvScene3DPlanet;
+              fVulkanDevice:TpvVulkanDevice;
+              fComputeShaderModule:TpvVulkanShaderModule;
+              fComputeShaderStage:TpvVulkanPipelineShaderStage;
+              fPipeline:TpvVulkanComputePipeline;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPushConstants:TPushConstants;
+             public
+              constructor Create(const aPlanet:TpvScene3DPlanet); reintroduce;
               destructor Destroy; override;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
              public
@@ -1008,6 +1035,7 @@ type TpvScene3DPlanets=class;
 {      fVisualMeshIndexGeneration:TMeshIndexGeneration;
        fPhysicsMeshIndexGeneration:TMeshIndexGeneration;}
        fVisualMeshVertexGeneration:TMeshVertexGeneration;
+       fVisualMeshDistanceGeneration:TMeshDistanceGeneration;
        fPhysicsMeshVertexGeneration:TMeshVertexGeneration;
        fRayIntersection:TRayIntersection;
        fCommandBufferLevel:TpvInt32;
@@ -1205,6 +1233,8 @@ begin
  fVisualMeshDistanceBuffers[1]:=nil;
 
  fVisualMeshVertexBufferCopies:=nil;
+
+ fVisualMeshDistanceBufferCopies:=nil;
 
  fVisualMeshVertexBufferUpdateIndex:=0;
  fVisualMeshVertexBufferNextRenderIndex:=0;
@@ -1508,6 +1538,8 @@ begin
 
     fVisualMeshVertexBufferCopies:=TVisualMeshVertexBufferCopies.Create;
 
+    fVisualMeshDistanceBufferCopies:=TVisualMeshVertexBufferCopies.Create;
+
    end;
 
    if fInFlightFrameIndex<0 then begin
@@ -1705,6 +1737,8 @@ begin
  FreeAndNil(fVisualMeshDistanceBuffers[1]);
 
  FreeAndNil(fVisualMeshVertexBufferCopies);
+
+ FreeAndNil(fVisualMeshDistanceBufferCopies);
 
  FreeAndNil(fVisualMeshIndexBuffer);
 
@@ -4927,7 +4961,7 @@ constructor TpvScene3DPlanet.TMeshVertexGeneration.Create(const aPlanet:TpvScene
 var Index:TpvInt32;
     Stream:TStream;
 begin
-  
+
  inherited Create;
 
  fPlanet:=aPlanet;
@@ -4950,7 +4984,7 @@ begin
   fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
 
   fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
-  fDescriptorSetLayout.AddBinding(0, // Vertices 
+  fDescriptorSetLayout.AddBinding(0, // Vertices
                                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                                   1,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
@@ -4973,7 +5007,7 @@ begin
                                   1,
                                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
                                   [],
-                                  0);                                
+                                  0);
   fDescriptorSetLayout.Initialize;
 
   fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
@@ -5075,7 +5109,7 @@ end;
 
 destructor TpvScene3DPlanet.TMeshVertexGeneration.Destroy;
 begin
- 
+
  FreeAndNil(fPipeline);
 
  FreeAndNil(fDescriptorSets[0]);
@@ -5086,7 +5120,7 @@ begin
  FreeAndNil(fPipelineLayout);
 
  FreeAndNil(fDescriptorSetLayout);
- 
+
  FreeAndNil(fComputeShaderStage);
 
  FreeAndNil(fComputeShaderModule);
@@ -5326,11 +5360,291 @@ begin
                                     1,@BufferMemoryBarriers[0],
                                     0,nil);
 
-  fPlanet.fData.fVisualMeshVertexBufferNextRenderIndex:=fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1;
+{ fPlanet.fData.fVisualMeshVertexBufferNextRenderIndex:=fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1;
 
-  fPlanet.fData.fVisualMeshVertexBufferUpdateIndex:=(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
+  fPlanet.fData.fVisualMeshVertexBufferUpdateIndex:=(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;}
 
- end; 
+ end;
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
+
+end;
+
+{ TpvScene3DPlanet.TMeshDistanceGeneration }
+
+constructor TpvScene3DPlanet.TMeshDistanceGeneration.Create(const aPlanet:TpvScene3DPlanet);
+var Index:TpvInt32;
+    Stream:TStream;
+begin
+
+ inherited Create;
+
+ fPlanet:=aPlanet;
+
+ fVulkanDevice:=fPlanet.fVulkanDevice;
+
+ if assigned(fVulkanDevice) then begin
+
+  Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_tiled_neighbour_distance_map_generation_comp.spv');
+  try
+   fComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+  finally
+   FreeAndNil(Stream);
+  end;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TMeshDistanceGeneration.fComputeShaderModule');
+
+  fComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fComputeShaderModule,'main');
+
+  fDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(fVulkanDevice);
+  fDescriptorSetLayout.AddBinding(0, // Vertices
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(1, // QueuedTiles
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.AddBinding(2, // Distances
+                                  TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                  1,
+                                  TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                  [],
+                                  0);
+  fDescriptorSetLayout.Initialize;
+
+  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+  fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TPushConstants));
+  fPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
+  fPipelineLayout.Initialize;
+
+  fDescriptorPool:=TpvVulkanDescriptorPool.Create(fVulkanDevice,
+                                                  TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                  8);
+  fDescriptorPool.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),5);
+  fDescriptorPool.Initialize;
+
+  for Index:=0 to 1 do begin
+   fDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fDescriptorPool,fDescriptorSetLayout);
+   fDescriptorSets[Index].WriteToDescriptorSet(0,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               [],
+                                               [TVkDescriptorBufferInfo.Create(fPlanet.fData.fVisualMeshVertexBuffers[Index].Handle,
+                                                                               0,
+                                                                               VK_WHOLE_SIZE)],
+                                               [],
+                                               false);
+   fDescriptorSets[Index].WriteToDescriptorSet(1,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               [],
+                                               [TVkDescriptorBufferInfo.Create(fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                                               0,
+                                                                               VK_WHOLE_SIZE)],
+                                               [],
+                                               false);
+   fDescriptorSets[Index].WriteToDescriptorSet(2,
+                                               0,
+                                               1,
+                                               TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                               [],
+                                               [TVkDescriptorBufferInfo.Create(fPlanet.fData.fVisualMeshDistanceBuffers[Index].Handle,
+                                                                               0,
+                                                                               VK_WHOLE_SIZE)],
+                                               [],
+                                               false);
+   fDescriptorSets[Index].Flush;
+  end;
+
+  fPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                             pvApplication.VulkanPipelineCache,
+                                             TVkPipelineCreateFlags(0),
+                                             fComputeShaderStage,
+                                             fPipelineLayout,
+                                             nil,
+                                             0);
+
+  fPushConstants.TileMapResolution:=fPlanet.fTileMapResolution;
+  fPushConstants.TileResolution:=fPlanet.fVisualTileResolution;
+
+ end;
+
+end;
+
+destructor TpvScene3DPlanet.TMeshDistanceGeneration.Destroy;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fDescriptorSets[0]);
+ FreeAndNil(fDescriptorSets[1]);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fComputeShaderStage);
+
+ FreeAndNil(fComputeShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TMeshDistanceGeneration.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var BufferMemoryBarriers:array[0..2] of TVkBufferMemoryBarrier;
+    BufferCopy:TVkBufferCopy;
+begin
+
+ fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelBegin(aCommandBuffer,'Planet VisualMeshDistanceGeneration',[0.75,0.5,0.75,1.0]);
+
+ begin
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fVisualMeshDistanceBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fVisualMeshDistanceBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  BufferMemoryBarriers[2]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fTileDirtyQueueBuffer.Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    0,
+                                    0,nil,
+                                    3,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+  if fPlanet.fData.fVisualMeshDistanceBufferCopies.Count=0 then begin
+
+   BufferCopy.srcOffset:=0;
+   BufferCopy.dstOffset:=0;
+   BufferCopy.size:=fPlanet.fData.fVisualMeshDistanceBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Size;
+
+   aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fVisualMeshDistanceBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
+                                fPlanet.fData.fVisualMeshDistanceBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Handle,
+                                1,
+                                @BufferCopy);
+
+  end else begin
+
+   aCommandBuffer.CmdCopyBuffer(fPlanet.fData.fVisualMeshDistanceBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
+                                fPlanet.fData.fVisualMeshDistanceBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1].Handle,
+                                fPlanet.fData.fVisualMeshDistanceBufferCopies.Count,
+                                @fPlanet.fData.fVisualMeshDistanceBufferCopies.ItemArray[0]);
+
+  end;
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fVisualMeshDistanceBuffers[(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  BufferMemoryBarriers[1]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fVisualMeshDistanceBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    2,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+ end;
+
+ aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fPipeline.Handle);
+
+ begin
+
+  aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                       fPipelineLayout.Handle,
+                                       0,
+                                       1,
+                                       @fDescriptorSets[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex].Handle,
+                                       0,
+                                       nil);
+
+ end;
+
+ aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
+                                 TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),
+                                 0,
+                                 SizeOf(TPushConstants),
+                                 @fPushConstants);
+
+ if fVulkanDevice.PhysicalDevice.RenderDocDetected then begin
+
+  if fPlanet.fData.fCountDirtyTiles>0 then begin
+
+   begin
+    aCommandBuffer.CmdDispatch(((fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)+255) shr 8,
+                               fPlanet.fData.fCountDirtyTiles,
+                               1);
+   end;
+
+  end;
+
+ end else begin
+
+  aCommandBuffer.CmdDispatchIndirect(fPlanet.fData.fTileDirtyQueueBuffer.Handle,0);
+
+ end;
+
+ begin
+
+  BufferMemoryBarriers[0]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                         fPlanet.fData.fVisualMeshDistanceBuffers[fPlanet.fData.fVisualMeshVertexBufferUpdateIndex].Handle,
+                                                         0,
+                                                         VK_WHOLE_SIZE);
+
+  aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                    0,
+                                    0,nil,
+                                    1,@BufferMemoryBarriers[0],
+                                    0,nil);
+
+{ fPlanet.fData.fVisualMeshVertexBufferNextRenderIndex:=fPlanet.fData.fVisualMeshVertexBufferUpdateIndex and 1;
+
+  fPlanet.fData.fVisualMeshVertexBufferUpdateIndex:=(fPlanet.fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;}
+
+ end;
 
  fPlanet.fVulkanDevice.DebugUtils.CmdBufLabelEnd(aCommandBuffer);
 
@@ -8323,6 +8637,8 @@ begin
 
  fPhysicsMeshVertexGeneration:=TMeshVertexGeneration.Create(self,true);
 
+ fVisualMeshDistanceGeneration:=TMeshDistanceGeneration.Create(self);
+
  fRayIntersection:=TRayIntersection.Create(self);
 
  fCommandBufferLevel:=0;
@@ -8546,6 +8862,8 @@ begin
 {FreeAndNil(fPhysicsMeshIndexGeneration);
 
  FreeAndNil(fVisualMeshIndexGeneration); }
+
+ FreeAndNil(fVisualMeshDistanceGeneration);
 
  FreeAndNil(fNormalMapMipMapGeneration);
 
@@ -9322,7 +9640,13 @@ begin
 
      fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
 
+     fVisualMeshDistanceGeneration.Execute(fVulkanComputeCommandBuffer);
+
      fPhysicsMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+
+     fData.fVisualMeshVertexBufferNextRenderIndex:=fData.fVisualMeshVertexBufferUpdateIndex and 1;
+
+     fData.fVisualMeshVertexBufferUpdateIndex:=(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
 
      UpdateRenderIndex:=true;
 
@@ -9358,6 +9682,8 @@ begin
 
     fData.fVisualMeshVertexBufferCopies.ClearNoFree;
 
+    fData.fVisualMeshDistanceBufferCopies.ClearNoFree;
+
     CurrentRaytracingTileQueue:=fRaytracingTileQueues[fRaytracingTileQueueUpdateIndex and 1];
 
     if assigned(fRaytracingTiles) and assigned(CurrentRaytracingTileQueue) then begin
@@ -9376,6 +9702,9 @@ begin
       fData.fVisualMeshVertexBufferCopies.Add(TVkBufferCopy.Create(TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
                                                                    TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex),
                                                                    fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshVertex)));
+      fData.fVisualMeshDistanceBufferCopies.Add(TVkBufferCopy.Create(TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshDistance),
+                                                                     TileIndex*fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshDistance),
+                                                                     fVisualTileResolution*fVisualTileResolution*SizeOf(TMeshDistance)));
      end;
     end;
 
@@ -9477,6 +9806,9 @@ begin
 {   if fData.fVisualMeshGeneration<>fData.fHeightMapGeneration then begin
      fData.fVisualMeshGeneration:=fData.fHeightMapGeneration;
      fVisualMeshVertexGeneration.Execute(fVulkanComputeCommandBuffer);
+     fVisualMeshDistanceGeneration.Execute(fVulkanComputeCommandBuffer);
+     fData.fVisualMeshVertexBufferNextRenderIndex:=fData.fVisualMeshVertexBufferUpdateIndex and 1;
+     fData.fVisualMeshVertexBufferUpdateIndex:=(fData.fVisualMeshVertexBufferUpdateIndex+1) and 1;
     end;}
 
     if assigned(InFlightFrameData) then begin
