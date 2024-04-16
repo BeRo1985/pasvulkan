@@ -147,6 +147,9 @@ type TpvScene3DPlanets=class;
             TMeshIndex=TpvUInt32;
             PMeshIndex=^TMeshIndex;
             TMeshIndices=TpvDynamicArrayList<TMeshIndex>;
+            TMeshDistance=TpvFloat;
+            PMeshDistance=^TMeshDistance;
+            TMeshDistances=TpvDynamicArrayList<TMeshDistance>;
             TTileDirtyQueueItem=TpvUInt32;
             PTileDirtyQueueItem=^TTileDirtyQueueItem;
             TTileDirtyQueueItems=TpvDynamicArrayList<TTileDirtyQueueItem>;
@@ -224,6 +227,7 @@ type TpvScene3DPlanets=class;
               fTiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer;
               fVisualMeshIndexBuffer:TpvVulkanBuffer;
               fVisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
+              fVisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers; // Double-buffered
               fVisualMeshVertexBufferCopies:TVisualMeshVertexBufferCopies;
               fVisualMeshVertexBufferUpdateIndex:TPasMPInt32;
               fVisualMeshVertexBufferNextRenderIndex:TPasMPInt32;
@@ -281,6 +285,7 @@ type TpvScene3DPlanets=class;
               property TiledVisualMeshIndexGroupsBuffer:TpvVulkanBuffer read fTiledVisualMeshIndexGroupsBuffer;
              public
               property VisualMeshVertexBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshVertexBuffers;
+              property VisualMeshDistanceBuffers:TDoubleBufferedVulkanBuffers read fVisualMeshDistanceBuffers;
              published
               property VisualMeshVertexBufferUpdateIndex:TPasMPInt32 read fVisualMeshVertexBufferUpdateIndex;
               property VisualMeshVertexBufferRenderIndex:TPasMPInt32 read fVisualMeshVertexBufferRenderIndex;
@@ -1196,6 +1201,9 @@ begin
  fVisualMeshVertexBuffers[0]:=nil;
  fVisualMeshVertexBuffers[1]:=nil;
 
+ fVisualMeshDistanceBuffers[0]:=nil;
+ fVisualMeshDistanceBuffers[1]:=nil;
+
  fVisualMeshVertexBufferCopies:=nil;
 
  fVisualMeshVertexBufferUpdateIndex:=0;
@@ -1458,6 +1466,46 @@ begin
                                                        );
     fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshVertexBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshVertexBuffer['+IntToStr(fInFlightFrameIndex)+'][1]');
 
+    fVisualMeshDistanceBuffers[0]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                          (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshDistance),
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                          TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags or
+                                                          IfThen(TpvScene3D(fPlanet.fScene3D).UseBufferDeviceAddress,TVkBufferUsageFlags(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR),0),
+                                                          fPlanet.fGlobalBufferSharingMode,
+                                                          fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                          0,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                          0,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          [],
+                                                          0,
+                                                          pvAllocationGroupIDScene3DPlanetStatic
+                                                         );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshDistanceBuffers[0].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshDistanceBuffer['+IntToStr(fInFlightFrameIndex)+'][0]');
+
+    fVisualMeshDistanceBuffers[1]:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                          (fPlanet.fTileMapResolution*fPlanet.fTileMapResolution*fPlanet.fVisualTileResolution*fPlanet.fVisualTileResolution)*SizeOf(TpvScene3DPlanet.TMeshDistance),
+                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or TpvScene3D(fPlanet.fScene3D).AccelerationStructureInputBufferUsageFlags,
+                                                          fPlanet.fGlobalBufferSharingMode,
+                                                          fPlanet.fGlobalBufferQueueFamilyIndices,
+                                                          0,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                          0,
+                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          [],
+                                                          0,
+                                                          pvAllocationGroupIDScene3DPlanetStatic
+                                                         );
+    fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVisualMeshDistanceBuffers[1].Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisualMeshDistanceBuffer['+IntToStr(fInFlightFrameIndex)+'][1]');
+
     fVisualMeshVertexBufferCopies:=TVisualMeshVertexBufferCopies.Create;
 
    end;
@@ -1652,6 +1700,9 @@ begin
 
  FreeAndNil(fVisualMeshVertexBuffers[0]);
  FreeAndNil(fVisualMeshVertexBuffers[1]);
+
+ FreeAndNil(fVisualMeshDistanceBuffers[0]);
+ FreeAndNil(fVisualMeshDistanceBuffers[1]);
 
  FreeAndNil(fVisualMeshVertexBufferCopies);
 
