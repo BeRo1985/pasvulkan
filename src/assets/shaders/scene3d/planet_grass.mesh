@@ -21,10 +21,6 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_control_flow_attributes : enable
-#ifdef WIREFRAME
-  #extension GL_EXT_fragment_shader_barycentric : enable
-  #define HAVE_PERVERTEX
-#endif
 
 #define TASK_GROUP_SIZE 128
 
