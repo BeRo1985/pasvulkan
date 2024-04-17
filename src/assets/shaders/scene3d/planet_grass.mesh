@@ -5,7 +5,7 @@
   // In this compute shader code, vertex and index data is generated for the vertex shader invocations
   // as a poor-man mesh shader alternative into storage buffers, with size limitations.
   // The LOD calculations are done only once for the first view, as the vertex shader code handles
-  // the multiview stuff. The LOD calculations are based on the first view for simplicity.
+  // the multiview stuff. The LOD calculations are based just on the first view for simplicity.
   // For ray tracing later, it is necessary to keep all the data unified for all views anyway, as the 
   // ray tracing code will access all the data at once for all views.
   #pragma shader_stage(compute)
