@@ -3,7 +3,7 @@
 // This vertex shader is used for grass rendering, in conjunction with compute-based tasks and mesh shader emulation, in scenarios 
 // where mesh shaders are unsuitable:
 // - Hardware lacks support for mesh shaders.
-// - Vulkan implementation doesn't support multi-view rendering with mesh shaders (e.g., Intel).
+// - Vulkan implementation doesn't support multi-view rendering with mesh shaders (e.g. Intel).
 // - Ray tracing requires all vertex data upfront, contrary to the streaming nature of mesh shaders.
 
 #pragma shader_stage(vertex)
