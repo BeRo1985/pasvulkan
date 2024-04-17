@@ -1,13 +1,13 @@
 #version 460
 
-#if defined(VERTEX_SHADER_CODE_PATH)
-  // When the vertex shader code path is defined, then this shader is compiled as a compute shader, where
-  // the compute shader code generates payload data for the vertex shader invocations as poor-man mesh 
+#if defined(MESH_SHADER_EMULATION)
+  // When the mesh shader emulation code path is defined, then this task shader is compiled as a compute shader, where
+  // the compute shader code generates payload data for the next emulated mesh shader invocations as poor-man mesh 
   // shader alternative into storage buffers, but with size limitations.  
   #pragma shader_stage(compute)
 #else
-  // Otherwise, the shader is compiled as a mesh shader, where the task shader code generates payload data
-  // for the mesh shader invocations
+  // Otherwise, the shader is compiled as a task shader, where the task shader code generates payload data
+  // for the reak mesh shader invocations
   #pragma shader_stage(task)
   #extension GL_EXT_mesh_shader : enable 
 #endif
@@ -82,11 +82,12 @@ struct TaskData {
   uint indices[TASK_GROUP_SIZE]; 
 };
 
-#if defined(VERTEX_SHADER_CODE_PATH)
+#if defined(MESH_SHADER_EMULATION)
 
 layout(set = 1, binding = 2, std430) buffer TaskPayloadMetaData {
-  uint countPayloads;
-  uint countVertices;
+  uint countMaxMeshTasks; // = TASK_GROUP_SIZE as countX for VkDispatchIndirectCommand 
+  uint countPayloads; // as countY practically for VkDispatchIndirectCommand
+  uint countZ; // = 1 for VkDispatchIndirectCommand
 } taskPayloadMetaData;
 
 layout(set = 1, binding = 3, std430) buffer TaskPayload {
@@ -301,7 +302,12 @@ void main() {
   //groupMemoryBarrier();
   barrier();
   
-#if defined(VERTEX_SHADER_CODE_PATH)
+#if defined(MESH_SHADER_EMULATION)
+
+  if(gl_GlobalInvocationID.x == 0u){
+    taskPayloadMetaData.countMaxMeshTasks = TASK_GROUP_SIZE;
+    taskPayloadMetaData.countZ = 1u;
+  }
 
   if((localInvocationIndex == 0u) && (taskData.count > 0u)){
 
@@ -314,19 +320,17 @@ void main() {
 
     // Emit the vertex tasks for the vertex shader invocations into the storage buffer (poor-man mesh shader emulation)
     taskPayload.taskData[atomicAdd(taskPayloadMetaData.countPayloads, 1u)] = taskData;
-    
-    // Increment the total count of vertices for the vertex shader invocations, where vertices count = indices count, because 
-    // the vertex shader do calculate the vertex data on the fly without any additional storage buffers. Thus the mesh shader
-    // code part is faster, because it don't need to calculate the vertex data for every index again and again but just once
-    // per index, which can be a huge performance gain. 
-    atomicAdd(taskPayloadMetaData.countVertices, taskData.count * countIndicesPerPayload);
 
   }
 
 #else
 
-  // Emit the mesh tasks for the mesh shader invocations  
-  EmitMeshTasksEXT(taskData.count, 1, 1);
+  if((localInvocationIndex == 0u) && (taskData.count > 0u)){
+
+    // Emit the mesh tasks for the mesh shader invocations  
+    EmitMeshTasksEXT(taskData.count, 1, 1);
+
+  }
 
 #endif
 

@@ -1,10 +1,10 @@
 #version 460
 
-#if defined(VERTEX_SHADER_CODE_PATH)
+#if defined(MESH_SHADER_EMULATION)
   // When the vertex shader code path is defined, then this shader is compiled as a vertex shader, where
   // the compute shader code generates payload data for the vertex shader invocations as poor-man mesh 
   // shader alternative into storage buffers, but with size limitations.  
-  #pragma shader_stage(vertex)
+  #pragma shader_stage(compute)
 #else
   #pragma shader_stage(mesh)
   #extension GL_EXT_mesh_shader : enable 
@@ -28,9 +28,9 @@
 #define GRASS_VERT_COUNT 64 // 256
 #define GRASS_PRIM_COUNT 48 // 192
 
-#if !defined(VERTEX_SHADER_CODE_PATH)
 layout(local_size_x = MESH_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
+#if !defined(MESH_SHADER_EMULATION)
 layout(triangles, max_vertices = GRASS_VERT_COUNT, max_primitives = GRASS_PRIM_COUNT) out;
 #endif
 
@@ -47,11 +47,11 @@ layout(set = 1, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
-layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
+layout(set = 3, binding = 1, std430) readonly buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
-layout(set = 3, binding = 2, std430) buffer VisualMeshDistances {
+layout(set = 3, binding = 2, std430) readonly buffer VisualMeshDistances {
   float values[];
 } visualMeshDistances;
 
@@ -60,55 +60,49 @@ struct TaskData {
   uint indices[TASK_GROUP_SIZE];
 };
 
-#if defined(VERTEX_SHADER_CODE_PATH)
-layout(set = 4, binding = 2, std430) buffer TaskPayloadMetaData {
-  uint countPayloads;
-  uint countVertices;
+#if defined(MESH_SHADER_EMULATION)
+layout(set = 4, binding = 2, std430) readonly buffer TaskPayloadMetaData {
+  uint countMaxMeshTasks; // = TASK_GROUP_SIZE as countX for VkDispatchIndirectCommand 
+  uint countPayloads; // as countY practically for VkDispatchIndirectCommand
+  uint countZ; // = 1 for VkDispatchIndirectCommand 
 } taskPayloadMetaData;
 
-layout(set = 4, binding = 3, std430) buffer TaskPayload {
+layout(set = 4, binding = 3, std430) readonly buffer TaskPayload {
   TaskData taskData[];
 } taskPayload;
+
+layout(set = 4, binding = 4, std140) uniform GlobalMetaData {
+  uint viewIndex; 
+  uint baseVertexOffset;
+  uint baseIndexOffset;
+  uint maximalCountVertices;
+  uint maximalCountIndices;
+} globalMetaData;
+
+layout(set = 4, binding = 5, std430) buffer OutputMetaData {
+  uint countVertices;
+  uint countIndices;
+} outputMetaData;
+
+struct OutputVertex {
+  vec4 position; // xyz = position, w = texcoord u
+  vec4 normal; // xyz = normal, w = texcoord v
+};
+
+layout(set = 4, binding = 6, std430) buffer OutputVertices {
+  OutputVertex vertices[];  
+} outputVertices;
+
+layout(set = 4, binding = 5, std430) buffer OutputIndices {
+  uint indices[];  
+} outputIndices;
+
 #else
 taskPayloadSharedEXT TaskData taskData;
 #endif
 
-#if defined(VERTEX_SHADER_CODE_PATH)
-#if defined(RAYTRACING)
+#if !defined(MESH_SHADER_EMULATION)
 
-layout(location = 0) out vec3 outWorldSpacePosition;
-
-layout(location = 1) out OutBlock {
-  vec3 position;
-  vec3 normal;
-  vec2 texCoord;
-  vec3 worldSpacePosition;
-  vec3 viewSpacePosition;
-  vec3 cameraRelativePosition;
-  vec2 jitter;
-#ifdef VELOCITY
-  vec4 previousClipSpace;
-  vec4 currentClipSpace;
-#endif  
-} outBlock;
-
-#else
-
-layout(location = 0) out OutBlock {
-  vec3 position;
-  vec3 normal;
-  vec2 texCoord;
-  vec3 worldSpacePosition;
-  vec3 viewSpacePosition;
-  vec3 cameraRelativePosition;
-  vec2 jitter;
-#ifdef VELOCITY
-  vec4 previousClipSpace;
-  vec4 currentClipSpace;
-#endif  
-} outBlock;
-#endif // defined(RAYTRACING)
-#else
 #if defined(RAYTRACING)
 
 layout(location = 0) out vec3 outWorldSpacePosition[];
@@ -144,7 +138,7 @@ layout(location = 0) out OutBlock {
 } outBlock[];
 #endif // defined(RAYTRACING)
 
-#endif // defined(VERTEX_SHADER_CODE_PATH)
+#endif // defined(MESH_SHADER_EMULATION)
 
 #include "pcg.glsl"
 
@@ -164,7 +158,11 @@ float easeOut(const in float t, const in float power){
   return 1.0 - pow(1.0 - t, power);
 }
 
+#if defined(MESH_SHADER_EMULATION)
+uint viewIndex = pushConstants.viewBaseIndex + uint(globalMetaData.viewIndex);
+#else
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+#endif
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
@@ -173,6 +171,12 @@ shared mat4 viewProjectionMatrix;
 shared mat4 inverseModelViewMatrix;
 shared mat3 normalModelMatrix;
 shared vec3 cameraPosition;
+
+#if defined(MESH_SHADER_EMULATION)
+shared uint baseVertex;
+shared uint baseIndex;
+shared bool valid;
+#endif
 
 const uvec3 vertexIndices[2] = uvec3[2](uvec3(0, 1, 2), uvec3(1, 3, 2));
 
@@ -206,24 +210,29 @@ void main() {
 
   /////////////////////////////////////////////////////////////////////////////
 
-  const uint countVerticesPerBladeEdge = 4u;//pushConstants.countVerticesPerBladeEdge;
+  const uint countVerticesPerBladeEdge = 4u;
   const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
   const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
   const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
 
   ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(VERTEX_SHADER_CODE_PATH)
-  // TODO: Implement it in a correct way 
-  const uint invocationIndex = vertexID / countVerticesPerBlade;
-#else
-  const uint invocationIndex = gl_WorkGroupID.x;
+#if defined(MESH_SHADER_EMULATION)
+
+  const uint taskIndex = gl_WorkGroupID.y;
+
+  // Check if the task index is out of bounds 
+  if(taskIndex >= taskPayloadMetaData.countPayloads){
+    return; // Early exit, because the task index is out of bounds
+  }
+  
+  #define taskData taskPayload.taskData[taskIndex]
+
 #endif
 
+  const uint invocationIndex = gl_WorkGroupID.x;
+
   if(invocationIndex >= taskData.count){
-#if defined(VERTEX_SHADER_CODE_PATH)
-    gl_Position = vec4(uintBitsToFloat(0x7fc00000u)); // NaN for discarded vertices, not optimal, but it should work
-#endif
     return; // Early exit, because the position index is out of bounds
   }
 
@@ -278,30 +287,24 @@ void main() {
 
   ////////////////////////////////////////////////////////////////////////////////
       
-#if defined(VERTEX_SHADER_CODE_PATH)
+#if defined(MESH_SHADER_EMULATION)
 
-  // The vertex shader code path is slower than the mesh shader code path, because the vertex shader has to process 
-  // all vertices of the grass blades multiple times, but the mesh shader processes each vertex only once, since
-  // the mesh shader can deduplicate the vertices of the grass blades index-wise, but the vertex shader can't do that
-  // on-the-fly. 
+  if(gl_LocalInvocationIndex == 0u){
+    valid = ((globalMetaData.baseVertexOffset + outputMetaData.countVertices + countVertices) < globalMetaData.maximalCountVertices) && 
+            ((globalMetaData.baseIndexOffset + outputMetaData.countIndices + countIndicesPerPayload) < globalMetaData.maximalCountIndices);
+    if(valid){
+      baseVertex = atomicAdd(outputMetaData.countVertices, countVerticesPerBlade * countBlades) + globalMetaData.baseVertexOffset;
+      baseIndex = atomicAdd(outputMetaData.countIndices, countTrianglesPerBlade * countBlades * 3u) + globalMetaData.baseIndexOffset;
+    }  
+  }
 
-  const uint vertexIndex = gl_VertexIndex;
-  const uint triangleIndex = vertexIndex / 3u;
-  const uint triangleVertexIndex = vertexIndex - (triangleIndex * 3u);
-  const uint quadIndex = triangleIndex >> 1u;
-  const uint taskIndex = triangleIndex / (countTrianglesPerBlade * countBlades);
+  groupMemoryBarrier();
+  memoryBarrierShared();
+  barrier();
   
-  // Map triangle vertex index to the vertex index of the grass blade
-  const uint vertexID = 
-    ((((triangleIndex & 1u) == 0u) 
-      ? (uvec3(0, 1, 2)[triangleVertexIndex]) 
-      : (uvec3(3, 2, 1)[triangleVertexIndex])) + 
-     (quadIndex << 1u)
-    ) % (countVerticesPerBlade * countBlades);
-
-  if(vertexID >= countVertices){
-    gl_Position = vec4(uintBitsToFloat(0x7fc00000u)); // NaN for discarded vertices, not optimal, but it should work
-    return;
+  // Check if we are out of bounds
+  if(!valid){
+    return; // Early exit, because we are out of bounds
   }
 
 #else
@@ -313,13 +316,6 @@ void main() {
   ////////////////////////////////////////////////////////////////////////////////
 
   //mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
-//mat3 planetNormalMatrix = transpose(inverse(mat3(pushConstants.modelMatrix)));
-
-  ////////////////////////////////////////////////////////////////////////////////
-
-#if defined(VERTEX_SHADER_CODE_PATH)
-  const TaskData taskData = taskPayload.taskData[taskIndex];
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -343,17 +339,12 @@ void main() {
    
   /////////////////////////////////////////////////////////////////////////////
 
-#if !defined(VERTEX_SHADER_CODE_PATH)
-  for(uint i = 0u; i < 2; i++)
-#endif
-  {
-#if !defined(VERTEX_SHADER_CODE_PATH)
+  for(uint i = 0u; i < 2; i++) {
     uint vertexID = gl_LocalInvocationIndex + (i * MESH_GROUP_SIZE);
     
     if(vertexID >= countVertices){
       break;
     }
-#endif
 
     uint bladeID = vertexID / countVerticesPerBlade;
     uint vertexIndex = vertexID - (bladeID * countVerticesPerBlade);
@@ -460,25 +451,14 @@ void main() {
     vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
     viewSpacePosition.xyz /= viewSpacePosition.w;
 
-#if defined(VERTEX_SHADER_CODE_PATH)
+#if defined(MESH_SHADER_EMULATION)
 
-    outBlock.position = position;         
-    outBlock.normal = normal;
-    outBlock.texCoord = vec2(float(uint(vertexIndex & 1u)), t);
-    outBlock.worldSpacePosition = worldSpacePosition;
-    outBlock.viewSpacePosition = viewSpacePosition.xyz;  
-    outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
-    outBlock.jitter = pushConstants.jitter;
-  #ifdef VELOCITY
-    outBlock.currentClipSpace = viewProjectionMatrix * vec4(position, 1.0);
-    outBlock.previousClipSpace = (uView.views[viewIndex + pushConstants.countAllViews].projectionMatrix * uView.views[viewIndex + pushConstants.countAllViews].viewMatrix) * vec4(position, 1.0);
-  #endif
+    outputVertices.vertices[baseVertex + vertexID] = OutputVertex(
+      vec4(position, float(uint(vertexIndex & 1u))),
+      vec4(normal, t)
+    );
 
-  #if defined(RAYTRACING)
-    outWorldSpacePosition = worldSpacePosition;
-  #endif
-    
-    gl_Position = viewProjectionMatrix * vec4(position, 1.0);
+    // The vertex shader as next stage will do the rest of the work vertex-wise, so no need to do it here and to save some memory 
     
 #else
 
@@ -503,8 +483,6 @@ void main() {
 #endif
 
   }
-
-#if !defined(VERTEX_SHADER_CODE_PATH)
 
 #if defined(BRUTEFORCE_NORMAL_CALCULATION)
   groupMemoryBarrier();
@@ -531,8 +509,28 @@ void main() {
 
 #if defined(BRUTEFORCE_NORMAL_CALCULATION)
     
+#if defined(MESH_SHADER_EMULATION)
+
+    uvec3 indices = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+
+    uint targetBaseIndex = baseIndex + (triangleID * 3u);
+    outputIndices.indices[targetBaseIndex + 0u] = indices[0];
+    outputIndices.indices[targetBaseIndex + 1u] = indices[1];
+    outputIndices.indices[targetBaseIndex + 2u] = indices[2];
+
+    vec3 normal = normalize(cross(
+      outputVertices.vertices[baseVertex + indices[1]].position - outputVertices.vertices[baseVertex + indices[0]].position,
+      outputVertices.vertices[baseVertex + indices[2]].position - outputVertices.vertices[baseVertex + indices[0]].position
+    ));
+
+    outputVertices.vertices[baseVertex + indices[0]].normal.xyz += normal;
+    outputVertices.vertices[baseVertex + indices[1]].normal.xyz += normal;
+    outputVertices.vertices[baseVertex + indices[2]].normal.xyz += normal;
+
+#else
+
     uvec3 indices = gl_PrimitiveTriangleIndicesEXT[triangleID] = vertexIndices[triangleIndex & 1u] + uvec3(offset);
-    
+
     vec3 normal = normalize(cross(
       outBlock[indices[1]].position - outBlock[indices[0]].position,
       outBlock[indices[2]].position - outBlock[indices[0]].position
@@ -542,9 +540,25 @@ void main() {
     outBlock[indices[1]].normal += normal;
     outBlock[indices[2]].normal += normal;
 
+#endif
+   
+
 #else
 
-   gl_PrimitiveTriangleIndicesEXT[triangleID] = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+#if defined(MESH_SHADER_EMULATION)
+    
+    uvec3 indices = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+
+    uint targetBaseIndex = baseIndex + (triangleID * 3u);
+    outputIndices.indices[targetBaseIndex + 0u] = indices[0];
+    outputIndices.indices[targetBaseIndex + 1u] = indices[1];
+    outputIndices.indices[targetBaseIndex + 2u] = indices[2];
+
+#else
+    
+    gl_PrimitiveTriangleIndicesEXT[triangleID] = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+
+#endif
 
 #endif
 
@@ -564,10 +578,12 @@ void main() {
     if(vertexID >= countVertices){
       break;
     }
+#if defined(MESH_SHADER_EMULATION)
+    outputVertices.vertices[baseVertex + vertexID].normal.xyz = normalize(outputVertices.vertices[baseVertex + vertexID].normal.xyz);
+#else
     outBlock[vertexID].normal = normalize(outBlock[vertexID].normal);
-  }
-
 #endif
+  }
 
 #endif
 
