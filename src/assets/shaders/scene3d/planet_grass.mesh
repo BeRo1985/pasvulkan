@@ -13,9 +13,9 @@
   // Otherwise, when the mesh shader emulation code path is not defined, this shader is compiled as a mesh shader.
   #pragma shader_stage(mesh)
   #extension GL_EXT_mesh_shader : enable 
+  #extension GL_EXT_multiview : enable
 #endif
 
-#extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable

@@ -7,12 +7,12 @@
   #pragma shader_stage(compute)
 #else
   // Otherwise, when the mesh shader emulation code path is not defined, the shader is compiled as a task shader,
-  // where the task shader code generates payload data for the real mesh shader invocations.  */
+  // where the task shader code generates payload data for the real mesh shader invocations.
   #pragma shader_stage(task)
   #extension GL_EXT_mesh_shader : enable 
+  #extension GL_EXT_multiview : enable
 #endif
 
-#extension GL_EXT_multiview : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 #extension GL_GOOGLE_include_directive : enable
