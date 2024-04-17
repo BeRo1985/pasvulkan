@@ -298,8 +298,10 @@ void main() {
   }
 
   // Wait for all invocations to finish the culling calculations
-  //memoryBarrierShared();
-  //groupMemoryBarrier();
+#if defined(MESH_SHADER_EMULATION)
+  memoryBarrierShared();
+  groupMemoryBarrier();
+#endif
   barrier();
   
 #if defined(MESH_SHADER_EMULATION)
@@ -322,7 +324,7 @@ void main() {
   // the task data count incrementation
   {
     
-    // Wait for all invocations to finish the culling calculations
+    // Wait for all invocations 
     memoryBarrierShared();
     groupMemoryBarrier();
     barrier();
