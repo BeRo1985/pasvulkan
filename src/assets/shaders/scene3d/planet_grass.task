@@ -304,23 +304,15 @@ void main() {
   
 #if defined(MESH_SHADER_EMULATION)
 
-  if(gl_GlobalInvocationID.x == 0u){
+  if(all(equal(uvec3(gl_GlobalInvocationID), uvec3(0u)))){
     taskPayloadMetaData.countMaxMeshTasks = TASK_GROUP_SIZE;
     taskPayloadMetaData.countZ = 1u;
   }
 
-  if((localInvocationIndex == 0u) && (taskData.count > 0u)){
-
-    const uint countVerticesPerBladeEdge = 4u;//pushConstants.countVerticesPerBladeEdge;
-    const uint countVerticesPerBlade = countVerticesPerBladeEdge * 2u;
-    const uint countTrianglesPerBlade = (countVerticesPerBladeEdge * 2u) - 2u; 
-    const uint countIndicesPerBlade = countTrianglesPerBlade * 3u;
-    const uint countBlades = 8u;
-    const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
-
-    // Emit the vertex tasks for the vertex shader invocations into the storage buffer (poor-man mesh shader emulation)
+  if((localInvocationIndex == 0u) && 
+     (taskData.count > 0u) && 
+     (taskPayloadMetaData.countPayloads < pushConstants.maximalCountPayloads)){
     taskPayload.taskData[atomicAdd(taskPayloadMetaData.countPayloads, 1u)] = taskData;
-
   }
 
 #else

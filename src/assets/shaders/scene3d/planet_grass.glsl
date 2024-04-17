@@ -21,6 +21,7 @@ layout(push_constant) uniform PushConstants {
   int frameIndex; 
 
 #if defined(MESH_SHADER_EMULATION)
+  uint maximalCountPayloads;
   uint maximalCountVertices;
   uint maximalCountIndices;
 #else  
