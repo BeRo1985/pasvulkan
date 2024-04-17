@@ -1,5 +1,9 @@
 #version 450 core
 
+// This vertex shader is a part of the mesh shader emulation for the grass rendering, when mesh shaders could not be used for
+// some reason, for example, because the hardware does not support them, or when for ray tracing all vertex data are needed
+// at once upfront anyway and not in a streaming fashion as mesh shaders would provide. 
+
 #pragma shader_stage(vertex)
 
 #extension GL_EXT_multiview : enable
