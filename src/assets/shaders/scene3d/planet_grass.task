@@ -312,7 +312,25 @@ void main() {
   if((localInvocationIndex == 0u) && 
      (taskData.count > 0u) && 
      (taskPayloadMetaData.countPayloads < pushConstants.maximalCountPayloads)){
-    taskPayload.taskData[atomicAdd(taskPayloadMetaData.countPayloads, 1u)] = taskData;
+    uint taskIndex = atomicAdd(taskPayloadMetaData.countPayloads, 1u);
+    if(taskIndex < pushConstants.maximalCountPayloads){
+      taskPayload.taskData[taskIndex] = taskData;
+    }    
+  }
+
+  // Ensure that the payload count is not greater than the maximal count of payloads in terms of race conditions above at 
+  // the task data count incrementation
+  {
+    
+    // Wait for all invocations to finish the culling calculations
+    memoryBarrierShared();
+    groupMemoryBarrier();
+    barrier();
+
+    if((localInvocationIndex == 0) && (taskPayloadMetaData.countPayloads >= pushConstants.maximalCountPayloads)){
+      atomicExchange(taskPayloadMetaData.countPayloads, pushConstants.maximalCountPayloads);
+    }
+
   }
 
 #else
