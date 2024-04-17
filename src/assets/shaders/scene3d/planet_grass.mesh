@@ -13,7 +13,9 @@
   // Otherwise, when the mesh shader emulation code path is not defined, this shader is compiled as a mesh shader.
   #pragma shader_stage(mesh)
   #extension GL_EXT_mesh_shader : enable 
-  #extension GL_EXT_multiview : enable
+  #ifdef MULTIVIEW
+    #extension GL_EXT_multiview : enable
+  #endif
 #endif
 
 #extension GL_ARB_separate_shader_objects : enable
@@ -164,8 +166,14 @@ float easeOut(const in float t, const in float power){
 // but where the LOD stuff is calculated based just on the first view here, for simplicity reasons.
 uint viewIndex = pushConstants.viewBaseIndex; 
 #else
+#if defined(MULTIVIEW)
+// When multiview is enabled, the view index is the global view index, which is the view base index plus the view index.
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
-#endif
+#else
+// When multiview is disabled, the view index is always 0 plus the view base index.
+uint viewIndex = pushConstants.viewBaseIndex;
+#endif // defined(MULTIVIEW)
+#endif // defined(MESH_SHADER_EMULATION)
 mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
 mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
 mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
@@ -321,7 +329,7 @@ void main() {
       }
 
     }  
-    
+
   }
 
   groupMemoryBarrier();
