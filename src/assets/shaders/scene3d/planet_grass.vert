@@ -1,9 +1,9 @@
 #version 450 core
 
 // This vertex shader is a part of the mesh shader emulation for the grass rendering, when mesh shaders could not be used for
-// some reason, for example, because the hardware does not support them, or because the Vulkan implementation does not support
-// multi-view rendering with mesh shaders, or when for ray tracing all vertex data are needed at once upfront anyway and not 
-// in a streaming fashion as mesh shaders would provide. 
+// some reason, for example, because the hardware does not support them at all, or because the Vulkan implementation does not 
+// support multi-view rendering with mesh shaders (looking at Intel), or when for ray tracing all vertex data are needed at 
+// once upfront anyway and not in a streaming fashion as mesh shaders would provide. 
 
 #pragma shader_stage(vertex)
 
