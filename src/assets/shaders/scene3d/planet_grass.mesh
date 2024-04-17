@@ -193,6 +193,18 @@ void main() {
   
   if(gl_LocalInvocationIndex == 0u){
 
+#if defined(MESH_SHADER_EMULATION)
+    if(all(equal(uvec3(gl_GlobalInvocationID), uvec3(0u)))){
+      // Fill the other fields of VkDrawIndexedIndirectCommand with the later needed values, but
+      // consider outputMetaData as previously cleared with zeros with vkCmdFillBuffer, so that
+      // even outputMetaData.instanceCount would be zero, when there are no stuff to draw at all.
+      outputMetaData.instanceCount = 1u;
+      outputMetaData.firstIndex = 0u;
+      outputMetaData.vertexOffset = 0u;
+      outputMetaData.firstInstance = 0u;      
+    }
+#endif
+
     // Stuff that is only needed once per task group for all invocations, to avoid redundant calculations
 
     viewProjectionMatrix = projectionMatrix * viewMatrix;
@@ -296,7 +308,8 @@ void main() {
       
 #if defined(MESH_SHADER_EMULATION)
 
-  if(gl_LocalInvocationIndex == 0u){
+   if(gl_LocalInvocationIndex == 0u){
+
     valid = ((outputMetaData.countVertices + countVertices) < pushConstants.maximalCountVertices) && 
             ((outputMetaData.indexCount + countIndicesPerPayload) < pushConstants.maximalCountIndices);
     if(valid){
