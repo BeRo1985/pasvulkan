@@ -11,9 +11,8 @@
 
 #include "bufferreference_definitions.glsl"
 
-layout(location = 0) in vec3 inVector;
-layout(location = 1) in vec2 inOctahedralEncodedNormal;
-layout(location = 2) in vec2 inTexCoord;
+layout(location = 0) in vec4 inPositionXYZTexCoordU;
+layout(location = 1) in vec4 inNormalXYZTexCoordV;
 
 #if defined(RAYTRACING)
 
@@ -89,18 +88,18 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
-  vec3 position = (pushConstants.modelMatrix * vec4(inVector, 1.0)).xyz;
+  vec3 position = (pushConstants.modelMatrix * vec4(inPositionXYZTexCoordU.xyz, 1.0)).xyz;
 
   vec3 worldSpacePosition = position;
 
-  vec3 normal = octSignedDecode(inOctahedralEncodedNormal);
+  vec3 normal = inNormalXYZTexCoordV.xyz; // octSignedDecode(inOctahedralEncodedNormal);
   
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
   outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
-  outBlock.texCoord = inTexCoord;
+  outBlock.texCoord = vec2(inPositionXYZTexCoordU.w, inNormalXYZTexCoordV.w);
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;
