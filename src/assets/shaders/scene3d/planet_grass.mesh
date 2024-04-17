@@ -308,10 +308,20 @@ void main() {
 
     valid = ((outputMetaData.countVertices + countVertices) < pushConstants.maximalCountVertices) && 
             ((outputMetaData.indexCount + countIndicesPerPayload) < pushConstants.maximalCountIndices);
+
     if(valid){
+
       baseVertex = atomicAdd(outputMetaData.countVertices, countVerticesPerBlade * countBlades);
       baseIndex = atomicAdd(outputMetaData.indexCount, countTrianglesPerBlade * countBlades * 3u);
+
+      // Re-check if we are out of bounds in case of race conditions
+      if(((baseVertex + (countVerticesPerBlade * countBlades)) > pushConstants.maximalCountVertices) ||
+         ((baseIndex + (countTrianglesPerBlade * countBlades * 3u)) > pushConstants.maximalCountIndices)){
+        valid = false;
+      }
+
     }  
+    
   }
 
   groupMemoryBarrier();
