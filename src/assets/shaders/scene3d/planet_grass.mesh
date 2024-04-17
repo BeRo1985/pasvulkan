@@ -77,8 +77,16 @@ layout(set = 4, binding = 3, std430) readonly buffer TaskPayload {
 } taskPayload;
 
 layout(set = 4, binding = 4, std430) buffer OutputMetaData {
-  uint countVertices;
-  uint countIndices;
+
+  // VkDrawIndexedIndirectCommand
+  uint indexCount;
+  uint instanceCount;
+  uint firstIndex;
+  uint vertexOffset;
+  uint firstInstance;
+
+  uint countVertices; // Not a part of the VkDrawIndexedIndirectCommand, but needed for the mesh shader emulation
+
 } outputMetaData;
 
 struct OutputVertex {
@@ -290,10 +298,10 @@ void main() {
 
   if(gl_LocalInvocationIndex == 0u){
     valid = ((outputMetaData.countVertices + countVertices) < pushConstants.maximalCountVertices) && 
-            ((outputMetaData.countIndices + countIndicesPerPayload) < pushConstants.maximalCountIndices);
+            ((outputMetaData.indexCount + countIndicesPerPayload) < pushConstants.maximalCountIndices);
     if(valid){
       baseVertex = atomicAdd(outputMetaData.countVertices, countVerticesPerBlade * countBlades);
-      baseIndex = atomicAdd(outputMetaData.countIndices, countTrianglesPerBlade * countBlades * 3u);
+      baseIndex = atomicAdd(outputMetaData.indexCount, countTrianglesPerBlade * countBlades * 3u);
     }  
   }
 
