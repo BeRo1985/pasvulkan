@@ -10,6 +10,8 @@
 *.frag -text linguist-language=GLSL
 *.comp -text linguist-language=GLSL
 *.geom -text linguist-language=GLSL
+*.task -text linguist-language=GLSL
+*.mesh -text linguist-language=GLSL
 *.glsl -text
 *.meta -text
 *.txt -text
