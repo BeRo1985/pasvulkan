@@ -4,6 +4,9 @@
   // When the vertex shader code path is defined, then this shader is compiled as a vertex shader, where
   // the compute shader code generates payload data for the vertex shader invocations as poor-man mesh 
   // shader alternative into storage buffers, but with size limitations.  
+  // And all LOD calculations are done just once for the first view, because the vertex shader code will
+  // handle the multiview stuff, but where the LOD stuff is calculated based just on the first view here,
+  // for simplicity reasons.
   #pragma shader_stage(compute)
 #else
   #pragma shader_stage(mesh)
@@ -71,15 +74,7 @@ layout(set = 4, binding = 3, std430) readonly buffer TaskPayload {
   TaskData taskData[];
 } taskPayload;
 
-layout(set = 4, binding = 4, std140) uniform GlobalMetaData {
-  uint viewIndex; 
-  uint baseVertexOffset;
-  uint baseIndexOffset;
-  uint maximalCountVertices;
-  uint maximalCountIndices;
-} globalMetaData;
-
-layout(set = 4, binding = 5, std430) buffer OutputMetaData {
+layout(set = 4, binding = 4, std430) buffer OutputMetaData {
   uint countVertices;
   uint countIndices;
 } outputMetaData;
@@ -89,11 +84,11 @@ struct OutputVertex {
   vec4 normal; // xyz = normal, w = texcoord v
 };
 
-layout(set = 4, binding = 6, std430) buffer OutputVertices {
+layout(set = 4, binding = 5, std430) buffer OutputVertices {
   OutputVertex vertices[];  
 } outputVertices;
 
-layout(set = 4, binding = 5, std430) buffer OutputIndices {
+layout(set = 4, binding = 6, std430) buffer OutputIndices {
   uint indices[];  
 } outputIndices;
 
@@ -159,7 +154,9 @@ float easeOut(const in float t, const in float power){
 }
 
 #if defined(MESH_SHADER_EMULATION)
-uint viewIndex = pushConstants.viewBaseIndex + uint(globalMetaData.viewIndex);
+// The view index is always 0 for the mesh shader emulation, where the vertex shader code will handle the multiview stuff,
+// but where the LOD stuff is calculated based just on the first view here, for simplicity reasons.
+uint viewIndex = pushConstants.viewBaseIndex; 
 #else
 uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
 #endif
@@ -290,11 +287,11 @@ void main() {
 #if defined(MESH_SHADER_EMULATION)
 
   if(gl_LocalInvocationIndex == 0u){
-    valid = ((globalMetaData.baseVertexOffset + outputMetaData.countVertices + countVertices) < globalMetaData.maximalCountVertices) && 
-            ((globalMetaData.baseIndexOffset + outputMetaData.countIndices + countIndicesPerPayload) < globalMetaData.maximalCountIndices);
+    valid = ((outputMetaData.countVertices + countVertices) < pushConstants.maximalCountVertices) && 
+            ((outputMetaData.countIndices + countIndicesPerPayload) < pushConstants.maximalCountIndices);
     if(valid){
-      baseVertex = atomicAdd(outputMetaData.countVertices, countVerticesPerBlade * countBlades) + globalMetaData.baseVertexOffset;
-      baseIndex = atomicAdd(outputMetaData.countIndices, countTrianglesPerBlade * countBlades * 3u) + globalMetaData.baseIndexOffset;
+      baseVertex = atomicAdd(outputMetaData.countVertices, countVerticesPerBlade * countBlades);
+      baseIndex = atomicAdd(outputMetaData.countIndices, countTrianglesPerBlade * countBlades * 3u);
     }  
   }
 

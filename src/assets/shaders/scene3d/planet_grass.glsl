@@ -20,7 +20,12 @@ layout(push_constant) uniform PushConstants {
   uint resolutionXY;
   int frameIndex; 
 
+#if defined(MESH_SHADER_EMULATION)
+  uint maximalCountVertices;
+  uint maximalCountIndices;
+#else  
   vec2 jitter;
+#endif
 
 } pushConstants;
 
