@@ -1,5 +1,7 @@
 #version 460
 
+//#define BRUTEFORCE_NORMAL_CALCULATION
+
 #if defined(MESH_SHADER_EMULATION)
   // This shader is compiled as a compute shader when the mesh shader emulation path is defined.
   // In this compute shader code, vertex and index data is generated for the vertex shader invocations
@@ -9,6 +11,16 @@
   // For ray tracing later, it is necessary to keep all the data unified for all views anyway, as the 
   // ray tracing code will access all the data at once for all views.
   #pragma shader_stage(compute)
+
+  //#define COMPACT_VERTEX_DATA
+
+  #if defined(COMPACT_VERTEX_DATA)
+    //#extension GL_EXT_shader_16bit_storage : enable
+    //#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
+    //#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
+    #extension GL_EXT_scalar_block_layout : enable
+  #endif
+
 #else
   // Otherwise, when the mesh shader emulation code path is not defined, this shader is compiled as a mesh shader.
   #pragma shader_stage(mesh)
@@ -90,11 +102,26 @@ layout(set = 4, binding = 3, std430) buffer OutputMetaData {
 } outputMetaData;
 
 struct OutputVertex {
+#if defined(COMPACT_VERTEX_DATA)
+  // 20 bytes per vertex (12 bytes for the position, 4 bytes for the normal + binary texcoord U, 4 bytes for the texcoord V)
+  uvec4 positionNormalTexCoordU; // xyz = 32-bit position, w = RGB10A2_SNORM encoded normal (10 bits for each component, 1 bit texcoord u + 1 bit unused)
+  float texCoordV; // 32-bit float texcoord v
+  #if defined(BRUTEFORCE_NORMAL_CALCULATION)
+    #error "BRUTEFORCE_NORMAL_CALCULATION is not supported in conjunction with COMPACT_VERTEX_DATA, since the normal needs to be raw encoded in this case" 
+  #endif 
+#else
+  // 32 bytes per vertex (16 bytes for the position and texcoord U, 16 bytes for the normal and texcoord V)
   vec4 position; // xyz = position, w = texcoord u
   vec4 normal; // xyz = normal, w = texcoord v
-};
+#endif
+}; 
 
-layout(set = 4, binding = 4, std430) buffer OutputVertices {
+#if defined(COMPACT_VERTEX_DATA)
+layout(set = 4, binding = 4, scalar) 
+#else
+layout(set = 4, binding = 4, std430)
+#endif
+buffer OutputVertices {
   OutputVertex vertices[];  
 } outputVertices;
 
@@ -195,8 +222,6 @@ shared bool validGroup;
 #endif
 
 const uvec3 vertexIndices[2] = uvec3[2](uvec3(0, 1, 2), uvec3(1, 3, 2));
-
-//#define BRUTEFORCE_NORMAL_CALCULATION
 
 void main() {
   
@@ -521,10 +546,29 @@ void main() {
 
   #if defined(MESH_SHADER_EMULATION)
 
+    #if defined(COMPACT_VERTEX_DATA)
+      
+      // Pack the normal and binary texcoord U into a RGB10A2_SNORM encoded normal, leaving just one bit unused, and texcoord V as 32-bit float
+      uvec4 normalTexCoordU = (
+          uvec4(
+            uvec3(ivec3(clamp(normalize(normal), vec3(-1.0), vec3(1.0)) * 511.0)), 
+            uint(vertexIndex & 1u)
+          ) & uvec2(0x3ffu, 0x3u).xxxy
+        ) << uvec4(0u, 10u, 20u, 30u);
+
+      outputVertices.vertices[baseVertex + vertexID] = OutputVertex(
+        uvec4(
+          floatBitsToUint(position), 
+          normalTexCoordU.x | normalTexCoordU.y | normalTexCoordU.z | normalTexCoordU.w
+        ),
+        t
+      );
+    #else
       outputVertices.vertices[baseVertex + vertexID] = OutputVertex(
         vec4(position, float(uint(vertexIndex & 1u))),
         vec4(normal, t)
       );
+    #endif
 
       // The vertex shader as next stage will do the rest of the work vertex-wise, so no need to do it here and to save some memory 
       
