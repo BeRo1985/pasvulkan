@@ -476,6 +476,10 @@ compileshaderarguments=(
   "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -o ${tempPath}/planet_grass_raytracing_multiview_mesh.spv"
   "-V planet_grass.mesh --target-env vulkan1.2 -DMULTIVIEW -DRAYTRACING -DVELOCITY -o ${tempPath}/planet_grass_raytracing_velocity_multiview_mesh.spv"
 
+  # The mesh shader emulation variants, forced to be compiled as pure compute shaders
+  "-V planet_grass.task -DMESH_SHADER_EMULATION --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_task_comp.spv"
+  "-V planet_grass.mesh -DMESH_SHADER_EMULATION --target-env vulkan1.2 -S comp -o ${tempPath}/planet_grass_mesh_comp.spv"
+
   "-V planet_grass.vert -o ${tempPath}/planet_grass_vert.spv"
   "-V planet_grass.vert -DVELOCITY -o ${tempPath}/planet_grass_velocity_vert.spv"
   "-V planet_grass.vert -DUSE_BUFFER_REFERENCE -o ${tempPath}/planet_grass_bufref_vert.spv"

@@ -84,17 +84,16 @@ struct TaskData {
 
 #if defined(MESH_SHADER_EMULATION)
 
-layout(set = 1, binding = 2, std430) buffer TaskPayloadMetaData {
-  uint countMaxMeshTasks; // = TASK_GROUP_SIZE as countX for VkDispatchIndirectCommand 
-  uint countPayloads; // as countY practically for VkDispatchIndirectCommand
-  uint countZ; // = 1 for VkDispatchIndirectCommand
-} taskPayloadMetaData;
+// The actually used and more optimized mesh shader emulation approach, which is more direct and does not
+// need the task payload buffer
 
-layout(set = 1, binding = 3, std430) buffer TaskPayload {
-  TaskData taskData[];
-} taskPayload;
-
-shared TaskData taskData;
+layout(set = 4, binding = 2, std430) coherent volatile buffer OutputData {
+  // Index 0: VkDispatchIndirectCommand x = 1 (where group size x is MESH_GROUP_SIZE)
+  // Index 1: VkDispatchIndirectCommand y = countIndices
+  // Index 2: VkDispatchIndirectCommand z = 1
+  // >= Index 3: Indices
+  uint data[]; 
+} outputData;
 
 #else
 
@@ -106,14 +105,23 @@ void main() {
 
   /////////////////////////////////////////////////////////////////////////
    
-  const uint localInvocationIndex = gl_LocalInvocationIndex;
+  const uint localInvocationIndex = uint(gl_LocalInvocationIndex);
 
   // Maximal 8 views at once, for example 2 for VR (for the left und right eyes), 4 for cascaded shadow maps, 6 for cube maps
   const uint countViews = min(pushConstants.countViews, 8); 
 
   if(localInvocationIndex == 0u){
 
+#if defined(MESH_SHADER_EMULATION)
+    if(all(equal(uvec3(gl_GlobalInvocationID), uvec3(0u)))){
+      // Reset VkDispatchIndirectCommand data
+      outputData.data[0u] = 1u; 
+    //outputData.data[1u] = 0u; // Cleared by VkCmdFillBuffer to avoid race conditions at this point
+      outputData.data[2u] = 1u; 
+    }
+#else
     taskData.count = 0u; // reset the count of visible positions
+#endif
 
     vec4 p = pushConstants.modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
     planetPosition = p.xyz / p.w;
@@ -124,8 +132,7 @@ void main() {
     frustumSetup(frustums[localInvocationIndex], uView.views[pushConstants.viewBaseIndex + localInvocationIndex].projectionMatrix);      
   }
 
-  //memoryBarrierShared();
-  //groupMemoryBarrier();
+  memoryBarrierShared();
   barrier(); 
 
   //const uint globalInvocationIndex = (((gl_GlobalInvocationID.z * gl_WorkGroupSize.y) + gl_GlobalInvocationID.y) * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x;
@@ -291,58 +298,56 @@ void main() {
     if(visible){
 
       // Otherwise, if the grass blade is visible, then store the position of the grass blade for the vertex or mesh shader invocations   
-      taskData.indices[atomicAdd(taskData.count, 1u)] = globalIndex;
-
-    }
-
-  }
-
-  // Wait for all invocations to finish the culling calculations
 #if defined(MESH_SHADER_EMULATION)
-  memoryBarrierShared();
-  groupMemoryBarrier();
-#endif
-  barrier();
-  
-#if defined(MESH_SHADER_EMULATION)
+      
+      // Check if there is still room for the index of the visible grass blade
+      if(outputData.data[1u] < pushConstants.maximalCountIndices){
 
-  if(all(equal(uvec3(gl_GlobalInvocationID), uvec3(0u)))){
-    taskPayloadMetaData.countMaxMeshTasks = TASK_GROUP_SIZE;
-    taskPayloadMetaData.countZ = 1u;
-  }
+        // Increment the count of indices and store the index of the visible grass blade
+        uint index = atomicAdd(outputData.data[1u], 1u);
 
-  if((localInvocationIndex == 0u) && 
-     (taskData.count > 0u) && 
-     (taskPayloadMetaData.countPayloads < pushConstants.maximalCountPayloads)){
-    uint taskIndex = atomicAdd(taskPayloadMetaData.countPayloads, 1u);
-    if(taskIndex < pushConstants.maximalCountPayloads){
-      taskPayload.taskData[taskIndex] = taskData;
-    }    
-  }
+        // Recheck if the index is still in the valid range after the atomic operation, because the atomic operation
+        // can be executed by multiple invocations at the same time => race condition can occur
+        if(index < pushConstants.maximalCountIndices){
 
-  // Ensure that the payload count is not greater than the maximal count of payloads in terms of race conditions above at 
-  // the task data count incrementation
-  {
-    
-    // Wait for all invocations 
-    memoryBarrierShared();
-    groupMemoryBarrier();
-    barrier();
+          // Store the index of the visible grass blade if the index is still in the valid range after all
+          outputData.data[index + 3u] = globalIndex;
 
-    if((localInvocationIndex == 0) && (taskPayloadMetaData.countPayloads >= pushConstants.maximalCountPayloads)){
-      atomicExchange(taskPayloadMetaData.countPayloads, pushConstants.maximalCountPayloads);
-    }
+        } 
 
-  }
+      }
 
 #else
 
-  if((localInvocationIndex == 0u) && (taskData.count > 0u)){
+      taskData.indices[atomicAdd(taskData.count, 1u)] = globalIndex;
 
-    // Emit the mesh tasks for the mesh shader invocations  
-    EmitMeshTasksEXT(taskData.count, 1, 1);
+#endif
+
+    }
 
   }
+
+#if defined(MESH_SHADER_EMULATION) 
+
+  // Wait for all invocations to finish the culling calculations
+  memoryBarrierBuffer();
+  barrier();
+
+  // Ensure that the index count is not greater than the maximal count of indices in, because as of consequence of possible
+  // race conditions above at the index incrementation  
+  if((localInvocationIndex == 0u) && (outputData.data[1u] > pushConstants.maximalCountIndices)){
+    atomicExchange(outputData.data[1u], pushConstants.maximalCountIndices);
+  }
+
+#else // !defined(MESH_SHADER_EMULATION)
+
+  // Wait for all invocations to finish the culling calculations
+  // Maybe not really needed because EmitMeshTasksEXT serves as an OpControlBarrier instruction, but it is better to be safe than sorry
+  memoryBarrierShared();
+  barrier();
+
+  // Emit the mesh tasks for the mesh shader invocations  
+  EmitMeshTasksEXT(taskData.count, 1, 1); // serves as an OpControlBarrier instruction, so it should and must be outside of any conditional block 
 
 #endif
 
