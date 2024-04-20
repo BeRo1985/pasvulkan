@@ -20757,7 +20757,8 @@ begin
 
  fMaxMultiDrawCount:=fVulkanDevice.PhysicalDevice.MultiDrawPropertiesEXT.maxMultiDrawCount;
 
- fMeshShaderSupport:=(fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
+ fMeshShaderSupport:=false and
+                     (fVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE) and
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE){and
                      (fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE)};

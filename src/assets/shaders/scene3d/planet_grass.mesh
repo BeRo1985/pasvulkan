@@ -58,15 +58,23 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 1, binding = 0, std140) uniform uboViews {
+#if defined(MESH_SHADER_EMULATION)
+#define PASS_DESCRIPTOR_SET 0
+#define INSTANCE_DESCRIPTOR_SET 1
+#else
+#define PASS_DESCRIPTOR_SET 1
+#define INSTANCE_DESCRIPTOR_SET 3
+#endif 
+
+layout(set = PASS_DESCRIPTOR_SET, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
-layout(set = 3, binding = 1, std430) readonly buffer VisualMeshVertices {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 1, std430) readonly buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
-layout(set = 3, binding = 2, std430) readonly buffer VisualMeshDistances {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 2, std430) readonly buffer VisualMeshDistances {
   float values[];
 } visualMeshDistances;
 
@@ -80,7 +88,7 @@ struct TaskData {
 // The actually used and more optimized mesh shader emulation approach, which is more direct and does not
 // need the task payload buffer
 
-layout(set = 3, binding = 3, std430) readonly buffer InputData {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 3, std430) readonly buffer InputData {
   // Index 0: VkDispatchIndirectCommand x = 1 (where group size x is MESH_GROUP_SIZE)
   // Index 1: VkDispatchIndirectCommand y = countIndices
   // Index 2: VkDispatchIndirectCommand z = 1
@@ -88,7 +96,7 @@ layout(set = 3, binding = 3, std430) readonly buffer InputData {
   uint data[]; 
 } inputData;
 
-layout(set = 3, binding = 4, std430) buffer OutputMetaData {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 4, std430) buffer OutputMetaData {
 
   // VkDrawIndexedIndirectCommand
   uint indexCount;
@@ -117,15 +125,15 @@ struct OutputVertex {
 }; 
 
 #if defined(COMPACT_VERTEX_DATA)
-layout(set = 3, binding = 5, scalar) 
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 5, scalar) 
 #else
-layout(set = 3, binding = 5, std430)
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 5, std430)
 #endif
 buffer OutputVertices {
   OutputVertex vertices[];  
 } outputVertices;
 
-layout(set = 3, binding = 6, std430) buffer OutputIndices {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 6, std430) buffer OutputIndices {
   uint indices[];  
 } outputIndices;
 

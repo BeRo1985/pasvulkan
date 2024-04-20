@@ -38,21 +38,37 @@ struct View {
   mat4 inverseProjectionMatrix;
 };
 
-layout(set = 1, binding = 0, std140) uniform uboViews {
+#if defined(MESH_SHADER_EMULATION)
+
+  #define PASS_DESCRIPTOR_SET 0
+  #define PASS_DESCRIPTOR_DEPTH_TEXTURE_BINDING 1
+
+  #define INSTANCE_DESCRIPTOR_SET 1
+
+#else
+
+  #define PASS_DESCRIPTOR_SET 1
+  #define PASS_DESCRIPTOR_DEPTH_TEXTURE_BINDING 7 
+
+  #define INSTANCE_DESCRIPTOR_SET 3
+
+#endif 
+
+layout(set = PASS_DESCRIPTOR_SET, binding = 0, std140) uniform uboViews {
   View views[256]; // 65536 / (64 * 4) = 256 views as maximum for a single renderer instance (but a application/game can have multiple renderer instances for the same scene)  
 } uView;
 
-layout(set = 1, binding = 7) uniform sampler2DArray uTextureDepth;
+layout(set = PASS_DESCRIPTOR_SET, binding = PASS_DESCRIPTOR_DEPTH_TEXTURE_BINDING) uniform sampler2DArray uTextureDepth;
 
-layout(set = 3, binding = 0, std430) buffer VisibleTileList {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 0, std430) buffer VisibleTileList {
   uint visibleTiles[];
 } visibleTileList;
 
-layout(set = 3, binding = 1, std430) buffer VisualMeshVertices {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 1, std430) buffer VisualMeshVertices {
   uvec4 vertices[]; // xyz = 32-bit float vertex position, w = 2x 16-bit signed normalized octahedral-encoded normal
 } visualMeshVertices;
 
-layout(set = 3, binding = 2, std430) buffer VisualMeshDistances {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 2, std430) buffer VisualMeshDistances {
   float values[];
 } visualMeshDistances;
 
@@ -87,7 +103,7 @@ struct TaskData {
 // The actually used and more optimized mesh shader emulation approach, which is more direct and does not
 // need the task payload buffer
 
-layout(set = 3, binding = 3, std430) coherent volatile buffer OutputData {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 3, std430) coherent volatile buffer OutputData {
   // Index 0: VkDispatchIndirectCommand x = 1 (where group size x is MESH_GROUP_SIZE)
   // Index 1: VkDispatchIndirectCommand y = countIndices
   // Index 2: VkDispatchIndirectCommand z = 1

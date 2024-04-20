@@ -764,9 +764,10 @@ type TpvScene3DPlanets=class;
                    PPlanetPushConstants=^TPlanetPushConstants;
                    TGrassPushConstants=packed record
                     ModelMatrix:TpvMatrix4x4;
-                    BaseViewIndex:TpvUInt32;
+                    ViewBaseIndex:TpvUInt32;
                     CountViews:TpvUInt32;
                     CountAllViews:TpvUInt32;
+                    MaximalCountBladesPerPatch:TpvUInt32;
                     MaximumDistance:TpvFloat;
                     GrassHeight:TpvFloat;
                     GrassThickness:TpvFloat;
@@ -797,12 +798,11 @@ type TpvScene3DPlanets=class;
                fPlanetPushConstants:TPlanetPushConstants;
                fGrassTaskComputeShaderModule:TpvVulkanShaderModule;
                fGrassTaskComputeShaderStage:TpvVulkanPipelineShaderStage;
-               fGrassTaskPipeline:TpvVulkanComputePipeline;
-               fGrassTaskPipelineLayout:TpvVulkanPipelineLayout;
                fGrassMeshComputeShaderModule:TpvVulkanShaderModule;
                fGrassMeshComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fGrassPipelineLayout:TpvVulkanPipelineLayout;
+               fGrassTaskPipeline:TpvVulkanComputePipeline;
                fGrassMeshPipeline:TpvVulkanComputePipeline;
-               fGrassMeshPipelineLayout:TpvVulkanPipelineLayout;
                fGrassPushConstants:TGrassPushConstants;
               public
                constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullRenderPass:TpvScene3DRendererCullRenderPass;const aPass:TpvSizeInt); reintroduce;
@@ -6081,34 +6081,70 @@ begin
                                                    nil,
                                                    0);
 
-{ if fPass=1 then begin
+{}if (fPass=1) and not TpvScene3D(fScene3D).MeshShaderSupport then begin
 
-   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_cull_and_mesh_generation_comp.spv');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_task_comp.spv');
    try
-    fGrassComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+    fGrassTaskComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
    finally
     FreeAndNil(Stream);
    end;
 
-   fVulkanDevice.DebugUtils.SetObjectName(fGrassComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DGrass.TCullPass.fComputeShaderModule');
+   Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_mesh_comp.spv');
+   try
+    fGrassMeshComputeShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   finally
+    FreeAndNil(Stream);
+   end;
 
-   fGrassComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fGrassComputeShaderModule,'main');
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassTaskComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DGrass.TCullPass.fGrassTaskComputeShaderModule');
+
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassMeshComputeShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DGrass.TCullPass.fGrassMeshComputeShaderModule');
+
+   fGrassTaskComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fGrassTaskComputeShaderModule,'main');
+
+   fGrassMeshComputeShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_COMPUTE_BIT,fGrassMeshComputeShaderModule,'main');
 
    fGrassPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
    fGrassPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT),0,SizeOf(TGrassPushConstants));
    fGrassPipelineLayout.AddDescriptorSetLayout(fDescriptorSetLayout);
    fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetGrassCullAndMeshGenerationDescriptorSetLayout);
+   fGrassPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
    fGrassPipelineLayout.Initialize;
 
-   fGrassPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
-                                                   pvApplication.VulkanPipelineCache,
-                                                   TVkPipelineCreateFlags(0),
-                                                   fGrassComputeShaderStage,
-                                                   fGrassPipelineLayout,
-                                                   nil,
-                                                   0);
+   fGrassTaskPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                       pvApplication.VulkanPipelineCache,
+                                                       TVkPipelineCreateFlags(0),
+                                                       fGrassTaskComputeShaderStage,
+                                                       fGrassPipelineLayout,
+                                                       nil,
+                                                       0);
 
-  end;}
+   fGrassMeshPipeline:=TpvVulkanComputePipeline.Create(fVulkanDevice,
+                                                       pvApplication.VulkanPipelineCache,
+                                                       TVkPipelineCreateFlags(0),
+                                                       fGrassMeshComputeShaderStage,
+                                                       fGrassPipelineLayout,
+                                                       nil,
+                                                       0);
+
+  end else begin
+
+   fGrassTaskComputeShaderModule:=nil;
+
+   fGrassMeshComputeShaderModule:=nil;
+
+   fGrassTaskComputeShaderStage:=nil;
+
+   fGrassMeshComputeShaderStage:=nil;
+
+   fGrassPipelineLayout:=nil;
+
+   fGrassTaskPipeline:=nil;
+
+   fGrassMeshPipeline:=nil;
+
+  end;
 
  end;
 
@@ -6117,9 +6153,11 @@ end;
 destructor TpvScene3DPlanet.TCullPass.Destroy;
 begin
 
-{FreeAndNil(fGrassPipeline);
+ FreeAndNil(fGrassMeshPipeline);
 
- FreeAndNil(fGrassPipelineLayout);}
+ FreeAndNil(fGrassTaskPipeline);
+
+ FreeAndNil(fGrassPipelineLayout);
 
  FreeAndNil(fPlanetPipeline);
 
@@ -6127,9 +6165,13 @@ begin
 
  FreeAndNil(fDescriptorSetLayout);
 
-{FreeAndNil(fGrassComputeShaderStage);
+ FreeAndNil(fGrassMeshComputeShaderStage);
 
- FreeAndNil(fGrassComputeShaderModule);}
+ FreeAndNil(fGrassTaskComputeShaderStage);
+
+ FreeAndNil(fGrassMeshComputeShaderModule);
+
+ FreeAndNil(fGrassTaskComputeShaderModule);
 
  FreeAndNil(fPlanetComputeShaderStage);
 
@@ -6239,7 +6281,7 @@ var PlanetIndex,RenderPassIndex,BaseViewIndex,CountViews,CountBufferMemoryBarrie
     InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
     RendererInstance:TpvScene3DPlanet.TRendererInstance;
     RendererViewInstance:TpvScene3DPlanet.TRendererViewInstance;
-    BufferMemoryBarriers:array[0..4] of TVkBufferMemoryBarrier;
+    BufferMemoryBarriers:array[0..5] of TVkBufferMemoryBarrier;
     DstPipelineStageFlags:TVkPipelineStageFlags;
     BufferCopy:TVkBufferCopy;
 begin
@@ -6571,7 +6613,7 @@ begin
 
   end;
 
-(*if false and assigned(fGrassPipeline) and (fPass=1) then begin
+  if false and assigned(fGrassPipelineLayout) and (fPass=1) then begin
 
    First:=true;
 
@@ -6586,16 +6628,6 @@ begin
       if First then begin
 
        First:=false;
-
-       aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fGrassPipeline.Handle);
-
-       aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                            fGrassPipelineLayout.Handle,
-                                            0,
-                                            1,
-                                            @fDescriptorSets[aInFlightFrameIndex].Handle,
-                                            0,
-                                            nil);
 
       end;
 
@@ -6633,24 +6665,32 @@ begin
            Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,RenderPassIndex),
                                                       RendererViewInstance) then begin
 
-         fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].ModelMatrix;
-         fGrassPushConstants.BaseViewIndex:=BaseViewIndex;
+         fGrassPushConstants.ModelMatrix:=Planet.fInFlightFrameDataList[aInFlightFrameIndex].fModelMatrix;
+         fGrassPushConstants.ViewBaseIndex:=BaseViewIndex;
          fGrassPushConstants.CountViews:=CountViews;
-         fGrassPushConstants.AdditionalViewIndex:=AdditionalViewIndex;
-         fGrassPushConstants.CountAdditionalViews:=CountAdditionalViews;
+         fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
+         fGrassPushConstants.CountAllViews:=TpvScene3DRendererInstance(fRendererInstance).InFlightFrameStates[aInFlightFrameIndex].CountViews;
          fGrassPushConstants.TileMapResolution:=Planet.fTileMapResolution;
          fGrassPushConstants.TileResolution:=Planet.fVisualTileResolution;
-         fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
-         fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
-         fGrassPushConstants.MaximumDistance:=1000.0;
-         fGrassPushConstants.GrassHeight:=0.125;
-         fGrassPushConstants.GrassThickness:=0.03;
-         fGrassPushConstants.CountVerticesPerBladeEdge:=4;
-         fGrassPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
+         fGrassPushConstants.MaximumDistance:=Planet.fTopRadius;
+         fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
+         fGrassPushConstants.GrassThickness:=0.01;
+         fGrassPushConstants.MaximalCountBladesPerPatch:=8;
+         fGrassPushConstants.ResolutionXY:=0;
+         fGrassPushConstants.FrameIndex:=0;
 
          begin
 
           CountBufferMemoryBarriers:=0;
+
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanGrassTaskIndicesBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);
 
           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                                                          TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
@@ -6689,6 +6729,11 @@ begin
 
          begin
 
+          aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanGrassTaskIndicesBuffer.Handle,
+                                       0,
+                                       3*SizeOf(TpvUInt32),
+                                       0);
+
           aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
                                        0,
                                        RendererViewInstance.fVulkanGrassMetaDataBuffer.Size,
@@ -6699,6 +6744,15 @@ begin
          begin
 
           CountBufferMemoryBarriers:=0;
+
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanGrassTaskIndicesBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);
 
           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
                                                                                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
@@ -6719,6 +6773,16 @@ begin
 
          begin
 
+          aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fGrassTaskPipeline.Handle);
+
+          aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                               fGrassPipelineLayout.Handle,
+                                               0,
+                                               1,
+                                               @fDescriptorSets[aInFlightFrameIndex].Handle,
+                                               0,
+                                               nil);
+
           aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                                fGrassPipelineLayout.Handle,
                                                1,
@@ -6735,9 +6799,9 @@ begin
 
 //        aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,0);
 
-          aCommandBuffer.CmdDispatch(Planet.fTileMapResolution*Planet.fTileMapResolution,
-                                     ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+255) shr 8,
-                                     1);//}
+          aCommandBuffer.CmdDispatch((((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
+                                     ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
+                                     1);
 
          end;
 
@@ -6746,8 +6810,34 @@ begin
           CountBufferMemoryBarriers:=0;
 
           BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                         //TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
-                                                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         VK_QUEUE_FAMILY_IGNORED,
+                                                                                         RendererViewInstance.fVulkanGrassTaskIndicesBuffer.Handle,
+                                                                                         0,
+                                                                                         VK_WHOLE_SIZE);
+          inc(CountBufferMemoryBarriers);
+
+          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+                                            0,
+                                            0,nil,
+                                            CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
+                                            0,nil);
+
+         end;
+
+         begin
+          aCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,fGrassMeshPipeline.Handle);
+          aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanGrassTaskIndicesBuffer.Handle,0);
+         end;
+
+         begin
+
+          CountBufferMemoryBarriers:=0;
+
+          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
+                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT) or TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
                                                                                          VK_QUEUE_FAMILY_IGNORED,
                                                                                          VK_QUEUE_FAMILY_IGNORED,
                                                                                          RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
@@ -6773,65 +6863,12 @@ begin
                                                                                          VK_WHOLE_SIZE);
           inc(CountBufferMemoryBarriers);
 
-          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
-                                                                                         TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                                                         RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
-                                                                                         0,
-                                                                                         VK_WHOLE_SIZE);
-          inc(CountBufferMemoryBarriers);
-
-          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
+          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                             0,
                                             0,nil,
                                             CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
                                             0,nil);
-         end;
-
-         begin
-
-          BufferCopy.srcOffset:=TpvPtrUInt(@PGrassMetaData(nil)^.CountIndices);
-          BufferCopy.dstOffset:=TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand.indexCount);
-          BufferCopy.size:=SizeOf(TpvUInt32);
-
-          aCommandBuffer.CmdCopyBuffer(RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
-                                       RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
-                                       1,
-                                       @BufferCopy);
-
-         end;
-
-         begin
-
-          CountBufferMemoryBarriers:=0;
-
-          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT),
-                                                                                         TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
-                                                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                                                         RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
-                                                                                         0,
-                                                                                         VK_WHOLE_SIZE);
-          inc(CountBufferMemoryBarriers);
-
-          BufferMemoryBarriers[CountBufferMemoryBarriers]:=TVkBufferMemoryBarrier.Create(TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT),
-                                                                                         TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT),
-                                                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                                                         VK_QUEUE_FAMILY_IGNORED,
-                                                                                         RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
-                                                                                         0,
-                                                                                         VK_WHOLE_SIZE);
-          inc(CountBufferMemoryBarriers);
-
-          aCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT),
-                                            0,
-                                            0,nil,
-                                            CountBufferMemoryBarriers,@BufferMemoryBarriers[0],
-                                            0,nil);
-
          end;
 
         end;
@@ -6846,7 +6883,7 @@ begin
 
    end;
 
-  end;*)
+  end;
 
  finally
   TpvScene3DPlanets(TpvScene3D(fScene3D).Planets).Lock.Release;
@@ -7079,7 +7116,7 @@ begin
   end;
 
   if assigned(fGrassVertexShaderModule) then begin
-   fGrassVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TASK_BIT_EXT,fGrassVertexShaderModule,'main');
+   fGrassVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fGrassVertexShaderModule,'main');
   end else begin
    fGrassVertexShaderStage:=nil;
   end;
