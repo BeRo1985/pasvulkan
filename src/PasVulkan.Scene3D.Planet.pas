@@ -776,7 +776,7 @@ type TpvScene3DPlanets=class;
                     TileResolution:TpvUInt32;
                     ResolutionXY:TpvUInt32;
                     FrameIndex:TpvUInt32;
-                    MaximumCountPayloads:TpvUInt32;
+                    MaximumCountTaskIndices:TpvUInt32;
                     MaximumCountVertices:TpvUInt32;
                     MaximumCountIndices:TpvUInt32;
                    end;
@@ -6678,6 +6678,9 @@ begin
          fGrassPushConstants.MaximalCountBladesPerPatch:=8;
          fGrassPushConstants.ResolutionXY:=0;
          fGrassPushConstants.FrameIndex:=0;
+         fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
+         fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
+         fGrassPushConstants.MaximumCountIndices:=Planet.fMaxGrassIndices;
 
          begin
 

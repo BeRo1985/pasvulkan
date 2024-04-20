@@ -351,8 +351,8 @@ void main() {
 
   // Ensure that the index count is not greater than the maximal count of indices in, because as of consequence of possible
   // race conditions above at the index incrementation  
-  if((localInvocationIndex == 0u) && (outputData.data[1u] > pushConstants.maximalCountIndices)){
-    atomicExchange(outputData.data[1u], pushConstants.maximalCountIndices);
+  if((localInvocationIndex == 0u) && (outputData.data[1u] > pushConstants.maximalCountTaskIndices)){
+    atomicExchange(outputData.data[1u], pushConstants.maximalCountTaskIndices);
   }
 
 #else // !defined(MESH_SHADER_EMULATION)
