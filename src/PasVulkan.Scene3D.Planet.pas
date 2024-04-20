@@ -6457,12 +6457,12 @@ begin
            aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
                                         0,
                                         SizeOf(TpvUInt32),
-                                        0);
+                                        ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+127) shr 7);
 
            aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
                                         SizeOf(TpvUInt32),
                                         SizeOf(TpvUInt32),
-                                        ((Planet.fVisualTileResolution*Planet.fVisualTileResolution)+255) shr 8);
+                                        0);
 
            aCommandBuffer.CmdFillBuffer(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
                                         SizeOf(TpvUInt32)+SizeOf(TpvUInt32),
@@ -6800,11 +6800,11 @@ begin
                                           SizeOf(TGrassPushConstants),
                                           @fGrassPushConstants);
 
-//        aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,0);
+          aCommandBuffer.CmdDispatchIndirect(RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,0);
 
-          aCommandBuffer.CmdDispatch((((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
+{         aCommandBuffer.CmdDispatch((((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
                                      ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
-                                     1);
+                                     1);//}
 
          end;
 
@@ -8010,13 +8010,25 @@ begin
 
        end else begin
 
-        TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
-                                                                                (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
-                                                                                ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
-                                                                                1
-                                                                               {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
-                                                                                (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+15) shr 4,
-                                                                                1});
+        if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectEXT) then begin
+
+         TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectEXT(aCommandBuffer.Handle,
+                                                                                         RendererViewInstance.fVulkanVisibleTileListBuffer.Handle,
+                                                                                         0,
+                                                                                         1,
+                                                                                         SizeOf(TVkDrawMeshTasksIndirectCommandEXT));
+
+        end else begin
+
+         TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
+                                                                                 (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
+                                                                                 ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
+                                                                                 1
+                                                                                {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
+                                                                                 (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+15) shr 4,
+                                                                                 1});
+
+        end;
 
        end;
 

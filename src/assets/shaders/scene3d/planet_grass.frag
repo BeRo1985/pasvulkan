@@ -180,8 +180,8 @@ void main(){
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
-  vec4 normalHeight = vec4(0.5, 0.5, 0.5, 0.5);
-  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.0, 0.0, 0.0);
+  vec4 normalHeight = vec4(0.5, 0.5, 1.0, 0.5);
+  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.9, 0.0, 0.0);
   
   workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
  

@@ -160,7 +160,7 @@ void main() {
 
   //const uint remainingGlobalInvocationIndex = globalInvocationIndex - (tileListIndex * tileTotalResolution);
 
-  const uint countVisibleTiles = visibleTileList.visibleTiles[0];
+  const uint countVisibleTiles = visibleTileList.visibleTiles[1];
 
   const uint localTileInvocationIndex = gl_GlobalInvocationID.x;
 
