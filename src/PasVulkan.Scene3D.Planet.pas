@@ -8586,9 +8586,13 @@ begin
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
- fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 3)*(4*2);
+{fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 3)*(4*2);
 
- fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 2)*((4*2)-2);
+ fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 2)*((4*2)-2);}
+
+ fMaxGrassVertices:=Max(65536,(512 shl 20) div SizeOf(TpvScene3DPlanet.TGrassVertex));
+
+ fMaxGrassIndices:=Max(65536,(256 shl 20) div SizeOf(TpvUInt32));
 
  fTiledVisualMeshIndices:=TMeshIndices.Create;
 
