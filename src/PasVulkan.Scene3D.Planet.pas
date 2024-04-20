@@ -6613,7 +6613,7 @@ begin
 
   end;
 
-  if false and assigned(fGrassPipelineLayout) and (fPass=1) then begin
+  if assigned(fGrassTaskPipeline) and assigned(fGrassMeshPipeline) and (fPass=1) then begin
 
    First:=true;
 
@@ -8221,7 +8221,7 @@ begin
                                                         ((fPlanet.fVisualResolution*fPlanet.fVisualResolution)+3)*SizeOf(TpvUInt32),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                         [],
                                                         0,
@@ -8446,33 +8446,45 @@ begin
                                                         [],
                                                         false);
 
-{  fGrassCullDescriptorSets[Index].WriteToDescriptorSet(2,
-                                                        0,
-                                                        1,
-                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                        [],
-                                                        [fVulkanGrassMetaDataBuffer.DescriptorBufferInfo],
-                                                        [],
-                                                        false);
+   if not TpvScene3D(fPlanet.fScene3D).MeshShaderSupport then begin
 
-   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(3,
-                                                        0,
-                                                        1,
-                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                        [],
-                                                        [fVulkanGrassVerticesBuffer.DescriptorBufferInfo],
-                                                        [],
-                                                        false);
+    fGrassCullDescriptorSets[Index].WriteToDescriptorSet(3,
+                                                         0,
+                                                         1,
+                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                         [],
+                                                         [fVulkanGrassTaskIndicesBuffer.DescriptorBufferInfo],
+                                                         [],
+                                                         false);
 
-   fGrassCullDescriptorSets[Index].WriteToDescriptorSet(4,
-                                                        0,
-                                                        1,
-                                                        TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                                                        [],
-                                                        [fVulkanGrassIndicesBuffer.DescriptorBufferInfo],
-                                                        [],
-                                                        false);}
+    fGrassCullDescriptorSets[Index].WriteToDescriptorSet(4,
+                                                         0,
+                                                         1,
+                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                         [],
+                                                         [fVulkanGrassMetaDataBuffer.DescriptorBufferInfo],
+                                                         [],
+                                                         false);
 
+    fGrassCullDescriptorSets[Index].WriteToDescriptorSet(5,
+                                                         0,
+                                                         1,
+                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                         [],
+                                                         [fVulkanGrassVerticesBuffer.DescriptorBufferInfo],
+                                                         [],
+                                                         false);
+
+    fGrassCullDescriptorSets[Index].WriteToDescriptorSet(6,
+                                                         0,
+                                                         1,
+                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                                                         [],
+                                                         [fVulkanGrassIndicesBuffer.DescriptorBufferInfo],
+                                                         [],
+                                                         false);
+
+   end;
 
    fGrassCullDescriptorSets[Index].Flush;
 
