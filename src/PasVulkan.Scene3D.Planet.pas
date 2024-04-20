@@ -762,23 +762,24 @@ type TpvScene3DPlanets=class;
                     MinimumLODLevel:TpvUInt32;
                    end;
                    PPlanetPushConstants=^TPlanetPushConstants;
-{                  TGrassPushConstants=packed record
+                   TGrassPushConstants=packed record
                     ModelMatrix:TpvMatrix4x4;
                     BaseViewIndex:TpvUInt32;
                     CountViews:TpvUInt32;
-                    AdditionalViewIndex:TpvUInt32;
-                    CountAdditionalViews:TpvUInt32;
-                    TileMapResolution:TpvUInt32;
-                    TileResolution:TpvUInt32;
-                    MaximumCountVertices:TpvUInt32;
-                    MaximumCountIndices:TpvUInt32;
+                    CountAllViews:TpvUInt32;
                     MaximumDistance:TpvFloat;
                     GrassHeight:TpvFloat;
                     GrassThickness:TpvFloat;
-                    CountVerticesPerBladeEdge:TpvUInt32;
                     Time:TpvFloat;
+                    TileMapResolution:TpvUInt32;
+                    TileResolution:TpvUInt32;
+                    ResolutionXY:TpvUInt32;
+                    FrameIndex:TpvUInt32;
+                    MaximumCountPayloads:TpvUInt32;
+                    MaximumCountVertices:TpvUInt32;
+                    MaximumCountIndices:TpvUInt32;
                    end;
-                   PGrassPushConstants=^TGrassPushConstants;}
+                   PGrassPushConstants=^TGrassPushConstants;
               private
                fRenderer:TObject;
                fRendererInstance:TObject;
@@ -794,11 +795,15 @@ type TpvScene3DPlanets=class;
                fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
                fPlanetPipelineLayout:TpvVulkanPipelineLayout;
                fPlanetPushConstants:TPlanetPushConstants;
-{              fGrassComputeShaderModule:TpvVulkanShaderModule;
-               fGrassComputeShaderStage:TpvVulkanPipelineShaderStage;
-               fGrassPipeline:TpvVulkanComputePipeline;
-               fGrassPipelineLayout:TpvVulkanPipelineLayout;
-               fGrassPushConstants:TGrassPushConstants;}
+               fGrassTaskComputeShaderModule:TpvVulkanShaderModule;
+               fGrassTaskComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fGrassTaskPipeline:TpvVulkanComputePipeline;
+               fGrassTaskPipelineLayout:TpvVulkanPipelineLayout;
+               fGrassMeshComputeShaderModule:TpvVulkanShaderModule;
+               fGrassMeshComputeShaderStage:TpvVulkanPipelineShaderStage;
+               fGrassMeshPipeline:TpvVulkanComputePipeline;
+               fGrassMeshPipelineLayout:TpvVulkanPipelineLayout;
+               fGrassPushConstants:TGrassPushConstants;
               public
                constructor Create(const aRenderer:TObject;const aRendererInstance:TObject;const aScene3D:TObject;const aCullRenderPass:TpvScene3DRendererCullRenderPass;const aPass:TpvSizeInt); reintroduce;
                destructor Destroy; override;               
