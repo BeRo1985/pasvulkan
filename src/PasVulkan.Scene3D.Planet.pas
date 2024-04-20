@@ -8586,9 +8586,9 @@ begin
 
  fPhysicsResolution:=fTileMapResolution*fPhysicsTileResolution;
 
- fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 4)*(4*2);
+ fMaxGrassVertices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 3)*(4*2);
 
- fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 4)*((4*2)-2);
+ fMaxGrassIndices:=Max(65536,((fVisualResolution*fVisualResolution)+15) shr 2)*((4*2)-2);
 
  fTiledVisualMeshIndices:=TMeshIndices.Create;
 
