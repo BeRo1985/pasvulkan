@@ -80,7 +80,7 @@ struct TaskData {
 // The actually used and more optimized mesh shader emulation approach, which is more direct and does not
 // need the task payload buffer
 
-layout(set = 4, binding = 2, std430) readonly buffer InputData {
+layout(set = 3, binding = 3, std430) readonly buffer InputData {
   // Index 0: VkDispatchIndirectCommand x = 1 (where group size x is MESH_GROUP_SIZE)
   // Index 1: VkDispatchIndirectCommand y = countIndices
   // Index 2: VkDispatchIndirectCommand z = 1
@@ -88,7 +88,7 @@ layout(set = 4, binding = 2, std430) readonly buffer InputData {
   uint data[]; 
 } inputData;
 
-layout(set = 4, binding = 3, std430) buffer OutputMetaData {
+layout(set = 3, binding = 4, std430) buffer OutputMetaData {
 
   // VkDrawIndexedIndirectCommand
   uint indexCount;
@@ -117,15 +117,15 @@ struct OutputVertex {
 }; 
 
 #if defined(COMPACT_VERTEX_DATA)
-layout(set = 4, binding = 4, scalar) 
+layout(set = 3, binding = 5, scalar) 
 #else
-layout(set = 4, binding = 4, std430)
+layout(set = 3, binding = 5, std430)
 #endif
 buffer OutputVertices {
   OutputVertex vertices[];  
 } outputVertices;
 
-layout(set = 4, binding = 5, std430) buffer OutputIndices {
+layout(set = 3, binding = 6, std430) buffer OutputIndices {
   uint indices[];  
 } outputIndices;
 

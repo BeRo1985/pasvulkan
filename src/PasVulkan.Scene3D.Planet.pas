@@ -162,27 +162,19 @@ type TpvScene3DPlanets=class;
             end;
             PTiledMeshIndexGroup=^TTiledMeshIndexGroup;
             TTiledMeshIndexGroups=TpvDynamicArrayList<TTiledMeshIndexGroup>;
-            TGrassMetaBufferData=packed record
-             CountVertices:TpvUInt32;
-             CountIndices:TpvUInt32;
-            end;
-            PGrassMetaBufferData=^TGrassMetaBufferData;
-            TGrassDrawIndexedIndirectCommand=packed record
+            TGrassMetaData=packed record
              DrawIndexedIndirectCommand:TVkDrawIndexedIndirectCommand;
-             Count:TpvUInt32;
+             CountVertices:TpvUInt32;
             end;
-            PGrassDrawIndexedIndirectCommand=^TGrassDrawIndexedIndirectCommand;
+            PGrassMetaData=^TGrassMetaData;
             TGrassVertex=packed record
-             PositionX:TpvFloat;
+{            PositionX:TpvFloat;
              PositionY:TpvFloat;
-             Positionz:TpvFloat;
-             OctNormalX:TpvInt16;
-             OctNormalY:TpvInt16;
-             TexCoordU:TpvUInt16;
-             TexCoordV:TpvUInt16;
-             Reserved0:TpvUInt32;
-             Reserved1:TpvUInt32;
-             Reserved2:TpvUInt32;
+             PositionZ:TpvFloat;
+             NormalTexCoordU:TpvUInt32;
+             TexCoordV:TpvUInt32;}
+             PositionTexCoordU:TpvVector4;
+             NormalTexCoordV:TpvVector4;
             end;
             PGrassVertex=^TGrassVertex;
             { TData }
@@ -875,9 +867,11 @@ type TpvScene3DPlanets=class;
               fPlanetFragmentShaderModule:TpvVulkanShaderModule;
               fPlanetVertexShaderStage:TpvVulkanPipelineShaderStage;
               fPlanetFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fGrassVertexShaderModule:TpvVulkanShaderModule;
               fGrassTaskShaderModule:TpvVulkanShaderModule;
               fGrassMeshShaderModule:TpvVulkanShaderModule;
               fGrassFragmentShaderModule:TpvVulkanShaderModule;
+              fGrassVertexShaderStage:TpvVulkanPipelineShaderStage;
               fGrassTaskShaderStage:TpvVulkanPipelineShaderStage;
               fGrassMeshShaderStage:TpvVulkanPipelineShaderStage;
               fGrassFragmentShaderStage:TpvVulkanPipelineShaderStage;
@@ -958,10 +952,10 @@ type TpvScene3DPlanets=class;
               fVulkanVisiblityBuffers:array[0..MaxInFlightFrames-1] of TpvVulkanBuffer;
               fVulkanDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;
               fVulkanVisibleTileListBuffer:TpvVulkanBuffer;
-{             fVulkanGrassMetaDataBuffer:TpvVulkanBuffer;
+              fVulkanGrassTaskIndicesBuffer:TpvVulkanBuffer;
+              fVulkanGrassMetaDataBuffer:TpvVulkanBuffer;
               fVulkanGrassVerticesBuffer:TpvVulkanBuffer;
               fVulkanGrassIndicesBuffer:TpvVulkanBuffer;
-              fVulkanGrassDrawIndexedIndirectCommandBuffer:TpvVulkanBuffer;}
               fPlanetCullDescriptorPool:TpvVulkanDescriptorPool;
               fPlanetCullDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
               fGrassCullDescriptorPool:TpvVulkanDescriptorPool;
@@ -1089,8 +1083,8 @@ type TpvScene3DPlanets=class;
        class function CreatePlanetDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetCullDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetCullDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
-       class function CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
-       class function CreatePlanetGrassCullAndMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
+       class function CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetGrassCullAndMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        procedure BeginUpdate;
        procedure EndUpdate;
        procedure FlushUpdate;
@@ -6793,7 +6787,7 @@ begin
 
          begin
 
-          BufferCopy.srcOffset:=TpvPtrUInt(@PGrassMetaBufferData(nil)^.CountIndices);
+          BufferCopy.srcOffset:=TpvPtrUInt(@PGrassMetaData(nil)^.CountIndices);
           BufferCopy.dstOffset:=TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand.indexCount);
           BufferCopy.size:=SizeOf(TpvUInt32);
 
@@ -6923,6 +6917,8 @@ begin
 
   if TpvScene3D(fScene3D).MeshShaderSupport then begin
 
+   fGrassVertexShaderModule:=nil;
+
    if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
     Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_task.spv');
    end else begin
@@ -6933,7 +6929,7 @@ begin
    finally
     FreeAndNil(Stream);
    end;
-   fVulkanDevice.DebugUtils.SetObjectName(fGrassTaskShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fGrassTaskShaderModule');
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassTaskShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.GrassTaskShaderModule');
 
    if fVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE then begin
     if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
@@ -6953,9 +6949,21 @@ begin
    finally
     FreeAndNil(Stream);
    end;
-   fVulkanDevice.DebugUtils.SetObjectName(fGrassMeshShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.fGrassMeshShaderModule');
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassMeshShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.GrassMeshShaderModule');
 
   end else begin
+
+   if (fMode in [TpvScene3DPlanet.TRenderPass.TMode.DepthPrepass,TpvScene3DPlanet.TRenderPass.TMode.DepthPrepassDisocclusion,TpvScene3DPlanet.TRenderPass.TMode.Opaque]) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'velocity_vert.spv');
+   end else begin
+    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_'+TopLevelKind+Kind+'vert.spv');
+   end;
+   try
+    fGrassVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+   finally
+    FreeAndNil(Stream);
+   end;
+   fVulkanDevice.DebugUtils.SetObjectName(fGrassVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TRenderPass.GrassVertexShaderModule');
 
    fGrassTaskShaderModule:=nil;
 
@@ -7063,6 +7071,12 @@ begin
    fPlanetFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fPlanetFragmentShaderModule,'main');
   end else begin
    fPlanetFragmentShaderStage:=nil;
+  end;
+
+  if assigned(fGrassVertexShaderModule) then begin
+   fGrassVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_TASK_BIT_EXT,fGrassVertexShaderModule,'main');
+  end else begin
+   fGrassVertexShaderStage:=nil;
   end;
 
   if assigned(fGrassTaskShaderModule) then begin
@@ -7197,11 +7211,15 @@ begin
 
  FreeAndNil(fGrassTaskShaderStage);
 
+ FreeAndNil(fGrassVertexShaderStage);
+
  FreeAndNil(fGrassFragmentShaderModule);
 
  FreeAndNil(fGrassMeshShaderModule);
 
  FreeAndNil(fGrassTaskShaderModule);
+
+ FreeAndNil(fGrassVertexShaderModule);
 
  FreeAndNil(fPlanetFragmentShaderStage);
 
@@ -7510,7 +7528,7 @@ begin
 
  end;
 
- if assigned(fGrassTaskShaderStage) and assigned(fGrassMeshShaderStage) then begin
+ begin
 
   fGrassPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
                                                    TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
@@ -7522,9 +7540,16 @@ begin
                                                    nil,
                                                    0);
 
-  fGrassPipeline.AddStage(fGrassTaskShaderStage);
+  if assigned(fGrassTaskShaderStage) and assigned(fGrassMeshShaderStage) then begin
 
-  fGrassPipeline.AddStage(fGrassMeshShaderStage);
+   fGrassPipeline.AddStage(fGrassTaskShaderStage);
+   fGrassPipeline.AddStage(fGrassMeshShaderStage);
+
+  end else if assigned(fGrassVertexShaderStage) then begin
+
+   fGrassPipeline.AddStage(fGrassVertexShaderStage);
+
+  end;
 
   if assigned(fGrassFragmentShaderStage) then begin
    fGrassPipeline.AddStage(fGrassFragmentShaderStage);
@@ -7535,9 +7560,8 @@ begin
   fGrassPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
   fGrassPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TGrassVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,0);
-  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16_SNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.OctNormalX)));
-  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R16G16_UNORM,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.TexCoordU)));
+  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.PositionTexCoordU)));
+  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.NormalTexCoordV)));
 
   fGrassPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
   fGrassPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
@@ -7620,10 +7644,6 @@ begin
   fGrassPipeline.Initialize;
 
   fVulkanDevice.DebugUtils.SetObjectName(fGrassPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TRenderPass.fGrassPipeline');
-
- end else begin
-
-  fGrassPipeline:=nil;
 
  end;
 
@@ -7933,24 +7953,27 @@ begin
          Planet.fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(fRendererInstance,aRenderPassIndex),
                                                     RendererViewInstance) then begin
 
-{      aCommandBuffer.CmdBindIndexBuffer(RendererViewInstance.fVulkanGrassIndicesBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-       aCommandBuffer.CmdBindVertexBuffers(0,1,@RendererViewInstance.fVulkanGrassVerticesBuffer.Handle,@Offsets);
+       if assigned(RendererViewInstance.fVulkanGrassVerticesBuffer) or not TpvScene3D(fScene3D).MeshShaderSupport then begin
 
-       vkCmdDrawIndexedIndirectCount(aCommandBuffer.Handle,
-                                     RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
-                                     TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.DrawIndexedIndirectCommand),
-                                     RendererViewInstance.fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,
-                                     TpvPtrUInt(@PGrassDrawIndexedIndirectCommand(nil)^.Count),
-                                     1,
-                                     SizeOf(TVkDrawIndexedIndirectCommand));                   }
+        aCommandBuffer.CmdBindIndexBuffer(RendererViewInstance.fVulkanGrassIndicesBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+        aCommandBuffer.CmdBindVertexBuffers(0,1,@RendererViewInstance.fVulkanGrassVerticesBuffer.Handle,@Offsets);
 
-       TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
-                                                                               (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
-                                                                               ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
-                                                                               1
-                                                                              {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
-                                                                               (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+15) shr 4,
-                                                                               1});
+        aCommandBuffer.CmdDrawIndexedIndirect(RendererViewInstance.fVulkanGrassMetaDataBuffer.Handle,
+                                              TpvPtrUInt(@PGrassMetaData(nil)^.DrawIndexedIndirectCommand),
+                                              1,
+                                              SizeOf(TVkDrawIndexedIndirectCommand));
+
+       end else begin
+
+        TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksEXT(aCommandBuffer.Handle,
+                                                                                (((Planet.fVisualTileResolution shr 0)*(Planet.fVisualTileResolution shr 0))+127) shr 7,
+                                                                                ((Planet.fTileMapResolution*Planet.fTileMapResolution)+0) shr 0,
+                                                                                1
+                                                                               {((Planet.fTileMapResolution*Planet.fTileMapResolution)+7) shr 3,
+                                                                                (((Planet.fVisualTileResolution shr 2)*(Planet.fVisualTileResolution shr 2))+15) shr 4,
+                                                                                1});
+
+       end;
 
       end;
 
@@ -8059,7 +8082,7 @@ end;
 
 constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
 var InFlightFrameIndex,PreviousInFlightFrameIndex,Index:TpvSizeInt;
-    GrassDrawIndexedIndirectCommand:TGrassDrawIndexedIndirectCommand;
+    GrassMetaData:TGrassMetaData;
 begin
  inherited Create;
 
@@ -8140,32 +8163,103 @@ begin
                                                      );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisibleTileListBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisibleTileListBuffer');
  
-{fVulkanGrassMetaDataBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                    SizeOf(TpvScene3DPlanet.TGrassMetaBufferData),
-                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
-                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-                                                    TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                    [],
-                                                    0,
-                                                    TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    0,
-                                                    [],
-                                                    0,
-                                                    pvAllocationGroupIDScene3DPlanetStatic
-                                                   );
- fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassMetaDataBuffer');
+ if TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport then begin
 
- fVulkanGrassVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                    fPlanet.fMaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),
+  fVulkanGrassTaskIndicesBuffer:=nil;
+
+  fVulkanGrassMetaDataBuffer:=nil;
+
+  fVulkanGrassVerticesBuffer:=nil;
+
+  fVulkanGrassIndicesBuffer:=nil;
+
+ end else begin
+
+  fVulkanGrassTaskIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                        ((fPlanet.fVisualResolution*fPlanet.fVisualResolution)+3)*SizeOf(TpvUInt32),
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                        TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                        [],
+                                                        0,
+                                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        [],
+                                                        0,
+                                                        pvAllocationGroupIDScene3DPlanetStatic
+                                                       );
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassTaskIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassTaskIndicesBuffer');
+
+  fVulkanGrassMetaDataBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                     SizeOf(TpvScene3DPlanet.TGrassMetaData),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DPlanetStatic
+                                                    );
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassMetaDataBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassMetaDataBuffer');
+
+  GrassMetaData.DrawIndexedIndirectCommand.indexCount:=0;
+  GrassMetaData.DrawIndexedIndirectCommand.instanceCount:=1;
+  GrassMetaData.DrawIndexedIndirectCommand.firstIndex:=0;
+  GrassMetaData.DrawIndexedIndirectCommand.vertexOffset:=0;
+  GrassMetaData.DrawIndexedIndirectCommand.firstInstance:=0;
+  GrassMetaData.CountVertices:=0;
+
+  fPlanet.fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanUniversalQueue,
+                                             fPlanet.fVulkanUniversalCommandBuffer,
+                                             fPlanet.fVulkanUniversalFence,
+                                             GrassMetaData,
+                                             fVulkanGrassMetaDataBuffer,
+                                             0,
+                                             SizeOf(TGrassMetaData));
+
+
+  fVulkanGrassVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                     fPlanet.fMaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
+                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                     [],
+                                                     0,
+                                                     TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     [],
+                                                     0,
+                                                     pvAllocationGroupIDScene3DPlanetStatic
+                                                    );
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassVerticesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassVerticesBuffer');
+
+  fVulkanGrassIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
+                                                    fPlanet.fMaxGrassIndices*SizeOf(TpvUInt32),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                                    TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                                     TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
                                                     [],
                                                     0,
@@ -8180,66 +8274,9 @@ begin
                                                     0,
                                                     pvAllocationGroupIDScene3DPlanetStatic
                                                    );
- fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassVerticesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassVerticesBuffer');
+  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassIndicesBuffer');
 
- fVulkanGrassIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                   fPlanet.fMaxGrassIndices*SizeOf(TpvUInt32),
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                   TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-                                                   TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                   [],
-                                                   0,
-                                                   TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   0,
-                                                   [],
-                                                   0,
-                                                   pvAllocationGroupIDScene3DPlanetStatic
-                                                  );
- fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassIndicesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassIndicesBuffer');
-
- fVulkanGrassDrawIndexedIndirectCommandBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                                      SizeOf(TpvScene3DPlanet.TGrassDrawIndexedIndirectCommand),
-                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) or
-                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
-                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
-                                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
-                                                                      TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                                      [],
-                                                                      0,
-                                                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                      0,
-                                                                      0,
-                                                                      0,
-                                                                      0,
-                                                                      0,
-                                                                      0,
-                                                                      [],
-                                                                      0,
-                                                                      pvAllocationGroupIDScene3DPlanetStatic
-                                                                     );
- fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassDrawIndexedIndirectCommandBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassDrawIndexedIndirectCommandBuffer');
-
- GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.indexCount:=0;
- GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.instanceCount:=1;
- GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.firstIndex:=0;
- GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.vertexOffset:=0;
- GrassDrawIndexedIndirectCommand.DrawIndexedIndirectCommand.firstInstance:=0;
- GrassDrawIndexedIndirectCommand.Count:=1;
-
- fPlanet.fVulkanDevice.MemoryStaging.Upload(fPlanet.fVulkanUniversalQueue,
-                                            fPlanet.fVulkanUniversalCommandBuffer,
-                                            fPlanet.fVulkanUniversalFence,
-                                            GrassDrawIndexedIndirectCommand,
-                                            fVulkanGrassDrawIndexedIndirectCommandBuffer,
-                                            0,
-                                            SizeOf(TGrassDrawIndexedIndirectCommand));
-                                            }
+ end;
 
  fPlanetCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetCullDescriptorPool(fPlanet.fVulkanDevice,
                                                                             TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
@@ -8331,6 +8368,7 @@ begin
  end;
 
  fGrassCullDescriptorPool:=TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorPool(fPlanet.fVulkanDevice,
+                                                                                                 TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport,
                                                                                                  TpvScene3DRendererInstance(fRendererInstance).Scene3D.CountInFlightFrames);
 
  for Index:=0 to 1 do begin
@@ -8420,10 +8458,10 @@ begin
  end;
  FreeAndNil(fVulkanDrawIndexedIndirectCommandBuffer);
  FreeAndNil(fVulkanVisibleTileListBuffer);
-{FreeAndNil(fVulkanGrassMetaDataBuffer);
+ FreeAndNil(fVulkanGrassTaskIndicesBuffer);
+ FreeAndNil(fVulkanGrassMetaDataBuffer);
  FreeAndNil(fVulkanGrassVerticesBuffer);
  FreeAndNil(fVulkanGrassIndicesBuffer);
- FreeAndNil(fVulkanGrassDrawIndexedIndirectCommandBuffer);}
  inherited Destroy;
 end;
 
@@ -9297,12 +9335,13 @@ begin
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetCullDescriptorPool');
 end;
 
-class function TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+class function TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean):TpvVulkanDescriptorSetLayout;
 var ShaderStageFlags:TvkShaderStageFlags;
 begin
  result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
 
- ShaderStageFlags:=IfThen((aVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
+ ShaderStageFlags:=IfThen(aMeshShaders and
+                          (aVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
                           (aVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE) and
                           (aVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE){and
                           (aVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE)},
@@ -9336,42 +9375,54 @@ begin
                    [],
                    0);
                    
-{
- // GrassMetaData                   
- result.AddBinding(2,
-                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                   1,
-                   ShaderStageFlags,
-                   [],
-                   0);
+ if not aMeshShaders then begin
 
- // GrassVertices                  
- result.AddBinding(3,
-                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                   1,
-                   ShaderStageFlags,
-                   [],
-                   0);
+  // GrassTaskIndices
+  result.AddBinding(3,
+                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                    1,
+                    ShaderStageFlags,
+                    [],
+                    0);
 
- // GrassIndices
- result.AddBinding(4,
-                   TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-                   1,
-                   ShaderStageFlags,
-                   [],
-                   0);
- }
+  // GrassMetaData
+  result.AddBinding(4,
+                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                    1,
+                    ShaderStageFlags,
+                    [],
+                    0);
+
+  // GrassVertices
+  result.AddBinding(5,
+                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                    1,
+                    ShaderStageFlags,
+                    [],
+                    0);
+
+  // GrassIndices
+  result.AddBinding(6,
+                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+                    1,
+                    ShaderStageFlags,
+                    [],
+                    0);
+
+ end;
 
  result.Initialize;
+
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,'TpvScene3DPlanet.PlanetGrassCullMeshGenerationDescriptorSetLayout');
+
 end;
 
-class function TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
+class function TpvScene3DPlanet.CreatePlanetGrassCullAndMeshGenerationDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool;
 begin
  result:=TpvVulkanDescriptorPool.Create(aVulkanDevice,
                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                         aCountInFlightFrames);
- result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),6*aCountInFlightFrames);
+ result.AddDescriptorPoolSize(TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),IfThen(aMeshShaders,7,3)*aCountInFlightFrames);
  result.Initialize;
  aVulkanDevice.DebugUtils.SetObjectName(result.Handle,VK_OBJECT_TYPE_DESCRIPTOR_POOL,'TpvScene3DPlanet.PlanetGrassCullMeshGenerationDescriptorPool');
 end;

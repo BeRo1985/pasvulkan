@@ -87,7 +87,7 @@ struct TaskData {
 // The actually used and more optimized mesh shader emulation approach, which is more direct and does not
 // need the task payload buffer
 
-layout(set = 4, binding = 2, std430) coherent volatile buffer OutputData {
+layout(set = 3, binding = 3, std430) coherent volatile buffer OutputData {
   // Index 0: VkDispatchIndirectCommand x = 1 (where group size x is MESH_GROUP_SIZE)
   // Index 1: VkDispatchIndirectCommand y = countIndices
   // Index 2: VkDispatchIndirectCommand z = 1
