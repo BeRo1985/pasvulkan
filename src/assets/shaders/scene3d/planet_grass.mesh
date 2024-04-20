@@ -288,30 +288,17 @@ void main() {
 
 #if defined(MESH_SHADER_EMULATION)
 
-  uint indexIndex = gl_GlobalInvocationID.y;
+  uint invocationIndex = gl_WorkGroupID.x;
 
   // Check if the task index is out of bounds 
-  if(indexIndex >= inputData.data[1u]){
-    indexIndex = 0u; // Reset the index to zero, because we are out of bounds
+  if(invocationIndex >= inputData.data[0u]){
+    invocationIndex = 0u; // Reset the index to zero, because we are out of bounds
     validInvocation = false; // No return here, because of usage of barriers, instead just mark the invocation as invalid and output nothing
   } 
 
-  const uint globalIndex = inputData.data[indexIndex + 3u];
+  const uint globalIndex = inputData.data[invocationIndex + 3u];
 
 #else
-#if defined(MESH_SHADER_EMULATION)
-
-  uint taskIndex = gl_WorkGroupID.y;
-
-  // Check if the task index is out of bounds 
-  if(taskIndex >= inputMetaData.countPayloads){
-    taskIndex = 0u; // Reset the index to zero, because we are out of bounds
-    validInvocation = false; // No return here, because of usage of barriers, instead just mark the invocation as invalid and output nothing
-  }
-  
-  #define taskData taskPayload.taskData[taskIndex]
-
-#endif
 
   uint invocationIndex = gl_WorkGroupID.x;
 
@@ -674,7 +661,7 @@ void main() {
 
   #if defined(MESH_SHADER_EMULATION)
       
-      uvec3 indices = vertexIndices[triangleIndex & 1u] + uvec3(offset);
+      uvec3 indices = vertexIndices[triangleIndex & 1u] + uvec3(baseVertex + offset);
 
       uint targetBaseIndex = baseIndex + (triangleID * 3u);
       outputIndices.indices[targetBaseIndex + 0u] = indices[0];

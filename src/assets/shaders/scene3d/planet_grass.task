@@ -131,8 +131,8 @@ void main() {
 #if defined(MESH_SHADER_EMULATION)
     if(all(equal(uvec3(gl_GlobalInvocationID), uvec3(0u)))){
       // Reset VkDispatchIndirectCommand data
-      outputData.data[0u] = 1u; 
-    //outputData.data[1u] = 0u; // Cleared by VkCmdFillBuffer to avoid race conditions at this point
+    //outputData.data[0u] = 0u; // Cleared by VkCmdFillBuffer to avoid race conditions at this point 
+      outputData.data[1u] = 1u;
       outputData.data[2u] = 1u; 
     }
 #else
@@ -317,10 +317,10 @@ void main() {
 #if defined(MESH_SHADER_EMULATION)
       
       // Check if there is still room for the index of the visible grass blade
-      if(outputData.data[1u] < pushConstants.maximalCountIndices){
+      if(outputData.data[0u] < pushConstants.maximalCountIndices){
 
         // Increment the count of indices and store the index of the visible grass blade
-        uint index = atomicAdd(outputData.data[1u], 1u);
+        uint index = atomicAdd(outputData.data[0u], 1u);
 
         // Recheck if the index is still in the valid range after the atomic operation, because the atomic operation
         // can be executed by multiple invocations at the same time => race condition can occur
@@ -351,8 +351,8 @@ void main() {
 
   // Ensure that the index count is not greater than the maximal count of indices in, because as of consequence of possible
   // race conditions above at the index incrementation  
-  if((localInvocationIndex == 0u) && (outputData.data[1u] > pushConstants.maximalCountTaskIndices)){
-    atomicExchange(outputData.data[1u], pushConstants.maximalCountTaskIndices);
+  if((localInvocationIndex == 0u) && (outputData.data[0u] > pushConstants.maximalCountTaskIndices)){
+    atomicExchange(outputData.data[0u], pushConstants.maximalCountTaskIndices);
   }
 
 #else // !defined(MESH_SHADER_EMULATION)
