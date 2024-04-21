@@ -970,7 +970,7 @@ type TpvScene3DPlanets=class;
               fGrassCullDescriptorPool:TpvVulkanDescriptorPool;
               fGrassCullDescriptorSets:array[0..1] of TpvVulkanDescriptorSet;
              public
-              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
+              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aMainViewPort:Boolean);
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
@@ -8026,7 +8026,7 @@ begin
                                               1,
                                               SizeOf(TVkDrawIndexedIndirectCommand));
 
-       end else begin
+       end else if TpvScene3D(fScene3D).MeshShaderSupport then begin
 
         if assigned(TpvScene3D(fScene3D).VulkanDevice.Commands.Commands.CmdDrawMeshTasksIndirectEXT) then begin
 
@@ -8155,7 +8155,7 @@ end;
 
 { TpvScene3DPlanet.TRendererViewInstance }
 
-constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt);
+constructor TpvScene3DPlanet.TRendererViewInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject;const aRenderPassIndex:TpvSizeInt;const aMainViewPort:Boolean);
 var InFlightFrameIndex,PreviousInFlightFrameIndex,Index:TpvSizeInt;
     GrassMetaData:TGrassMetaData;
 begin
@@ -8238,7 +8238,7 @@ begin
                                                      );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisibleTileListBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisibleTileListBuffer');
  
- if TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport then begin
+ if TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport or not aMainViewPort then begin
 
   fVulkanGrassTaskIndicesBuffer:=nil;
 
@@ -10050,7 +10050,7 @@ begin
 
    if not fRendererViewInstanceHashMap.TryGet(TpvScene3DPlanet.TRendererViewInstance.TKey.Create(aRendererInstance,aRenderPassIndex),
                                               RendererViewInstance) then begin
-    RendererViewInstance:=TpvScene3DPlanet.TRendererViewInstance.Create(self,aRendererInstance,aRenderPassIndex);
+    RendererViewInstance:=TpvScene3DPlanet.TRendererViewInstance.Create(self,aRendererInstance,aRenderPassIndex,aMainViewPort);
    end;
 
    if assigned(RendererViewInstance) then begin
