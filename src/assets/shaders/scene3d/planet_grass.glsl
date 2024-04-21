@@ -17,7 +17,7 @@ layout(push_constant) uniform PushConstants {
 
   uint tileMapResolution;
   uint tileResolution;  
-  uint resolutionXY;
+  uint lod;
   int frameIndex; 
 
 #if defined(MESH_SHADER_EMULATION)

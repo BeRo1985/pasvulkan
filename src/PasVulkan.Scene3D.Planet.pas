@@ -778,7 +778,7 @@ type TpvScene3DPlanets=class;
                     Time:TpvFloat;
                     TileMapResolution:TpvUInt32;
                     TileResolution:TpvUInt32;
-                    ResolutionXY:TpvUInt32;
+                    LOD:TpvUInt32;
                     FrameIndex:TpvUInt32;
                     MaximumCountTaskIndices:TpvUInt32;
                     MaximumCountVertices:TpvUInt32;
@@ -6085,7 +6085,7 @@ begin
                                                    nil,
                                                    0);
 
-{}if (fPass=1) and not TpvScene3D(fScene3D).MeshShaderSupport then begin
+  if (fPass=1) and not TpvScene3D(fScene3D).MeshShaderSupport then begin
 
    Stream:=pvScene3DShaderVirtualFileSystem.GetFile('planet_grass_task_comp.spv');
    try
@@ -6680,7 +6680,7 @@ begin
          fGrassPushConstants.GrassHeight:=0.125*5.0;//1.25;
          fGrassPushConstants.GrassThickness:=0.01;
          fGrassPushConstants.MaximalCountBladesPerPatch:=8;
-         fGrassPushConstants.ResolutionXY:=0;
+         fGrassPushConstants.LOD:=Max(0,IntLog2(Planet.fHeightMapResolution)-IntLog2(Planet.fVisualResolution));
          fGrassPushConstants.FrameIndex:=0;
          fGrassPushConstants.MaximumCountTaskIndices:=Planet.fVisualResolution*Planet.fVisualResolution;
          fGrassPushConstants.MaximumCountVertices:=Planet.fMaxGrassVertices;
@@ -6795,6 +6795,14 @@ begin
                                                1,
                                                1,
                                                @RendererViewInstance.fGrassCullDescriptorSets[Planet.fData.fVisualMeshVertexBufferRenderIndex and 1].Handle,
+                                               0,
+                                               nil);
+
+          aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                               fGrassPipelineLayout.Handle,
+                                               2,
+                                               1,
+                                               @Planet.fDescriptorSets[aInFlightFrameIndex].Handle,
                                                0,
                                                nil);
 
