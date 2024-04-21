@@ -6617,7 +6617,7 @@ begin
 
   end;
 
-  if assigned(fGrassTaskPipeline) and assigned(fGrassMeshPipeline) and (fPass=1) then begin
+  if assigned(fGrassTaskPipeline) and assigned(fGrassMeshPipeline) and (fPass=1) and (fCullRenderPass=TpvScene3DRendererCullRenderPass.FinalView) then begin
 
    First:=true;
 
