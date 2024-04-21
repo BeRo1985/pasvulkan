@@ -6798,7 +6798,7 @@ begin
                                                0,
                                                nil);
 
-          aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,
+          aCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE,
                                                fGrassPipelineLayout.Handle,
                                                2,
                                                1,
