@@ -7656,25 +7656,25 @@ begin
   fGrassPipeline.ColorBlendState.BlendConstants[2]:=0.0;
   fGrassPipeline.ColorBlendState.BlendConstants[3]:=0.0;
   fGrassPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                          TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+                                                              VK_BLEND_FACTOR_ZERO,
+                                                              VK_BLEND_FACTOR_ZERO,
+                                                              VK_BLEND_OP_ADD,
+                                                              VK_BLEND_FACTOR_ZERO,
+                                                              VK_BLEND_FACTOR_ZERO,
+                                                              VK_BLEND_OP_ADD,
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                              TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
   if (fMode=TpvScene3DPlanet.TRenderPass.TMode.Opaque) and TpvScene3DRenderer(fRenderer).VelocityBufferNeeded then begin
    fGrassPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_FACTOR_ZERO,
-                                                          VK_BLEND_OP_ADD,
-                                                          0);
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_OP_ADD,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_FACTOR_ZERO,
+                                                               VK_BLEND_OP_ADD,
+                                                               0);
   end;
 
   fGrassPipeline.DepthStencilState.DepthTestEnable:=true;

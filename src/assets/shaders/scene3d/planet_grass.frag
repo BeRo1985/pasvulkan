@@ -175,11 +175,11 @@ void main(){
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
-  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.9, 0.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.5, 0.0, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
-  vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-20.0, 20.0, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
+  vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-60.0, 60.0, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
   vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * bladeRelativeNormal);
  
   cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
