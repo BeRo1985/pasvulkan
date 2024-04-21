@@ -3421,6 +3421,8 @@ type EpvScene3D=class(Exception);
       public
        property MeshCompute:TObject read fMeshCompute;
       public
+       property VirtualReality:TpvVirtualReality read fVirtualReality;
+      public
        property Planets:TObject read fPlanets;
       public
        property LastProcessFrameTimerQueryResults:TpvTimerQuery.TResults read fLastProcessFrameTimerQueryResults;

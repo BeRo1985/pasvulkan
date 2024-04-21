@@ -1571,7 +1571,11 @@ begin
 
  fExternalImageFormat:=aExternalImageFormat;
 
- fVirtualReality:=aVirtualReality;
+ if assigned(aVirtualReality) then begin
+  fVirtualReality:=aVirtualReality;
+ end else begin
+  fVirtualReality:=fScene3D.VirtualReality;
+ end;
 
  for InFlightFrameIndex:=0 to Renderer.CountInFlightFrames-1 do begin
   fCameraPresets[InFlightFrameIndex]:=TpvScene3DRendererCameraPreset.Create;
