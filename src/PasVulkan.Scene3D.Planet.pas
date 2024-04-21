@@ -8238,7 +8238,7 @@ begin
                                                      );
  fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanVisibleTileListBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.VisibleTileListBuffer');
  
- if TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport or not aMainViewPort then begin
+ if TpvScene3DRendererInstance(fRendererInstance).Scene3D.MeshShaderSupport then begin
 
   fVulkanGrassTaskIndicesBuffer:=nil;
 
@@ -8251,7 +8251,7 @@ begin
  end else begin
 
   fVulkanGrassTaskIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                        ((fPlanet.fVisualResolution*fPlanet.fVisualResolution)+3)*SizeOf(TpvUInt32),
+                                                        IfThen(aMainViewPort,((fPlanet.fVisualResolution*fPlanet.fVisualResolution)+3)*SizeOf(TpvUInt32),3*SizeOf(TpvUInt32)),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT),
@@ -8310,7 +8310,7 @@ begin
 
 
   fVulkanGrassVerticesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                     fPlanet.fMaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),
+                                                     IfThen(aMainViewPort,fPlanet.fMaxGrassVertices*SizeOf(TpvScene3DPlanet.TGrassVertex),SizeOf(TpvScene3DPlanet.TGrassVertex)),
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -8331,7 +8331,7 @@ begin
   fPlanet.fVulkanDevice.DebugUtils.SetObjectName(fVulkanGrassVerticesBuffer.Handle,VK_OBJECT_TYPE_BUFFER,'TpvScene3DPlanet.GrassVerticesBuffer');
 
   fVulkanGrassIndicesBuffer:=TpvVulkanBuffer.Create(fPlanet.fVulkanDevice,
-                                                    fPlanet.fMaxGrassIndices*SizeOf(TpvUInt32),
+                                                    IfThen(aMainViewPort,fPlanet.fMaxGrassIndices*SizeOf(TpvUInt32),SizeOf(TpvUInt32)),
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) or
                                                     TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
