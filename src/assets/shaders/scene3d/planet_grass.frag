@@ -29,6 +29,7 @@ layout(location = 0) in vec3 inWorldSpacePosition;
 layout(location = 1) in InBlock {
   vec3 position;
   vec3 normal;
+  vec4 tangentSign;
   vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -45,6 +46,7 @@ layout(location = 1) in InBlock {
 layout(location = 0) in InBlock {
   vec3 position;
   vec3 normal;
+  vec4 tangentSign;
   vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -121,10 +123,6 @@ vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.domina
 
 vec3 viewDirection = normalize(-inBlock.cameraRelativePosition);
 
-mat3 tangentSpaceBasis; // tangent, bitangent, normal
-vec3 tangentSpaceViewDirection;
-vec2 tangentSpaceViewDirectionXYOverZ;
-
 #ifdef WIREFRAME 
 float edgeFactor(){
   const float sqrt0d5Mul0d5 = 0.3535533905932738; // sqrt(0.5) * 0.5 - Half of the length of the diagonal of a square with a side length of 1.0
@@ -150,12 +148,14 @@ void main(){
 
   float sideSign = gl_FrontFacing ? 1.0 : -1.0;
 
-  vec3 normal = inBlock.normal.xyz * sideSign;
-//normal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition))); // * sideSign;
-  vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
-  vec3 bitangent = normalize(cross(normal, tangent));
+  vec3 workNormal = inBlock.normal.xyz * sideSign;
+  vec3 workTangent = inBlock.tangentSign.xyz;
+  vec3 workBitangent = cross(workNormal, workTangent) * inBlock.tangentSign.w;
+//workNormal = normalize(cross(dFdyFine(inBlock.cameraRelativePosition), dFdxFine(inBlock.cameraRelativePosition))); // * sideSign;
+/*vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));
+  vec3 workBitangent = normalize(cross(workNormal, workTangent));*/
 
-#ifdef RAYTRACING
+#ifdef RAYTRACING 
   // The geometric normal is needed for raytracing ray offseting
 #ifdef WIREFRAME
   vec3 triangleNormal = normalize(
@@ -169,21 +169,18 @@ void main(){
 #endif
 #endif
 
-  tangentSpaceBasis = mat3(tangent, bitangent, normal);
-
-  tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
-  tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
-
   const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);
 
   const float fakeSelfShadowing = clamp(inBlock.texCoord.y, 0.1, 1.0); 
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
-  vec4 normalHeight = vec4(0.5, 0.5, 1.0, 0.5);
   vec4 occlusionRoughnessMetallic = vec4(fakeSelfShadowing, 0.9, 0.0, 0.0);
-  
-  workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
+
+  // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
+  // to fake roundness of the blade without real more complex geometry
+  vec3 bladeRelativeNormal = normalize(vec3(0.0, sin(vec2(radians(mix(-20.0, 20.0, inBlock.texCoord.x))) + vec2(0.0, 1.5707963267948966))));
+  vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * bladeRelativeNormal);
  
   cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     
@@ -247,7 +244,6 @@ void main(){
     c.xyz = mix(c.xyz, mix(vec3(1.0) - clamp(c.zxy, vec3(1.0), vec3(1.0)), vec3(0.0, 1.0, 1.0), 0.5), edgeFactor());
   }*/
 #endif  
-
 
 #if defined(SHADOWS) && 0
   {

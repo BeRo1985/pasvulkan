@@ -168,13 +168,17 @@ type TpvScene3DPlanets=class;
             end;
             PGrassMetaData=^TGrassMetaData;
             TGrassVertex=packed record
-{            PositionX:TpvFloat;
+
+             PositionX:TpvFloat;
              PositionY:TpvFloat;
              PositionZ:TpvFloat;
-             NormalTexCoordU:TpvUInt32;
-             TexCoordV:TpvUInt32;}
-             PositionTexCoordU:TpvVector4;
-             NormalTexCoordV:TpvVector4;
+             NormalTexCoordU:TpvUInt32; // RGBA10_A2
+
+             TangentSign:TpvUInt32; // RGBA10_A2
+             TexCoordV:TpvFloat;
+             BladeIndex:TpvUInt32;
+             BladeID:TpvUInt32;
+
             end;
             PGrassVertex=^TGrassVertex;
             { TData }
@@ -7604,9 +7608,15 @@ begin
 
   fGrassPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
 
-  fGrassPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TGrassVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.PositionTexCoordU)));
-  fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.NormalTexCoordV)));
+  if assigned(fGrassVertexShaderStage) then begin
+   fGrassPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvScene3DPlanet.TGrassVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+   fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.PositionX)));
+   fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_A2B10G10R10_SNORM_PACK32,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.NormalTexCoordU)));
+   fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_A2B10G10R10_SNORM_PACK32,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.TangentSign)));
+   fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_SFLOAT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.TexCoordV)));
+ //fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32_UINT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.BladeIndex)));
+ //fGrassPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32_UINT,TpvPtrUInt(Pointer(@TpvScene3DPlanet.PGrassVertex(nil)^.BladeID)));
+  end;
 
   fGrassPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
   fGrassPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);

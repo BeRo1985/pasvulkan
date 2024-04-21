@@ -164,7 +164,7 @@ vec4 unpackQuaternionFromRGB10A2(vec4 q){
 vec4 packQTangent(mat3 tbn){
   vec4 q = matrixToQuaternion(tbn);
   q = mix(q, -q, float(q.w < 0.0));
-  q = mix(q, vec4(q.xyz * 0.9999999995343103, 0.00003051850947599719), float((q.w < 0.00003051850947599719)));
+  q = mix(q, vec4(q.xyz * 0.9999999995343103, 0.00003051850947599719), float(q.w < 0.00003051850947599719));
   return mix(q, -q, float(dot(cross(tbn[0], tbn[2]), tbn[1]) <= 0.0)); 
 }
 

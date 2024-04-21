@@ -19,13 +19,18 @@
 
 //#define COMPACT_VERTEX_DATA
 
-#if defined(COMPACT_VERTEX_DATA)
+/*
 layout(location = 0) in uvec4 inPositionXYZNormalXYZTexCoordU;
-layout(location = 1) in float inTexCoordV;
-#else
-layout(location = 0) in vec4 inPositionXYZTexCoordU;
-layout(location = 1) in vec4 inNormalXYZTexCoordV;
-#endif
+layout(location = 1) in uvec4 inTangentSignTexCoordVBladeIndexBladeID;
+*/
+
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec4 inNormalXYZTexCoordU;
+layout(location = 2) in vec4 inTangentSign;
+layout(location = 3) in float inTexCoordV;
+// layout(location = 4) in uint inBladeIndex;
+// layout(location = 5) in uint inBladeID;
+
 
 #if defined(RAYTRACING)
 
@@ -34,6 +39,7 @@ layout(location = 0) out vec3 outWorldSpacePosition;
 layout(location = 1) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec4 tangentSign;
   vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -50,6 +56,7 @@ layout(location = 1) out OutBlock {
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec4 tangentSign;
   vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -101,33 +108,30 @@ void main(){
   vec3 cameraPosition = (-viewMatrix[3].xyz) * mat3(viewMatrix);
 #endif   
 
-#if defined(COMPACT_VERTEX_DATA)
-  vec3 position = (pushConstants.modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
-#else
-  vec3 position = (pushConstants.modelMatrix * vec4(inPositionXYZTexCoordU.xyz, 1.0)).xyz;
-#endif
+  vec3 position = (pushConstants.modelMatrix * vec4(inPosition, 1.0)).xyz;
+//vec3 position = (pushConstants.modelMatrix * vec4(uintBitsToFloat(inPositionXYZNormalXYZTexCoordU.xyz), 1.0)).xyz;
 
   vec3 worldSpacePosition = position;
 
-#if defined(COMPACT_VERTEX_DATA)
   // Decode the normal and texture U coordinate from a single 32-bit unsigned integer.
-  uvec4 encodedNormalTexCoordU = (uvec4(inPositionXYZNormalXYZTexCoordU.w) >> uvec4(0u, 10u, 20u, 30u)) & uvec2(0x3ffu, 0x3u).xxxy;
-  vec3 normal = max(vec3((-(encodedNormalTexCoordU.xyz & ivec3(0x200u))) | (encodedNormalTexCoordU.xyz & ivec3(0x1ffu))) / vec3(ivec3(0x1ffu)), vec3(-1.0));
-  float texCoordU = float(uint(encodedNormalTexCoordU.w & 1u));  
-#else
-  vec3 normal = inNormalXYZTexCoordV.xyz; // octSignedDecode(inOctahedralEncodedNormal);
-#endif
+/*uvec4 encodedNormalTexCoordU = (uvec4(inNormalXYZTexCoordU) >> uvec4(0u, 10u, 20u, 30u)) & uvec2(0x3ffu, 0x3u).xxxy;
+  vec3 normal = normalize(max(vec3((-(encodedNormalTexCoordU.xyz & ivec3(0x200u))) | (encodedNormalTexCoordU.xyz & ivec3(0x1ffu))) / vec3(ivec3(0x1ffu)), vec3(-1.0)));*/
+  vec3 normal = normalize(inNormalXYZTexCoordU.xyz);
+
+  // Decode the tangent and texture V coordinate from a single 32-bit unsigned integer.
+/*uvec4 encodedTangentSign = (uvec4(inTangentSign.x) >> uvec4(0u, 10u, 20u, 30u)) & uvec2(0x3ffu, 0x3u).xxxy;
+  vec4 tangentSign = vec4(normalize(max(vec3((-(encodedTangentSign.xyz & ivec3(0x200u))) | (encodedTangentSign.xyz & ivec3(0x1ffu))) / vec3(ivec3(0x1ffu)), vec3(-1.0))), ((encodedTangentSign.w & 1u) != 0) ? -1.0 : 1.0);*/
+  vec4 tangentSign = vec4(normalize(inTangentSign.xyz), (abs(inTangentSign.w) > 1e-3) ? -1.0 : 1.0);  
   
+  vec2 texCoordUV = vec2((abs(inNormalXYZTexCoordU.w) > 1e-3) ? 1.0 : 0.0, inTexCoordV);
+    
   vec4 viewSpacePosition = viewMatrix * vec4(position, 1.0);
   viewSpacePosition.xyz /= viewSpacePosition.w;
 
   outBlock.position = position;         
   outBlock.normal = normalize(transpose(inverse(mat3(pushConstants.modelMatrix))) * normal);
-#if defined(COMPACT_VERTEX_DATA)
-  outBlock.texCoord = vec2(texCoordU, inTexCoordV);
-#else
-  outBlock.texCoord = vec2(inPositionXYZTexCoordU.w, inNormalXYZTexCoordV.w);
-#endif
+  outBlock.tangentSign = tangentSign;
+  outBlock.texCoord = texCoordUV;
   outBlock.worldSpacePosition = worldSpacePosition;
   outBlock.viewSpacePosition = viewSpacePosition.xyz;  
   outBlock.cameraRelativePosition = worldSpacePosition - cameraPosition;

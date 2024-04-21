@@ -217,12 +217,12 @@ void main(){
   layerMaterialSetup(sphereNormal);
  
 #ifdef EXTERNAL_VERTICES
-  vec3 normal = inBlock.normal.xyz;
+  workNormal = inBlock.normal.xyz;
 #else
-  vec3 normal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
+  workNormal = normalize((planetData.normalMatrix * vec4(normalize(fma(texturePlanetOctahedralMap(uTextures[1], sphereNormal).xyz, vec3(2.0), vec3(-1.0))), 0.0)).xyz);
 #endif
-  vec3 tangent = normalize(cross((abs(normal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), normal));
-  vec3 bitangent = normalize(cross(normal, tangent));
+  vec3 workTangent = normalize(cross((abs(workNormal.y) < 0.999999) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0), workNormal));
+  vec3 workBitangent = normalize(cross(workNormal, workTangent));
 
 #ifdef RAYTRACING
   // The geometric normal is needed for raytracing ray offseting
@@ -238,12 +238,12 @@ void main(){
 #endif
 #endif
 
-  tangentSpaceBasis = mat3(tangent, bitangent, normal);
+  tangentSpaceBasis = mat3(workTangent, workBitangent, workNormal);
 
   tangentSpaceViewDirection = normalize(tangentSpaceBasis * viewDirection);
   tangentSpaceViewDirectionXYOverZ = tangentSpaceViewDirection.xy / tangentSpaceViewDirection.z;
 
-  multiplanarSetup(inBlock.position, dFdx(inBlock.position), dFdy(inBlock.position), normal);
+  multiplanarSetup(inBlock.position, dFdx(inBlock.position), dFdy(inBlock.position), workNormal);
 
   if((planetData.flagsResolutions.x & (1u << 2u)) != 0){
     parallaxMapping();
@@ -270,7 +270,7 @@ void main(){
     occlusionRoughnessMetallic *= factor;
   }
 
-  workNormal = normalize(mat3(tangent, bitangent, normal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
+  vec3 normal = normalize(mat3(workTangent, workBitangent, workNormal) * normalize(fma(normalHeight.xyz, vec3(2.0), vec3(-1.0))));
  
   cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
     

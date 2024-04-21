@@ -11,16 +11,9 @@
   // For ray tracing later, it is necessary to keep all the data unified for all views anyway, as the 
   // ray tracing code will access all the data at once for all views.
   #pragma shader_stage(compute)
-
-  //#define COMPACT_VERTEX_DATA
-
-  #if defined(COMPACT_VERTEX_DATA)
-    //#extension GL_EXT_shader_16bit_storage : enable
-    //#extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
-    //#extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
-    #extension GL_EXT_scalar_block_layout : enable
+  #if defined(BRUTEFORCE_NORMAL_CALCULATION)
+    #error "BRUTEFORCE_NORMAL_CALCULATION is not supported in the mesh shader emulation path, because of optimized vertex data format, where the normal is special-encoded into a smaller format."
   #endif
-
 #else
   // Otherwise, when the mesh shader emulation code path is not defined, this shader is compiled as a mesh shader.
   #pragma shader_stage(mesh)
@@ -109,27 +102,12 @@ layout(set = INSTANCE_DESCRIPTOR_SET, binding = 4, std430) buffer OutputMetaData
 
 } outputMetaData;
 
-struct OutputVertex {
-#if defined(COMPACT_VERTEX_DATA)
-  // 20 bytes per vertex (12 bytes for the position, 4 bytes for the normal + binary texcoord U, 4 bytes for the texcoord V)
+struct OutputVertex { // 32 bytes per vertex
   uvec4 positionNormalTexCoordU; // xyz = 32-bit position, w = RGB10A2_SNORM encoded normal (10 bits for each component, 1 bit texcoord u + 1 bit unused)
-  float texCoordV; // 32-bit float texcoord v
-  #if defined(BRUTEFORCE_NORMAL_CALCULATION)
-    #error "BRUTEFORCE_NORMAL_CALCULATION is not supported in conjunction with COMPACT_VERTEX_DATA, since the normal needs to be raw encoded in this case" 
-  #endif 
-#else
-  // 32 bytes per vertex (16 bytes for the position and texcoord U, 16 bytes for the normal and texcoord V)
-  vec4 position; // xyz = position, w = texcoord u
-  vec4 normal; // xyz = normal, w = texcoord v
-#endif
+  uvec4 tangentSignTexCoordBladeIndexBladeID; // x = RGB10A2_SNORM encoded tangent (10 bits for each component, 1 bit sign of the tangent, 1 bit unused), y = texcoord v, z = blade index, w = blade ID
 }; 
 
-#if defined(COMPACT_VERTEX_DATA)
-layout(set = INSTANCE_DESCRIPTOR_SET, binding = 5, scalar) 
-#else
-layout(set = INSTANCE_DESCRIPTOR_SET, binding = 5, std430)
-#endif
-buffer OutputVertices {
+layout(set = INSTANCE_DESCRIPTOR_SET, binding = 5, std430) buffer OutputVertices {
   OutputVertex vertices[];  
 } outputVertices;
 
@@ -152,6 +130,7 @@ layout(location = 0) out vec3 outWorldSpacePosition[];
 layout(location = 1) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec4 tangentSign;
   vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -168,6 +147,7 @@ layout(location = 1) out OutBlock {
 layout(location = 0) out OutBlock {
   vec3 position;
   vec3 normal;
+  vec4 tangentSign;
   vec2 texCoord;
   vec3 worldSpacePosition;
   vec3 viewSpacePosition;
@@ -528,9 +508,21 @@ void main() {
 
       vec3 normal = vec3(0.0); // clear the normal for the brute-force calculation
 
+      vec4 tangentSign = vec4(0.0);
+
+
   #else
 
-      vec3 normal = normalize(modelPatchSpaceBasisMatrix * cross(bezierDerivative(localP0, localP1, localP2, t2), sideVector));
+      const vec3 localTangent = bezierDerivative(localP0, localP1, localP2, t2);
+      const vec3 localBitangent = sideVector;
+      const vec3 localNormal = cross(localTangent, sideVector);
+
+      vec3 normal = normalize(modelPatchSpaceBasisMatrix * localNormal);
+
+      vec4 tangentSign = vec4(
+        normalize(modelPatchSpaceBasisMatrix * localTangent), 
+        (dot(cross(localNormal, localTangent), localBitangent) < 0.0) ? -1.0 : 1.0
+      );
       
   #endif
 
@@ -541,29 +533,33 @@ void main() {
 
   #if defined(MESH_SHADER_EMULATION)
 
-    #if defined(COMPACT_VERTEX_DATA)
-      
       // Pack the normal and binary texcoord U into a RGB10A2_SNORM encoded normal, leaving just one bit unused, and texcoord V as 32-bit float
-      uvec4 normalTexCoordU = (
+      uvec4 encodedNormalTexCoordU = (
           uvec4(
             uvec3(ivec3(clamp(normalize(normal), vec3(-1.0), vec3(1.0)) * 511.0)), 
             uint(vertexIndex & 1u)
           ) & uvec2(0x3ffu, 0x3u).xxxy
         ) << uvec4(0u, 10u, 20u, 30u);
 
+      uvec4 encodedTangentSign = (
+          uvec4(
+            uvec3(ivec3(clamp(normalize(tangentSign.xyz), vec3(-1.0), vec3(1.0)) * 511.0)), 
+            uint((tangentSign.w < 0.0) ? 1u : 0u)
+          ) & uvec2(0x3ffu, 0x3u).xxxy
+        ) << uvec4(0u, 10u, 20u, 30u);
+
       outputVertices.vertices[baseVertex + vertexID] = OutputVertex(
         uvec4(
           floatBitsToUint(position), 
-          normalTexCoordU.x | normalTexCoordU.y | normalTexCoordU.z | normalTexCoordU.w
+          encodedNormalTexCoordU.x | encodedNormalTexCoordU.y | encodedNormalTexCoordU.z | encodedNormalTexCoordU.w
         ),
-        t
+        uvec4(
+          encodedTangentSign.x | encodedTangentSign.y | encodedTangentSign.z | encodedTangentSign.w,
+          floatBitsToUint(t),
+          globalIndex,
+          bladeID
+        )
       );
-    #else
-      outputVertices.vertices[baseVertex + vertexID] = OutputVertex(
-        vec4(position, float(uint(vertexIndex & 1u))),
-        vec4(normal, t)
-      );
-    #endif
 
       // The vertex shader as next stage will do the rest of the work vertex-wise, so no need to do it here and to save some memory 
       
@@ -571,7 +567,8 @@ void main() {
 
       outBlock[vertexID].position = position;         
       outBlock[vertexID].normal = normal;
-      outBlock[vertexID].texCoord = vec2(float(uint(i & 1u)), t);
+      outBlock[vertexID].tangentSign = tangentSign;
+      outBlock[vertexID].texCoord = vec2(float(uint(vertexIndex & 1u)), t);
       outBlock[vertexID].worldSpacePosition = worldSpacePosition;
       outBlock[vertexID].viewSpacePosition = viewSpacePosition.xyz;  
       outBlock[vertexID].cameraRelativePosition = worldSpacePosition - cameraPosition;
