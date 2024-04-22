@@ -175,6 +175,8 @@ layout(location = 0) out OutBlock {
 #define PLANET_GRASS
 #include "planet_map.glsl"
 
+#include "floatint.glsl"
+
 vec3 bezier(const in vec3 p0, const in vec3 p1, const in vec3 p2, const in float t){
   return mix(mix(p0, p1, t), mix(p1, p2, t), t);
 }
@@ -209,6 +211,9 @@ shared mat4 viewProjectionMatrix;
 shared mat4 inverseModelViewMatrix;
 shared mat3 normalModelMatrix;
 shared vec3 cameraPosition;
+
+shared float grassDensity;
+shared uint maxCountBlades;
 
 #if defined(MESH_SHADER_EMULATION)
 shared uint baseVertex;
@@ -323,7 +328,32 @@ void main() {
 
 // const uint countVertices = countVerticesPerBlade * countBlades;
 
-  const uint maxCountBlades = min(max(pushConstants.maximalCountBladesPerPatch, 1u), 8u); // 1 .. 8
+  {
+
+    memoryBarrierShared();
+    barrier();
+
+    if(gl_LocalInvocationIndex == 0u){
+
+      ivec2 texSize = ivec2(textureSize(uPlanetTextures[3], 0).xy);
+
+      grassDensity = textureLod(uPlanetTextures[3], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x;
+
+      if((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu))))){
+        // Nope, no grass here
+#if defined(MESH_SHADER_EMULATION)
+        validGroup = false;        
+#endif
+      }
+      
+      maxCountBlades = clamp(clamp(uint(round(grassDensity) * pushConstants.maximalCountBladesPerPatch), 0u, pushConstants.maximalCountBladesPerPatch), 1u, 8u); // 1 .. 8
+
+    }
+
+    memoryBarrierShared();
+    barrier();
+
+  }
 
   const float countBladesFloat = mix(
     1.0, 

@@ -126,6 +126,8 @@ taskPayloadSharedEXT TaskData taskData;
 #define PLANET_GRASS
 #include "planet_map.glsl"
 
+#include "floatint.glsl"
+
 void main() {
  
   /////////////////////////////////////////////////////////////////////////
@@ -325,7 +327,9 @@ void main() {
 
       ivec2 texSize = ivec2(textureSize(uPlanetTextures[3], 0).xy);
 
-      if(textureLod(uPlanetTextures[3], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x < 1e-6){
+      float grassDensity = textureLod(uPlanetTextures[3], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x;
+
+      if((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu))))){
         // Nope, no grass here
         visible = false;        
       }

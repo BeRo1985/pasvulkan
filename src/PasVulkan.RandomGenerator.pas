@@ -642,8 +642,8 @@ function TpvRandomGenerator.GetFloatAbs:single; // 0.0 .. 1.0
 var t:TpvUInt32;
 begin
  t:=Get32;
- t:=(((t shr 10) and $3fffff)+((t shr 9) and 1)) or $40000000;
- result:=single(pointer(@t)^)-2.0;
+ t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $3f800000;
+ result:=single(pointer(@t)^)-1.0;
 end;
 
 function TpvRandomGenerator.GetDouble:double; // -1.0 .. 1.0
@@ -658,8 +658,8 @@ function TpvRandomGenerator.GetDoubleAbs:double; // 0.0 .. 1.0
 var t:TpvInt64;
 begin
  t:=Get64;
- t:=(((t shr 13) and $7ffffffffffff)+((t shr 12) and 1)) or $4000000000000000;
- result:=double(pointer(@t)^)-2.0;
+ t:=(((t shr 12) and $7ffffffffffff)+((t shr 11) and 1)) or $3ff0000000000000;
+ result:=double(pointer(@t)^)-1.0;
 end;
 
 function TpvRandomGenerator.GetGaussianFloat:single; // -1.0 .. 1.0
@@ -896,8 +896,8 @@ function TpvPCG32.GetFloatAbs:single; // 0.0 .. 1.0
 var t:TpvUInt32;
 begin
  t:=Get32;
- t:=(((t shr 10) and $3fffff)+((t shr 9) and 1)) or $40000000;
- result:=single(pointer(@t)^)-2.0;
+ t:=(((t shr 9) and $7fffff)+((t shr 8) and 1)) or $3f800000;
+ result:=single(pointer(@t)^)-1.0;
 end;
 
 function TpvPCG32.GetDouble:double; // -1.0 .. 1.0
@@ -912,8 +912,8 @@ function TpvPCG32.GetDoubleAbs:double; // 0.0 .. 1.0
 var t:TpvInt64;
 begin
  t:=Get64;
- t:=(((t shr 13) and $7ffffffffffff)+((t shr 12) and 1)) or $4000000000000000;
- result:=double(pointer(@t)^)-2.0;
+ t:=(((t shr 12) and $7ffffffffffff)+((t shr 11) and 1)) or $3ff0000000000000;
+ result:=double(pointer(@t)^)-1.0;
 end;
 
 end.
