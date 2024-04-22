@@ -5,68 +5,75 @@
 // configured for standard default positions, we can return the positions for rasterizationSamples up to 16. However, for 
 // rasterizationSamples of 32 and 64, there are no standard positions defined.
 
+// The following sample positions are based on the following source:
+// - https://registry.khronos.org/vulkan/specs/1.3-extensions/html/vkspec.html#primsrast-multisampling
+
+// Locations are defined relative to an origin in the upper left corner of the fragment. These are valid when
+// the standardSampleLocations member of VkPhysicalDeviceLimits is VK_TRUE, and no custom sample locations with
+// VK_EXT_sample_locations are provided, if supported at all.
+
 const vec2 msaa1SamplePositions[1] = vec2[1](
-  vec2( 0.0/16.0,  0.0/16.0 )
+  vec2(0.5, 0.5)
 );
 
 const vec2 msaa2SamplePositions[2] = vec2[2](
-  vec2( 4.0/16.0,  4.0/16.0 ),
-  vec2(-4.0/16.0, -4.0/16.0 )
+  vec2(0.75, 0.75),
+  vec2(0.25, 0.25)
 );
 
 const vec2 msaa4SamplePositions[4] = vec2[4](
-  vec2(-2.0/16.0, -6.0/16.0 ),
-  vec2( 6.0/16.0, -2.0/16.0 ),
-  vec2(-6.0/16.0,  2.0/16.0 ),
-  vec2( 2.0/16.0,  6.0/16.0 )
+  vec2(0.375, 0.125),
+  vec2(0.875, 0.375),
+  vec2(0.125, 0.625),
+  vec2(0.625, 0.875)
 );  
 
 const vec2 msaa8SamplePositions[8] = vec2[8](
-  vec2( 1.0/16.0, -3.0/16.0 ),
-  vec2(-1.0/16.0,  3.0/16.0 ),
-  vec2( 5.0/16.0,  1.0/16.0 ),
-  vec2(-3.0/16.0, -5.0/16.0 ),
-  vec2(-5.0/16.0,  5.0/16.0 ),
-  vec2(-7.0/16.0, -1.0/16.0 ),
-  vec2( 3.0/16.0,  7.0/16.0 ),
-  vec2( 7.0/16.0, -7.0/16.0 )
+  vec2(0.5625, 0.3125),
+  vec2(0.4375, 0.6875),
+  vec2(0.8125, 0.5625),
+  vec2(0.3125, 0.1875),
+  vec2(0.1875, 0.8125),
+  vec2(0.0625, 0.4375),
+  vec2(0.6875, 0.9375),
+  vec2(0.9375, 0.0625)
 );  
 
 const vec2 msaa16SamplePositions[16] = vec2[16](
-  vec2( 1.0/16.0,  1.0/16.0 ),
-  vec2(-1.0/16.0, -3.0/16.0 ),
-  vec2(-3.0/16.0,  2.0/16.0 ),
-  vec2( 4.0/16.0, -1.0/16.0 ),
-  vec2(-5.0/16.0, -2.0/16.0 ),
-  vec2( 2.0/16.0,  5.0/16.0 ),
-  vec2( 5.0/16.0,  3.0/16.0 ),
-  vec2( 3.0/16.0, -5.0/16.0 ),
-  vec2(-2.0/16.0,  6.0/16.0 ),
-  vec2( 0.0/16.0, -7.0/16.0 ),
-  vec2(-4.0/16.0, -6.0/16.0 ),
-  vec2(-6.0/16.0,  4.0/16.0 ),
-  vec2(-8.0/16.0,  0.0/16.0 ),
-  vec2( 7.0/16.0, -4.0/16.0 ),
-  vec2( 6.0/16.0,  7.0/16.0 ),
-  vec2(-7.0/16.0, -8.0/16.0 )
+  vec2(0.5625, 0.5625),
+  vec2(0.4375, 0.3125),
+  vec2(0.3125, 0.625),
+  vec2(0.75, 0.4375),
+  vec2(0.1875, 0.375),
+  vec2(0.625, 0.8125),
+  vec2(0.8125, 0.6875),
+  vec2(0.6875, 0.1875),
+  vec2(0.375, 0.875),
+  vec2(0.5, 0.0625),
+  vec2(0.25, 0.125),
+  vec2(0.125, 0.75),
+  vec2(0.0, 0.5),
+  vec2(0.9375, 0.25),
+  vec2(0.875, 0.9375),
+  vec2(0.0625, 0.0)
 );
 
 vec2 getSamplePosition(const in int countSamples, const in int sampleIndex){
   switch(countSamples){
     case 1:{
-      return msaa1SamplePositions[sampleIndex];
+      return msaa1SamplePositions[0]; // Only one sample position, no need to mess with sampleIndex
     }
     case 2:{
-      return msaa2SamplePositions[sampleIndex];
+      return msaa2SamplePositions[sampleIndex & 1];
     }
     case 4:{
-      return msaa4SamplePositions[sampleIndex];
+      return msaa4SamplePositions[sampleIndex & 3];
     }
     case 8:{
-      return msaa8SamplePositions[sampleIndex];
+      return msaa8SamplePositions[sampleIndex & 7];
     }
     case 16:{
-      return msaa16SamplePositions[sampleIndex];
+      return msaa16SamplePositions[sampleIndex & 15];
     }
     default:{
       // No standard positions defined for 32 and 64 and other sample counts
