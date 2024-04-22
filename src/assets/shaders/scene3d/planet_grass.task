@@ -329,7 +329,8 @@ void main() {
 
       float grassDensity = textureLod(uPlanetTextures[3], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x;
 
-      if((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu))))){
+      if((!(grassDensity >= 0.99999)) && 
+         ((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu)))))){
         // Nope, no grass here
         visible = false;        
       }

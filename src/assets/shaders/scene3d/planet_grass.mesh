@@ -339,14 +339,41 @@ void main() {
 
       grassDensity = textureLod(uPlanetTextures[3], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x;
 
-      if((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu))))){
-        // Nope, no grass here
-#if defined(MESH_SHADER_EMULATION)
-        validGroup = false;        
-#endif
-      }
+      if(grassDensity >= 0.99999){
+       
+        // Full density, no need to do anything
+
+        maxCountBlades = clamp(pushConstants.maximalCountBladesPerPatch, 1u, 8u); // 1 .. 8
+
+      }else{
+
+        if((grassDensity < 1e-6) || (grassDensity < makeAbsFloat(pcgHash31(uvec3(uvec2(globalXY) ^ uvec2(0x61a77u), 0xffu))))){
+        
+          // Nope, no grass here
+
+  #if defined(MESH_SHADER_EMULATION)
+          validGroup = false;        
+  #endif
+         
+          maxCountBlades = 0u; 
+        
+        }else{
+        
+          maxCountBlades = uint(
+            clamp(
+              clamp(
+                int(round(grassDensity * (float(pushConstants.maximalCountBladesPerPatch) - 1.0))) + 1, 
+                0, 
+                int(pushConstants.maximalCountBladesPerPatch)
+              ), 
+              1, 
+              8
+            )
+          ); // 1 .. 8
+        
+        }
       
-      maxCountBlades = clamp(clamp(uint(round(grassDensity) * pushConstants.maximalCountBladesPerPatch), 0u, pushConstants.maximalCountBladesPerPatch), 1u, 8u); // 1 .. 8
+      }
 
     }
 
@@ -364,7 +391,7 @@ void main() {
     )
   );
 
-  const uint countBlades = uint(ceil(countBladesFloat));
+  const uint countBlades = min(maxCountBlades, uint(ceil(countBladesFloat)));
 
   const uint countIndicesPerPayload = countIndicesPerBlade * countBlades;
 
