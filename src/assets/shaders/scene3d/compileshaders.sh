@@ -338,6 +338,10 @@ compileshaderarguments=(
   "-V voxel_mesh_visualization.geom -o ${tempPath}/voxel_mesh_visualization_geom.spv"
   "-V voxel_mesh_visualization.frag -o ${tempPath}/voxel_mesh_visualization_frag.spv"
 
+  "-V planet_grassmap_initialization.comp -o ${tempPath}/planet_grassmap_initialization_comp.spv"
+
+  "-V planet_grassmap_modification.comp -o ${tempPath}/planet_grassmap_modification_comp.spv"
+
   "-V planet_heightmap_random_initialization.comp -o ${tempPath}/planet_heightmap_random_initialization_comp.spv"
 
   "-V planet_heightmap_data_initialization.comp -o ${tempPath}/planet_heightmap_data_initialization_comp.spv"
