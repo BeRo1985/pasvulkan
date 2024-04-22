@@ -10237,9 +10237,27 @@ begin
 
  UpdateRenderIndex:=false;
 
+ if fData.fModifyGrassMapActive then begin
+
+  if assigned(fVulkanDevice) then begin
+
+   BeginUpdate;
+   try
+
+    if fData.fModifyGrassMapActive then begin
+     fGrassMapModification.Execute(fVulkanComputeCommandBuffer);
+    end;
+
+   finally
+    EndUpdate;
+   end;
+
+  end;
+
+ end;
+
  if (fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration) or
-    fData.fModifyHeightMapActive or
-    fData.fModifyGrassMapActive then begin
+    fData.fModifyHeightMapActive then begin
 
   if assigned(fVulkanDevice) then begin
 
@@ -10248,10 +10266,6 @@ begin
 
     if fData.fModifyHeightMapActive then begin
      fHeightMapModification.Execute(fVulkanComputeCommandBuffer);
-    end;
-
-    if fData.fModifyGrassMapActive then begin
-     fGrassMapModification.Execute(fVulkanComputeCommandBuffer);
     end;
 
     if fData.fHeightMapProcessedGeneration<>fData.fHeightMapGeneration then begin
