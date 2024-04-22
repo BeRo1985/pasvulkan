@@ -10,7 +10,8 @@
 
 // Locations are defined relative to an origin in the upper left corner of the fragment. These are valid when
 // the standardSampleLocations member of VkPhysicalDeviceLimits is VK_TRUE, and no custom sample locations with
-// VK_EXT_sample_locations are provided, if supported at all.
+// VK_EXT_sample_locations are provided, if supported at all. But that is the case for the majority of the hardware 
+// anyway, so consider it just as given for simplicity.
 
 const vec2 msaa1SamplePositions[1] = vec2[1](
   vec2(0.5, 0.5)
