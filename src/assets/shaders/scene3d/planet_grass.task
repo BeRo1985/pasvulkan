@@ -127,7 +127,7 @@ taskPayloadSharedEXT TaskData taskData;
 #include "planet_map.glsl"
 
 void main() {
-
+ 
   /////////////////////////////////////////////////////////////////////////
    
   const uint localInvocationIndex = uint(gl_LocalInvocationIndex);
@@ -317,6 +317,20 @@ void main() {
         
     }
   #endif
+
+    ///////////////////////////////////////////////////////////////////////// 
+
+    // Check grass map when we do need grass at the current position at all
+    if(visible){
+
+      ivec2 texSize = ivec2(textureSize(uPlanetTextures[3], 0).xy);
+
+      if(textureLod(uPlanetTextures[3], (vec2(globalXY) + vec2(0.5)) / vec2(texSize), 0).x < 1e-6){
+        // Nope, no grass here
+        visible = false;        
+      }
+
+    } 
 
     /////////////////////////////////////////////////////////////////////////
 

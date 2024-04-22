@@ -570,7 +570,7 @@ void main() {
 
       // The vertex shader as next stage will do the rest of the work vertex-wise, so no need to do it here and to save some memory 
       
-  #else
+  #else 
 
       outBlock[vertexID].position = position;         
       outBlock[vertexID].normal = normal;

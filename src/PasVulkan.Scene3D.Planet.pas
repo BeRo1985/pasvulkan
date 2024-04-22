@@ -1091,7 +1091,7 @@ type TpvScene3DPlanets=class;
        procedure BeforeDestruction; override;
        procedure Release;
        function HandleRelease:boolean;
-       class function CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
+       class function CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
        class function CreatePlanetCullDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout; static;
        class function CreatePlanetCullDescriptorPool(const aVulkanDevice:TpvVulkanDevice;const aCountInFlightFrames:TpvSizeInt):TpvVulkanDescriptorPool; static;
@@ -9379,8 +9379,21 @@ begin
 
 end;
 
-class function TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice):TpvVulkanDescriptorSetLayout;
+class function TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(const aVulkanDevice:TpvVulkanDevice;const aMeshShaders:Boolean):TpvVulkanDescriptorSetLayout;
+var ShaderStageFlags:TVkShaderStageFlags;
 begin
+
+ ShaderStageFlags:=TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT) or
+                   TVkShaderStageFlags(VK_SHADER_STAGE_COMPUTE_BIT) or
+                   IfThen(aMeshShaders and
+                          (aVulkanDevice.EnabledExtensionNames.IndexOf(VK_EXT_MESH_SHADER_EXTENSION_NAME)>0) and
+                          (aVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.meshShader<>VK_FALSE) and
+                          (aVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.taskShader<>VK_FALSE){and
+                          (aVulkanDevice.PhysicalDevice.MeshShaderFeaturesEXT.multiviewMeshShader<>VK_FALSE)},
+                          TVkShaderStageFlags(VK_SHADER_STAGE_MESH_BIT_EXT) or
+                          TVkShaderStageFlags(VK_SHADER_STAGE_TASK_BIT_EXT),
+                          0);
 
  result:=TpvVulkanDescriptorSetLayout.Create(aVulkanDevice);
 
@@ -9388,10 +9401,7 @@ begin
  result.AddBinding(0,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                    4,
-                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-{                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
-                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   ShaderStageFlags,
                    [],
                    0);
 
@@ -9399,10 +9409,7 @@ begin
  result.AddBinding(1,
                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
                    1,
-                   TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-{                  TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) or
-                   TVkShaderStageFlags(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) or}
-                   TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                   ShaderStageFlags,
                    [],
                    0);
 

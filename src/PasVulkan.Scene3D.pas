@@ -21172,7 +21172,7 @@ begin
                                                   false);
   fVulkanDevice.DebugUtils.SetObjectName(fGeneralComputeSampler.Handle,VK_OBJECT_TYPE_SAMPLER,'TpvScene3D.fGeneralComputeSampler');
 
-  fPlanetDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(fVulkanDevice);
+  fPlanetDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetDescriptorSetLayout(fVulkanDevice,fMeshShaderSupport);
 
   fPlanetCullDescriptorSetLayout:=TpvScene3DPlanet.CreatePlanetCullDescriptorSetLayout(fVulkanDevice);
 
