@@ -3467,7 +3467,8 @@ implementation
 
 uses PasVulkan.Scene3D.Renderer.Instance,
      PasVulkan.Scene3D.Planet,
-     PasVulkan.Scene3D.MeshCompute;
+     PasVulkan.Scene3D.MeshCompute,
+     PasVulkan.Scene3D.Tipsify;
 
 const FlushUpdateData=false;
 

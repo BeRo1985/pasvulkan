@@ -82,6 +82,7 @@ type TpvDynamicArray<T>=record
        procedure Initialize;
        procedure Finalize;
        procedure Clear;
+       procedure ClearNoFree;
        procedure Resize(const aCount:TpvSizeInt);
        procedure Finish;
        procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>); overload;
@@ -774,6 +775,11 @@ end;
 procedure TpvDynamicArray<T>.Clear;
 begin
  Items:=nil;
+ Count:=0;
+end;
+
+procedure TpvDynamicArray<T>.ClearNoFree;
+begin
  Count:=0;
 end;
 
