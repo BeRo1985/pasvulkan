@@ -96,6 +96,8 @@ type { TpvScene3DTipsify }
 
 implementation
 
+// Based on "Fast Triangle Reordering for Vertex Locality and Reduced Overdraw" by Sander et al. 
+
 { TpvScene3DTipsify.TAdjacencyInfo }
 
 constructor TpvScene3DTipsify.TAdjacencyInfo.Create;
