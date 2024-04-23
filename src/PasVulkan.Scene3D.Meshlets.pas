@@ -70,7 +70,11 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections;
 
-// This unit contains a meshlet builder for meshlets in the simplest form just with bounding spheres and just greedy meshlet building.
+// This unit contains a meshlet builder for meshlets in the simplest form just with bounding spheres and just greedy meshlet building,
+// and without any further fancy optimizations like overdraw optimizations, etc. Therefore, it is indeed not the optimal meshlet builder, 
+// but it works and is simple to understand and to use. For more advanced respective better meshlets, you should use a more advanced 
+// meshlet builder like meshoptimizer from https://github.com/zeux/meshoptimizer.git as preprocessing/compiling step in your asset
+// pipeline.
 
 const MaxVerticesPerMeshlet=256;
       MaxPrimitivesPerMeshlet=256;
