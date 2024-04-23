@@ -67,7 +67,10 @@ uses SysUtils,
      Vulkan,
      PasMP,
      PasVulkan.Types,
+     PasVulkan.Math,
      PasVulkan.Collections;
+
+// This unit contains a meshlet builder for meshlets in the simplest form just with bounding spheres and just greedy meshlet building.
 
 const MaxVerticesPerMeshlet=256;
       MaxPrimitivesPerMeshlet=256;
@@ -75,6 +78,7 @@ const MaxVerticesPerMeshlet=256;
 type TpvScene3DMeshlet=packed record
       Indices:array[0..MaxPrimitivesPerMeshlet-1,0..2] of TpvUInt32;
       CountPrimitives:TpvUInt32;
+      BoundingSphere:TpvVector4;
      end; 
      PpvScene3DMeshlet=^TpvScene3DMeshlet;
 
@@ -82,7 +86,14 @@ type TpvScene3DMeshlet=packed record
 
 // The input indices should be preprocessed for example with the tipsify algorithm before calling this function to maximize the locality 
 // of the indices for the meshlets.
-procedure BuildMeshlets(const aIndices:Pointer;const aCountIndices:TpvSizeInt;const aMaxVertexSize,aMaxPrimitiveSize:TpvSizeInt;var aMeshlets:TpvScene3DMeshlets);
+procedure BuildMeshlets(const aVertices:Pointer;
+                        const aCountVertices:TpvSizeInt;
+                        const aVertexStride:TpvSizeInt;
+                        const aIndices:Pointer;
+                        const aCountIndices:TpvSizeInt;
+                        const aMaxVertexSize:TpvSizeInt;
+                        const aMaxPrimitiveSize:TpvSizeInt;
+                        var aMeshlets:TpvScene3DMeshlets);
 
 implementation
 
@@ -312,17 +323,29 @@ begin
  end;
 end;
 
-procedure BuildMeshlets(const aIndices:Pointer;const aCountIndices:TpvSizeInt;const aMaxVertexSize,aMaxPrimitiveSize:TpvSizeInt;var aMeshlets:TpvScene3DMeshlets);
+procedure BuildMeshlets(const aVertices:Pointer;
+                        const aCountVertices:TpvSizeInt;
+                        const aVertexStride:TpvSizeInt;
+                        const aIndices:Pointer;
+                        const aCountIndices:TpvSizeInt;
+                        const aMaxVertexSize:TpvSizeInt;
+                        const aMaxPrimitiveSize:TpvSizeInt;
+                        var aMeshlets:TpvScene3DMeshlets);
 var MeshletPrimitiveCache:TpvScene3DMeshletPrimitiveCache;
-    Index,PrimitiveIndex:TpvSizeInt;
+    Index,PrimitiveIndex,MeshletIndex,VertexIndex:TpvSizeInt;
     Indices:PpvUInt32;
     a,b,c:TpvUInt32;
     Meshlet:PpvScene3DMeshlet;
+    BoundingBox:TpvAABB;
+    BoundingSphere:TpvSphere;
+    First:Boolean;
 begin
 
+ // Pass 1: Construct meshlets
+  
  MeshletPrimitiveCache:=TpvScene3DMeshletPrimitiveCache.Create(aMaxVertexSize,aMaxPrimitiveSize);
  try
-
+    
   Indices:=aIndices;
 
   for Index:=0 to (aCountIndices div 3)-1 do begin
@@ -372,6 +395,42 @@ begin
 
  finally
   FreeAndNil(MeshletPrimitiveCache);
+ end;
+
+ // Pass 2: Calculate bounding spheres
+
+ begin
+
+  for MeshletIndex:=0 to aMeshlets.Count-1 do begin
+
+   Meshlet:=@aMeshlets.Items[MeshletIndex];
+
+   BoundingBox.Min:=TpvVector3.Null;
+   BoundingBox.Max:=TpvVector3.Null;
+
+   First:=true;
+
+   for PrimitiveIndex:=0 to Meshlet^.CountPrimitives-1 do begin
+    for VertexIndex:=0 to 2 do begin
+     if First then begin
+      First:=false;
+      BoundingBox.Min:=PpvVector3(Pointer(TpvPtrUInt(TpvPtrUInt(aVertices)+(TpvPtrUInt(Meshlet^.Indices[PrimitiveIndex,VertexIndex])*TpvPtrUInt(aVertexStride)))))^;
+      BoundingBox.Max:=BoundingBox.Min;
+     end else begin
+      BoundingBox.CombineVector3(PpvVector3(Pointer(TpvPtrUInt(TpvPtrUInt(aVertices)+(TpvPtrUInt(Meshlet^.Indices[PrimitiveIndex,VertexIndex])*TpvPtrUInt(aVertexStride)))))^);
+     end;
+    end;
+   end;
+
+   BoundingSphere:=TpvSphere.CreateFromAABB(BoundingBox);
+
+   Meshlet^.BoundingSphere[0]:=BoundingSphere.Center.x;
+   Meshlet^.BoundingSphere[1]:=BoundingSphere.Center.y;
+   Meshlet^.BoundingSphere[2]:=BoundingSphere.Center.z;
+   Meshlet^.BoundingSphere[3]:=BoundingSphere.Radius;
+
+  end;
+  
  end;
 
 end;
