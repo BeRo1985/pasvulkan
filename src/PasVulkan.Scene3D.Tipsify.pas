@@ -69,266 +69,234 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Scene3D;
 
-type { TpvScene3DTipsify }
-     TpvScene3DTipsify=class
-      public
-       type TIndicesDynamicArray=TpvScene3D.TIndicesDynamicArray;
-            TUInt32DynamicArray=TpvDynamicArray<TpvUInt32>;
-            TUInt32Queue=TpvDynamicQueue<TpvUInt32>;
-            TBooleanDynamicArray=TpvDynamicArray<Boolean>;
-            { TAdjacencyInfo }
-            TAdjacencyInfo=class
-             private
-              fTrianglesPerVertex:TUInt32DynamicArray;
-              fIndexBufferOffset:TUInt32DynamicArray;
-              fTriangleData:TUInt32DynamicArray;
-             public
-              constructor Create;
-              destructor Destroy; override;
-              procedure BuildAdjaceny(const aCountVertices,aCountIndices:TpvSizeInt;const aIndices:TIndicesDynamicArray);
-            end;
-      private
-       class function SkipDeadEnd(const aIndices:TIndicesDynamicArray;const aLiveTriCount:TUInt32DynamicArray;var aDeadEndStack:TUInt32Queue;const aCurrentVertex:TpvUInt32;const aCountVertices:TpvUInt32;var aCursor:TpvSizeInt):TpvSizeInt; static;
-       class function GetNextVertex(const aIndices:TIndicesDynamicArray;const aCurrentVertex:TpvUInt32;const aCacheSize:TpvSizeInt;const aOneRing:TUInt32DynamicArray;const aCacheTimeStamps:TUInt32DynamicArray;const aTimeStamp:TpvUInt32;const aLiveTriCount:TUInt32DynamicArray;var aDeadEndStack:TUInt32Queue;const aCountVertices:TpvUInt32;var aCursor:TpvSizeInt):TpvSizeInt; static; 
-      public 
-       class procedure OptimizeIndexBuffer(const aIndices:TIndicesDynamicArray;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;var aOptimizedIndices:TIndicesDynamicArray); static;
-     end;     
+procedure TipsifyIndexBuffer(const aIndices:TpvScene3D.TIndicesDynamicArray;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;var aOptimizedIndices:TpvScene3D.TIndicesDynamicArray);
 
 implementation
 
 // Based on "Fast Triangle Reordering for Vertex Locality and Reduced Overdraw" by Sander et al. 
 
-{ TpvScene3DTipsify.TAdjacencyInfo }
-
-constructor TpvScene3DTipsify.TAdjacencyInfo.Create;
-begin
- inherited Create;
- fTrianglesPerVertex.Initialize;
- fIndexBufferOffset.Initialize;
- fTriangleData.Initialize;
-end;
-
-destructor TpvScene3DTipsify.TAdjacencyInfo.Destroy;
-begin
- fTriangleData.Finalize;
- fIndexBufferOffset.Finalize;
- fTrianglesPerVertex.Finalize;
- inherited Destroy;
-end;
-
-procedure TpvScene3DTipsify.TAdjacencyInfo.BuildAdjaceny(const aCountVertices,aCountIndices:TpvSizeInt;const aIndices:TIndicesDynamicArray);
-var Index,CountTriangles:TpvSizeInt;
-    TriangleOffset,a,b,c:TpvUInt32;
-begin
-
- // Count how often a vertex is used in the index buffer
- fTrianglesPerVertex.Resize(aCountVertices);
- FillChar(fTrianglesPerVertex.Items[0],fTrianglesPerVertex.Count*SizeOf(TpvUInt32),#0);
- for Index:=0 to aCountIndices-1 do begin
-  inc(fTrianglesPerVertex.Items[aIndices[Index]]);
- end;
-
-	// Calculate the offsets for to need to look up into the index buffer for a given triangle 
- TriangleOffset:=0;
- fIndexBufferOffset.Resize(aCountVertices);
- FillChar(fIndexBufferOffset.Items[0],fIndexBufferOffset.Count*SizeOf(TpvUInt32),#0);
- for Index:=0 to aCountVertices-1 do begin
-  fIndexBufferOffset.Items[Index]:=TriangleOffset;
-  inc(TriangleOffset,fTrianglesPerVertex.Items[Index]);
- end;
-
- // Build the triangle data
- CountTriangles:=aCountIndices div 3;
- fTriangleData.Resize(TriangleOffset);
- for Index:=0 to CountTriangles-1 do begin
-  
-  a:=aIndices.Items[(Index*3)+0];
-  b:=aIndices.Items[(Index*3)+1];
-  c:=aIndices.Items[(Index*3)+2];
-  
-  fTriangleData.Items[fIndexBufferOffset.Items[a]]:=Index;
-  inc(fIndexBufferOffset.Items[a]);
-  
-  fTriangleData.Items[fIndexBufferOffset.Items[b]]:=Index;
-  inc(fIndexBufferOffset.Items[b]);
-  
-  fTriangleData.Items[fIndexBufferOffset.Items[c]]:=Index;
-  inc(fIndexBufferOffset.Items[c]);
-
- end;
-
-end;
-
-{ TpvScene3DTipsify }
-
-class function TpvScene3DTipsify.SkipDeadEnd(const aIndices:TIndicesDynamicArray;const aLiveTriCount:TUInt32DynamicArray;var aDeadEndStack:TUInt32Queue;const aCurrentVertex:TpvUInt32;const aCountVertices:TpvUInt32;var aCursor:TpvSizeInt):TpvSizeInt;
-var VertexIndex:TpvUInt32;
-begin
- while aDeadEndStack.Dequeue(VertexIndex) do begin
-  if aLiveTriCount.Items[VertexIndex]>0 then begin
-   result:=VertexIndex;
-   exit;
-  end;   
- end; 
- while aCursor<aLiveTriCount.Count do begin
-  if aLiveTriCount.Items[aCursor]>0 then begin
-   result:=aCursor;
-   exit;
-  end else begin
-   inc(aCursor);
-  end; 
- end;
- result:=-1;
-end;
-
-class function TpvScene3DTipsify.GetNextVertex(const aIndices:TIndicesDynamicArray;const aCurrentVertex:TpvUInt32;const aCacheSize:TpvSizeInt;const aOneRing:TUInt32DynamicArray;const aCacheTimeStamps:TUInt32DynamicArray;const aTimeStamp:TpvUInt32;const aLiveTriCount:TUInt32DynamicArray;var aDeadEndStack:TUInt32Queue;const aCountVertices:TpvUInt32;var aCursor:TpvSizeInt):TpvSizeInt; static; 
-var Index,HighestPriority,Priority:TpvSizeInt;
-    VertexIndex:TpvUInt32;
-begin
- result:=-1;
- HighestPriority:=-1;
- for Index:=0 to aOneRing.Count-1 do begin
-  VertexIndex:=aOneRing.Items[Index];
-  if aLiveTriCount.Items[VertexIndex]>0 then begin
-   Priority:=0;
-   if (TpvSizeInt(aTimeStamp+(aLiveTriCount.Items[VertexIndex]*2))-TpvSizeInt(aCacheTimeStamps.Items[VertexIndex]))<=aCacheSize then begin
-    Priority:=TpvSizeInt(aTimeStamp)-TpvSizeInt(aCacheTimeStamps.Items[VertexIndex]);
-   end;
-   if HighestPriority<Priority then begin
-    HighestPriority:=Priority;
-    result:=VertexIndex;
-   end;   
-  end; 
- end;
- if result<0 then begin
-  result:=SkipDeadEnd(aIndices,aLiveTriCount,aDeadEndStack,aCurrentVertex,aCountVertices,aCursor);
- end;
-end;
-
-class procedure TpvScene3DTipsify.OptimizeIndexBuffer(const aIndices:TIndicesDynamicArray;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;var aOptimizedIndices:TIndicesDynamicArray); 
-var Index,Triangle,CurrentVertex,TimeStamp,Cursor:TpvSizeInt;
-    AdjacencyInfo:TAdjacencyInfo;
-    LiveTriCount:TUInt32DynamicArray;
-    CacheTimeStamps:TUInt32DynamicArray;
-    DeadEndStack:TUInt32Queue;
-    OneRing:TUInt32DynamicArray;
+procedure TipsifyIndexBuffer(const aIndices:TpvScene3D.TIndicesDynamicArray;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;var aOptimizedIndices:TpvScene3D.TIndicesDynamicArray);
+type TIndicesDynamicArray=TpvScene3D.TIndicesDynamicArray;
+     TBooleanDynamicArray=TpvDynamicArray<Boolean>;
+     TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
+     TSizeIntQueue=TpvDynamicQueue<TpvSizeInt>;
+var Index,Triangle,CurrentVertex,TimeStamp,Cursor,TriangleOffset,
+    CountTriangles,a,b,c,NextVertex,HighestPriority,Priority,
+    VertexIndex:TpvSizeInt;
+    TrianglesPerVertex:TSizeIntDynamicArray;
+    IndexBufferOffset:TSizeIntDynamicArray;
+    TriangleData:TSizeIntDynamicArray;
+    LiveTriCount:TSizeIntDynamicArray;
+    CacheTimeStamps:TSizeIntDynamicArray;
+    DeadEndStack:TSizeIntQueue;
+    OneRing:TSizeIntDynamicArray;
     EmittedTriangles:TBooleanDynamicArray;
-    a,b,c:TpvUInt32;
 begin
 
  aOptimizedIndices.ClearNoFree;
 
- AdjacencyInfo:=TAdjacencyInfo.Create;
+ TrianglesPerVertex.Initialize;
  try
 
-  AdjacencyInfo.BuildAdjaceny(aCountVertices,aCountIndices,aIndices);
-
-  LiveTriCount.Initialize;
+  IndexBufferOffset.Initialize;
   try
 
-   LiveTriCount.Assign(AdjacencyInfo.fTrianglesPerVertex);
-
-   CacheTimeStamps.Initialize;
+   TriangleData.Initialize;
    try
-     
-    CacheTimeStamps.Resize(aCountVertices);
-    FillChar(CacheTimeStamps.Items[0],CacheTimeStamps.Count*SizeOf(TpvUInt32),#0);
 
-    DeadEndStack.Initialize;
+    // Count how often a vertex is used in the index buffer
+    TrianglesPerVertex.Resize(aCountVertices);
+    FillChar(TrianglesPerVertex.Items[0],TrianglesPerVertex.Count*SizeOf(TpvUInt32),#0);
+    for Index:=0 to aCountIndices-1 do begin
+     inc(TrianglesPerVertex.Items[aIndices[Index]]);
+    end;
+
+	   // Calculate the offsets for to need to look up into the index buffer for a given triangle
+    TriangleOffset:=0;
+    IndexBufferOffset.Resize(aCountVertices);
+    FillChar(IndexBufferOffset.Items[0],IndexBufferOffset.Count*SizeOf(TpvUInt32),#0);
+    for Index:=0 to aCountVertices-1 do begin
+     IndexBufferOffset.Items[Index]:=TriangleOffset;
+     inc(TriangleOffset,TrianglesPerVertex.Items[Index]);
+    end;
+
+    // Build the triangle data
+    CountTriangles:=aCountIndices div 3;
+    TriangleData.Resize(TriangleOffset);
+    for Index:=0 to CountTriangles-1 do begin
+
+     a:=aIndices.Items[(Index*3)+0];
+     b:=aIndices.Items[(Index*3)+1];
+     c:=aIndices.Items[(Index*3)+2];
+
+     TriangleData.Items[IndexBufferOffset.Items[a]]:=Index;
+     inc(IndexBufferOffset.Items[a]);
+
+     TriangleData.Items[IndexBufferOffset.Items[b]]:=Index;
+     inc(IndexBufferOffset.Items[b]);
+
+     TriangleData.Items[IndexBufferOffset.Items[c]]:=Index;
+     inc(IndexBufferOffset.Items[c]);
+
+    end;
+
+    LiveTriCount.Initialize;
     try
 
-     EmittedTriangles.Initialize;
+     LiveTriCount.Assign(TrianglesPerVertex);
+
+     CacheTimeStamps.Initialize;
      try
 
-      EmittedTriangles.Resize(aCountIndices div 3);
-      FillChar(EmittedTriangles.Items[0],EmittedTriangles.Count*SizeOf(Boolean),#0);
+      CacheTimeStamps.Resize(aCountVertices);
+      FillChar(CacheTimeStamps.Items[0],CacheTimeStamps.Count*SizeOf(TpvUInt32),#0);
 
-      CurrentVertex:=0;
-      TimeStamp:=aCacheSize+1;
-      Cursor:=1;
-
-      OneRing.Initialize;
+      DeadEndStack.Initialize;
       try
-      
-       while CurrentVertex>=0 do begin
 
-        OneRing.Clear;
+       EmittedTriangles.Initialize;
+       try
 
-        for Index:=TpvSizeInt(AdjacencyInfo.fIndexBufferOffset.Items[CurrentVertex]) to TpvSizeInt(AdjacencyInfo.fIndexBufferOffset.Items[CurrentVertex]+AdjacencyInfo.fTrianglesPerVertex.Items[CurrentVertex])-1 do begin
+        EmittedTriangles.Resize(aCountIndices div 3);
+        FillChar(EmittedTriangles.Items[0],EmittedTriangles.Count*SizeOf(Boolean),#0);
 
-         Triangle:=AdjacencyInfo.fTriangleData.Items[Index];
+        CurrentVertex:=0;
+        TimeStamp:=aCacheSize+1;
+        Cursor:=1;
 
-         if not EmittedTriangles.Items[Triangle] then begin
+        OneRing.Initialize;
+        try
 
-          a:=aIndices.Items[(Triangle*3)+0];
-          b:=aIndices.Items[(Triangle*3)+1];
-          c:=aIndices.Items[(Triangle*3)+2];
+         while CurrentVertex>=0 do begin
 
-          aOptimizedIndices.Add(a);
-          aOptimizedIndices.Add(b);
-          aOptimizedIndices.Add(c);
+          OneRing.Clear;
 
-          DeadEndStack.Enqueue(a);
-          DeadEndStack.Enqueue(b);
-          DeadEndStack.Enqueue(c);
+          for Index:=IndexBufferOffset.Items[CurrentVertex] to (IndexBufferOffset.Items[CurrentVertex]+TrianglesPerVertex.Items[CurrentVertex])-1 do begin
 
-          OneRing.Add(a);
-          OneRing.Add(b);
-          OneRing.Add(c);
+           Triangle:=TriangleData.Items[Index];
 
-          dec(LiveTriCount.Items[a]);
-          dec(LiveTriCount.Items[b]);
-          dec(LiveTriCount.Items[c]);
+           if not EmittedTriangles.Items[Triangle] then begin
 
-          if (TpvSizeInt(TimeStamp)-TpvSizeInt(CacheTimeStamps.Items[a]))>TpvSizeInt(aCacheSize) then begin
-           CacheTimeStamps.Items[a]:=TimeStamp;
-           inc(TimeStamp);
+            a:=aIndices.Items[(Triangle*3)+0];
+            b:=aIndices.Items[(Triangle*3)+1];
+            c:=aIndices.Items[(Triangle*3)+2];
+
+            aOptimizedIndices.Add(a);
+            aOptimizedIndices.Add(b);
+            aOptimizedIndices.Add(c);
+
+            DeadEndStack.Enqueue(a);
+            DeadEndStack.Enqueue(b);
+            DeadEndStack.Enqueue(c);
+
+            OneRing.Add(a);
+            OneRing.Add(b);
+            OneRing.Add(c);
+
+            dec(LiveTriCount.Items[a]);
+            dec(LiveTriCount.Items[b]);
+            dec(LiveTriCount.Items[c]);
+
+            if (TpvSizeInt(TimeStamp)-TpvSizeInt(CacheTimeStamps.Items[a]))>TpvSizeInt(aCacheSize) then begin
+             CacheTimeStamps.Items[a]:=TimeStamp;
+             inc(TimeStamp);
+            end;
+
+            if (TpvSizeInt(TimeStamp)-TpvSizeInt(CacheTimeStamps.Items[b]))>TpvSizeInt(aCacheSize) then begin
+             CacheTimeStamps.Items[b]:=TimeStamp;
+             inc(TimeStamp);
+            end;
+
+            if (TpvSizeInt(TimeStamp)-TpvSizeInt(CacheTimeStamps.Items[c]))>TpvSizeInt(aCacheSize) then begin
+             CacheTimeStamps.Items[c]:=TimeStamp;
+             inc(TimeStamp);
+            end;
+
+            EmittedTriangles.Items[Triangle]:=true;
+
+           end;
+
           end;
 
-          if (TpvSizeInt(TimeStamp)-TpvSizeInt(CacheTimeStamps.Items[b]))>TpvSizeInt(aCacheSize) then begin
-           CacheTimeStamps.Items[b]:=TimeStamp;
-           inc(TimeStamp);
+          // Get next vertex
+          NextVertex:=-1;
+          HighestPriority:=-1;
+          for Index:=0 to OneRing.Count-1 do begin
+           VertexIndex:=OneRing.Items[Index];
+           if LiveTriCount.Items[VertexIndex]>0 then begin
+            Priority:=0;
+            if ((TimeStamp+(LiveTriCount.Items[VertexIndex]*2))-CacheTimeStamps.Items[VertexIndex])<=aCacheSize then begin
+             Priority:=TimeStamp-CacheTimeStamps.Items[VertexIndex];
+            end;
+            if HighestPriority<Priority then begin
+             HighestPriority:=Priority;
+             NextVertex:=VertexIndex;
+            end;
+           end;
           end;
 
-          if (TpvSizeInt(TimeStamp)-TpvSizeInt(CacheTimeStamps.Items[c]))>TpvSizeInt(aCacheSize) then begin
-           CacheTimeStamps.Items[c]:=TimeStamp;
-           inc(TimeStamp);
+          if NextVertex<0 then begin
+
+           // Skip dead end
+
+           while DeadEndStack.Dequeue(VertexIndex) do begin
+            if LiveTriCount.Items[VertexIndex]>0 then begin
+             NextVertex:=VertexIndex;
+             break;
+            end;
+           end;
+
+           if NextVertex<0 then begin
+
+            while Cursor<LiveTriCount.Count do begin
+             if LiveTriCount.Items[Cursor]>0 then begin
+              NextVertex:=Cursor;
+              break;
+             end else begin
+              inc(Cursor);
+             end;
+            end;
+
+           end;
+
           end;
 
-          EmittedTriangles.Items[Triangle]:=true;
+          CurrentVertex:=NextVertex;
 
-         end;         
+         end;
 
+        finally
+         OneRing.Finalize;
         end;
 
-        CurrentVertex:=GetNextVertex(aIndices,CurrentVertex,aCacheSize,OneRing,CacheTimeStamps,TimeStamp,LiveTriCount,DeadEndStack,aCountVertices,Cursor);
-
+       finally
+        EmittedTriangles.Finalize;
        end;
 
       finally
-       OneRing.Finalize;
-      end; 
+       DeadEndStack.Finalize;
+      end;
 
      finally
-      EmittedTriangles.Finalize;
+      CacheTimeStamps.Finalize;
      end;
 
     finally
-     DeadEndStack.Finalize;
+     LiveTriCount.Finalize;
     end;
 
    finally
-    CacheTimeStamps.Finalize;
+    TriangleData.Finalize;
    end;
 
   finally
-   LiveTriCount.Finalize;
+   IndexBufferOffset.Finalize;
   end;
-   
+
  finally
-  FreeAndNil(AdjacencyInfo);
+  TrianglesPerVertex.Finalize;
  end;
-   
+
 end;
 
 end.
