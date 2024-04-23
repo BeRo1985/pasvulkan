@@ -93,9 +93,12 @@ procedure BuildMeshlets(const aVertices:Pointer;
                         const aCountIndices:TpvSizeInt;
                         const aMaxVertexSize:TpvSizeInt;
                         const aMaxPrimitiveSize:TpvSizeInt;
-                        var aMeshlets:TpvScene3DMeshlets);
+                        var aMeshlets:TpvScene3DMeshlets;
+                        const aPreprocessIndices:boolean=false);
 
 implementation
+
+uses PasVulkan.Scene3D.Tipsify;
 
 {$if not declared(BSRDWord)}
 {$if defined(cpu386)}
@@ -330,9 +333,11 @@ procedure BuildMeshlets(const aVertices:Pointer;
                         const aCountIndices:TpvSizeInt;
                         const aMaxVertexSize:TpvSizeInt;
                         const aMaxPrimitiveSize:TpvSizeInt;
-                        var aMeshlets:TpvScene3DMeshlets);
+                        var aMeshlets:TpvScene3DMeshlets;
+                        const aPreprocessIndices:boolean);
 var MeshletPrimitiveCache:TpvScene3DMeshletPrimitiveCache;
-    Index,PrimitiveIndex,MeshletIndex,VertexIndex:TpvSizeInt;
+    Index,PrimitiveIndex,MeshletIndex,VertexIndex,CountOptimizedIndices:TpvSizeInt;
+    OptimizedIndices:PpvUInt32;
     Indices:PpvUInt32;
     a,b,c:TpvUInt32;
     Meshlet:PpvScene3DMeshlet;
@@ -341,63 +346,98 @@ var MeshletPrimitiveCache:TpvScene3DMeshletPrimitiveCache;
     First:Boolean;
 begin
 
- // Pass 1: Construct meshlets
-  
- MeshletPrimitiveCache:=TpvScene3DMeshletPrimitiveCache.Create(aMaxVertexSize,aMaxPrimitiveSize);
- try
-    
+ // Pass 1: Preprocess indices for better locality (optional)
+
+ if aPreprocessIndices then begin
+  GetMem(OptimizedIndices,aCountIndices*SizeOf(TpvUInt32));
+  TipsifyIndexBuffer(aIndices,aCountIndices,aCountVertices,32,OptimizedIndices,CountOptimizedIndices);
+  if aCountIndices=CountOptimizedIndices then begin
+   Indices:=OptimizedIndices;
+  end else begin
+   try
+    Indices:=aIndices;
+   finally
+    try
+     FreeMem(OptimizedIndices);
+    finally
+     OptimizedIndices:=nil;
+    end;
+   end;
+  end;
+ end else begin
+  OptimizedIndices:=nil;
   Indices:=aIndices;
+ end;
+ 
+ try
 
-  for Index:=0 to (aCountIndices div 3)-1 do begin
+  // Pass 2: Construct meshlets
+   
+  MeshletPrimitiveCache:=TpvScene3DMeshletPrimitiveCache.Create(aMaxVertexSize,aMaxPrimitiveSize);
+  try
+   
+   for Index:=0 to (aCountIndices div 3)-1 do begin
 
-   a:=Indices^;
-   inc(Indices);
+    a:=Indices^;
+    inc(Indices);
 
-   b:=Indices^;
-   inc(Indices);
+    b:=Indices^;
+    inc(Indices);
 
-   c:=Indices^;
-   inc(Indices);
+    c:=Indices^;
+    inc(Indices);
 
-   if MeshletPrimitiveCache.CannotInsertBlock(a,b,c) then begin
+    if MeshletPrimitiveCache.CannotInsertBlock(a,b,c) then begin
 
-    if not MeshletPrimitiveCache.Empty then begin
+     if not MeshletPrimitiveCache.Empty then begin
 
-     Meshlet:=pointer(aMeshlets.AddNew);
-     Meshlet^.CountPrimitives:=MeshletPrimitiveCache.fCountPrimitives;
-     for PrimitiveIndex:=0 to MeshletPrimitiveCache.fCountPrimitives-1 do begin
-      Meshlet^.Indices[PrimitiveIndex,0]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,0];
-      Meshlet^.Indices[PrimitiveIndex,1]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,1];
-      Meshlet^.Indices[PrimitiveIndex,2]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,2];
+      Meshlet:=pointer(aMeshlets.AddNew);
+      Meshlet^.CountPrimitives:=MeshletPrimitiveCache.fCountPrimitives;
+      for PrimitiveIndex:=0 to MeshletPrimitiveCache.fCountPrimitives-1 do begin
+       Meshlet^.Indices[PrimitiveIndex,0]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,0];
+       Meshlet^.Indices[PrimitiveIndex,1]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,1];
+       Meshlet^.Indices[PrimitiveIndex,2]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,2];
+      end;
+
      end;
+
+     MeshletPrimitiveCache.Reset;
 
     end;
 
-    MeshletPrimitiveCache.Reset;
+    MeshletPrimitiveCache.Insert(a,b,c);
 
    end;
 
-   MeshletPrimitiveCache.Insert(a,b,c);
+   if not MeshletPrimitiveCache.Empty then begin
 
-  end;
+    Meshlet:=pointer(aMeshlets.AddNew);
+    Meshlet^.CountPrimitives:=MeshletPrimitiveCache.fCountPrimitives;
+    for PrimitiveIndex:=0 to MeshletPrimitiveCache.fCountPrimitives-1 do begin
+     Meshlet^.Indices[PrimitiveIndex,0]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,0];
+     Meshlet^.Indices[PrimitiveIndex,1]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,1];
+     Meshlet^.Indices[PrimitiveIndex,2]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,2];
+    end;
 
-  if not MeshletPrimitiveCache.Empty then begin
-
-   Meshlet:=pointer(aMeshlets.AddNew);
-   Meshlet^.CountPrimitives:=MeshletPrimitiveCache.fCountPrimitives;
-   for PrimitiveIndex:=0 to MeshletPrimitiveCache.fCountPrimitives-1 do begin
-    Meshlet^.Indices[PrimitiveIndex,0]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,0];
-    Meshlet^.Indices[PrimitiveIndex,1]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,1];
-    Meshlet^.Indices[PrimitiveIndex,2]:=MeshletPrimitiveCache.fPrimitives[PrimitiveIndex,2];
    end;
 
+  finally
+   FreeAndNil(MeshletPrimitiveCache);
   end;
 
  finally
-  FreeAndNil(MeshletPrimitiveCache);
- end;
 
- // Pass 2: Calculate bounding spheres
+  if assigned(OptimizedIndices) then begin
+   try
+    FreeMem(OptimizedIndices);
+   finally
+    OptimizedIndices:=nil;
+   end;
+  end;
+
+ end; 
+
+ // Pass 3: Calculate bounding spheres
 
  begin
 
