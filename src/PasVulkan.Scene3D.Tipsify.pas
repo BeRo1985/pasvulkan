@@ -66,18 +66,16 @@ uses SysUtils,
      Math,
      Vulkan,
      PasVulkan.Types,
-     PasVulkan.Collections,
-     PasVulkan.Scene3D;
+     PasVulkan.Collections;
 
-procedure TipsifyIndexBuffer(const aIndices:TpvScene3D.TIndicesDynamicArray;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;var aOptimizedIndices:TpvScene3D.TIndicesDynamicArray);
+procedure TipsifyIndexBuffer(const aIndices:Pointer;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;const aOptimizedIndices:Pointer;out aCountOptimizedIndices:TpvSizeInt);
 
 implementation
 
 // Based on "Fast Triangle Reordering for Vertex Locality and Reduced Overdraw" by Sander et al. 
 
-procedure TipsifyIndexBuffer(const aIndices:TpvScene3D.TIndicesDynamicArray;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;var aOptimizedIndices:TpvScene3D.TIndicesDynamicArray);
-type TIndicesDynamicArray=TpvScene3D.TIndicesDynamicArray;
-     TBooleanDynamicArray=TpvDynamicArray<Boolean>;
+procedure TipsifyIndexBuffer(const aIndices:Pointer;const aCountIndices,aCountVertices,aCacheSize:TpvSizeInt;const aOptimizedIndices:Pointer;out aCountOptimizedIndices:TpvSizeInt);
+type TBooleanDynamicArray=TpvDynamicArray<Boolean>;
      TSizeIntDynamicArray=TpvDynamicArray<TpvSizeInt>;
      TSizeIntQueue=TpvDynamicQueue<TpvSizeInt>;
 var Index,Triangle,CurrentVertex,TimeStamp,Cursor,TriangleOffset,
@@ -93,7 +91,7 @@ var Index,Triangle,CurrentVertex,TimeStamp,Cursor,TriangleOffset,
     EmittedTriangles:TBooleanDynamicArray;
 begin
 
- aOptimizedIndices.ClearNoFree;
+ aCountOptimizedIndices:=0;
 
  TrianglesPerVertex.Initialize;
  try
@@ -108,7 +106,7 @@ begin
     TrianglesPerVertex.Resize(aCountVertices);
     FillChar(TrianglesPerVertex.Items[0],TrianglesPerVertex.Count*SizeOf(TpvUInt32),#0);
     for Index:=0 to aCountIndices-1 do begin
-     inc(TrianglesPerVertex.Items[aIndices[Index]]);
+     inc(TrianglesPerVertex.Items[PpvUInt32Array(aIndices)^[Index]]);
     end;
 
 	   // Calculate the offsets for to need to look up into the index buffer for a given triangle
@@ -125,9 +123,9 @@ begin
     TriangleData.Resize(TriangleOffset);
     for Index:=0 to CountTriangles-1 do begin
 
-     a:=aIndices.Items[(Index*3)+0];
-     b:=aIndices.Items[(Index*3)+1];
-     c:=aIndices.Items[(Index*3)+2];
+     a:=PpvUInt32Array(aIndices)^[(Index*3)+0];
+     b:=PpvUInt32Array(aIndices)^[(Index*3)+1];
+     c:=PpvUInt32Array(aIndices)^[(Index*3)+2];
 
      TriangleData.Items[IndexBufferOffset.Items[a]]:=Index;
      inc(IndexBufferOffset.Items[a]);
@@ -177,13 +175,14 @@ begin
 
            if not EmittedTriangles.Items[Triangle] then begin
 
-            a:=aIndices.Items[(Triangle*3)+0];
-            b:=aIndices.Items[(Triangle*3)+1];
-            c:=aIndices.Items[(Triangle*3)+2];
+            a:=PpvUInt32Array(aIndices)^[(Triangle*3)+0];
+            b:=PpvUInt32Array(aIndices)^[(Triangle*3)+1];
+            c:=PpvUInt32Array(aIndices)^[(Triangle*3)+2];
 
-            aOptimizedIndices.Add(a);
-            aOptimizedIndices.Add(b);
-            aOptimizedIndices.Add(c);
+            PpvUInt32Array(aOptimizedIndices)^[aCountOptimizedIndices+0]:=a;
+            PpvUInt32Array(aOptimizedIndices)^[aCountOptimizedIndices+1]:=a;
+            PpvUInt32Array(aOptimizedIndices)^[aCountOptimizedIndices+2]:=a;
+            inc(aCountOptimizedIndices,3);
 
             DeadEndStack.Enqueue(a);
             DeadEndStack.Enqueue(b);
