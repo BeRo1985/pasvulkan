@@ -154,7 +154,6 @@ end;
 
 type { TpvScene3DMeshletPrimitiveCache }
      TpvScene3DMeshletPrimitiveCache=class
-      public
       private
        fPrimitives:array[0..MaxPrimitivesPerMeshlet-1,0..2] of TpvUInt32;
        fVertices:array[0..MaxVerticesPerMeshlet-1] of TpvUInt32;
