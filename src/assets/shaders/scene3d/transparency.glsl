@@ -34,11 +34,25 @@
 
   #if defined(MESH_FRAGMENT_SHADER) || defined(PARTICLE_FRAGMENT_SHADER) || defined(WATER_FRAGMENT_SHADER)
 
-    #if defined(WBOIT)
+    #if defined(BLEND)
+
+      #ifdef MSAA
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInputMS uOITImgDepth;
+      #else
+        layout(input_attachment_index = 0, set = 1, binding = 9) uniform subpassInput uOITImgDepth;
+      #endif
+
+    #elif defined(WBOIT)
 
       layout(set = 1, binding = 9, std140) uniform uboWBOIT {
         vec4 wboitZNearZFar;
       } uWBOIT;
+      
+      #ifdef MSAA
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uOITImgDepth;
+      #else
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uOITImgDepth;
+      #endif
 
     #elif defined(MBOIT)
 
@@ -46,14 +60,20 @@
         vec4 mboitZNearZFar;
       } uMBOIT;
 
+      #ifdef MSAA
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uOITImgDepth;
+      #else
+        layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uOITImgDepth;
+      #endif
+
       #if defined(MBOITPASS1)
       #elif defined(MBOITPASS2)
         #ifdef MSAA
-          layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInputMS uMBOITMoments0;
-          layout(input_attachment_index = 1, set = 1, binding = 11) uniform subpassInputMS uMBOITMoments1;
+          layout(input_attachment_index = 0, set = 1, binding = 11) uniform subpassInputMS uMBOITMoments0;
+          layout(input_attachment_index = 1, set = 1, binding = 12) uniform subpassInputMS uMBOITMoments1;
         #else
-          layout(input_attachment_index = 0, set = 1, binding = 10) uniform subpassInput uMBOITMoments0;
-          layout(input_attachment_index = 1, set = 1, binding = 11) uniform subpassInput uMBOITMoments1;
+          layout(input_attachment_index = 0, set = 1, binding = 11) uniform subpassInput uMBOITMoments0;
+          layout(input_attachment_index = 1, set = 1, binding = 12) uniform subpassInput uMBOITMoments1;
         #endif
       #endif
 

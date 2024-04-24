@@ -351,7 +351,7 @@ void main(){
                         rayDirection,     
                         hitRayTime)){
 
-#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT)
+#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) //|| defined(BLEND)
   #ifdef MSAA 
     float opaqueDepth = subpassLoad(uOITImgDepth, gl_SampleID).r; 
   #else
@@ -404,8 +404,12 @@ void main(){
 #endif
   }
 
+  float alpha = finalColor.w;
+
+  bool additiveBlending = false;
+
 #define OVERRIDED_DEPTH hitDepth // instead gl_FragCoord.z 
-#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT)
+#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) || defined(BLEND)
 #define TRANSPARENCY_IMPLEMENTATION
 #include "transparency.glsl"
 #undef TRANSPARENCY_IMPLEMENTATION

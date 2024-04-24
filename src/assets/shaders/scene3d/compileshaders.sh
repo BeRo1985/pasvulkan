@@ -657,6 +657,89 @@ addParticleFragmentVariants(){
 addParticleFragmentVariants "particle" ""
 
 #############################################
+#           Planet water shaders            #
+#############################################
+
+addPlanetWaterFragmentShader(){
+  addShader "-V planet_water.frag ${2} -o ${tempPath}/${1}_frag.spv"
+}
+
+# Add planet water fragment shader variants with different transparency techniques (if any)
+addPlanetWaterFragmentShadingTransparencyVariants(){
+
+  # Standard alpha blending
+  addPlanetWaterFragmentShader "${1}_blend" "$2 -DBLEND"
+
+  # WBOIT (Weighted-Blended Order Independent Transparency)
+  addPlanetWaterFragmentShader "${1}_wboit" "$2 -DWBOIT"
+
+  # MBOIT (Moment-Based order independent transparency)
+  addPlanetWaterFragmentShader "${1}_mboit_pass1" "$2 -DMBOIT -DMBOITPASS1"
+  addPlanetWaterFragmentShader "${1}_mboit_pass2" "$2 -DMBOIT -DMBOITPASS2"
+
+  # LoopOIT (Multi-pass order independent transparency)
+  addPlanetWaterFragmentShader "${1}_loopoit_pass1" "$2 -DLOOPOIT -DLOOPOIT_PASS1"
+  addPlanetWaterFragmentShader "${1}_loopoit_pass2" "$2 -DLOOPOIT -DLOOPOIT_PASS2"
+
+  # LockOIT (Order independent transparency with spinlock/interlock, depending on the GPU capabilities)
+  addPlanetWaterFragmentShader "${1}_spinlock_lockoit" "$2 -DLOCKOIT -DSPINLOCK"
+  addPlanetWaterFragmentShader "${1}_interlock_lockoit" "$2 -DLOCKOIT -DINTERLOCK"
+
+  # DFAOIT (Neural network based order independent transparency)
+  addPlanetWaterFragmentShader "${1}_spinlock_dfaoit" "$2 -DDFAOIT -DSPINLOCK"
+  addPlanetWaterFragmentShader "${1}_interlock_dfaoit" "$2 -DDFAOIT -DINTERLOCK"
+
+}
+
+addPlanetWaterFragmentShadingAntialiasingVariants(){
+  
+  # No antialiasing or temporal antialiasing
+  addPlanetWaterFragmentShadingTransparencyVariants "${1}" "$2"
+
+  # MSAA (Multi-sample anti-aliasing)
+  addPlanetWaterFragmentShadingTransparencyVariants "${1}_msaa" "$2 -DMSAA"  
+
+}
+
+# Add planet water fragment shader variants with different Z direction
+addPlanetWaterFragmentZVariants(){
+  
+  # Normal Z direction
+  addPlanetWaterFragmentShadingAntialiasingVariants "$1" "$2"
+  
+  # Reversed Z direction
+  addPlanetWaterFragmentShadingAntialiasingVariants "${1}_reversedz" "$2 -DREVERSEDZ"
+ 
+ 
+}
+
+# Add planet water fragment shader variants with different shadow techniques (if any)
+addPlanetWaterFragmentShadingShadowVariants(){
+
+  # No shadows
+  addPlanetWaterFragmentZVariants "${1}" "$2"
+
+  # MSM (Moment shadow mapping)
+  addPlanetWaterFragmentZVariants "${1}_msm" "$2 -DMSM"
+
+  # PCF (Percentage closer filtering) / PCSS (Percentage closer soft shadows) / DPCF (a PCF variant)
+  addPlanetWaterFragmentZVariants "${1}_pcfpcss" "$2 -DPCFPCSS"
+}
+
+# Add planet water fragment shader variants with different techniques (if any)
+addPlanetWaterFragmentVariants(){
+  
+  addPlanetWaterFragmentZVariants "${1}" "$2"
+
+  addPlanetWaterFragmentZVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
+
+  addPlanetWaterFragmentVoxelizationVariants "${1}" "$2"
+  
+}
+
+addPlanetWaterFragmentVariants "planet_water" ""
+
+#############################################
 #               Mesh shaders                #
 #############################################
 
