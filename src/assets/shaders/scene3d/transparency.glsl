@@ -306,7 +306,11 @@
 
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
+#ifdef WATER_FRAGMENT_SHADER
+  uint oitStoreMask = 0xffffffffu; // All bits set, since it is a full-screen post-processing effect
+#else
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+#endif
 
 #ifdef INTERLOCK
   beginInvocationInterlock();
@@ -429,7 +433,11 @@
 
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
+#ifdef WATER_FRAGMENT_SHADER
+  uint oitStoreMask = 0xffffffffu; // All bits set, since it is a full-screen post-processing effect
+#else
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+#endif
 
 #ifdef INTERLOCK
   beginInvocationInterlock();
@@ -574,7 +582,11 @@
   int oitMultiViewIndex = int(gl_ViewIndex);
   ivec3 oitCoord = ivec3(ivec2(gl_FragCoord.xy), oitMultiViewIndex);
 #ifdef MSAA
+#ifdef WATER_FRAGMENT_SHADER
+  uint oitStoreMask = 0xffffffffu; // All bits set, since it is a full-screen post-processing effect
+#else
   uint oitStoreMask = uint(gl_SampleMaskIn[0]);
+#endif
 #else
   uint oitStoreMask = 0x00000001u;
 #endif  

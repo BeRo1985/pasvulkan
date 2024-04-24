@@ -22,25 +22,21 @@
 #include "bufferreference_definitions.glsl"
 
 #if defined(LOCKOIT) || defined(DFAOIT)
-  #extension GL_ARB_post_depth_coverage : enable
   #ifdef INTERLOCK
     #extension GL_ARB_fragment_shader_interlock : enable
     #define beginInvocationInterlock beginInvocationInterlockARB
     #define endInvocationInterlock endInvocationInterlockARB
     #ifdef MSAA
-      layout(early_fragment_tests, post_depth_coverage, sample_interlock_ordered) in;
+      layout(sample_interlock_ordered) in;
     #else
-      layout(early_fragment_tests, post_depth_coverage, pixel_interlock_ordered) in;
+      layout(pixel_interlock_ordered) in;
     #endif
   #else
     #if defined(ALPHATEST)
-      layout(post_depth_coverage) in;
     #else
-      layout(early_fragment_tests, post_depth_coverage) in;
     #endif
   #endif
 #elif !defined(ALPHATEST)
-  layout(early_fragment_tests) in;
 #endif
 
 layout(location = 0) in vec2 inTexCoord;
