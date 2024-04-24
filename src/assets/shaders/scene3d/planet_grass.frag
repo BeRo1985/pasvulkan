@@ -141,6 +141,8 @@ vec3 workNormal;
 #define inFrameIndex pushConstants.frameIndex
 #include "shadows.glsl"
 
+const vec3 inModelScale = vec3(1.0); 
+
 #undef ENABLE_ANISOTROPIC
 #include "pbr.glsl"
 

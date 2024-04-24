@@ -279,7 +279,10 @@
                             specularWeight);                                    //
 #endif
 #ifdef TRANSMISSION
-              if ((flags & (1u << 11u)) != 0u) {
+#ifndef TRANSMISSION_FORCED
+              if((flags & (1u << 11u)) != 0u) 
+#endif
+              {
                 // If the light ray travels through the geometry, use the point it exits the geometry again.
                 // That will change the angle to the light source, if the material refracts the light ray.
                 if(abs(volumeDispersion) > 1e-7){
@@ -326,7 +329,10 @@
                       }
                     }
                     vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, normalizedLightVector, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, iorValues[i]);
-                    if ((flags & (1u << 12u)) != 0u) {
+#ifndef VOLUMEATTENUTATION_FORCED
+                    if((flags & (1u << 12u)) != 0u)
+#endif
+                    {
                       transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
                     }
                     transmissionOutput[i] += transmittedLight[i];
@@ -371,7 +377,10 @@
                     }
                   }
                   vec3 transmittedLight = lightAttenuation * getPunctualRadianceTransmission(normal.xyz, viewDirection, normalizedLightVector, alphaRoughness, F0, F90, diffuseColorAlpha.xyz, ior);
-                  if ((flags & (1u << 12u)) != 0u) {
+#ifndef VOLUMEATTENUTATION_FORCED
+                  if((flags & (1u << 12u)) != 0u) 
+#endif
+                  {
                     transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), volumeAttenuationColor, volumeAttenuationDistance);
                   }
                   transmissionOutput += transmittedLight;

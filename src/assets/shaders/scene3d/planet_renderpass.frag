@@ -96,6 +96,8 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 
 #define FRAGMENT_SHADER
 
+const vec3 inModelScale = vec3(1.0); 
+
 #include "math.glsl"
 
 #ifdef RAYTRACING

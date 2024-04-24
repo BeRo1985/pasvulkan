@@ -84,6 +84,12 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 
 #define WATER_FRAGMENT_SHADER
 
+#if defined(LOCKOIT) || defined(DFAOIT) || defined(WBOIT) || defined(MBOIT) || defined(LOOPOIT) || defined(BLEND)
+ #define TRANSMISSION
+ #define TRANSMISSION_FORCED
+ #define VOLUMEATTENUTATION_FORCED
+#endif
+
 #include "math.glsl"
 
 #ifdef RAYTRACING
@@ -93,6 +99,18 @@ layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1
 #include "octahedral.glsl"
 #include "octahedralmap.glsl"
 #include "tangentspacebasis.glsl" 
+
+float transmissionFactor = 1.0;
+float volumeThickness = 0.005;
+float volumeAttenuationDistance = 1.0 / 0.0; // +INF
+vec3 volumeAttenuationColor = vec3(1.0); 
+float volumeDispersion = 0.0;
+
+float ior = 1.33; // 1.33 = water
+
+const vec3 inModelScale = vec3(1.0); 
+
+int inViewIndex = int(gl_ViewIndex);
 
 #define LIGHTING_GLOBALS
 #include "lighting.glsl"
@@ -305,7 +323,101 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
   return hit;
 }
 
+vec4 doShade(){
 
+/*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
+  const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);*/
+  const vec3 baseColorLinearRGB = vec3(0.5, 0.7, 0.9);
+
+  vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
+  vec4 occlusionRoughnessMetallic = vec4(1.0, 1.0, 1.0, 0.0);
+
+  // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
+  // to fake roundness of the blade without real more complex geometry
+  vec3 normal = workNormal;
+ 
+  cavity = clamp(occlusionRoughnessMetallic.x, 0.0, 1.0);
+    
+  vec2 metallicRoughness = clamp(occlusionRoughnessMetallic.zy, vec2(0.0, 1e-3), vec2(1.0));
+
+  vec4 diffuseColorAlpha = vec4(max(vec3(0.0), albedo.xyz * (1.0 - metallicRoughness.x)), albedo.w);
+
+  vec3 F0 = mix(vec3(0.04), albedo.xyz, metallicRoughness.x);
+
+  vec3 F90 = vec3(1.0);
+
+  float transparency = 0.0;
+
+  float refractiveAngle = 0.0;
+
+  float perceptualRoughness = metallicRoughness.y;
+
+  float kernelRoughness;
+  {
+    const float SIGMA2 = 0.15915494, KAPPA = 0.18;        
+    vec3 dx = dFdx(workNormal), dy = dFdy(workNormal);
+    kernelRoughness = min(KAPPA, (2.0 * SIGMA2) * (dot(dx, dx) + dot(dy, dy)));
+    perceptualRoughness = sqrt(clamp((perceptualRoughness * perceptualRoughness) + kernelRoughness, 0.0, 1.0));
+  }  
+
+  float alphaRoughness = perceptualRoughness * perceptualRoughness;
+
+  specularOcclusion = getSpecularOcclusion(clamp(dot(normal, viewDirection), 0.0, 1.0), cavity, alphaRoughness);
+
+  const vec3 sheenColor = vec3(0.0);
+  const float sheenRoughness = 0.0;
+
+  const vec3 clearcoatF0 = vec3(0.04);
+  const vec3 clearcoatF90 = vec3(0.0);
+  vec3 clearcoatNormal = normal;
+  const float clearcoatFactor = 1.0;
+  const float clearcoatRoughness = 1.0;
+
+  float litIntensity = 1.0;
+
+  const float specularWeight = 1.0;
+
+  const float iblWeight = 1.0;
+
+  vec3 triangleNormal = normal;
+ 
+#define LIGHTING_INITIALIZATION
+#include "lighting.glsl"
+#undef LIGHTING_INITIALIZATION
+
+#define LIGHTING_IMPLEMENTATION
+#include "lighting.glsl"
+#undef LIGHTING_IMPLEMENTATION
+
+  diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
+  specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
+       
+#if defined(TRANSMISSION)
+  transmissionOutput += getIBLVolumeRefraction(normal.xyz, viewDirection,
+                                                perceptualRoughness,
+                                                diffuseColorAlpha.xyz, F0, F90,
+                                                inWorldSpacePosition,
+                                                ior, 
+                                                volumeThickness, 
+                                                volumeAttenuationColor, 
+                                                volumeAttenuationDistance,
+                                                volumeDispersion);        
+#endif
+
+  //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
+  vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+
+#if defined(TRANSMISSION) 
+  color.xyz += mix(diffuseOutput, transmissionOutput, transmissionFactor);
+#else
+  color.xyz += diffuseOutput;
+#endif
+
+  color.xyz += specularOutput;
+
+  return color;
+
+}
 void main(){
 
 #ifdef MULTIVIEW
@@ -314,8 +426,6 @@ void main(){
   vec2 texCoord = inTexCoord;
 #endif
   
-  vec4 finalColor = vec4(0.0);
-
   bool reversedZ = projectionMatrix[2][3] < -1e-7;
   
   //bool infiniteFarPlane = reversedZ && ((abs(projectionMatrix[2][2]) < 1e-7) && (abs(projectionMatrix[3][2]) > 1e-7));
@@ -344,6 +454,8 @@ void main(){
   bool hit = false;
 
   float hitDepth = 0.0;
+
+  vec4 finalColor = vec4(0.0);
 
   // Pre-check if the ray intersects the planet's bounding sphere
   if(intersectRaySphere(vec4(planetCenter, planetTopRadius), 
@@ -390,6 +502,8 @@ void main(){
       hitDepth = delinearizeDepth(viewSpacePosition.z);
 
       gl_FragDepth = hitDepth;  
+
+      finalColor = doShade();
       
     }    
     
@@ -417,4 +531,4 @@ void main(){
   outFragColor = vec4(clamp(finalColor.xyz * finalColor.w, vec3(-65504.0), vec3(65504.0)), finalColor.w);
 #endif
 
-}
+} 
