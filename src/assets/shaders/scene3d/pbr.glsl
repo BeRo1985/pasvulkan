@@ -578,9 +578,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 		float viewSpaceRawDepth = textureLod(uPassTextures[2], screenSpaceCurrentPosition, 0.0).x;
 
     vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
-    viewSpaceProbePosition /= viewSpaceProbePosition.w;
-
-		float depthDifference = viewSpaceProbePosition.z - viewSpaceCurrentPosition.z;
+		float depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
 
 		if((all(greaterThanEqual(screenSpaceCurrentPosition, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE))){
