@@ -393,15 +393,21 @@ vec4 doShade(){
   specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
        
 #if defined(TRANSMISSION)
-  transmissionOutput += getIBLVolumeRefraction(normal.xyz, viewDirection,
-                                                perceptualRoughness,
-                                                diffuseColorAlpha.xyz, F0, F90,
-                                                inWorldSpacePosition,
-                                                ior, 
-                                                volumeThickness, 
-                                                volumeAttenuationColor, 
-                                                volumeAttenuationDistance,
-                                                volumeDispersion);        
+
+  float fresnel = clamp(1.0 - dot(normal, -viewDirection), 0.0, 1.0);
+  fresnel = min(pow(fresnel, 3.0), 0.5);
+
+  transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
+                                               viewDirection,
+                                               perceptualRoughness,
+                                               diffuseColorAlpha.xyz, F0, F90,
+                                               inWorldSpacePosition,
+                                               ior, 
+                                               volumeThickness, 
+                                               volumeAttenuationColor, 
+                                               volumeAttenuationDistance,
+                                               volumeDispersion);        
+
 #endif
 
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
