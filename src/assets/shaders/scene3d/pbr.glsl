@@ -267,9 +267,9 @@ vec3 getIBLRadianceGGX(in vec3 normal, const in float roughness, const in vec3 F
       lit = mix(1.0, litIntensity, max(0.0, dot(reflectionVector, -imageLightBasedLightDirection) * (1.0 - (roughness * roughness)))),  //
       specularOcclusion = getSpecularOcclusion(NdotV, ao * lit, roughness);
   vec2 brdf = textureLod(uImageBasedLightingBRDFTextures[0], clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0)), 0.0).xy;
-  return (texture(uImageBasedLightingEnvMaps[0],  //
-                  reflectionVector,               //
-                  roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
+  return (textureLod(uImageBasedLightingEnvMaps[0],  //
+                     reflectionVector,               //
+                     roughnessToMipMapLevel(roughness, envMapMaxLevelGGX))
               .xyz *                                                                     //
           fma(mix(F0 + ((max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0)),  //
                   iridescenceFresnel,                                                    //
@@ -543,13 +543,13 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
                               vec3 worldSpaceNormal, 
                               vec3 worldSpaceViewDirection){
 
-	vec3 worldSpaceReflectVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
+	vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
-  vec3 viewSpaceReflectVector = (viewMatrix * vec4(worldSpaceReflectVector, 0.0)).xyz;
+  vec3 viewSpaceReflectionVector = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
 
 	for(float time = 0.0; time < SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE; time += SCREEN_SPACE_REFLECTIONS_RESOLUTION){
 
-		viewSpaceCurrentPosition += viewSpaceReflectVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
+		viewSpaceCurrentPosition += viewSpaceReflectionVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
 
     vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(positioviewSpaceCurrentPosition, 1.0);
     screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
@@ -568,7 +568,10 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
 	}
 
-	return vec3(0.0);
+  // No reflection found, so fall back to the environment map.
+
+	return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, 0.0).xyz;
+  
 }
 
 #endif // SCREEN_SPACE_REFLECTIONS
