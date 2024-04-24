@@ -317,7 +317,11 @@
   // buffer values from the previous forward rendering pass, which should fix problems with
   // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
   // at least I hope it so:
+ #ifdef OVERRIDED_DEPTH
+  uint oitCurrentDepth = floatBitsToUint(OVERRIDED_DEPTH);
+ #else
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
+ #endif
  #ifdef MSAA
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r);
  #else
@@ -436,7 +440,11 @@
   // buffer values from the previous forward rendering pass, which should fix problems with 
   // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
   // at least I hope it so:
+ #ifdef OVERRIDED_DEPTH
+  uint oitCurrentDepth = floatBitsToUint(OVERRIDED_DEPTH);
+ #else
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
+ #endif
  #ifdef MSAA 
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r); 
  #else
@@ -576,7 +584,11 @@
   // buffer values from the previous forward rendering pass, which should fix problems with 
   // transparent and opaque objects in MSAA, even without VK_EXT_post_depth_coverage support,
   // at least I hope it so:
+ #ifdef OVERRIDED_DEPTH
+  uint oitCurrentDepth = floatBitsToUint(OVERRIDED_DEPTH);
+ #else
   uint oitCurrentDepth = floatBitsToUint(gl_FragCoord.z);
+ #endif
  #ifdef MSAA 
   uint oitDepth = floatBitsToUint(subpassLoad(uOITImgDepth, gl_SampleID).r); 
  #else
