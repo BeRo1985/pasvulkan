@@ -45,7 +45,7 @@ layout(set = 1, binding = 4) uniform sampler2DArrayShadow uCascadedShadowMapText
 
 #endif // SHADOWS
 
-layout(set = 1, binding = 5) uniform sampler2DArray uPassTextures[]; // 0 = SSAO, 1 = Opaque frame buffer
+layout(set = 1, binding = 5) uniform sampler2DArray uPassTextures[]; // 0 = SSAO, 1 = Opaque frame buffer, 2 = Opaque depth buffer
 
 #endif // !(defined(DEPTHONLY) || defined(VOXELIZATION))
 

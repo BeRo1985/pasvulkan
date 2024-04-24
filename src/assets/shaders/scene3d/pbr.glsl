@@ -554,7 +554,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
     vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(positioviewSpaceCurrentPosition, 1.0);
     screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
 
-		float viewSpaceRawDepth = textureLod(uPassTextures[4], screenSpaceCurrentPosition, 0.0).x;
+		float viewSpaceRawDepth = textureLod(uPassTextures[2], screenSpaceCurrentPosition, 0.0).x;
 
     vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
     viewSpaceProbePosition /= viewSpaceProbePosition.w;
@@ -571,7 +571,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
   // No reflection found, so fall back to the environment map.
 
 	return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, 0.0).xyz;
-  
+
 }
 
 #endif // SCREEN_SPACE_REFLECTIONS
