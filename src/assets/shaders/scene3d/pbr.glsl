@@ -546,9 +546,9 @@ const float SCREEN_SPACE_REFLECTIONS_RESOLUTION = 2.0;
 const float SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE = 30.0;
 const float SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE = 0.02;
 
-vec3 getReflectionSample(vec2 fragCoord, float roughness, float ior) {
+vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   int maxLod = int(textureQueryLevels(uPassTextures[1]));
-  float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, ior);
+  float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, 1.0);
 #if 1
   vec3 reflecteedLight = (framebufferLod < 1e-4) ? //
                          betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
@@ -562,8 +562,7 @@ vec3 getReflectionSample(vec2 fragCoord, float roughness, float ior) {
 vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
                               vec3 worldSpaceNormal, 
                               vec3 worldSpaceViewDirection,
-                              float roughness,
-                              float ior){
+                              float roughness){
 
 	vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
@@ -585,7 +584,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
 		if((all(greaterThanEqual(screenSpaceCurrentPosition, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE))){
-      return getReflectionSample(screenSpaceCurrentPosition.xy, roughness, ior);
+      return getReflectionSample(screenSpaceCurrentPosition.xy, roughness);
     } 
 
 	}
