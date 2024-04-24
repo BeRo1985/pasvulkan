@@ -572,7 +572,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
 		viewSpaceCurrentPosition += viewSpaceReflectionVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
 
-    vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(positioviewSpaceCurrentPosition, 1.0);
+    vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(viewSpaceCurrentPosition, 1.0);
     screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
 
 		float viewSpaceRawDepth = textureLod(uPassTextures[2], screenSpaceCurrentPosition, 0.0).x;
