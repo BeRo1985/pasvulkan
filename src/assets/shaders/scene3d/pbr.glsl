@@ -533,4 +533,64 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 }
 #endif // TRANSMISSION
 
+#ifdef SCREEN_SPACE_REFLECTIONS
+
+const float SCREEN_SPACE_REFLECTIONS_RESOLUTION = 2.0;
+const float SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE = 30.0;
+const float SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE = 0.02;
+
+vec3 getViewSpaceScreenSpaceReflection(vec3 surfaceViewPosition,
+                                       vec3 viewSpaceNormal, 
+                                       vec3 viewSpaceViewDirection, 
+                                       mat4 projectionMatrix, 
+                                       mat4 inverseProjectionMatrix){
+	
+  vec3 viewSpaceCurrentPosition = surfaceViewPosition;
+	vec3 viewSpaceReflectVector = normalize(reflect(viewSpaceViewDirection, viewSpaceNormal.xyz));
+
+	for(float time = 0.0; time < SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE; time += SCREEN_SPACE_REFLECTIONS_RESOLUTION){
+
+		viewSpaceCurrentPosition += viewSpaceReflectVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
+
+    vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(positioviewSpaceCurrentPosition, 1.0);
+    screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
+
+		vec4 screenSpaceCurrentPosition = get_uv_from_view_position(viewSpaceCurrentPosition, projectionMatrix);
+
+		float viewSpaceRawDepth = textureLod(uPassTextures[4], screenSpaceCurrentPosition, 0.0).x;
+
+    vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
+    viewSpaceProbePosition /= viewSpaceProbePosition.w;
+
+		float depthDifference = viewSpaceProbePosition.z - viewSpaceCurrentPosition.z;
+
+		if((all(greaterThanEqual(screenSpaceCurrentPosition, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition, vec2(1.0)))) &&
+       ((depthDifference >= 0.0) && (depthDifference < SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE))){
+      return textureLof(uPassTextures[1], screenSpaceCurrentPosition.xy, 0.0).xyz;
+    } 
+
+	}
+
+	return vec3(0.0);
+}
+
+vec3 getWorldSpaceScreenSpaceReflection(vec3 surfaceWorldPosition,
+                                        vec3 worldSpaceNormal, 
+                                        vec3 worldSpaceViewDirection, 
+                                        mat4 viewMatrix,
+                                        mat4 inverseViewMatrix,
+                                        mat4 projectionMatrix, 
+                                        mat4 inverseProjectionMatrix){
+  vec3 viewSpacePosition = (viewMatrix * vec4(surfaceWorldPosition, 1.0)).xyz;
+  vec3 viewSpaceNormal = (viewMatrix * vec4(worldSpaceNormal, 0.0)).xyz;
+  vec3 viewSpaceViewDirection = (viewMatrix * vec4(worldSpaceViewDirection, 0.0)).xyz;
+  return getViewSpaceScreenSpaceReflection(viewSpacePosition, 
+                                           viewSpaceNormal, 
+                                           viewSpaceViewDirection, 
+                                           projectionMatrix, 
+                                           inverseProjectionMatrix);
+}
+
+#endif // SCREEN_SPACE_REFLECTIONS
+
 #endif // PBR_GLSL
