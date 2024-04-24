@@ -32,7 +32,7 @@
     #endif
   #endif
 
-  #if defined(MESH_FRAGMENT_SHADER) || defined(PARTICLE_FRAGMENT_SHADER)
+  #if defined(MESH_FRAGMENT_SHADER) || defined(PARTICLE_FRAGMENT_SHADER) || defined(WATER_FRAGMENT_SHADER)
 
     #if defined(WBOIT)
 

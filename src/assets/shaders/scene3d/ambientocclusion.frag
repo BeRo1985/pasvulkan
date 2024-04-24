@@ -204,7 +204,7 @@ float spiralAO(const in vec2 texCoord, const in vec3 viewPosition, const in vec3
 void main(){
 
 #ifdef MULTIVIEW
-  vec3 texCoord = vec3(inTexCoord, viewIndex);
+  vec3 texCoord = vec3(inTexCoord, float(gl_ViewIndex));
 #else
   vec2 texCoord = inTexCoord;
 #endif
