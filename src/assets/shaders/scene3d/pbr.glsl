@@ -426,7 +426,8 @@ vec3 evalIridescence(float outsideIOR, float eta2, float cosTheta1, float thinFi
 
 ////////////////////////////
  
-#ifdef TRANSMISSION
+#if defined(TRANSMISSION) || defined(SCREEN_SPACE_REFLECTIONS)
+
 vec4 cubic(float v) {
   vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;
   n *= n * n;
@@ -467,6 +468,12 @@ vec4 betterTexture(const in sampler2DArray tex, vec3 uvw, float lod, int maxLod)
   lod -= float(ilod); 
   return (lod < float(maxLod)) ? mix(betterTextureEx(tex, uvw, ilod), betterTextureEx(tex, uvw, ilod + 1), lod) : betterTextureEx(tex, uvw, maxLod);
 }
+
+#endif // defined(TRANSMISSION) || defined(SCREEN_SPACE_REFLECTIONS)
+
+////////////////////////////
+
+#ifdef TRANSMISSION
 
 vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
   int maxLod = int(textureQueryLevels(uPassTextures[1]));
@@ -539,9 +546,24 @@ const float SCREEN_SPACE_REFLECTIONS_RESOLUTION = 2.0;
 const float SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE = 30.0;
 const float SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE = 0.02;
 
+vec3 getReflectionSample(vec2 fragCoord, float roughness, float ior) {
+  int maxLod = int(textureQueryLevels(uPassTextures[1]));
+  float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, ior);
+#if 1
+  vec3 reflecteedLight = (framebufferLod < 1e-4) ? //
+                         betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
+                         textureBicubic(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz; //
+#else
+  vec3 reflectedLight = texture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
+#endif
+  return reflectedLight;
+}
+
 vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
                               vec3 worldSpaceNormal, 
-                              vec3 worldSpaceViewDirection){
+                              vec3 worldSpaceViewDirection,
+                              float roughness,
+                              float ior){
 
 	vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
@@ -563,14 +585,14 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
 		if((all(greaterThanEqual(screenSpaceCurrentPosition, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE))){
-      return textureLod(uPassTextures[1], screenSpaceCurrentPosition.xy, 0.0).xyz;
+      return getReflectionSample(screenSpaceCurrentPosition.xy, roughness, ior);
     } 
 
 	}
 
   // No reflection found, so fall back to the environment map.
 
-	return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, 0.0).xyz;
+	return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz;
 
 }
 
