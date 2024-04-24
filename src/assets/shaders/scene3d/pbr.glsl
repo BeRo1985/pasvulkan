@@ -587,7 +587,7 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
 	}
 
-  // No reflection found, so fall back to the environment map.
+  // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
 
 	return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz;
 
