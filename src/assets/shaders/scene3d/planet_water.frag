@@ -68,11 +68,11 @@ vec3 cameraRelativePosition;
 
 #include "mesh_rendering_pass_descriptorset.glsl"
   
-layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
+/*layout(set = 1, binding = 6, std430) readonly buffer ImageBasedSphericalHarmonicsMetaData {
   vec4 dominantLightDirection;
   vec4 dominantLightColor;
   vec4 ambientLightColor;
-} imageBasedSphericalHarmonicsMetaData;
+} imageBasedSphericalHarmonicsMetaData;*/
 
 // Per planet descriptor set
 

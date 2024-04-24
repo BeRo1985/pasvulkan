@@ -975,6 +975,61 @@ type TpvScene3DPlanets=class;
              public
               property PushConstants:TPlanetPushConstants read fPlanetPushConstants write fPlanetPushConstants;
             end;
+            { TWaterRenderPass } // Used by multiple TpvScene3DPlanet instances inside the TpvScene3D render passes per renderer instance 
+            TWaterRenderPass=class
+             public
+              type TPushConstants=packed record
+                    ViewBaseIndex:TpvUInt32;
+                    CountViews:TpvUInt32;
+                    CountQuadPointsInOneDirection:TpvUInt32;
+                    CountAllViews:TpvUInt32;
+                    ResolutionXY:TpvUInt32;
+                    TessellationFactor:TpvFloat;
+                    Jitter:TpvVector2;
+                    FrameIndex:TpvUInt32;
+                    Reversed:TpvUInt32;
+                    PlanetData:TVkDeviceAddress;
+                   end;
+                   PPushConstants=^TPushConstants;
+             private
+              fRenderer:TObject;
+              fRendererInstance:TObject;
+              fScene3D:TObject;
+              fVulkanDevice:TpvVulkanDevice;
+              fResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+              fResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource;
+              fRenderPass:TpvVulkanRenderPass;
+              fVertexShaderModule:TpvVulkanShaderModule;
+              fFragmentShaderModule:TpvVulkanShaderModule;
+              fVertexShaderStage:TpvVulkanPipelineShaderStage;
+              fFragmentShaderStage:TpvVulkanPipelineShaderStage;
+              fDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+              fDescriptorPool:TpvVulkanDescriptorPool;
+              fDescriptorSets:array[0..MaxInFlightFrames-1] of TpvVulkanDescriptorSet;
+              fPipelineLayout:TpvVulkanPipelineLayout;
+              fPipeline:TpvVulkanGraphicsPipeline;
+              fPushConstants:TPushConstants;
+              fPass:TpvSizeInt;
+              fWidth:TpvInt32;
+              fHeight:TpvInt32;
+            public  
+              constructor Create(const aRenderer:TObject;
+                                 const aRendererInstance:TObject;
+                                 const aScene3D:TObject;
+                                 const aPass:TpvSizeInt;
+                                 const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+                                 const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource); reintroduce;
+              destructor Destroy; override;
+              procedure AllocateResources(const aRenderPass:TpvVulkanRenderPass;
+                                          const aPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                                          const aWidth:TpvInt32;
+                                          const aHeight:TpvInt32;                                          
+                                          const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT));
+              procedure ReleaseResources;
+              procedure Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+             public
+              property PushConstants:TPushConstants read fPushConstants write fPushConstants;
+            end;
             { TRendererInstance }
             TRendererInstance=class
              public
@@ -8527,6 +8582,446 @@ begin
 
 end;
 
+{ TpvScene3DPlanet.TWaterRenderPass }
+
+constructor TpvScene3DPlanet.TWaterRenderPass.Create(const aRenderer:TObject;
+                                                     const aRendererInstance:TObject;
+                                                     const aScene3D:TObject;
+                                                     const aPass:TpvSizeInt;
+                                                     const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
+                                                     const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource);
+var Stream:TStream;
+    FileName:TpvUTF8String;
+begin
+
+ inherited Create;
+
+ fRenderer:=aRenderer;
+
+ fRendererInstance:=aRendererInstance;
+
+ fScene3D:=aScene3D;
+
+ fVulkanDevice:=TpvScene3D(fScene3D).VulkanDevice;
+
+ fResourceCascadedShadowMap:=aResourceCascadedShadowMap;
+
+ fResourceSSAO:=aResourceSSAO;
+
+ fRenderPass:=nil;
+
+ fVertexShaderModule:=nil;
+
+ fFragmentShaderModule:=nil;
+
+ fVertexShaderStage:=nil;
+
+ fFragmentShaderStage:=nil;
+
+ fDescriptorSetLayout:=nil;
+
+ fDescriptorPool:=nil;
+
+ fPipelineLayout:=nil;
+
+ fPipeline:=nil;
+
+ fPass:=aPass;
+
+ fWidth:=0;
+
+ fHeight:=0;
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile('fullscreen_vert.spv');
+ try
+  fVertexShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fVertexShaderModule');
+
+ FileName:='planet_water';
+
+ if TpvScene3D(fScene3D).RaytracingActive then begin
+  FileName:=FileName+'_raytracing';
+ end;
+
+ FileName:=FileName+'_'+TpvScene3DRenderer(aRenderer).MeshFragShadowTypeName; // pcfpcss or msm
+
+ if TpvScene3DRendererInstance(aRendererInstance).ZFar<0.0 then begin 
+  FileName:=FileName+'_reversedz';
+ end;
+
+ if TpvScene3DRenderer(aRenderer).SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
+  FileName:=FileName+'_msaa';
+ end;
+
+ case TpvScene3DRenderer(aRendererInstance).TransparencyMode of
+  TpvScene3DRendererTransparencyMode.SPINLOCKOIT:begin
+   FileName:=FileName+'_spinlock_lockoit';
+  end;
+  TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
+   FileName:=FileName+'_interlock_lockoit';
+  end;
+  TpvScene3DRendererTransparencyMode.LOOPOIT:begin
+   FileName:=FileName+'_loopoit_pass'+IntToStr(aPass);
+  end;
+  TpvScene3DRendererTransparencyMode.WBOIT:begin
+   FileName:=FileName+'_wboit';
+  end;
+  TpvScene3DRendererTransparencyMode.MBOIT:begin
+   FileName:=FileName+'_mboit_pass'+IntToStr(aPass);
+  end;
+  TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT:begin
+   FileName:=FileName+'_spinlock_dfaoit';
+  end;
+  TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
+   FileName:=FileName+'_interlock_dfaoit';
+  end;
+  else begin
+   FileName:=FileName+'_blend';
+  end;
+ end;
+
+ FileName:=FileName+'_frag.spv';
+
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(FileName);
+ try
+  fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
+ finally
+  FreeAndNil(Stream);
+ end;
+ fVulkanDevice.DebugUtils.SetObjectName(fFragmentShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fFragmentShaderModule');
+
+ fVertexShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fVertexShaderModule,'main');
+
+ fFragmentShaderStage:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fFragmentShaderModule,'main');
+
+end; 
+
+destructor TpvScene3DPlanet.TWaterRenderPass.Destroy;
+begin
+  
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fPipelineLayout);
+
+ FreeAndNil(fDescriptorPool);
+
+ FreeAndNil(fDescriptorSetLayout);
+
+ FreeAndNil(fFragmentShaderStage);
+
+ FreeAndNil(fVertexShaderStage);
+
+ FreeAndNil(fFragmentShaderModule);
+
+ FreeAndNil(fVertexShaderModule);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvScene3DPlanet.TWaterRenderPass.AllocateResources(const aRenderPass:TpvVulkanRenderPass;
+                                                              const aPassVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+                                                              const aWidth:TpvInt32;
+                                                              const aHeight:TpvInt32;
+                                                              const aVulkanSampleCountFlagBits:TVkSampleCountFlagBits);
+//var InFlightFrameIndex:TpvSizeInt;
+begin
+
+ fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                      0,
+                                      SizeOf(TPushConstants));
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
+ fPipelineLayout.AddDescriptorSetLayout(aPassVulkanDescriptorSetLayout); // Passs descriptor set
+ fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).PlanetDescriptorSetLayout); // Per planet descriptor set
+ fPipelineLayout.Initialize;
+ fVulkanDevice.DebugUtils.SetObjectName(fPipelineLayout.Handle,VK_OBJECT_TYPE_PIPELINE_LAYOUT,'TpvScene3DPlanet.TWaterRenderPass.fPipelineLayout');
+
+ begin
+
+  fPipeline:=TpvVulkanGraphicsPipeline.Create(fVulkanDevice,
+                                              TpvScene3DRenderer(fRenderer).VulkanPipelineCache,
+                                              0,
+                                              [],
+                                              fPipelineLayout,
+                                              aRenderPass,
+                                              0,
+                                              nil,
+                                              0);
+
+  fPipeline.AddStage(fVertexShaderStage);
+  fPipeline.AddStage(fFragmentShaderStage);
+
+  fPipeline.InputAssemblyState.Topology:=TVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+  fPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+  fPipeline.ViewPortState.AddViewPort(0.0,0.0,aWidth,aHeight,0.0,1.0);
+  fPipeline.ViewPortState.AddScissor(0,0,aWidth,aHeight);
+
+  fPipeline.RasterizationState.DepthClampEnable:=false;
+  fPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+  fPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+  fPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+  fPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  fPipeline.RasterizationState.DepthBiasEnable:=false;
+  fPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+  fPipeline.RasterizationState.DepthBiasClamp:=0.0;
+  fPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+  fPipeline.RasterizationState.LineWidth:=1.0;
+
+  fPipeline.MultisampleState.RasterizationSamples:=aVulkanSampleCountFlagBits;
+  fPipeline.MultisampleState.SampleShadingEnable:=false;
+  fPipeline.MultisampleState.MinSampleShading:=0.0;
+  fPipeline.MultisampleState.CountSampleMasks:=0;
+  fPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+  fPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+  case TpvScene3DRenderer(fRendererInstance).TransparencyMode of
+
+   TpvScene3DRendererTransparencyMode.SPINLOCKOIT,
+   TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
+
+    fPipeline.ColorBlendState.LogicOpEnable:=false;
+    fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+    fPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                           VK_BLEND_FACTOR_SRC_ALPHA,
+                                                           VK_BLEND_FACTOR_DST_ALPHA,
+                                                           VK_BLEND_OP_ADD,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_FACTOR_ZERO,
+                                                           VK_BLEND_OP_ADD,
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+   end;
+
+   TpvScene3DRendererTransparencyMode.LOOPOIT:begin
+
+    case fPass of
+
+     1:begin
+
+      fPipeline.ColorBlendState.LogicOpEnable:=false;
+      fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+      fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+
+      // Depth only
+
+     end;
+
+     2:begin
+
+      fPipeline.ColorBlendState.LogicOpEnable:=false;
+      fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+      fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+      fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                             VK_BLEND_OP_ADD,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                             VK_BLEND_OP_ADD,
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+     end;
+
+    end;
+
+   end;
+
+   TpvScene3DRendererTransparencyMode.WBOIT:begin
+
+    fPipeline.ColorBlendState.LogicOpEnable:=false;
+    fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+    fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_OP_ADD,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_OP_ADD,
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+    fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                           VK_BLEND_FACTOR_ZERO,
+                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                           VK_BLEND_OP_ADD,
+                                                           VK_BLEND_FACTOR_ZERO,
+                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                           VK_BLEND_OP_ADD,
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+   end;
+
+   TpvScene3DRendererTransparencyMode.MBOIT:begin
+
+    case fPass of
+     1:begin
+
+      fPipeline.ColorBlendState.LogicOpEnable:=false;
+      fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+      fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+      fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_OP_ADD,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_OP_ADD,
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+      fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_OP_ADD,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_OP_ADD,
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+     end;
+
+     2:begin
+
+      fPipeline.ColorBlendState.LogicOpEnable:=false;
+      fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+      fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+      fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+      fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_OP_ADD,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_FACTOR_ONE,
+                                                             VK_BLEND_OP_ADD,
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                             TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+     end;
+
+    end;
+
+   end;
+
+   TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT,
+   TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
+
+    fPipeline.ColorBlendState.LogicOpEnable:=false;
+    fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+    fPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                           VK_BLEND_FACTOR_SRC_ALPHA,
+                                                           VK_BLEND_FACTOR_DST_ALPHA,
+                                                           VK_BLEND_OP_ADD,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_FACTOR_ZERO,
+                                                           VK_BLEND_OP_ADD,
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+   end;
+
+   else begin
+
+    fPipeline.ColorBlendState.LogicOpEnable:=false;
+    fPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+    fPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+    fPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+    fPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                           VK_BLEND_OP_ADD,
+                                                           VK_BLEND_FACTOR_ONE,
+                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                           VK_BLEND_OP_ADD,
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+   end;
+
+  end;
+
+  fPipeline.DepthStencilState.DepthTestEnable:=false;
+  fPipeline.DepthStencilState.DepthWriteEnable:=false;
+  if TpvScene3DRendererInstance(fRendererInstance).ZFar<0.0 then begin
+   fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_GREATER_OR_EQUAL;
+  end else begin
+   fPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+  end;
+  fPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+  fPipeline.DepthStencilState.StencilTestEnable:=false;
+
+  fPipeline.Initialize;
+
+  fVulkanDevice.DebugUtils.SetObjectName(fPipeline.Handle,VK_OBJECT_TYPE_PIPELINE,'TpvScene3DPlanet.TWaterRenderPass.fPipeline');
+
+ end;
+
+end;
+
+procedure TpvScene3DPlanet.TWaterRenderPass.ReleaseResources;
+//var InFlightFrameIndex:TpvSizeInt;
+begin
+
+ FreeAndNil(fPipeline);
+
+ FreeAndNil(fPipelineLayout);
+
+end;
+
+procedure TpvScene3DPlanet.TWaterRenderPass.Draw(const aInFlightFrameIndex,aFrameIndex,aRenderPassIndex,aViewBaseIndex,aCountViews:TpvSizeInt;const aCommandBuffer:TpvVulkanCommandBuffer);
+begin
+end;
+
 { TpvScene3DPlanet.TRendererInstance.TKey }
 
 constructor TpvScene3DPlanet.TRendererInstance.TKey.Create(const aRendererInstance:TObject);
@@ -8535,29 +9030,7 @@ begin
 end;
 
 { TpvScene3DPlanet.TRendererInstance }
-{
-            TRendererInstance=class
-             public
-              type 
-                   TKey=record
-                    public
-                     fRendererInstance:TObject;
-                    public
-                     constructor Create(const aRendererInstance:TObject);
-                   end;
-                   PKey=^TKey;
-             private
-              fPlanet:TpvScene3DPlanet;
-              fRendererInstance:TObject;
-              fKey:TKey;
-              fMinimumLODLevel:TpvSizeInt;
-             public 
-              constructor Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject);
-              destructor Destroy; override;
-              procedure AfterConstruction; override;
-              procedure BeforeDestruction; override;              
-            end;
-}
+
 constructor TpvScene3DPlanet.TRendererInstance.Create(const aPlanet:TpvScene3DPlanet;const aRendererInstance:TObject);
 begin
  
