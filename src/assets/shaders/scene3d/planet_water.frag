@@ -244,7 +244,7 @@ mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 
 float linearizeDepth(float z){
-#if 0
+#if 1
   vec2 v = (inverseProjectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
 #else
   vec2 v = fma(inverseProjectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
@@ -253,10 +253,10 @@ float linearizeDepth(float z){
 }
 
 float delinearizeDepth(float z){
-#if 0
+#if 1
   vec2 v = (projectionMatrix * vec4(vec3(fma(inTexCoord, vec2(2.0), vec2(-1.0)), z), 1.0)).zw;
 #else
-  vec2 v = fma(projectionMatrix[2].zw, vec2(z), inverseProjectionMatrix[3].zw);
+  vec2 v = fma(projectionMatrix[2].zw, vec2(z), projectionMatrix[3].zw);
 #endif
   return v.x / v.y;
 }
