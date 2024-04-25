@@ -261,21 +261,46 @@ float delinearizeDepth(float z){
   return v.x / v.y;
 }
 
-float map(vec3 p){
+float getWaves(vec2 position, int iterations) {
+  vec2 frequencyTimeMultiplier = vec2(1.0, 2.0);
+  float weight = 1.0;
+  vec2 result = vec2(0.0);
+  float time = pushConstants.time; 
+  float r = 0.0; 
+  for(int i = 0; i < iterations; i++) {
+    vec2 p = sin(vec2(r) + vec2(0.0, 1.5707963267948966));
+    vec2 sinCosX = sin((vec2(dot(p, position) * frequencyTimeMultiplier.x) + (time * frequencyTimeMultiplier.y)) + vec2(0.0, 1.5707963267948966));
+    vec2 res = exp(sinCosX.x - 1.0) * vec2(1.0, -sinCosX.y);
+    position += p * res.y * weight * 0.38;
+    result += vec2(res.x, 1.0) * weight;
+    weight = mix(weight, 0.0, 0.2);
+    frequencyTimeMultiplier *= vec2(1.18, 1.07);
+    r += 1232.399963;
+  }
+  return result.x / result.y;
+}
+
+float mapEx(vec3 p, int i){
   vec3 n = normalize(planetCenter - p);
-  //float w = getwaves(octEqualAreaUnsignedEncode(n) * 64.0, 6) * 0.1; 
-  float h = 0.75;//textureBicubicOctahedralMap(uImageHeightMap, n).x + w;
+  vec2 uv = vec2((atan(n.z, n.x) / 6.283185307179586476925286766559) + 0.5, acos(n.y) / 3.1415926535897932384626433832795); 
+  float w = getWaves(uv * 128.0, i) * 0.01; 
+  float h = 0.75 + w;//textureBicubicOctahedralMap(uImageHeightMap, n).x + w;
   float r = length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
   return r;
 }
 
+float map(vec3 p){
+  return mapEx(p, 12);
+}
+
 vec3 mapNormal(vec3 p) {
   vec2 e = vec2(1e-2, 0.0); // 0.01 meters for now for the epsilon for the normal calculation
+  const int i = 37;
   return normalize(
     vec3(
-      map(p + e.xyy) - map(p - e.xyy),
-      map(p + e.yxy) - map(p - e.yxy),
-      map(p + e.yyx) - map(p - e.yyx)
+      mapEx(p + e.xyy, i) - mapEx(p - e.xyy, i),
+      mapEx(p + e.yxy, i) - mapEx(p - e.yxy, i),
+      mapEx(p + e.yyx, i) - mapEx(p - e.yyx, i)
     )  
   );
 }
@@ -360,7 +385,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
       break;
     }    
 
-    t += clamp(abs(dt) * 0.5, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0);
+    t += clamp(abs(dt) * 0.9, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0);
     
     previousDT = dt;
 
@@ -384,7 +409,7 @@ vec4 doShade(){
   const vec3 baseColorLinearRGB = vec3(0.5, 0.7, 0.9);
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 1.0, 1.0, 0.0);
+  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -434,6 +459,8 @@ vec4 doShade(){
   const float iblWeight = 1.0;
 
   vec3 triangleNormal = normal;
+
+  //diffuseOutput = vec3(0.0);
  
 #define LIGHTING_INITIALIZATION
 #include "lighting.glsl"
@@ -472,8 +499,10 @@ vec4 doShade(){
 #else
   color.xyz += diffuseOutput;
 #endif
-
+  
   color.xyz += specularOutput;
+
+  //color.xyz = baseColorLinearRGB * max(0.0, dot(normal, vec3(0.0, 0.0, 1.0)));
 
   return color;
 
@@ -508,6 +537,8 @@ void main(){
   // correctly oriented. This is not strictly necessary, but it simplifies the math. 
   rayOrigin = (planetInverseModelMatrix * vec4(rayOrigin, 1.0)).xyz;
   rayDirection = (planetInverseModelMatrix * vec4(rayDirection, 0.0)).xyz;
+
+  viewDirection = -rayDirection;
 
   float hitRayTime;
    
@@ -566,11 +597,12 @@ void main(){
 
       hitDepth = delinearizeDepth(viewSpacePosition.z);
 
-      workNormal = mapNormal(hitPoint);
+      workNormal = normalize((planetModelMatrix * vec4(mapNormal(hitPoint), 0.0)).xyz);
 
       //gl_FragDepth = hitDepth;  
 
       finalColor = doShade();
+//     finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
       
     }    
     
