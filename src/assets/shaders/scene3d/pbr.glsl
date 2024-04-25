@@ -316,7 +316,7 @@ vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, 
 // Compute attenuated light as it travels through a volume.
 vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
   if (isinf(attenuationDistance) || (attenuationDistance == 0.0)) {
-    // Attenuation distance is +∞ (which we indicate by zero), i.e. the transmitted color is not attenuated at all.
+    // Attenuation distance is +ï¿½ï¿½ï¿½ï¿½ï¿½which we indicate by zero), i.e. the transmitted color is not attenuated at all.
     return radiance;
   } else {
     // Compute light attenuation using Beer's law.
@@ -542,17 +542,17 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef SCREEN_SPACE_REFLECTIONS
 
-const float SCREEN_SPACE_REFLECTIONS_RESOLUTION = 2.0;
-const float SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE = 30.0;
+const float SCREEN_SPACE_REFLECTIONS_RESOLUTION = 0.01;
+const float SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE = 10.0;
 const float SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE = 0.02;
 
 vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   int maxLod = int(textureQueryLevels(uPassTextures[1]));
   float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, 1.0);
 #if 1
-  vec3 reflecteedLight = (framebufferLod < 1e-4) ? //
-                         betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
-                         textureBicubic(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz; //
+  vec3 reflectedLight = (framebufferLod < 1e-4) ? //
+                        betterTexture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz :  //                           
+                        textureBicubic(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod, maxLod).xyz; //
 #else
   vec3 reflectedLight = texture(uPassTextures[1], vec3(fragCoord.xy, inViewIndex), framebufferLod).xyz;
 #endif
@@ -564,32 +564,36 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
                               vec3 worldSpaceViewDirection,
                               float roughness){
 
-	vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
+  vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
   vec3 viewSpaceReflectionVector = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
 
-	for(float time = 0.0; time < SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE; time += SCREEN_SPACE_REFLECTIONS_RESOLUTION){
+  vec3 viewSpaceCurrentPosition = (viewMatrix * vec4(worldSpacePosition, 1.0)).xyz;
 
-		viewSpaceCurrentPosition += viewSpaceReflectionVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
+  float viewIndex = float(gl_ViewIndex);
+
+  for(float time = 0.0; time < SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE; time += SCREEN_SPACE_REFLECTIONS_RESOLUTION){
+
+    viewSpaceCurrentPosition += viewSpaceReflectionVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
 
     vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(viewSpaceCurrentPosition, 1.0);
     screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
 
-		float viewSpaceRawDepth = textureLod(uPassTextures[2], screenSpaceCurrentPosition, 0.0).x;
+    float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceCurrentPosition.xy, viewIndex), 0.0).x;
 
-    vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
-		float depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
+    vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
+    float depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
 
-		if((all(greaterThanEqual(screenSpaceCurrentPosition, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition, vec2(1.0)))) &&
+    if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
        ((depthDifference >= 0.0) && (depthDifference < SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE))){
       return getReflectionSample(screenSpaceCurrentPosition.xy, roughness);
     } 
 
-	}
+  }
 
   // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
 
-	return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz;
+  return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz * 1.0;
 
 }
 

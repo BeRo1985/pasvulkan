@@ -128,11 +128,20 @@ vec3 viewDirection;
 
 vec3 workNormal;
 
+uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
+mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
+mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
+mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
+mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
+mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
+mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
+
 #define NOTEXCOORDS
 #define inFrameIndex pushConstants.frameIndex
 #include "shadows.glsl"
 
 #undef ENABLE_ANISOTROPIC
+#define SCREEN_SPACE_REFLECTIONS
 #include "pbr.glsl"
 
 #define TRANSPARENCY_DECLARATION
@@ -234,14 +243,6 @@ float planetTopRadius = planetData.bottomRadiusTopRadiusHeightMapScale.y;
 
 mat4 planetModelMatrix = planetData.modelMatrix;
 mat4 planetInverseModelMatrix = inverse(planetModelMatrix);
-
-uint viewIndex = pushConstants.viewBaseIndex + uint(gl_ViewIndex);
-mat4 viewMatrix = uView.views[viewIndex].viewMatrix;
-mat4 inverseViewMatrix = uView.views[viewIndex].inverseViewMatrix;
-mat4 projectionMatrix = uView.views[viewIndex].projectionMatrix;
-mat4 inverseProjectionMatrix = uView.views[viewIndex].inverseProjectionMatrix;
-mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
-mat4 inverseViewProjectionMatrix = inverseViewMatrix * inverseProjectionMatrix;
 
 float linearizeDepth(float z){
 #if 1
@@ -402,7 +403,23 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
 
 } 
 
-vec4 doShade(){
+float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
+  // compute fresnel reflectance without explicitly computing the refracted direction 
+  float c = abs(dot(Incoming, Normal));
+  float g = ((eta * eta) - 1.0) + (c * c);
+  float result;
+  if(g > 0.0){
+    g = sqrt(g);
+    float A = (g - c) / (g + c);
+    float B = ((c * (g + c)) - 1.0) / ((c * (g - c)) + 1.0);
+    result = 0.5 * A * A *(1.0 + B * B);
+  }else{
+    result = 1.0;  /* TIR (no refracted component) */
+  }
+  return result;
+}
+
+vec4 doShade(float hitTime){
 
 /*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);*/
@@ -460,6 +477,36 @@ vec4 doShade(){
 
   vec3 triangleNormal = normal;
 
+#if 0
+
+  ior = 1.33;
+  float eta = max(ior, 1e-5);
+  
+  float fresnel = clamp(fresnelDielectric(-viewDirection, normal, eta), 0.0, 1.0);
+  //float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+
+  vec4 color = vec2(0.0, 1.0).xxxy; 		
+
+  vec3 reflection = vec3(0.001); 		
+  
+  vec3 refraction = getIBLVolumeRefraction(normal.xyz, 
+                                           viewDirection,
+                                           perceptualRoughness,
+                                           diffuseColorAlpha.xyz, F0, F90,
+                                           inWorldSpacePosition,
+                                           ior, 
+                                           volumeThickness, 
+                                           volumeAttenuationColor, 
+                                           volumeAttenuationDistance,
+                                           volumeDispersion);      
+
+  color.xyz = mix(reflection, refraction, clamp(dot(viewDirection, normal), 0.0, 1.0));
+  
+
+  return color;
+
+#else
+
   //diffuseOutput = vec3(0.0);
  
 #define LIGHTING_INITIALIZATION
@@ -475,13 +522,12 @@ vec4 doShade(){
        
 #if defined(TRANSMISSION)
 
-  float fresnel = clamp(1.0 - dot(normal, -viewDirection), 0.0, 1.0);
-  fresnel = min(pow(fresnel, 3.0), 0.5);
-
   transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
                                                viewDirection,
-                                               perceptualRoughness,
-                                               diffuseColorAlpha.xyz, F0, F90,
+                                               clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
+                                               albedo.xyz, //diffuseColorAlpha.xyz, 
+                                               vec3(0.04), //F0, 
+                                               vec3(1.0), //F90,
                                                inWorldSpacePosition,
                                                ior, 
                                                volumeThickness, 
@@ -495,16 +541,25 @@ vec4 doShade(){
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
 
 #if defined(TRANSMISSION) 
-  color.xyz += mix(diffuseOutput, transmissionOutput, transmissionFactor);
+  vec3 diffuse = mix(diffuseOutput, transmissionOutput, transmissionFactor);
 #else
-  color.xyz += diffuseOutput;
+  vec3 diffuse = diffuseOutput;
 #endif
   
-  color.xyz += specularOutput;
+  vec3 reflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0);
+  vec3 refraction = transmissionOutput;
+  
+  //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
+  float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+
+  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+
+  //color.xyz = reflection;
 
   //color.xyz = baseColorLinearRGB * max(0.0, dot(normal, vec3(0.0, 0.0, 1.0)));
 
   return color;
+#endif
 
 }
 void main(){
@@ -601,7 +656,7 @@ void main(){
 
       //gl_FragDepth = hitDepth;  
 
-      finalColor = doShade();
+      finalColor = doShade(maxTime - hitTime);
 //     finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
       
     }    
