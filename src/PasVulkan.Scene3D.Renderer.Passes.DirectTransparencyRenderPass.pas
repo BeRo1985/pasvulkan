@@ -328,10 +328,10 @@ begin
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              []);
  fPassVulkanDescriptorSetLayout.AddBinding(5,
-                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             2,
-                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                             []);
+                                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                           3,
+                                           TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                           []);
  fPassVulkanDescriptorSetLayout.AddBinding(6,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              1,
@@ -355,7 +355,7 @@ begin
  fPassVulkanDescriptorSetLayout.Initialize;
 
  fPassVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fInstance.Renderer.VulkanDevice,TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),fInstance.Renderer.CountInFlightFrames);
- fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,9*fInstance.Renderer.CountInFlightFrames);
+ fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,10*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*fInstance.Renderer.CountInFlightFrames);
  fPassVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,2*fInstance.Renderer.CountInFlightFrames);
@@ -413,13 +413,16 @@ begin
   if fInstance.Renderer.ScreenSpaceAmbientOcclusion then begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                         0,
-                                                                        2,
+                                                                        3,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                         [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
                                                                                                        fResourceSSAO.VulkanImageViews[InFlightFrameIndex].Handle,
                                                                                                        fResourceSSAO.ResourceTransition.Layout),// TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))],
                                                                          TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                        fInstance.SceneMipmappedArray2DImage.VulkanArrayImageView.Handle,
+                                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                       fInstance.DepthMipmappedArray2DImage.VulkanArrayImageView.Handle,
                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                         [],
                                                                         [],
@@ -427,13 +430,16 @@ begin
   end else begin
    fPassVulkanDescriptorSets[InFlightFrameIndex].WriteToDescriptorSet(5,
                                                                         0,
-                                                                        2,
+                                                                        3,
                                                                         TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
                                                                         [TVkDescriptorImageInfo.Create(fInstance.Renderer.AmbientOcclusionSampler.Handle,
                                                                                                        fInstance.Renderer.EmptyAmbientOcclusionTexture.ImageView.Handle,
                                                                                                        TVkImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)),
                                                                          TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedSampler.Handle,
                                                                                                        fInstance.SceneMipmappedArray2DImage.VulkanArrayImageView.Handle,
+                                                                                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
+                                                                         TVkDescriptorImageInfo.Create(fInstance.Renderer.ClampedNearestSampler.Handle,
+                                                                                                       fInstance.DepthMipmappedArray2DImage.VulkanArrayImageView.Handle,
                                                                                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)],
                                                                         [],
                                                                         [],
