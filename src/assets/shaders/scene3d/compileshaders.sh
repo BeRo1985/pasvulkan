@@ -729,11 +729,9 @@ addPlanetWaterFragmentShadingShadowVariants(){
 # Add planet water fragment shader variants with different techniques (if any)
 addPlanetWaterFragmentVariants(){
   
-  addPlanetWaterFragmentZVariants "${1}" "$2"
+  addPlanetWaterFragmentShadingShadowVariants "${1}" "$2"
 
-  addPlanetWaterFragmentZVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
-
-  addPlanetWaterFragmentVoxelizationVariants "${1}" "$2"
+  addPlanetWaterFragmentShadingShadowVariants "${1}_raytracing" "$2 -DRAYTRACING" # Raytracing
   
 }
 

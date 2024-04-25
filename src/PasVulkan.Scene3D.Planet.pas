@@ -8588,7 +8588,7 @@ constructor TpvScene3DPlanet.TWaterRenderPass.Create(const aRenderer:TObject;
                                                      const aResourceCascadedShadowMap:TpvFrameGraph.TPass.TUsedImageResource;
                                                      const aResourceSSAO:TpvFrameGraph.TPass.TUsedImageResource);
 var Stream:TStream;
-    FileName:TpvUTF8String;
+    ShaderFileName:TpvUTF8String;
 begin
 
  inherited Create;
@@ -8637,52 +8637,52 @@ begin
  end;
  fVulkanDevice.DebugUtils.SetObjectName(fVertexShaderModule.Handle,VK_OBJECT_TYPE_SHADER_MODULE,'TpvScene3DPlanet.TWaterRenderPass.fVertexShaderModule');
 
- FileName:='planet_water';
+ ShaderFileName:='planet_water';
 
  if TpvScene3D(fScene3D).RaytracingActive then begin
-  FileName:=FileName+'_raytracing';
+  ShaderFileName:=ShaderFileName+'_raytracing';
  end;
 
- FileName:=FileName+'_'+TpvScene3DRenderer(aRenderer).MeshFragShadowTypeName; // pcfpcss or msm
+ ShaderFileName:=ShaderFileName+'_'+TpvScene3DRenderer(aRenderer).MeshFragShadowTypeName; // pcfpcss or msm
 
  if TpvScene3DRendererInstance(aRendererInstance).ZFar<0.0 then begin 
-  FileName:=FileName+'_reversedz';
+  ShaderFileName:=ShaderFileName+'_reversedz';
  end;
 
  if TpvScene3DRenderer(aRenderer).SurfaceSampleCountFlagBits<>TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT) then begin
-  FileName:=FileName+'_msaa';
+  ShaderFileName:=ShaderFileName+'_msaa';
  end;
 
  case TpvScene3DRenderer(aRendererInstance).TransparencyMode of
   TpvScene3DRendererTransparencyMode.SPINLOCKOIT:begin
-   FileName:=FileName+'_spinlock_lockoit';
+   ShaderFileName:=ShaderFileName+'_spinlock_lockoit';
   end;
   TpvScene3DRendererTransparencyMode.INTERLOCKOIT:begin
-   FileName:=FileName+'_interlock_lockoit';
+   ShaderFileName:=ShaderFileName+'_interlock_lockoit';
   end;
   TpvScene3DRendererTransparencyMode.LOOPOIT:begin
-   FileName:=FileName+'_loopoit_pass'+IntToStr(aPass);
+   ShaderFileName:=ShaderFileName+'_loopoit_pass'+IntToStr(aPass);
   end;
   TpvScene3DRendererTransparencyMode.WBOIT:begin
-   FileName:=FileName+'_wboit';
+   ShaderFileName:=ShaderFileName+'_wboit';
   end;
   TpvScene3DRendererTransparencyMode.MBOIT:begin
-   FileName:=FileName+'_mboit_pass'+IntToStr(aPass);
+   ShaderFileName:=ShaderFileName+'_mboit_pass'+IntToStr(aPass);
   end;
   TpvScene3DRendererTransparencyMode.SPINLOCKDFAOIT:begin
-   FileName:=FileName+'_spinlock_dfaoit';
+   ShaderFileName:=ShaderFileName+'_spinlock_dfaoit';
   end;
   TpvScene3DRendererTransparencyMode.INTERLOCKDFAOIT:begin
-   FileName:=FileName+'_interlock_dfaoit';
+   ShaderFileName:=ShaderFileName+'_interlock_dfaoit';
   end;
   else begin
-   FileName:=FileName+'_blend';
+   ShaderFileName:=ShaderFileName+'_blend';
   end;
  end;
 
- FileName:=FileName+'_frag.spv';
+ ShaderFileName:=ShaderFileName+'_frag.spv';
 
- Stream:=pvScene3DShaderVirtualFileSystem.GetFile(FileName);
+ Stream:=pvScene3DShaderVirtualFileSystem.GetFile(ShaderFileName);
  try
   fFragmentShaderModule:=TpvVulkanShaderModule.Create(fVulkanDevice,Stream);
  finally
@@ -8728,7 +8728,7 @@ procedure TpvScene3DPlanet.TWaterRenderPass.AllocateResources(const aRenderPass:
 begin
 
  fPipelineLayout:=TpvVulkanPipelineLayout.Create(fVulkanDevice);
- fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+ fPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                       0,
                                       SizeOf(TPushConstants));
  fPipelineLayout.AddDescriptorSetLayout(TpvScene3D(fScene3D).GlobalVulkanDescriptorSetLayout); // Global scene descriptor set
@@ -9080,7 +9080,7 @@ begin
       fPushConstants.Time:=Modulo(TpvScene3D(Planet.Scene3D).SceneTimes^[aInFlightFrameIndex],65536.0);
 
       aCommandBuffer.CmdPushConstants(fPipelineLayout.Handle,
-                                      TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),
+                                      TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                       0,
                                       SizeOf(TPushConstants),
                                       @fPushConstants);

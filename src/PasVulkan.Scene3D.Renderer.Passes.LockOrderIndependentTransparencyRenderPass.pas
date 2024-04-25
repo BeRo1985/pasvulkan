@@ -74,7 +74,8 @@ uses SysUtils,
      PasVulkan.Scene3D,
      PasVulkan.Scene3D.Renderer.Globals,
      PasVulkan.Scene3D.Renderer,
-     PasVulkan.Scene3D.Renderer.Instance;
+     PasVulkan.Scene3D.Renderer.Instance,
+     PasVulkan.Scene3D.Planet;
 
 type { TpvScene3DRendererPassesLockOrderIndependentTransparencyRenderPass }
      TpvScene3DRendererPassesLockOrderIndependentTransparencyRenderPass=class(TpvFrameGraph.TRenderPass)
@@ -109,6 +110,7 @@ type { TpvScene3DRendererPassesLockOrderIndependentTransparencyRenderPass }
        fVulkanPipelineShaderStageParticleVertex:TpvVulkanPipelineShaderStage;
        fVulkanPipelineShaderStageParticleFragment:TpvVulkanPipelineShaderStage;
        fVulkanParticleGraphicsPipeline:TpvVulkanGraphicsPipeline;
+       fPlanetWaterRenderPass:TpvScene3DPlanet.TWaterRenderPass;
       public
        constructor Create(const aFrameGraph:TpvFrameGraph;const aInstance:TpvScene3DRendererInstance); reintroduce;
        destructor Destroy; override;
@@ -201,10 +203,18 @@ inherited Create(aFrameGraph);
 
  end;
 
+ fPlanetWaterRenderPass:=TpvScene3DPlanet.TWaterRenderPass.Create(fInstance.Renderer,
+                                                                  fInstance,
+                                                                  fInstance.Renderer.Scene3D,
+                                                                  0,
+                                                                  fResourceCascadedShadowMap,
+                                                                  fResourceSSAO);
+
 end;
 
 destructor TpvScene3DRendererPassesLockOrderIndependentTransparencyRenderPass.Destroy;
 begin
+ FreeAndNil(fPlanetWaterRenderPass);
  inherited Destroy;
 end;
 
@@ -881,6 +891,12 @@ begin
   fVulkanParticleGraphicsPipeline:=VulkanGraphicsPipeline;
  end;
 
+ fPlanetWaterRenderPass.AllocateResources(fVulkanRenderPass,
+                                          fPassVulkanDescriptorSetLayout,
+                                          fResourceColor.Width,
+                                          fResourceColor.Height,
+                                          fInstance.Renderer.SurfaceSampleCountFlagBits);
+
 end;
 
 procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyRenderPass.ReleaseVolatileResources;
@@ -889,6 +905,7 @@ var Index:TpvSizeInt;
     PrimitiveTopology:TpvScene3D.TPrimitiveTopology;
     FaceCullingMode:TpvScene3D.TFaceCullingMode;
 begin
+ fPlanetWaterRenderPass.ReleaseResources;
  FreeAndNil(fVulkanParticleGraphicsPipeline);
  for AlphaMode:=Low(TpvScene3D.TMaterial.TAlphaMode) to High(TpvScene3D.TMaterial.TAlphaMode) do begin
   for PrimitiveTopology:=Low(TpvScene3D.TPrimitiveTopology) to High(TpvScene3D.TPrimitiveTopology) do begin
