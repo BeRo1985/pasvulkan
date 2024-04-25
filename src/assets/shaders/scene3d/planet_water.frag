@@ -324,6 +324,59 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
   return hit;
 }
 
+bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, out float hitTime){
+
+  bool hit = false;
+  
+  float t = startTime;
+
+  float timeStep = max(1.0, maxTime) / (float(MAX_MARCHING_STEPS) * 0.125); 
+  
+  float closest = INFINITY;
+  float closestT = 0.0;
+
+  float secondClosest = INFINITY;
+  float secondClosestT = 0.0;
+  float previousDT = 0.0;
+
+  for(int i = 0; (i < MAX_MARCHING_STEPS) && (t < maxTime); i++){
+
+    vec3 rayPosition = fma(rayDirection, vec3(t), rayOrigin);
+
+    float dt = map(rayPosition);
+    if(dt < closest){
+      closest = dt;
+      closestT = t;
+    }
+    
+    if((secondClosest > dt) && (previousDT < dt)){
+        secondClosest = dt;
+        secondClosestT = t;
+    }      
+
+    if(dt < PRECISION){
+      hit = true;
+      hitTime = t;
+      break;
+    }    
+
+    t += clamp(abs(dt) * 0.5, 1e-6, timeStep) * ((dt < 0.0) ? -1.0 : 1.0);
+    
+    previousDT = dt;
+
+    countSteps++;
+    
+  }       
+  
+  if((!hit) && (closest < 1e-2)){
+    hit = true;
+    hitTime = closestT;
+  }
+
+  return hit;
+
+} 
+
 vec4 doShade(){
 
 /*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
@@ -482,7 +535,7 @@ void main(){
     float opaqueDepth = 1.0; // To satisfy the IDE GLSL syntax checker, since this shader will be never compiled without OIT
 #endif
 
-    float opaqueLinearDepth = linearizeDepth(opaqueDepth);
+    float opaqueLinearDepth = -linearizeDepth(opaqueDepth);
 
     bool inside = length(rayOrigin - planetCenter) <= planetTopRadius;
 
@@ -496,7 +549,7 @@ void main(){
       )
     );
 
-    if(acceleratedRayMarching(rayOrigin, rayDirection, hitRayTime, maxTime, 0.6, hitRayTime)){
+    if(standardRayMarching(rayOrigin, rayDirection, hitRayTime, maxTime, hitRayTime)){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitRayTime); // in planet space
 
