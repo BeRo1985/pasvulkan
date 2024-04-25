@@ -476,6 +476,8 @@ void main(){
   #else
     float opaqueDepth = subpassLoad(uOITImgDepth).r; 
   #endif 
+#elif defined(BLEND)
+    float opaqueDepth = textureLod(uPassTextures[2], vec3(inTexCoord, float(gl_ViewIndex)), 0.0).x;
 #else
     float opaqueDepth = 1.0; // To satisfy the IDE GLSL syntax checker, since this shader will be never compiled without OIT
 #endif

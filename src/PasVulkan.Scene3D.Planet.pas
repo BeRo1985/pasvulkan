@@ -8653,7 +8653,7 @@ begin
   ShaderFileName:=ShaderFileName+'_msaa';
  end;
 
- case TpvScene3DRenderer(aRendererInstance).TransparencyMode of
+ case TpvScene3DRenderer(aRenderer).TransparencyMode of
   TpvScene3DRendererTransparencyMode.SPINLOCKOIT:begin
    ShaderFileName:=ShaderFileName+'_spinlock_lockoit';
   end;
