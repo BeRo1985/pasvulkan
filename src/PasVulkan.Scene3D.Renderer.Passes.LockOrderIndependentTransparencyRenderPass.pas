@@ -975,7 +975,7 @@ begin
 end;
 
 procedure TpvScene3DRendererPassesLockOrderIndependentTransparencyRenderPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                                                          const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
+                                                                                     const aInFlightFrameIndex,aFrameIndex:TpvSizeInt);
 var InFlightFrameState:TpvScene3DRendererInstance.PInFlightFrameState;
 begin
  inherited Execute(aCommandBuffer,aInFlightFrameIndex,aFrameIndex);
@@ -983,6 +983,14 @@ begin
  InFlightFrameState:=@fInstance.InFlightFrameStates^[aInFlightFrameIndex];
 
  if InFlightFrameState^.Ready then begin
+
+  fPlanetWaterRenderPass.Draw(aInFlightFrameIndex,
+                              aFrameIndex,
+                              InFlightFrameState^.ViewRenderPassIndex,
+                              InFlightFrameState^.FinalViewIndex,
+                              InFlightFrameState^.CountFinalViews,
+                              aCommandBuffer,
+                              fPassVulkanDescriptorSets[aInFlightFrameIndex]);
 
   fOnSetRenderPassResourcesDone:=false;
 
