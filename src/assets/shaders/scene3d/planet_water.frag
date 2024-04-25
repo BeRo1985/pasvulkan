@@ -264,7 +264,7 @@ float delinearizeDepth(float z){
 float map(vec3 p){
   vec3 n = normalize(planetCenter - p);
   //float w = getwaves(octEqualAreaUnsignedEncode(n) * 64.0, 6) * 0.1; 
-  float h = 0.5;//textureBicubicOctahedralMap(uImageHeightMap, n).x + w;
+  float h = 0.75;//textureBicubicOctahedralMap(uImageHeightMap, n).x + w;
   float r = length(planetCenter - p) - mix(planetBottomRadius, planetTopRadius, h);
   return r;
 }
@@ -369,7 +369,7 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   }       
   
   if((!hit) && (closest < 1e-2)){
-    hit = true;
+   // hit = true;
     hitTime = closestT;
   }
 
@@ -518,7 +518,7 @@ void main(){
   vec4 finalColor = vec4(0.0);
 
   // Pre-check if the ray intersects the planet's bounding sphere
-  if(intersectRaySphere(vec4(planetCenter, planetTopRadius), 
+  if(intersectRaySphere(vec4(planetCenter, planetTopRadius * 1.0), 
                         rayOrigin,
                         rayDirection,     
                         hitRayTime)){
@@ -549,9 +549,12 @@ void main(){
       )
     );
 
-    if(standardRayMarching(rayOrigin, rayDirection, hitRayTime, maxTime, hitRayTime)){
+    float hitTime;
 
-      vec3 hitPoint = rayOrigin + (rayDirection * hitRayTime); // in planet space
+    //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime)){
+    if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
+
+      vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
       worldSpacePosition = (planetModelMatrix * vec4(hitPoint, 1.0)).xyz;
 
@@ -563,7 +566,9 @@ void main(){
 
       hitDepth = delinearizeDepth(viewSpacePosition.z);
 
-      gl_FragDepth = hitDepth;  
+      workNormal = mapNormal(hitPoint);
+
+      //gl_FragDepth = hitDepth;  
 
       finalColor = doShade();
       
