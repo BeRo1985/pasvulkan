@@ -315,13 +315,14 @@ float INFINITY = uintBitsToFloat(0x7f800000u);
 int countSteps = 0;
 
 // Based on https://www.researchgate.net/publication/329152815_Accelerating_Sphere_Tracing
-bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, out float hitTime){ // accelerated ray marching
+bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, float w, out float hitTime, out float originSign){ // accelerated ray marching
   float previousR = 0.0; 
   float currentR = 0.0;
   float nextR = INFINITY;
   float stepDistance = 0.0;
   float time = startTime;
   vec2 closest = vec2(INFINITY, 0.0);    
+  originSign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (nextR >= PRECISION) && (time < maxTime); i++){
     float currentSignedDistance = map(fma(rayDirection, vec3(time + stepDistance), rayOrigin));
     if(closest.x > abs(currentSignedDistance)){
@@ -350,7 +351,7 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
   return hit;
 }
 
-bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, out float hitTime){
+bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, float maxTime, out float hitTime, out float originSign){
 
   bool hit = false;
   
@@ -364,6 +365,8 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
   float secondClosest = INFINITY;
   float secondClosestT = 0.0;
   float previousDT = 0.0;
+
+  originSign = (map(rayOrigin) < 0.0) ? -1.0 : 1.0;  
 
   for(int i = 0; (i < MAX_MARCHING_STEPS) && (t < maxTime); i++){
 
@@ -419,14 +422,14 @@ float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
   return result;
 }
 
-vec4 doShade(float hitTime){
+vec4 doShade(float hitTime, bool underWater){
 
 /*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
   const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);*/
   const vec3 baseColorLinearRGB = vec3(0.5, 0.7, 0.9);
 
   vec4 albedo = vec4(baseColorLinearRGB, 1.0);  
-  vec4 occlusionRoughnessMetallic = vec4(1.0, 0.0, 0.9, 0.0);
+  vec4 occlusionRoughnessMetallic = underWater ? vec4(clamp(hitTime * 0.1, 0.0, 1.0), 1.0, 0.0, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
 
   // The blade normal is rotated slightly to the left or right depending on the x texture coordinate for
   // to fake roundness of the blade without real more complex geometry
@@ -522,37 +525,49 @@ vec4 doShade(float hitTime){
        
 #if defined(TRANSMISSION)
 
-  transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
-                                               viewDirection,
-                                               clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
-                                               albedo.xyz, //diffuseColorAlpha.xyz, 
-                                               vec3(0.04), //F0, 
-                                               vec3(1.0), //F90,
-                                               inWorldSpacePosition,
-                                               ior, 
-                                               volumeThickness, 
-                                               volumeAttenuationColor, 
-                                               volumeAttenuationDistance,
-                                               volumeDispersion);        
+  if(!underWater){
+    transmissionOutput += getIBLVolumeRefraction(normal.xyz, 
+                                                 viewDirection,
+                                                 clamp(hitTime * 0.1, 0.0, 0.25),//perceptualRoughness,
+                                                 albedo.xyz, //diffuseColorAlpha.xyz, 
+                                                 vec3(0.04), //F0, 
+                                                 vec3(1.0), //F90,
+                                                 inWorldSpacePosition,
+                                                 ior, 
+                                                 volumeThickness, 
+                                                 volumeAttenuationColor, 
+                                                 volumeAttenuationDistance,
+                                                 volumeDispersion);        
+  }
 
 #endif
 
   //vec3(0.015625) * edgeFactor() * fma(clamp(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0, 1.0), 1.0, 0.0), 1.0);
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+  
+  vec3 reflection, refraction;
 
-#if defined(TRANSMISSION) 
-  vec3 diffuse = mix(diffuseOutput, transmissionOutput, transmissionFactor);
-#else
-  vec3 diffuse = diffuseOutput;
-#endif
-  
-  vec3 reflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
-  vec3 refraction = transmissionOutput;
-  
   //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
   float fresnel = pow(1.0 - max(dot(normal, -viewDirection), 0.0), 3.0) * 1.0;
+  
+  if(underWater){
+    reflection = vec3(0.0);
+    refraction = vec3(0.0);
+    color = vec4(diffuseOutput + specularOutput, fresnel * 0.5);
+  }else{
 
-  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+#if defined(TRANSMISSION) 
+    vec3 diffuse = mix(diffuseOutput, transmissionOutput, transmissionFactor);
+#else
+    vec3 diffuse = diffuseOutput;
+#endif
+
+    reflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
+    refraction = transmissionOutput;
+
+    color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
+  }
+  
 
   //color.xyz = reflection;
 
@@ -635,10 +650,10 @@ void main(){
       )
     );
 
-    float hitTime;
+    float hitTime, originSign;
 
-    //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime)){
-    if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime)){
+    //if(acceleratedRayMarching(rayOrigin, rayDirection, 0.0, maxTime, 0.6, hitTime, originSign)){
+    if(standardRayMarching(rayOrigin, rayDirection, 0.0, maxTime, hitTime, originSign)){
 
       vec3 hitPoint = rayOrigin + (rayDirection * hitTime); // in planet space
 
@@ -656,7 +671,7 @@ void main(){
 
       //gl_FragDepth = hitDepth;  
 
-      finalColor = doShade(maxTime - hitTime);
+      finalColor = doShade(maxTime - hitTime, originSign <= 0.0);
 //     finalColor = vec4(workNormal.xyz * 0.1, 1.0);//doShade();
       
     }    

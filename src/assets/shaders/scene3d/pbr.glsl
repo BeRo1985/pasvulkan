@@ -316,7 +316,7 @@ vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, 
 // Compute attenuated light as it travels through a volume.
 vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
   if (isinf(attenuationDistance) || (attenuationDistance == 0.0)) {
-    // Attenuation distance is +ï¿½ï¿½ï¿½ï¿½ï¿½which we indicate by zero), i.e. the transmitted color is not attenuated at all.
+    // Attenuation distance is +Ã¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ch we indicate by zero), i.e. the transmitted color is not attenuated at all.
     return radiance;
   } else {
     // Compute light attenuation using Beer's law.
@@ -542,10 +542,6 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float perceptualRoughness, vec3 base
 
 #ifdef SCREEN_SPACE_REFLECTIONS
 
-const float SCREEN_SPACE_REFLECTIONS_RESOLUTION = 0.01;
-const float SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE = 10.0;
-const float SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE = 0.02;
-
 vec3 getReflectionSample(vec2 fragCoord, float roughness) {
   int maxLod = int(textureQueryLevels(uPassTextures[1]));
   float framebufferLod = float(maxLod) * applyIorToRoughness(roughness, 1.0);
@@ -565,6 +561,14 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
                               float roughness,
                               vec4 fallbackColor){
 
+  const float rayStep = 0.2;
+  const int countLinearSearchIterations = 32;
+  const int countBinarySearchIterations = 8;
+  const float distanceBias = 0.05;
+  const bool isBinarySearchEnabled = true;  
+  const bool isAdaptiveStepEnabled = true;  
+  const bool isExponentialStepEnabled = true;
+
   vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
   vec3 viewSpaceReflectionVector = (viewMatrix * vec4(worldSpaceReflectionVector, 0.0)).xyz;
@@ -573,9 +577,15 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
   float viewIndex = float(gl_ViewIndex);
 
-  for(float time = 0.0; time < SCREEN_SPACE_REFLECTIONS_MAX_DISTANCE; time += SCREEN_SPACE_REFLECTIONS_RESOLUTION){
+  // First, perform a linear search to find the first intersection point. 
 
-    viewSpaceCurrentPosition += viewSpaceReflectionVector * SCREEN_SPACE_REFLECTIONS_RESOLUTION;
+  float depthDifference;
+
+  vec3 stepVector = viewSpaceReflectionVector * rayStep;  
+
+  viewSpaceCurrentPosition += stepVector;
+
+  for(int iteration = 0; iteration < countLinearSearchIterations; iteration++){
 
     vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(viewSpaceCurrentPosition, 1.0);
     screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
@@ -583,12 +593,52 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
     float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceCurrentPosition.xy, viewIndex), 0.0).x;
 
     vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
-    float depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
+    depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
 
     if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
-       ((depthDifference >= 0.0) && (depthDifference < SCREEN_SPACE_REFLECTIONS_MAX_DIFFERENCE))){
+       ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
       return getReflectionSample(screenSpaceCurrentPosition.xy, roughness);
     } 
+
+    if(isBinarySearchEnabled && (depthDifference > 0.0)){
+	    break;
+	  }
+
+		if(isAdaptiveStepEnabled){
+	    float directionSign = sign(depthDifference);
+	    viewSpaceCurrentPosition += (stepVector *= (1.0 - rayStep * max(directionSign, 0.0))) * (-directionSign);
+	  }else {
+	    viewSpaceCurrentPosition += stepVector;
+	  }
+
+	  if(isExponentialStepEnabled){
+	    stepVector *= 1.05;
+	  }
+
+  }
+
+  // If the linear search failed, perform a binary search to find the intersection point, when enabled.
+
+  if(isBinarySearchEnabled){
+
+    for(int iteration = 0; iteration < countBinarySearchIterations; iteration++){
+	
+      viewSpaceCurrentPosition -= ((stepVector *= 0.5) * sign(depthDifference));
+
+      vec4 screenSpaceCurrentPosition = projectionMatrix * vec4(viewSpaceCurrentPosition, 1.0);
+      screenSpaceCurrentPosition.xy = fma(screenSpaceCurrentPosition.xy / screenSpaceCurrentPosition.w, vec2(0.5), vec2(0.5));
+			
+      float viewSpaceRawDepth = textureLod(uPassTextures[2], vec3(screenSpaceCurrentPosition.xy, viewIndex), 0.0).x;
+
+      vec4 viewSpaceProbePosition = inverseProjectionMatrix * vec4(fma(screenSpaceCurrentPosition.xy, vec2(2.0), vec2(-1.0)), viewSpaceRawDepth, 1.0);
+      depthDifference = (viewSpaceProbePosition.z / viewSpaceProbePosition.w) - viewSpaceCurrentPosition.z;
+
+      if((all(greaterThanEqual(screenSpaceCurrentPosition.xy, vec2(0.0))) && all(lessThanEqual(screenSpaceCurrentPosition.xy, vec2(1.0)))) &&
+         ((depthDifference >= 0.0) && (depthDifference < distanceBias))){
+        return getReflectionSample(screenSpaceCurrentPosition.xy, roughness);
+      }
+
+    }
 
   }
 
