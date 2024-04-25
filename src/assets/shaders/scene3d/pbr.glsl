@@ -562,7 +562,8 @@ vec3 getReflectionSample(vec2 fragCoord, float roughness) {
 vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
                               vec3 worldSpaceNormal, 
                               vec3 worldSpaceViewDirection,
-                              float roughness){
+                              float roughness,
+                              vec4 fallbackColor){
 
   vec3 worldSpaceReflectionVector = normalize(reflect(worldSpaceViewDirection, worldSpaceNormal.xyz)); 
 
@@ -593,7 +594,13 @@ vec3 getScreenSpaceReflection(vec3 worldSpacePosition,
 
   // No reflection found, so fall back to the environment map (in the GGX variant, since it is also used for IBL specular lighting).
 
-  return textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz * 1.0;
+  return (fallbackColor.w >= 0.99999) 
+           ? fallbackColor.xyz
+           : mix(
+               textureLod(uImageBasedLightingEnvMaps[0], worldSpaceReflectionVector, roughnessToMipMapLevel(roughness, envMapMaxLevelGGX)).xyz,
+               fallbackColor.xyz,
+                fallbackColor.w
+              );
 
 }
 

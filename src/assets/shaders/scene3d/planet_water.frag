@@ -518,7 +518,7 @@ vec4 doShade(float hitTime){
 #undef LIGHTING_IMPLEMENTATION
 
   diffuseOutput += getIBLRadianceLambertian(normal, viewDirection, perceptualRoughness, diffuseColorAlpha.xyz, F0, specularWeight) * iblWeight;
-  specularOutput += getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
+  vec3 iblSpecular = getIBLRadianceGGX(normal, perceptualRoughness, F0, specularWeight, viewDirection, litIntensity, imageLightBasedLightDirection) * iblWeight;
        
 #if defined(TRANSMISSION)
 
@@ -546,7 +546,7 @@ vec4 doShade(float hitTime){
   vec3 diffuse = diffuseOutput;
 #endif
   
-  vec3 reflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0);
+  vec3 reflection = getScreenSpaceReflection(worldSpacePosition, normal, -viewDirection, 0.0, vec4(iblSpecular, 1.0));
   vec3 refraction = transmissionOutput;
   
   //float fresnel = clamp(fresnelDielectric(-viewDirection, normal, 1.0 / ior), 0.0, 1.0);
