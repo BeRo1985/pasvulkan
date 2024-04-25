@@ -78,6 +78,7 @@ vec3 cameraRelativePosition;
 
 layout(set = 2, binding = 0) uniform sampler2D uTextures[]; // 0 = height map, 1 = normal map, 2 = tangent bitangent map
 
+#define PLANET_WATER
 #include "planet_renderpass.glsl"
 
 #define FRAGMENT_SHADER
@@ -121,7 +122,7 @@ float envMapMaxLevelCharlie = 0.0;//max(0.0, textureQueryLevels(uImageBasedLight
 
 #include "roughness.glsl"
 
-vec3 imageLightBasedLightDirection = imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
+vec3 imageLightBasedLightDirection = vec3(0.0, 1.0, 0.0);// imageBasedSphericalHarmonicsMetaData.dominantLightDirection.xyz;
 
 vec3 viewDirection;
 

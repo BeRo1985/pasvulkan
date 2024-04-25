@@ -40,6 +40,26 @@ layout(set = 2, binding = 1, std430) readonly buffer PlanetData {
 } planetData;
 #endif
 
+#if defined(PLANET_WATER)
+layout(push_constant) uniform PushConstants {
+
+  uint viewBaseIndex;
+  uint countViews;
+  uint countAllViews;
+  int frameIndex; 
+
+  vec2 jitter;
+#if defined(USE_BUFFER_REFERENCE) 
+  PlanetData planetData;
+#else
+  uvec2 unusedPlanetData; // Ignored in this case  
+#endif
+  
+  float time;
+
+} pushConstants;
+
+#else
 layout(push_constant) uniform PushConstants {
 
   uint viewBaseIndex;
@@ -60,12 +80,15 @@ layout(push_constant) uniform PushConstants {
 #endif
 
 } pushConstants;
+#endif // defined(PLANET_WATER)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if defined(USE_BUFFER_REFERENCE) 
 PlanetData planetData = pushConstants.planetData; // For to avoid changing the code below
 #endif
+
+#if !defined(PLANET_WATER)
 
 PlanetMaterial layerMaterials[4];
 vec4 layerMaterialWeights;
@@ -288,5 +311,7 @@ vec3 getLayeredMultiplanarOcclusionRoughnessMetallic(){
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif // !defined(PLANET_WATER)
 
 #endif
