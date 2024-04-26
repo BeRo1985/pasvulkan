@@ -258,6 +258,10 @@
                ){
 #if defined(REFLECTIVESHADOWMAPOUTPUT)
               diffuseOutput += lightAttenuation * light.colorIntensity.xyz * light.colorIntensity.w * diffuseColorAlpha.xyz; // * clamp(dot(normal, lightDirection), 0.0, 1.0);
+#elif defined(PROCESSLIGHT)
+              PROCESSLIGHT(light.colorIntensity.xyz * light.colorIntensity.w,  //
+                            vec3(lightAttenuation),                            //
+                            lightDirection); 
 #else
               doSingleLight(light.colorIntensity.xyz * light.colorIntensity.w,  //
                             vec3(lightAttenuation),                             //
@@ -424,7 +428,7 @@
                       clearcoatRoughness,                 //
                       specularWeight);                    //
       }*/
-#elif 1
+#elif 0
       doSingleLight(vec3(1.7, 1.15, 0.70),              //
                     vec3(1.0),                          //
                     normalize(-vec3(0.5, -1.0, -1.0)),  //

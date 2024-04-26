@@ -422,11 +422,20 @@ float fresnelDielectric(vec3 Incoming, vec3 Normal, float eta){
   return result;
 }
 
-vec4 doShade(float hitTime, bool underWater){
+#define PROCESSLIGHT processLight 
 
-/*const vec3 baseColorSRGB = vec3(52.0, 106.0, 0.0); // vec3(74.0, 149.0, 0.0); 
-  const vec3 baseColorLinearRGB = convertSRGBToLinearRGB(baseColorSRGB * 0.00392156862745098);*/
-  const vec3 baseColorLinearRGB = vec3(0.5, 0.7, 0.9);
+const vec3 waterBaseColor = vec3(0.5, 0.7, 0.9);
+
+vec3 waterDiffuseColor = vec3(0.0);
+vec3 waterSpecularColor = vec3(0.0);
+
+void processLight(const in vec3 lightColor, 
+                  const in vec3 lightLit, 
+                  const in vec3 lightDirection){
+
+} 
+
+vec4 doShade(float hitTime, bool underWater){
 
   vec4 albedo = vec4(1.0);  
   vec4 occlusionRoughnessMetallic = underWater ? vec4(clamp(hitTime * 0.1, 0.0, 1.0), 1.0, 0.0, 0.0) :  vec4(1.0, 0.0, 0.9, 0.0);
@@ -521,7 +530,7 @@ vec4 doShade(float hitTime, bool underWater){
   if(underWater){
     
     vec3 r = textureLod(uPassTextures[1], vec3(inTexCoord, gl_ViewIndex), 1.0).xyz;
-    color = vec4(r * baseColorLinearRGB * baseColorLinearRGB, 1.0);
+    color = vec4(r * waterBaseColor * waterBaseColor, 1.0);
 
   }else{
 
@@ -569,14 +578,14 @@ vec4 doShade(float hitTime, bool underWater){
     vec3 refraction = vec3(0.0);
 #endif
 
-    color.xyz = mix(refraction, reflection, fresnel) * baseColorLinearRGB;
+    color.xyz = mix(refraction, reflection, fresnel) * waterBaseColor;
 //  color.xyz = mix(refraction, mix(refraction, reflection + diffuse + specularOutput, fresnel), clamp(hitTime * 0.1, 0.0, 1.0));
 
   }
 
   //color.xyz = reflection;
 
-  //color.xyz = baseColorLinearRGB * max(0.0, dot(normal, vec3(0.0, 0.0, 1.0)));
+  //color.xyz = waterBaseColor * max(0.0, dot(normal, vec3(0.0, 0.0, 1.0)));
 
   return color;
 #endif
