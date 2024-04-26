@@ -341,12 +341,14 @@ bool acceleratedRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, 
     countSteps++;
   }    
   bool hit = false;
-  if((hitTime <= maxTime) && (nextR < PRECISION)){
+  if((time <= maxTime) && (nextR < PRECISION)){
     hit = true;
     hitTime = min(time, maxTime);    
-  }else if(closest.x < 1e-2){
+#if 0
+  }else if((closest.x < 1e-2) && (closest.y <= maxTime)){
     hit = true;
     hitTime = closest.y;
+#endif
   }
   return hit;
 }
@@ -397,10 +399,12 @@ bool standardRayMarching(vec3 rayOrigin, vec3 rayDirection, float startTime, flo
     
   }       
   
+#if 0
   if((!hit) && (closest < 1e-2)){
- // hit = true;
+    hit = true;
     hitTime = closestT;
   }
+#endif
 
   return hit;
 
